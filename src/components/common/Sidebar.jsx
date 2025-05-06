@@ -25,13 +25,12 @@ import {
 import { useTheme } from "./ThemeProvider";
 import Logo from "./Logo";
 
-const Sidebar = () => {
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+const Sidebar = ({ collapsed = false, toggleSidebar }) => {
   const [expandedItems, setExpandedItems] = useState({});
   const pathname = usePathname();
   const { darkMode } = useTheme();
 
-  // Auto-expand the active category
+  // Auto-expand the active category on initial load
   useEffect(() => {
     const activeCategoryId = sidebarCategories.find(
       (category) =>
@@ -40,20 +39,20 @@ const Sidebar = () => {
         category.items.some((item) => pathname === item.path)
     )?.id;
 
-    if (activeCategoryId && !expandedItems[activeCategoryId]) {
+    if (activeCategoryId && !expandedItems[activeCategoryId] && !collapsed) {
       setExpandedItems((prev) => ({
         ...prev,
         [activeCategoryId]: true,
       }));
     }
-  }, [pathname]);
+  }, [pathname, collapsed]);
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!isSidebarOpen);
-    if (!isSidebarOpen) {
+  // Close all expanded categories when sidebar is collapsed
+  useEffect(() => {
+    if (collapsed) {
       setExpandedItems({});
     }
-  };
+  }, [collapsed]);
 
   const toggleExpand = (categoryId) => {
     // When opening a category, close all others
@@ -87,6 +86,13 @@ const Sidebar = () => {
       name: "Dashboard",
       icon: <Home size={20} />,
       path: "/dashboard",
+      type: "item", // single item without submenu
+    },
+    {
+      id: "home",
+      name: "Home",
+      icon: <Home size={20} />,
+      path: "/home",
       type: "item", // single item without submenu
     },
     {
@@ -206,27 +212,25 @@ const Sidebar = () => {
 
   return (
     <div
-      className={`${bgSidebar} transition-all duration-300 ${
-        isSidebarOpen ? "w-64" : "w-20"
-      } flex flex-col h-screen border-r ${borderColor}`}
+      className={`${bgSidebar} transition-all duration-300 h-screen flex flex-col border-r ${borderColor} fixed md:relative z-30 md:z-auto w-64 md:w-auto`}
     >
       {/* Logo Area */}
       <div
         className={`flex items-center justify-between p-4 border-b ${borderColor}`}
       >
         <div className="flex items-center">
-          <Logo collapsed={!isSidebarOpen} />
+          <Logo collapsed={collapsed} />
         </div>
         <button
           onClick={toggleSidebar}
           className={`${textMuted} hover:${textPrimary}`}
         >
-          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+          {collapsed ? <Menu size={20} /> : <X size={20} />}
         </button>
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-2">
+      <div className="flex-1 overflow-y-auto py-2 scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-transparent">
         <nav className="px-2">
           {sidebarCategories.map((category) => (
             <div key={category.id} className="mb-2">
@@ -235,7 +239,7 @@ const Sidebar = () => {
                 <Link
                   href={category.path}
                   className={`flex items-center ${
-                    !isSidebarOpen ? "justify-center" : "justify-between"
+                    collapsed ? "justify-center" : "justify-between"
                   } px-3 py-2.5 rounded-md cursor-pointer ${
                     isActive(category.path) ? activeMenuBg : hoverMenuBg
                   } ${
@@ -250,7 +254,7 @@ const Sidebar = () => {
                     >
                       {category.icon}
                     </span>
-                    {isSidebarOpen && (
+                    {!collapsed && (
                       <span className="ml-3 font-medium">{category.name}</span>
                     )}
                   </div>
@@ -263,9 +267,9 @@ const Sidebar = () => {
                     className={`flex items-center justify-between cursor-pointer px-3 py-2 ${
                       isCategoryActive(category) ? textPrimary : categoryHeading
                     }`}
-                    onClick={() => isSidebarOpen && toggleExpand(category.id)}
+                    onClick={() => !collapsed && toggleExpand(category.id)}
                   >
-                    {isSidebarOpen ? (
+                    {!collapsed ? (
                       <>
                         <h3 className="text-xs font-semibold uppercase tracking-wider">
                           {category.name}
@@ -277,12 +281,14 @@ const Sidebar = () => {
                         )}
                       </>
                     ) : (
-                      <div className="w-full border-t border-gray-700 dark:border-gray-600"></div>
+                      <div className="w-full flex justify-center">
+                        <span className={textMuted}>{category.icon}</span>
+                      </div>
                     )}
                   </div>
 
                   {/* Category Items */}
-                  {isSidebarOpen && expandedItems[category.id] && (
+                  {!collapsed && expandedItems[category.id] && (
                     <div className="mt-1">
                       {category.items.map((item) => (
                         <Link
@@ -321,10 +327,12 @@ const Sidebar = () => {
               <span>JP</span>
             </div>
           </div>
-          {isSidebarOpen && (
-            <div className="ml-3">
-              <p className="text-sm font-medium">John Pristia</p>
-              <p className={`text-xs ${textMuted}`}>Administrator</p>
+          {!collapsed && (
+            <div className="ml-3 overflow-hidden">
+              <p className={`text-sm font-medium truncate ${textPrimary}`}>
+                John Pristia
+              </p>
+              <p className={`text-xs truncate ${textMuted}`}>Administrator</p>
             </div>
           )}
         </div>

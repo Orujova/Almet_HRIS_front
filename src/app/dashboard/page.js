@@ -1,14 +1,35 @@
 "use client";
-import { Users, BarChart, FileText, Calendar } from "lucide-react";
+import {
+  Users,
+  BarChart,
+  FileText,
+  Calendar,
+  ArrowUpRight,
+} from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useTheme } from "@/components/common/ThemeProvider";
 import StatsCard from "@/components/dashboard/StatsCard";
 import PerformanceChart from "@/components/dashboard/PerformanceChart";
 import ApplicationsChart from "@/components/dashboard/ApplicationsChart";
 import EmployeeTable from "@/components/dashboard/EmployeeTable";
 
 export default function Dashboard() {
+  const { darkMode } = useTheme();
+
+  // Theme-dependent classes
+  const textPrimary = darkMode ? "text-white" : "text-gray-900";
+  const bgSection = darkMode ? "bg-gray-900" : "bg-gray-50";
+
   return (
     <DashboardLayout>
+      {/* Welcome Banner */}
+      <div className={`${bgSection} rounded-lg p-6 mb-6`}>
+        <h1 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-2`}>
+          Dashboard
+        </h1>
+        <p className={`text-gray-400`}>Welcome back, John Pristia</p>
+      </div>
+
       {/* KPI Numbers */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatsCard

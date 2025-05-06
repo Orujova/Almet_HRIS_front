@@ -36,48 +36,50 @@ const FilterPanel = ({ filterOptions, onApplyFilters, onClearFilters }) => {
   };
 
   return (
-    <div className="border rounded-lg p-4 mb-6">
-      <div className="flex flex-wrap">
+    <div className="border rounded-lg p-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {filterOptions.map((filter) => (
-          <div key={filter.name} className="flex flex-col mb-4 mr-2">
-            <div className="relative w-48 mb-2">
-              <select
-                className={`appearance-none w-full p-2 pr-8 rounded border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
-                value={selectedFilters[filter.name] || ""}
-                onChange={(e) =>
-                  handleFilterChange(filter.name, e.target.value)
-                }
-              >
-                <option value="">{filter.name}</option>
-                {filter.options.map((option, idx) => (
-                  <option key={idx} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-                <ChevronDown size={16} className={textMuted} />
+          <div key={filter.name} className="flex flex-col">
+            <div className="relative w-full mb-2">
+              <div className="flex items-center justify-between border rounded-md overflow-hidden">
+                <select
+                  className={`appearance-none w-full p-2 pr-8 border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                  value={selectedFilters[filter.name] || ""}
+                  onChange={(e) =>
+                    handleFilterChange(filter.name, e.target.value)
+                  }
+                >
+                  <option value="">{filter.name}</option>
+                  {filter.options.map((option, idx) => (
+                    <option key={idx} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <ChevronDown size={16} className={textMuted} />
+                </div>
+                <button
+                  className="absolute top-2 right-8 text-blue-500 hover:text-blue-600"
+                  title="Add new option"
+                >
+                  <Plus size={16} />
+                </button>
               </div>
-              <button
-                className="absolute top-2 right-10 text-blue-500"
-                title="Add new option"
-              >
-                <Plus size={16} />
-              </button>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="flex justify-end mt-4 space-x-2">
+      <div className="flex justify-end mt-6 space-x-3">
         <button
-          className="bg-orange-100 text-orange-600 px-4 py-2 rounded-md hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-300 dark:hover:bg-orange-800"
+          className="bg-orange-100 text-orange-600 px-6 py-2 rounded-md hover:bg-orange-200 dark:bg-orange-900 dark:text-orange-300 dark:hover:bg-orange-800 font-medium"
           onClick={handleClearFilters}
         >
           Clear Filter
         </button>
         <button
-          className={`${btnPrimary} text-white px-4 py-2 rounded-md`}
+          className={`${btnPrimary} text-white px-6 py-2 rounded-md font-medium`}
           onClick={handleApplyFilters}
         >
           Apply Filter

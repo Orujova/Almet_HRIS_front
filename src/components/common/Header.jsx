@@ -1,8 +1,8 @@
 "use client";
-import { Bell, Search, Sun, Moon } from "lucide-react";
+import { Bell, Search, Sun, Moon, Menu } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
 
-const Header = () => {
+const Header = ({ toggleSidebar }) => {
   const { darkMode, toggleTheme } = useTheme();
 
   // Theme-dependent classes
@@ -18,9 +18,17 @@ const Header = () => {
       className={`${bgHeader} border-b ${borderColor} p-4 transition-colors duration-200`}
     >
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Hi, Pristia</h1>
+        <div className="flex items-center">
+          <button
+            onClick={toggleSidebar}
+            className={`${bgButton} p-2 rounded-full mr-4 md:hidden`}
+          >
+            <Menu size={18} />
+          </button>
+          <h1 className="text-xl font-semibold">Hi, Pristia</h1>
+        </div>
         <div className="flex items-center space-x-4">
-          <div className="relative">
+          <div className="relative hidden md:block">
             <Search
               className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`}
               size={16}

@@ -364,22 +364,58 @@ const HeadcountTable = () => {
   // Filter options
   const filterOptions = [
     {
-      name: "Team",
+      name: "Business Functions",
+      options: ["Marketing", "Finance", "HR", "Operations"],
+    },
+    {
+      name: "Units",
       options: [
-        "Team Product",
-        "Team Support",
-        "Team Finance",
-        "Team HR",
-        "Team Operations",
+        "Business Development",
+        "Business Support",
+        "Product Development",
       ],
     },
     {
-      name: "Office",
-      options: ["Unpixel Office", "Central HQ"],
+      name: "Positions",
+      options: ["Executive", "Manager", "Specialist", "Admin"],
+    },
+    {
+      name: "Grade",
+      options: ["P4", "S5", "SPECIALIST", "BLUE COLLAR"],
+    },
+    {
+      name: "Departments",
+      options: [
+        "Business Development",
+        "Administrative",
+        "Finance",
+        "HR",
+        "Compliance",
+      ],
+    },
+    {
+      name: "Job Functions",
+      options: [
+        "Product Management",
+        "Administrative",
+        "Finance Business",
+        "HR Operations",
+        "Legal",
+      ],
+    },
+    {
+      name: "Position Groups",
+      options: [
+        "Executive",
+        "Senior Specialist",
+        "Specialist",
+        "Junior Specialist",
+        "Admin",
+      ],
     },
     {
       name: "Line Manager",
-      options: ["@eric", "@linda", "@maria", "@james", "@tamara"],
+      options: ["@eric", "@linda", "@tamara", "@james", "@maria"],
     },
     {
       name: "Status",
