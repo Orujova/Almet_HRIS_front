@@ -1,39 +1,72 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Home,
-  Building2,
-  TrendingUp,
+  Users,
   FileText,
-  MessageSquare,
+  BarChart,
+  List,
+  Star,
+  LineChart,
+  Calendar,
+  Plane,
+  Newspaper,
+  Gift,
   Settings,
-  ChevronDown,
-  ChevronRight,
+  Lock,
+  UserCog,
   Menu,
   X,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useTheme } from "./ThemeProvider";
+import Logo from "./Logo";
 
 const Sidebar = () => {
   const [isSidebarOpen, setSidebarOpen] = useState(true);
-  const [expandedItem, setExpandedItem] = useState(null);
+  const [expandedItems, setExpandedItems] = useState({});
   const pathname = usePathname();
   const { darkMode } = useTheme();
+
+  // Auto-expand the active category
+  useEffect(() => {
+    const activeCategoryId = sidebarCategories.find(
+      (category) =>
+        category.type === "category" &&
+        category.items &&
+        category.items.some((item) => pathname === item.path)
+    )?.id;
+
+    if (activeCategoryId && !expandedItems[activeCategoryId]) {
+      setExpandedItems((prev) => ({
+        ...prev,
+        [activeCategoryId]: true,
+      }));
+    }
+  }, [pathname]);
 
   const toggleSidebar = () => {
     setSidebarOpen(!isSidebarOpen);
     if (!isSidebarOpen) {
-      setExpandedItem(null);
+      setExpandedItems({});
     }
   };
 
-  const toggleExpand = (index) => {
-    if (expandedItem === index) {
-      setExpandedItem(null);
+  const toggleExpand = (categoryId) => {
+    // When opening a category, close all others
+    if (!expandedItems[categoryId]) {
+      const newExpandedItems = {};
+      newExpandedItems[categoryId] = true;
+      setExpandedItems(newExpandedItems);
     } else {
-      setExpandedItem(index);
+      // Just close this category
+      setExpandedItems((prev) => ({
+        ...prev,
+        [categoryId]: false,
+      }));
     }
   };
 
@@ -43,67 +76,133 @@ const Sidebar = () => {
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
   const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const activeMenuBg = darkMode ? "bg-gray-700" : "bg-gray-200";
-  const hoverMenuBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-200";
+  const activeMenuBg = darkMode ? "bg-gray-700" : "bg-gray-100";
+  const hoverMenuBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100";
+  const categoryHeading = darkMode ? "text-gray-500" : "text-gray-500";
 
-  // Sidebar items with sub-items
-  const sidebarItems = [
+  // Sidebar categories with their items
+  const sidebarCategories = [
     {
+      id: "dashboard",
       name: "Dashboard",
       icon: <Home size={20} />,
       path: "/dashboard",
+      type: "item", // single item without submenu
     },
     {
-      name: "Structure",
-      icon: <Building2 size={20} />,
-      path: "/structure",
-      subItems: [
-        { name: "Headcount table", path: "/structure/headcount-table" },
-        { name: "Org Structure", path: "/structure/org-structure" },
-        { name: "Job Descriptions", path: "/structure/job-descriptions" },
-        { name: "Comp Matrix", path: "/structure/comp-matrix" },
-        { name: "Job Catalog", path: "/structure/job-catalog" },
-        { name: "Grading", path: "/structure/grading" },
+      id: "structure",
+      name: "STRUCTURE",
+      icon: <Users size={20} />,
+      type: "category",
+      items: [
+        {
+          name: "Headcount table",
+          icon: <Users size={20} />,
+          path: "/structure/headcount-table",
+        },
+        {
+          name: "Org Structure",
+          icon: <Users size={20} />,
+          path: "/structure/org-structure",
+        },
+        {
+          name: "Job Descriptions",
+          icon: <FileText size={20} />,
+          path: "/structure/job-descriptions",
+        },
+        {
+          name: "Comp Matrix",
+          icon: <BarChart size={20} />,
+          path: "/structure/comp-matrix",
+        },
+        {
+          name: "Job Catalog",
+          icon: <List size={20} />,
+          path: "/structure/job-catalog",
+        },
+        {
+          name: "Grading",
+          icon: <Star size={20} />,
+          path: "/structure/grading",
+        },
       ],
     },
     {
-      name: "Efficiency",
-      icon: <TrendingUp size={20} />,
-      path: "/efficiency",
-      subItems: [
-        { name: "Performance mng", path: "/efficiency/performance-mng" },
+      id: "efficiency",
+      name: "EFFICIENCY",
+      icon: <LineChart size={20} />,
+      type: "category",
+      items: [
+        {
+          name: "Performance mng",
+          icon: <LineChart size={20} />,
+          path: "/efficiency/performance-mng",
+        },
       ],
     },
     {
-      name: "E-Requests",
-      icon: <FileText size={20} />,
-      path: "/requests",
-      subItems: [
-        { name: "Vacation", path: "/requests/vacation" },
-        { name: "Business Trip", path: "/requests/business-trip" },
+      id: "requests",
+      name: "E-REQUESTS",
+      icon: <Calendar size={20} />,
+      type: "category",
+      items: [
+        {
+          name: "Vacation",
+          icon: <Calendar size={20} />,
+          path: "/requests/vacation",
+        },
+        {
+          name: "Business Trip",
+          icon: <Plane size={20} />,
+          path: "/requests/business-trip",
+        },
       ],
     },
     {
-      name: "Communication",
-      icon: <MessageSquare size={20} />,
-      path: "/communication",
-      subItems: [
-        { name: "Company News", path: "/communication/company-news" },
-        { name: "Celebrations", path: "/communication/celebrations" },
+      id: "communication",
+      name: "COMMUNICATION",
+      icon: <Newspaper size={20} />,
+      type: "category",
+      items: [
+        {
+          name: "Company News",
+          icon: <Newspaper size={20} />,
+          path: "/communication/company-news",
+        },
+        {
+          name: "Celebrations",
+          icon: <Gift size={20} />,
+          path: "/communication/celebrations",
+        },
       ],
     },
     {
-      name: "Settings",
+      id: "settings",
+      name: "SETTINGS",
       icon: <Settings size={20} />,
-      path: "/settings",
-      subItems: [
-        { name: "Access Mng", path: "/settings/access-mng" },
-        { name: "Role Mng", path: "/settings/role-mng" },
+      type: "category",
+      items: [
+        {
+          name: "Access Mng",
+          icon: <Lock size={20} />,
+          path: "/settings/access-mng",
+        },
+        {
+          name: "Role Mng",
+          icon: <UserCog size={20} />,
+          path: "/settings/role-mng",
+        },
       ],
     },
   ];
 
   const isActive = (path) => pathname === path;
+  const isCategoryActive = (category) => {
+    if (!category.items) return false;
+    return category.items.some(
+      (item) => pathname === item.path || pathname.startsWith(item.path + "/")
+    );
+  };
 
   return (
     <div
@@ -116,40 +215,7 @@ const Sidebar = () => {
         className={`flex items-center justify-between p-4 border-b ${borderColor}`}
       >
         <div className="flex items-center">
-          <svg
-            width={isSidebarOpen ? "120" : "30"}
-            height="30"
-            viewBox="0 0 120 40"
-            className="text-blue-500"
-          >
-            <path
-              d="M20,0.2C13.7,0.2,6.7,3.9,0,10.6l20,29.3L30,30.1L16.7,10.6c9.3-6.7,22.7-6.7,32,0L35.4,29.9L39.9,36l20-29.3C53.3,3.9,46.3,0.2,39.9,0.2H20z"
-              fill="currentColor"
-            />
-            {isSidebarOpen && (
-              <>
-                <text
-                  x="55"
-                  y="27"
-                  fontFamily="Arial Black"
-                  fontWeight="bold"
-                  fontSize="24"
-                  fill="currentColor"
-                >
-                  ALMET
-                </text>
-                <text
-                  x="55"
-                  y="38"
-                  fontFamily="Arial"
-                  fontSize="12"
-                  fill="currentColor"
-                >
-                  HOLDING
-                </text>
-              </>
-            )}
-          </svg>
+          <Logo collapsed={!isSidebarOpen} />
         </div>
         <button
           onClick={toggleSidebar}
@@ -162,74 +228,84 @@ const Sidebar = () => {
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto py-2">
         <nav className="px-2">
-          {sidebarItems.map((item, index) => (
-            <div key={item.name} className="mb-1">
-              {/* Main menu item */}
-              <div
-                className={`flex items-center ${
-                  !isSidebarOpen ? "justify-center" : "justify-between"
-                } px-3 py-2 rounded-md cursor-pointer ${
-                  isActive(item.path) ? activeMenuBg : hoverMenuBg
-                } ${
-                  isActive(item.path) ? textPrimary : textSecondary
-                } transition-colors duration-200`}
-                onClick={() => {
-                  if (item.subItems && isSidebarOpen) {
-                    toggleExpand(index);
-                  } else if (!item.subItems) {
-                    // Handle navigation in parent component
-                  }
-                }}
-              >
-                <Link href={item.path} className="flex items-center w-full">
-                  <span
-                    className={`${
-                      isActive(item.path) ? textPrimary : textMuted
-                    }`}
-                  >
-                    {item.icon}
-                  </span>
-                  {isSidebarOpen && <span className="ml-3">{item.name}</span>}
-                </Link>
-
-                {isSidebarOpen && item.subItems && (
-                  <div
-                    onClick={(e) => {
-                      e.preventDefault();
-                      toggleExpand(index);
-                    }}
-                  >
-                    {expandedItem === index ? (
-                      <ChevronDown size={16} className={textMuted} />
-                    ) : (
-                      <ChevronRight size={16} className={textMuted} />
+          {sidebarCategories.map((category) => (
+            <div key={category.id} className="mb-2">
+              {category.type === "item" ? (
+                /* Single item without dropdown */
+                <Link
+                  href={category.path}
+                  className={`flex items-center ${
+                    !isSidebarOpen ? "justify-center" : "justify-between"
+                  } px-3 py-2.5 rounded-md cursor-pointer ${
+                    isActive(category.path) ? activeMenuBg : hoverMenuBg
+                  } ${
+                    isActive(category.path) ? textPrimary : textSecondary
+                  } transition-colors duration-200 my-1`}
+                >
+                  <div className="flex items-center">
+                    <span
+                      className={
+                        isActive(category.path) ? textPrimary : textMuted
+                      }
+                    >
+                      {category.icon}
+                    </span>
+                    {isSidebarOpen && (
+                      <span className="ml-3 font-medium">{category.name}</span>
                     )}
                   </div>
-                )}
-              </div>
+                </Link>
+              ) : (
+                /* Category with dropdown */
+                <div className="mt-6">
+                  {/* Category Header with Toggle */}
+                  <div
+                    className={`flex items-center justify-between cursor-pointer px-3 py-2 ${
+                      isCategoryActive(category) ? textPrimary : categoryHeading
+                    }`}
+                    onClick={() => isSidebarOpen && toggleExpand(category.id)}
+                  >
+                    {isSidebarOpen ? (
+                      <>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider">
+                          {category.name}
+                        </h3>
+                        {expandedItems[category.id] ? (
+                          <ChevronDown size={16} className={textMuted} />
+                        ) : (
+                          <ChevronRight size={16} className={textMuted} />
+                        )}
+                      </>
+                    ) : (
+                      <div className="w-full border-t border-gray-700 dark:border-gray-600"></div>
+                    )}
+                  </div>
 
-              {/* Sub-items */}
-              {isSidebarOpen && item.subItems && expandedItem === index && (
-                <div
-                  className={`ml-7 mt-1 space-y-1 ${
-                    darkMode ? "text-gray-400" : "text-gray-600"
-                  }`}
-                >
-                  {item.subItems.map((subItem) => (
-                    <Link
-                      key={subItem.path}
-                      href={subItem.path}
-                      className={`block py-1 px-3 text-sm rounded-md cursor-pointer ${
-                        isActive(subItem.path)
-                          ? darkMode
-                            ? "bg-gray-700 text-gray-200"
-                            : "bg-gray-200 text-gray-800"
-                          : `${hoverMenuBg} hover:${textPrimary}`
-                      } transition-colors duration-200`}
-                    >
-                      {subItem.name}
-                    </Link>
-                  ))}
+                  {/* Category Items */}
+                  {isSidebarOpen && expandedItems[category.id] && (
+                    <div className="mt-1">
+                      {category.items.map((item) => (
+                        <Link
+                          key={item.path}
+                          href={item.path}
+                          className={`flex items-center px-3 py-2 rounded-md ${
+                            isActive(item.path) ? activeMenuBg : hoverMenuBg
+                          } ${
+                            isActive(item.path) ? textPrimary : textSecondary
+                          } transition-colors duration-150 my-0.5`}
+                        >
+                          <span
+                            className={`${
+                              isActive(item.path) ? textPrimary : textMuted
+                            }`}
+                          >
+                            {item.icon}
+                          </span>
+                          <span className="ml-3 text-sm">{item.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

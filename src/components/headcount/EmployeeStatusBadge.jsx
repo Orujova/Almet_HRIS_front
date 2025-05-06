@@ -1,58 +1,53 @@
-"use client";
+// src/components/headcount/EmployeeStatusBadge.jsx
+import React from "react";
 import { useTheme } from "../common/ThemeProvider";
-
-// Status definitions with colors for both light and dark modes
-const statusDefinitions = {
-  active: {
-    label: "Active",
-    light: "bg-emerald-100 text-emerald-800",
-    dark: "bg-emerald-900 text-emerald-300",
-  },
-  onboarding: {
-    label: "On Boarding",
-    light: "bg-yellow-100 text-yellow-800",
-    dark: "bg-yellow-900 text-yellow-300",
-  },
-  probation: {
-    label: "Probation",
-    light: "bg-purple-100 text-purple-800",
-    dark: "bg-purple-900 text-purple-300",
-  },
-  onLeave: {
-    label: "On Leave",
-    light: "bg-blue-100 text-blue-800",
-    dark: "bg-blue-900 text-blue-300",
-  },
-  needInvitation: {
-    label: "Need Invitation",
-    light: "bg-red-100 text-red-800",
-    dark: "bg-red-900 text-red-300",
-  },
-  activated: {
-    label: "Activated",
-    light: "bg-emerald-100 text-emerald-800",
-    dark: "bg-emerald-900 text-emerald-300",
-  },
-};
 
 const EmployeeStatusBadge = ({ status }) => {
   const { darkMode } = useTheme();
 
-  // Get status data or default to unknown
-  const statusData = statusDefinitions[status] || {
-    label: "Unknown",
-    light: "bg-gray-100 text-gray-800",
-    dark: "bg-gray-700 text-gray-300",
-  };
+  let bgColor = "";
+  let textColor = "";
+  let statusText = status || "Unknown";
 
-  // Apply appropriate color based on theme
-  const badgeClasses = darkMode ? statusData.dark : statusData.light;
+  // Normalize status to lowercase for comparison
+  const normalizedStatus = status ? status.toLowerCase() : "";
+
+  switch (normalizedStatus) {
+    case "active":
+      bgColor = darkMode ? "bg-green-900" : "bg-green-100";
+      textColor = darkMode ? "text-green-300" : "text-green-800";
+      statusText = "ACTIVE";
+      break;
+    case "on boarding":
+    case "onboarding":
+    case "on-boarding":
+      bgColor = darkMode ? "bg-yellow-900" : "bg-yellow-100";
+      textColor = darkMode ? "text-yellow-300" : "text-yellow-800";
+      statusText = "ON BOARDING";
+      break;
+    case "probation":
+      bgColor = darkMode ? "bg-purple-900" : "bg-purple-100";
+      textColor = darkMode ? "text-purple-300" : "text-purple-800";
+      statusText = "PROBATION";
+      break;
+    case "on leave":
+    case "onleave":
+    case "on-leave":
+      bgColor = darkMode ? "bg-red-900" : "bg-red-100";
+      textColor = darkMode ? "text-red-300" : "text-red-800";
+      statusText = "ON LEAVE";
+      break;
+    default:
+      bgColor = darkMode ? "bg-gray-900" : "bg-gray-100";
+      textColor = darkMode ? "text-gray-300" : "text-gray-800";
+      break;
+  }
 
   return (
     <span
-      className={`px-3 py-1 text-xs rounded-full whitespace-nowrap ${badgeClasses}`}
+      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}
     >
-      {statusData.label}
+      {statusText}
     </span>
   );
 };
