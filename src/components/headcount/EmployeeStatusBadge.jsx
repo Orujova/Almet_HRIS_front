@@ -1,5 +1,4 @@
-// src/components/headcount/EmployeeStatusBadge.jsx
-import React from "react";
+"use client";
 import { useTheme } from "../common/ThemeProvider";
 
 const EmployeeStatusBadge = ({ status }) => {

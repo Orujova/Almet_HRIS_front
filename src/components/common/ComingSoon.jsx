@@ -1,34 +1,24 @@
 import { Settings } from "lucide-react";
 import Link from "next/link";
-import { useTheme } from "./ThemeProvider";
 
 const ComingSoon = () => {
-  const { darkMode } = useTheme();
-
-  // Theme-dependent classes
-  const bgAccent = darkMode ? "bg-blue-600" : "bg-blue-500";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-
   return (
-    <div className="flex-1 flex flex-col items-center justify-center">
-      <div className="text-center p-8 max-w-md">
-        <div
-          className={`${bgAccent} rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-6`}
-        >
-          <Settings size={32} className="text-white animate-spin-slow" />
+    <div className="flex-1 flex flex-col items-center justify-center p-4">
+      <div className="text-center max-w-md">
+        <div className="bg-almet-sapphire dark:bg-almet-sapphire rounded-full w-14 h-14 flex items-center justify-center mx-auto mb-4">
+          <Settings size={24} className="text-white animate-spin-slow" />
         </div>
-        <h2 className={`text-3xl font-bold mb-2 ${textPrimary}`}>
+        <h2 className="text-xl font-bold mb-2 text-gray-800 dark:text-white">
           Coming Soon
         </h2>
-        <p className={`${textMuted} mb-6`}>
-          We're currently working on this page. Please check back later.
+        <p className="text-gray-500 dark:text-almet-bali-hai text-sm mb-4">
+          We're currently developing this feature. It will be available soon.
         </p>
         <Link
-          href="/dashboard"
-          className={`${bgAccent} text-white px-4 py-2 rounded-md hover:bg-opacity-90 transition-colors block text-center`}
+          href="/"
+          className="bg-almet-sapphire text-white px-3 py-1.5 rounded-md hover:bg-almet-astral dark:hover:bg-almet-sapphire/90 transition-colors inline-block text-sm"
         >
-          Return to Dashboard
+          Return to Home
         </Link>
       </div>
     </div>

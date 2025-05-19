@@ -2,64 +2,82 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../common/Sidebar";
 import Header from "../common/Header";
-import { useTheme } from "../common/ThemeProvider";
 
 const DashboardLayout = ({ children }) => {
-  const { darkMode } = useTheme();
-  const [isMobile, setIsMobile] = useState(false);
+  // Use state to track sidebar visibility and collapse state
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
-  // Check if the screen is mobile on initial render and when resizing
+  // Toggle sidebar function for mobile view
+  const toggleSidebar = () => {
+    if (isMobile) {
+      setSidebarOpen(!isSidebarOpen);
+    } else {
+      // On desktop, toggle between collapsed and expanded state
+      setSidebarCollapsed(!isSidebarCollapsed);
+    }
+  };
+
+  // Handle responsive behavior
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        setSidebarCollapsed(true);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      
+      // Auto-hide sidebar on mobile
+      if (mobile) {
+        setSidebarOpen(false);
+      } else {
+        setSidebarOpen(true);
       }
     };
-
-    // Initial check
+    
+    // Set initial state
     handleResize();
-
+    
     // Add event listener
-    window.addEventListener("resize", handleResize);
-
+    window.addEventListener('resize', handleResize);
+    
     // Cleanup
-    return () => window.removeEventListener("resize", handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!isSidebarCollapsed);
-  };
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <div
-        className={`transition-all duration-300 ${
-          isSidebarCollapsed ? "w-0 md:w-20" : "w-64"
-        }`}
+      {/* Sidebar - with both mobile and desktop behavior */}
+      <aside 
+        className={`
+          ${isMobile ? 'fixed' : 'relative'} z-20 
+          transition-all duration-300 ease-in-out 
+          h-full 
+          ${isMobile ? (isSidebarOpen ? 'translate-x-0' : '-translate-x-full') : ''}
+          ${!isMobile && isSidebarCollapsed ? 'w-16' : 'w-52'}
+        `}
       >
-        {(!isMobile || !isSidebarCollapsed) && (
-          <Sidebar
-            collapsed={isSidebarCollapsed}
-            toggleSidebar={toggleSidebar}
-          />
-        )}
-      </div>
+        <Sidebar collapsed={!isMobile && isSidebarCollapsed} />
+      </aside>
 
-      {/* Main Content */}
-      <div
-        className={`flex-1 flex flex-col overflow-hidden ${
-          darkMode ? "bg-gray-900" : "bg-gray-50"
-        }`}
-      >
-        {/* Header */}
-        <Header toggleSidebar={toggleSidebar} />
+      {/* Overlay for mobile when sidebar is open */}
+      {isMobile && isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-10" 
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        {/* Content */}
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-almet-mystic dark:bg-gray-900">
+        {/* Pass toggleSidebar function to Header */}
+        <Header 
+          toggleSidebar={toggleSidebar} 
+          isMobile={isMobile}
+          isSidebarCollapsed={isSidebarCollapsed} 
+        />
+        
+        {/* Main content area */}
         <main className="flex-1 overflow-y-auto p-4">
-          <div className="container mx-auto">{children}</div>
+          {children}
         </main>
       </div>
     </div>

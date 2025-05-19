@@ -11,32 +11,20 @@ const ThemeContext = createContext({
 export const ThemeProvider = ({ children }) => {
   const [darkMode, setDarkMode] = useState(true);
 
+  // Initialize when component mounts
+  useEffect(() => {
+    // Apply class to <html> element
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
+
   // Toggle theme function
   const toggleTheme = () => {
-    setDarkMode(!darkMode);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("darkMode", !darkMode ? "true" : "false");
-    }
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    
+    // Toggle 'dark' class on <html> element
+    document.documentElement.classList.toggle('dark', newDarkMode);
   };
-
-  // Initialize theme from local storage on client side
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedTheme = localStorage.getItem("darkMode");
-      if (savedTheme) {
-        setDarkMode(savedTheme === "true");
-      }
-    }
-  }, []);
-
-  // Apply theme class to document
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [darkMode]);
 
   return (
     <ThemeContext.Provider value={{ darkMode, toggleTheme }}>

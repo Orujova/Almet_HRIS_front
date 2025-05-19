@@ -4,19 +4,24 @@ import { useTheme } from "../common/ThemeProvider";
 const PerformanceChart = () => {
   const { darkMode } = useTheme();
 
-  // Theme-dependent classes
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const bgCircle = darkMode ? "#374151" : "#e5e7eb";
-  const textColor = darkMode ? "white" : "#1f2937";
-  const shadowClass = darkMode ? "" : "shadow-md";
+  // Colors based on new design
+  const bgCard = "bg-white";
+  const textPrimary = "text-gray-800";
+  const bgCircle = "#e5e7eb";
+  const textColor = "#1f2937";
+  
+  // Dark mode colors
+  const darkBgCard = "dark:bg-gray-800";
+  const darkTextPrimary = "dark:text-white";
+  const darkBgCircle = "#374151";
+  const darkTextColor = "white";
 
   return (
     <div
-      className={`${bgCard} rounded-lg p-6 ${shadowClass} transition-colors duration-200`}
+      className={`${bgCard} ${darkBgCard} rounded-lg p-6 shadow-md transition-colors duration-200`}
     >
       <div className="flex justify-between items-center mb-6">
-        <h3 className={`text-lg font-medium ${textPrimary}`}>
+        <h3 className={`text-lg font-medium ${textPrimary} ${darkTextPrimary}`}>
           Team Performance
         </h3>
       </div>
@@ -28,7 +33,7 @@ const PerformanceChart = () => {
               <path
                 d="M0,150 C50,120 100,180 150,100 C200,20 250,80 300,70 C350,60 400,100 400,80"
                 fill="none"
-                stroke="#60a5fa"
+                stroke="#3b82f6"
                 strokeWidth="3"
               />
               <path
@@ -39,8 +44,8 @@ const PerformanceChart = () => {
               />
               <defs>
                 <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.5" />
-                  <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
                 </linearGradient>
               </defs>
             </svg>
@@ -57,7 +62,7 @@ const PerformanceChart = () => {
                 cy="50"
                 r="45"
                 fill="none"
-                stroke={bgCircle}
+                stroke={darkMode ? darkBgCircle : bgCircle}
                 strokeWidth="10"
               />
 
@@ -67,7 +72,7 @@ const PerformanceChart = () => {
                 cy="50"
                 r="45"
                 fill="none"
-                stroke="#60a5fa"
+                stroke="#3b82f6"
                 strokeWidth="10"
                 strokeDasharray="283"
                 strokeDashoffset="70"
@@ -83,7 +88,7 @@ const PerformanceChart = () => {
                 dominantBaseline="middle"
                 fontSize="24"
                 fontWeight="bold"
-                fill={textColor}
+                fill={darkMode ? darkTextColor : textColor}
               >
                 75%
               </text>

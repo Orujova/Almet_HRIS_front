@@ -1,38 +1,41 @@
 "use client";
-import { Calendar, Users, Award, Bell, Plane } from "lucide-react";
+import { Calendar, Users, LineChart, Plane } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
-import { useTheme } from "@/components/common/ThemeProvider";
 
-const CompanyUpdateCard = ({ tag, title, description, date, image }) => {
-  const { darkMode } = useTheme();
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-
+const ActionCard = ({ icon, title, description, href }) => {
   return (
-    <div
-      className={`flex flex-col md:flex-row ${bgCard} rounded-lg overflow-hidden mb-6 shadow-md`}
+    <Link
+      href={href}
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-md transition-all hover:scale-[1.01]"
     >
-      <div className="md:w-1/3">
-        <img
-          src={image}
-          alt={title}
-          className="w-full h-48 md:h-full object-cover"
-        />
+      <div className="flex flex-col h-full">
+        <div className="text-almet-sapphire dark:text-almet-bali-hai mb-3">
+          {icon}
+        </div>
+        <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base">
+          {title}
+        </h3>
+        <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mt-1">
+          {description}
+        </p>
       </div>
-      <div className="p-6 md:w-2/3">
-        <div className="text-sm text-blue-500 font-medium mb-2">{tag}</div>
-        <h3 className={`text-xl font-bold ${textPrimary} mb-2`}>{title}</h3>
-        <p className={`${textSecondary} mb-4`}>{description}</p>
+    </Link>
+  );
+};
+
+const NewsCard = ({ tag, title, description, date, image }) => {
+  return (
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow">
+      <img src={image} alt={title} className="w-full h-40 object-cover" />
+      <div className="p-4">
+        <div className="bg-blue-100 dark:bg-almet-sapphire text-almet-sapphire dark:text-white text-xs rounded-full px-2 py-0.5 inline-block mb-2">{tag}</div>
+        <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base mb-2">{title}</h3>
+        <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mb-3 line-clamp-2">{description}</p>
         <div className="flex justify-between items-center">
-          <span className={`text-sm ${textMuted}`}>{date}</span>
-          <Link
-            href="#"
-            className="text-blue-500 hover:text-blue-600 flex items-center"
-          >
-            Read More <span className="ml-1">→</span>
+          <span className="text-gray-400 dark:text-almet-waterloo text-xs">{date}</span>
+          <Link href="#" className="text-almet-sapphire dark:text-almet-bali-hai text-xs md:text-sm">
+            Read more
           </Link>
         </div>
       </div>
@@ -40,188 +43,159 @@ const CompanyUpdateCard = ({ tag, title, description, date, image }) => {
   );
 };
 
-const ActionCard = ({ icon, title, color, href }) => {
-  const { darkMode } = useTheme();
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-
+const EventCard = ({ icon, type, title, date, image }) => {
   return (
-    <Link
-      href={href}
-      className={`${bgCard} rounded-lg p-4 flex flex-col items-center justify-center shadow-md transition-transform hover:scale-105`}
-    >
-      <div
-        className={`w-12 h-12 rounded-full ${color} flex items-center justify-center mb-3`}
-      >
-        {icon}
-      </div>
-      <span className={`${textPrimary} text-sm font-medium text-center`}>
-        {title}
-      </span>
-    </Link>
-  );
-};
-
-const NewsCard = ({ tag, title, date, image }) => {
-  const { darkMode } = useTheme();
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-
-  return (
-    <div className={`${bgCard} rounded-lg overflow-hidden shadow-md h-full`}>
-      <img src={image} alt={title} className="w-full h-48 object-cover" />
-      <div className="p-4">
-        <div className="text-xs text-blue-500 font-medium mb-1">{tag}</div>
-        <h3 className={`text-base font-bold ${textPrimary} mb-2`}>{title}</h3>
-        <div className={`text-xs ${textMuted}`}>{date}</div>
-      </div>
-    </div>
-  );
-};
-
-const EventCard = ({ icon, type, title, date }) => {
-  const { darkMode } = useTheme();
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-
-  return (
-    <div
-      className={`${bgCard} rounded-lg p-4 border ${
-        darkMode ? "border-gray-700" : "border-gray-200"
-      }`}
-    >
-      <div className="flex items-start">
-        <div className="mr-3">{icon}</div>
-        <div>
-          <div className={`text-xs ${textMuted}`}>{type}</div>
-          <h4 className={`text-base font-medium ${textPrimary} mb-1`}>
-            {title}
-          </h4>
-          <div className={`text-xs ${textMuted}`}>{date}</div>
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow">
+      <div className="flex items-center mb-3">
+        <div className="h-9 w-9 rounded-full overflow-hidden mr-3">
+          <img src={image} alt={type} className="h-full w-full object-cover" />
         </div>
+        <div>
+          <p className="text-gray-500 dark:text-almet-bali-hai text-xs">{type}</p>
+          <h3 className="text-gray-800 dark:text-white font-medium text-sm">{title}</h3>
+        </div>
+      </div>
+      <div className="flex items-center text-gray-500 dark:text-almet-bali-hai text-xs">
+        <Calendar className="h-3 w-3 mr-1" />
+        {date}
       </div>
     </div>
   );
 };
 
 export default function Home() {
-  const { darkMode } = useTheme();
-
-  // Theme-dependent classes
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const bgSection = darkMode ? "bg-gray-900" : "bg-gray-50";
-
   return (
     <DashboardLayout>
       {/* Welcome Banner */}
-      <div className={`${bgSection} rounded-lg p-6 mb-6`}>
-        <h1 className={`text-2xl md:text-3xl font-bold ${textPrimary} mb-2`}>
-          Welcome to Almet Central
-        </h1>
-        <p className={`${textSecondary}`}>Your corporate communication hub</p>
+      <div className="bg-almet-sapphire rounded-lg overflow-hidden mb-6 shadow-md">
+        <div className="flex flex-col md:flex-row">
+          <div className="p-5 md:w-2/3">
+            <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
+              Welcome to Almet Central
+            </h1>
+            <p className="text-blue-100 text-sm">
+              Your comprehensive HR management platform
+            </p>
+          </div>
+          <div className="md:w-1/3">
+            <img
+              src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2970&q=80"
+              alt="Office meeting"
+              className="h-full w-full object-cover"
+            />
+          </div>
+        </div>
       </div>
 
-      {/* Featured Update */}
-      <CompanyUpdateCard
-        tag="Company Update"
-        title="Q1 2024 Company Performance Overview"
-        description="Join us for a comprehensive review of our first quarter performance. We'll discuss key achievements, challenges, and our strategic outlook for the rest of the year."
-        date="March 15, 2024"
-        image="https://placehold.co/800x400/e2e8f0/1e293b?text=Company+Meeting"
-      />
-
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <ActionCard
-          icon={<Calendar className="text-white" />}
+          icon={<Calendar className="h-5 w-5" />}
           title="Request Vacation"
-          color="bg-indigo-500"
+          description="Plan your time off"
           href="/requests/vacation"
         />
         <ActionCard
-          icon={<Plane className="text-white" />}
+          icon={<Plane className="h-5 w-5" />}
           title="Submit Business Trip"
-          color="bg-amber-500"
+          description="Travel request form"
           href="/requests/business-trip"
         />
         <ActionCard
-          icon={<Award className="text-white" />}
+          icon={<LineChart className="h-5 w-5" />}
           title="View Performance"
-          color="bg-emerald-500"
+          description="Check your progress"
           href="/efficiency/performance-mng"
         />
         <ActionCard
-          icon={<Users className="text-white" />}
-          title="Company Directory"
-          color="bg-blue-500"
+          icon={<Users className="h-5 w-5" />}
+          title="Access Directory"
+          description="Find colleagues"
           href="/structure/headcount-table"
         />
       </div>
 
-      {/* News Section */}
-      <h2 className={`text-xl font-bold ${textPrimary} mb-4`}>
-        Latest Updates
-      </h2>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <NewsCard
-          tag="HR Update"
-          title="New Employee Benefits Program"
-          date="March 10, 2024"
-          image="https://placehold.co/600x400/e2e8f0/1e293b?text=Benefits"
-        />
-        <NewsCard
-          tag="Announcement"
-          title="Office Renovation Schedule"
-          date="March 8, 2024"
-          image="https://placehold.co/600x400/e2e8f0/1e293b?text=Office"
-        />
-        <NewsCard
-          tag="Training"
-          title="Leadership Development Program"
-          date="March 5, 2024"
-          image="https://placehold.co/600x400/e2e8f0/1e293b?text=Training"
-        />
-      </div>
-
-      {/* Upcoming Events */}
+      {/* Company Updates */}
       <div className="mb-6">
-        <h2 className={`text-xl font-bold ${textPrimary} mb-4`}>
-          Upcoming Events
-        </h2>
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-base font-medium text-gray-800 dark:text-white">
+            Company Updates
+          </h2>
+          <Link 
+            href="#" 
+            className="text-almet-sapphire dark:text-almet-bali-hai flex items-center text-xs md:text-sm"
+          >
+            View All
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-4 w-4 ml-1" 
+              viewBox="0 0 20 20" 
+              fill="currentColor"
+            >
+              <path 
+                fillRule="evenodd" 
+                d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" 
+                clipRule="evenodd" 
+              />
+            </svg>
+          </Link>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <EventCard
-            icon={<Calendar className="text-pink-500" />}
-            type="Birthday"
-            title="Sarah Johnson"
-            date="March 20"
+          <NewsCard
+            tag="News"
+            title="Q4 Performance Review Schedule"
+            description="Important dates and guidelines for upcoming performance reviews."
+            date="Jan 15, 2024"
+            image="https://images.unsplash.com/photo-1573164713619-24c711fe7878?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80"
           />
-          <EventCard
-            icon={<Users className="text-blue-500" />}
-            type="Company Event"
-            title="Team Building Day"
-            date="March 25"
+          <NewsCard
+            tag="Announcement"
+            title="New Office Opening in Dubai"
+            description="Exciting expansion of our operations in the Middle East region."
+            date="Jan 14, 2024"
+            image="https://images.unsplash.com/photo-1582654129148-b53244fbc8d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80"
           />
-          <EventCard
-            icon={<Award className="text-green-500" />}
-            type="Training"
-            title="Digital Skills Workshop"
-            date="March 30"
+          <NewsCard
+            tag="Update"
+            title="Updated Travel Policy Guidelines"
+            description="Review the new business travel procedures and requirements."
+            date="Jan 13, 2024"
+            image="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2074&q=80"
           />
         </div>
       </div>
 
-      {/* Footer */}
-      <div
-        className={`text-center ${textMuted} text-xs mt-12 pt-4 border-t ${
-          darkMode ? "border-gray-700" : "border-gray-200"
-        }`}
-      >
-        © 2024 Almet Holding. Created by Databyte Technology. All rights
-        reserved.
+      {/* Upcoming Events */}
+      <div>
+        <h2 className="text-base font-medium text-gray-800 dark:text-white mb-3">
+          Upcoming Events
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <EventCard
+            type="Birthday"
+            title="Sarah Johnson"
+            date="January 18"
+            image="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80"
+          />
+          <EventCard
+            type="Company Event"
+            title="Annual Meeting"
+            date="January 20"
+            image="https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+          />
+          <EventCard
+            type="Training"
+            title="Leadership Workshop"
+            date="January 25"
+            image="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+          />
+          <EventCard
+            type="Deadline"
+            title="Project Milestone"
+            date="January 30"
+            image="https://images.unsplash.com/photo-1586282391129-76a6df230234?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
+          />
+        </div>
       </div>
     </DashboardLayout>
   );
