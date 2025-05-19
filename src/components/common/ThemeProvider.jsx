@@ -3,13 +3,13 @@ import { createContext, useState, useEffect, useContext } from "react";
 
 // Create context
 const ThemeContext = createContext({
-  darkMode: true,
+  darkMode: false,
   toggleTheme: () => {},
 });
 
 // Theme provider component
 export const ThemeProvider = ({ children }) => {
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
 
   // Initialize when component mounts
   useEffect(() => {
