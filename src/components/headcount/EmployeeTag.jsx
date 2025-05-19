@@ -27,7 +27,7 @@ const EmployeeTag = ({ tag }) => {
   }
 
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${bgColor} ${textColor}`}>
       {tag}
     </span>
   );

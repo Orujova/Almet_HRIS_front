@@ -60,7 +60,7 @@ const QuickFilterBar = ({
       <div className="flex space-x-2 flex-wrap">
         <div className="relative">
           <select
-            className={`p-2 pr-8 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+            className={`p-2 pr-8 text-sm  rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
             value={statusFilter}
             onChange={(e) => onStatusChange(e.target.value)}
           >
@@ -77,7 +77,7 @@ const QuickFilterBar = ({
         
         <div className="relative">
           <select
-            className={`p-2 pr-8 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+            className={`p-2 pr-8 text-sm  rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
             value={officeFilter}
             onChange={(e) => onOfficeChange(e.target.value)}
           >
@@ -92,7 +92,7 @@ const QuickFilterBar = ({
         
         <div className="relative">
           <select
-            className={`p-2 pr-8 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+            className={`p-2 text-sm  pr-8 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
             value={departmentFilter}
             onChange={(e) => onDepartmentChange(e.target.value)}
           >

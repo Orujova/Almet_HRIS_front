@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { 
   MoreHorizontal, Edit, Trash2, FileText, ExternalLink, 
-  BarChart2, Tag, MessageSquare, Users
+  BarChart2, Tag, MessageSquare, Users,BarChart
 } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import Link from "next/link";
@@ -39,7 +39,7 @@ const ActionsDropdown = ({ employeeId, onAction }) => {
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
         onClick={toggleDropdown}
-        className="p-1 rounded-md text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
+        className="p-1  rounded-md text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700"
       >
         <MoreHorizontal size={18} />
       </button>
@@ -95,19 +95,20 @@ const ActionsDropdown = ({ employeeId, onAction }) => {
             >
               <div className="flex items-center">
                 <BarChart2 size={16} className="mr-2 text-yellow-500" />
-                <span>Performance Matrix</span>
+                <span>Complex Matrix</span>
+              </div>
+            </button>
+            <button
+              className={`${textPrimary} ${hoverBg} block px-4 py-2 text-sm w-full text-left`}
+              onClick={() => onAction(employeeId, 'performanceMatrix')}
+            >
+              <div className="flex items-center">
+                <BarChart size={16} className="mr-2 text-yellow-500" />
+                <span>Performance Management</span>
               </div>
             </button>
             
-            <button
-              className={`${textPrimary} ${hoverBg} block px-4 py-2 text-sm w-full text-left`}
-              onClick={() => onAction(employeeId, 'message')}
-            >
-              <div className="flex items-center">
-                <MessageSquare size={16} className="mr-2 text-teal-500" />
-                <span>Message Employee</span>
-              </div>
-            </button>
+          
             
             <button
               className={`${textPrimary} ${hoverBg} block px-4 py-2 text-sm w-full text-left`}

@@ -13,6 +13,7 @@ import {
   Check,
   AlertCircle,
   Users,
+  Trash2,
 } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import Link from "next/link";
@@ -22,6 +23,7 @@ import SortingIndicator from "./SortingIndicator";
 import ActionsDropdown from "./ActionsDropdown";
 import QuickFilterBar from "./QuickFilterBar";
 import AdvancedFilterPanel from "./AdvancedFilterPanel";
+import EmployeeVisibilityToggle from "./EmployeeVisibilityToggle";
 
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
@@ -40,6 +42,7 @@ const HeadcountTable = () => {
   const [sorting, setSorting] = useState([{ field: "name", direction: "asc" }]);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const actionMenuRef = useRef(null);
+  const [employeeVisibility, setEmployeeVisibility] = useState({});
 
   // Theme-dependent classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -58,49 +61,10 @@ const HeadcountTable = () => {
   const shadowClass = darkMode ? "" : "shadow";
   const theadBg = darkMode ? "bg-gray-700" : "bg-gray-50";
 
-  // Mock employee data aligned with the screenshot
+  // Mock employee data
   useEffect(() => {
     const mockEmployees = [
-      {
-        id: "HC01",
-        empNo: "HLD01",
-        name: "Bala Oruczade Mammad Oglu",
-        email: "bala.oruczade@almetholding.com",
-        businessFunction: "Holding",
-        department: "BUSINESS DEVELOPMENT",
-        unit: "STRATEGY EXECUTION",
-        jobFunction: "DEPUTY CHAIRMAN ON FINANCE & BUSINESS DEVELOPMENT",
-        jobTitle: "Direktor müavini",
-        positionGroup: "VC",
-        grade: "8",
-        lineManager: "Şirin Camalli Rasad Oglu",
-        lineManagerHcNumber: "HLD02",
-        startDate: "2023-01-15",
-        endDate: null,
-        status: "ACTIVE",
-        tags: [],
-        office: "Baku HQ",
-      },
-      {
-        id: "HC02",
-        empNo: "HLD02",
-        name: "Şirin Camalli Rasad Oglu",
-        email: "şirin.camalli@almetholding.com",
-        businessFunction: "Holding",
-        department: "BUSINESS DEVELOPMENT",
-        unit: "STRATEGY EXECUTION",
-        jobFunction: "DEPUTY CHAIRMAN ON FINANCE & BUSINESS DEVELOPMENT",
-        jobTitle: "Direktor",
-        positionGroup: "DIRECTOR",
-        grade: "7",
-        lineManager: null,
-        lineManagerHcNumber: null,
-        startDate: "2022-03-10",
-        endDate: null,
-        status: "ACTIVE",
-        tags: [],
-        office: "Baku HQ",
-      },
+
       {
         id: "HC03",
         empNo: "HLD03",
@@ -121,26 +85,7 @@ const HeadcountTable = () => {
         tags: [],
         office: "Baku HQ",
       },
-      {
-        id: "HC04",
-        empNo: "HLD04",
-        name: "Yelena Amrakhova Talibova",
-        email: "yelena.amrakhova@almetholding.com",
-        businessFunction: "Holding",
-        department: "ADMINISTRATIVE",
-        unit: "FACILITIES",
-        jobFunction: "DRIVER",
-        jobTitle: "Sürücü",
-        positionGroup: "BLUE COLLAR",
-        grade: "1",
-        lineManager: "Şirin Camalli Rasad Oglu",
-        lineManagerHcNumber: "HLD02",
-        startDate: "2023-11-01",
-        endDate: null,
-        status: "PROBATION",
-        tags: [],
-        office: "Baku HQ",
-      },
+
       {
         id: "HC05",
         empNo: "HLD06",
@@ -261,7 +206,6 @@ const HeadcountTable = () => {
         tags: [],
         office: "Baku HQ",
       },
-     
       {
         id: "HC11",
         empNo: "HLD16",
@@ -706,6 +650,12 @@ const HeadcountTable = () => {
 
     setEmployees(mockEmployees);
     setTotalEmployees(mockEmployees.length);
+    // Initialize visibility state
+    const visibilityMap = {};
+    mockEmployees.forEach(emp => {
+      visibilityMap[emp.id] = true;
+    });
+    setEmployeeVisibility(visibilityMap);
   }, []);
 
   // Toggle select all functionality
@@ -874,11 +824,19 @@ const HeadcountTable = () => {
     }
   };
 
+  // Handle visibility change
+  const handleVisibilityChange = (employeeId, newVisibility) => {
+    setEmployeeVisibility(prev => ({
+      ...prev,
+      [employeeId]: newVisibility,
+    }));
+    console.log(`Employee ${employeeId} visibility set to ${newVisibility}`);
+  };
+
   // Filter, sort, and paginate employees
   const filteredAndSortedEmployees = useMemo(() => {
     return employees
       .filter((emp) => {
-        // Text search
         const matchesSearch = !searchTerm
           ? true
           : emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -886,25 +844,21 @@ const HeadcountTable = () => {
             emp.empNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
             emp.jobTitle.toLowerCase().includes(searchTerm.toLowerCase());
 
-        // Status filter
         const matchesStatus =
           statusFilter === "all"
             ? true
             : emp.status.toLowerCase() === statusFilter.toLowerCase();
 
-        // Office filter
         const matchesOffice =
           officeFilter === "all"
             ? true
             : emp.office.toLowerCase().includes(officeFilter.toLowerCase());
 
-        // Department filter
         const matchesDepartment =
           departmentFilter === "all"
             ? true
             : emp.department.toLowerCase() === departmentFilter.toLowerCase();
 
-        // Advanced filters
         const matchesAdvancedFilters = Object.entries(appliedFilters).every(([key, value]) => {
           if (!value || (Array.isArray(value) && value.length === 0)) return true;
 
@@ -984,7 +938,7 @@ const HeadcountTable = () => {
     appliedFilters,
   ]);
 
-  // Get department color for row background with improved dark mode visibility
+  // Get department color for row background
   const getDepartmentColor = (department) => {
     if (department.includes("BUSINESS DEVELOPMENT")) {
       return darkMode ? "bg-blue-900/30" : "bg-blue-50";
@@ -1066,7 +1020,7 @@ const HeadcountTable = () => {
   Object.entries(appliedFilters).forEach(([key, value]) => {
     if (value && (Array.isArray(value) ? value.length > 0 : true)) {
       const fieldName = key.replace(/([A-Z])/g, " $1").trim();
-      const displayName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+      const displayName = fieldName.charAt(0).to() + fieldName.slice(1);
       const label = Array.isArray(value) ? `${displayName}: ${value.join(", ")}` : `${displayName}: ${value}`;
       activeFilters.push({ key, label });
     }
@@ -1089,7 +1043,7 @@ const HeadcountTable = () => {
   };
 
   return (
-    <div className="container mx-auto">
+    <div className="container mx-auto pt-3">
       {/* Header Section */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -1180,6 +1134,21 @@ const HeadcountTable = () => {
       )}
 
       {/* Quick Filter Bar */}
+      <div className="flex justify-between">
+  {/* Search Bar */}
+      <div className="relative w-full md:w-1/3 mb-4">
+        <input
+          type="text"
+          placeholder="Search employees by name, email, HC number..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          className={`w-full p-2 pl-10 pr-4 text-sm rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+          />
+        <Search
+          className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`}
+          size={18}
+          />
+      </div>
       <QuickFilterBar
         onStatusChange={handleStatusChange}
         onOfficeChange={handleOfficeChange}
@@ -1189,22 +1158,10 @@ const HeadcountTable = () => {
         departmentFilter={departmentFilter}
         activeFilters={activeFilters}
         onClearFilter={handleClearFilter}
-      />
+        />
 
-      {/* Search Bar */}
-      <div className="relative w-full md:w-1/3 mb-4">
-        <input
-          type="text"
-          placeholder="Search employees by name, email, HC number..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className={`w-full p-2 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-        />
-        <Search
-          className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`}
-          size={18}
-        />
-      </div>
+    
+          </div>
 
       {/* Employee Table */}
       <div className={`${bgCard} rounded-lg overflow-hidden ${shadowClass}`}>
@@ -1212,16 +1169,16 @@ const HeadcountTable = () => {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className={`${theadBg}`}>
               <tr>
-                <th scope="col" className="px-3 py-3 text-left">
+                <th scope="col" className="px-2 py-2 text-left">
                   <div className="flex items-center">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 text-blue-600 rounded"
+                      className="h-3 w-3 text-blue-600 rounded"
                       checked={selectAll}
                       onChange={toggleSelectAll}
                     />
                     <button
-                      className={`ml-2 text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
+                      className={`ml-1 text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
                       onClick={() => handleSort("name")}
                     >
                       Employee Info
@@ -1230,92 +1187,84 @@ const HeadcountTable = () => {
                   </div>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("grade")}
-                    >
-                      Grade/Email
-                      <SortingIndicator direction={getSortDirection("grade")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("grade")}
+                  >
+                    Grade/Email
+                    <SortingIndicator direction={getSortDirection("grade")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("businessFunction")}
-                    >
-                      Business Info
-                      <SortingIndicator direction={getSortDirection("businessFunction")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("businessFunction")}
+                  >
+                    Business Info
+                    <SortingIndicator direction={getSortDirection("businessFunction")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("unit")}
-                    >
-                      Unit/Job
-                      <SortingIndicator direction={getSortDirection("unit")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("unit")}
+                  >
+                    Unit/Job
+                    <SortingIndicator direction={getSortDirection("unit")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("jobTitle")}
-                    >
-                      Job/Position
-                      <SortingIndicator direction={getSortDirection("jobTitle")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("jobTitle")}
+                  >
+                    Job/Position
+                    <SortingIndicator direction={getSortDirection("jobTitle")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("lineManager")}
-                    >
-                      Line Manager
-                      <SortingIndicator direction={getSortDirection("lineManager")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("lineManager")}
+                  >
+                    Line Manager
+                    <SortingIndicator direction={getSortDirection("lineManager")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("startDate")}
-                    >
-                      Dates
-                      <SortingIndicator direction={getSortDirection("startDate")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("startDate")}
+                  >
+                    Dates
+                    <SortingIndicator direction={getSortDirection("startDate")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-left">
-                  <div className="flex items-center">
-                    <button
-                      className={`text-xs font-medium ${textMuted} uppercase tracking-wider flex items-center`}
-                      onClick={() => handleSort("status")}
-                    >
-                      Status/Tags
-                      <SortingIndicator direction={getSortDirection("status")} />
-                    </button>
-                  </div>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <button
+                    className={`text-xs font-medium ${textMuted}  tracking-wider flex items-center`}
+                    onClick={() => handleSort("status")}
+                  >
+                    Status/Tags
+                    <SortingIndicator direction={getSortDirection("status")} />
+                  </button>
                 </th>
 
-                <th scope="col" className="px-3 py-3 text-right">
-                  <span className={`text-xs font-medium ${textMuted} uppercase tracking-wider`}>
+                <th scope="col" className="px-2 py-2 text-left">
+                  <span className={`text-xs font-medium ${textMuted}  tracking-wider`}>
+                    Visibility
+                  </span>
+                </th>
+
+                <th scope="col" className="px-2 py-2 text-right">
+                  <span className={`text-xs font-medium ${textMuted}  tracking-wider`}>
                     Actions
                   </span>
                 </th>
@@ -1326,8 +1275,7 @@ const HeadcountTable = () => {
                 currentItems.map((employee) => (
                   <tr
                     key={employee.id}
-                    className={`${
-                      selectedEmployees.includes(employee.id)
+                    className={`${selectedEmployees.includes(employee.id)
                         ? darkMode
                           ? "bg-almet-sapphire/20"
                           : "bg-almet-sapphire/10"
@@ -1335,25 +1283,25 @@ const HeadcountTable = () => {
                     } ${hoverBg} transition-colors duration-150`}
                   >
                     {/* Employee Info */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex items-center">
                         <input
                           type="checkbox"
-                          className="h-4 w-4 text-blue-600 rounded"
+                          className="h-3 w-3 text-blue-600 rounded"
                           checked={selectedEmployees.includes(employee.id)}
                           onChange={() => toggleEmployeeSelection(employee.id)}
                         />
-                        <div className="ml-3">
+                        <div className="ml-2">
                           <Link href={`/structure/employee/${employee.id}`}>
                             <div
-                              className={`text-sm font-medium ${textPrimary} hover:underline flex items-center`}
+                              className={`text-xs font-medium ${textPrimary} hover:underline truncate max-w-[150px]`}
                             >
                               {employee.name}
                             </div>
                           </Link>
-                          <div className="flex flex-col">
-                            <div className={`text-xs ${textMuted}`}>
-                              HC: {employee.empNo}
+                          <div className="flex flex-col justify-center">
+                            <div className={`text-[10px] ${textMuted}`}>
+                              {employee.empNo}
                             </div>
                           </div>
                         </div>
@@ -1361,85 +1309,85 @@ const HeadcountTable = () => {
                     </td>
 
                     {/* Grade/Email */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm ${textSecondary}`}>
+                        <div className={`text-xs ${textSecondary} text-center`}>
                           {employee.grade}
                         </div>
-                        <div className={`text-xs ${textMuted}`}>
+                        <div className={`text-[10px] ${textMuted} truncate max-w-[120px]`}>
                           {employee.email}
                         </div>
                       </div>
                     </td>
 
                     {/* Business Info */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm ${textSecondary}`}>
+                        <div className={`text-xs ${textSecondary} truncate max-w-[100px]`}>
                           {employee.businessFunction}
                         </div>
-                        <div className={`text-xs ${textMuted}`}>
+                        <div className={`text-[10px] ${textMuted} truncate max-w-[100px]`}>
                           {employee.department}
                         </div>
                       </div>
                     </td>
 
                     {/* Unit / Job Function */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm ${textSecondary}`}>
+                        <div className={`text-xs ${textSecondary} truncate max-w-[100px]`}>
                           {employee.unit}
                         </div>
-                        <div className={`text-xs ${textMuted}`}>
+                        <div className={`text-[10px] ${textMuted} truncate max-w-[100px]`}>
                           {employee.jobFunction}
                         </div>
                       </div>
                     </td>
 
                     {/* Job Title / Position */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm ${textSecondary}`}>
-                          {employee.jobTitle.split(" ").slice(0, 3).join(" ")}
-                          {employee.jobTitle.split(" ").length > 3 && "..."}
+                        <div className={`text-xs ${textSecondary} truncate max-w-[100px]`}>
+                          {employee.jobTitle.split(" ").slice(0, 2).join(" ")}
+                          {employee.jobTitle.split(" ").length > 2 && "..."}
                         </div>
-                        <div className={`text-xs ${textMuted}`}>
+                        <div className={`text-[10px] ${textMuted} truncate max-w-[100px]`}>
                           {employee.positionGroup}
                         </div>
                       </div>
                     </td>
 
                     {/* Line Manager */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm ${textSecondary}`}>
+                        <div className={`text-xs ${textSecondary} truncate max-w-[120px]`}>
                           {employee.lineManager || "N/A"}
                         </div>
-                        <div className={`text-xs ${textMuted}`}>
+                        <div className={`text-[10px] ${textMuted}`}>
                           HC: {employee.lineManagerHcNumber || "N/A"}
                         </div>
                       </div>
                     </td>
 
                     {/* Dates */}
-                    <td className="px-3 py-3 whitespace-nowrap">
+                    <td className="px-2 py-2 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <div className={`text-sm ${textSecondary}`}>
-                          Start: {new Date(employee.startDate).toLocaleDateString()}
+                        <div className={`text-xs ${textSecondary}`}>
+                          Start: {new Date(employee.startDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                         </div>
                         {employee.endDate && (
-                          <div className={`text-xs ${textMuted}`}>
-                            End: {new Date(employee.endDate).toLocaleDateString()}
+                          <div className={`text-[10px] ${textMuted}`}>
+                            End: {new Date(employee.endDate).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "2-digit" })}
                           </div>
                         )}
                       </div>
                     </td>
 
                     {/* Status & Tags */}
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <div className="flex flex-col space-y-1">
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <div className="flex flex-col justify-center space-y-1">
                         <EmployeeStatusBadge status={employee.status} />
-                        <div className="flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap justify-center gap-1">
                           {employee.tags &&
                             employee.tags.map((tag, idx) => (
                               <EmployeeTag key={idx} tag={tag} />
@@ -1448,8 +1396,17 @@ const HeadcountTable = () => {
                       </div>
                     </td>
 
+                    {/* Visibility Toggle */}
+                    <td className="px-2 py-2 whitespace-nowrap">
+                      <EmployeeVisibilityToggle
+                        employeeId={employee.id}
+                        initialVisibility={employeeVisibility[employee.id] ?? true}
+                        onVisibilityChange={handleVisibilityChange}
+                      />
+                    </td>
+
                     {/* Actions */}
-                    <td className="px-3 py-3 whitespace-nowrap text-right">
+                    <td className="px-2 py-2 whitespace-nowrap text-center">
                       <ActionsDropdown
                         employeeId={employee.id}
                         onAction={handleEmployeeAction}
@@ -1459,7 +1416,7 @@ const HeadcountTable = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="px-6 py-10 text-center">
+                  <td colSpan="10" className="px-6 py-10 text-center">
                     <div className="flex flex-col items-center">
                       <AlertCircle size={48} className="text-gray-400 mb-3" />
                       <p className={`${textPrimary} text-lg font-medium`}>No employees found</p>

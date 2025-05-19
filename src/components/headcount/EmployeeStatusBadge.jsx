@@ -15,26 +15,26 @@ const EmployeeStatusBadge = ({ status }) => {
     case "active":
       bgColor = darkMode ? "bg-green-900" : "bg-green-100";
       textColor = darkMode ? "text-green-300" : "text-green-800";
-      statusText = "ACTIVE";
+      statusText = "Active";
       break;
     case "on boarding":
     case "onboarding":
     case "on-boarding":
       bgColor = darkMode ? "bg-yellow-900" : "bg-yellow-100";
       textColor = darkMode ? "text-yellow-300" : "text-yellow-800";
-      statusText = "ON BOARDING";
+      statusText = "On boarding";
       break;
     case "probation":
       bgColor = darkMode ? "bg-purple-900" : "bg-purple-100";
       textColor = darkMode ? "text-purple-300" : "text-purple-800";
-      statusText = "PROBATION";
+      statusText = "probation";
       break;
     case "on leave":
     case "onleave":
     case "on-leave":
       bgColor = darkMode ? "bg-red-900" : "bg-red-100";
       textColor = darkMode ? "text-red-300" : "text-red-800";
-      statusText = "ON LEAVE";
+      statusText = "On leave";
       break;
     default:
       bgColor = darkMode ? "bg-gray-900" : "bg-gray-100";
@@ -44,7 +44,7 @@ const EmployeeStatusBadge = ({ status }) => {
 
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}
+      className={`inline-flex items-center justify-center text-center px-1 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}
     >
       {statusText}
     </span>

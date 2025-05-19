@@ -5,6 +5,7 @@
 /* Base styles */
 body {
   @apply bg-almet-mystic dark:bg-gray-900 text-gray-800 dark:text-white;
+
 }
 
 /* Scrollbar customization */
@@ -38,3 +39,5 @@ body {
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   transition-duration: 300ms;
 }
+
+
