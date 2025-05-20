@@ -1,11 +1,26 @@
+// src/app/structure/headcount-table/page.jsx
 "use client";
-import DashboardLayout from "@/components/layout/DashboardLayout";
-import HeadcountTable from "@/components/headcount/HeadcountTable";
+import { useEffect } from "react";
+import HeadcountTable from "../../../components/headcount/HeadcountTable";
+import DashboardLayout from "../../../components/layout/DashboardLayout";
 
-export default function HeadcountTablePage() {
+/**
+ * Əməkdaşlar cədvəli səhifəsi
+ * @returns {JSX.Element} - Əməkdaşlar cədvəli səhifəsi
+ */
+const HeadcountTablePage = () => {
+  // Səhifə başlığını təyin et
+  useEffect(() => {
+    document.title = "Employee Headcount - Almet Holding";
+  }, []);
+
   return (
     <DashboardLayout>
-      <HeadcountTable />
+      <div className="p-4">
+        <HeadcountTable />
+      </div>
     </DashboardLayout>
   );
-}
+};
+
+export default HeadcountTablePage;
