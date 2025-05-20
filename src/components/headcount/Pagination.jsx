@@ -47,7 +47,7 @@ const Pagination = ({
         <button
           key={i}
           onClick={() => onPageChange(i)}
-          className={`p-1 rounded-md w-8 h-8 flex items-center justify-center mx-1 ${
+          className={`p-1 rounded-md w-6 h-6 flex items-center justify-center mx-1 ${
             currentPage === i
               ? "bg-almet-sapphire text-white"
               : "bg-gray-700 text-white dark:bg-gray-600"
@@ -62,7 +62,7 @@ const Pagination = ({
   };
 
   return (
-    <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+    <div className="flex items-center text-xs justify-between border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
       <div className="flex items-center">
         <button
           className={`bg-gray-700 text-white p-1 rounded-md mr-2 ${
@@ -81,7 +81,7 @@ const Pagination = ({
             <span className={`${styles.textMuted} mx-1`}>...</span>
             <button
               onClick={() => onPageChange(totalPages)}
-              className="bg-gray-700 text-white p-1 rounded-md w-8 h-8 flex items-center justify-center mx-1"
+              className="bg-gray-700 text-white p-1 rounded-md w-6 h-6 text-xs flex items-center justify-center mx-1"
             >
               {totalPages}
             </button>
@@ -101,14 +101,14 @@ const Pagination = ({
         </button>
       </div>
 
-      <div className={`${styles.textMuted} text-sm`}>
+      <div className={`${styles.textMuted} text-xs`}>
         Showing {startIndex + 1} to {endIndex} of {totalItems} employees
       </div>
 
-      <div className="flex items-center">
+      <div className="flex items-center text-xs">
         <span className={`${styles.textMuted} mr-2`}>Show</span>
         <select
-          className={`p-1 rounded border ${styles.borderColor} ${styles.inputBg} ${styles.textPrimary}`}
+          className={`p-1  rounded border ${styles.borderColor} ${styles.inputBg} ${styles.textPrimary}`}
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
         >

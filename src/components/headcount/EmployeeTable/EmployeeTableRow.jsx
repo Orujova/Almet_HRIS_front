@@ -9,7 +9,7 @@ import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
 import ActionsDropdown from "../ActionsDropdown";
 
 /**
- * Əməkdaş sətiri komponenti
+ * Təkmilləşdirilmiş əməkdaş sətiri komponenti (profil şəkli ilə)
  * @param {Object} props - Komponent parametrləri
  * @param {Object} props.employee - Əməkdaş məlumatları
  * @param {boolean} props.isSelected - Əməkdaş seçilib ya yox
@@ -31,6 +31,38 @@ const EmployeeTableRow = ({
   const styles = getThemeStyles(darkMode);
   const departmentColor = getDepartmentColor(employee.department, darkMode);
 
+  // Generate initials from employee name
+  const getInitials = (name) => {
+    if (!name) return "NA";
+    
+    const names = name.split(" ");
+    if (names.length === 1) return names[0].charAt(0);
+    
+    // Get first letter of first name and first letter of last name
+    return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`;
+  };
+
+  // Function to get avatar background color based on department
+  const getAvatarColor = (department) => {
+    const departmentColors = {
+      ADMINISTRATIVE: "bg-yellow-500",
+      COMPLIANCE: "bg-red-500",
+      FINANCE: "bg-green-500",
+      HR: "bg-purple-500",
+      OPERATIONS: "bg-orange-500",
+      "PROJECTS MANAGEMENT": "bg-teal-500",
+      TRADE: "bg-indigo-500",
+      "STOCK SALES": "bg-pink-500",
+      "BUSINESS DEVELOPMENT": "bg-blue-500",
+    };
+
+    // Default to a color if department not found
+    return departmentColors[department] || "bg-almet-sapphire";
+  };
+
+  const avatarColor = getAvatarColor(employee.department);
+  const initials = getInitials(employee.name);
+
   return (
     <tr
       className={`${
@@ -41,7 +73,7 @@ const EmployeeTableRow = ({
           : departmentColor
       } ${styles.hoverBg} transition-colors duration-150`}
     >
-      {/* Employee Info */}
+      {/* Employee Info with Avatar */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex items-center">
           <input
@@ -50,15 +82,27 @@ const EmployeeTableRow = ({
             checked={isSelected}
             onChange={() => onToggleSelection(employee.id)}
           />
-          <div className="ml-2">
-            <Link href={`/structure/employee/${employee.id}`}>
-              <div
-                className={`text-xs font-medium ${styles.textPrimary} hover:underline truncate max-w-[150px]`}
-              >
-                {employee.name}
-              </div>
-            </Link>
-            <div className="flex flex-col justify-center">
+          <div className="flex items-center ml-2">
+            {/* Avatar/Image */}
+            <div className={`h-7 w-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-medium mr-2`}>
+              {employee.profileImage ? (
+                <img
+                  src={employee.profileImage}
+                  alt={employee.name}
+                  className="h-full w-full object-cover rounded-full"
+                />
+              ) : (
+                initials
+              )}
+            </div>
+            <div>
+              <Link href={`/structure/employee/${employee.id}`}>
+                <div
+                  className={`text-xs font-medium ${styles.textPrimary} hover:underline truncate max-w-[120px]`}
+                >
+                  {employee.name}
+                </div>
+              </Link>
               <div className={`text-[10px] ${styles.textMuted}`}>
                 {employee.empNo}
               </div>
