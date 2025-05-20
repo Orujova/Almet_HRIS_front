@@ -2,7 +2,7 @@
 import "./globals.css";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import { Poppins } from "next/font/google";
-
+import { AuthProvider } from '@/auth/AuthContext';
 // Define Poppins with specific weights
 const poppins = Poppins({
   subsets: ["latin"],
@@ -19,7 +19,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={poppins.className}>
+          <AuthProvider>
         <ThemeProvider>{children}</ThemeProvider>
+        </AuthProvider>
+        
       </body>
     </html>
   );

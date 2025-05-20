@@ -1,10 +1,13 @@
+// src/components/common/Header.jsx
 "use client";
-import { Bell, Search, Moon, Sun, Menu, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Bell, Search, Moon, Sun, Menu, ChevronsLeft, ChevronsRight, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme } from "../common/ThemeProvider";
+import { useAuth } from "@/auth/AuthContext"; // Auth kontekstini əlavə edin
 
 const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   const { darkMode, toggleTheme } = useTheme();
+  const { account, logout } = useAuth(); // Auth kontekstindən istifadə edin
   const [currentTime, setCurrentTime] = useState("");
 
   // Function to update time
@@ -91,10 +94,18 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
           <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-almet-comet flex items-center justify-center overflow-hidden">
             <img src="/api/placeholder/24/24" alt="User avatar" className="h-full w-full object-cover" />
           </div>
-          <span className="text-xs text-gray-700 dark:text-white">Nizami T</span>
-          <svg className="h-3 w-3 text-gray-500 dark:text-almet-bali-hai" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          <span className="text-xs text-gray-700 dark:text-white">
+            {account ? `${account.name || account.username}` : "Nizami T"}
+          </span>
+          {/* Logout button */}
+          <button 
+            onClick={logout}
+            className="p-1 rounded-full text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet"
+            aria-label="Çıxış"
+            title="Çıxış"
+          >
+            <LogOut size={14} />
+          </button>
         </div>
       </div>
     </header>
