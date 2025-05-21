@@ -1,0 +1,19 @@
+"use client";
+import { useState } from "react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import ComingSoon from "@/components/common/ComingSoon";
+import { useTheme } from "@/components/common/ThemeProvider";
+
+export default function AccessManagementPage() {
+  const { darkMode } = useTheme();
+
+  return (
+    <DashboardLayout>
+      <ComingSoon
+        title="Access Management"
+        message="The access management module is coming soon. Check back later for updates."
+        darkMode={darkMode}
+      />
+    </DashboardLayout>
+  );
+}
