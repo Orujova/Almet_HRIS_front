@@ -2,6 +2,7 @@
 import { Calendar, Users, LineChart, Plane } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
+import { useAuth } from "@/auth/AuthContext";
 
 const ActionCard = ({ icon, title, description, href }) => {
   return (
@@ -64,6 +65,8 @@ const EventCard = ({ icon, type, title, date, image }) => {
 };
 
 export default function Home() {
+  const { account } = useAuth();
+  
   return (
     <DashboardLayout>
       {/* Welcome Banner */}
@@ -71,7 +74,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row">
           <div className="p-5 md:w-2/3">
             <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
-              Welcome to Almet Central
+              {account ? `Xoş gəlmisiniz, ${account.name || account.username || "İstifadəçi"}!` : "Xoş gəlmisiniz, Almet Central-a!"}
             </h1>
             <p className="text-blue-100 text-sm">
               Your comprehensive HR management platform
