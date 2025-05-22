@@ -47,10 +47,10 @@ const Pagination = ({
         <button
           key={i}
           onClick={() => onPageChange(i)}
-          className={`p-1 rounded-md w-6 h-6 flex items-center justify-center mx-1 ${
+          className={`p-1 rounded-md w-5 h-5 flex items-center justify-center mx-0.5 text-xs transition-colors ${
             currentPage === i
               ? "bg-almet-sapphire text-white"
-              : "bg-gray-700 text-white dark:bg-gray-600"
+              : "bg-gray-700 text-white hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500"
           }`}
         >
           {i}
@@ -62,26 +62,29 @@ const Pagination = ({
   };
 
   return (
-    <div className="flex items-center text-xs justify-between border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-4 py-3">
+    <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2">
+      {/* Left side - Navigation */}
       <div className="flex items-center">
         <button
-          className={`bg-gray-700 text-white p-1 rounded-md mr-2 ${
-            currentPage === 1 ? "opacity-50 cursor-not-allowed" : ""
+          className={`bg-gray-700 text-white p-1.5 rounded-md mr-2 transition-colors ${
+            currentPage === 1 
+              ? "opacity-50 cursor-not-allowed" 
+              : "hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500"
           }`}
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={14} />
         </button>
 
         {renderPageNumbers()}
 
         {totalPages > 5 && currentPage + 2 < totalPages && (
           <>
-            <span className={`${styles.textMuted} mx-1`}>...</span>
+            <span className={`${styles.textMuted} mx-1 text-xs`}>...</span>
             <button
               onClick={() => onPageChange(totalPages)}
-              className="bg-gray-700 text-white p-1 rounded-md w-6 h-6 text-xs flex items-center justify-center mx-1"
+              className="bg-gray-700 text-white p-1 rounded-md w-5 h-5 text-xs flex items-center justify-center mx-0.5 hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors"
             >
               {totalPages}
             </button>
@@ -89,26 +92,28 @@ const Pagination = ({
         )}
 
         <button
-          className={`bg-gray-700 text-white p-1 rounded-md ml-2 ${
+          className={`bg-gray-700 text-white p-1.5 rounded-md ml-2 transition-colors ${
             currentPage === totalPages
               ? "opacity-50 cursor-not-allowed"
-              : ""
+              : "hover:bg-gray-600 dark:bg-gray-600 dark:hover:bg-gray-500"
           }`}
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={14} />
         </button>
       </div>
 
+      {/* Center - Item count info */}
       <div className={`${styles.textMuted} text-xs`}>
-        Showing {startIndex + 1} to {endIndex} of {totalItems} employees
+        {startIndex + 1}-{endIndex} of {totalItems}
       </div>
 
+      {/* Right side - Items per page selector */}
       <div className="flex items-center text-xs">
         <span className={`${styles.textMuted} mr-2`}>Show</span>
         <select
-          className={`p-1  rounded border ${styles.borderColor} ${styles.inputBg} ${styles.textPrimary}`}
+          className={`p-1 text-xs rounded border ${styles.borderColor} ${styles.inputBg} ${styles.textPrimary} focus:outline-none focus:ring-1 focus:ring-almet-sapphire`}
           value={itemsPerPage}
           onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
         >

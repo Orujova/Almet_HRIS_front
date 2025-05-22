@@ -1,5 +1,3 @@
-
-
 // src/components/headcount/HeadcountTable.jsx
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
@@ -17,6 +15,8 @@ import AdvancedFilterPanel from "./AdvancedFilterPanel";
 import EmployeeTable from "./EmployeeTable";
 import Pagination from "./Pagination";
 import ActionMenu from "./ActionMenu";
+import HierarchyLegend from "./HierarchyLegend";
+import ColorSelector from "./ColorModeSelector";
 
 /**
  * Ana əməkdaşlar cədvəli komponenti
@@ -284,7 +284,7 @@ const HeadcountTable = () => {
     departmentFilter !== "all";
 
   return (
-    <div className="container mx-auto pt-3">
+    <div className="container mx-auto pt-3 max-w-full">
       {/* Başlıq bölməsi */}
       <div className="relative">
         <HeadcountHeader
@@ -295,9 +295,9 @@ const HeadcountTable = () => {
           ref={actionButtonRef}
         />
 
-        {/* Əməliyyatlar menyusu - button referans ilə pozisiyalaşdır */}
+        {/* Əməliyyatlar menyusu */}
         {isActionMenuOpen && (
-          <div className="relative" style={{ position: 'absolute', right: '10px', top: '50px', zIndex: 1000 }}>
+          <div className="absolute right-2 top-16 z-50">
             <ActionMenu 
               isOpen={isActionMenuOpen}
               onClose={() => setIsActionMenuOpen(false)}
@@ -317,23 +317,31 @@ const HeadcountTable = () => {
       )}
 
       {/* Tez filtr paneli */}
-      <div className="flex justify-between">
-        {/* Axtarış paneli */}
-        <SearchBar
-          searchTerm={searchTerm}
-          onSearchChange={handleSearchChange}
-        />
-        <QuickFilterBar
-          onStatusChange={handleStatusChange}
-          onOfficeChange={handleOfficeChange}
-          onDepartmentChange={handleDepartmentChange}
-          statusFilter={statusFilter}
-          officeFilter={officeFilter}
-          departmentFilter={departmentFilter}
-          activeFilters={activeFilters}
-          onClearFilter={handleClearFilter}
-        />
+      <div className="flex flex-col lg:flex-row lg:justify-between gap-4 mb-4">
+      
+          <SearchBar
+            searchTerm={searchTerm}
+            onSearchChange={handleSearchChange}
+          />
+       
+        
+        <div className="flex-shrink-0">
+          <QuickFilterBar
+            onStatusChange={handleStatusChange}
+            onOfficeChange={handleOfficeChange}
+            onDepartmentChange={handleDepartmentChange}
+            statusFilter={statusFilter}
+            officeFilter={officeFilter}
+            departmentFilter={departmentFilter}
+            activeFilters={activeFilters}
+            onClearFilter={handleClearFilter}
+          />
+        </div>
       </div>
+
+      {/* Hierarchy Legend */}
+      <HierarchyLegend />
+      <ColorSelector/>
 
       {/* Əməkdaşlar cədvəli */}
       <EmployeeTable

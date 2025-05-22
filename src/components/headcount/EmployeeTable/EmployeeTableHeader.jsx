@@ -46,10 +46,10 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("grade")}
+            onClick={() => onSort("email")}
           >
-            Grade/Email
-            <SortingIndicator direction={getSortDirection("grade")} />
+            Contact Info
+            <SortingIndicator direction={getSortDirection("email")} />
           </button>
         </th>
 
@@ -58,7 +58,7 @@ const EmployeeTableHeader = ({
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("businessFunction")}
           >
-            Business Info
+            Organization
             <SortingIndicator direction={getSortDirection("businessFunction")} />
           </button>
         </th>
@@ -68,8 +68,18 @@ const EmployeeTableHeader = ({
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("unit")}
           >
-            Unit/Job
+            Unit & Function
             <SortingIndicator direction={getSortDirection("unit")} />
+          </button>
+        </th>
+
+        <th scope="col" className="px-2 py-2 text-left">
+          <button
+            className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
+            onClick={() => onSort("positionGroup")}
+          >
+            Hierarchy & Grade
+            <SortingIndicator direction={getSortDirection("positionGroup")} />
           </button>
         </th>
 
@@ -78,7 +88,7 @@ const EmployeeTableHeader = ({
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("jobTitle")}
           >
-            Job/Position
+            Job Title
             <SortingIndicator direction={getSortDirection("jobTitle")} />
           </button>
         </th>
@@ -98,7 +108,7 @@ const EmployeeTableHeader = ({
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("startDate")}
           >
-            Dates
+            Employment Dates
             <SortingIndicator direction={getSortDirection("startDate")} />
           </button>
         </th>
@@ -108,7 +118,7 @@ const EmployeeTableHeader = ({
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("status")}
           >
-            Status/Tags
+            Status & Tags
             <SortingIndicator direction={getSortDirection("status")} />
           </button>
         </th>

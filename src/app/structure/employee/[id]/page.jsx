@@ -60,7 +60,7 @@ export default function EmployeeDetailPage() {
         // Mock data for employees
         const mockEmployees = [
           {
-            id: "HC01",
+            id: "1",
             empNo: "EJ2023",
             name: "Eric Johnson",
             firstName: "Eric",
@@ -131,7 +131,7 @@ export default function EmployeeDetailPage() {
             ]
           },
           {
-            id: "HC02",
+            id: "2",
             empNo: "AS1023",
             name: "Aria Sanderson",
             firstName: "Aria",

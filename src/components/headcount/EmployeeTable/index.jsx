@@ -24,25 +24,25 @@ import EmptyStateMessage from "./EmptyStateMessage";
  * @returns {JSX.Element} - Əməkdaşlar cədvəli komponenti
  */
 const EmployeeTable = ({
-  employees,
-  selectedEmployees,
-  selectAll,
+  employees = [],
+  selectedEmployees = [],
+  selectAll = false,
   onToggleSelectAll,
   onToggleEmployeeSelection,
   onSort,
   getSortDirection,
-  employeeVisibility,
+  employeeVisibility = {},
   onVisibilityChange,
   onEmployeeAction,
-  hasFilters,
+  hasFilters = false,
   onClearFilters,
 }) => {
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
 
   return (
-    <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass}`}>
-      <div >
+    <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass} overflow-hidden border ${styles.borderColor}`}>
+      <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <EmployeeTableHeader
             selectAll={selectAll}
@@ -50,8 +50,8 @@ const EmployeeTable = ({
             onSort={onSort}
             getSortDirection={getSortDirection}
           />
-          <tbody className={`divide-y ${styles.borderColor}`}>
-            {employees.length > 0 ? (
+          <tbody className={`bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700`}>
+            {employees && employees.length > 0 ? (
               employees.map((employee) => (
                 <EmployeeTableRow
                   key={employee.id}

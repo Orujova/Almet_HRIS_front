@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { MoreVertical, Edit, Tag, Users, FileText, BarChart2, MessageSquare, Trash2 } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { getThemeStyles } from "./utils/themeStyles";
-
+import Link from "next/link";
 
 /**
  * Əməkdaşlar üçün əməliyyatlar açılan menyusu
@@ -62,24 +62,28 @@ const ActionsDropdown = ({ employeeId, onAction }) => {
           style={{ zIndex: 9999 }} // Yüksək z-index dəyəri
         >
           <div className="py-1" role="menu">
-            <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left`}
-              onClick={() => handleAction("viewDetails")}
-            >
-              <div className="flex items-center">
-                <FileText size={16} className="mr-2 text-blue-500" />
-                <span>View Details</span>
-              </div>
-            </button>
-            <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left`}
-              onClick={() => handleAction("editEmployee")}
-            >
-              <div className="flex items-center">
-                <Edit size={16} className="mr-2 text-green-500" />
-                <span>Edit Employee</span>
-              </div>
-            </button>
+           <Link href={`/structure/employee/${employeeId}`}>
+              <button
+                className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left`}
+                onClick={() => setIsOpen(false)}
+              >
+                <div className="flex items-center">
+                  <FileText size={16} className="mr-2 text-blue-500" />
+                  <span>View Details</span>
+                </div>
+              </button>
+            </Link>
+            <Link href={`/structure/employee/${employeeId}/edit`}>
+              <button
+                className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left`}
+                onClick={() => setIsOpen(false)}
+              >
+                <div className="flex items-center">
+                  <Edit size={16} className="mr-2 text-green-500" />
+                  <span>Edit Employee</span>
+                </div>
+              </button>
+            </Link>
             <button
               className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left`}
               onClick={() => handleAction("addTag")}
