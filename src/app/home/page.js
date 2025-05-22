@@ -156,7 +156,7 @@ export default function Home() {
             title="New Office Opening in Dubai"
             description="Exciting expansion of our operations in the Middle East region."
             date="Jan 14, 2024"
-            image="https://images.unsplash.com/photo-1582654129148-b53244fbc8d7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80"
+            image="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2970&q=80"
           />
           <NewsCard
             tag="Update"

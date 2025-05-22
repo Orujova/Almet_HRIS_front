@@ -1,4 +1,3 @@
-// src/auth/AuthContext.jsx
 "use client";
 
 import {
@@ -14,9 +13,12 @@ import {
 } from "@azure/msal-browser";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-import { msalConfig, loginRequest, graphRequest } from "./authConfig";
+import { msalConfig, loginRequest } from "./authConfig";
 
 const AuthContext = createContext();
+
+// Backend URL
+const BACKEND_URL = "http://localhost:8000/api";
 
 export function AuthProvider({ children }) {
   const [msalInstance, setMsalInstance] = useState(null);
@@ -26,44 +28,45 @@ export function AuthProvider({ children }) {
   const [authError, setAuthError] = useState(null);
   const router = useRouter();
 
+  // MSAL-ı başlat
   useEffect(() => {
     const initializeMsal = async () => {
       try {
-        console.log("Initializing MSAL...");
+        console.log("🔄 MSAL başladılır...");
+        
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
+        
         setMsalInstance(msalApp);
         setInitialized(true);
+        
+        console.log("✅ MSAL başladıldı");
 
+        // Əgər artıq login olubsa yoxla
         const accounts = msalApp.getAllAccounts();
         if (accounts.length > 0) {
-          const currentAccount = accounts[0];
-          setAccount(currentAccount);
-
+          console.log("👤 Mövcud account tapıldı:", accounts[0].username);
+          
+          // Token-i yoxla
           const token = localStorage.getItem("accessToken");
           if (token) {
+            console.log("🔑 Token localStorage-da tapıldı");
             try {
-              const response = await axios.get(
-                "http://localhost:8000/api/me/",
-                {
-                  headers: { Authorization: `Bearer ${token}` },
-                }
-              );
-              console.log("Token validated successfully");
+              // Backend ilə token-i yoxla
+              await validateTokenWithBackend(token);
+              setAccount(accounts[0]);
+              console.log("✅ Token təsdiqləndi");
             } catch (error) {
-              console.error("Token validation failed:", error);
-              handleTokenError(error);
+              console.log("❌ Token etibarsızdır, silindi");
+              clearAuth();
             }
-          } else {
-            console.log("No token found, initiating login");
-            await login();
           }
-        } else {
-          setLoading(false);
         }
+        
       } catch (error) {
-        console.error("MSAL initialization error:", error);
-        setAuthError(error.message || "Authentication initialization failed");
+        console.error("❌ MSAL başlatma xətası:", error);
+        setAuthError("Autentifikasiya sistemi başlatılmadı");
+      } finally {
         setLoading(false);
       }
     };
@@ -71,17 +74,27 @@ export function AuthProvider({ children }) {
     initializeMsal();
   }, []);
 
-  const handleTokenError = (error) => {
+  // Backend ilə token yoxla
+  const validateTokenWithBackend = async (token) => {
+    const response = await axios.get(`${BACKEND_URL}/me/`, {
+      headers: { Authorization: `Bearer ${token}` },
+      timeout: 5000,
+    });
+    return response.data;
+  };
+
+  // Auth məlumatlarını təmizlə
+  const clearAuth = () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     setAccount(null);
-    setAuthError("Session expired. Please log in again.");
-    router.push("/login");
+    setAuthError(null);
   };
 
+  // Login funksiyası
   const login = useCallback(async () => {
     if (!msalInstance || !initialized) {
-      setAuthError("Authentication service not initialized");
+      setAuthError("Sistem hələ hazır deyil, bir az gözləyin");
       return;
     }
 
@@ -89,87 +102,110 @@ export function AuthProvider({ children }) {
       setAuthError(null);
       setLoading(true);
 
+      console.log("🔐 Microsoft login başladılır...");
+
+      // Microsoft popup login
       const loginResponse = await msalInstance.loginPopup({
         ...loginRequest,
         redirectUri: window.location.origin,
       });
 
-      setAccount(loginResponse.account);
+      console.log("✅ Microsoft login uğurlu:", loginResponse.account.username);
 
+      // ID Token al
       const tokenResponse = await msalInstance.acquireTokenSilent({
         ...loginRequest,
         account: loginResponse.account,
       });
 
-      // Backend ilə autentifikasiya
+      console.log(" ID Token alındı, backend-ə göndərilir... " , tokenResponse);
+
+      // Backend-ə göndər
       const backendResponse = await axios.post(
-        "http://localhost:8000/api/auth/microsoft/",
+        `${BACKEND_URL}/auth/microsoft/`,
         {
           id_token: tokenResponse.idToken,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
         }
       );
 
-      localStorage.setItem("accessToken", backendResponse.data.access);
-      localStorage.setItem("refreshToken", backendResponse.data.refresh);
-      router.push("/dashboard");
+      console.log("🎉 Backend autentifikasiyası uğurlu");
+
+      if (backendResponse.data.success) {
+        // Token-ləri saxla
+        localStorage.setItem("accessToken", backendResponse.data.access);
+        localStorage.setItem("refreshToken", backendResponse.data.refresh);
+        
+        // Account məlumatlarını yenilə
+        setAccount({
+          ...loginResponse.account,
+          ...backendResponse.data.user,
+        });
+
+        console.log("👤 İstifadəçi məlumatları yeniləndi");
+
+        // Dashboard-a yönləndir
+        router.push("/dashboard");
+      } else {
+        throw new Error(backendResponse.data.error || "Backend autentifikasiyası uğursuz");
+      }
+
     } catch (error) {
-      console.error("Login error:", error);
-      setAuthError(
-        error instanceof InteractionRequiredAuthError
-          ? "Interaction required. Please try again."
-          : error.message || "Authentication failed"
-      );
+      console.error("❌ Login xətası:", error);
+      
+      let errorMessage = "Giriş edilə bilmədi";
+      
+      if (error.response?.status === 401) {
+        errorMessage = "Autentifikasiya uğursuz - məlumatlar yanlışdır";
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error instanceof InteractionRequiredAuthError) {
+        errorMessage = "Yenidən cəhd edin";
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = "Bağlantı vaxtı bitdi - backend işləyirmi?";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setAuthError(errorMessage);
+      clearAuth();
     } finally {
       setLoading(false);
     }
   }, [msalInstance, initialized, router]);
 
+  // Logout funksiyası
   const logout = useCallback(async () => {
     if (!msalInstance || !initialized) return;
 
     try {
+      console.log("🚪 Çıxış edilir...");
+      
       await msalInstance.logoutPopup({
         postLogoutRedirectUri: window.location.origin,
         mainWindowRedirectUri: window.location.origin,
       });
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      setAccount(null);
+      
+      clearAuth();
+      console.log("✅ Çıxış uğurlu");
       router.push("/login");
+      
     } catch (error) {
-      console.error("Logout error:", error);
-      setAuthError("Logout failed. Please try again.");
+      console.error("❌ Çıxış xətası:", error);
+      setAuthError("Çıxış edilə bilmədi");
+      
+      // Məcburi çıxış
+      clearAuth();
+      router.push("/login");
     }
   }, [msalInstance, initialized, router]);
 
-  const acquireGraphToken = useCallback(async () => {
-    if (!msalInstance || !initialized || !account) return null;
-
-    try {
-      const response = await msalInstance.acquireTokenSilent({
-        ...graphRequest,
-        account,
-      });
-      return response.accessToken;
-    } catch (error) {
-      if (error instanceof InteractionRequiredAuthError) {
-        try {
-          const response = await msalInstance.acquireTokenPopup(graphRequest);
-          return response.accessToken;
-        } catch (interactiveError) {
-          console.error(
-            "Interactive token acquisition error:",
-            interactiveError
-          );
-          setAuthError("Failed to acquire token.");
-          return null;
-        }
-      }
-      console.error("Token acquisition error:", error);
-      return null;
-    }
-  }, [msalInstance, initialized, account]);
-
+  // Context dəyəri
   const contextValue = {
     account,
     isAuthenticated: !!account && !!localStorage.getItem("accessToken"),
@@ -177,15 +213,21 @@ export function AuthProvider({ children }) {
     logout,
     loading,
     initialized,
-    acquireGraphToken,
     authError,
+    clearError: () => setAuthError(null),
   };
 
   return (
-    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  return useContext(AuthContext);
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth() hook yalnız AuthProvider daxilində istifadə edilə bilər');
+  }
+  return context;
 }
