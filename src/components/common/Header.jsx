@@ -1,14 +1,30 @@
 // src/components/common/Header.jsx
 "use client";
-import { Bell, Search, Moon, Sun, Menu, ChevronsLeft, ChevronsRight, LogOut } from "lucide-react";
-import { useState, useEffect } from "react";
+import { 
+  Bell, 
+  Search, 
+  Moon, 
+  Sun, 
+  Menu, 
+  ChevronsLeft, 
+  ChevronsRight, 
+  LogOut,
+  User,
+  Settings,
+  HelpCircle,
+  ChevronDown
+} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
-import { useAuth } from "@/auth/AuthContext"; // Auth kontekstini əlavə edin
+import { useAuth } from "@/auth/AuthContext";
 
 const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   const { darkMode, toggleTheme } = useTheme();
-  const { account, logout } = useAuth(); // Auth kontekstindən istifadə edin
+  const { account, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState("");
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [notifications] = useState(3); // Example notification count
+  const userMenuRef = useRef(null);
 
   // Function to update time
   const updateTime = () => {
@@ -17,34 +33,69 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     const minutes = now.getMinutes().toString().padStart(2, '0');
     const ampm = hours >= 12 ? 'PM' : 'AM';
     
-    // Convert to 12-hour format
     hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
+    hours = hours ? hours : 12;
     
     setCurrentTime(`${hours}:${minutes} ${ampm}`);
   };
 
-  // Initialize clock
+  // Close user menu when clicking outside
   useEffect(() => {
-    // Initialize clock
-    updateTime();
-    
-    // Update clock every minute
-    const timerID = setInterval(updateTime, 60000);
-    
-    // Cleanup
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      clearInterval(timerID);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
+  // Initialize clock
+  useEffect(() => {
+    updateTime();
+    const timerID = setInterval(updateTime, 60000);
+    return () => clearInterval(timerID);
+  }, []);
+
+  // User initials for avatar
+  const getUserInitials = () => {
+    if (account?.first_name && account?.last_name) {
+      return `${account.first_name.charAt(0)}${account.last_name.charAt(0)}`.toUpperCase();
+    }
+    if (account?.name) {
+      const names = account.name.split(' ');
+      return names.length > 1 
+        ? `${names[0].charAt(0)}${names[1].charAt(0)}`.toUpperCase()
+        : names[0].charAt(0).toUpperCase();
+    }
+    if (account?.username) {
+      return account.username.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
+  console.log(account)
+
+  // User display name
+  const getUserDisplayName = () => {
+    if (account?.name) return account.name;
+    if (account?.first_name && account?.last_name) {
+      return `${account.first_name} ${account.last_name}`;
+    }
+    if (account?.username) return account.username;
+    return 'User';
+  };
+
   return (
-    <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet h-12 px-3 flex items-center justify-between">
-      {/* Left side with menu button */}
-      <div className="flex items-center">
+    <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet h-11  px-3 flex items-center justify-between shadow-sm">
+      {/* Left side with menu button and search */}
+      <div className="flex items-center space-x-3">
         <button
           onClick={toggleSidebar}
-          className="p-1.5 mr-3 rounded-md text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet"
+          className="p-1.5 rounded-lg text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
           aria-label="Toggle sidebar"
         >
           {isMobile ? (
@@ -53,59 +104,114 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
             isSidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />
           )}
         </button>
+     
         
-        {/* Search Bar */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-            <Search size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search..."
-            className="block w-full pl-7 pr-2 py-1 text-xs border border-gray-200 dark:border-almet-comet rounded-md bg-gray-100 dark:bg-almet-comet text-gray-700 dark:text-white placeholder-gray-500 dark:placeholder-almet-bali-hai focus:outline-none focus:ring-1 focus:ring-almet-sapphire"
-          />
-        </div>
       </div>
 
       {/* Right Side Elements */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2.5">
         {/* Current Time */}
-        <div className="text-xs text-gray-700 dark:text-white">
+        <div className="hidden md:block text-sm font-medium text-gray-700 dark:text-white bg-gray-100 dark:bg-almet-comet px-2.5 py-1 rounded-lg">
           {currentTime}
         </div>
 
         {/* Notifications */}
-        <button className="p-1 rounded-full text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet relative">
+        <button className="relative p-1.5 rounded-lg text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
           <Bell size={16} />
-          <span className="absolute top-0 right-0 h-1.5 w-1.5 rounded-full bg-red-500"></span>
+          {notifications > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
+              {notifications > 9 ? '9+' : notifications}
+            </span>
+          )}
         </button>
 
         {/* Theme Toggle */}
         <button 
           onClick={toggleTheme}
-          className="p-1 rounded-full text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet"
+          className="p-1.5 rounded-lg text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
           aria-label="Toggle dark mode"
         >
           {darkMode ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
-        {/* User Profile */}
-        <div className="flex items-center space-x-1">
-          <div className="h-6 w-6 rounded-full bg-gray-200 dark:bg-almet-comet flex items-center justify-center overflow-hidden">
-            <img src="/api/placeholder/24/24" alt="User avatar" className="h-full w-full object-cover" />
-          </div>
-          <span className="text-xs text-gray-700 dark:text-white">
-            {account ? `${account.name || account.username}` : "Nizami T"}
-          </span>
-          {/* Logout button */}
-          <button 
-            onClick={logout}
-            className="p-1 rounded-full text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet"
-            aria-label="Çıxış"
-            title="Çıxış"
+        {/* User Profile Dropdown */}
+        <div className="relative" ref={userMenuRef}>
+          <button
+            onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+            className="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors max-w-48"
           >
-            <LogOut size={14} />
+            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center font-semibold text-xs shadow-md flex-shrink-0">
+              {getUserInitials()}
+            </div>
+            <div className="hidden md:block text-left min-w-0 flex-1">
+              <p className="text-xs font-medium text-gray-700 dark:text-white truncate">
+                {getUserDisplayName()}
+              </p>
+              <p className="text-[8px] text-gray-500 dark:text-almet-bali-hai truncate">
+                {account?.username || 'user@company.com'}
+              </p>
+            </div>
+            <ChevronDown 
+              size={14} 
+              className={`text-gray-500 dark:text-almet-bali-hai transition-transform flex-shrink-0 ${
+                isUserMenuOpen ? 'rotate-180' : ''
+              }`} 
+            />
           </button>
+
+          {/* Dropdown Menu */}
+          {isUserMenuOpen && (
+            <div className="absolute right-0 mt-1 w-52 bg-white dark:bg-almet-cloud-burst rounded-lg shadow-lg border border-gray-200 dark:border-almet-comet py-1.5 z-50">
+              {/* User Info Header */}
+              <div className="px-3 py-1.5 border-b border-gray-100 dark:border-almet-comet">
+                <div className="flex items-center space-x-2">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center font-semibold text-xs shadow-md flex-shrink-0">
+                    {getUserInitials()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate" title={getUserDisplayName()}>
+                      {getUserDisplayName()}
+                    </p>
+                    <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai truncate" title={account?.username || 'user@company.com'}>
+                      {account?.username || 'user@company.com'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu Items */}
+              <div className="py-1">
+                <button className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
+                  <User size={12} className="mr-2 text-gray-500 dark:text-almet-bali-hai flex-shrink-0" />
+                  <span className="truncate">Profile Settings</span>
+                </button>
+                
+                <button className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
+                  <Settings size={12} className="mr-2 text-gray-500 dark:text-almet-bali-hai flex-shrink-0" />
+                  <span className="truncate">Account Settings</span>
+                </button>
+                
+                <button className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
+                  <HelpCircle size={12} className="mr-2 text-gray-500 dark:text-almet-bali-hai flex-shrink-0" />
+                  <span className="truncate">Help & Support</span>
+                </button>
+              </div>
+
+              {/* Logout */}
+              <div className="border-t border-gray-100 dark:border-almet-comet pt-1">
+                <button 
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    logout();
+                  }}
+                  className="flex items-center w-full px-3 py-1.5 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                >
+                  <LogOut size={12} className="mr-2 flex-shrink-0" />
+                  <span className="truncate">Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </header>

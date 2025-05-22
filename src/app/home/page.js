@@ -74,7 +74,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row">
           <div className="p-5 md:w-2/3">
             <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
-              {account ? `Xoş gəlmisiniz, ${account.name || account.username || "İstifadəçi"}!` : "Xoş gəlmisiniz, Almet Central-a!"}
+              {account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!"}
             </h1>
             <p className="text-blue-100 text-sm">
               Your comprehensive HR management platform

@@ -150,7 +150,7 @@ export function AuthProvider({ children }) {
         console.log("👤 İstifadəçi məlumatları yeniləndi");
 
         // Dashboard-a yönləndir
-        router.push("/dashboard");
+        router.push("/home");
       } else {
         throw new Error(backendResponse.data.error || "Backend autentifikasiyası uğursuz");
       }
