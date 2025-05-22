@@ -60,7 +60,7 @@ export default function EmployeeDetailPage() {
         // Mock data for employees
         const mockEmployees = [
           {
-            id: "1",
+            id: "HC01",
             empNo: "EJ2023",
             name: "Eric Johnson",
             firstName: "Eric",
@@ -131,7 +131,7 @@ export default function EmployeeDetailPage() {
             ]
           },
           {
-            id: "2",
+            id: "HC02",
             empNo: "AS1023",
             name: "Aria Sanderson",
             firstName: "Aria",
@@ -499,14 +499,13 @@ export default function EmployeeDetailPage() {
                 <div className="w-10 h-10 rounded-full bg-almet-sapphire/10 dark:bg-almet-sapphire/20 flex items-center justify-center mr-3">
                   <Calendar className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
                 </div>
-                <div>
+              <div>
   <p className={`${textMuted} text-xs`}>Date of Birth</p>
   <p className={`${textPrimary}`}>
     {formatDate(employee.dateOfBirth)}
   </p>
 </div>
-              </div>
-              <div className="flex">
+              </div><div className="flex">
             <div className="w-10 h-10 rounded-full bg-almet-sapphire/10 dark:bg-almet-sapphire/20 flex items-center justify-center mr-3">
               <MapPin className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
             </div>
@@ -723,5 +722,4 @@ export default function EmployeeDetailPage() {
       </div>
     </div>
   </div>
-</DashboardLayout>);
-}
+</DashboardLayout>)}
