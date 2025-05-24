@@ -6,16 +6,6 @@ import { forwardRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { getThemeStyles } from "./utils/themeStyles";
 
-/**
- * Əməkdaşlar səhifəsinin başlıq komponenti
- * @param {Object} props - Komponent parametrləri
- * @param {Function} props.onToggleAdvancedFilter - Əlavə filtrlərə keçid funksiyası
- * @param {Function} props.onToggleActionMenu - Hərəkətlər menyusuna keçid funksiyası
- * @param {boolean} props.isActionMenuOpen - Hərəkətlər menyusu açıqdır ya yox
- * @param {Array} props.selectedEmployees - Seçilmiş əməkdaşlar siyahısı
- * @param {React.Ref} ref - Actions düyməsinə istinad
- * @returns {JSX.Element} - Başlıq komponenti
- */
 const HeadcountHeader = forwardRef(({
   onToggleAdvancedFilter,
   onToggleActionMenu,
@@ -26,49 +16,54 @@ const HeadcountHeader = forwardRef(({
   const styles = getThemeStyles(darkMode);
 
   return (
-    <div className="flex justify-between items-center mb-6">
-      <div>
-        <h1 className={`text-2xl font-bold ${styles.textPrimary}`}>Employees</h1>
-        <p className={`text-sm ${styles.textMuted}`}>
-          Manage your organization's employee database
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex-1">
+        <h1 className={`text-lg font-bold ${styles.textPrimary} mb-0.5`}>
+          Employee Directory
+        </h1>
+        <p className={`text-xs ${styles.textMuted}`}>
+          Manage organization headcount
         </p>
       </div>
-      <div className="flex space-x-2">
+      
+      <div className="flex items-center gap-2 flex-wrap">
         <Link href="/structure/add-employee">
-          <button
-            className={`${styles.btnPrimary} text-white px-4 py-2 rounded-md flex items-center`}
-          >
-            <Plus size={16} className="mr-2" />
-            Add New Employee
+          <button className={`${styles.btnPrimary} text-white px-3 py-1.5 rounded-md flex items-center text-sm font-medium`}>
+            <Plus size={14} className="mr-1.5" />
+            Add Employee
           </button>
         </Link>
 
         <button
           onClick={onToggleAdvancedFilter}
-          className={`${styles.btnSecondary} ${styles.textPrimary} px-4 py-2 rounded-md flex items-center`}
+          className={`${styles.btnSecondary} ${styles.textPrimary} px-3 py-1.5 rounded-md flex items-center text-sm`}
         >
-          <Filter size={16} className="mr-2" />
-          Filters
+          <Filter size={14} className="mr-1.5" />
+          Filter
         </button>
 
         <button
           ref={ref}
           onClick={onToggleActionMenu}
           disabled={selectedEmployees.length === 0}
-          className={`${styles.btnSecondary} ${styles.textPrimary} px-4 py-2 rounded-md flex items-center ${
+          className={`${styles.btnSecondary} ${styles.textPrimary} px-3 py-1.5 rounded-md flex items-center text-sm ${
             selectedEmployees.length === 0 ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
-          <Download size={16} className="mr-2" />
-          Actions {selectedEmployees.length > 0 ? `(${selectedEmployees.length})` : ""}
-          <ChevronDown size={16} className="ml-2" />
+          <Download size={14} className="mr-1.5" />
+          Actions
+          {selectedEmployees.length > 0 && (
+            <span className="ml-1 bg-almet-sapphire text-white text-xs px-1.5 py-0.5 rounded-full">
+              {selectedEmployees.length}
+            </span>
+          )}
+          <ChevronDown size={14} className="ml-1" />
         </button>
       </div>
     </div>
   );
 });
 
-// DisplayName əlavə et
 HeadcountHeader.displayName = "HeadcountHeader";
 
 export default HeadcountHeader;

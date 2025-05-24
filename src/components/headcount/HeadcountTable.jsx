@@ -2,10 +2,11 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
-import { getThemeStyles } from "./utils/themeStyles";
+import { getThemeStyles, setColorMode } from "./utils/themeStyles";
 import { filterEmployees, getActiveFilters } from "./utils/employeeFilters";
 import { sortEmployees, updateSorting, getSortDirection } from "./utils/employeeSorting";
 import { getMockEmployees } from "./utils/mockData";
+import { addColorModeListener } from "./ColorModeSelector";
 
 // Komponentlər
 import HeadcountHeader from "./HeadcountHeader";
@@ -26,6 +27,9 @@ import ColorSelector from "./ColorModeSelector";
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
+  
+  // Color mode reaktivlik üçün state
+  const [colorModeRenderKey, setColorModeRenderKey] = useState(0);
   
   // Filter və axtarış vəziyyətləri
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
@@ -52,6 +56,17 @@ const HeadcountTable = () => {
   // Əməliyyatlar menyusu vəziyyəti
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const actionButtonRef = useRef(null);
+
+  // Color mode dəyişikliklərini dinlə
+  useEffect(() => {
+    const removeListener = addColorModeListener((newMode) => {
+      setColorMode(newMode);
+      // Force re-render by updating key
+      setColorModeRenderKey(prev => prev + 1);
+    });
+
+    return removeListener;
+  }, []);
 
   // Test əməkdaş məlumatlarını yüklə
   useEffect(() => {
@@ -231,6 +246,13 @@ const HeadcountTable = () => {
     console.log(`Employee ${employeeId} visibility set to ${newVisibility}`);
   };
 
+  // Color mode handler
+  const handleColorModeChange = (newMode) => {
+    setColorMode(newMode);
+    // Force re-render
+    setColorModeRenderKey(prev => prev + 1);
+  };
+
   // Filtrləmə və sıralama tətbiq edilmiş əməkdaşlar
   const filteredAndSortedEmployees = useMemo(() => {
     const filteredEmployees = filterEmployees(employees, {
@@ -250,6 +272,7 @@ const HeadcountTable = () => {
     departmentFilter,
     appliedFilters,
     sorting,
+    colorModeRenderKey // Add this to force re-render when color mode changes
   ]);
 
   // Səhifələmə
@@ -284,7 +307,7 @@ const HeadcountTable = () => {
     departmentFilter !== "all";
 
   return (
-    <div className="container mx-auto pt-3 max-w-full">
+    <div className="container mx-auto pt-3 max-w-full" key={colorModeRenderKey}>
       {/* Başlıq bölməsi */}
       <div className="relative">
         <HeadcountHeader
@@ -317,13 +340,11 @@ const HeadcountTable = () => {
       )}
 
       {/* Tez filtr paneli */}
-      <div className="flex flex-col lg:flex-row lg:justify-between gap-4 mb-4">
-      
-          <SearchBar
-            searchTerm={searchTerm}
-            onSearchChange={handleSearchChange}
-          />
-       
+      <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3">
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={handleSearchChange}
+        />
         
         <div className="flex-shrink-0">
           <QuickFilterBar
@@ -339,9 +360,11 @@ const HeadcountTable = () => {
         </div>
       </div>
 
-      {/* Hierarchy Legend */}
-      <HierarchyLegend />
-      <ColorSelector/>
+      {/* Color selector və Hierarchy Legend */}
+      <div className="flex justify-between items-center mb-3">
+        <ColorSelector onChange={handleColorModeChange} />
+        <HierarchyLegend />
+      </div>
 
       {/* Əməkdaşlar cədvəli */}
       <EmployeeTable

@@ -13,7 +13,7 @@ import {
 } from "./FormSteps";
 
 /**
- * Main employee form component with multi-step process
+ * Main employee form component with multi-step process and full width design
  * @param {Object} props - Component props
  * @param {Object} props.employee - Employee data for edit mode (optional)
  * @returns {JSX.Element} - Employee form component
@@ -36,7 +36,7 @@ const EmployeeForm = ({ employee = null }) => {
   const btnSecondary = darkMode
     ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
     : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-  const shadowClass = darkMode ? "" : "shadow-md";
+  const shadowClass = darkMode ? "" : "shadow-sm";
 
   // Form state
   const [formData, setFormData] = useState({
@@ -210,80 +210,77 @@ const EmployeeForm = ({ employee = null }) => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Form Container */}
-      <div className={`${bgCard} rounded-xl ${shadowClass} overflow-hidden transition-all duration-200 hover:shadow-lg border border-gray-100 dark:border-gray-700`}>
-        {/* Form Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire to-almet-astral">
-          <div className="flex items-center">
-            <Link
-              href="/structure/headcount-table"
-              className="text-white/90 hover:text-white flex items-center mr-4 transition-colors"
-            >
-              <ChevronLeft size={20} className="mr-1" />
-              <span className="hidden sm:inline">Back</span>
-            </Link>
-            <h1 className="text-xl font-bold text-white">
-              {isEditMode ? "Edit Employee" : "Add New Employee"}
-            </h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+   
+        <div className={`w-full  mx-auto ${bgCard} rounded-xl ${shadowClass} overflow-hidden transition-all duration-200 hover:shadow-lg border ${borderColor}`}>
+      
+
+          {/* Step Indicator */}
+          <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <StepIndicator 
+              currentStep={activeStep} 
+              totalSteps={totalSteps} 
+              stepLabels={stepLabels} 
+            />
           </div>
-        </div>
 
-        {/* Step Indicator */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700">
-          <StepIndicator 
-            currentStep={activeStep} 
-            totalSteps={totalSteps} 
-            stepLabels={stepLabels} 
-          />
-        </div>
-
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6">
-          {renderStepContent()}
-          
-          {/* Navigation Buttons */}
-          <div className="flex justify-between mt-10 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div>
-              {activeStep > 1 && (
+          {/* Form Body - Full Width */}
+          <form onSubmit={handleSubmit} className="p-8">
+            <div className="w-full">
+              {renderStepContent()}
+            </div>
+            
+            {/* Navigation Buttons */}
+            <div className="flex justify-between items-center mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-4">
+                {activeStep > 1 && (
+                  <button
+                    type="button"
+                    className={`${btnSecondary} px-6 py-3 rounded-md transition-colors font-medium`}
+                    onClick={handlePrevStep}
+                  >
+                    <ChevronLeft size={16} className="mr-2 inline" />
+                    Previous Step
+                  </button>
+                )}
                 <button
                   type="button"
-                  className={`${btnSecondary} px-4 py-2.5 rounded-md mr-4 transition-colors`}
-                  onClick={handlePrevStep}
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  onClick={handleCancel}
                 >
-                  Previous Step
+                  Cancel & Exit
                 </button>
-              )}
-              <button
-                type="button"
-                className="text-gray-600 dark:text-gray-300 hover:underline"
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                {/* Step info for mobile */}
+                <span className="text-sm text-gray-500 dark:text-gray-400 sm:hidden">
+                  {activeStep}/{totalSteps}
+                </span>
+                
+                {activeStep < totalSteps ? (
+                  <button
+                    type="button"
+                    className={`${btnPrimary} px-8 py-3 rounded-md font-medium shadow-sm hover:shadow flex items-center`}
+                    onClick={handleNextStep}
+                  >
+                    Continue
+                    <ChevronLeft size={16} className="ml-2 rotate-180" />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className={`${btnPrimary} px-8 py-3 rounded-md font-medium shadow-sm hover:shadow flex items-center`}
+                  >
+                    <Save size={16} className="mr-2" />
+                    {isEditMode ? "Update Employee" : "Create Employee"}
+                  </button>
+                )}
+              </div>
             </div>
-            <div>
-              {activeStep < totalSteps ? (
-                <button
-                  type="button"
-                  className={`${btnPrimary} px-5 py-2.5 rounded-md font-medium shadow-sm hover:shadow`}
-                  onClick={handleNextStep}
-                >
-                  Continue
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  className={`${btnPrimary} px-5 py-2.5 rounded-md font-medium shadow-sm hover:shadow flex items-center`}
-                >
-                  <Save size={16} className="mr-2" />
-                  {isEditMode ? "Update Employee" : "Save Employee"}
-                </button>
-              )}
-            </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      {/* </div> */}
     </div>
   );
 };

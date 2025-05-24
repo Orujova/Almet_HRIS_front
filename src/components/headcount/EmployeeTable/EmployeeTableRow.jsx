@@ -7,10 +7,9 @@ import EmployeeStatusBadge from "../EmployeeStatusBadge";
 import EmployeeTag from "../EmployeeTag";
 import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
 import ActionsDropdown from "../ActionsDropdown";
-import { Eye, Edit } from "lucide-react";
 
 /**
- * Employee sətiri - yalnız sol border rəngli
+ * Employee sətiri - yalnız sol border rəngli və adın üzərinə klik ediləbilir
  */
 const EmployeeTableRow = ({
   employee,
@@ -98,11 +97,14 @@ const EmployeeTableRow = ({
               )}
             </div>
             <div>
-              <div className={`text-xs font-medium ${styles.textPrimary} truncate max-w-[120px]`}>
-                {employee.name}
-              </div>
+              {/* Clickable name that navigates to detail page */}
+              <Link href={`/structure/employee/${employee.id}`}>
+                <div className={`text-xs font-medium ${styles.textPrimary} truncate max-w-[120px] hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer hover:underline`}>
+                  {employee.name}
+                </div>
+              </Link>
               <div className={`text-[10px] ${styles.textMuted}`}>
-                HC: {employee.empNo}
+               {employee.empNo}
               </div>
             </div>
           </div>
@@ -149,10 +151,7 @@ const EmployeeTableRow = ({
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col items-center">
           <div className="flex items-center">
-            <div 
-              className="w-2 h-2 rounded-full mr-1"
-              style={dotStyle}
-            ></div>
+      
             <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
               {employee.positionGroup}
             </div>

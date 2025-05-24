@@ -1,6 +1,11 @@
 // src/utils/themeStyles.js
 
 /**
+ * Global color mode management
+ */
+let COLOR_MODE = 'HIERARCHY';
+
+/**
  * Üslubların hazırlanması üçün funksiya
  * @param {boolean} darkMode - Qaranlıq rejim fəaldır ya yox
  * @returns {Object} - Üslublar obyekti
@@ -29,9 +34,6 @@ export const getThemeStyles = (darkMode) => {
  * Rəng konfigurasiya obyekti - bunu dəyişməklə bütün rənglər dəyişir
  */
 export const COLOR_CONFIG = {
-  // Rəng sistemini necə tətbiq etmək istəyirsiniz
-  MODE: 'HIERARCHY', // 'HIERARCHY', 'DEPARTMENT', 'BUSINESS_FUNCTION', 'GRADE'
-  
   // Hierarchy rəngləri
   HIERARCHY: {
     'VC': { 
@@ -170,6 +172,58 @@ export const COLOR_CONFIG = {
     }
   },
   
+  // Grade rəngləri
+  GRADE: {
+    '1': {
+      primary: '#dc2626', // red-600
+      light: '#ef4444',
+      bg: '#fef2f2',
+      bgDark: '#991b1b'
+    },
+    '2': {
+      primary: '#ea580c', // orange-600
+      light: '#f97316',
+      bg: '#fff7ed',
+      bgDark: '#9a3412'
+    },
+    '3': {
+      primary: '#ca8a04', // yellow-600
+      light: '#eab308',
+      bg: '#fefce8',
+      bgDark: '#713f12'
+    },
+    '4': {
+      primary: '#059669', // emerald-600
+      light: '#10b981',
+      bg: '#ecfdf5',
+      bgDark: '#064e3b'
+    },
+    '5': {
+      primary: '#0891b2', // cyan-600
+      light: '#06b6d4',
+      bg: '#ecfeff',
+      bgDark: '#164e63'
+    },
+    '6': {
+      primary: '#2563eb', // blue-600
+      light: '#3b82f6',
+      bg: '#eff6ff',
+      bgDark: '#1e3a8a'
+    },
+    '7': {
+      primary: '#7c3aed', // violet-600
+      light: '#8b5cf6',
+      bg: '#f5f3ff',
+      bgDark: '#4c1d95'
+    },
+    '8': {
+      primary: '#9333ea', // purple-600
+      light: '#a855f7',
+      bg: '#faf5ff',
+      bgDark: '#581c87'
+    }
+  },
+  
   // Default rəng
   DEFAULT: {
     primary: '#6b7280',
@@ -186,7 +240,7 @@ export const COLOR_CONFIG = {
  * @returns {Object} - Rəng obyekti
  */
 export const getEmployeeColors = (employee, darkMode = false) => {
-  const mode = COLOR_CONFIG.MODE;
+  const mode = COLOR_MODE;
   let colorKey = '';
   
   switch (mode) {
@@ -200,7 +254,7 @@ export const getEmployeeColors = (employee, darkMode = false) => {
       colorKey = employee.businessFunction;
       break;
     case 'GRADE':
-      colorKey = `Grade ${employee.grade}`;
+      colorKey = employee.grade;
       break;
     default:
       colorKey = employee.positionGroup;
@@ -259,8 +313,13 @@ export const getDepartmentColor = (department, darkMode) => {
  * @param {string} mode - 'HIERARCHY', 'DEPARTMENT', 'BUSINESS_FUNCTION', 'GRADE'
  */
 export const setColorMode = (mode) => {
-  COLOR_CONFIG.MODE = mode;
+  COLOR_MODE = mode;
 };
+
+/**
+ * Cari color mode-u əldə etmək
+ */
+export const getCurrentColorMode = () => COLOR_MODE;
 
 /**
  * Hierarchy Legend - rəng açıqlamaları
@@ -268,7 +327,7 @@ export const setColorMode = (mode) => {
  * @returns {Array} - Legend məlumatları
  */
 export const getHierarchyLegend = (darkMode) => {
-  const mode = COLOR_CONFIG.MODE;
+  const mode = COLOR_MODE;
   const config = COLOR_CONFIG[mode] || COLOR_CONFIG.HIERARCHY;
   
   return Object.entries(config).map(([key, colors]) => ({
@@ -313,6 +372,16 @@ const getLevelDescription = (key, mode) => {
       'Trading': 'Trading Division',
       'Georgia': 'Georgia Operations',
       'UK': 'UK Operations'
+    },
+    GRADE: {
+      '1': 'Grade 1 - Entry Level',
+      '2': 'Grade 2 - Junior',
+      '3': 'Grade 3 - Standard',
+      '4': 'Grade 4 - Experienced',
+      '5': 'Grade 5 - Senior',
+      '6': 'Grade 6 - Principal',
+      '7': 'Grade 7 - Director',
+      '8': 'Grade 8 - Executive'
     }
   };
   
@@ -328,8 +397,3 @@ export const getColorModes = () => [
   { value: 'BUSINESS_FUNCTION', label: 'Business Function', description: 'Color by business unit' },
   { value: 'GRADE', label: 'Grade Level', description: 'Color by grade level' }
 ];
-
-/**
- * Cari rəng rejimini əldə etmək
- */
-export const getCurrentColorMode = () => COLOR_CONFIG.MODE;

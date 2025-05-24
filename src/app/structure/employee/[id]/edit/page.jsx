@@ -8,7 +8,7 @@ import EmployeeForm from "@/components/headcount/EmployeeForm";
 import { useTheme } from "@/components/common/ThemeProvider";
 
 /**
- * Edit Employee Page
+ * Edit Employee Page with Full Width Design
  * Page for editing an existing employee's details
  */
 export default function EditEmployeePage() {
@@ -171,50 +171,41 @@ export default function EditEmployeePage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-6">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className={`text-2xl font-bold ${textPrimary}`}>
-                Edit Employee
-              </h1>
-              <p className={`text-sm ${textMuted} mt-1`}>
-                Editing information for: <span className="font-medium text-almet-sapphire dark:text-almet-steel-blue">{employee.name}</span>
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link
-                href={`/structure/employee/${id}`}
-                className="flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
-              >
-                <ArrowLeft size={16} className="mr-1" />
-                Back to Profile
-              </Link>
-              <Link
-                href="/structure/headcount-table"
-                className="flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
-              >
-                Headcount Table
-              </Link>
-            </div>
-          </div>
-          
-          {/* Edit Info Card */}
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg p-4 mb-6">
-            <div className="flex items-start">
-              <AlertCircle className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5 mr-3 flex-shrink-0" />
+      {/* Full Width Container */}
+      <div className="w-full max-w-none px-0">
+        {/* Page Header - Only for the top info section */}
+        <div className="container mx-auto px-4 py-6">
+          <div className="mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               <div>
-                <h3 className={`text-sm font-medium text-amber-800 dark:text-amber-300`}>Edit Mode</h3>
-                <p className={`text-sm text-amber-600 dark:text-amber-400 mt-0.5`}>
-                  Changes you make will be reflected immediately across the system after saving. Edit all fields as needed.
+                <h1 className={`text-2xl font-bold ${textPrimary}`}>
+                  Edit Employee
+                </h1>
+                <p className={`text-sm ${textMuted} mt-1`}>
+                  Editing information for: <span className="font-medium text-almet-sapphire dark:text-almet-steel-blue">{employee.name}</span>
                 </p>
               </div>
+              <div className="flex gap-3">
+                <Link
+                  href={`/structure/employee/${id}`}
+                  className="flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+                >
+                  <ArrowLeft size={16} className="mr-1" />
+                  Back to Profile
+                </Link>
+                <Link
+                  href="/structure/headcount-table"
+                  className="flex items-center px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+                >
+                  Headcount Table
+                </Link>
+              </div>
             </div>
+         
           </div>
         </div>
         
-        {/* Render the Employee Form in edit mode */}
+        {/* Render the Employee Form in edit mode - Full Width */}
         <EmployeeForm employee={employee} />
       </div>
     </DashboardLayout>

@@ -20,7 +20,7 @@ const SearchBar = ({ searchTerm, onSearchChange }) => {
   };
 
   return (
-    <div className="relative w-full md:w-1/3 mb-4">
+    <div className="relative w-full md:w-1/3 mb-3">
       <input
         type="text"
         placeholder="Search employees by name, email, HC number..."
@@ -30,7 +30,7 @@ const SearchBar = ({ searchTerm, onSearchChange }) => {
       />
       <Search
         className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${styles.textMuted}`}
-        size={18}
+        size={16}
       />
     </div>
   );

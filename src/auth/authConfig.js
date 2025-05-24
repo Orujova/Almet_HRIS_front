@@ -10,13 +10,22 @@ export const msalConfig = {
       process.env.NEXT_PUBLIC_REDIRECT_URI || "http://localhost:3000",
   },
   cache: {
-    cacheLocation: "sessionStorage",
-    storeAuthStateInCookie: false,
+    // localStorage istəyinə görə dəyişir
+    cacheLocation: "localStorage", // "sessionStorage" əvəzinə "localStorage" istifadə edirik
+    storeAuthStateInCookie: true, // Cookie-də state saxla (cross-tab üçün)
   },
+  system: {
+    allowNativeBroker: false, // Native broker-i deaktiv et
+    windowHashTimeout: 60000, // 60 saniyə timeout
+    iframeHashTimeout: 6000, // 6 saniyə iframe timeout
+    loadFrameTimeout: 0, // Frame load timeout (0 = disable)
+    navigateFrameWait: 0, // Frame navigation wait
+  }
 };
 
 export const loginRequest = {
   scopes: ["openid", "profile", "email", "User.Read"],
+  prompt: "select_account", // Hər dəfə account seçimi göstər
 };
 
 export const graphRequest = {

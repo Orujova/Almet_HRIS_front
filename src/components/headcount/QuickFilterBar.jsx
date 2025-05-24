@@ -7,7 +7,7 @@ const FilterPill = ({ label, active, onClick }) => {
   
   return (
     <button
-      className={`px-3 py-1.5 rounded-full text-sm flex items-center mr-2 ${
+      className={`px-2 py-1 rounded-full text-xs flex items-center mr-2 ${
         active 
           ? darkMode 
             ? 'bg-almet-sapphire text-white' 
@@ -19,7 +19,7 @@ const FilterPill = ({ label, active, onClick }) => {
       onClick={onClick}
     >
       {label}
-      {active && <X size={14} className="ml-1" />}
+      {active && <X size={12} className="ml-1" />}
     </button>
   );
 };
@@ -43,7 +43,7 @@ const QuickFilterBar = ({
   const inputBg = darkMode ? "bg-gray-700" : "bg-gray-100";
   
   return (
-    <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
+    <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
       {/* Active filter pills */}
       <div className="flex flex-wrap">
         {activeFilters && activeFilters.map((filter, index) => (
@@ -60,7 +60,7 @@ const QuickFilterBar = ({
       <div className="flex space-x-2 flex-wrap">
         <div className="relative">
           <select
-            className={`p-2 pr-8 text-sm  rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+            className={`p-1.5 pr-6 text-xs rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
             value={statusFilter}
             onChange={(e) => onStatusChange(e.target.value)}
           >
@@ -70,14 +70,14 @@ const QuickFilterBar = ({
             <option value="probation">Probation</option>
             <option value="on leave">On Leave</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-            <ChevronDown size={16} className={textMuted} />
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
+            <ChevronDown size={12} className={textMuted} />
           </div>
         </div>
         
         <div className="relative">
           <select
-            className={`p-2 pr-8 text-sm  rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+            className={`p-1.5 pr-6 text-xs rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
             value={officeFilter}
             onChange={(e) => onOfficeChange(e.target.value)}
           >
@@ -85,14 +85,14 @@ const QuickFilterBar = ({
             <option value="baku">Baku Office</option>
             <option value="dubai">Dubai Office</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-            <ChevronDown size={16} className={textMuted} />
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
+            <ChevronDown size={12} className={textMuted} />
           </div>
         </div>
         
         <div className="relative">
           <select
-            className={`p-2 text-sm  pr-8 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+            className={`p-1.5 text-xs pr-6 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
             value={departmentFilter}
             onChange={(e) => onDepartmentChange(e.target.value)}
           >
@@ -103,8 +103,8 @@ const QuickFilterBar = ({
             <option value="hr">HR</option>
             <option value="compliance">Compliance</option>
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2">
-            <ChevronDown size={16} className={textMuted} />
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
+            <ChevronDown size={12} className={textMuted} />
           </div>
         </div>
       </div>

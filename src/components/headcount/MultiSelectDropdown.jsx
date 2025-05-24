@@ -53,21 +53,21 @@ const MultiSelectDropdown = ({ options, placeholder, onChange, selectedValues = 
             selectedValues.map((value, idx) => (
               <span 
                 key={idx} 
-                className={`${darkMode ? 'bg-gray-700' : 'bg-almet-mystic'} ${textPrimary} text-xs px-2 py-0.5 rounded flex items-center`}
+                className={`${darkMode ? 'bg-gray-700' : 'bg-almet-mystic'} ${textPrimary} text-[10px] px-2 py-0.5 rounded flex items-center`}
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleOption(value);
                 }}
               >
                 {value}
-                <X size={12} className="ml-1" />
+                <X size={10} className="ml-1" />
               </span>
             ))
           ) : (
-            <span className={textMuted}>{placeholder}</span>
+            <span className={`${textMuted} text-sm`}>{placeholder}</span>
           )}
         </div>
-        <ChevronDown size={18} className={textMuted} />
+        <ChevronDown size={16} className={textMuted} />
       </div>
 
       {isOpen && (
@@ -77,22 +77,22 @@ const MultiSelectDropdown = ({ options, placeholder, onChange, selectedValues = 
               <input
                 type="text"
                 placeholder="Search..."
-                className={`w-full p-2 border ${borderColor} rounded-md ${inputBg} ${textPrimary} pl-8`}
+                className={`w-full p-2 border ${borderColor} rounded-md ${inputBg} ${textPrimary} pl-8 text-sm`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
               />
-              <Search className="absolute left-2 top-2.5 text-gray-400 dark:text-gray-500" size={16} />
+              <Search className="absolute left-2 top-2.5 text-gray-400 dark:text-gray-500" size={14} />
             </div>
           </div>
           
           {selectedValues.length > 0 && (
             <div className="px-2 pb-2 flex justify-between items-center">
-              <span className={`text-xs ${textMuted}`}>
+              <span className={`text-[10px] ${textMuted}`}>
                 {selectedValues.length} selected
               </span>
               <button 
-                className="text-xs text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
+                className="text-[10px] text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300"
                 onClick={(e) => {
                   e.stopPropagation();
                   clearAll();
@@ -120,22 +120,22 @@ const MultiSelectDropdown = ({ options, placeholder, onChange, selectedValues = 
                       : ''
                   }`}>
                     {selectedValues.includes(option) && (
-                      <Check size={14} className="text-white" />
+                      <Check size={12} className="text-white" />
                     )}
                   </div>
-                  <span className={textPrimary}>{option}</span>
+                  <span className={`${textPrimary} text-sm`}>{option}</span>
                 </div>
               ))
             ) : (
               <div className="p-4 text-center">
-                <p className={`${textMuted} text-sm`}>No options found</p>
+                <p className={`${textMuted} text-xs`}>No options found</p>
               </div>
             )}
           </div>
           
           <div className="p-2 border-t border-gray-200 dark:border-gray-700 flex justify-end">
             <button 
-              className="px-3 py-1 bg-almet-sapphire text-white rounded-md text-sm"
+              className="px-3 py-1 bg-almet-sapphire text-white rounded-md text-xs"
               onClick={() => setIsOpen(false)}
             >
               Done

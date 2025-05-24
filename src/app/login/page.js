@@ -7,8 +7,8 @@ import { useAuth } from "@/auth/AuthContext";
 import Logo from "@/components/common/Logo";
 
 export default function Login() {
-  const { login, isAuthenticated, loading, authError } = useAuth();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const { login, isAuthenticated, loading, authError, isLoggingIn } = useAuth();
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -18,15 +18,37 @@ export default function Login() {
   }, [isAuthenticated, router]);
 
   const handleLogin = async () => {
-    setIsLoggingIn(true);
+    // Prevent multiple login attempts
+    if (isLoggingIn || hasAttemptedLogin) {
+      console.log("⚠️ Login already in progress or attempted");
+      return;
+    }
+
+    setHasAttemptedLogin(true);
+    
     try {
       await login();
     } catch (error) {
       console.error("Login attempt failed:", error);
     } finally {
-      setIsLoggingIn(false);
+      // Reset after 3 seconds to allow retry if needed
+      setTimeout(() => {
+        setHasAttemptedLogin(false);
+      }, 3000);
     }
   };
+
+  // Show loading if already authenticated
+  if (isAuthenticated) {
+    return (
+      <div className="h-screen bg-almet-mystic dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-almet-sapphire mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Redirecting...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-almet-mystic dark:bg-gray-900 overflow-hidden">
@@ -98,9 +120,6 @@ export default function Login() {
             
             {/* Logo */}
             <div className="text-center mb-8">
-              {/* <div className="mb-4 flex justify-center">
-                <Logo />
-              </div> */}
               <h2 className="text-3xl font-bold text-almet-cloud-burst dark:text-white mb-3">
                 Welcome Back
               </h2>
@@ -121,16 +140,31 @@ export default function Login() {
               </div>
             )}
 
+            {/* Interaction in Progress Warning */}
+            {isLoggingIn && (
+              <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                <div className="flex items-center text-blue-800 dark:text-blue-200">
+                  <div className="w-5 h-5 mr-2 flex-shrink-0 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+                  <span className="text-sm font-medium">Signing in... Please wait.</span>
+                </div>
+              </div>
+            )}
+
             {/* Login Button */}
             <button
               onClick={handleLogin}
-              disabled={isLoggingIn || loading}
-              className="w-full flex items-center justify-center px-6 py-4 text-white bg-almet-sapphire hover:bg-blue-700 disabled:bg-blue-400 font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:ring-offset-2"
+              disabled={isLoggingIn || loading || hasAttemptedLogin}
+              className="w-full flex items-center justify-center px-6 py-4 text-white bg-almet-sapphire hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed font-semibold rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:ring-offset-2 disabled:transform-none disabled:shadow-lg"
             >
               {isLoggingIn || loading ? (
                 <>
                   <div className="mr-3 h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                   <span>Signing in...</span>
+                </>
+              ) : hasAttemptedLogin ? (
+                <>
+                  <div className="mr-3 h-5 w-5 animate-pulse rounded-full border-2 border-white"></div>
+                  <span>Please wait...</span>
                 </>
               ) : (
                 <>
@@ -141,6 +175,19 @@ export default function Login() {
                 </>
               )}
             </button>
+
+            {/* Retry Button */}
+            {authError && !isLoggingIn && (
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full mt-3 flex items-center justify-center px-6 py-3 text-almet-sapphire bg-transparent border border-almet-sapphire hover:bg-almet-sapphire hover:text-white font-medium rounded-xl transition-all duration-300"
+              >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Refresh & Try Again
+              </button>
+            )}
 
             {/* Security Notice */}
             <div className="mt-8 text-center">
@@ -165,6 +212,11 @@ export default function Login() {
               <p className="text-sm text-gray-600 dark:text-almet-bali-hai">
                 Need help? Contact your system administrator
               </p>
+              {authError && authError.includes("interaction_in_progress") && (
+                <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                  If the problem persists, please refresh the page and try again.
+                </p>
+              )}
             </div>
           </div>
         </div>

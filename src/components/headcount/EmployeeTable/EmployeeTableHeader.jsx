@@ -37,7 +37,7 @@ const EmployeeTableHeader = ({
               className={`ml-1 text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
               onClick={() => onSort("name")}
             >
-              Employee Info
+              Employee 
               <SortingIndicator direction={getSortDirection("name")} />
             </button>
           </div>
@@ -55,27 +55,28 @@ const EmployeeTableHeader = ({
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
-            className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
+            className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("businessFunction")}
           >
-            Organization
+            Business function & Department
+
             <SortingIndicator direction={getSortDirection("businessFunction")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
-            className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
+            className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("unit")}
           >
-            Unit & Function
+            Unit & Job function
             <SortingIndicator direction={getSortDirection("unit")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
-            className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
+            className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("positionGroup")}
           >
             Hierarchy & Grade
@@ -115,7 +116,7 @@ const EmployeeTableHeader = ({
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
-            className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
+            className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
             onClick={() => onSort("status")}
           >
             Status & Tags
