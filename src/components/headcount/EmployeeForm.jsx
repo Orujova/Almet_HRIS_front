@@ -1,10 +1,11 @@
 // src/components/headcount/EmployeeForm.jsx
 import { useState } from "react";
-import { ChevronLeft, Save } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Info } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
-import Link from "next/link";
+
 import { useRouter } from "next/navigation";
 import StepIndicator from "./FormComponents/StepIndicator";
+
 import { 
   FormStep1BasicInfo, 
   FormStep2JobInfo, 
@@ -13,10 +14,7 @@ import {
 } from "./FormSteps";
 
 /**
- * Main employee form component with multi-step process and full width design
- * @param {Object} props - Component props
- * @param {Object} props.employee - Employee data for edit mode (optional)
- * @returns {JSX.Element} - Employee form component
+ * Improved Employee Form with compact design
  */
 const EmployeeForm = ({ employee = null }) => {
   const { darkMode } = useTheme();
@@ -24,22 +22,31 @@ const EmployeeForm = ({ employee = null }) => {
   const isEditMode = !!employee;
 
   // Step configuration
-  const stepLabels = ["Basic Info", "Job Info", "Management", "Documents"];
+  const stepLabels = ["Basic Info", "Job Details", "Management", "Documents"];
   const totalSteps = stepLabels.length;
   const [activeStep, setActiveStep] = useState(1);
+
+  // Modal state
+  const [modalInfo, setModalInfo] = useState({
+    isOpen: false,
+    type: '',
+    title: '',
+    content: ''
+  });
 
   // Theme-dependent classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition duration-150";
+  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200";
   const btnSecondary = darkMode
-    ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
-    : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-  const shadowClass = darkMode ? "" : "shadow-sm";
+    ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
+    : "bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200";
 
-  // Form state
+  // Form state with enhanced structure
   const [formData, setFormData] = useState({
+    // Basic Info
     empNo: employee?.empNo || "",
     firstName: employee?.firstName || "",
     lastName: employee?.lastName || "",
@@ -48,40 +55,73 @@ const EmployeeForm = ({ employee = null }) => {
     dateOfBirth: employee?.dateOfBirth || "",
     address: employee?.address || "",
     emergencyContact: employee?.emergencyContact || "",
+    profileImage: employee?.profileImage || null,
+    
+    // Job Info - Enhanced with multi-select support
     startDate: employee?.startDate || "",
     endDate: employee?.endDate || "",
-    businessFunction: employee?.businessFunction || "",
-    department: employee?.department || "",
-    unit: employee?.unit || "",
-    jobFunction: employee?.jobFunction || "",
+    businessFunctions: employee?.businessFunctions || [employee?.businessFunction].filter(Boolean) || [],
+    departments: employee?.departments || [employee?.department].filter(Boolean) || [],
+    units: employee?.units || [employee?.unit].filter(Boolean) || [],
+    jobFunctions: employee?.jobFunctions || [employee?.jobFunction].filter(Boolean) || [],
     jobTitle: employee?.jobTitle || "",
     positionGroup: employee?.positionGroup || "",
     grade: employee?.grade || "",
+    office: employee?.office || "",
+    
+    // Management Info
     lineManager: employee?.lineManager || "",
     lineManagerHcNumber: employee?.lineManagerHcNumber || "",
-    office: employee?.office || "",
     status: employee?.status || "ACTIVE",
     tags: employee?.tags || [],
-    profileImage: employee?.profileImage || null,
-    documents: employee?.documents || [],
     notes: employee?.notes || "",
+    
+    // Documents
+    documents: employee?.documents || []
   });
+
+  // Validation state
+  const [validationErrors, setValidationErrors] = useState({});
 
   // Input change handler
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear validation error for this field
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
+
+  // Multi-select change handler
+  const handleMultiSelectChange = (fieldName, values) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: values
+    }));
+
+    // Clear validation error for this field
+    if (validationErrors[fieldName]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [fieldName]: null
+      }));
+    }
   };
 
   // File upload handler
   const handleFileUpload = (fieldName, value) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [fieldName]: value
-    });
+    }));
   };
 
   // Document upload handler
@@ -96,10 +136,10 @@ const EmployeeForm = ({ employee = null }) => {
         dateUploaded: new Date().toISOString(),
       }));
 
-      setFormData({
-        ...formData,
-        documents: [...formData.documents, ...newDocuments]
-      });
+      setFormData(prev => ({
+        ...prev,
+        documents: [...prev.documents, ...newDocuments]
+      }));
     }
   };
 
@@ -108,55 +148,127 @@ const EmployeeForm = ({ employee = null }) => {
     const updatedDocuments = [...formData.documents];
     updatedDocuments.splice(index, 1);
     
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       documents: updatedDocuments
-    });
+    }));
   };
 
   // Tags change handler
   const handleTagsChange = (tags) => {
-    setFormData({
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       tags
-    });
+    }));
+  };
+
+  // Form validation
+  const validateStep = (step) => {
+    const errors = {};
+
+    switch (step) {
+      case 1: // Basic Info
+        if (!formData.empNo.trim()) errors.empNo = "Employee ID is required";
+        if (!formData.firstName.trim()) errors.firstName = "First name is required";
+        if (!formData.lastName.trim()) errors.lastName = "Last name is required";
+        if (!formData.email.trim()) errors.email = "Email is required";
+        else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = "Email is invalid";
+        break;
+      
+      case 2: // Job Info
+        if (!formData.startDate) errors.startDate = "Start date is required";
+        if (formData.businessFunctions.length === 0) errors.businessFunctions = "At least one business function is required";
+        if (formData.departments.length === 0) errors.departments = "At least one department is required";
+        if (!formData.positionGroup) errors.positionGroup = "Position group is required";
+        break;
+      
+      case 3: // Management Info
+        if (!formData.status) errors.status = "Status is required";
+        break;
+    }
+
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   // Navigation handlers
   const handleNextStep = () => {
-    if (activeStep < totalSteps) {
-      setActiveStep(activeStep + 1);
-      window.scrollTo(0, 0);
+    if (validateStep(activeStep)) {
+      if (activeStep < totalSteps) {
+        setActiveStep(activeStep + 1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   };
 
   const handlePrevStep = () => {
     if (activeStep > 1) {
       setActiveStep(activeStep - 1);
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  // Form submission
-  const handleSubmit = (e) => {
+  // Modal handlers
+  const showInfoModal = (type) => {
+    setModalInfo({
+      isOpen: true,
+      type: type,
+      title: '',
+      content: ''
+    });
+  };
+
+  const closeModal = () => {
+    setModalInfo({
+      isOpen: false,
+      type: '',
+      title: '',
+      content: ''
+    });
+  };
+
+  // Form submission - only for final submit button
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Combine first and last name to create the full name
-    const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-    
-    // In a real implementation, this would send the data to an API
-    console.log("Submitting form data:", {
-      ...formData,
-      name: fullName
-    });
+    // Only submit if we're on the last step
+    if (activeStep !== totalSteps) {
+      return;
+    }
 
-    // Show success message and redirect
-    alert(
-      isEditMode
-        ? "Employee updated successfully!"
-        : "Employee added successfully!"
-    );
-    router.push("/structure/headcount-table");
+    if (!validateStep(activeStep)) {
+      return;
+    }
+
+    try {
+      // Prepare data for submission
+      const submitData = {
+        ...formData,
+        name: `${formData.firstName} ${formData.lastName}`.trim(),
+        // Convert arrays back to single values for backward compatibility if needed
+        businessFunction: formData.businessFunctions[0] || '',
+        department: formData.departments[0] || '',
+        unit: formData.units[0] || '',
+        jobFunction: formData.jobFunctions[0] || ''
+      };
+
+      console.log("Submitting form data:", submitData);
+
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Show success message and redirect
+      alert(
+        isEditMode
+          ? "Employee updated successfully!"
+          : "Employee added successfully!"
+      );
+      
+      router.push("/structure/headcount-table");
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      alert("Error saving employee data. Please try again.");
+    }
   };
 
   // Cancel form
@@ -172,116 +284,124 @@ const EmployeeForm = ({ employee = null }) => {
 
   // Render current step content
   const renderStepContent = () => {
+    const commonProps = {
+      formData,
+      handleInputChange,
+      handleMultiSelectChange,
+      handleFileUpload,
+      handleDocumentUpload,
+      removeDocument,
+      handleTagsChange,
+      validationErrors,
+      showInfoModal
+    };
+
     switch (activeStep) {
       case 1:
-        return (
-          <FormStep1BasicInfo 
-            formData={formData} 
-            handleInputChange={handleInputChange} 
-            handleFileUpload={handleFileUpload} 
-          />
-        );
+        return <FormStep1BasicInfo {...commonProps} />;
       case 2:
-        return (
-          <FormStep2JobInfo 
-            formData={formData} 
-            handleInputChange={handleInputChange} 
-          />
-        );
+        return <FormStep2JobInfo {...commonProps} />;
       case 3:
-        return (
-          <FormStep3AdditionalInfo 
-            formData={formData} 
-            handleInputChange={handleInputChange} 
-            handleTagsChange={handleTagsChange} 
-          />
-        );
+        return <FormStep3AdditionalInfo {...commonProps} />;
       case 4:
-        return (
-          <FormStep4Documents 
-            formData={formData} 
-            handleDocumentUpload={handleDocumentUpload} 
-            removeDocument={removeDocument} 
-          />
-        );
+        return <FormStep4Documents {...commonProps} />;
       default:
         return null;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-   
-        <div className={`w-full  mx-auto ${bgCard} rounded-xl ${shadowClass} overflow-hidden transition-all duration-200 hover:shadow-lg border ${borderColor}`}>
-      
+  // Get step completion status
+  const getStepStatus = (step) => {
+    if (step < activeStep) return 'completed';
+    if (step === activeStep) return 'active';
+    return 'pending';
+  };
 
-          {/* Step Indicator */}
-          <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+  return (
+    <>
+      <div className="container mx-auto px-4 py-0">
+        {/* Main Form Container - Compact Design */}
+        <div className={`${bgCard} rounded-xl shadow-lg overflow-hidden border ${borderColor}`}>
+          {/* Step Indicator - Compact */}
+          <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
             <StepIndicator 
               currentStep={activeStep} 
               totalSteps={totalSteps} 
-              stepLabels={stepLabels} 
+              stepLabels={stepLabels}
+              getStepStatus={getStepStatus}
             />
+            
+            {/* Progress Bar - Thinner */}
+            <div className="mt-3">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                <div 
+                  className="bg-gradient-to-r from-almet-sapphire to-almet-astral h-1 rounded-full transition-all duration-300 ease-out"
+                  style={{ width: `${(activeStep / totalSteps) * 100}%` }}
+                ></div>
+              </div>
+            </div>
           </div>
 
-          {/* Form Body - Full Width */}
-          <form onSubmit={handleSubmit} className="p-8">
-            <div className="w-full">
+          {/* Form Body - Compact */}
+          <div className="p-6">
+            <div className="w-full min-h-[400px]">
               {renderStepContent()}
             </div>
             
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center space-x-4">
+            {/* Navigation Buttons - Compact */}
+            <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center space-x-3">
                 {activeStep > 1 && (
                   <button
                     type="button"
-                    className={`${btnSecondary} px-6 py-3 rounded-md transition-colors font-medium`}
+                    className={`${btnSecondary} px-4 py-2 rounded text-sm font-medium transition-all hover:shadow-sm flex items-center outline-none focus:ring-2 focus:ring-almet-sapphire`}
                     onClick={handlePrevStep}
                   >
-                    <ChevronLeft size={16} className="mr-2 inline" />
-                    Previous Step
+                    <ChevronLeft size={14} className="mr-1" />
+                    Previous
                   </button>
                 )}
                 <button
                   type="button"
-                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  className={`${textSecondary} hover:text-red-500 transition-colors text-xs outline-none focus:ring-2 focus:ring-red-500 rounded px-2 py-1`}
                   onClick={handleCancel}
                 >
                   Cancel & Exit
                 </button>
               </div>
               
-              <div className="flex items-center space-x-4">
-                {/* Step info for mobile */}
-                <span className="text-sm text-gray-500 dark:text-gray-400 sm:hidden">
-                  {activeStep}/{totalSteps}
+              <div className="flex items-center space-x-3">
+                {/* Step Counter for Mobile */}
+                <span className={`text-xs ${textSecondary} sm:hidden`}>
+                  Step {activeStep} of {totalSteps}
                 </span>
                 
                 {activeStep < totalSteps ? (
                   <button
                     type="button"
-                    className={`${btnPrimary} px-8 py-3 rounded-md font-medium shadow-sm hover:shadow flex items-center`}
+                    className={`${btnPrimary} px-6 py-2 rounded text-sm font-medium shadow-md hover:shadow-lg flex items-center transform hover:scale-105 outline-none focus:ring-2 focus:ring-almet-sapphire focus:ring-offset-2`}
                     onClick={handleNextStep}
                   >
                     Continue
-                    <ChevronLeft size={16} className="ml-2 rotate-180" />
+                    <ChevronRight size={14} className="ml-1" />
                   </button>
                 ) : (
-                  <button
-                    type="submit"
-                    className={`${btnPrimary} px-8 py-3 rounded-md font-medium shadow-sm hover:shadow flex items-center`}
-                  >
-                    <Save size={16} className="mr-2" />
-                    {isEditMode ? "Update Employee" : "Create Employee"}
-                  </button>
+                  <form onSubmit={handleSubmit} className="inline">
+                    <button
+                      type="submit"
+                      className={`${btnPrimary} px-6 py-2 rounded text-sm font-medium shadow-md hover:shadow-lg flex items-center transform hover:scale-105 outline-none focus:ring-2 focus:ring-almet-sapphire focus:ring-offset-2`}
+                    >
+                      <Save size={14} className="mr-1" />
+                      {isEditMode ? "Update Employee" : "Create Employee"}
+                    </button>
+                  </form>
                 )}
               </div>
             </div>
-          </form>
+          </div>
         </div>
-      {/* </div> */}
-    </div>
+      </div>
+    </>
   );
 };
 

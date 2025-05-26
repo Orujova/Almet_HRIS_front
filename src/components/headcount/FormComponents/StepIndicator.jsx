@@ -24,11 +24,11 @@ const StepIndicator = ({ currentStep, totalSteps, stepLabels = [] }) => {
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
 
   return (
-    <div className="flex items-center mb-6">
+    <div className="flex items-center mb-4">
       {Array.from({ length: totalSteps }).map((_, index) => (
         <div key={index} className="flex items-center">
           <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
               index + 1 === currentStep
                 ? btnPrimary + " text-white"
                 : index + 1 < currentStep
@@ -37,21 +37,21 @@ const StepIndicator = ({ currentStep, totalSteps, stepLabels = [] }) => {
             }`}
           >
             {index + 1 < currentStep ? (
-              <Check size={16} />
+              <Check size={12} />
             ) : (
               <span>{index + 1}</span>
             )}
           </div>
           
           {stepLabels && stepLabels[index] && (
-            <span className={`ml-2 text-xs ${textPrimary} hidden sm:inline`}>
+            <span className={`ml-1.5 text-xs ${textPrimary} hidden sm:inline`}>
               {stepLabels[index]}
             </span>
           )}
           
           {index < totalSteps - 1 && (
             <div
-              className={`h-1 w-8 sm:w-12 mx-1 ${
+              className={`h-0.5 w-6 sm:w-8 mx-1 ${
                 index + 1 < currentStep ? "bg-green-500" : borderColor
               }`}
             ></div>

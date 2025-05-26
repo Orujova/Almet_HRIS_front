@@ -38,36 +38,36 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
-        <h2 className={`text-xl font-bold ${textPrimary}`}>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2 mb-4">
+        <h2 className={`text-lg font-bold ${textPrimary}`}>
           Management & Status
         </h2>
-        <div className="text-sm px-3 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded-md font-medium">
+        <div className="text-xs px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded font-medium">
           Step 3 of 4
         </div>
       </div>
 
-      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg p-4 mb-6">
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg p-3 mb-4">
         <div className="flex items-start">
-          <User className="h-5 w-5 text-amber-500 dark:text-amber-400 mt-0.5 mr-3 flex-shrink-0" />
+          <User className="h-4 w-4 text-amber-500 dark:text-amber-400 mt-0.5 mr-2 flex-shrink-0" />
           <div>
-            <h3 className={`text-sm font-medium text-amber-800 dark:text-amber-300`}>Management Structure</h3>
-            <p className={`text-sm text-amber-600 dark:text-amber-400 mt-0.5`}>
+            <h3 className={`text-xs font-medium text-amber-800 dark:text-amber-300`}>Management Structure</h3>
+            <p className={`text-xs text-amber-600 dark:text-amber-400 mt-0.5`}>
               Properly assigning a line manager ensures the employee appears correctly in the organizational chart.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <FormField
           label="Line Manager"
           name="lineManager"
           value={formData.lineManager}
           onChange={handleInputChange}
           placeholder="Manager's full name"
-          icon={<Users size={18} className={textMuted} />}
+          icon={<Users size={14} className={textMuted} />}
         />
 
         <FormField
@@ -76,7 +76,7 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
           value={formData.lineManagerHcNumber}
           onChange={handleInputChange}
           placeholder="e.g. HLD02"
-          icon={<User size={18} className={textMuted} />}
+          icon={<User size={14} className={textMuted} />}
           helpText="The employee ID of the line manager"
         />
 
@@ -87,13 +87,13 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
           onChange={handleInputChange}
           type="select"
           required={true}
-          icon={<User size={18} className={textMuted} />}
+          icon={<User size={14} className={textMuted} />}
           options={statuses}
         />
 
         <div>
           <label
-            className={`block ${textSecondary} text-sm font-medium mb-1.5`}
+            className={`block ${textSecondary} text-xs font-medium mb-1.5`}
           >
             Tags (Optional)
           </label>
@@ -109,9 +109,9 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-4">
         <label
-          className={`block ${textSecondary} text-sm font-medium mb-1.5`}
+          className={`block ${textSecondary} text-xs font-medium mb-1.5`}
         >
           Additional Notes
         </label>
@@ -119,8 +119,8 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
           name="notes"
           value={formData.notes || ""}
           onChange={handleInputChange}
-          rows="4"
-          className={`block w-full px-3 py-2.5 border ${borderColor} bg-white dark:bg-gray-700 ${textPrimary} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire transition-colors duration-200`}
+          rows="3"
+          className={`block w-full px-2.5 py-2 text-sm border ${borderColor} bg-white dark:bg-gray-700 ${textPrimary} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire transition-colors duration-200`}
           placeholder="Add any additional notes about the employee..."
         ></textarea>
       </div>
