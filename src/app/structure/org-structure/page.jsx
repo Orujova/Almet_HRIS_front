@@ -18,11 +18,11 @@ const OrgChart = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState('tree');
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [showLegend, setShowLegend] = useState(false); // New state for legend visibility
+    const [showLegend, setShowLegend] = useState(false);
 
-    const chartRef = useRef(null); // Ref for the scalable content
-    const containerRef = useRef(null); // Ref for the fullscreen container
-    const scrollContainerRef = useRef(null); // Ref for the pannable/scrollable area
+    const chartRef = useRef(null);
+    const containerRef = useRef(null);
+    const scrollContainerRef = useRef(null);
 
     // Panning states
     const [isDragging, setIsDragging] = useState(false);
@@ -31,24 +31,53 @@ const OrgChart = () => {
     const [scrollLeftStart, setScrollLeftStart] = useState(0);
     const [scrollTopStart, setScrollTopStart] = useState(0);
 
-    const bgApp = darkMode ? "bg-almet-shark" : "bg-almet-mystic/30";
-    const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
-    const textHeader = darkMode ? "text-gray-100" : "text-gray-800";
+    // Enhanced theme colors
+    const bgApp = darkMode ? "bg-almet-cloud-burst" : "bg-gray-50";
+    const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
+    const bgCardHover = darkMode ? "bg-almet-comet" : "bg-gray-50";
+    const textHeader = darkMode ? "text-gray-100" : "text-gray-900";
     const textPrimary = darkMode ? "text-gray-200" : "text-gray-700";
-    const textSecondary = darkMode ? "text-gray-400" : "text-gray-500";
-    const textMuted = darkMode ? "text-almet-bali-hai/80" : "text-gray-400";
-    const borderColor = darkMode ? "border-almet-comet/50" : "border-gray-200/80";
-    const bgAccent = darkMode ? "bg-almet-comet/20" : "bg-almet-mystic/40";
-    const shadowCard = darkMode ? "shadow-md" : "shadow";
+    const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-500";
+    const textMuted = darkMode ? "text-almet-waterloo" : "text-gray-400";
+    const borderColor = darkMode ? "border-almet-comet/30" : "border-gray-200";
+    const bgAccent = darkMode ? "bg-almet-comet/30" : "bg-almet-mystic/50";
+    const shadowCard = "shadow-sm";
+    const connectionColor = darkMode ? "rgb(122, 130, 154)" : "rgb(156, 163, 175)";
 
+    // Simplified position hierarchy colors - using project colors
     const hierarchyColors = {
-        'VC': { primary: '#30539b', light: '#4e7db5', bg: darkMode ? 'rgba(48, 83, 155, 0.1)' : 'rgba(48, 83, 155, 0.05)' },
-        'DIRECTOR': { primary: '#336fa5', light: '#4e7db5', bg: darkMode ? 'rgba(51, 111, 165, 0.1)' : 'rgba(51, 111, 165, 0.05)' },
-        'HEAD OF DEPARTMENT': { primary: '#38587d', light: '#4f5772', bg: darkMode ? 'rgba(56, 88, 125, 0.1)' : 'rgba(56, 88, 125, 0.05)' },
-        'SENIOR SPECIALIST': { primary: '#7a829a', light: '#90a0b9', bg: darkMode ? 'rgba(122, 130, 154, 0.1)' : 'rgba(122, 130, 154, 0.05)' },
-        'SPECIALIST': { primary: '#4f5772', light: '#7a829a', bg: darkMode ? 'rgba(79, 87, 114, 0.1)' : 'rgba(79, 87, 114, 0.05)' },
-        'JUNIOR SPECIALIST': { primary: '#9c9cb5', light: '#90a0b9', bg: darkMode ? 'rgba(156, 156, 181, 0.1)' : 'rgba(156, 156, 181, 0.05)' }
+        'VC': { 
+            primary: darkMode ? '#4e7db5' : '#30539b', 
+            bg: darkMode ? 'rgba(78, 125, 181, 0.1)' : 'rgba(48, 83, 155, 0.08)',
+            badge: darkMode ? '#30539b' : '#4e7db5'
+        },
+        'DIRECTOR': { 
+            primary: darkMode ? '#336fa5' : '#2d5a91', 
+            bg: darkMode ? 'rgba(51, 111, 165, 0.1)' : 'rgba(45, 90, 145, 0.08)',
+            badge: darkMode ? '#2d5a91' : '#336fa5'
+        },
+        'HEAD OF DEPARTMENT': { 
+            primary: darkMode ? '#38587d' : '#324c6b', 
+            bg: darkMode ? 'rgba(56, 88, 125, 0.1)' : 'rgba(50, 76, 107, 0.08)',
+            badge: darkMode ? '#324c6b' : '#38587d'
+        },
+        'SENIOR SPECIALIST': { 
+            primary: darkMode ? '#7a829a' : '#6b7280', 
+            bg: darkMode ? 'rgba(122, 130, 154, 0.1)' : 'rgba(107, 114, 128, 0.08)',
+            badge: darkMode ? '#6b7280' : '#7a829a'
+        },
+        'SPECIALIST': { 
+            primary: darkMode ? '#90a0b9' : '#74839c', 
+            bg: darkMode ? 'rgba(144, 160, 185, 0.1)' : 'rgba(116, 131, 156, 0.08)',
+            badge: darkMode ? '#74839c' : '#90a0b9'
+        },
+        'JUNIOR SPECIALIST': { 
+            primary: darkMode ? '#9c9cb5' : '#8b8ca3', 
+            bg: darkMode ? 'rgba(156, 156, 181, 0.1)' : 'rgba(139, 140, 163, 0.08)',
+            badge: darkMode ? '#8b8ca3' : '#9c9cb5'
+        }
     };
+
     const getEmployeeColor = (employee) => {
         if (!employee || !employee.positionGroup) return hierarchyColors['SPECIALIST'];
         return hierarchyColors[employee.positionGroup] || hierarchyColors['SPECIALIST'];
@@ -69,10 +98,11 @@ const OrgChart = () => {
         { id: 'EUR2', name: 'Nitika Nanda', title: 'OPERATIONS SPECIALIST', grade: '3', lineManagerId: 'HLD3', department: 'Operations', unit: 'EUROPE OPERATIONS', avatar: 'NN', phone: '+44 xxx xxx xxxx', email: 'nitika.nanda@almet.eu', location: 'London', businessFunction: 'UK', positionGroup: 'SPECIALIST' }
     ];
 
-    const cardGap = 40; // Total vertical and horizontal spacing between elements
-    const connectorThickness = 1.5; // Thickness of connection lines
-    const halfCardGap = cardGap / 2; // Half of the vertical gap for line segments
-    const cardVisualWidth = 260; // Max width of an employee card for horizontal line calculation (from CSS min-w-[220px] and max-w-[260px])
+    // Improved spacing and dimensions
+    const cardGap = 50;
+    const connectorThickness = 2;
+    const halfCardGap = cardGap / 2;
+    const cardWidth = 280; // Standardized card width
 
     const getHierarchyMap = (employees) => {
         const map = {};
@@ -108,11 +138,9 @@ const OrgChart = () => {
         let level = 0;
         if (!employeeId || !flatEmployeeMap[employeeId]) return -1;
         let currentEmployee = flatEmployeeMap[employeeId];
-        // Loop until lineManagerId is null, meaning we reached the top (CEO)
         while (currentEmployee && currentEmployee.lineManagerId && flatEmployeeMap[currentEmployee.lineManagerId]) {
             currentEmployee = flatEmployeeMap[currentEmployee.lineManagerId];
             level++;
-            // Safety break for potential infinite loops (e.g., circular references)
             if (level > employeeData.length + 5) {
                 console.error("getLevelToCeoRecursive: Potential infinite loop detected for employeeId:", employeeId);
                 return -2; 
@@ -134,11 +162,9 @@ const OrgChart = () => {
     const augmentedAndMappedData = useMemo(() => {
         const validEmployeeData = employeeData.filter(emp => emp && emp.id != null);
         
-        // Create a flat map for quick lookups for CEO level calculation
         const flatMapForCeoLevel = {};
         validEmployeeData.forEach(emp => flatMapForCeoLevel[emp.id] = { ...emp });
 
-        // Create initial hierarchy map to count subordinates
         const hierarchyMapForSubordinates = getHierarchyMap(validEmployeeData);
 
         const augmented = validEmployeeData.map((emp) => {
@@ -153,7 +179,6 @@ const OrgChart = () => {
             };
         });
 
-        // Re-create the final hierarchy map and root nodes with augmented data
         const finalHierarchyMap = getHierarchyMap(augmented);
         const finalRoots = augmented.filter(item => (!item.lineManagerId || !finalHierarchyMap[item.lineManagerId]));
         
@@ -195,9 +220,11 @@ const OrgChart = () => {
             return newExpanded;
         });
     };
+
     const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 25, 200));
     const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 25, 50));
     const handleResetZoom = () => setZoomLevel(100);
+    
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             containerRef.current?.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error("Fullscreen request failed:", err));
@@ -205,11 +232,12 @@ const OrgChart = () => {
             document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error("Exit fullscreen failed:", err));
         }
     };
+    
     const clearAllFilters = () => {
         setFilters({ department: 'all', grade: 'all', location: 'all' });
         setSearchTerm('');
     };
-    // Check if any filters are active for the filter icon dot
+
     const areFiltersActive = useMemo(() => 
         Object.values(filters).some(f => f !== 'all') || searchTerm !== ''
     , [filters, searchTerm]);
@@ -227,11 +255,10 @@ const OrgChart = () => {
         const handleMouseUp = () => {
             setIsDragging(false);
             if (scrollContainerRef.current) {
-                scrollContainerRef.current.style.cursor = 'grab'; // Reset cursor
+                scrollContainerRef.current.style.cursor = 'grab';
             }
         };
 
-        // Attach listeners to window for better UX (can drag outside container)
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
 
@@ -242,8 +269,7 @@ const OrgChart = () => {
     }, [isDragging, startX, startY, scrollLeftStart, scrollTopStart]);
 
     const handleMouseDown = (e) => {
-        if (e.button !== 0) return; // Only left click
-        // Prevent dragging if clicking on an interactive element within the card
+        if (e.button !== 0) return;
         if (e.target.closest('.employee-card-action') || e.target.closest('button')) { 
             return;
         }
@@ -254,7 +280,7 @@ const OrgChart = () => {
         setScrollLeftStart(scrollContainerRef.current.scrollLeft);
         setScrollTopStart(scrollContainerRef.current.scrollTop);
         scrollContainerRef.current.style.cursor = 'grabbing';
-        e.preventDefault(); // Prevent default browser drag behaviors (e.g., text selection)
+        e.preventDefault();
     };
 
     const resetPan = () => {
@@ -264,26 +290,31 @@ const OrgChart = () => {
         }
     };
 
-    const Avatar = ({ employee, size = 'md', variant = 'default' }) => {
+    // Enhanced Avatar Component
+    const Avatar = ({ employee, size = 'md' }) => {
         const sizes = {
             sm: 'w-8 h-8 text-xs',
             md: 'w-10 h-10 text-sm',
             lg: 'w-12 h-12 text-base',
         };
-        const avatarSize = variant === 'grid' ? 'md' : (variant === 'detail' ? 'sm' : 'sm');
 
-        if (!employee) return <div className={`${sizes[avatarSize]} rounded-lg bg-gray-300 animate-pulse`}></div>;
+        if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
+        
         const colors = getEmployeeColor(employee);
         return (
             <div 
-                className={`${sizes[avatarSize]} rounded-lg flex items-center justify-center font-semibold text-white relative flex-shrink-0`}
-                style={{ backgroundColor: colors.primary, boxShadow: `0 2px 4px ${colors.primary}50` }}
+                className={`${sizes[size]} rounded-xl flex items-center justify-center font-semibold text-white relative flex-shrink-0 ring-2 ring-white dark:ring-almet-san-juan`}
+                style={{ 
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
+                    boxShadow: `0 4px 12px rgba(0,0,0,0.15)`
+                }}
             >
                 {employee.avatar || '?'}
             </div>
         );
     };
 
+    // Enhanced Employee Card Component
     const EmployeeCard = ({ employee, onClick, hasChildren, isExpanded, onToggleExpand, variant = 'tree' }) => {
         if (!employee) return null;
         const directReportsCount = hierarchyMap[employee.id]?.children?.length || 0;
@@ -293,31 +324,30 @@ const OrgChart = () => {
         const isGridVariant = variant === 'grid';
         const isTreeVariant = variant === 'tree';
 
-        const cardBaseStyle = `${bgCard} border ${borderColor} rounded-lg transition-all duration-200 overflow-hidden`;
-        // Added 'employee-card-action' class for event delegation in panning
-        const interactiveStyle = onClick ? `cursor-pointer hover:border-almet-sapphire/70 dark:hover:border-almet-sapphire ${shadowCard} hover:shadow-lg employee-card-action` : "";
+        const cardBaseStyle = `${bgCard} border ${borderColor} rounded-2xl transition-all duration-300 overflow-hidden backdrop-blur-sm`;
+        const interactiveStyle = onClick ? `cursor-pointer hover:${bgCardHover} hover:border-almet-sapphire/40 ${shadowCard} hover:shadow-lg hover:-translate-y-1 employee-card-action` : "";
         
-        let cardPadding = 'p-3';
-        let minCardWidth = 'min-w-[200px]';
+        let cardPadding = 'p-4';
+        let cardWidth = 'w-72'; // Standardized width
 
         if (isGridVariant) {
-            cardPadding = 'p-4';
-            minCardWidth = 'min-w-[240px]';
-        } else if (isTreeVariant) {
-            minCardWidth = 'min-w-[220px]'; // Match cardVisualWidth more closely if possible, or ensure cardVisualWidth is max-w
+            cardPadding = 'p-5';
+            cardWidth = 'w-80';
+        } else if (isDetailVariant) {
+            cardWidth = 'w-64';
+            cardPadding = 'p-3';
         }
 
         if (isDetailVariant) {
             return (
                 <div
-                    className={`${cardBaseStyle} ${interactiveStyle} ${cardPadding} flex items-center gap-3 ${minCardWidth} max-w-xs`}
-                    style={{ borderLeft: `3px solid ${colors.primary}`}}
+                    className={`${cardBaseStyle} ${interactiveStyle} ${cardPadding} flex items-center gap-3 ${cardWidth}`}
                     onClick={onClick}
                 >
-                    <Avatar employee={employee} variant="detail" />
+                    <Avatar employee={employee} size="sm" />
                     <div className="flex-1 min-w-0">
-                        <h4 className={`font-medium ${textPrimary} text-sm truncate`} title={employee.name}>{employee.name}</h4>
-                        <p className={`${textSecondary} text-xs truncate`} title={employee.title}>{employee.title}</p>
+                        <h4 className={`font-semibold ${textPrimary} text-sm truncate`} title={employee.name}>{employee.name}</h4>
+                        <p className={`${textSecondary} text-xs truncate mt-0.5`} title={employee.title}>{employee.title}</p>
                     </div>
                 </div>
             );
@@ -326,61 +356,80 @@ const OrgChart = () => {
         return (
             <div className="relative group">
                 <div
-                    className={`${cardBaseStyle} ${interactiveStyle} ${cardPadding} ${minCardWidth} max-w-[260px] flex flex-col`}
-                    style={{ borderLeft: `3px solid ${colors.primary}` }}
+                    className={`${cardBaseStyle} ${interactiveStyle} ${cardPadding} ${cardWidth} flex flex-col relative`}
                     onClick={onClick}
                 >
-                    <div className="flex items-center gap-3 mb-2">
-                        <Avatar employee={employee} variant={isGridVariant ? 'grid' : 'tree'} />
+                    {/* Header with Avatar and Name */}
+                    <div className="flex items-start gap-4 mb-4">
+                        <Avatar employee={employee} size={isGridVariant ? 'lg' : 'md'} />
                         <div className="flex-1 min-w-0">
-                            <h3 className={`font-medium ${textPrimary} ${isGridVariant ? 'text-base' : 'text-sm'} leading-tight truncate`} title={employee.name}>{employee.name}</h3>
-                            <p className={`${textSecondary} text-xs line-clamp-2 leading-snug`} title={employee.title}>{employee.title}</p>
+                            <h3 className={`font-semibold ${textHeader} ${isGridVariant ? 'text-base' : 'text-sm'} leading-tight truncate mb-1`} title={employee.name}>
+                                {employee.name}
+                            </h3>
+                            <p className={`${textSecondary} text-xs leading-relaxed line-clamp-2`} title={employee.title}>
+                                {employee.title}
+                            </p>
                         </div>
                     </div>
                     
-                    {isGridVariant && (
-                         <div className="flex items-center gap-1.5 flex-wrap my-1.5">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white" style={{ backgroundColor: colors.primary }}>G{employee.grade}</span>
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${bgAccent} ${textPrimary}`}>{employee.department}</span>
-                        </div>
-                    )}
+                    {/* Badges */}
+                    <div className="flex items-center gap-2 mb-4">
+                        <span 
+                            className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium text-white"
+                            style={{ backgroundColor: colors.badge }}
+                        >
+                            Grade {employee.grade}
+                        </span>
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${bgAccent} ${textPrimary}`}>
+                            {employee.department}
+                        </span>
+                    </div>
 
-                    <div className={`mt-auto pt-2 border-t ${borderColor} space-y-1 text-xs`}>
-                        <div className={`flex items-center ${textMuted}`}>
-                            <MapPin className="w-3 h-3 mr-1.5 flex-shrink-0" style={{ color: colors.light }} />
-                            <span className="truncate" title={employee.location}>{employee.location}</span>
+                    {/* Details */}
+                    <div className={`mt-auto pt-4 border-t ${borderColor} space-y-3 text-xs`}>
+                        <div className={`flex items-center ${textSecondary}`}>
+                            <MapPin className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
+                            <span className="truncate font-medium" title={employee.location}>{employee.location}</span>
                         </div>
+                        
                         {directReportsCount > 0 && (
-                            <div className="flex items-center font-medium" style={{ color: colors.primary }}>
-                                <Users className="w-3 h-3 mr-1.5 flex-shrink-0" />
+                            <div className={`flex items-center font-semibold`} style={{ color: colors.primary }}>
+                                <Users className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
                                 <span>{directReportsCount} Direct Report{directReportsCount !== 1 ? 's' : ''}</span>
                             </div>
                         )}
+                        
                         {isGridVariant && employee.totalSubordinates > directReportsCount && (
-                            <div className="flex items-center" style={{ color: colors.light }}>
-                                <UsersRound className="w-3 h-3 mr-1.5 flex-shrink-0" />
+                            <div className={`flex items-center ${textSecondary}`}>
+                                <UsersRound className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
                                 <span>{employee.totalSubordinates} Total Subordinate{employee.totalSubordinates !== 1 ? 's' : ''}</span>
                             </div>
                         )}
-                         {isGridVariant && (
-                            <div className="flex items-center" style={{ color: colors.light }}>
-                                <Target className="w-3 h-3 mr-1.5 flex-shrink-0" />
+                        
+                        {isGridVariant && (
+                            <div className={`flex items-center ${textSecondary}`}>
+                                <Target className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
                                 <span>Level to CEO: {employee.levelToCeo >= 0 ? employee.levelToCeo : 'N/A'}</span>
                             </div>
                          )}
                     </div>
                 </div>
+                
+                {/* Enhanced Expand/Collapse Button */}
                 {hasChildren && onToggleExpand && isTreeVariant && (
                     <button
                         onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
                         className={`
-                            employee-card-action // Important for panning logic
-                            absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 z-20 
-                            w-5 h-5 rounded-full text-white
-                            flex items-center justify-center hover:scale-110 transition-transform duration-200
-                            border-2 ${darkMode ? 'border-almet-cloud-burst' : 'border-white'}
+                            employee-card-action
+                            absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-20 
+                            w-6 h-6 rounded-full text-white
+                            flex items-center justify-center hover:scale-110 transition-all duration-200
+                            shadow-lg hover:shadow-xl
+                            ${darkMode ? 'ring-2 ring-almet-san-juan' : 'ring-2 ring-white'}
                         `}
-                        style={{ backgroundColor: colors.primary, boxShadow: `0 1px 3px ${colors.primary}70` }}
+                        style={{ 
+                            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
+                        }}
                         aria-label={isExpanded ? "Collapse node" : "Expand node"}
                     >
                         {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
@@ -390,35 +439,32 @@ const OrgChart = () => {
         );
     };
     
-    // --- REVISED TREENODE COMPONENT ---
+    // Enhanced Tree Node Component with Better Connection Lines
     const TreeNode = ({ node, level = 0 }) => {
         if (!node || !node.id) return null;
         const nodeChildren = hierarchyMap[node.id]?.children || [];
         const hasChildren = nodeChildren.length > 0;
         const isExpanded = expandedNodes.has(node.id);
-        const colors = getEmployeeColor(node);
 
-        // Calculate horizontal line width only if there are multiple children
-        const horizontalLineWidth = (nodeChildren.length > 1 ? (nodeChildren.length - 1) * (cardVisualWidth + cardGap) : 0);
+        const horizontalLineWidth = nodeChildren.length > 1 ? (nodeChildren.length - 1) * (cardWidth + cardGap) : 0;
 
         return (
             <div className="flex flex-col items-center relative">
-                {/* 1. Incoming Vertical Line (from parent's horizontal line) */}
-                {/* This line fills the space above the card. It is positioned at top:0 of this TreeNode's div. */}
+                {/* Incoming Vertical Line */}
                 {level > 0 && (
                     <div 
-                        className="absolute top-0 left-1/2 transform -translate-x-px"
+                        className="absolute top-0 left-1/2 transform -translate-x-0.5"
                         style={{
-                            height: `${halfCardGap}px`, // This line segment connects to the center of the card
+                            height: `${halfCardGap}px`,
                             width: `${connectorThickness}px`,
-                            backgroundColor: colors.primary,
-                            opacity: 0.7,
-                            zIndex: 1 // Ensure lines are behind cards
+                            backgroundColor: connectionColor,
+                            opacity: 0.8,
+                            zIndex: 1
                         }}
-                    ></div>
+                    />
                 )}
 
-                {/* 2. Employee Card */}
+                {/* Employee Card */}
                 <EmployeeCard
                     employee={node}
                     onClick={() => augmentedFlatMap[node.id] ? setSelectedEmployee(augmentedFlatMap[node.id]) : null}
@@ -428,47 +474,45 @@ const OrgChart = () => {
                     variant="tree"
                 />
 
-                {/* 3. Outgoing lines (vertical to horizontal, then horizontal, then vertical to children) */}
+                {/* Outgoing Connection Lines */}
                 {hasChildren && isExpanded && (
                     <div 
                         className="relative flex flex-col items-center w-full"
-                        // This margin creates the space *below* the current card and *above* the horizontal line.
                         style={{ marginTop: `${halfCardGap}px` }} 
                     >
-                        {/* Vertical line from current card's bottom to horizontal line */}
+                        {/* Vertical line from card to horizontal line */}
                         <div 
-                            className="absolute top-0 left-1/2 transform -translate-x-px"
+                            className="absolute top-0 left-1/2 transform -translate-x-0.5"
                             style={{
                                 height: `${halfCardGap}px`,
                                 width: `${connectorThickness}px`,
-                                backgroundColor: colors.primary,
-                                opacity: 0.7,
+                                backgroundColor: connectionColor,
+                                opacity: 0.8,
                                 zIndex: 1
                             }}
-                        ></div>
+                        />
 
-                        {/* Horizontal line connecting children */}
-                        {nodeChildren.length > 0 && ( // Show horizontal line even for 1 child, for visual consistency with vertical
+                        {/* Horizontal connecting line */}
+                        {nodeChildren.length > 0 && (
                             <div 
                                 className="absolute left-1/2 transform -translate-x-1/2"
                                 style={{
-                                    top: `${halfCardGap}px`, // This positions it at the end of the vertical line segment from the parent
+                                    top: `${halfCardGap}px`,
                                     height: `${connectorThickness}px`,
-                                    backgroundColor: colors.primary,
-                                    opacity: 0.7,
-                                    width: `${Math.max(connectorThickness, horizontalLineWidth)}px`, // Ensure minimum width for single child
+                                    backgroundColor: connectionColor,
+                                    opacity: 0.8,
+                                    width: `${Math.max(connectorThickness, horizontalLineWidth)}px`,
                                     zIndex: 1
                                 }}
-                            ></div>
+                            />
                         )}
                         
                         {/* Children nodes container */}
                         <div 
                             className="flex justify-center items-start" 
-                            // This padding creates the space *below* the horizontal line and *above* the children cards.
                             style={{ 
                                 paddingTop: `${halfCardGap}px`, 
-                                gap: `${cardGap}px`, // Horizontal gap between children
+                                gap: `${cardGap}px`,
                             }}
                         >
                             {nodeChildren.map((childNode) => (
@@ -482,7 +526,7 @@ const OrgChart = () => {
     };
 
     const GridView = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-6">
             {filteredEmployees.map(employee => (
                 <EmployeeCard
                     key={employee.id}
@@ -507,28 +551,28 @@ const OrgChart = () => {
     const [reportsToShow, setReportsToShow] = useState([]);
 
     const AllDirectReportsModal = ({ reports, onClose, onSelectEmployee, darkMode }) => {
-        const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
+        const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
         const textHeader = darkMode ? "text-gray-100" : "text-gray-800";
-        const textMuted = darkMode ? "text-almet-bali-hai/80" : "text-gray-400";
-        const borderColor = darkMode ? "border-almet-comet/50" : "border-gray-200/80";
+        const textMuted = darkMode ? "text-almet-bali-hai" : "text-gray-400";
+        const borderColor = darkMode ? "border-almet-comet/30" : "border-gray-200";
 
         return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 z-50">
-                <div className={`${bgCard} rounded-lg shadow-xl w-full max-w-lg flex flex-col border ${borderColor} max-h-[85vh]`}>
-                    <div className={`flex items-center justify-between p-4 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-lg z-10`}>
-                        <h2 className={`text-lg font-semibold ${textHeader}`}>All Direct Reports ({reports.length})</h2>
-                        <button onClick={onClose} className={`${textMuted} hover:${textHeader} p-1.5 hover:bg-almet-sapphire/20 rounded-full transition-colors`}>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className={`${bgCard} rounded-2xl shadow-2xl w-full max-w-lg flex flex-col border ${borderColor} max-h-[85vh]`}>
+                    <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
+                        <h2 className={`text-xl font-semibold ${textHeader}`}>All Direct Reports ({reports.length})</h2>
+                        <button onClick={onClose} className={`${textMuted} hover:${textHeader} p-2 hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-xl transition-colors`}>
                             <X size={20} aria-label="Close direct reports modal"/>
                         </button>
                     </div>
-                    <div className="p-4 space-y-2 overflow-y-auto">
+                    <div className="p-6 space-y-3 overflow-y-auto">
                         {reports.map(report => (
                             <EmployeeCard
                                 key={report.id}
                                 employee={report}
                                 onClick={() => {
                                     onSelectEmployee(report.id);
-                                    onClose(); // Close this modal after selecting
+                                    onClose();
                                 }}
                                 variant="detail"
                             />
@@ -550,69 +594,72 @@ const OrgChart = () => {
         const manager = detailedEmployee.lineManagerId ? augmentedFlatMap[detailedEmployee.lineManagerId] : null;
         const colors = getEmployeeColor(detailedEmployee);
 
-        // Hierarchy path for breadcrumbs
         const getHierarchyPath = (empId, flatMap) => {
             const path = [];
             let current = flatMap[empId];
             while(current) {
                 path.unshift(current);
-                if (!current.lineManagerId) break; // Reached top-level
+                if (!current.lineManagerId) break;
                 current = flatMap[current.lineManagerId];
             }
             return path;
         };
         const hierarchyPath = getHierarchyPath(detailedEmployee.id, augmentedFlatMap);
 
-
         return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 z-50 transition-opacity duration-200 ease-in-out">
-                <div className={`${bgCard} rounded-lg ${shadowCard} max-w-2xl w-full max-h-[85vh] flex flex-col border ${borderColor}`}>
-                    <div className={`flex items-center justify-between p-4 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-lg z-10`}>
-                        <div className="flex items-center gap-3">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200 ease-in-out">
+                <div className={`${bgCard} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border ${borderColor}`}>
+                    <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
+                        <div className="flex items-center gap-4">
                             <Avatar employee={detailedEmployee} size="lg" />
                             <div>
-                                <h2 className={`text-lg font-semibold ${textHeader}`}>{detailedEmployee.name}</h2>
-                                <p className={`${textSecondary} text-sm`}>{detailedEmployee.title}</p>
+                                <h2 className={`text-xl font-semibold ${textHeader}`}>{detailedEmployee.name}</h2>
+                                <p className={`${textSecondary} text-sm mt-1`}>{detailedEmployee.title}</p>
                             </div>
                         </div>
-                        <button onClick={onClose} className={`${textMuted} hover:${textPrimary} p-1.5 hover:${bgAccent} rounded-full transition-colors`}>
-                            <X size={20} aria-label="Close modal"/>
+                        <button onClick={onClose} className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-xl transition-colors`}>
+                            <X size={24} aria-label="Close modal"/>
                         </button>
                     </div>
 
-                    <div ref={detailModalRef} className="p-4 overflow-y-auto flex-grow space-y-4">
-                        {/* Hierarchy Path / Breadcrumbs */}
+                    <div ref={detailModalRef} className="p-6 overflow-y-auto flex-grow space-y-6">
+                        {/* Hierarchy Path */}
                         {hierarchyPath.length > 1 && (
-                            <div className={`text-xs ${textMuted} mb-3 border-b ${borderColor} pb-2`}>
-                                <h4 className={`font-semibold ${textSecondary} mb-1.5 uppercase tracking-wider`}>Hierarchy Path</h4>
-                                <div className="flex flex-wrap items-center gap-1">
+                            <div className={`border-b ${borderColor} pb-4`}>
+                                <h4 className={`font-semibold ${textSecondary} mb-3 text-sm uppercase tracking-wider`}>Hierarchy Path</h4>
+                                <div className="flex flex-wrap items-center gap-2">
                                     {hierarchyPath.map((emp, index) => (
                                         <React.Fragment key={emp.id}>
                                             <span 
-                                                className={`cursor-pointer hover:underline ${emp.id === detailedEmployee.id ? textPrimary : textMuted}`}
+                                                className={`cursor-pointer hover:underline px-2 py-1 rounded-lg transition-colors ${emp.id === detailedEmployee.id ? 'bg-almet-sapphire text-white' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
                                                 onClick={() => navigateToEmployee(emp.id)}
                                             >
                                                 {emp.name.split(' ')[0]}
                                             </span>
-                                            {index < hierarchyPath.length - 1 && <span className="mx-0.5"></span>}
+                                            {index < hierarchyPath.length - 1 && <span className="mx-1 text-gray-400">→</span>}
                                         </React.Fragment>
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                            <DetailItem icon={<Building2 />} label="Department" value={detailedEmployee.department} colors={colors} />
-                            <DetailItem icon={<Layers />} label="Unit" value={detailedEmployee.unit} colors={colors} />
-                            <DetailItem icon={<Award />} label="Grade" value={`G${detailedEmployee.grade}`} colors={colors} />
-                            <DetailItem icon={<Briefcase />} label="Position Group" value={detailedEmployee.positionGroup} colors={colors} />
-                            <DetailItem icon={<MapPin />} label="Location" value={detailedEmployee.location} colors={colors} />
-                            <DetailItem icon={<Puzzle />} label="Business Function" value={detailedEmployee.businessFunction} colors={colors} />
+                        {/* Employee Details Grid */}
+                        <div>
+                            <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Employee Details</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <DetailItem icon={<Building2 />} label="Department" value={detailedEmployee.department} colors={colors} />
+                                <DetailItem icon={<Layers />} label="Unit" value={detailedEmployee.unit} colors={colors} />
+                                <DetailItem icon={<Award />} label="Grade" value={`G${detailedEmployee.grade}`} colors={colors} />
+                                <DetailItem icon={<Briefcase />} label="Position Group" value={detailedEmployee.positionGroup} colors={colors} />
+                                <DetailItem icon={<MapPin />} label="Location" value={detailedEmployee.location} colors={colors} />
+                                <DetailItem icon={<Puzzle />} label="Business Function" value={detailedEmployee.businessFunction} colors={colors} />
+                            </div>
                         </div>
                         
-                        <div className="pt-3 border-t ${borderColor}">
-                            <h4 className={`text-xs font-semibold ${textSecondary} mb-1.5 uppercase tracking-wider`}>Team & Network</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {/* Team & Network */}
+                        <div className={`border-t ${borderColor} pt-4`}>
+                            <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Team & Network</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 {detailedEmployee.levelToCeo >= 0 && <DetailItem icon={<Target />} label="Level to CEO" value={detailedEmployee.levelToCeo.toString()} colors={colors} />}
                                 {directReports.length > 0 && <DetailItem icon={<Users />} label="Direct Reports" value={directReports.length.toString()} colors={colors} />}
                                 {detailedEmployee.totalSubordinates > 0 && <DetailItem icon={<UsersRound />} label="Total Subordinates" value={detailedEmployee.totalSubordinates.toString()} colors={colors} />}
@@ -621,9 +668,10 @@ const OrgChart = () => {
                             </div>
                         </div>
                         
+                        {/* Manager */}
                         {manager && (
-                            <div className="pt-3 border-t ${borderColor}">
-                                <h4 className={`text-xs font-semibold ${textSecondary} mb-2 uppercase tracking-wider`}>Reports To</h4>
+                            <div className={`border-t ${borderColor} pt-4`}>
+                                <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Reports To</h4>
                                 <EmployeeCard 
                                     employee={manager} 
                                     onClick={() => navigateToEmployee(manager.id)}
@@ -632,10 +680,11 @@ const OrgChart = () => {
                             </div>
                         )}
                         
+                        {/* Direct Reports */}
                         {directReports.length > 0 && (
-                            <div className="pt-3 border-t ${borderColor}">
-                                <h4 className={`text-xs font-semibold ${textSecondary} mb-2 uppercase tracking-wider`}>Direct Reports ({directReports.length})</h4>
-                                <div className="space-y-2">
+                            <div className={`border-t ${borderColor} pt-4`}>
+                                <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Direct Reports ({directReports.length})</h4>
+                                <div className="space-y-3">
                                     {directReports.slice(0, 3).map(report => (
                                         <EmployeeCard
                                             key={report.id}
@@ -650,9 +699,9 @@ const OrgChart = () => {
                                                 setReportsToShow(directReports); 
                                                 setShowAllReportsModal(true); 
                                             }}
-                                            className={`text-xs ${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors hover:underline`}
+                                            className={`text-sm ${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors hover:underline px-2 py-1 rounded-lg hover:${bgAccent}`}
                                         >
-                                            ...and {directReports.length - 3} more. View All
+                                            View all {directReports.length} reports →
                                         </button>
                                     )}
                                 </div>
@@ -665,38 +714,43 @@ const OrgChart = () => {
     };
 
     const DetailItem = ({ icon, label, value, colors }) => (
-        <div className="flex items-center gap-2">
-            <div className={`flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center`} style={{ backgroundColor: colors.bg }}>
-                {React.cloneElement(icon, { className: "w-3.5 h-3.5", style: { color: colors.primary } })}
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-almet-comet/20">
+            <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center`} style={{ backgroundColor: colors.bg }}>
+                {React.cloneElement(icon, { className: "w-4 h-4", style: { color: colors.primary } })}
             </div>
-            <div className="min-w-0">
-                <p className={`text-xs ${textMuted} truncate`}>{label}</p>
-                <p className={`${textPrimary} font-medium text-xs truncate`} title={value || 'N/A'}>{value || 'N/A'}</p>
+            <div className="min-w-0 flex-1">
+                <p className={`text-xs ${textMuted} font-medium`}>{label}</p>
+                <p className={`${textPrimary} font-semibold text-sm truncate mt-0.5`} title={value || 'N/A'}>{value || 'N/A'}</p>
             </div>
         </div>
     );
 
     const ColorLegend = ({ hierarchyColors, onClose, darkMode }) => {
-        const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
+        const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
         const textHeader = darkMode ? "text-gray-100" : "text-gray-800";
         const textPrimary = darkMode ? "text-gray-200" : "text-gray-700";
-        const textMuted = darkMode ? "text-almet-bali-hai/80" : "text-gray-400";
-        const borderColor = darkMode ? "border-almet-comet/50" : "border-gray-200/80";
+        const textMuted = darkMode ? "text-almet-bali-hai" : "text-gray-400";
+        const borderColor = darkMode ? "border-almet-comet/30" : "border-gray-200";
 
         return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3 z-50">
-                <div className={`${bgCard} rounded-lg shadow-xl w-full max-w-sm flex flex-col border ${borderColor}`}>
-                    <div className={`flex items-center justify-between p-4 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-lg z-10`}>
-                        <h2 className={`text-lg font-semibold ${textHeader}`}>Color Legend</h2>
-                        <button onClick={onClose} className={`${textMuted} hover:${textHeader} p-1.5 hover:bg-almet-sapphire/20 rounded-full transition-colors`}>
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                <div className={`${bgCard} rounded-2xl shadow-2xl w-full max-w-sm flex flex-col border ${borderColor}`}>
+                    <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
+                        <h2 className={`text-xl font-semibold ${textHeader}`}>Position Levels</h2>
+                        <button onClick={onClose} className={`${textMuted} hover:${textHeader} p-2 hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-xl transition-colors`}>
                             <X size={20} aria-label="Close legend"/>
                         </button>
                     </div>
-                    <div className="p-4 space-y-2 overflow-y-auto">
+                    <div className="p-6 space-y-3 overflow-y-auto">
                         {Object.entries(hierarchyColors).map(([group, colors]) => (
-                            <div key={group} className="flex items-center gap-3">
-                                <div className="w-6 h-6 rounded-md flex-shrink-0" style={{ backgroundColor: colors.primary }}></div>
-                                <span className={`${textPrimary} text-sm font-medium`}>{group.replace(/([A-Z])/g, ' $1').trim()}</span>
+                            <div key={group} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-almet-comet/20">
+                                <div 
+                                    className="w-8 h-8 rounded-xl flex-shrink-0 ring-2 ring-white dark:ring-almet-san-juan" 
+                                    style={{ background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)` }}
+                                />
+                                <span className={`${textPrimary} text-sm font-semibold`}>
+                                    {group.replace(/([A-Z])/g, ' $1').trim()}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -709,26 +763,22 @@ const OrgChart = () => {
     const exportChart = async () => {
         if (!chartRef.current) return;
 
-        // Temporarily adjust scale for export for better resolution
         const originalTransform = chartRef.current.style.transform;
         const originalTransformOrigin = chartRef.current.style.transformOrigin;
         const currentScrollLeft = scrollContainerRef.current.scrollLeft;
         const currentScrollTop = scrollContainerRef.current.scrollTop;
 
-        // Reset scroll and zoom for full capture
         scrollContainerRef.current.scrollLeft = 0;
         scrollContainerRef.current.scrollTop = 0;
-        chartRef.current.style.transform = 'scale(1)'; // Render at 100% for capture
+        chartRef.current.style.transform = 'scale(1)';
         chartRef.current.style.transformOrigin = 'top left';
 
-        // Wait for re-render if any
         await new Promise(resolve => setTimeout(resolve, 50)); 
 
         try {
             const domToImage = (await import('dom-to-image')).default;
             const dataUrl = await domToImage.toPng(chartRef.current, {
                 quality: 0.95,
-                // Capture the entire scrollable content area
                 width: chartRef.current.scrollWidth,
                 height: chartRef.current.scrollHeight,
             });
@@ -744,14 +794,12 @@ const OrgChart = () => {
             console.error('Error exporting chart:', error);
             alert('Failed to export chart. Please try again.');
         } finally {
-            // Restore original transform and scroll properties
             chartRef.current.style.transform = originalTransform;
             chartRef.current.style.transformOrigin = originalTransformOrigin;
             scrollContainerRef.current.scrollLeft = currentScrollLeft;
             scrollContainerRef.current.scrollTop = currentScrollTop;
         }
     };
-
 
     const departments = useMemo(() => [...new Set(augmentedDataList.map(emp => emp.department).filter(Boolean))].sort(), [augmentedDataList]);
     const grades = useMemo(() => [...new Set(augmentedDataList.map(emp => emp.grade).filter(Boolean))].sort((a, b) => parseInt(b) - parseInt(a)), [augmentedDataList]);
@@ -760,81 +808,199 @@ const OrgChart = () => {
     return (
         <DashboardLayout>
             <div ref={containerRef} className={`h-full ${isFullscreen ? `fixed inset-0 z-40 ${bgApp}` : bgApp} flex flex-col`}>
-                 <div className={`${bgCard} shadow border-b ${borderColor} sticky top-0 z-30`}>
-                    <div className="px-4 py-3">
+                {/* Enhanced Header */}
+                <div className={`${bgCard} shadow-lg border-b ${borderColor} sticky top-0 z-30 backdrop-blur-md`}>
+                    <div className="px-6 py-4">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 ${darkMode ? 'bg-almet-sapphire/80' : 'bg-almet-sapphire'} rounded-md flex items-center justify-center shadow-sm`}>
-                                    <Building2 className="w-4 h-4 text-white" />
+                            <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl flex items-center justify-center shadow-lg`}>
+                                    <Building2 className="w-5 h-5 text-white" />
                                 </div>
                                 <div>
-                                    <h1 className={`text-md font-semibold ${textHeader}`}>Organizational Chart</h1>
-                                    <p className={`text-xs ${textSecondary}`}>Total Employees: {augmentedDataList.length} {filteredEmployees.length !== augmentedDataList.length && `(Filtered: ${filteredEmployees.length})`}</p>
+                                    <h1 className={`text-lg font-bold ${textHeader}`}>Organizational Chart</h1>
+                                    <p className={`text-sm ${textSecondary}`}>
+                                        Total Employees: {augmentedDataList.length} 
+                                        {filteredEmployees.length !== augmentedDataList.length && ` • Filtered: ${filteredEmployees.length}`}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            
+                            <div className="flex items-center gap-3">
+                                {/* Enhanced Search */}
                                 <div className="relative">
-                                    <Search className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 ${textMuted} w-3.5 h-3.5 pointer-events-none`} />
-                                    <input type="text" placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`pl-8 pr-2.5 py-1.5 border ${borderColor} rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire w-44 ${bgCard} ${textPrimary} text-xs transition-all duration-200 focus:w-52`} />
+                                    <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted} w-4 h-4 pointer-events-none`} />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search employees..." 
+                                        value={searchTerm} 
+                                        onChange={(e) => setSearchTerm(e.target.value)} 
+                                        className={`pl-10 pr-4 py-2.5 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire w-56 ${bgCard} ${textPrimary} text-sm transition-all duration-200 focus:w-64 shadow-sm`} 
+                                    />
                                 </div>
-                                <div className={`flex rounded-md border ${borderColor} ${bgCard} p-0.5 shadow-sm`}>
-                                    <button onClick={() => setViewMode('tree')} title="Tree View" className={`px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 ${viewMode === 'tree' ? 'bg-almet-sapphire text-white' : `${textMuted} hover:${textPrimary}`}`}><TreePine size={14} />Tree</button>
-                                    <button onClick={() => setViewMode('grid')} title="Grid View" className={`px-2 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white' : `${textMuted} hover:${textPrimary}`}`}><Grid size={14} />Grid</button>
+                                
+                                {/* View Mode Toggle */}
+                                <div className={`flex rounded-xl border ${borderColor} ${bgCard} p-1 shadow-sm`}>
+                                    <button 
+                                        onClick={() => setViewMode('tree')} 
+                                        title="Tree View" 
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${viewMode === 'tree' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                    >
+                                        <TreePine size={16} />Tree
+                                    </button>
+                                    <button 
+                                        onClick={() => setViewMode('grid')} 
+                                        title="Grid View" 
+                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                    >
+                                        <Grid size={16} />Grid
+                                    </button>
                                 </div>
-                                <button onClick={() => setShowFilters(!showFilters)} title="Filters" className={`p-1.5 border ${borderColor} rounded-md hover:${bgAccent} transition-colors ${bgCard} ${textPrimary} text-xs flex items-center shadow-sm relative`}>
-                                    <Filter size={14} />
-                                    {areFiltersActive && (<div className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-almet-sapphire rounded-full border border-white dark:border-almet-cloud-burst"></div>)}
+                                
+                                {/* Control Buttons */}
+                                <button 
+                                    onClick={() => setShowFilters(!showFilters)} 
+                                    title="Filters" 
+                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textPrimary} shadow-sm relative`}
+                                >
+                                    <Filter size={16} />
+                                    {areFiltersActive && (
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-almet-sapphire rounded-full border-2 border-white dark:border-almet-san-juan"></div>
+                                    )}
                                 </button>
-                                <button onClick={() => setShowLegend(true)} title="Color Legend" className={`p-1.5 border ${borderColor} rounded-md hover:${bgAccent} transition-colors ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}>
-                                    <Info size={14} />
+                                
+                                <button 
+                                    onClick={() => setShowLegend(true)} 
+                                    title="Position Legend" 
+                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                >
+                                    <Info size={16} />
                                 </button>
-                                <div className={`flex items-center border ${borderColor} rounded-md ${bgCard} shadow-sm`}>
-                                    <button onClick={handleZoomOut} className={`p-1.5 hover:${bgAccent} transition-colors ${textMuted} hover:${textPrimary}`} title="Zoom Out"><ZoomOut size={14} /></button>
-                                    <span className={`px-2 text-2xs ${textMuted} min-w-[2.5rem] text-center border-x ${borderColor}`}>{zoomLevel}%</span>
-                                    <button onClick={handleZoomIn} className={`p-1.5 hover:${bgAccent} transition-colors ${textMuted} hover:${textPrimary}`} title="Zoom In"><ZoomIn size={14} /></button>
+                                
+                                {/* Zoom Controls */}
+                                <div className={`flex items-center border ${borderColor} rounded-xl ${bgCard} shadow-sm`}>
+                                    <button 
+                                        onClick={handleZoomOut} 
+                                        className={`p-2.5 hover:${bgAccent} transition-colors ${textMuted} hover:${textPrimary} rounded-l-xl`} 
+                                        title="Zoom Out"
+                                    >
+                                        <ZoomOut size={16} />
+                                    </button>
+                                    <span className={`px-3 text-sm ${textMuted} min-w-[3rem] text-center border-x ${borderColor}`}>
+                                        {zoomLevel}%
+                                    </span>
+                                    <button 
+                                        onClick={handleZoomIn} 
+                                        className={`p-2.5 hover:${bgAccent} transition-colors ${textMuted} hover:${textPrimary} rounded-r-xl`} 
+                                        title="Zoom In"
+                                    >
+                                        <ZoomIn size={16} />
+                                    </button>
                                 </div>
-                                <button onClick={handleResetZoom} title="Reset Zoom" className={`p-1.5 border ${borderColor} rounded-md hover:${bgAccent} transition-colors ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}>
-                                    <RotateCcw size={14} />
+                                
+                                <button 
+                                    onClick={handleResetZoom} 
+                                    title="Reset Zoom" 
+                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                >
+                                    <RotateCcw size={16} />
                                 </button>
-                                <button onClick={resetPan} title="Reset Pan" className={`p-1.5 border ${borderColor} rounded-md hover:${bgAccent} transition-colors ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-pointer-2"><path d="m4 4 7.07 17.68 2.51-7.07 7.07-2.51L4 4Z"/><path d="m13 13 6 6"/></svg> {/* Better icon for reset pan/center */}
+                                
+                                <button 
+                                    onClick={resetPan} 
+                                    title="Reset Position" 
+                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="m4 4 7.07 17.68 2.51-7.07 7.07-2.51L4 4Z"/>
+                                        <path d="m13 13 6 6"/>
+                                    </svg>
                                 </button>
-                                <button onClick={exportChart} title="Export as PNG" className={`p-1.5 border ${borderColor} rounded-md hover:${bgAccent} transition-colors ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-image"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><circle cx="10" cy="13" r="2"/><path d="m20 17-1.29-1.29a1 1 0 0 0-1.32-.08L13 19"/><path d="m13 19-2.5-2.5"/></svg>
+                                
+                                <button 
+                                    onClick={exportChart} 
+                                    title="Export as PNG" 
+                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <circle cx="10" cy="13" r="2"/>
+                                        <path d="m20 17-1.29-1.29a1 1 0 0 0-1.32-.08L13 19"/>
+                                        <path d="m13 19-2.5-2.5"/>
+                                    </svg>
                                 </button>
-                                <button onClick={toggleFullscreen} className={`p-1.5 border ${borderColor} rounded-md hover:${bgAccent} transition-colors ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`} title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}>{isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}</button>
+                                
+                                <button 
+                                    onClick={toggleFullscreen} 
+                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`} 
+                                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                                >
+                                    {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                {/* Enhanced Filters Panel */}
                 {showFilters && (
-                    <div className={`${bgCard} border-b ${borderColor} shadow sticky ${isFullscreen ? 'top-0' : 'top-[53px]'} z-20`}>
-                        <div className="px-3 py-2.5">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className={`text-sm font-medium ${textHeader}`}>Filters</h3>
-                                <div className="flex items-center gap-1.5">
-                                    <button onClick={clearAllFilters} className={`text-xs ${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors hover:underline`}>Clear All</button>
-                                    <button onClick={() => setShowFilters(false)} className={`p-1 hover:${bgAccent} rounded-full ${textMuted} hover:${textPrimary} transition-colors`}><X size={14} /></button>
+                    <div className={`${bgCard} border-b ${borderColor} shadow-md sticky ${isFullscreen ? 'top-0' : 'top-[73px]'} z-20 backdrop-blur-sm`}>
+                        <div className="px-6 py-4">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className={`text-base font-semibold ${textHeader} flex items-center gap-2`}>
+                                    <Filter size={18} />
+                                    Filters
+                                </h3>
+                                <div className="flex items-center gap-3">
+                                    <button 
+                                        onClick={clearAllFilters} 
+                                        className={`text-sm ${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors hover:underline font-medium`}
+                                    >
+                                        Clear All
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowFilters(false)} 
+                                        className={`p-1.5 hover:${bgAccent} rounded-xl ${textMuted} hover:${textPrimary} transition-colors`}
+                                    >
+                                        <X size={16} />
+                                    </button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                                 <div>
-                                    <label htmlFor="department-filter" className={`block text-2xs font-medium ${textSecondary} mb-0.5`}>Department</label>
-                                    <select id="department-filter" value={filters.department} onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))} className={`w-full p-1.5 border ${borderColor} rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${bgCard} ${textPrimary}`}>
-                                        <option value="all">All</option>{departments.map(dept => (<option key={dept} value={dept}>{dept}</option>))}
+                                    <label htmlFor="department-filter" className={`block text-sm font-medium ${textSecondary} mb-2`}>Department</label>
+                                    <select 
+                                        id="department-filter" 
+                                        value={filters.department} 
+                                        onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))} 
+                                        className={`w-full p-3 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire ${bgCard} ${textPrimary} shadow-sm`}
+                                    >
+                                        <option value="all">All Departments</option>
+                                        {departments.map(dept => (<option key={dept} value={dept}>{dept}</option>))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="grade-filter" className={`block text-2xs font-medium ${textSecondary} mb-0.5`}>Grade</label>
-                                    <select id="grade-filter" value={filters.grade} onChange={(e) => setFilters(prev => ({ ...prev, grade: e.target.value }))} className={`w-full p-1.5 border ${borderColor} rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${bgCard} ${textPrimary}`}>
-                                        <option value="all">All</option>{grades.map(grade => (<option key={grade} value={grade}>G{grade}</option>))}
+                                    <label htmlFor="grade-filter" className={`block text-sm font-medium ${textSecondary} mb-2`}>Grade</label>
+                                    <select 
+                                        id="grade-filter" 
+                                        value={filters.grade} 
+                                        onChange={(e) => setFilters(prev => ({ ...prev, grade: e.target.value }))} 
+                                        className={`w-full p-3 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire ${bgCard} ${textPrimary} shadow-sm`}
+                                    >
+                                        <option value="all">All Grades</option>
+                                        {grades.map(grade => (<option key={grade} value={grade}>Grade {grade}</option>))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="location-filter" className={`block text-2xs font-medium ${textSecondary} mb-0.5`}>Location</label>
-                                    <select id="location-filter" value={filters.location} onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))} className={`w-full p-1.5 border ${borderColor} rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${bgCard} ${textPrimary}`}>
-                                        <option value="all">All</option>{locations.map(location => (<option key={location} value={location}>{location}</option>))}
+                                    <label htmlFor="location-filter" className={`block text-sm font-medium ${textSecondary} mb-2`}>Location</label>
+                                    <select 
+                                        id="location-filter" 
+                                        value={filters.location} 
+                                        onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))} 
+                                        className={`w-full p-3 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire ${bgCard} ${textPrimary} shadow-sm`}
+                                    >
+                                        <option value="all">All Locations</option>
+                                        {locations.map(location => (<option key={location} value={location}>{location}</option>))}
                                     </select>
                                 </div>
                             </div>
@@ -842,27 +1008,49 @@ const OrgChart = () => {
                     </div>
                 )}
 
+                {/* Main Chart Container */}
                 <div 
                     ref={scrollContainerRef} 
                     className="relative overflow-auto flex-grow"
-                    style={{ cursor: isDragging ? 'grabbing' : 'grab' }} // Set cursor based on dragging state
+                    style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
                     onMouseDown={handleMouseDown}
                 >
                     {viewMode === 'tree' ? (
-                        <div ref={chartRef} className="p-8 md:p-12 w-full min-h-full" style={{ transform: `scale(${zoomLevel / 100})`, transformOrigin: 'top center', minWidth: 'max-content' }}>
+                        <div 
+                            ref={chartRef} 
+                            className="p-12 w-full min-h-full" 
+                            style={{ 
+                                transform: `scale(${zoomLevel / 100})`, 
+                                transformOrigin: 'top center', 
+                                minWidth: 'max-content' 
+                            }}
+                        >
                             <div className="flex justify-center flex-col items-center">
-                                {organizationTree.map(rootNode => (rootNode && rootNode.id ? <TreeNode key={rootNode.id} node={rootNode} /> : null))}
+                                {organizationTree.map(rootNode => (
+                                    rootNode && rootNode.id ? 
+                                    <TreeNode key={rootNode.id} node={rootNode} /> : null
+                                ))}
                             </div>
                         </div>
-                    ) : <GridView />}
+                    ) : (
+                        <GridView />
+                    )}
                 </div>
 
+                {/* Modals */}
                 <EmployeeDetailModal
                     employee={selectedEmployee}
                     onClose={() => setSelectedEmployee(null)}
                 />
                 
-                {showLegend && <ColorLegend hierarchyColors={hierarchyColors} onClose={() => setShowLegend(false)} darkMode={darkMode} />}
+                {showLegend && (
+                    <ColorLegend 
+                        hierarchyColors={hierarchyColors} 
+                        onClose={() => setShowLegend(false)} 
+                        darkMode={darkMode} 
+                    />
+                )}
+                
                 {showAllReportsModal && (
                     <AllDirectReportsModal
                         reports={reportsToShow}
@@ -872,16 +1060,83 @@ const OrgChart = () => {
                     />
                 )}
 
+                {/* Enhanced Styles */}
                 <style jsx>{`
-                  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-                  ::-webkit-scrollbar { width: 6px; height: 6px; }
-                  ::-webkit-scrollbar-track { background: ${darkMode ? 'rgba(79, 87, 114, 0.05)' : 'rgba(144, 160, 185, 0.03)'}; border-radius: 3px; }
-                  ::-webkit-scrollbar-thumb { background: ${darkMode ? 'rgba(122, 130, 154, 0.3)' : 'rgba(48, 83, 155, 0.3)'}; border-radius: 3px; }
-                  ::-webkit-scrollbar-thumb:hover { background: ${darkMode ? 'rgba(122, 130, 154, 0.5)' : 'rgba(48, 83, 155, 0.5)'}; }
-                  .backdrop-blur-sm { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-                  .focus\\:ring-almet-sapphire:focus { --tw-ring-color: rgba(48, 83, 155, 0.5); }
-                  .focus\\:border-almet-sapphire:focus { border-color: #30539b; }
-                  .text-2xs { font-size: 0.625rem; line-height: 0.875rem; }
+                    .line-clamp-2 { 
+                        display: -webkit-box; 
+                        -webkit-line-clamp: 2; 
+                        -webkit-box-orient: vertical; 
+                        overflow: hidden; 
+                    }
+                    
+                    /* Enhanced Scrollbar Styling */
+                    ::-webkit-scrollbar { 
+                        width: 8px; 
+                        height: 8px; 
+                    }
+                    ::-webkit-scrollbar-track { 
+                        background: ${darkMode ? 'rgba(56, 88, 125, 0.1)' : 'rgba(156, 163, 175, 0.1)'}; 
+                        border-radius: 6px; 
+                    }
+                    ::-webkit-scrollbar-thumb { 
+                        background: ${darkMode ? 'rgba(122, 130, 154, 0.4)' : 'rgba(48, 83, 155, 0.4)'}; 
+                        border-radius: 6px; 
+                        border: 2px solid transparent;
+                        background-clip: content-box;
+                    }
+                    ::-webkit-scrollbar-thumb:hover { 
+                        background: ${darkMode ? 'rgba(122, 130, 154, 0.6)' : 'rgba(48, 83, 155, 0.6)'}; 
+                        background-clip: content-box;
+                    }
+                    
+                    /* Backdrop Blur */
+                    .backdrop-blur-sm { 
+                        backdrop-filter: blur(8px); 
+                        -webkit-backdrop-filter: blur(8px); 
+                    }
+                    .backdrop-blur-md { 
+                        backdrop-filter: blur(12px); 
+                        -webkit-backdrop-filter: blur(12px); 
+                    }
+                    
+                    /* Focus Styles */
+                    .focus\\:ring-almet-sapphire\\/50:focus { 
+                        --tw-ring-color: rgba(48, 83, 155, 0.5); 
+                    }
+                    .focus\\:border-almet-sapphire:focus { 
+                        border-color: #30539b; 
+                    }
+                    
+                    /* Custom Gradient Backgrounds */
+                    .bg-gradient-to-br { 
+                        background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)); 
+                    }
+                    
+                    /* Smooth Transitions */
+                    * {
+                        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+                        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                        transition-duration: 200ms;
+                    }
+                    
+                    /* Enhanced Card Hover Effects */
+                    .employee-card-action:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+                    }
+                    
+                    /* Enhanced Button Animations */
+                    button:active {
+                        transform: scale(0.98);
+                    }
+                    
+                    /* Improved Focus Indicators */
+                    button:focus-visible, 
+                    input:focus-visible, 
+                    select:focus-visible {
+                        outline: 2px solid #30539b;
+                        outline-offset: 2px;
+                    }
                 `}</style>
             </div>
         </DashboardLayout>

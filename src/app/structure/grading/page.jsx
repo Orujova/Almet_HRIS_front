@@ -311,113 +311,102 @@ const GradingPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-almet-sapphire dark:text-white flex items-center">
-            <BarChart3 className="mr-3" size={32} />
-            Employee Grading System
-          </h1>
-          <div className="flex gap-3">
-            <button
-              onClick={toggleCompareMode}
-              className={`px-4 py-2 rounded-lg transition-all duration-200 flex items-center ${
-                compareMode 
-                  ? 'bg-orange-500 text-white' 
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600'
-              }`}
-            >
-              <TrendingUp size={16} className="mr-2" />
-              {compareMode ? 'Exit Compare' : 'Compare Scenarios'}
-            </button>
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-almet-cloud-burst dark:text-white">
+              Employee Grading System
+            </h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Manage salary grades and compensation structures
+            </p>
           </div>
+          <button
+            onClick={toggleCompareMode}
+            className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
+              compareMode 
+                ? 'bg-almet-sapphire text-white border-almet-sapphire' 
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+            }`}
+          >
+            {compareMode ? 'Exit Compare' : 'Compare Scenarios'}
+          </button>
         </div>
 
-        {/* Current Situation - Enhanced */}
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center mb-6">
-            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center mr-4">
-              <Eye className="text-green-600 dark:text-green-400" size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Current Grade Structure</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Active salary grades and compensation levels</p>
-            </div>
+        {/* Current Situation */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-medium text-almet-cloud-burst dark:text-white">Current Grade Structure</h2>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 p-4 rounded-lg border border-blue-200 dark:border-blue-700">
-              <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Vertical Average</div>
-              <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{(currentData.verticalAvg * 100).toFixed(1)}%</div>
-              <div className="text-xs text-blue-600 dark:text-blue-400">Grade progression rate</div>
-            </div>
-            <div className="bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
-              <div className="text-xs font-medium text-green-700 dark:text-green-300 mb-1">Horizontal Average</div>
-              <div className="text-2xl font-bold text-green-900 dark:text-green-100">{(currentData.horizontalAvg * 100).toFixed(1)}%</div>
-              <div className="text-xs text-green-600 dark:text-green-400">Within-grade variation</div>
-            </div>
-            <div className="bg-gradient-to-r from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 p-4 rounded-lg border border-purple-200 dark:border-purple-700">
-              <div className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-1">Total Budget</div>
-              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">
-                ${currentData.gradeOrder.reduce((total, gradeName) => total + (currentData.grades[gradeName]?.M || 0), 0).toLocaleString()}
+          <div className="p-6">
+            <div className="grid grid-cols-3 gap-6 mb-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-almet-sapphire">{(currentData.verticalAvg * 100).toFixed(1)}%</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Vertical Average</div>
               </div>
-              <div className="text-xs text-purple-600 dark:text-purple-400">Median salary total</div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-almet-sapphire">{(currentData.horizontalAvg * 100).toFixed(1)}%</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Horizontal Average</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-almet-sapphire">
+                  ${currentData.gradeOrder.reduce((total, gradeName) => total + (currentData.grades[gradeName]?.M || 0), 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">Total Budget</div>
+              </div>
             </div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                  <th className="p-3 text-left font-semibold text-gray-700 dark:text-gray-300">Grade</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">Lower Decile</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">Lower Quartile</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">Median</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">Upper Quartile</th>
-                  <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">Upper Decile</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentData.gradeOrder.map((gradeName, index) => {
-                  const values = currentData.grades[gradeName];
-                  if (!values) return null;
-                  return (
-                    <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="p-3 font-medium text-almet-cloud-burst dark:text-white">{gradeName}</td>
-                      <td className="p-3 text-right">${(values.LD || 0).toLocaleString()}</td>
-                      <td className="p-3 text-right">${(values.LQ || 0).toLocaleString()}</td>
-                      <td className="p-3 text-right font-semibold">${(values.M || 0).toLocaleString()}</td>
-                      <td className="p-3 text-right">${(values.UQ || 0).toLocaleString()}</td>
-                      <td className="p-3 text-right">${(values.UD || 0).toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Grade</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Lower Decile</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Lower Quartile</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Median</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Upper Quartile</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Upper Decile</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentData.gradeOrder.map((gradeName, index) => {
+                    const values = currentData.grades[gradeName];
+                    if (!values) return null;
+                    return (
+                      <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700">
+                        <td className="py-3 text-sm font-medium text-almet-cloud-burst dark:text-white">{gradeName}</td>
+                        <td className="py-3 text-sm text-right">${(values.LD || 0).toLocaleString()}</td>
+                        <td className="py-3 text-sm text-right">${(values.LQ || 0).toLocaleString()}</td>
+                        <td className="py-3 text-sm text-right font-medium">${(values.M || 0).toLocaleString()}</td>
+                        <td className="py-3 text-sm text-right">${(values.UQ || 0).toLocaleString()}</td>
+                        <td className="py-3 text-sm text-right">${(values.UD || 0).toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        {/* Create New Scenario - Enhanced */}
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center mb-6">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center mr-4">
-              <Calculator className="text-blue-600 dark:text-blue-400" size={20} />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Create New Scenario</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Design and test new compensation structures</p>
-            </div>
+        {/* Create New Scenario */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 className="text-lg font-medium text-almet-cloud-burst dark:text-white">Create New Scenario</h2>
           </div>
           
-          <div className="space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg">
+          <div className="p-6 space-y-6">
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Base Value (Blue Collar LD) *
+                Base Value (Blue Collar LD)
               </label>
               <input
                 type="number"
                 value={scenarioInputs.baseValue1}
                 onChange={(e) => handleBaseValueChange(e.target.value)}
-                className={`w-full p-3 border rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire ${
+                className={`w-full px-3 py-2 border rounded-lg text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${
                   errors.baseValue1 ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
                 placeholder="Enter base salary value"
@@ -426,17 +415,17 @@ const GradingPage = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                    <th className="p-3 text-left font-semibold text-gray-700 dark:text-gray-300">Grade</th>
-                    <th className="p-3 text-center font-semibold text-gray-700 dark:text-gray-300">Vertical %</th>
-                    <th className="p-3 text-center font-semibold text-gray-700 dark:text-gray-300">Horizontal %</th>
-                    <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">LD</th>
-                    <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">LQ</th>
-                    <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">M</th>
-                    <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">UQ</th>
-                    <th className="p-3 text-right font-semibold text-gray-700 dark:text-gray-300">UD</th>
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Grade</th>
+                    <th className="text-center py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Vertical %</th>
+                    <th className="text-center py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Horizontal %</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">LD</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">LQ</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Median</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">UQ</th>
+                    <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">UD</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -445,14 +434,14 @@ const GradingPage = () => {
                     const outputs = calculatedOutputs[gradeName] || { LD: "", LQ: "", M: "", UQ: "", UD: "" };
 
                     return (
-                      <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                        <td className="p-3 font-medium text-almet-cloud-burst dark:text-white">{gradeName}</td>
-                        <td className="p-3 text-center">
+                      <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700">
+                        <td className="py-3 text-sm font-medium text-almet-cloud-burst dark:text-white">{gradeName}</td>
+                        <td className="py-3 text-center">
                           <input
                             type="number"
                             value={inputs.vertical}
                             onChange={(e) => handleVerticalChange(gradeName, e.target.value)}
-                            className={`w-20 p-2 border rounded-lg text-center dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire ${
+                            className={`w-20 px-2 py-1 text-sm border rounded text-center dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-almet-sapphire ${
                               errors[`vertical-${gradeName}`] ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                             }`}
                             placeholder="0"
@@ -460,14 +449,13 @@ const GradingPage = () => {
                             max="100"
                             step="0.1"
                           />
-                          {errors[`vertical-${gradeName}`] && <p className="text-red-500 text-xs mt-1">{errors[`vertical-${gradeName}`]}</p>}
                         </td>
-                        <td className="p-3 text-center">
+                        <td className="py-3 text-center">
                           <input
                             type="number"
                             value={inputs.horizontal}
                             onChange={(e) => handleHorizontalChange(gradeName, e.target.value)}
-                            className={`w-20 p-2 border rounded-lg text-center dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire ${
+                            className={`w-20 px-2 py-1 text-sm border rounded text-center dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-almet-sapphire ${
                               errors[`horizontal-${gradeName}`] ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                             }`}
                             placeholder="0"
@@ -475,13 +463,12 @@ const GradingPage = () => {
                             max="100"
                             step="0.1"
                           />
-                          {errors[`horizontal-${gradeName}`] && <p className="text-red-500 text-xs mt-1">{errors[`horizontal-${gradeName}`]}</p>}
                         </td>
-                        <td className="p-3 text-right font-mono">{outputs.LD ? `$${Number(outputs.LD).toLocaleString()}` : "-"}</td>
-                        <td className="p-3 text-right font-mono">{outputs.LQ ? `$${Number(outputs.LQ).toLocaleString()}` : "-"}</td>
-                        <td className="p-3 text-right font-mono font-semibold">{outputs.M ? `$${Number(outputs.M).toLocaleString()}` : "-"}</td>
-                        <td className="p-3 text-right font-mono">{outputs.UQ ? `$${Number(outputs.UQ).toLocaleString()}` : "-"}</td>
-                        <td className="p-3 text-right font-mono">{outputs.UD ? `$${Number(outputs.UD).toLocaleString()}` : "-"}</td>
+                        <td className="py-3 text-sm text-right font-mono">{outputs.LD ? `$${Number(outputs.LD).toLocaleString()}` : "-"}</td>
+                        <td className="py-3 text-sm text-right font-mono">{outputs.LQ ? `$${Number(outputs.LQ).toLocaleString()}` : "-"}</td>
+                        <td className="py-3 text-sm text-right font-mono font-medium">{outputs.M ? `$${Number(outputs.M).toLocaleString()}` : "-"}</td>
+                        <td className="py-3 text-sm text-right font-mono">{outputs.UQ ? `$${Number(outputs.UQ).toLocaleString()}` : "-"}</td>
+                        <td className="py-3 text-sm text-right font-mono">{outputs.UD ? `$${Number(outputs.UD).toLocaleString()}` : "-"}</td>
                       </tr>
                     );
                   })}
@@ -492,216 +479,204 @@ const GradingPage = () => {
             <div className="flex justify-end">
               <button
                 onClick={handleSaveDraft}
-                className="bg-almet-sapphire text-white px-6 py-3 rounded-lg hover:bg-almet-astral transition duration-200 disabled:opacity-50 flex items-center"
+                className="bg-almet-sapphire text-white px-6 py-2 text-sm rounded-lg hover:bg-almet-astral transition-colors disabled:opacity-50"
                 disabled={Object.keys(errors).length > 0 || !newScenarioDisplayData.baseValue1 || parseFloat(newScenarioDisplayData.baseValue1) <= 0}
               >
-                <Save size={16} className="mr-2" />
                 Save as Draft
               </button>
             </div>
           </div>
         </div>
 
-        {/* Draft Scenarios - Enhanced with Comparison */}
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center mr-4">
-                <Archive className="text-purple-600 dark:text-purple-400" size={20} />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Draft Scenarios</h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {compareMode ? 'Select up to 3 scenarios to compare' : `${draftScenarios.length} draft scenarios available`}
-                </p>
-              </div>
-            </div>
+        {/* Draft Scenarios */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h2 className="text-lg font-medium text-almet-cloud-burst dark:text-white">Draft Scenarios</h2>
             {compareMode && selectedForComparison.length >= 2 && (
               <button
                 onClick={() => setIsDetailOpen(true)}
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors flex items-center"
+                className="bg-almet-sapphire text-white px-4 py-2 text-sm rounded-lg hover:bg-almet-astral transition-colors"
               >
-                <TrendingUp size={16} className="mr-2" />
                 Compare Selected ({selectedForComparison.length})
               </button>
             )}
           </div>
 
-          {bestDraft && !compareMode && (
-            <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 rounded-lg border border-green-200 dark:border-green-700">
-              <div className="flex items-center mb-2">
-                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center mr-3">
-                  <span className="text-white text-xs">★</span>
-                </div>
-                <h3 className="font-semibold text-green-800 dark:text-green-300">Recommended Scenario</h3>
-              </div>
-              <p className="text-sm text-green-700 dark:text-green-400 mb-3">
-                {bestDraft.name} offers the best balance based on your criteria (Balance score: {getBalanceScore(bestDraft).toFixed(2)})
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleSaveAsCurrent(bestDraft.id)}
-                  className="bg-green-600 text-white px-3 py-1 text-sm rounded hover:bg-green-700 transition-colors"
-                >
-                  Apply Now
-                </button>
-                <button
-                  onClick={() => handleViewDetails(bestDraft)}
-                  className="bg-gray-600 text-white px-3 py-1 text-sm rounded hover:bg-gray-700 transition-colors"
-                >
-                  View Details
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {draftScenarios.length > 0 ? (
-              draftScenarios.map((scenario) => (
-                <div
-                  key={scenario.id}
-                  className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer relative ${
-                    bestDraft && bestDraft.id === scenario.id && !compareMode
-                      ? "bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-green-300 dark:border-green-600 shadow-md"
-                      : compareMode && selectedForComparison.includes(scenario.id)
-                      ? "bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-600"
-                      : "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:shadow-md"
-                  }`}
-                  onClick={() => compareMode ? toggleScenarioForComparison(scenario.id) : handleViewDetails(scenario)}
-                >
-                  {compareMode && (
-                    <div className="absolute top-2 right-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedForComparison.includes(scenario.id)}
-                        onChange={() => toggleScenarioForComparison(scenario.id)}
-                        className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"
-                      />
-                    </div>
-                  )}
-                  
-                  {bestDraft && bestDraft.id === scenario.id && !compareMode && (
-                    <div className="absolute top-2 right-2 w-6 h-6 bg-green-500 text-white rounded-full flex items-center justify-center text-xs">
-                      ★
-                    </div>
-                  )}
-
-                  <div className="mb-3">
-                    <h3 className="font-semibold text-almet-sapphire dark:text-white text-lg">
-                      {scenario.name}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Created: {new Date(scenario.createdAt).toLocaleDateString()}
-                      {scenario.metrics && (
-                        <span className="ml-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs">
-                          Risk: {scenario.metrics.riskLevel}
-                        </span>
-                      )}
+          <div className="p-6">
+            {bestDraft && !compareMode && (
+              <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-almet-sapphire">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-almet-cloud-burst dark:text-white">Recommended Scenario</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      {bestDraft.name} - Balance score: {getBalanceScore(bestDraft).toFixed(2)}
                     </p>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="text-center p-2 bg-white dark:bg-gray-700 rounded border">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Vertical Avg</div>
-                      <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                        {(scenario.data.verticalAvg * 100).toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="text-center p-2 bg-white dark:bg-gray-700 rounded border">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">Horizontal Avg</div>
-                      <div className="text-lg font-bold text-green-600 dark:text-green-400">
-                        {(scenario.data.horizontalAvg * 100).toFixed(1)}%
-                      </div>
-                    </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveAsCurrent(bestDraft.id)}
+                      className="bg-almet-sapphire text-white px-3 py-1 text-sm rounded hover:bg-almet-astral transition-colors"
+                    >
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => handleViewDetails(bestDraft)}
+                      className="bg-gray-500 text-white px-3 py-1 text-sm rounded hover:bg-gray-600 transition-colors"
+                    >
+                      View
+                    </button>
                   </div>
-
-                  {scenario.metrics && (
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-600 dark:text-gray-400">Budget Impact:</span>
-                        <span className="font-medium">${scenario.metrics.totalBudgetImpact.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-600 dark:text-gray-400">Avg Increase:</span>
-                        <span className={`font-medium ${scenario.metrics.avgSalaryIncrease > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {scenario.metrics.avgSalaryIncrease > 0 ? '+' : ''}{scenario.metrics.avgSalaryIncrease.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-600 dark:text-gray-400">Market Competitive:</span>
-                        <span className="font-medium">{scenario.metrics.competitiveness.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {!compareMode && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleSaveAsCurrent(scenario.id); }}
-                        className="flex-1 bg-almet-sapphire text-white px-3 py-1.5 text-xs rounded hover:bg-almet-astral transition-colors"
-                      >
-                        Apply
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleArchiveDraft(scenario.id); }}
-                        className="bg-gray-400 text-white px-3 py-1.5 text-xs rounded hover:bg-gray-500 transition-colors"
-                      >
-                        Archive
-                      </button>
-                    </div>
-                  )}
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full text-center py-12">
-                <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Archive className="text-gray-400" size={24} />
-                </div>
-                <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">No Draft Scenarios</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-500">Create your first scenario above to get started</p>
               </div>
             )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {draftScenarios.length > 0 ? (
+                draftScenarios.map((scenario) => (
+                  <div
+                    key={scenario.id}
+                    className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                      bestDraft && bestDraft.id === scenario.id && !compareMode
+                        ? "border-almet-sapphire bg-blue-50 dark:bg-blue-900/20"
+                        : compareMode && selectedForComparison.includes(scenario.id)
+                        ? "border-almet-sapphire bg-blue-50 dark:bg-blue-900/20"
+                        : "border-gray-200 dark:border-gray-700 hover:shadow-md"
+                    }`}
+                    onClick={() => compareMode ? toggleScenarioForComparison(scenario.id) : handleViewDetails(scenario)}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-medium text-almet-cloud-burst dark:text-white">{scenario.name}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {new Date(scenario.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {compareMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedForComparison.includes(scenario.id)}
+                          onChange={() => toggleScenarioForComparison(scenario.id)}
+                          className="w-4 h-4 text-almet-sapphire rounded focus:ring-almet-sapphire"
+                        />
+                      )}
+                      {bestDraft && bestDraft.id === scenario.id && !compareMode && (
+                        <span className="text-xs bg-almet-sapphire text-white px-2 py-1 rounded">★ Best</span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                          {(scenario.data.verticalAvg * 100).toFixed(1)}%
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Vertical</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                          {(scenario.data.horizontalAvg * 100).toFixed(1)}%
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Horizontal</div>
+                      </div>
+                    </div>
+
+                    {scenario.metrics && (
+                      <div className="space-y-2 mb-4 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Budget Impact:</span>
+                          <span className="font-medium">${scenario.metrics.totalBudgetImpact.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Avg Increase:</span>
+                          <span className={`font-medium ${scenario.metrics.avgSalaryIncrease > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {scenario.metrics.avgSalaryIncrease > 0 ? '+' : ''}{scenario.metrics.avgSalaryIncrease.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600 dark:text-gray-400">Risk Level:</span>
+                          <span className={`font-medium ${
+                            scenario.metrics.riskLevel === 'High' ? 'text-red-600' :
+                            scenario.metrics.riskLevel === 'Medium' ? 'text-yellow-600' :
+                            'text-green-600'
+                          }`}>
+                            {scenario.metrics.riskLevel}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {!compareMode && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSaveAsCurrent(scenario.id); }}
+                          className="flex-1 bg-almet-sapphire text-white px-3 py-1 text-xs rounded hover:bg-almet-astral transition-colors"
+                        >
+                          Apply
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleArchiveDraft(scenario.id); }}
+                          className="bg-gray-400 text-white px-3 py-1 text-xs rounded hover:bg-gray-500 transition-colors"
+                        >
+                          Archive
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <div className="text-gray-400 mb-2">
+                    <Archive size={48} className="mx-auto" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-600 dark:text-gray-400 mb-2">No Draft Scenarios</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">Create your first scenario above to get started</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Archived Scenarios */}
         {archivedScenarios.length > 0 && (
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white mb-4">Archived Scenarios</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {archivedScenarios.map((scenario) => (
-                <div
-                  key={scenario.id}
-                  className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
-                  onClick={() => handleViewDetails(scenario)}
-                >
-                  <h3 className="font-medium text-almet-sapphire dark:text-white mb-2">{scenario.name}</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                    Archived: {new Date(scenario.createdAt).toLocaleDateString()}
-                  </p>
-                  <div className="flex gap-2">
-                    <div className="text-center p-2 bg-white dark:bg-gray-700 rounded flex-1">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">V-Avg</div>
-                      <div className="font-bold text-sm">{(scenario.data.verticalAvg * 100).toFixed(1)}%</div>
-                    </div>
-                    <div className="text-center p-2 bg-white dark:bg-gray-700 rounded flex-1">
-                      <div className="text-xs text-gray-500 dark:text-gray-400">H-Avg</div>
-                      <div className="font-bold text-sm">{(scenario.data.horizontalAvg * 100).toFixed(1)}%</div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-lg font-medium text-almet-cloud-burst dark:text-white">Archived Scenarios</h2>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {archivedScenarios.map((scenario) => (
+                  <div
+                    key={scenario.id}
+                    className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-all"
+                    onClick={() => handleViewDetails(scenario)}
+                  >
+                    <h3 className="font-medium text-almet-cloud-burst dark:text-white mb-2">{scenario.name}</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                      {new Date(scenario.createdAt).toLocaleDateString()}
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <div className="text-sm font-semibold">{(scenario.data.verticalAvg * 100).toFixed(1)}%</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Vertical</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-semibold">{(scenario.data.horizontalAvg * 100).toFixed(1)}%</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">Horizontal</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* Detail Modal - Enhanced for Comparison */}
+        {/* Detail Modal */}
         {isDetailOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
-              <div className="sticky top-0 bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-gray-700 p-6 rounded-t-xl">
+            <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700">
+              <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-semibold text-almet-cloud-burst dark:text-white">
+                  <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">
                     {compareMode && selectedForComparison.length >= 2 ? 
                       `Scenario Comparison (${selectedForComparison.length} scenarios)` : 
                       selectedScenario ? `${selectedScenario.name} Details` : 'Scenario Details'
@@ -709,9 +684,9 @@ const GradingPage = () => {
                   </h2>
                   <button
                     onClick={() => setIsDetailOpen(false)}
-                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
-                    <X size={24} />
+                    <X size={20} />
                   </button>
                 </div>
               </div>
@@ -720,35 +695,34 @@ const GradingPage = () => {
                 {compareMode && selectedForComparison.length >= 2 ? (
                   // Comparison View
                   <div className="space-y-6">
-                    {/* Comparison Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {selectedForComparison.map(scenarioId => {
                         const scenario = draftScenarios.find(s => s.id === scenarioId);
                         if (!scenario) return null;
                         return (
-                          <div key={scenarioId} className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border">
+                          <div key={scenarioId} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                             <h3 className="font-semibold text-lg mb-3">{scenario.name}</h3>
                             <div className="space-y-2">
                               <div className="flex justify-between">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">V-Avg:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Vertical Avg:</span>
                                 <span className="font-medium">{(scenario.data.verticalAvg * 100).toFixed(1)}%</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-sm text-gray-600 dark:text-gray-400">H-Avg:</span>
+                                <span className="text-sm text-gray-600 dark:text-gray-400">Horizontal Avg:</span>
                                 <span className="font-medium">{(scenario.data.horizontalAvg * 100).toFixed(1)}%</span>
                               </div>
                               {scenario.metrics && (
                                 <>
                                   <div className="flex justify-between">
-                                    <span className="text-sm text-gray-600 dark:text-gray-400">Budget:</span>
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Budget Impact:</span>
                                     <span className="font-medium">${scenario.metrics.totalBudgetImpact.toLocaleString()}</span>
                                   </div>
                                   <div className="flex justify-between">
-                                    <span className="text-sm text-gray-600 dark:text-gray-400">Risk:</span>
-                                    <span className={`font-medium px-2 py-0.5 rounded text-xs ${
-                                      scenario.metrics.riskLevel === 'High' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                                      scenario.metrics.riskLevel === 'Medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Risk Level:</span>
+                                    <span className={`font-medium ${
+                                      scenario.metrics.riskLevel === 'High' ? 'text-red-600' :
+                                      scenario.metrics.riskLevel === 'Medium' ? 'text-yellow-600' :
+                                      'text-green-600'
                                     }`}>
                                       {scenario.metrics.riskLevel}
                                     </span>
@@ -761,16 +735,15 @@ const GradingPage = () => {
                       })}
                     </div>
 
-                    {/* Detailed Comparison Table */}
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm border-collapse border border-gray-200 dark:border-gray-700">
+                      <table className="w-full">
                         <thead>
-                          <tr className="bg-gray-50 dark:bg-gray-800">
-                            <th className="p-3 text-left border border-gray-200 dark:border-gray-700">Grade</th>
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Grade</th>
                             {selectedForComparison.map(scenarioId => {
                               const scenario = draftScenarios.find(s => s.id === scenarioId);
                               return scenario ? (
-                                <th key={scenarioId} className="p-3 text-center border border-gray-200 dark:border-gray-700">
+                                <th key={scenarioId} className="text-center py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                                   {scenario.name}
                                 </th>
                               ) : null;
@@ -779,15 +752,15 @@ const GradingPage = () => {
                         </thead>
                         <tbody>
                           {initialGradeNamesOrder.map(gradeName => (
-                            <tr key={gradeName} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                              <td className="p-3 font-medium border border-gray-200 dark:border-gray-700">{gradeName}</td>
+                            <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700">
+                              <td className="py-3 text-sm font-medium">{gradeName}</td>
                               {selectedForComparison.map(scenarioId => {
                                 const scenario = draftScenarios.find(s => s.id === scenarioId);
                                 const gradeData = scenario?.data.grades[gradeName];
                                 return (
-                                  <td key={scenarioId} className="p-3 text-center border border-gray-200 dark:border-gray-700">
+                                  <td key={scenarioId} className="py-3 text-center">
                                     {gradeData ? (
-                                      <div className="space-y-1">
+                                      <div>
                                         <div className="font-mono font-semibold">${(gradeData.M || 0).toLocaleString()}</div>
                                         <div className="text-xs text-gray-500">
                                           V: {gradeData.vertical}% / H: {gradeData.horizontal}%
@@ -807,44 +780,44 @@ const GradingPage = () => {
                   // Single Scenario Detail View
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                        <div className="text-sm text-blue-600 dark:text-blue-400 mb-1">Base Value</div>
-                        <div className="text-xl font-bold">${parseFloat(selectedScenario.data.baseValue1).toLocaleString()}</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-almet-sapphire">${parseFloat(selectedScenario.data.baseValue1).toLocaleString()}</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Base Value</div>
                       </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                        <div className="text-sm text-green-600 dark:text-green-400 mb-1">Vertical Avg</div>
-                        <div className="text-xl font-bold">{(selectedScenario.data.verticalAvg * 100).toFixed(1)}%</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-almet-sapphire">{(selectedScenario.data.verticalAvg * 100).toFixed(1)}%</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Vertical Average</div>
                       </div>
-                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-                        <div className="text-sm text-purple-600 dark:text-purple-400 mb-1">Horizontal Avg</div>
-                        <div className="text-xl font-bold">{(selectedScenario.data.horizontalAvg * 100).toFixed(1)}%</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-almet-sapphire">{(selectedScenario.data.horizontalAvg * 100).toFixed(1)}%</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Horizontal Average</div>
                       </div>
                       {selectedScenario.metrics && (
-                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
-                          <div className="text-sm text-orange-600 dark:text-orange-400 mb-1">Risk Level</div>
-                          <div className={`text-xl font-bold ${
+                        <div className="text-center">
+                          <div className={`text-2xl font-bold ${
                             selectedScenario.metrics.riskLevel === 'High' ? 'text-red-600' :
                             selectedScenario.metrics.riskLevel === 'Medium' ? 'text-yellow-600' :
                             'text-green-600'
                           }`}>
                             {selectedScenario.metrics.riskLevel}
                           </div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Risk Level</div>
                         </div>
                       )}
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm border-collapse">
+                      <table className="w-full">
                         <thead>
-                          <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                            <th className="p-3 text-left">Grade</th>
-                            <th className="p-3 text-center">Vertical %</th>
-                            <th className="p-3 text-center">Horizontal %</th>
-                            <th className="p-3 text-right">LD</th>
-                            <th className="p-3 text-right">LQ</th>
-                            <th className="p-3 text-right">Median</th>
-                            <th className="p-3 text-right">UQ</th>
-                            <th className="p-3 text-right">UD</th>
+                          <tr className="border-b border-gray-200 dark:border-gray-700">
+                            <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Grade</th>
+                            <th className="text-center py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Vertical %</th>
+                            <th className="text-center py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Horizontal %</th>
+                            <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">LD</th>
+                            <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">LQ</th>
+                            <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Median</th>
+                            <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">UQ</th>
+                            <th className="text-right py-3 text-sm font-medium text-gray-600 dark:text-gray-400">UD</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -852,15 +825,15 @@ const GradingPage = () => {
                             const values = selectedScenario.data.grades[gradeName];
                             if (!values) return null;
                             return (
-                              <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                <td className="p-3 font-medium">{gradeName}</td>
-                                <td className="p-3 text-center">{(parseFloat(values.vertical || "0")).toFixed(1)}%</td>
-                                <td className="p-3 text-center">{(parseFloat(values.horizontal || "0")).toFixed(1)}%</td>
-                                <td className="p-3 text-right font-mono">${(values.LD || 0).toLocaleString()}</td>
-                                <td className="p-3 text-right font-mono">${(values.LQ || 0).toLocaleString()}</td>
-                                <td className="p-3 text-right font-mono font-semibold">${(values.M || 0).toLocaleString()}</td>
-                                <td className="p-3 text-right font-mono">${(values.UQ || 0).toLocaleString()}</td>
-                                <td className="p-3 text-right font-mono">${(values.UD || 0).toLocaleString()}</td>
+                              <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700">
+                                <td className="py-3 text-sm font-medium">{gradeName}</td>
+                                <td className="py-3 text-sm text-center">{(parseFloat(values.vertical || "0")).toFixed(1)}%</td>
+                                <td className="py-3 text-sm text-center">{(parseFloat(values.horizontal || "0")).toFixed(1)}%</td>
+                                <td className="py-3 text-sm text-right font-mono">${(values.LD || 0).toLocaleString()}</td>
+                                <td className="py-3 text-sm text-right font-mono">${(values.LQ || 0).toLocaleString()}</td>
+                                <td className="py-3 text-sm text-right font-mono font-semibold">${(values.M || 0).toLocaleString()}</td>
+                                <td className="py-3 text-sm text-right font-mono">${(values.UQ || 0).toLocaleString()}</td>
+                                <td className="py-3 text-sm text-right font-mono">${(values.UD || 0).toLocaleString()}</td>
                               </tr>
                             );
                           })}
