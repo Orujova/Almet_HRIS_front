@@ -1,4 +1,3 @@
-// src/components/headcount/EmployeeTable/index.jsx
 "use client";
 import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles } from "../utils/themeStyles";
@@ -6,23 +5,6 @@ import EmployeeTableHeader from "./EmployeeTableHeader";
 import EmployeeTableRow from "./EmployeeTableRow";
 import EmptyStateMessage from "./EmptyStateMessage";
 
-/**
- * Əməkdaşlar cədvəli komponenti
- * @param {Object} props - Komponent parametrləri
- * @param {Array} props.employees - Əməkdaşlar siyahısı
- * @param {Array} props.selectedEmployees - Seçilmiş əməkdaşlar siyahısı
- * @param {boolean} props.selectAll - Bütün əməkdaşlar seçilib ya yox
- * @param {Function} props.onToggleSelectAll - Bütün əməkdaşların seçim vəziyyətini dəyişən funksiya
- * @param {Function} props.onToggleEmployeeSelection - Əməkdaşın seçim vəziyyətini dəyişən funksiya
- * @param {Function} props.onSort - Sıralama parametrini dəyişən funksiya
- * @param {Function} props.getSortDirection - Sahənin sıralama istiqamətini qaytaran funksiya
- * @param {Object} props.employeeVisibility - Əməkdaşların görünmə vəziyyəti
- * @param {Function} props.onVisibilityChange - Əməkdaşın görünmə vəziyyətini dəyişən funksiya
- * @param {Function} props.onEmployeeAction - Əməkdaş üzərində əməliyyat seçildikdə çağrılan funksiya
- * @param {boolean} props.hasFilters - Filtrlər aktivdir ya yox
- * @param {Function} props.onClearFilters - Filtrləri təmizləmək üçün funksiya
- * @returns {JSX.Element} - Əməkdaşlar cədvəli komponenti
- */
 const EmployeeTable = ({
   employees = [],
   selectedEmployees = [],
@@ -36,9 +18,21 @@ const EmployeeTable = ({
   onEmployeeAction,
   hasFilters = false,
   onClearFilters,
+  loading = false,
 }) => {
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
+
+  if (loading) {
+    return (
+      <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass} overflow-hidden border ${styles.borderColor}`}>
+        <div className="p-8 text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-almet-sapphire"></div>
+          <p className={`mt-4 ${styles.textMuted}`}>Loading employees...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass} overflow-hidden border ${styles.borderColor}`}>

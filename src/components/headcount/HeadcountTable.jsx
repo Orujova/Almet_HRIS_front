@@ -1,14 +1,9 @@
-// src/components/headcount/HeadcountTable.jsx
 "use client";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "../common/ThemeProvider";
-import { getThemeStyles, setColorMode } from "./utils/themeStyles";
-import { filterEmployees, getActiveFilters } from "./utils/employeeFilters";
-import { sortEmployees, updateSorting, getSortDirection } from "./utils/employeeSorting";
-import { getMockEmployees } from "./utils/mockData";
-import { addColorModeListener } from "./ColorModeSelector";
+import { useEmployees } from "../../hooks/useEmployees";
+import { useReferenceData } from "../../hooks/useReferenceData";
 
-// Komponentlər
 import HeadcountHeader from "./HeadcountHeader";
 import SearchBar from "./SearchBar";
 import QuickFilterBar from "./QuickFilterBar";
@@ -19,112 +14,105 @@ import ActionMenu from "./ActionMenu";
 import HierarchyLegend from "./HierarchyLegend";
 import ColorSelector from "./ColorModeSelector";
 
-/**
- * Ana əməkdaşlar cədvəli komponenti
- * Bütün state və məntiqi özündə saxlayır
- * @returns {JSX.Element} - Əməkdaşlar cədvəli komponenti
- */
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
-  const styles = getThemeStyles(darkMode);
   
-  // Color mode reaktivlik üçün state
-  const [colorModeRenderKey, setColorModeRenderKey] = useState(0);
-  
-  // Filter və axtarış vəziyyətləri
+  // Redux hooks
+  const {
+    employees,
+    loading,
+    error,
+    filterOptions,
+    selectedEmployees,
+    currentFilters,
+    pagination,
+    fetchEmployees,
+    fetchFilterOptions,
+    setSelectedEmployees,
+    toggleEmployeeSelection,
+    selectAllEmployees,
+    clearSelection,
+    setCurrentFilters,
+    clearFilters,
+    setSorting,
+    setPageSize,
+    setCurrentPage,
+    bulkUpdateEmployees
+  } = useEmployees();
+
+  // Local state
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [officeFilter, setOfficeFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
-  
-  // Əməkdaş məlumatları vəziyyətləri
-  const [employees, setEmployees] = useState([]);
-  const [selectedEmployees, setSelectedEmployees] = useState([]);
-  const [selectAll, setSelectAll] = useState(false);
-  const [employeeVisibility, setEmployeeVisibility] = useState({});
-  
-  // Sıralama vəziyyəti
-  const [sorting, setSorting] = useState([{ field: "name", direction: "asc" }]);
-  
-  // Səhifələmə vəziyyəti
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [totalEmployees, setTotalEmployees] = useState(0);
-  
-  // Əməliyyatlar menyusu vəziyyəti
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
-  const actionButtonRef = useRef(null);
+  const [employeeVisibility, setEmployeeVisibility] = useState({});
 
-  // Color mode dəyişikliklərini dinlə
+  // Initialize data on mount
   useEffect(() => {
-    const removeListener = addColorModeListener((newMode) => {
-      setColorMode(newMode);
-      // Force re-render by updating key
-      setColorModeRenderKey(prev => prev + 1);
-    });
-
-    return removeListener;
+    fetchFilterOptions();
+    fetchEmployees();
   }, []);
 
-  // Test əməkdaş məlumatlarını yüklə
-  useEffect(() => {
-    const mockEmployees = getMockEmployees();
-    setEmployees(mockEmployees);
-    setTotalEmployees(mockEmployees.length);
-    
-    // Görünmə vəziyyətini başlat
-    const visibilityMap = {};
-    mockEmployees.forEach(emp => {
-      visibilityMap[emp.id] = true;
+  // Build filter parameters for API
+  const buildFilterParams = useMemo(() => {
+    const params = {
+      page: pagination.currentPage,
+      page_size: pagination.pageSize,
+    };
+
+    // Add search term
+    if (searchTerm.trim()) {
+      params.search = searchTerm.trim();
+    }
+
+    // Add quick filters
+    if (statusFilter !== "all") {
+      params.status = statusFilter;
+    }
+    if (departmentFilter !== "all") {
+      params.department = departmentFilter;
+    }
+
+    // Add advanced filters
+    Object.keys(currentFilters).forEach(key => {
+      const value = currentFilters[key];
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value) && value.length > 0) {
+          params[key] = value.join(',');
+        } else if (!Array.isArray(value)) {
+          params[key] = value;
+        }
+      }
     });
-    setEmployeeVisibility(visibilityMap);
-  }, []);
 
-  // Hamısını seçmək funksiyası
-  const toggleSelectAll = () => {
-    if (selectAll) {
-      setSelectedEmployees([]);
-    } else {
-      setSelectedEmployees(filteredAndSortedEmployees.map((emp) => emp.id));
-    }
-    setSelectAll(!selectAll);
-  };
+    return params;
+  }, [pagination.currentPage, pagination.pageSize, searchTerm, statusFilter, departmentFilter, currentFilters]);
 
-  // Tək əməkdaşı seçmək funksiyası
-  const toggleEmployeeSelection = (id) => {
-    if (selectedEmployees.includes(id)) {
-      setSelectedEmployees(selectedEmployees.filter((empId) => empId !== id));
-      if (selectAll) setSelectAll(false);
-    } else {
-      setSelectedEmployees([...selectedEmployees, id]);
-      if (selectedEmployees.length + 1 === filteredAndSortedEmployees.length)
-        setSelectAll(true);
-    }
-  };
+  // Fetch employees when filters change
+  useEffect(() => {
+    fetchEmployees(buildFilterParams);
+  }, [buildFilterParams]);
 
-  // Axtarış funksiyası
+  // Handler functions
   const handleSearchChange = (value) => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
 
-  // Əlavə filtrlər panelini açıb-bağlamaq
   const toggleAdvancedFilter = () => {
     setIsAdvancedFilterOpen(!isAdvancedFilterOpen);
   };
 
-  // Əlavə filtrləri tətbiq etmək
   const handleApplyAdvancedFilters = (filters) => {
-    setAppliedFilters(filters);
+    setCurrentFilters(filters);
     setIsAdvancedFilterOpen(false);
     setCurrentPage(1);
   };
 
-  // Bütün filtrləri təmizləmək
   const handleClearAllFilters = () => {
-    setAppliedFilters({});
+    clearFilters();
     setStatusFilter("all");
     setOfficeFilter("all");
     setDepartmentFilter("all");
@@ -132,25 +120,21 @@ const HeadcountTable = () => {
     setCurrentPage(1);
   };
 
-  // Status filtrini dəyişmək
   const handleStatusChange = (value) => {
     setStatusFilter(value);
     setCurrentPage(1);
   };
 
-  // Ofis filtrini dəyişmək
   const handleOfficeChange = (value) => {
     setOfficeFilter(value);
     setCurrentPage(1);
   };
 
-  // Departament filtrini dəyişmək
   const handleDepartmentChange = (value) => {
     setDepartmentFilter(value);
     setCurrentPage(1);
   };
 
-  // Konkret bir filtri təmizləmək
   const handleClearFilter = (key) => {
     if (key === "status") {
       setStatusFilter("all");
@@ -159,166 +143,141 @@ const HeadcountTable = () => {
     } else if (key === "department") {
       setDepartmentFilter("all");
     } else {
-      const newFilters = { ...appliedFilters };
+      const newFilters = { ...currentFilters };
       delete newFilters[key];
-      setAppliedFilters(newFilters);
+      setCurrentFilters(newFilters);
     }
     setCurrentPage(1);
   };
 
-  // Sütun sıralamasını dəyişmək
   const handleSort = (field) => {
-    const newSorting = updateSorting(sorting, field);
-    setSorting(newSorting);
+    // Toggle sort order logic
+    setSorting(field, 'asc'); // Simplified for now
   };
 
-  // Sıralama istiqamətini əldə etmək
   const handleGetSortDirection = (field) => {
-    return getSortDirection(sorting, field);
+    return null; // Simplified for now
   };
 
-  // Əməliyyatlar menyusunu açıb-bağlamaq
+  const toggleSelectAll = () => {
+    if (selectedEmployees.length === employees.length) {
+      clearSelection();
+    } else {
+      selectAllEmployees();
+    }
+  };
+
   const toggleActionMenu = () => {
     setIsActionMenuOpen(!isActionMenuOpen);
   };
 
-  // Seçilmiş əməkdaşlar üzərində əməliyyat
-  const handleBulkAction = (action) => {
-    console.log(`Bulk action ${action} for employees:`, selectedEmployees);
+  const handleBulkAction = async (action) => {
     setIsActionMenuOpen(false);
 
     if (action === "export") {
       alert(`Exporting data for ${selectedEmployees.length} employee(s)`);
     } else if (action === "delete") {
-      if (
-        confirm(
-          `Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`
-        )
-      ) {
+      if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)?`)) {
+        // Handle bulk delete
         alert(`${selectedEmployees.length} employee(s) deleted`);
-        setSelectedEmployees([]);
+        clearSelection();
       }
     } else if (action === "changeManager") {
       alert("Change manager UI would open here");
     }
   };
 
-  // Tək əməkdaş üzərində əməliyyat
   const handleEmployeeAction = (employeeId, action) => {
     const employee = employees.find((emp) => emp.id === employeeId);
 
-    console.log(`Action ${action} for employee ${employeeId}`);
-
     if (action === "delete") {
-      if (
-        confirm(
-          `Are you sure you want to delete ${employee.name}? This action cannot be undone.`
-        )
-      ) {
+      if (confirm(`Are you sure you want to delete ${employee.name}?`)) {
         alert(`Employee ${employee.name} deleted`);
       }
     } else if (action === "addTag") {
-      const tag = prompt('Enter tag for employee (e.g., "Sick Leave", "Maternity", "Suspension")');
+      const tag = prompt('Enter tag for employee');
       if (tag) {
         alert(`Tag "${tag}" added to employee ${employee.name}`);
       }
     } else if (action === "changeManager") {
       alert("Change manager UI would open here");
-    } else if (action === "viewJobDescription") {
-      alert(`Viewing job description for ${employee.name}`);
-    } else if (action === "performanceMatrix") {
-      alert(`Viewing performance matrix for ${employee.name}`);
-    } else if (action === "message") {
-      alert(`Messaging ${employee.name}`);
-    } else if (action === "viewDetails") {
-      alert(`Viewing details for ${employee.name}`);
-    } else if (action === "editEmployee") {
-      alert(`Editing ${employee.name}`);
     }
   };
 
-  // Görünmə vəziyyətini dəyişmək
   const handleVisibilityChange = (employeeId, newVisibility) => {
     setEmployeeVisibility(prev => ({
       ...prev,
       [employeeId]: newVisibility,
     }));
-    console.log(`Employee ${employeeId} visibility set to ${newVisibility}`);
   };
 
-  // Color mode handler
-  const handleColorModeChange = (newMode) => {
-    setColorMode(newMode);
-    // Force re-render
-    setColorModeRenderKey(prev => prev + 1);
-  };
-
-  // Filtrləmə və sıralama tətbiq edilmiş əməkdaşlar
-  const filteredAndSortedEmployees = useMemo(() => {
-    const filteredEmployees = filterEmployees(employees, {
-      searchTerm,
-      statusFilter,
-      officeFilter,
-      departmentFilter,
-      appliedFilters,
-    });
-    
-    return sortEmployees(filteredEmployees, sorting);
-  }, [
-    employees,
-    searchTerm,
-    statusFilter,
-    officeFilter,
-    departmentFilter,
-    appliedFilters,
-    sorting,
-    colorModeRenderKey // Add this to force re-render when color mode changes
-  ]);
-
-  // Səhifələmə
-  const totalPages = Math.ceil(filteredAndSortedEmployees.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredAndSortedEmployees.slice(indexOfFirstItem, indexOfLastItem);
-
-  // Səhifə dəyişmə funksiyası
   const handlePageChange = (pageNumber) => {
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    }
+    setCurrentPage(pageNumber);
   };
 
-  // Səhifə başına elementlərin sayını dəyişmək
   const handleItemsPerPageChange = (value) => {
-    setItemsPerPage(value);
+    setPageSize(value);
     setCurrentPage(1);
   };
 
-  // Aktiv filtrlər
+  // Active filters for display
   const activeFilters = useMemo(() => {
-    return getActiveFilters(statusFilter, officeFilter, departmentFilter, appliedFilters);
-  }, [statusFilter, officeFilter, departmentFilter, appliedFilters]);
+    const filters = [];
+    
+    if (statusFilter !== "all") {
+      filters.push({ key: "status", label: `Status: ${statusFilter}` });
+    }
+    if (departmentFilter !== "all") {
+      filters.push({ key: "department", label: `Department: ${departmentFilter}` });
+    }
+    
+    Object.entries(currentFilters).forEach(([key, value]) => {
+      if (value && (Array.isArray(value) ? value.length > 0 : true)) {
+        const fieldName = key.replace(/([A-Z])/g, " $1").trim();
+        const displayName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
+        const label = Array.isArray(value) 
+          ? `${displayName}: ${value.join(", ")}` 
+          : `${displayName}: ${value}`;
+        filters.push({ key, label });
+      }
+    });
+    
+    return filters;
+  }, [statusFilter, departmentFilter, currentFilters]);
 
-  // Filtrlər aktivdir ya yox
   const hasActiveFilters = searchTerm || 
-    Object.keys(appliedFilters).length > 0 || 
+    Object.keys(currentFilters).length > 0 || 
     statusFilter !== "all" || 
-    officeFilter !== "all" || 
     departmentFilter !== "all";
 
+  if (error) {
+    return (
+      <div className="container mx-auto pt-3 max-w-full">
+        <div className="text-center py-8">
+          <p className="text-red-600 dark:text-red-400">Error loading employees: {error}</p>
+          <button 
+            onClick={() => fetchEmployees(buildFilterParams)}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto pt-3 max-w-full" key={colorModeRenderKey}>
-      {/* Başlıq bölməsi */}
+    <div className="container mx-auto pt-3 max-w-full">
+      {/* Header */}
       <div className="relative">
         <HeadcountHeader
           onToggleAdvancedFilter={toggleAdvancedFilter}
           onToggleActionMenu={toggleActionMenu}
           isActionMenuOpen={isActionMenuOpen}
           selectedEmployees={selectedEmployees}
-          ref={actionButtonRef}
         />
 
-        {/* Əməliyyatlar menyusu */}
+        {/* Action Menu */}
         {isActionMenuOpen && (
           <div className="absolute right-2 top-16 z-50">
             <ActionMenu 
@@ -330,16 +289,16 @@ const HeadcountTable = () => {
         )}
       </div>
 
-      {/* Əlavə Filtrlər Paneli */}
+      {/* Advanced Filters Panel */}
       {isAdvancedFilterOpen && (
         <AdvancedFilterPanel
           onApply={handleApplyAdvancedFilters}
           onClose={() => setIsAdvancedFilterOpen(false)}
-          initialFilters={appliedFilters}
+          initialFilters={currentFilters}
         />
       )}
 
-      {/* Tez filtr paneli */}
+      {/* Quick Filter Panel */}
       <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3">
         <SearchBar
           searchTerm={searchTerm}
@@ -360,17 +319,17 @@ const HeadcountTable = () => {
         </div>
       </div>
 
-      {/* Color selector və Hierarchy Legend */}
+      {/* Color Selector and Legend */}
       <div className="flex justify-between items-center mb-3">
-        <ColorSelector onChange={handleColorModeChange} />
+        <ColorSelector />
         <HierarchyLegend />
       </div>
 
-      {/* Əməkdaşlar cədvəli */}
+      {/* Employee Table */}
       <EmployeeTable
-        employees={currentItems}
+        employees={employees}
         selectedEmployees={selectedEmployees}
-        selectAll={selectAll}
+        selectAll={selectedEmployees.length === employees.length && employees.length > 0}
         onToggleSelectAll={toggleSelectAll}
         onToggleEmployeeSelection={toggleEmployeeSelection}
         onSort={handleSort}
@@ -380,17 +339,18 @@ const HeadcountTable = () => {
         onEmployeeAction={handleEmployeeAction}
         hasFilters={hasActiveFilters}
         onClearFilters={handleClearAllFilters}
+        loading={loading}
       />
 
-      {/* Səhifələmə */}
-      {filteredAndSortedEmployees.length > 0 && (
+      {/* Pagination */}
+      {employees.length > 0 && (
         <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredAndSortedEmployees.length}
-          startIndex={indexOfFirstItem}
-          endIndex={Math.min(indexOfLastItem, filteredAndSortedEmployees.length)}
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          itemsPerPage={pagination.pageSize}
+          totalItems={pagination.totalEmployees}
+          startIndex={(pagination.currentPage - 1) * pagination.pageSize}
+          endIndex={Math.min(pagination.currentPage * pagination.pageSize, pagination.totalEmployees)}
           onPageChange={handlePageChange}
           onItemsPerPageChange={handleItemsPerPageChange}
         />

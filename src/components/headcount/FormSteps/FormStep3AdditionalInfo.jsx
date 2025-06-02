@@ -1,19 +1,16 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Updated with backend integration
 import { User, Users } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 import MultiSelectDropdown from "../MultiSelectDropdown";
-import { getStatuses } from "../utils/mockData";
 
-/**
- * Additional information step of the employee form
- * @param {Object} props - Component props
- * @param {Object} props.formData - Current form data
- * @param {Function} props.handleInputChange - Function to handle input changes
- * @param {Function} props.handleTagsChange - Function to handle tags changes
- * @returns {JSX.Element} - Form step component
- */
-const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange }) => {
+const FormStep3AdditionalInfo = ({ 
+  formData, 
+  handleInputChange, 
+  handleTagsChange, 
+  employeeTags = [],
+  validationErrors = {}
+}) => {
   const { darkMode } = useTheme();
 
   // Theme-dependent classes
@@ -22,20 +19,8 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
 
-  // Statuses from mock data
-  const statuses = getStatuses();
-
-  // Available tags
-  const availableTags = [
-    "Sick Leave", 
-    "Maternity", 
-    "Suspension", 
-    "Remote Work", 
-    "Part-time", 
-    "Contract", 
-    "Probation", 
-    "Onboarding"
-  ];
+  // Convert employee tags to dropdown options
+  const tagOptions = employeeTags.map(tag => tag.name);
 
   return (
     <div className="space-y-4">
@@ -54,7 +39,7 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
           <div>
             <h3 className={`text-xs font-medium text-amber-800 dark:text-amber-300`}>Management Structure</h3>
             <p className={`text-xs text-amber-600 dark:text-amber-400 mt-0.5`}>
-              Properly assigning a line manager ensures the employee appears correctly in the organizational chart.
+              Assigning a line manager ensures the employee appears correctly in the organizational chart.
             </p>
           </div>
         </div>
@@ -62,46 +47,33 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <FormField
-          label="Line Manager"
-          name="lineManager"
-          value={formData.lineManager}
+          label="Line Manager Employee ID"
+          name="line_manager"
+          value={formData.line_manager}
           onChange={handleInputChange}
-          placeholder="Manager's full name"
+          placeholder="Enter manager's employee ID"
           icon={<Users size={14} className={textMuted} />}
-        />
-
-        <FormField
-          label="Manager's HC Number"
-          name="lineManagerHcNumber"
-          value={formData.lineManagerHcNumber}
-          onChange={handleInputChange}
-          placeholder="e.g. HLD02"
-          icon={<User size={14} className={textMuted} />}
-          helpText="The employee ID of the line manager"
-        />
-
-        <FormField
-          label="Employee Status"
-          name="status"
-          value={formData.status}
-          onChange={handleInputChange}
-          type="select"
-          required={true}
-          icon={<User size={14} className={textMuted} />}
-          options={statuses}
+          helpText="Leave empty if this is a top-level position"
         />
 
         <div>
-          <label
-            className={`block ${textSecondary} text-xs font-medium mb-1.5`}
-          >
+          <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
             Tags (Optional)
           </label>
           <MultiSelectDropdown
-            options={availableTags}
+            options={tagOptions}
             placeholder="Select tags..."
-            selectedValues={formData.tags || []}
-            onChange={handleTagsChange}
+            selectedValues={formData.tag_ids?.map(id => {
+              const tag = employeeTags.find(t => t.id === id);
+              return tag ? tag.name : '';
+            }).filter(Boolean) || []}
+            onChange={(selectedTagNames) => {
+              const selectedIds = selectedTagNames.map(name => {
+                const tag = employeeTags.find(t => t.name === name);
+                return tag ? tag.id : null;
+              }).filter(Boolean);
+              handleTagsChange(selectedIds);
+            }}
           />
           <p className={`mt-1 text-xs ${textMuted}`}>
             Tags help categorize employee status and special conditions
@@ -110,9 +82,7 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
       </div>
 
       <div className="mt-4">
-        <label
-          className={`block ${textSecondary} text-xs font-medium mb-1.5`}
-        >
+        <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
           Additional Notes
         </label>
         <textarea
@@ -123,6 +93,19 @@ const FormStep3AdditionalInfo = ({ formData, handleInputChange, handleTagsChange
           className={`block w-full px-2.5 py-2 text-sm border ${borderColor} bg-white dark:bg-gray-700 ${textPrimary} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire transition-colors duration-200`}
           placeholder="Add any additional notes about the employee..."
         ></textarea>
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3">
+        <div className="flex items-start">
+          <User className="h-4 w-4 text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+          <div>
+            <h3 className={`text-xs font-medium text-blue-800 dark:text-blue-300`}>Automatic Status Assignment</h3>
+            <p className={`text-xs text-blue-600 dark:text-blue-400 mt-0.5`}>
+              Employee status will be automatically assigned based on employment start date and contract duration. 
+              No manual status selection is required.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
