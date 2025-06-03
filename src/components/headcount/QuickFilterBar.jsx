@@ -1,5 +1,4 @@
-// src/components/headcount/QuickFilterBar.jsx - Updated with backend integration
-import { useState } from "react";
+// src/components/headcount/QuickFilterBar.jsx - Removed office filter
 import { X, ChevronDown } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
@@ -27,10 +26,8 @@ const FilterPill = ({ label, active, onClick }) => {
 
 const QuickFilterBar = ({ 
   onStatusChange, 
-  onOfficeChange, 
   onDepartmentChange,
   statusFilter, 
-  officeFilter, 
   departmentFilter,
   activeFilters = [],
   onClearFilter,
@@ -48,14 +45,6 @@ const QuickFilterBar = ({
   const statusOptions = filterOptions?.statuses || [];
   const departmentOptions = filterOptions?.departments || [];
   
-  // Default office options (until backend provides office data)
-  const officeOptions = [
-    { id: 'baku', name: 'Baku Office' },
-    { id: 'dubai', name: 'Dubai Office' },
-    { id: 'tbilisi', name: 'Tbilisi Office' },
-    { id: 'london', name: 'London Office' }
-  ];
-  
   return (
     <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
       {/* Active filter pills */}
@@ -70,7 +59,7 @@ const QuickFilterBar = ({
         ))}
       </div>
       
-      {/* Dropdown filters */}
+      {/* Dropdown filters - Only Status and Department */}
       <div className="flex space-x-2 flex-wrap">
         {/* Status Filter */}
         <div className="relative">
@@ -83,25 +72,6 @@ const QuickFilterBar = ({
             {statusOptions.map((status) => (
               <option key={status.id} value={status.name}>
                 {status.name}
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
-            <ChevronDown size={12} className={textMuted} />
-          </div>
-        </div>
-        
-        {/* Office Filter */}
-        <div className="relative">
-          <select
-            className={`p-1.5 pr-6 text-xs rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            value={officeFilter}
-            onChange={(e) => onOfficeChange(e.target.value)}
-          >
-            <option value="all">All Offices</option>
-            {officeOptions.map((office) => (
-              <option key={office.id} value={office.id}>
-                {office.name}
               </option>
             ))}
           </select>

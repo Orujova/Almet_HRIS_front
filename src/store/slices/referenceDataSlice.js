@@ -20,7 +20,8 @@ export const fetchDepartments = createAsyncThunk(
   async (businessFunctionId, { rejectWithValue }) => {
     try {
       const response = await referenceDataAPI.getDepartmentDropdown(businessFunctionId);
-      return response.data;
+     
+      return response.data.results;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }

@@ -1,9 +1,8 @@
-// src/components/headcount/HeadcountTable.jsx - Complete backend integration
+// src/components/headcount/HeadcountTable.jsx - Fixed without office filter + Excel-like sorting
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useEmployees } from "../../hooks/useEmployees";
-import { useReferenceData } from "../../hooks/useReferenceData";
 
 import HeadcountHeader from "./HeadcountHeader";
 import SearchBar from "./SearchBar";
@@ -20,13 +19,15 @@ const HeadcountTable = () => {
   
   // Redux hooks
   const {
-    employees,
+    formattedEmployees,
     loading,
     error,
     filterOptions,
     selectedEmployees,
     currentFilters,
+    appliedFilters,
     pagination,
+    sorting,
     statistics,
     fetchEmployees,
     fetchFilterOptions,
@@ -37,39 +38,46 @@ const HeadcountTable = () => {
     clearSelection,
     setCurrentFilters,
     clearFilters,
+    removeFilter,
     setSorting,
+    addSort,
+    removeSort,
+    clearSorting,
     setPageSize,
     setCurrentPage,
     bulkUpdateEmployees,
     updateOrgChartVisibility,
     exportEmployees,
     deleteEmployee,
-    clearErrors
+    clearErrors,
+    refreshEmployees,
+    buildQueryParams,
+    hasActiveFilters,
+    getSortDirection,
+    isSorted,
+    getSortIndex
   } = useEmployees();
 
   // Local state for UI
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [officeFilter, setOfficeFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [employeeVisibility, setEmployeeVisibility] = useState({});
-  const [sortConfig, setSortConfig] = useState({ field: 'employee_id', direction: 'asc' });
 
   // Initialize data on mount
   useEffect(() => {
     fetchFilterOptions();
     fetchStatistics();
-    // Initial employee fetch will be triggered by the filter effect
+    clearErrors();
   }, []);
 
-  // Build filter parameters for API with proper backend field mapping
-  const buildFilterParams = useMemo(() => {
+  // Build filter parameters for API
+  const apiParams = useMemo(() => {
     const params = {
       page: pagination.currentPage,
-      page_size: pagination.pageSize,
-      ordering: sortConfig.direction === 'desc' ? `-${sortConfig.field}` : sortConfig.field,
+      page_size: pagination.pageSize
     };
 
     // Add search term
@@ -77,59 +85,19 @@ const HeadcountTable = () => {
       params.search = searchTerm.trim();
     }
 
-    // Add quick filters with backend field mapping
+    // Add quick filters
     if (statusFilter !== "all") {
-      // Map to backend status field
-      params.status__name = statusFilter;
+      params.statusFilter = statusFilter;
     }
     if (departmentFilter !== "all") {
-      // Map to backend department field
-      params.department__name = departmentFilter;
-    }
-    if (officeFilter !== "all") {
-      // Map to backend office field (if available)
-      params.office = officeFilter;
+      params.departmentFilter = departmentFilter;
     }
 
-    // Add advanced filters with proper field mapping
+    // Add advanced filters
     Object.keys(currentFilters).forEach(key => {
       const value = currentFilters[key];
       if (value !== undefined && value !== null && value !== '') {
-        if (Array.isArray(value) && value.length > 0) {
-          // Map frontend filter names to backend field names
-          const backendFieldMap = {
-            'employeeName': 'search',
-            'employeeId': 'employee_id',
-            'businessFunctions': 'business_function',
-            'departments': 'department',
-            'units': 'unit',
-            'jobFunctions': 'job_function',
-            'positionGroups': 'position_group',
-            'jobTitles': 'job_title',
-            'lineManager': 'line_manager_name',
-            'lineManagerId': 'line_manager_hc',
-            'grades': 'grade',
-            'tags': 'tags',
-            'genders': 'gender',
-            'contractDurations': 'contract_duration'
-          };
-          
-          const backendField = backendFieldMap[key] || key;
-          params[backendField] = value.join(',');
-        } else if (!Array.isArray(value)) {
-          // Handle single values
-          const backendFieldMap = {
-            'employeeName': 'search',
-            'employeeId': 'employee_id',
-            'lineManager': 'line_manager_name',
-            'lineManagerId': 'line_manager_hc',
-            'startDate': 'start_date_from',
-            'endDate': 'start_date_to'
-          };
-          
-          const backendField = backendFieldMap[key] || key;
-          params[backendField] = value;
-        }
+        params[key] = value;
       }
     });
 
@@ -140,24 +108,17 @@ const HeadcountTable = () => {
     searchTerm, 
     statusFilter, 
     departmentFilter, 
-    officeFilter, 
-    currentFilters,
-    sortConfig
+    currentFilters
   ]);
 
   // Fetch employees when filters change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchEmployees(buildFilterParams);
+      fetchEmployees(apiParams);
     }, 300); // Debounce API calls
 
     return () => clearTimeout(timeoutId);
-  }, [buildFilterParams]);
-
-  // Clear errors when component mounts
-  useEffect(() => {
-    clearErrors();
-  }, []);
+  }, [apiParams]);
 
   // Handler functions
   const handleSearchChange = (value) => {
@@ -178,7 +139,6 @@ const HeadcountTable = () => {
   const handleClearAllFilters = () => {
     clearFilters();
     setStatusFilter("all");
-    setOfficeFilter("all");
     setDepartmentFilter("all");
     setSearchTerm("");
     setCurrentPage(1);
@@ -186,11 +146,6 @@ const HeadcountTable = () => {
 
   const handleStatusChange = (value) => {
     setStatusFilter(value);
-    setCurrentPage(1);
-  };
-
-  const handleOfficeChange = (value) => {
-    setOfficeFilter(value);
     setCurrentPage(1);
   };
 
@@ -202,33 +157,50 @@ const HeadcountTable = () => {
   const handleClearFilter = (key) => {
     if (key === "status") {
       setStatusFilter("all");
-    } else if (key === "office") {
-      setOfficeFilter("all");
     } else if (key === "department") {
       setDepartmentFilter("all");
     } else {
-      const newFilters = { ...currentFilters };
-      delete newFilters[key];
-      setCurrentFilters(newFilters);
+      removeFilter(key);
     }
     setCurrentPage(1);
   };
 
-  const handleSort = (field) => {
-    const newDirection = sortConfig.field === field && sortConfig.direction === 'asc' ? 'desc' : 'asc';
-    setSortConfig({ field, direction: newDirection });
-    setSorting(field, newDirection);
+  // Excel-like sorting handlers
+  const handleSort = (field, ctrlKey = false) => {
+    if (ctrlKey) {
+      // Multi-sort with Ctrl+Click
+      const currentDirection = getSortDirection(field);
+      let newDirection;
+      
+      if (!currentDirection) {
+        newDirection = 'asc';
+      } else if (currentDirection === 'asc') {
+        newDirection = 'desc';
+      } else {
+        // Remove this sort
+        removeSort(field);
+        return;
+      }
+      
+      addSort(field, newDirection);
+    } else {
+      // Single sort
+      const currentDirection = getSortDirection(field);
+      const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
+      setSorting(field, newDirection);
+    }
   };
 
   const handleGetSortDirection = (field) => {
-    if (sortConfig.field === field) {
-      return sortConfig.direction;
-    }
-    return null;
+    return getSortDirection(field);
+  };
+
+  const handleGetSortIndex = (field) => {
+    return getSortIndex(field);
   };
 
   const toggleSelectAll = () => {
-    if (selectedEmployees.length === employees.length && employees.length > 0) {
+    if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
       clearSelection();
     } else {
       selectAllEmployees();
@@ -244,44 +216,30 @@ const HeadcountTable = () => {
 
     try {
       if (action === "export") {
-        const result = await exportEmployees({ 
-          format: 'csv', 
-          filters: buildFilterParams 
-        });
+        const result = await exportEmployees('csv', apiParams);
         
-        if (result.meta.requestStatus === 'fulfilled') {
-          // Handle successful export
-          const blob = new Blob([result.payload.data], { type: 'text/csv' });
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `employees_export_${new Date().toISOString().split('T')[0]}.csv`;
-          document.body.appendChild(a);
-          a.click();
-          window.URL.revokeObjectURL(url);
-          document.body.removeChild(a);
+        if (result.meta?.requestStatus === 'fulfilled') {
+          // Create and download CSV file
+          const csvData = result.payload.data || [];
+          const csvContent = convertToCSV(csvData);
+          downloadCSV(csvContent, `employees_export_${new Date().toISOString().split('T')[0]}.csv`);
         }
       } else if (action === "delete") {
         if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`)) {
-          // Handle bulk delete (if backend supports it)
           for (const employeeId of selectedEmployees) {
             await deleteEmployee(employeeId);
           }
           clearSelection();
-          // Refresh the list
-          fetchEmployees(buildFilterParams);
+          refreshEmployees();
         }
       } else if (action === "changeManager") {
         const newManagerId = prompt('Enter the new line manager employee ID:');
         if (newManagerId) {
-          const result = await bulkUpdateEmployees({
-            employeeIds: selectedEmployees,
-            updates: { line_manager: newManagerId }
-          });
+          const result = await bulkUpdateEmployees(selectedEmployees, { line_manager: newManagerId });
           
-          if (result.meta.requestStatus === 'fulfilled') {
+          if (result.meta?.requestStatus === 'fulfilled') {
             clearSelection();
-            fetchEmployees(buildFilterParams);
+            refreshEmployees();
           }
         }
       }
@@ -292,34 +250,29 @@ const HeadcountTable = () => {
   };
 
   const handleEmployeeAction = async (employeeId, action) => {
-    const employee = employees.find((emp) => emp.id === employeeId);
+    const employee = formattedEmployees.find((emp) => emp.id === employeeId);
     if (!employee) return;
 
     try {
       if (action === "delete") {
         if (confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone.`)) {
           const result = await deleteEmployee(employeeId);
-          if (result.meta.requestStatus === 'fulfilled') {
-            // Employee will be removed from state automatically
-            fetchEmployees(buildFilterParams); // Refresh list
+          if (result.meta?.requestStatus === 'fulfilled') {
+            refreshEmployees();
           }
         }
       } else if (action === "addTag") {
         const tagName = prompt('Enter tag name for employee:');
         if (tagName) {
-          // This would require a separate endpoint or bulk update
           alert(`Tag "${tagName}" would be added to employee ${employee.name}`);
         }
       } else if (action === "changeManager") {
         const newManagerId = prompt('Enter new line manager employee ID:');
         if (newManagerId) {
-          const result = await bulkUpdateEmployees({
-            employeeIds: [employeeId],
-            updates: { line_manager: newManagerId }
-          });
+          const result = await bulkUpdateEmployees([employeeId], { line_manager: newManagerId });
           
-          if (result.meta.requestStatus === 'fulfilled') {
-            fetchEmployees(buildFilterParams);
+          if (result.meta?.requestStatus === 'fulfilled') {
+            refreshEmployees();
           }
         }
       }
@@ -331,20 +284,16 @@ const HeadcountTable = () => {
 
   const handleVisibilityChange = async (employeeId, newVisibility) => {
     try {
-      // Update local state immediately for UI responsiveness
+      // Update local state immediately
       setEmployeeVisibility(prev => ({
         ...prev,
         [employeeId]: newVisibility,
       }));
 
       // Call backend API
-      const result = await updateOrgChartVisibility({
-        employeeIds: [employeeId],
-        isVisible: newVisibility
-      });
+      const result = await updateOrgChartVisibility([employeeId], newVisibility);
 
-      if (result.meta.requestStatus === 'fulfilled') {
-        // Update successful - the state should already be updated
+      if (result.meta?.requestStatus === 'fulfilled') {
         console.log('Visibility updated successfully');
       }
     } catch (error) {
@@ -369,12 +318,41 @@ const HeadcountTable = () => {
 
   const handleBulkImportComplete = (results) => {
     console.log("Bulk import completed:", results);
-    // Refresh employee list after bulk import
-    fetchEmployees(buildFilterParams);
-    fetchStatistics(); // Update statistics
+    refreshEmployees();
+    fetchStatistics();
   };
 
-  // Active filters for display
+  // Helper functions
+  const convertToCSV = (data) => {
+    if (!Array.isArray(data) || data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+      headers.join(','),
+      ...data.map(row => 
+        headers.map(header => {
+          const value = row[header] || '';
+          return `"${value.toString().replace(/"/g, '""')}"`;
+        }).join(',')
+      )
+    ].join('\n');
+    
+    return csvContent;
+  };
+
+  const downloadCSV = (content, filename) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Active filters for display (removed office filter)
   const activeFilters = useMemo(() => {
     const filters = [];
     
@@ -384,61 +362,18 @@ const HeadcountTable = () => {
     if (departmentFilter !== "all") {
       filters.push({ key: "department", label: `Department: ${departmentFilter}` });
     }
-    if (officeFilter !== "all") {
-      filters.push({ key: "office", label: `Office: ${officeFilter}` });
-    }
     
-    Object.entries(currentFilters).forEach(([key, value]) => {
-      if (value && (Array.isArray(value) ? value.length > 0 : true)) {
-        const fieldName = key.replace(/([A-Z])/g, " $1").trim();
-        const displayName = fieldName.charAt(0).toUpperCase() + fieldName.slice(1);
-        const label = Array.isArray(value) 
-          ? `${displayName}: ${value.join(", ")}` 
-          : `${displayName}: ${value}`;
-        filters.push({ key, label });
-      }
+    appliedFilters.forEach(filter => {
+      filters.push(filter);
     });
     
     return filters;
-  }, [statusFilter, departmentFilter, officeFilter, currentFilters]);
+  }, [statusFilter, departmentFilter, appliedFilters]);
 
-  const hasActiveFilters = searchTerm || 
+  const hasActiveFiltersCheck = searchTerm || 
     Object.keys(currentFilters).length > 0 || 
     statusFilter !== "all" || 
-    departmentFilter !== "all" ||
-    officeFilter !== "all";
-
-  // Format employees for display with proper field mapping
-  const formattedEmployees = useMemo(() => {
-    return employees.map(employee => ({
-      ...employee,
-      // Ensure all necessary fields are available for the table
-      name: employee.name || employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
-      display_name: employee.name || employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
-      // Handle nested object fields
-      business_function_name: employee.business_function_name || employee.business_function?.name || '',
-      business_function_code: employee.business_function_code || employee.business_function?.code || '',
-      department_name: employee.department_name || employee.department?.name || '',
-      unit_name: employee.unit_name || employee.unit?.name || '',
-      job_function_name: employee.job_function_name || employee.job_function?.name || '',
-      position_group_name: employee.position_group_name || employee.position_group?.get_name_display || employee.position_group?.name || '',
-      position_group_level: employee.position_group_level || employee.position_group?.hierarchy_level || 0,
-      status_name: employee.status_name || employee.status?.name || '',
-      status_color: employee.status_color || employee.status?.color || '#6b7280',
-      line_manager_name: employee.line_manager_name || employee.line_manager?.name || employee.line_manager?.full_name || '',
-      line_manager_hc_number: employee.line_manager_hc_number || employee.line_manager?.employee_id || '',
-      contract_duration_display: employee.contract_duration_display || employee.get_contract_duration_display || employee.contract_duration || '',
-      // Handle tags
-      tag_names: employee.tag_names || employee.tags?.map(tag => ({
-        id: tag.id,
-        name: tag.name,
-        color: tag.color,
-        type: tag.tag_type || tag.type
-      })) || [],
-      // Visibility state (local or from backend)
-      is_visible_in_org_chart: employeeVisibility[employee.id] ?? employee.is_visible_in_org_chart ?? true
-    }));
-  }, [employees, employeeVisibility]);
+    departmentFilter !== "all";
 
   if (error) {
     return (
@@ -457,7 +392,7 @@ const HeadcountTable = () => {
               {typeof error === 'string' ? error : error?.message || 'Failed to load employee data'}
             </p>
             <button 
-              onClick={() => fetchEmployees(buildFilterParams)}
+              onClick={() => refreshEmployees()}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
             >
               Try Again
@@ -502,7 +437,7 @@ const HeadcountTable = () => {
         />
       )}
 
-      {/* Quick Filter Panel */}
+      {/* Quick Filter Panel - Without Office Filter */}
       <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3">
         <SearchBar
           searchTerm={searchTerm}
@@ -512,10 +447,8 @@ const HeadcountTable = () => {
         <div className="flex-shrink-0">
           <QuickFilterBar
             onStatusChange={handleStatusChange}
-            onOfficeChange={handleOfficeChange}
             onDepartmentChange={handleDepartmentChange}
             statusFilter={statusFilter}
-            officeFilter={officeFilter}
             departmentFilter={departmentFilter}
             activeFilters={activeFilters}
             onClearFilter={handleClearFilter}
@@ -530,6 +463,47 @@ const HeadcountTable = () => {
         <HierarchyLegend />
       </div>
 
+      {/* Sorting Info Panel */}
+      {sorting.length > 1 && (
+        <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 8a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 12a1 1 0 011-1h4a1 1 0 110 2H4a1 1 0 01-1-1z" />
+              </svg>
+              <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                Multi-level sorting active:
+              </span>
+              <div className="ml-2 flex items-center space-x-2">
+                {sorting.map((sort, index) => (
+                  <span 
+                    key={sort.field}
+                    className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
+                  >
+                    {index + 1}. {sort.field} {sort.direction === 'asc' ? '↑' : '↓'}
+                    <button
+                      onClick={() => removeSort(sort.field)}
+                      className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button
+              onClick={clearSorting}
+              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+            >
+              Clear all sorting
+            </button>
+          </div>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            Hold Ctrl/Cmd and click column headers to add multiple sort levels
+          </p>
+        </div>
+      )}
+
       {/* Employee Table */}
       <EmployeeTable
         employees={formattedEmployees}
@@ -539,12 +513,15 @@ const HeadcountTable = () => {
         onToggleEmployeeSelection={toggleEmployeeSelection}
         onSort={handleSort}
         getSortDirection={handleGetSortDirection}
+        getSortIndex={handleGetSortIndex}
+        isSorted={isSorted}
         employeeVisibility={employeeVisibility}
         onVisibilityChange={handleVisibilityChange}
         onEmployeeAction={handleEmployeeAction}
-        hasFilters={hasActiveFilters}
+        hasFilters={hasActiveFiltersCheck}
         onClearFilters={handleClearAllFilters}
         loading={loading}
+        multiSort={sorting.length > 1}
       />
 
       {/* Pagination */}

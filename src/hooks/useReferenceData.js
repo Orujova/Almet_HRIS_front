@@ -58,6 +58,8 @@ export const useReferenceData = () => {
     actions.fetchEmployeeTags();
   }, []);
 
+  console.log(departments)
+
   return {
     // Data
     businessFunctions,
