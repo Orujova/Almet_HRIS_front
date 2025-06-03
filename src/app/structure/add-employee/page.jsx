@@ -1,4 +1,3 @@
-// src/app/structure/add-employee/page.jsx
 "use client";
 import { useState } from "react";
 import { Info, ChevronLeft, Users, FileText, BookOpen, X } from "lucide-react";
@@ -8,7 +7,10 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import Link from "next/link";
 
 /**
- * Info Modal Component
+ * Modal Component for displaying information
+ */
+/**
+ * Modal Component for displaying information with smaller fonts
  */
 const InfoModal = ({ isOpen, onClose, title, content, type = "info" }) => {
   const { darkMode } = useTheme();
@@ -23,23 +25,24 @@ const InfoModal = ({ isOpen, onClose, title, content, type = "info" }) => {
   const getIcon = () => {
     switch (type) {
       case 'onboarding':
-        return <BookOpen className="text-blue-500" size={20} />;
+        return <BookOpen className="text-blue-500" size={20} />; // Reduced from 24
       case 'documents':
-        return <FileText className="text-green-500" size={20} />;
+        return <FileText className="text-green-500" size={20} />; // Reduced from 24
       case 'employees':
-        return <Users className="text-purple-500" size={20} />;
+        return <Users className="text-purple-500" size={20} />; // Reduced from 24
       default:
-        return <Info className="text-blue-500" size={20} />;
+        return <Info className="text-blue-500" size={20} />; // Reduced from 24
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${bgCard} rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border ${borderColor}`}>
+        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
             {getIcon()}
-            <h2 className={`text-lg font-bold ${textPrimary} ml-3`}>
+            <h2 className={`text-lg font-bold ${textPrimary} ml-3`}> {/* Reduced from text-xl */}
               {title}
             </h2>
           </div>
@@ -47,20 +50,23 @@ const InfoModal = ({ isOpen, onClose, title, content, type = "info" }) => {
             onClick={onClose}
             className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500"
           >
-            <X size={18} />
+            <X size={18} /> {/* Reduced from 20 */}
           </button>
         </div>
 
+        {/* Content */}
         <div className="p-6">
           {content}
         </div>
+
+      
       </div>
     </div>
   );
 };
 
 /**
- * Add Employee Page
+ * Add Employee Page with Full Width Design and Modals
  */
 export default function AddEmployeePage() {
   const { darkMode } = useTheme();
@@ -71,6 +77,7 @@ export default function AddEmployeePage() {
     content: null
   });
 
+  // Theme-dependent classes
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
   const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
 
@@ -84,7 +91,7 @@ export default function AddEmployeePage() {
         content = (
           <div className="space-y-4">
             <p className={`${textSecondary} leading-relaxed`}>
-              Welcome to the Almet Holding employee onboarding process. This comprehensive guide will help you navigate through adding a new employee.
+              Welcome to the Almet Holding employee onboarding process. This comprehensive guide will help you navigate through the steps of adding a new employee to our system.
             </p>
             
             <div className="space-y-6 text-xs">
@@ -103,8 +110,8 @@ export default function AddEmployeePage() {
                 <ul className={`${textSecondary} space-y-2 text-xs`}>
                   <li>• Select appropriate business function and department</li>
                   <li>• Assign correct position group and grade level</li>
-                  <li>• Set accurate start date for automatic status management</li>
-                  <li>• Choose contract duration for probation period calculation</li>
+                  <li>• Set accurate start date for payroll calculations</li>
+                  <li>• Choose primary office location</li>
                 </ul>
               </div>
               
@@ -112,7 +119,7 @@ export default function AddEmployeePage() {
                 <h3 className={`text-lg font-semibold ${textPrimary} mb-3`}>Step 3: Management Structure</h3>
                 <ul className={`${textSecondary} space-y-2 text-xs`}>
                   <li>• Assign line manager for reporting structure</li>
-                  <li>• Employee status will be set automatically</li>
+                  <li>• Set employee status (Active, On Boarding, etc.)</li>
                   <li>• Add relevant tags for tracking purposes</li>
                   <li>• Include any special notes or requirements</li>
                 </ul>
@@ -124,7 +131,7 @@ export default function AddEmployeePage() {
                   <li>• Upload employment contract and ID documents</li>
                   <li>• Include educational certificates and CV</li>
                   <li>• Add any compliance or certification documents</li>
-                  <li>• Ensure all files are properly named</li>
+                  <li>• Ensure all files are properly named and organized</li>
                 </ul>
               </div>
             </div>
@@ -210,12 +217,15 @@ export default function AddEmployeePage() {
             
             <div className="mt-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
               <p className={`text-xs text-yellow-800 dark:text-yellow-300`}>
-                📋 <strong>Note:</strong> All documents should be in PDF format, clearly scanned, and properly named.
+                📋 <strong>Note:</strong> All documents should be in PDF format, clearly scanned, and properly named (e.g., "John_Doe_Contract.pdf").
               </p>
             </div>
           </div>
         );
         break;
+        
+
+       
     }
 
     setModalState({
@@ -238,7 +248,9 @@ export default function AddEmployeePage() {
   return (
     <>
       <DashboardLayout>
+        {/* Full Width Container */}
         <div className="w-full max-w-none px-0">
+          {/* Page Header - Only for the top info section */}
           <div className="container mx-auto px-4 py-6">
             <div className="mb-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -259,6 +271,7 @@ export default function AddEmployeePage() {
                 </Link>
               </div>
               
+              {/* Page Info Card */}
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 text-xs rounded-lg p-2 mb-2">
                 <div className="flex items-start">
                   <div className="bg-blue-100 dark:bg-blue-800 p-2 rounded-full mr-4 flex-shrink-0">
@@ -282,6 +295,7 @@ export default function AddEmployeePage() {
                       >
                         Required documents
                       </button>
+                  
                     </div>
                   </div>
                 </div>
@@ -289,10 +303,12 @@ export default function AddEmployeePage() {
             </div>
           </div>
           
+          {/* Render the Employee Form - Full Width */}
           <EmployeeForm />
         </div>
       </DashboardLayout>
 
+      {/* Modal */}
       <InfoModal
         isOpen={modalState.isOpen}
         onClose={closeModal}

@@ -5,12 +5,13 @@ import HeadcountTable from "../../../components/headcount/HeadcountTable";
 import DashboardLayout from "../../../components/layout/DashboardLayout";
 
 /**
- * Employee Headcount Table Page - Main employee directory
- * @returns {JSX.Element} - Headcount table page
+ * Əməkdaşlar cədvəli səhifəsi
+ * @returns {JSX.Element} - Əməkdaşlar cədvəli səhifəsi
  */
 const HeadcountTablePage = () => {
+  // Səhifə başlığını təyin et
   useEffect(() => {
-    document.title = "Employee Directory - Almet Holding HRIS";
+    document.title = "Employee Headcount - Almet Holding";
   }, []);
 
   return (

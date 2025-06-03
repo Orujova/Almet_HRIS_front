@@ -1,12 +1,21 @@
-// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Updated field names
+// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx
 import { useState } from "react";
 import { User, Mail, Phone, MapPin, Calendar, AlertTriangle, Upload } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 
+/**
+ * Basic information step of the employee form
+ * @param {Object} props - Component props
+ * @param {Object} props.formData - Current form data
+ * @param {Function} props.handleInputChange - Function to handle input changes
+ * @param {Function} props.handleFileUpload - Function to handle profile image upload
+ * @param {Object} props.validationErrors - Validation errors object
+ * @returns {JSX.Element} - Form step component
+ */
 const FormStep1BasicInfo = ({ formData, handleInputChange, handleFileUpload, validationErrors = {} }) => {
   const { darkMode } = useTheme();
-  const [profileImagePreview, setProfileImagePreview] = useState(formData.profile_image || null);
+  const [profileImagePreview, setProfileImagePreview] = useState(formData.profileImage || null);
 
   // Theme-dependent classes
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
@@ -21,7 +30,7 @@ const FormStep1BasicInfo = ({ formData, handleInputChange, handleFileUpload, val
       const reader = new FileReader();
       reader.onloadend = () => {
         setProfileImagePreview(reader.result);
-        handleFileUpload('profile_image', reader.result);
+        handleFileUpload('profileImage', reader.result);
       };
       reader.readAsDataURL(file);
     }
@@ -64,8 +73,8 @@ const FormStep1BasicInfo = ({ formData, handleInputChange, handleFileUpload, val
               </div>
             ) : (
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-almet-sapphire to-almet-steel-blue flex items-center justify-center text-white text-lg font-semibold mb-2 shadow-md">
-                {formData.first_name && formData.last_name 
-                  ? `${formData.first_name[0]}${formData.last_name[0]}` 
+                {formData.firstName && formData.lastName 
+                  ? `${formData.firstName[0]}${formData.lastName[0]}` 
                   : <User size={32} />
                 }
               </div>
@@ -96,35 +105,35 @@ const FormStep1BasicInfo = ({ formData, handleInputChange, handleFileUpload, val
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField
             label="Employee ID"
-            name="employee_id"
-            value={formData.employee_id}
+            name="empNo"
+            value={formData.empNo}
             onChange={handleInputChange}
             required={true}
-            placeholder="e.g., HLD001"
+            placeholder="e.g., EMP001"
             icon={<User size={14} className={textMuted} />}
-            validationError={validationErrors.employee_id}
+            validationError={validationErrors.empNo}
           />
 
           <FormField
             label="First Name"
-            name="first_name"
-            value={formData.first_name}
+            name="firstName"
+            value={formData.firstName}
             onChange={handleInputChange}
             required={true}
             placeholder="Enter first name"
             icon={<User size={14} className={textMuted} />}
-            validationError={validationErrors.first_name}
+            validationError={validationErrors.firstName}
           />
 
           <FormField
             label="Last Name"
-            name="last_name"
-            value={formData.last_name}
+            name="lastName"
+            value={formData.lastName}
             onChange={handleInputChange}
             required={true}
             placeholder="Enter last name"
             icon={<User size={14} className={textMuted} />}
-            validationError={validationErrors.last_name}
+            validationError={validationErrors.lastName}
           />
 
           <FormField
@@ -150,24 +159,11 @@ const FormStep1BasicInfo = ({ formData, handleInputChange, handleFileUpload, val
 
           <FormField
             label="Date of Birth"
-            name="date_of_birth"
-            value={formatDate(formData.date_of_birth)}
+            name="dateOfBirth"
+            value={formatDate(formData.dateOfBirth)}
             onChange={handleInputChange}
             type="date"
             icon={<Calendar size={14} className={textMuted} />}
-          />
-
-          <FormField
-            label="Gender"
-            name="gender"
-            value={formData.gender}
-            onChange={handleInputChange}
-            type="select"
-            icon={<User size={14} className={textMuted} />}
-            options={[
-              { value: 'MALE', label: 'Male' },
-              { value: 'FEMALE', label: 'Female' }
-            ]}
           />
         </div>
       </div>
@@ -192,8 +188,8 @@ const FormStep1BasicInfo = ({ formData, handleInputChange, handleFileUpload, val
 
           <FormField
             label="Emergency Contact Information"
-            name="emergency_contact"
-            value={formData.emergency_contact}
+            name="emergencyContact"
+            value={formData.emergencyContact}
             onChange={handleInputChange}
             placeholder="Name: Relationship: Phone:"
             icon={<AlertTriangle size={14} className={textMuted} />}

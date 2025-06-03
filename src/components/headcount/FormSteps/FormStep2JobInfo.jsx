@@ -1,18 +1,24 @@
-// src/components/headcount/FormSteps/FormStep2JobInfo.jsx - Updated with backend integration
+// src/components/headcount/FormSteps/FormStep2JobInfo.jsx
 import { Calendar, Building, Briefcase, Info } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
+import MultiSelectDropdown from "../MultiSelectDropdown";
+import { 
+  getBusinessFunctions, 
+  getDepartments, 
+  getOffices,
+  getPositionGroups
+} from "../utils/mockData";
 
-const FormStep2JobInfo = ({ 
-  formData, 
-  handleInputChange, 
-  validationErrors = {},
-  businessFunctions = [],
-  departments = [],
-  units = [],
-  jobFunctions = [],
-  positionGroups = []
-}) => {
+/**
+ * Job information step of the employee form
+ * @param {Object} props - Component props
+ * @param {Object} props.formData - Current form data
+ * @param {Function} props.handleInputChange - Function to handle input changes
+ * @param {Function} props.handleMultiSelectChange - Function to handle multi-select changes
+ * @returns {JSX.Element} - Form step component
+ */
+const FormStep2JobInfo = ({ formData, handleInputChange, handleMultiSelectChange }) => {
   const { darkMode } = useTheme();
 
   // Theme-dependent classes
@@ -22,6 +28,61 @@ const FormStep2JobInfo = ({
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
 
+  // Mock data
+  const businessFunctions = getBusinessFunctions();
+  const departments = getDepartments();
+  const offices = getOffices();
+  const positionGroups = getPositionGroups();
+  
+  const units = [
+    "ADMINISTRATION", 
+    "BUSINESS SUPPORT", 
+    "FINANCE OPERATIONS", 
+    "FINANCE BUSINESS", 
+    "COMMERCE", 
+    "LOGISTICS", 
+    "WAREHOUSE INVENTORY",
+    "STRATEGY EXECUTION",
+    "BUSINESS DEVELOPMENT",
+    "PRODUCT DEVELOPMENT"
+  ];
+  
+  const jobFunctions = [
+    "ADMINISTRATION SPECIALIST",
+    "DEPUTY CHAIRMAN ON COMMERCIAL ACTIVITIES EUROPE REGION",
+    "DEPUTY CHAIRMAN ON FINANCE & BUSINESS DEVELOPMENT",
+    "LEGAL",
+    "SENIOR BUDGETING & CONTROLLING SPECIALIST",
+    "HR BUSINESS PARTNER",
+    "OPERATIONS SPECIALIST",
+    "WAREHOUSE FOREMAN",
+    "BUSINESS DEVELOPMENT DIRECTOR",
+    "OPERATIONS MANAGER",
+    "SALES EXECUTIVE",
+    "CHIEF ACCOUNTANT",
+    "STRATEGY EXECUTION",
+    "LOGISTICS",
+    "PROJECTS MANAGEMENT"
+  ];
+  
+  const jobTitles = [
+    "Direktor müavini",
+    "Ofis-menecer",
+    "Hüquqşünas - komplayns üzre menecer",
+    "Mühasib",
+    "Baş mühasib",
+    "İnsan resursları üzrə təcrübəçi",
+    "Anbar üzrə təcrübəçi",
+    "Fəhlə",
+    "Satış üzrə mütəxəssis",
+    "Operations Manager",
+    "Chief Accountant",
+    "Administrative Assistant",
+    "Sales Representative"
+  ];
+  
+  const grades = ["1", "2", "3", "4", "5", "6", "7", "8"];
+
   // Format date to YYYY-MM-DD for input[type=date]
   const formatDate = (dateString) => {
     if (!dateString) return "";
@@ -29,19 +90,12 @@ const FormStep2JobInfo = ({
     return date.toISOString().split('T')[0];
   };
 
-  // Grade options
-  const gradeOptions = Array.from({ length: 8 }, (_, i) => ({
-    value: i + 1,
-    label: `Grade ${i + 1}`
-  }));
-
-  // Contract duration options
-  const contractDurationOptions = [
-    { value: 'PERMANENT', label: 'Permanent' },
-    { value: '1_YEAR', label: '1 Year' },
-    { value: '6_MONTHS', label: '6 Months' },
-    { value: '3_MONTHS', label: '3 Months' }
-  ];
+  // Handle multi-select changes
+  const handleMultiSelect = (fieldName, values) => {
+    if (handleMultiSelectChange) {
+      handleMultiSelectChange(fieldName, values);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -51,6 +105,18 @@ const FormStep2JobInfo = ({
         </h2>
         <div className="text-xs px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded font-medium">
           Step 2 of 4
+        </div>
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 mb-4">
+        <div className="flex items-start">
+          <Calendar className="h-4 w-4 text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
+          <div>
+            <h3 className={`text-xs font-medium text-blue-800 dark:text-blue-300 mb-1`}>Employment Dates</h3>
+            <p className={`text-xs text-blue-600 dark:text-blue-400`}>
+              The start date is used to calculate employee tenure and benefits. Please ensure it is accurate.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -64,55 +130,22 @@ const FormStep2JobInfo = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField
             label="Start Date"
-            name="start_date"
-            value={formatDate(formData.start_date)}
+            name="startDate"
+            value={formatDate(formData.startDate)}
             onChange={handleInputChange}
             type="date"
             required={true}
             icon={<Calendar size={14} className={textMuted} />}
-            validationError={validationErrors.start_date}
           />
 
           <FormField
             label="End Date (if applicable)"
-            name="end_date"
-            value={formatDate(formData.end_date)}
+            name="endDate"
+            value={formatDate(formData.endDate)}
             onChange={handleInputChange}
             type="date"
             icon={<Calendar size={14} className={textMuted} />}
             helpText="Only fill this for employees who are no longer with the company"
-          />
-        </div>
-      </div>
-
-      {/* Contract Information Section */}
-      <div className={`${bgCard} rounded-lg p-4 border ${borderColor}`}>
-        <h3 className={`text-sm font-semibold ${textPrimary} mb-3 flex items-center`}>
-          <Briefcase className="mr-1.5 text-almet-sapphire" size={16} />
-          Contract Information
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <FormField
-            label="Contract Duration"
-            name="contract_duration"
-            value={formData.contract_duration}
-            onChange={handleInputChange}
-            type="select"
-            required={true}
-            icon={<Briefcase size={14} className={textMuted} />}
-            options={contractDurationOptions}
-            helpText="Affects automatic status management"
-          />
-
-          <FormField
-            label="Contract Start Date"
-            name="contract_start_date"
-            value={formatDate(formData.contract_start_date)}
-            onChange={handleInputChange}
-            type="date"
-            icon={<Calendar size={14} className={textMuted} />}
-            helpText="Used for probation period calculation"
           />
         </div>
       </div>
@@ -125,50 +158,51 @@ const FormStep2JobInfo = ({
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
+              Business Function <span className="text-red-500">*</span>
+            </label>
+            <MultiSelectDropdown
+              options={businessFunctions}
+              placeholder="Select business functions..."
+              selectedValues={formData.businessFunctions || []}
+              onChange={(values) => handleMultiSelect("businessFunctions", values)}
+            />
+          </div>
+
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
+              Department <span className="text-red-500">*</span>
+            </label>
+            <MultiSelectDropdown
+              options={departments}
+              placeholder="Select departments..."
+              selectedValues={formData.departments || []}
+              onChange={(values) => handleMultiSelect("departments", values)}
+            />
+          </div>
+
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
+              Unit <span className="text-red-500">*</span>
+            </label>
+            <MultiSelectDropdown
+              options={units}
+              placeholder="Select units..."
+              selectedValues={formData.units || []}
+              onChange={(values) => handleMultiSelect("units", values)}
+            />
+          </div>
+
           <FormField
-            label="Business Function"
-            name="business_function"
-            value={formData.business_function}
+            label="Office"
+            name="office"
+            value={formData.office}
             onChange={handleInputChange}
             type="select"
             required={true}
             icon={<Building size={14} className={textMuted} />}
-            options={businessFunctions.map(bf => ({ value: bf.id, label: bf.name }))}
-            validationError={validationErrors.business_function}
-          />
-
-          <FormField
-            label="Department"
-            name="department"
-            value={formData.department}
-            onChange={handleInputChange}
-            type="select"
-            required={true}
-            icon={<Building size={14} className={textMuted} />}
-            options={departments.map(dept => ({ value: dept.id, label: dept.name }))}
-            validationError={validationErrors.department}
-          />
-
-          <FormField
-            label="Unit"
-            name="unit"
-            value={formData.unit}
-            onChange={handleInputChange}
-            type="select"
-            icon={<Building size={14} className={textMuted} />}
-            options={units.map(unit => ({ value: unit.id, label: unit.name }))}
-          />
-
-          <FormField
-            label="Job Function"
-            name="job_function"
-            value={formData.job_function}
-            onChange={handleInputChange}
-            type="select"
-            required={true}
-            icon={<Briefcase size={14} className={textMuted} />}
-            options={jobFunctions.map(jf => ({ value: jf.id, label: jf.name }))}
-            validationError={validationErrors.job_function}
+            options={offices}
           />
         </div>
       </div>
@@ -183,25 +217,36 @@ const FormStep2JobInfo = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField
             label="Position Group"
-            name="position_group"
-            value={formData.position_group}
+            name="positionGroup"
+            value={formData.positionGroup}
             onChange={handleInputChange}
             type="select"
             required={true}
             icon={<Briefcase size={14} className={textMuted} />}
-            options={positionGroups.map(pg => ({ value: pg.id, label: pg.name }))}
-            validationError={validationErrors.position_group}
+            options={positionGroups}
           />
+
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
+              Job Function <span className="text-red-500">*</span>
+            </label>
+            <MultiSelectDropdown
+              options={jobFunctions}
+              placeholder="Select job functions..."
+              selectedValues={formData.jobFunctions || []}
+              onChange={(values) => handleMultiSelect("jobFunctions", values)}
+            />
+          </div>
 
           <FormField
             label="Job Title"
-            name="job_title"
-            value={formData.job_title}
+            name="jobTitle"
+            value={formData.jobTitle}
             onChange={handleInputChange}
+            type="select"
             required={true}
-            placeholder="Enter job title"
             icon={<Briefcase size={14} className={textMuted} />}
-            validationError={validationErrors.job_title}
+            options={jobTitles}
           />
 
           <FormField
@@ -212,8 +257,7 @@ const FormStep2JobInfo = ({
             type="select"
             required={true}
             icon={<Briefcase size={14} className={textMuted} />}
-            options={gradeOptions}
-            validationError={validationErrors.grade}
+            options={grades}
           />
         </div>
       </div>
@@ -223,10 +267,10 @@ const FormStep2JobInfo = ({
         <div className="flex items-start">
           <Info className="h-4 w-4 text-amber-500 dark:text-amber-400 mt-0.5 mr-2 flex-shrink-0" />
           <div>
-            <h3 className={`text-xs font-medium text-amber-800 dark:text-amber-300 mb-1`}>Automatic Status Management</h3>
+            <h3 className={`text-xs font-medium text-amber-800 dark:text-amber-300 mb-1`}>Multiple Selections Allowed</h3>
             <p className={`text-xs text-amber-600 dark:text-amber-400`}>
-              Employee status will be automatically managed based on contract duration and employment dates. 
-              The system will set status to ONBOARDING, PROBATION, or ACTIVE automatically.
+              You can select multiple options for Business Function, Department, Unit, and Job Function fields. 
+              This allows for more flexible organizational structures.
             </p>
           </div>
         </div>

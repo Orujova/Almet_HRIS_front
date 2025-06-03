@@ -341,7 +341,7 @@ const GradingPage = () => {
           </div>
           
           <div className="p-6">
-            <div className="grid grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-almet-sapphire">{(currentData.verticalAvg * 100).toFixed(1)}%</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Vertical Average</div>
@@ -350,12 +350,7 @@ const GradingPage = () => {
                 <div className="text-2xl font-bold text-almet-sapphire">{(currentData.horizontalAvg * 100).toFixed(1)}%</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">Horizontal Average</div>
               </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-almet-sapphire">
-                  ${currentData.gradeOrder.reduce((total, gradeName) => total + (currentData.grades[gradeName]?.M || 0), 0).toLocaleString()}
-                </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Total Budget</div>
-              </div>
+            
             </div>
 
             <div className="overflow-x-auto">

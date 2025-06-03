@@ -117,7 +117,7 @@ const ActionsDropdown = ({ employeeId, onAction }) => {
             >
               <div className="flex items-center">
                 <BarChart2 size={16} className="mr-2 text-teal-500" />
-                <span>Complex  Matrix</span>
+                <span>Competency   Matrix</span>
               </div>
             </button>
             <button

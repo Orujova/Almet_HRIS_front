@@ -1,14 +1,13 @@
-// src/app/layout.js - Updated
+// src/app/layout.jsx
 import "./globals.css";
 import { ThemeProvider } from "@/components/common/ThemeProvider";
 import { Poppins } from "next/font/google";
 import { AuthProvider } from '@/auth/AuthContext';
-import { ReduxProvider } from '@/components/providers/ReduxProvider';
-
+// Define Poppins with specific weights
 const poppins = Poppins({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
+  weight: ["400", "500", "600", "700"], // Common weights for body text
+  display: "swap", // Ensures text is visible while font loads
 });
 
 export const metadata = {
@@ -20,11 +19,10 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={poppins.className}>
-        <ReduxProvider>
           <AuthProvider>
-            <ThemeProvider>{children}</ThemeProvider>
-          </AuthProvider>
-        </ReduxProvider>
+        <ThemeProvider>{children}</ThemeProvider>
+        </AuthProvider>
+        
       </body>
     </html>
   );
