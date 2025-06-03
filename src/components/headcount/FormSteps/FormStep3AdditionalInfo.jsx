@@ -1,5 +1,5 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Updated with backend integration
-import { User, Users } from "lucide-react";
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Fixed Line Manager Dropdown
+import { User, Users, Search } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 import MultiSelectDropdown from "../MultiSelectDropdown";
@@ -8,7 +8,10 @@ const FormStep3AdditionalInfo = ({
   formData, 
   handleInputChange, 
   handleTagsChange, 
+  handleLineManagerChange,
   employeeTags = [],
+  lineManagerOptions = [],
+  loadingLineManagers = false,
   validationErrors = {}
 }) => {
   const { darkMode } = useTheme();
@@ -18,9 +21,15 @@ const FormStep3AdditionalInfo = ({
   const textSecondary = darkMode ? "text-gray-300" : "text-gray-700"; 
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  const inputBg = darkMode ? "bg-gray-700" : "bg-white";
 
   // Convert employee tags to dropdown options
   const tagOptions = employeeTags.map(tag => tag.name);
+
+  // Get selected line manager info
+  const selectedManager = lineManagerOptions.find(
+    manager => manager.id.toString() === formData.line_manager?.toString()
+  );
 
   return (
     <div className="space-y-4">
@@ -45,17 +54,61 @@ const FormStep3AdditionalInfo = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <FormField
-          label="Line Manager Employee ID"
-          name="line_manager"
-          value={formData.line_manager}
-          onChange={handleInputChange}
-          placeholder="Enter manager's employee ID"
-          icon={<Users size={14} className={textMuted} />}
-          helpText="Leave empty if this is a top-level position"
-        />
+      <div className="space-y-4">
+        {/* Line Manager Selection */}
+        <div>
+          <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
+            Line Manager <span className="text-gray-400">(Optional)</span>
+          </label>
+          <div className="relative">
+            <select
+              name="line_manager"
+              value={formData.line_manager || ""}
+              onChange={(e) => handleLineManagerChange(e.target.value)}
+              disabled={loadingLineManagers}
+              className={`w-full p-2 pr-8 rounded-md border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire transition-colors duration-200 outline-none appearance-none`}
+            >
+              <option value="">Select Line Manager</option>
+              {lineManagerOptions.map((manager) => (
+                <option key={manager.id} value={manager.id}>
+                  {manager.employee_id} - {manager.name} ({manager.job_title})
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+              {loadingLineManagers ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent"></div>
+              ) : (
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </div>
+          </div>
+          
+          {/* Selected Manager Info */}
+          {selectedManager && (
+            <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+              <div className="flex items-center">
+                <Users size={14} className="text-blue-500 mr-2" />
+                <div>
+                  <p className={`text-xs font-medium ${textPrimary}`}>
+                    Selected: {selectedManager.name}
+                  </p>
+                  <p className={`text-xs ${textMuted}`}>
+                    HC: {selectedManager.employee_id} • {selectedManager.job_title}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <p className={`mt-1 text-xs ${textMuted}`}>
+            Leave empty if this is a top-level position
+          </p>
+        </div>
 
+        {/* Tags Selection */}
         <div>
           <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
             Tags (Optional)
@@ -79,20 +132,40 @@ const FormStep3AdditionalInfo = ({
             Tags help categorize employee status and special conditions
           </p>
         </div>
-      </div>
 
-      <div className="mt-4">
-        <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
-          Additional Notes
-        </label>
-        <textarea
-          name="notes"
-          value={formData.notes || ""}
-          onChange={handleInputChange}
-          rows="3"
-          className={`block w-full px-2.5 py-2 text-sm border ${borderColor} bg-white dark:bg-gray-700 ${textPrimary} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire transition-colors duration-200`}
-          placeholder="Add any additional notes about the employee..."
-        ></textarea>
+        {/* Notes */}
+        <div>
+          <label className={`block ${textSecondary} text-xs font-medium mb-1.5`}>
+            Additional Notes
+          </label>
+          <textarea
+            name="notes"
+            value={formData.notes || ""}
+            onChange={handleInputChange}
+            rows="3"
+            className={`block w-full px-2.5 py-2 text-sm border ${borderColor} ${inputBg} ${textPrimary} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire transition-colors duration-200 outline-none`}
+            placeholder="Add any additional notes about the employee..."
+          ></textarea>
+        </div>
+
+        {/* Org Chart Visibility */}
+        <div>
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              name="is_visible_in_org_chart"
+              checked={formData.is_visible_in_org_chart}
+              onChange={handleInputChange}
+              className="rounded border-gray-300 text-almet-sapphire focus:ring-almet-sapphire focus:ring-offset-0"
+            />
+            <span className={`ml-2 text-sm ${textSecondary}`}>
+              Show employee in organizational chart
+            </span>
+          </label>
+          <p className={`mt-1 text-xs ${textMuted} ml-6`}>
+            Uncheck to hide this employee from the organizational structure view
+          </p>
+        </div>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3">
