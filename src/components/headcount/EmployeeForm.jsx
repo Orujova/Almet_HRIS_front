@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeForm.jsx - Updated with Redux and backend integration
+// src/components/headcount/EmployeeForm.jsx - Updated with backend integration
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Save } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
@@ -80,6 +80,7 @@ const EmployeeForm = ({ employee = null }) => {
     line_manager: employee?.line_manager?.id || "",
     tag_ids: employee?.tags?.map(tag => tag.id) || [],
     notes: employee?.notes || "",
+    is_visible_in_org_chart: employee?.is_visible_in_org_chart ?? true,
     
     // Documents
     documents: []
@@ -113,10 +114,11 @@ const EmployeeForm = ({ employee = null }) => {
 
   // Input change handler
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
 
     // Clear validation error for this field
@@ -124,6 +126,21 @@ const EmployeeForm = ({ employee = null }) => {
       setValidationErrors(prev => ({
         ...prev,
         [name]: null
+      }));
+    }
+
+    // Handle cascading dropdowns
+    if (name === 'business_function') {
+      setFormData(prev => ({
+        ...prev,
+        department: "",
+        unit: ""
+      }));
+      clearUnits();
+    } else if (name === 'department') {
+      setFormData(prev => ({
+        ...prev,
+        unit: ""
       }));
     }
   };
@@ -154,6 +171,7 @@ const EmployeeForm = ({ employee = null }) => {
         file_path: URL.createObjectURL(file), // Temporary for preview
         file_size: file.size,
         mime_type: file.type,
+        file: file // Keep original file for upload
       }));
 
       setFormData(prev => ({
@@ -166,6 +184,10 @@ const EmployeeForm = ({ employee = null }) => {
   // Remove document handler
   const removeDocument = (index) => {
     const updatedDocuments = [...formData.documents];
+    // Revoke object URL to prevent memory leaks
+    if (updatedDocuments[index].file_path?.startsWith('blob:')) {
+      URL.revokeObjectURL(updatedDocuments[index].file_path);
+    }
     updatedDocuments.splice(index, 1);
     
     setFormData(prev => ({
@@ -183,8 +205,11 @@ const EmployeeForm = ({ employee = null }) => {
         if (!formData.employee_id.trim()) errors.employee_id = "Employee ID is required";
         if (!formData.first_name.trim()) errors.first_name = "First name is required";
         if (!formData.last_name.trim()) errors.last_name = "Last name is required";
-        if (!formData.email.trim()) errors.email = "Email is required";
-        else if (!/\S+@\S+\.\S+/.test(formData.email)) errors.email = "Email is invalid";
+        if (!formData.email.trim()) {
+          errors.email = "Email is required";
+        } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+          errors.email = "Email is invalid";
+        }
         break;
       
       case 2: // Job Info
@@ -192,11 +217,32 @@ const EmployeeForm = ({ employee = null }) => {
         if (!formData.business_function) errors.business_function = "Business function is required";
         if (!formData.department) errors.department = "Department is required";
         if (!formData.job_function) errors.job_function = "Job function is required";
+        if (!formData.job_title.trim()) errors.job_title = "Job title is required";
         if (!formData.position_group) errors.position_group = "Position group is required";
         if (!formData.grade) errors.grade = "Grade is required";
+        
+        // Date validation
+        if (formData.end_date && formData.start_date) {
+          if (new Date(formData.end_date) <= new Date(formData.start_date)) {
+            errors.end_date = "End date must be after start date";
+          }
+        }
+        
+        if (formData.contract_start_date && formData.start_date) {
+          if (new Date(formData.contract_start_date) < new Date(formData.start_date)) {
+            errors.contract_start_date = "Contract start date cannot be before employment start date";
+          }
+        }
         break;
       
-      case 3: // Management Info - optional fields, no validation needed
+      case 3: // Management Info - optional fields, basic validation
+        // Line manager validation (optional but if provided, should be valid)
+        if (formData.line_manager && formData.line_manager === formData.id) {
+          errors.line_manager = "Employee cannot be their own line manager";
+        }
+        break;
+        
+      case 4: // Documents - no validation required
         break;
     }
 
@@ -240,30 +286,65 @@ const EmployeeForm = ({ employee = null }) => {
         // Convert empty strings to null for foreign keys
         unit: formData.unit || null,
         line_manager: formData.line_manager || null,
+        
+        // Set contract_start_date default
+        contract_start_date: formData.contract_start_date || formData.start_date,
+        
+        // Ensure tag_ids is array
+        tag_ids: Array.isArray(formData.tag_ids) ? formData.tag_ids : [],
       };
+
+      // Remove documents from main payload for now (handle separately if needed)
+      const { documents, ...employeeData } = submitData;
 
       let result;
       if (isEditMode) {
-        result = await updateEmployee(employee.id, submitData);
+        result = await updateEmployee({ id: employee.id, data: employeeData });
       } else {
-        result = await createEmployee(submitData);
+        result = await createEmployee(employeeData);
       }
 
       if (result.meta.requestStatus === 'fulfilled') {
+        // Success - redirect to headcount table
         router.push("/structure/headcount-table");
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      // Error is handled by Redux slice
+      
+      // Handle validation errors from backend
+      if (error.response?.data) {
+        const backendErrors = error.response.data;
+        if (typeof backendErrors === 'object') {
+          setValidationErrors(backendErrors);
+        }
+      }
     }
   };
 
   // Cancel form
   const handleCancel = () => {
     if (confirm("Are you sure you want to cancel? Any unsaved changes will be lost.")) {
+      // Clean up any blob URLs
+      formData.documents.forEach(doc => {
+        if (doc.file_path?.startsWith('blob:')) {
+          URL.revokeObjectURL(doc.file_path);
+        }
+      });
       router.push("/structure/headcount-table");
     }
   };
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clean up blob URLs when component unmounts
+      formData.documents.forEach(doc => {
+        if (doc.file_path?.startsWith('blob:')) {
+          URL.revokeObjectURL(doc.file_path);
+        }
+      });
+    };
+  }, []);
 
   // Render current step content
   const renderStepContent = () => {
@@ -340,9 +421,16 @@ const EmployeeForm = ({ employee = null }) => {
                   <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                   </svg>
-                  <span className="text-sm font-medium">
-                    Error: {typeof error === 'string' ? error : error?.message || 'Something went wrong'}
-                  </span>
+                  <div>
+                    <span className="text-sm font-medium">
+                      Error: {typeof error === 'string' ? error : error?.message || 'Something went wrong'}
+                    </span>
+                    {error?.details && (
+                      <div className="mt-1 text-xs text-red-600 dark:text-red-300">
+                        {JSON.stringify(error.details)}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

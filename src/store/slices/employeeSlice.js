@@ -1,13 +1,38 @@
-// src/store/slices/employeeSlice.js
+// src/store/slices/employeeSlice.js - Updated with backend field mapping
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { employeeAPI } from '../api/employeeAPI';
+import { apiService } from '../../services/api';
 
-// Async thunks
+// Async thunks with proper backend integration
 export const fetchEmployees = createAsyncThunk(
   'employees/fetchEmployees',
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.getEmployees(params);
+      // Map frontend filter names to backend field names
+      const backendParams = {
+        ...params,
+        // Map search fields
+        search: params.search || params.searchTerm,
+        // Map status filter
+        status__name: params.statusFilter && params.statusFilter !== 'all' ? params.statusFilter : undefined,
+        // Map department filter
+        department__name: params.departmentFilter && params.departmentFilter !== 'all' ? params.departmentFilter : undefined,
+        // Map office filter (if available in backend)
+        office: params.officeFilter && params.officeFilter !== 'all' ? params.officeFilter : undefined,
+        // Remove frontend-only fields
+        searchTerm: undefined,
+        statusFilter: undefined,
+        departmentFilter: undefined,
+        officeFilter: undefined,
+      };
+
+      // Clean undefined values
+      Object.keys(backendParams).forEach(key => {
+        if (backendParams[key] === undefined) {
+          delete backendParams[key];
+        }
+      });
+
+      const response = await apiService.getEmployees(backendParams);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -19,7 +44,7 @@ export const fetchEmployee = createAsyncThunk(
   'employees/fetchEmployee',
   async (id, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.getEmployee(id);
+      const response = await apiService.getEmployee(id);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -31,7 +56,7 @@ export const createEmployee = createAsyncThunk(
   'employees/createEmployee',
   async (employeeData, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.createEmployee(employeeData);
+      const response = await apiService.createEmployee(employeeData);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -43,7 +68,7 @@ export const updateEmployee = createAsyncThunk(
   'employees/updateEmployee',
   async ({ id, data }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.updateEmployee(id, data);
+      const response = await apiService.updateEmployee(id, data);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -55,7 +80,7 @@ export const deleteEmployee = createAsyncThunk(
   'employees/deleteEmployee',
   async (id, { rejectWithValue }) => {
     try {
-      await employeeAPI.deleteEmployee(id);
+      await apiService.deleteEmployee(id);
       return id;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -67,7 +92,7 @@ export const fetchFilterOptions = createAsyncThunk(
   'employees/fetchFilterOptions',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.getFilterOptions();
+      const response = await apiService.getEmployeeFilterOptions();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -79,7 +104,7 @@ export const fetchStatistics = createAsyncThunk(
   'employees/fetchStatistics',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.getStatistics();
+      const response = await apiService.getEmployeeStatistics();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -91,7 +116,86 @@ export const bulkUpdateEmployees = createAsyncThunk(
   'employees/bulkUpdate',
   async ({ employeeIds, updates }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.bulkUpdate(employeeIds, updates);
+      const response = await apiService.bulkUpdateEmployees({
+        employee_ids: employeeIds,
+        updates: updates
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchOrgChart = createAsyncThunk(
+  'employees/fetchOrgChart',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiService.getOrgChart();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const updateOrgChartVisibility = createAsyncThunk(
+  'employees/updateOrgChartVisibility',
+  async ({ employeeIds, isVisible }, { rejectWithValue }) => {
+    try {
+      const response = await apiService.updateOrgChartVisibility({
+        employee_ids: employeeIds,
+        is_visible_in_org_chart: isVisible
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const exportEmployees = createAsyncThunk(
+  'employees/exportEmployees',
+  async ({ format = 'csv', filters = {} }, { rejectWithValue }) => {
+    try {
+      const response = await apiService.exportEmployees({ format, ...filters });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// Status management thunks
+export const fetchStatusDashboard = createAsyncThunk(
+  'employees/fetchStatusDashboard',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiService.getStatusDashboard();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const updateEmployeeStatus = createAsyncThunk(
+  'employees/updateEmployeeStatus',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await apiService.updateEmployeeStatus(id);
+      return { id, ...response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const bulkUpdateStatuses = createAsyncThunk(
+  'employees/bulkUpdateStatuses',
+  async (employeeIds = [], { rejectWithValue }) => {
+    try {
+      const response = await apiService.bulkUpdateStatuses(employeeIds);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -103,14 +207,14 @@ const initialState = {
   // Employee list data
   employees: [],
   totalEmployees: 0,
-  currentPage: 1,
-  totalPages: 1,
-  pageSize: 25,
   
   // Single employee data
   currentEmployee: null,
   
-  // Filter options
+  // Org chart data
+  orgChart: [],
+  
+  // Filter options from backend
   filterOptions: {
     business_functions: [],
     departments: [],
@@ -121,27 +225,43 @@ const initialState = {
     tags: [],
     grades: [],
     genders: [],
+    contract_durations: [],
     line_managers: []
   },
   
   // Statistics
   statistics: null,
+  statusDashboard: null,
+  
+  // Pagination
+  pagination: {
+    currentPage: 1,
+    totalPages: 1,
+    pageSize: 25,
+    totalEmployees: 0
+  },
   
   // Loading states
   loading: false,
   loadingFilterOptions: false,
   loadingStatistics: false,
+  loadingStatusDashboard: false,
   loadingEmployee: false,
+  loadingOrgChart: false,
   creating: false,
   updating: false,
   deleting: false,
   bulkUpdating: false,
+  exporting: false,
+  updatingStatus: false,
   
   // Error states
   error: null,
   filterOptionsError: null,
   statisticsError: null,
+  statusDashboardError: null,
   employeeError: null,
+  orgChartError: null,
   
   // Selection state
   selectedEmployees: [],
@@ -188,11 +308,11 @@ const employeeSlice = createSlice({
       state.sortOrder = order;
     },
     setPageSize: (state, action) => {
-      state.pageSize = action.payload;
-      state.currentPage = 1; // Reset to first page
+      state.pagination.pageSize = action.payload;
+      state.pagination.currentPage = 1; // Reset to first page
     },
     setCurrentPage: (state, action) => {
-      state.currentPage = action.payload;
+      state.pagination.currentPage = action.payload;
     },
     toggleAdvancedFilters: (state) => {
       state.showAdvancedFilters = !state.showAdvancedFilters;
@@ -201,7 +321,9 @@ const employeeSlice = createSlice({
       state.error = null;
       state.filterOptionsError = null;
       state.statisticsError = null;
+      state.statusDashboardError = null;
       state.employeeError = null;
+      state.orgChartError = null;
     },
     clearCurrentEmployee: (state) => {
       state.currentEmployee = null;
@@ -217,11 +339,17 @@ const employeeSlice = createSlice({
       })
       .addCase(fetchEmployees.fulfilled, (state, action) => {
         state.loading = false;
-        state.employees = action.payload.results;
-        state.totalEmployees = action.payload.count;
-        state.totalPages = action.payload.total_pages;
-        state.currentPage = action.payload.current_page;
-        state.pageSize = action.payload.page_size;
+        state.employees = action.payload.results || action.payload;
+        
+        // Handle pagination from backend response
+        if (action.payload.count !== undefined) {
+          state.pagination.totalEmployees = action.payload.count;
+          state.pagination.totalPages = action.payload.total_pages || Math.ceil(action.payload.count / state.pagination.pageSize);
+          state.pagination.currentPage = action.payload.current_page || 1;
+          state.pagination.pageSize = action.payload.page_size || state.pagination.pageSize;
+        } else {
+          state.pagination.totalEmployees = state.employees.length;
+        }
       })
       .addCase(fetchEmployees.rejected, (state, action) => {
         state.loading = false;
@@ -252,7 +380,7 @@ const employeeSlice = createSlice({
       .addCase(createEmployee.fulfilled, (state, action) => {
         state.creating = false;
         state.employees.unshift(action.payload);
-        state.totalEmployees += 1;
+        state.pagination.totalEmployees += 1;
       })
       .addCase(createEmployee.rejected, (state, action) => {
         state.creating = false;
@@ -289,7 +417,7 @@ const employeeSlice = createSlice({
       .addCase(deleteEmployee.fulfilled, (state, action) => {
         state.deleting = false;
         state.employees = state.employees.filter(emp => emp.id !== action.payload);
-        state.totalEmployees -= 1;
+        state.pagination.totalEmployees -= 1;
         if (state.currentEmployee?.id === action.payload) {
           state.currentEmployee = null;
         }
@@ -329,6 +457,44 @@ const employeeSlice = createSlice({
         state.statisticsError = action.payload;
       })
 
+    // Fetch org chart
+    builder
+      .addCase(fetchOrgChart.pending, (state) => {
+        state.loadingOrgChart = true;
+        state.orgChartError = null;
+      })
+      .addCase(fetchOrgChart.fulfilled, (state, action) => {
+        state.loadingOrgChart = false;
+        state.orgChart = action.payload;
+      })
+      .addCase(fetchOrgChart.rejected, (state, action) => {
+        state.loadingOrgChart = false;
+        state.orgChartError = action.payload;
+      })
+
+    // Update org chart visibility
+    builder
+      .addCase(updateOrgChartVisibility.pending, (state) => {
+        state.bulkUpdating = true;
+        state.error = null;
+      })
+      .addCase(updateOrgChartVisibility.fulfilled, (state, action) => {
+        state.bulkUpdating = false;
+        // Update employees in state
+        if (action.payload.updated_employees) {
+          action.payload.updated_employees.forEach(updatedEmp => {
+            const index = state.employees.findIndex(emp => emp.id === updatedEmp.id);
+            if (index !== -1) {
+              state.employees[index].is_visible_in_org_chart = updatedEmp.is_visible_in_org_chart;
+            }
+          });
+        }
+      })
+      .addCase(updateOrgChartVisibility.rejected, (state, action) => {
+        state.bulkUpdating = false;
+        state.error = action.payload;
+      })
+
     // Bulk update
     builder
       .addCase(bulkUpdateEmployees.pending, (state) => {
@@ -338,9 +504,74 @@ const employeeSlice = createSlice({
       .addCase(bulkUpdateEmployees.fulfilled, (state, action) => {
         state.bulkUpdating = false;
         state.selectedEmployees = [];
-        // Refresh employee list after bulk update
+        // Optionally refresh employee list
       })
       .addCase(bulkUpdateEmployees.rejected, (state, action) => {
+        state.bulkUpdating = false;
+        state.error = action.payload;
+      })
+
+    // Export employees
+    builder
+      .addCase(exportEmployees.pending, (state) => {
+        state.exporting = true;
+        state.error = null;
+      })
+      .addCase(exportEmployees.fulfilled, (state, action) => {
+        state.exporting = false;
+        // Handle export response
+      })
+      .addCase(exportEmployees.rejected, (state, action) => {
+        state.exporting = false;
+        state.error = action.payload;
+      })
+
+    // Status dashboard
+    builder
+      .addCase(fetchStatusDashboard.pending, (state) => {
+        state.loadingStatusDashboard = true;
+        state.statusDashboardError = null;
+      })
+      .addCase(fetchStatusDashboard.fulfilled, (state, action) => {
+        state.loadingStatusDashboard = false;
+        state.statusDashboard = action.payload;
+      })
+      .addCase(fetchStatusDashboard.rejected, (state, action) => {
+        state.loadingStatusDashboard = false;
+        state.statusDashboardError = action.payload;
+      })
+
+    // Update employee status
+    builder
+      .addCase(updateEmployeeStatus.pending, (state) => {
+        state.updatingStatus = true;
+        state.error = null;
+      })
+      .addCase(updateEmployeeStatus.fulfilled, (state, action) => {
+        state.updatingStatus = false;
+        // Update employee in list if present
+        const index = state.employees.findIndex(emp => emp.id === action.payload.id);
+        if (index !== -1) {
+          // Update status fields from response
+          state.employees[index] = { ...state.employees[index], ...action.payload };
+        }
+      })
+      .addCase(updateEmployeeStatus.rejected, (state, action) => {
+        state.updatingStatus = false;
+        state.error = action.payload;
+      })
+
+    // Bulk update statuses
+    builder
+      .addCase(bulkUpdateStatuses.pending, (state) => {
+        state.bulkUpdating = true;
+        state.error = null;
+      })
+      .addCase(bulkUpdateStatuses.fulfilled, (state, action) => {
+        state.bulkUpdating = false;
+        // Refresh status dashboard or employee list if needed
+      })
+      .addCase(bulkUpdateStatuses.rejected, (state, action) => {
         state.bulkUpdating = false;
         state.error = action.payload;
       });
@@ -364,6 +595,7 @@ export const {
 
 export default employeeSlice.reducer;
 
+// Selectors
 export const selectEmployees = (state) => state.employees.employees;
 export const selectCurrentEmployee = (state) => state.employees.currentEmployee;
 export const selectEmployeeLoading = (state) => state.employees.loading;
@@ -372,9 +604,6 @@ export const selectFilterOptions = (state) => state.employees.filterOptions;
 export const selectSelectedEmployees = (state) => state.employees.selectedEmployees;
 export const selectCurrentFilters = (state) => state.employees.currentFilters;
 export const selectStatistics = (state) => state.employees.statistics;
-export const selectPagination = (state) => ({
-  currentPage: state.employees.currentPage,
-  totalPages: state.employees.totalPages,
-  totalEmployees: state.employees.totalEmployees,
-  pageSize: state.employees.pageSize
-});
+export const selectStatusDashboard = (state) => state.employees.statusDashboard;
+export const selectOrgChart = (state) => state.employees.orgChart;
+export const selectPagination = (state) => state.employees.pagination;

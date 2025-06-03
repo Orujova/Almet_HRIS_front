@@ -31,7 +31,7 @@ import {
   selectCurrentFilters,
   selectStatistics,
   selectPagination
-} from '../store/slices/employeeSlice';
+} from '@/store/slices/employeeSlice';
 
 export const useEmployees = () => {
   const dispatch = useDispatch();

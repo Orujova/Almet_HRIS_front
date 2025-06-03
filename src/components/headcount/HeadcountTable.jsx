@@ -1,3 +1,4 @@
+// src/components/headcount/HeadcountTable.jsx - Complete backend integration
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "../common/ThemeProvider";
@@ -26,8 +27,10 @@ const HeadcountTable = () => {
     selectedEmployees,
     currentFilters,
     pagination,
+    statistics,
     fetchEmployees,
     fetchFilterOptions,
+    fetchStatistics,
     setSelectedEmployees,
     toggleEmployeeSelection,
     selectAllEmployees,
@@ -37,10 +40,14 @@ const HeadcountTable = () => {
     setSorting,
     setPageSize,
     setCurrentPage,
-    bulkUpdateEmployees
+    bulkUpdateEmployees,
+    updateOrgChartVisibility,
+    exportEmployees,
+    deleteEmployee,
+    clearErrors
   } = useEmployees();
 
-  // Local state
+  // Local state for UI
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -48,18 +55,21 @@ const HeadcountTable = () => {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [employeeVisibility, setEmployeeVisibility] = useState({});
+  const [sortConfig, setSortConfig] = useState({ field: 'employee_id', direction: 'asc' });
 
   // Initialize data on mount
   useEffect(() => {
     fetchFilterOptions();
-    fetchEmployees();
+    fetchStatistics();
+    // Initial employee fetch will be triggered by the filter effect
   }, []);
 
-  // Build filter parameters for API
+  // Build filter parameters for API with proper backend field mapping
   const buildFilterParams = useMemo(() => {
     const params = {
       page: pagination.currentPage,
       page_size: pagination.pageSize,
+      ordering: sortConfig.direction === 'desc' ? `-${sortConfig.field}` : sortConfig.field,
     };
 
     // Add search term
@@ -67,33 +77,87 @@ const HeadcountTable = () => {
       params.search = searchTerm.trim();
     }
 
-    // Add quick filters
+    // Add quick filters with backend field mapping
     if (statusFilter !== "all") {
-      params.status = statusFilter;
+      // Map to backend status field
+      params.status__name = statusFilter;
     }
     if (departmentFilter !== "all") {
-      params.department = departmentFilter;
+      // Map to backend department field
+      params.department__name = departmentFilter;
+    }
+    if (officeFilter !== "all") {
+      // Map to backend office field (if available)
+      params.office = officeFilter;
     }
 
-    // Add advanced filters
+    // Add advanced filters with proper field mapping
     Object.keys(currentFilters).forEach(key => {
       const value = currentFilters[key];
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value) && value.length > 0) {
-          params[key] = value.join(',');
+          // Map frontend filter names to backend field names
+          const backendFieldMap = {
+            'employeeName': 'search',
+            'employeeId': 'employee_id',
+            'businessFunctions': 'business_function',
+            'departments': 'department',
+            'units': 'unit',
+            'jobFunctions': 'job_function',
+            'positionGroups': 'position_group',
+            'jobTitles': 'job_title',
+            'lineManager': 'line_manager_name',
+            'lineManagerId': 'line_manager_hc',
+            'grades': 'grade',
+            'tags': 'tags',
+            'genders': 'gender',
+            'contractDurations': 'contract_duration'
+          };
+          
+          const backendField = backendFieldMap[key] || key;
+          params[backendField] = value.join(',');
         } else if (!Array.isArray(value)) {
-          params[key] = value;
+          // Handle single values
+          const backendFieldMap = {
+            'employeeName': 'search',
+            'employeeId': 'employee_id',
+            'lineManager': 'line_manager_name',
+            'lineManagerId': 'line_manager_hc',
+            'startDate': 'start_date_from',
+            'endDate': 'start_date_to'
+          };
+          
+          const backendField = backendFieldMap[key] || key;
+          params[backendField] = value;
         }
       }
     });
 
     return params;
-  }, [pagination.currentPage, pagination.pageSize, searchTerm, statusFilter, departmentFilter, currentFilters]);
+  }, [
+    pagination.currentPage, 
+    pagination.pageSize, 
+    searchTerm, 
+    statusFilter, 
+    departmentFilter, 
+    officeFilter, 
+    currentFilters,
+    sortConfig
+  ]);
 
   // Fetch employees when filters change
   useEffect(() => {
-    fetchEmployees(buildFilterParams);
+    const timeoutId = setTimeout(() => {
+      fetchEmployees(buildFilterParams);
+    }, 300); // Debounce API calls
+
+    return () => clearTimeout(timeoutId);
   }, [buildFilterParams]);
+
+  // Clear errors when component mounts
+  useEffect(() => {
+    clearErrors();
+  }, []);
 
   // Handler functions
   const handleSearchChange = (value) => {
@@ -151,16 +215,20 @@ const HeadcountTable = () => {
   };
 
   const handleSort = (field) => {
-    // Toggle sort order logic
-    setSorting(field, 'asc'); // Simplified for now
+    const newDirection = sortConfig.field === field && sortConfig.direction === 'asc' ? 'desc' : 'asc';
+    setSortConfig({ field, direction: newDirection });
+    setSorting(field, newDirection);
   };
 
   const handleGetSortDirection = (field) => {
-    return null; // Simplified for now
+    if (sortConfig.field === field) {
+      return sortConfig.direction;
+    }
+    return null;
   };
 
   const toggleSelectAll = () => {
-    if (selectedEmployees.length === employees.length) {
+    if (selectedEmployees.length === employees.length && employees.length > 0) {
       clearSelection();
     } else {
       selectAllEmployees();
@@ -174,41 +242,120 @@ const HeadcountTable = () => {
   const handleBulkAction = async (action) => {
     setIsActionMenuOpen(false);
 
-    if (action === "export") {
-      alert(`Exporting data for ${selectedEmployees.length} employee(s)`);
-    } else if (action === "delete") {
-      if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)?`)) {
-        // Handle bulk delete
-        alert(`${selectedEmployees.length} employee(s) deleted`);
-        clearSelection();
+    try {
+      if (action === "export") {
+        const result = await exportEmployees({ 
+          format: 'csv', 
+          filters: buildFilterParams 
+        });
+        
+        if (result.meta.requestStatus === 'fulfilled') {
+          // Handle successful export
+          const blob = new Blob([result.payload.data], { type: 'text/csv' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `employees_export_${new Date().toISOString().split('T')[0]}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        }
+      } else if (action === "delete") {
+        if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`)) {
+          // Handle bulk delete (if backend supports it)
+          for (const employeeId of selectedEmployees) {
+            await deleteEmployee(employeeId);
+          }
+          clearSelection();
+          // Refresh the list
+          fetchEmployees(buildFilterParams);
+        }
+      } else if (action === "changeManager") {
+        const newManagerId = prompt('Enter the new line manager employee ID:');
+        if (newManagerId) {
+          const result = await bulkUpdateEmployees({
+            employeeIds: selectedEmployees,
+            updates: { line_manager: newManagerId }
+          });
+          
+          if (result.meta.requestStatus === 'fulfilled') {
+            clearSelection();
+            fetchEmployees(buildFilterParams);
+          }
+        }
       }
-    } else if (action === "changeManager") {
-      alert("Change manager UI would open here");
+    } catch (error) {
+      console.error('Bulk action failed:', error);
+      alert('Operation failed. Please try again.');
     }
   };
 
-  const handleEmployeeAction = (employeeId, action) => {
+  const handleEmployeeAction = async (employeeId, action) => {
     const employee = employees.find((emp) => emp.id === employeeId);
+    if (!employee) return;
 
-    if (action === "delete") {
-      if (confirm(`Are you sure you want to delete ${employee.name}?`)) {
-        alert(`Employee ${employee.name} deleted`);
+    try {
+      if (action === "delete") {
+        if (confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone.`)) {
+          const result = await deleteEmployee(employeeId);
+          if (result.meta.requestStatus === 'fulfilled') {
+            // Employee will be removed from state automatically
+            fetchEmployees(buildFilterParams); // Refresh list
+          }
+        }
+      } else if (action === "addTag") {
+        const tagName = prompt('Enter tag name for employee:');
+        if (tagName) {
+          // This would require a separate endpoint or bulk update
+          alert(`Tag "${tagName}" would be added to employee ${employee.name}`);
+        }
+      } else if (action === "changeManager") {
+        const newManagerId = prompt('Enter new line manager employee ID:');
+        if (newManagerId) {
+          const result = await bulkUpdateEmployees({
+            employeeIds: [employeeId],
+            updates: { line_manager: newManagerId }
+          });
+          
+          if (result.meta.requestStatus === 'fulfilled') {
+            fetchEmployees(buildFilterParams);
+          }
+        }
       }
-    } else if (action === "addTag") {
-      const tag = prompt('Enter tag for employee');
-      if (tag) {
-        alert(`Tag "${tag}" added to employee ${employee.name}`);
-      }
-    } else if (action === "changeManager") {
-      alert("Change manager UI would open here");
+    } catch (error) {
+      console.error('Employee action failed:', error);
+      alert('Operation failed. Please try again.');
     }
   };
 
-  const handleVisibilityChange = (employeeId, newVisibility) => {
-    setEmployeeVisibility(prev => ({
-      ...prev,
-      [employeeId]: newVisibility,
-    }));
+  const handleVisibilityChange = async (employeeId, newVisibility) => {
+    try {
+      // Update local state immediately for UI responsiveness
+      setEmployeeVisibility(prev => ({
+        ...prev,
+        [employeeId]: newVisibility,
+      }));
+
+      // Call backend API
+      const result = await updateOrgChartVisibility({
+        employeeIds: [employeeId],
+        isVisible: newVisibility
+      });
+
+      if (result.meta.requestStatus === 'fulfilled') {
+        // Update successful - the state should already be updated
+        console.log('Visibility updated successfully');
+      }
+    } catch (error) {
+      console.error('Failed to update visibility:', error);
+      // Revert local state on error
+      setEmployeeVisibility(prev => ({
+        ...prev,
+        [employeeId]: !newVisibility,
+      }));
+      alert('Failed to update visibility. Please try again.');
+    }
   };
 
   const handlePageChange = (pageNumber) => {
@@ -220,6 +367,13 @@ const HeadcountTable = () => {
     setCurrentPage(1);
   };
 
+  const handleBulkImportComplete = (results) => {
+    console.log("Bulk import completed:", results);
+    // Refresh employee list after bulk import
+    fetchEmployees(buildFilterParams);
+    fetchStatistics(); // Update statistics
+  };
+
   // Active filters for display
   const activeFilters = useMemo(() => {
     const filters = [];
@@ -229,6 +383,9 @@ const HeadcountTable = () => {
     }
     if (departmentFilter !== "all") {
       filters.push({ key: "department", label: `Department: ${departmentFilter}` });
+    }
+    if (officeFilter !== "all") {
+      filters.push({ key: "office", label: `Office: ${officeFilter}` });
     }
     
     Object.entries(currentFilters).forEach(([key, value]) => {
@@ -243,24 +400,69 @@ const HeadcountTable = () => {
     });
     
     return filters;
-  }, [statusFilter, departmentFilter, currentFilters]);
+  }, [statusFilter, departmentFilter, officeFilter, currentFilters]);
 
   const hasActiveFilters = searchTerm || 
     Object.keys(currentFilters).length > 0 || 
     statusFilter !== "all" || 
-    departmentFilter !== "all";
+    departmentFilter !== "all" ||
+    officeFilter !== "all";
+
+  // Format employees for display with proper field mapping
+  const formattedEmployees = useMemo(() => {
+    return employees.map(employee => ({
+      ...employee,
+      // Ensure all necessary fields are available for the table
+      name: employee.name || employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
+      display_name: employee.name || employee.full_name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
+      // Handle nested object fields
+      business_function_name: employee.business_function_name || employee.business_function?.name || '',
+      business_function_code: employee.business_function_code || employee.business_function?.code || '',
+      department_name: employee.department_name || employee.department?.name || '',
+      unit_name: employee.unit_name || employee.unit?.name || '',
+      job_function_name: employee.job_function_name || employee.job_function?.name || '',
+      position_group_name: employee.position_group_name || employee.position_group?.get_name_display || employee.position_group?.name || '',
+      position_group_level: employee.position_group_level || employee.position_group?.hierarchy_level || 0,
+      status_name: employee.status_name || employee.status?.name || '',
+      status_color: employee.status_color || employee.status?.color || '#6b7280',
+      line_manager_name: employee.line_manager_name || employee.line_manager?.name || employee.line_manager?.full_name || '',
+      line_manager_hc_number: employee.line_manager_hc_number || employee.line_manager?.employee_id || '',
+      contract_duration_display: employee.contract_duration_display || employee.get_contract_duration_display || employee.contract_duration || '',
+      // Handle tags
+      tag_names: employee.tag_names || employee.tags?.map(tag => ({
+        id: tag.id,
+        name: tag.name,
+        color: tag.color,
+        type: tag.tag_type || tag.type
+      })) || [],
+      // Visibility state (local or from backend)
+      is_visible_in_org_chart: employeeVisibility[employee.id] ?? employee.is_visible_in_org_chart ?? true
+    }));
+  }, [employees, employeeVisibility]);
 
   if (error) {
     return (
       <div className="container mx-auto pt-3 max-w-full">
         <div className="text-center py-8">
-          <p className="text-red-600 dark:text-red-400">Error loading employees: {error}</p>
-          <button 
-            onClick={() => fetchEmployees(buildFilterParams)}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+            <div className="flex items-center justify-center mb-4">
+              <div className="bg-red-100 dark:bg-red-800 p-3 rounded-full">
+                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Error Loading Employees</h3>
+            <p className="text-red-600 dark:text-red-400 mb-4">
+              {typeof error === 'string' ? error : error?.message || 'Failed to load employee data'}
+            </p>
+            <button 
+              onClick={() => fetchEmployees(buildFilterParams)}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -275,6 +477,7 @@ const HeadcountTable = () => {
           onToggleActionMenu={toggleActionMenu}
           isActionMenuOpen={isActionMenuOpen}
           selectedEmployees={selectedEmployees}
+          onBulkImportComplete={handleBulkImportComplete}
         />
 
         {/* Action Menu */}
@@ -295,6 +498,7 @@ const HeadcountTable = () => {
           onApply={handleApplyAdvancedFilters}
           onClose={() => setIsAdvancedFilterOpen(false)}
           initialFilters={currentFilters}
+          filterOptions={filterOptions}
         />
       )}
 
@@ -315,6 +519,7 @@ const HeadcountTable = () => {
             departmentFilter={departmentFilter}
             activeFilters={activeFilters}
             onClearFilter={handleClearFilter}
+            filterOptions={filterOptions}
           />
         </div>
       </div>
@@ -327,9 +532,9 @@ const HeadcountTable = () => {
 
       {/* Employee Table */}
       <EmployeeTable
-        employees={employees}
+        employees={formattedEmployees}
         selectedEmployees={selectedEmployees}
-        selectAll={selectedEmployees.length === employees.length && employees.length > 0}
+        selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
         onToggleSelectAll={toggleSelectAll}
         onToggleEmployeeSelection={toggleEmployeeSelection}
         onSort={handleSort}
@@ -343,7 +548,7 @@ const HeadcountTable = () => {
       />
 
       {/* Pagination */}
-      {employees.length > 0 && (
+      {formattedEmployees.length > 0 && (
         <Pagination
           currentPage={pagination.currentPage}
           totalPages={pagination.totalPages}
