@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Updated with backend fields
 "use client";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
@@ -8,9 +8,6 @@ import EmployeeTag from "../EmployeeTag";
 import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
 import ActionsDropdown from "../ActionsDropdown";
 
-/**
- * Employee sətiri - yalnız sol border rəngli və adın üzərinə klik ediləbilir
- */
 const EmployeeTableRow = ({
   employee,
   isSelected,
@@ -22,16 +19,14 @@ const EmployeeTableRow = ({
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
   
-  // Yalnız border rəngi üçün
+  // Get employee colors for border
   const employeeColors = getEmployeeColors(employee, darkMode);
 
   // Generate initials from employee name
   const getInitials = (name) => {
     if (!name) return "NA";
-    
     const names = name.split(" ");
     if (names.length === 1) return names[0].charAt(0);
-    
     return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`;
   };
 
@@ -47,7 +42,7 @@ const EmployeeTableRow = ({
     });
   };
 
-  // Yalnız border və seçilmiş vəziyyət üçün style
+  // Row style with border color and selection state
   const rowStyle = {
     borderLeft: `4px solid ${employeeColors.borderColor}`,
     backgroundColor: isSelected 
@@ -55,15 +50,10 @@ const EmployeeTableRow = ({
       : 'transparent'
   };
 
-  // Avatar üçün rəng (border rəngindən)
+  // Avatar style
   const avatarStyle = {
     backgroundColor: employeeColors.borderColor,
     color: 'white'
-  };
-
-  // Dot üçün rəng
-  const dotStyle = {
-    backgroundColor: employeeColors.dotColor
   };
 
   return (
@@ -71,7 +61,7 @@ const EmployeeTableRow = ({
       className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150`}
       style={rowStyle}
     >
-      {/* Employee Info - Name & HC Number */}
+      {/* Employee Info - Name & Employee ID */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex items-center">
           <input
@@ -86,9 +76,9 @@ const EmployeeTableRow = ({
               className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2"
               style={avatarStyle}
             >
-              {employee.profileImage ? (
+              {employee.profile_image ? (
                 <img
-                  src={employee.profileImage}
+                  src={employee.profile_image}
                   alt={employee.name}
                   className="h-full w-full object-cover rounded-full"
                 />
@@ -104,56 +94,55 @@ const EmployeeTableRow = ({
                 </div>
               </Link>
               <div className={`text-[10px] ${styles.textMuted}`}>
-               {employee.empNo}
+                {employee.employee_id}
               </div>
             </div>
           </div>
         </div>
       </td>
 
-      {/* Contact Info - Email & Birthdate */}
+      {/* Contact Info - Email & Date of Birth */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[120px]`}>
             {employee.email}
           </div>
           <div className={`text-[10px] ${styles.textMuted}`}>
-            DOB: {employee.dateOfBirth ? formatDate(employee.dateOfBirth) : "N/A"}
+            DOB: {employee.date_of_birth ? formatDate(employee.date_of_birth) : "N/A"}
           </div>
         </div>
       </td>
 
-      {/* Organization - Business Function & Department */}
+      {/* Business Function & Department */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
-            {employee.businessFunction}
+            {employee.business_function_name}
           </div>
           <div className={`text-[10px] ${styles.textMuted} truncate max-w-[100px]`}>
-            {employee.department}
+            {employee.department_name}
           </div>
         </div>
       </td>
 
-      {/* Unit & Function - Unit & Job Function */}
+      {/* Unit & Job Function */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
-            {employee.unit}
+            {employee.unit_name || "N/A"}
           </div>
           <div className={`text-[10px] ${styles.textMuted} truncate max-w-[100px]`}>
-            {employee.jobFunction}
+            {employee.job_function_name}
           </div>
         </div>
       </td>
 
-      {/* Hierarchy & Grade - Position Group & Grade */}
+      {/* Position & Grade */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col items-center">
           <div className="flex items-center">
-      
             <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
-              {employee.positionGroup}
+              {employee.position_group_name}
             </div>
           </div>
           <div className={`text-[10px] ${styles.textMuted} text-center mt-1`}>
@@ -165,7 +154,7 @@ const EmployeeTableRow = ({
       {/* Job Title */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className={`text-xs ${styles.textSecondary} truncate max-w-[120px]`}>
-          {employee.jobTitle}
+          {employee.job_title}
         </div>
       </td>
 
@@ -173,10 +162,10 @@ const EmployeeTableRow = ({
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[120px]`}>
-            {employee.lineManager || "N/A"}
+            {employee.line_manager_name || "N/A"}
           </div>
           <div className={`text-[10px] ${styles.textMuted}`}>
-            HC: {employee.lineManagerHcNumber || "N/A"}
+            HC: {employee.line_manager_hc_number || "N/A"}
           </div>
         </div>
       </td>
@@ -185,23 +174,29 @@ const EmployeeTableRow = ({
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col">
           <div className={`text-xs ${styles.textSecondary}`}>
-            Start: {formatDate(employee.startDate)}
+            Start: {formatDate(employee.start_date)}
           </div>
-          {employee.endDate && (
+          {employee.end_date && (
             <div className={`text-[10px] ${styles.textMuted}`}>
-              End: {formatDate(employee.endDate)}
+              End: {formatDate(employee.end_date)}
             </div>
           )}
+          <div className={`text-[10px] ${styles.textMuted}`}>
+            {employee.contract_duration_display}
+          </div>
         </div>
       </td>
 
       {/* Status & Tags */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col justify-center space-y-1">
-          <EmployeeStatusBadge status={employee.status} />
+          <EmployeeStatusBadge 
+            status={employee.status_name} 
+            color={employee.status_color}
+          />
           <div className="flex flex-wrap justify-center gap-1">
-            {employee.tags &&
-              employee.tags.map((tag, idx) => (
+            {employee.tag_names &&
+              employee.tag_names.map((tag, idx) => (
                 <EmployeeTag key={idx} tag={tag} />
               ))}
           </div>
@@ -212,7 +207,7 @@ const EmployeeTableRow = ({
       <td className="px-2 py-2 whitespace-nowrap">
         <EmployeeVisibilityToggle
           employeeId={employee.id}
-          initialVisibility={isVisible}
+          initialVisibility={employee.is_visible_in_org_chart}
           onVisibilityChange={(newVisibility) => onVisibilityChange(employee.id, newVisibility)}
         />
       </td>

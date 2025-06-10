@@ -1,18 +1,9 @@
-// src/components/headcount/EmployeeTable/EmployeeTableHeader.jsx
+// src/components/headcount/EmployeeTable/EmployeeTableHeader.jsx - Updated with backend fields
 "use client";
 import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles } from "../utils/themeStyles";
 import SortingIndicator from "../SortingIndicator";
 
-/**
- * Əməkdaşlar cədvəlinin başlıq komponenti
- * @param {Object} props - Komponent parametrləri
- * @param {boolean} props.selectAll - Bütün əməkdaşlar seçilib ya yox
- * @param {Function} props.onToggleSelectAll - Bütün əməkdaşların seçim vəziyyətini dəyişən funksiya
- * @param {Function} props.onSort - Sıralama parametrini dəyişən funksiya
- * @param {Function} props.getSortDirection - Sahənin sıralama istiqamətini qaytaran funksiya
- * @returns {JSX.Element} - Cədvəl başlığı komponenti
- */
 const EmployeeTableHeader = ({
   selectAll,
   onToggleSelectAll,
@@ -35,10 +26,10 @@ const EmployeeTableHeader = ({
             />
             <button
               className={`ml-1 text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
-              onClick={() => onSort("name")}
+              onClick={() => onSort("full_name")}
             >
               Employee 
-              <SortingIndicator direction={getSortDirection("name")} />
+              <SortingIndicator direction={getSortDirection("full_name")} />
             </button>
           </div>
         </th>
@@ -46,81 +37,80 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("email")}
+            onClick={() => onSort("user__email")}
           >
             Contact Info
-            <SortingIndicator direction={getSortDirection("email")} />
+            <SortingIndicator direction={getSortDirection("user__email")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("businessFunction")}
+            onClick={() => onSort("business_function__name")}
           >
-            Business function & Department
-
-            <SortingIndicator direction={getSortDirection("businessFunction")} />
+            Business Function & Department
+            <SortingIndicator direction={getSortDirection("business_function__name")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("unit")}
+            onClick={() => onSort("unit__name")}
           >
-            Unit & Job function
-            <SortingIndicator direction={getSortDirection("unit")} />
+            Unit & Job Function
+            <SortingIndicator direction={getSortDirection("unit__name")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("positionGroup")}
+            onClick={() => onSort("position_group__hierarchy_level")}
           >
-            Hierarchy & Grade
-            <SortingIndicator direction={getSortDirection("positionGroup")} />
+            Position & Grade
+            <SortingIndicator direction={getSortDirection("position_group__hierarchy_level")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("jobTitle")}
+            onClick={() => onSort("job_title")}
           >
             Job Title
-            <SortingIndicator direction={getSortDirection("jobTitle")} />
+            <SortingIndicator direction={getSortDirection("job_title")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("lineManager")}
+            onClick={() => onSort("line_manager__full_name")}
           >
             Line Manager
-            <SortingIndicator direction={getSortDirection("lineManager")} />
+            <SortingIndicator direction={getSortDirection("line_manager__full_name")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("startDate")}
+            onClick={() => onSort("start_date")}
           >
             Employment Dates
-            <SortingIndicator direction={getSortDirection("startDate")} />
+            <SortingIndicator direction={getSortDirection("start_date")} />
           </button>
         </th>
 
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center`}
-            onClick={() => onSort("status")}
+            onClick={() => onSort("status__name")}
           >
             Status & Tags
-            <SortingIndicator direction={getSortDirection("status")} />
+            <SortingIndicator direction={getSortDirection("status__name")} />
           </button>
         </th>
 

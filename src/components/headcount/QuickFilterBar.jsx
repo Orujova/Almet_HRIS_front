@@ -1,4 +1,4 @@
-import { useState } from "react";
+// src/components/headcount/QuickFilterBar.jsx - Removed office filter
 import { X, ChevronDown } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
@@ -7,7 +7,7 @@ const FilterPill = ({ label, active, onClick }) => {
   
   return (
     <button
-      className={`px-2 py-1 rounded-full text-xs flex items-center mr-2 ${
+      className={`px-2 py-1 rounded-full text-xs flex items-center mr-2 transition-colors ${
         active 
           ? darkMode 
             ? 'bg-almet-sapphire text-white' 
@@ -26,13 +26,12 @@ const FilterPill = ({ label, active, onClick }) => {
 
 const QuickFilterBar = ({ 
   onStatusChange, 
-  onOfficeChange, 
   onDepartmentChange,
   statusFilter, 
-  officeFilter, 
   departmentFilter,
-  activeFilters,
-  onClearFilter
+  activeFilters = [],
+  onClearFilter,
+  filterOptions = {}
 }) => {
   const { darkMode } = useTheme();
   
@@ -41,6 +40,10 @@ const QuickFilterBar = ({
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const inputBg = darkMode ? "bg-gray-700" : "bg-gray-100";
+
+  // Extract options from backend filter options
+  const statusOptions = filterOptions?.statuses || [];
+  const departmentOptions = filterOptions?.departments || [];
   
   return (
     <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
@@ -56,8 +59,9 @@ const QuickFilterBar = ({
         ))}
       </div>
       
-      {/* Dropdown filters */}
+      {/* Dropdown filters - Only Status and Department */}
       <div className="flex space-x-2 flex-wrap">
+        {/* Status Filter */}
         <div className="relative">
           <select
             className={`p-1.5 pr-6 text-xs rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
@@ -65,31 +69,18 @@ const QuickFilterBar = ({
             onChange={(e) => onStatusChange(e.target.value)}
           >
             <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="on boarding">On Boarding</option>
-            <option value="probation">Probation</option>
-            <option value="on leave">On Leave</option>
+            {statusOptions.map((status) => (
+              <option key={status.id} value={status.name}>
+                {status.name}
+              </option>
+            ))}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
             <ChevronDown size={12} className={textMuted} />
           </div>
         </div>
         
-        <div className="relative">
-          <select
-            className={`p-1.5 pr-6 text-xs rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            value={officeFilter}
-            onChange={(e) => onOfficeChange(e.target.value)}
-          >
-            <option value="all">All Offices</option>
-            <option value="baku">Baku Office</option>
-            <option value="dubai">Dubai Office</option>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
-            <ChevronDown size={12} className={textMuted} />
-          </div>
-        </div>
-        
+        {/* Department Filter */}
         <div className="relative">
           <select
             className={`p-1.5 text-xs pr-6 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
@@ -97,11 +88,11 @@ const QuickFilterBar = ({
             onChange={(e) => onDepartmentChange(e.target.value)}
           >
             <option value="all">All Departments</option>
-            <option value="business development">Business Development</option>
-            <option value="administrative">Administrative</option>
-            <option value="finance">Finance</option>
-            <option value="hr">HR</option>
-            <option value="compliance">Compliance</option>
+            {departmentOptions.map((department) => (
+              <option key={department.id} value={department.name}>
+                {department.name}
+              </option>
+            ))}
           </select>
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1">
             <ChevronDown size={12} className={textMuted} />

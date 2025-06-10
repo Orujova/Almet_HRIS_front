@@ -1,9 +1,10 @@
+// src/components/headcount/AdvancedFilterPanel.jsx - Updated with backend integration
 import { useState } from "react";
 import { X, ChevronDown, Search, AlertCircle } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 
-const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
+const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {}, filterOptions = {} }) => {
   const { darkMode } = useTheme();
   const [filters, setFilters] = useState({
     employeeName: initialFilters.employeeName || "",
@@ -19,6 +20,9 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
     startDate: initialFilters.startDate || "",
     endDate: initialFilters.endDate || "",
     grades: initialFilters.grades || [],
+    genders: initialFilters.genders || [],
+    contractDurations: initialFilters.contractDurations || [],
+    tags: initialFilters.tags || [],
   });
 
   // Theme-dependent classes
@@ -32,14 +36,38 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
     ? "bg-almet-sapphire hover:bg-almet-astral"
     : "bg-almet-sapphire hover:bg-almet-astral";
 
-  // Mock data for dropdowns
-  const businessFunctionOptions = ["Holding", "Trading", "Georgia", "UK"];
-  const departmentOptions = ["BUSINESS DEVELOPMENT", "ADMINISTRATIVE", "FINANCE", "HR", "COMPLIANCE", "OPERATIONS", "PROJECTS MANAGEMENT", "TRADE", "STOCK SALES"];
-  const unitOptions = ["BUSINESS DEVELOPMENT", "BUSINESS SUPPORT", "PRODUCT DEVELOPMENT", "CORE OPERATIONS", "COMMERCE", "STRATEGY EXECUTION"];
-  const jobFunctionOptions = ["DEPUTY CHAIRMAN ON FINANCE & BUSINESS DEVELOPMENT", "ADMINISTRATION", "FINANCE OPERATIONS", "HR OPERATIONS", "LEGAL", "LOGISTICS", "PROJECTS MANAGEMENT"];
-  const positionGroupOptions = ["VC", "DIRECTOR", "MANAGER", "HEAD OF DEPARTMENT", "SENIOR SPECIALIST", "SPECIALIST", "JUNIOR SPECIALIST", "BLUE COLLAR"];
-  const jobTitleOptions = ["Direktor müavini", "DIRECTOR", "CHIEF ACCOUNTANT", "ADMINISTRATION SPECIALIST", "DRIVER", "FACILITIES ASSISTANT"];
-  const gradeOptions = ["1", "2", "3", "4", "5", "6", "7", "8"];
+  // Extract options from backend filter options with fallbacks
+  const businessFunctionOptions = filterOptions?.business_functions?.map(bf => bf.name) || [];
+  const departmentOptions = filterOptions?.departments?.map(dept => dept.name) || [];
+  const unitOptions = filterOptions?.units?.map(unit => unit.name) || [];
+  const jobFunctionOptions = filterOptions?.job_functions?.map(jf => jf.name) || [];
+  const positionGroupOptions = filterOptions?.position_groups?.map(pg => pg.name) || [];
+  const tagOptions = filterOptions?.tags?.map(tag => tag.name) || [];
+  
+  // Grade options from backend or default
+  const gradeOptions = filterOptions?.grades?.map(grade => grade.label) || 
+    Array.from({ length: 8 }, (_, i) => `Grade ${i + 1}`);
+  
+  // Gender options from backend or default
+  const genderOptions = filterOptions?.genders?.map(gender => gender.label) || 
+    ["Male", "Female"];
+    
+  // Contract duration options from backend or default
+  const contractDurationOptions = filterOptions?.contract_durations?.map(cd => cd.label) || 
+    ["Permanent", "1 Year", "6 Months", "3 Months"];
+
+  // Job title options - could be dynamic from backend
+  const jobTitleOptions = [
+    "Direktor müavini",
+    "DIRECTOR", 
+    "CHIEF ACCOUNTANT",
+    "ADMINISTRATION SPECIALIST",
+    "Mühasib",
+    "İnsan resursları üzrə mütəxəssis",
+    "Operations Manager",
+    "Sales Representative",
+    "Layihələr üzrə menecer"
+  ];
 
   const handleInputChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }));
@@ -64,11 +92,28 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
       startDate: "",
       endDate: "",
       grades: [],
+      genders: [],
+      contractDurations: [],
+      tags: [],
     });
   };
 
   const handleApply = () => {
-    onApply(filters);
+    // Filter out empty values before sending to backend
+    const cleanedFilters = {};
+    Object.entries(filters).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        if (value.length > 0) {
+          cleanedFilters[key] = value;
+        }
+      } else if (value && value.trim && value.trim() !== "") {
+        cleanedFilters[key] = value.trim();
+      } else if (value && !value.trim) {
+        cleanedFilters[key] = value;
+      }
+    });
+    
+    onApply(cleanedFilters);
   };
 
   const nonEmptyFilters = Object.entries(filters).filter(([_, value]) => {
@@ -82,9 +127,11 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center">
           <h3 className={`text-base font-medium ${textPrimary}`}>Advanced Filters</h3>
-          <span className="ml-3 px-2 py-0.5 bg-almet-sapphire text-white text-[10px] rounded-full">
-            {nonEmptyFilters} active
-          </span>
+          {nonEmptyFilters > 0 && (
+            <span className="ml-3 px-2 py-0.5 bg-almet-sapphire text-white text-[10px] rounded-full">
+              {nonEmptyFilters} active
+            </span>
+          )}
         </div>
         <button 
           onClick={onClose}
@@ -93,6 +140,18 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
           <X size={18} className={textPrimary} />
         </button>
       </div>
+
+      {/* Info about backend data */}
+      {(!filterOptions || Object.keys(filterOptions).length === 0) && (
+        <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="flex items-center">
+            <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mr-2" />
+            <span className="text-xs text-yellow-800 dark:text-yellow-300">
+              Loading filter options from server...
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Grid Layout */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
@@ -258,6 +317,42 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
             />
           </div>
           
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1`}>
+              Genders
+            </label>
+            <MultiSelectDropdown
+              options={genderOptions}
+              placeholder="Select genders..."
+              selectedValues={filters.genders}
+              onChange={(values) => handleMultiSelectChange("genders", values)}
+            />
+          </div>
+          
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1`}>
+              Contract Duration
+            </label>
+            <MultiSelectDropdown
+              options={contractDurationOptions}
+              placeholder="Select contract types..."
+              selectedValues={filters.contractDurations}
+              onChange={(values) => handleMultiSelectChange("contractDurations", values)}
+            />
+          </div>
+          
+          <div>
+            <label className={`block ${textSecondary} text-xs font-medium mb-1`}>
+              Tags
+            </label>
+            <MultiSelectDropdown
+              options={tagOptions}
+              placeholder="Select tags..."
+              selectedValues={filters.tags}
+              onChange={(values) => handleMultiSelectChange("tags", values)}
+            />
+          </div>
+          
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={`block ${textSecondary} text-xs font-medium mb-1`}>
@@ -289,13 +384,13 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {} }) => {
       <div className="flex justify-end space-x-3 pt-3 border-t border-gray-200 dark:border-gray-700">
         <button
           onClick={handleReset}
-          className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm"
+          className="px-4 py-2 rounded-md border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm transition-colors"
         >
           Reset Filters
         </button>
         <button
           onClick={handleApply}
-          className={`${btnPrimary} text-white px-4 py-2 rounded-md text-sm`}
+          className={`${btnPrimary} text-white px-4 py-2 rounded-md text-sm transition-colors`}
         >
           Apply Filters
         </button>

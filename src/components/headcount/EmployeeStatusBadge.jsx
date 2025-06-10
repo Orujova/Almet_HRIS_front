@@ -1,50 +1,37 @@
+// src/components/headcount/EmployeeStatusBadge.jsx - Updated to handle backend data
 "use client";
 import { useTheme } from "../common/ThemeProvider";
 
-const EmployeeStatusBadge = ({ status }) => {
+const EmployeeStatusBadge = ({ status, color }) => {
   const { darkMode } = useTheme();
 
-  let bgColor = "";
-  let textColor = "";
-  let statusText = status || "Unknown";
+  // Default colors if not provided
+  const getStatusColor = (statusName) => {
+    const normalizedStatus = statusName ? statusName.toLowerCase() : "";
+    
+    switch (normalizedStatus) {
+      case "active":
+        return darkMode ? "#22c55e" : "#16a34a";
+      case "onboarding":
+      case "on boarding":
+        return darkMode ? "#f59e0b" : "#d97706";
+      case "probation":
+        return darkMode ? "#8b5cf6" : "#7c3aed";
+      case "on leave":
+      case "on_leave":
+        return darkMode ? "#ef4444" : "#dc2626";
+      default:
+        return darkMode ? "#6b7280" : "#4b5563";
+    }
+  };
 
-  // Normalize status to lowercase for comparison
-  const normalizedStatus = status ? status.toLowerCase() : "";
-
-  switch (normalizedStatus) {
-    case "active":
-      bgColor = darkMode ? "bg-green-900" : "bg-green-100";
-      textColor = darkMode ? "text-green-300" : "text-green-800";
-      statusText = "Active";
-      break;
-    case "on boarding":
-    case "onboarding":
-    case "on-boarding":
-      bgColor = darkMode ? "bg-yellow-900" : "bg-yellow-100";
-      textColor = darkMode ? "text-yellow-300" : "text-yellow-800";
-      statusText = "On boarding";
-      break;
-    case "probation":
-      bgColor = darkMode ? "bg-purple-900" : "bg-purple-100";
-      textColor = darkMode ? "text-purple-300" : "text-purple-800";
-      statusText = "probation";
-      break;
-    case "on leave":
-    case "onleave":
-    case "on-leave":
-      bgColor = darkMode ? "bg-red-900" : "bg-red-100";
-      textColor = darkMode ? "text-red-300" : "text-red-800";
-      statusText = "On leave";
-      break;
-    default:
-      bgColor = darkMode ? "bg-gray-900" : "bg-gray-100";
-      textColor = darkMode ? "text-gray-300" : "text-gray-800";
-      break;
-  }
+  const statusColor = color || getStatusColor(status);
+  const statusText = status || "Unknown";
 
   return (
     <span
-      className={`inline-flex items-center justify-center text-center px-1 py-0.5 rounded-full text-xs font-medium ${bgColor} ${textColor}`}
+      className={`inline-flex items-center justify-center text-center px-2 py-0.5 rounded-full text-xs font-medium text-white`}
+      style={{ backgroundColor: statusColor }}
     >
       {statusText}
     </span>
