@@ -1,50 +1,60 @@
 'use client'
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import {
     ChevronDown, ChevronRight, Users, Building2, Award, User, Search, Phone, Mail, MapPin,
     Briefcase, Crown, Target, Layers, Filter, TreePine, Maximize2, Minimize2, Plus, Minus,
-    ZoomIn, ZoomOut, RotateCcw, X, Grid, UsersRound, Archive, Puzzle, Info
+    ZoomIn, ZoomOut, RotateCcw, X, Grid, UsersRound, Archive, Puzzle, Info, Download,
+    ArrowUp, ArrowDown, Expand, Shrink
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 
+// React Flow imports - modern org chart solution
+import ReactFlow, {
+    Controls,
+    Background,
+    useNodesState,
+    useEdgesState,
+    ConnectionMode,
+    Panel,
+    MiniMap,
+    Handle,
+    Position,
+    useReactFlow,
+    ReactFlowProvider,
+    getRectOfNodes,
+    getTransformForBounds
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+
+// Dagre for automatic layout
+import dagre from 'dagre';
+
 const OrgChart = () => {
     const { darkMode } = useTheme();
-    const [expandedNodes, setExpandedNodes] = useState(new Set(['HLD22']));
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState(null);
     const [filters, setFilters] = useState({ department: 'all', grade: 'all', location: 'all' });
-    const [zoomLevel, setZoomLevel] = useState(100);
     const [showFilters, setShowFilters] = useState(false);
     const [viewMode, setViewMode] = useState('tree');
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [showLegend, setShowLegend] = useState(false);
-
-    const chartRef = useRef(null);
+    const [expandedNodes, setExpandedNodes] = useState(new Set(['HLD22'])); // CEO expanded by default
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    
     const containerRef = useRef(null);
-    const scrollContainerRef = useRef(null);
-
-    // Panning states
-    const [isDragging, setIsDragging] = useState(false);
-    const [startX, setStartX] = useState(0);
-    const [startY, setStartY] = useState(0);
-    const [scrollLeftStart, setScrollLeftStart] = useState(0);
-    const [scrollTopStart, setScrollTopStart] = useState(0);
 
     // Enhanced theme colors
-    const bgApp = darkMode ? "bg-almet-cloud-burst" : "bg-gray-50";
-    const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
-    const bgCardHover = darkMode ? "bg-almet-comet" : "bg-gray-50";
+    const bgApp = darkMode ? "bg-slate-900" : "bg-gray-50";
+    const bgCard = darkMode ? "bg-slate-800" : "bg-white";
+    const bgCardHover = darkMode ? "bg-slate-700" : "bg-gray-50";
     const textHeader = darkMode ? "text-gray-100" : "text-gray-900";
     const textPrimary = darkMode ? "text-gray-200" : "text-gray-700";
-    const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-500";
-    const textMuted = darkMode ? "text-almet-waterloo" : "text-gray-400";
-    const borderColor = darkMode ? "border-almet-comet/30" : "border-gray-200";
-    const bgAccent = darkMode ? "bg-almet-comet/30" : "bg-almet-mystic/50";
-    const shadowCard = "shadow-sm";
-    const connectionColor = darkMode ? "rgb(122, 130, 154)" : "rgb(156, 163, 175)";
+    const textSecondary = darkMode ? "text-gray-400" : "text-gray-500";
+    const textMuted = darkMode ? "text-gray-500" : "text-gray-400";
+    const borderColor = darkMode ? "border-slate-600" : "border-gray-200";
+    const bgAccent = darkMode ? "bg-slate-700" : "bg-blue-50";
 
-    // Simplified position hierarchy colors - using project colors
+    // Position hierarchy colors
     const hierarchyColors = {
         'VC': { 
             primary: darkMode ? '#4e7db5' : '#30539b', 
@@ -83,7 +93,7 @@ const OrgChart = () => {
         return hierarchyColors[employee.positionGroup] || hierarchyColors['SPECIALIST'];
     };
 
-    const employeeData = [ 
+    const employeeData = [
         { id: 'HLD22', name: 'Şirin Camalli Rəşad Oğlu', title: 'BUSINESS DEVELOPMENT DIRECTOR', grade: '7', lineManagerId: null, department: 'Executive', unit: 'BUSINESS DEVELOPMENT', avatar: 'ŞC', phone: '+994 50 xxx xxxx', email: 'sirin.camalli@almet.az', location: 'Baku HQ', businessFunction: 'Holding', positionGroup: 'DIRECTOR' },
         { id: 'HLD1', name: 'Əli Orucov Məzahir Oğlu', title: 'DEPUTY CHAIRMAN ON FINANCE & BUSINESS DEVELOPMENT', grade: '8', lineManagerId: 'HLD22', department: 'Finance', unit: 'BUSINESS DEVELOPMENT', avatar: 'ƏO', phone: '+994 50 xxx xxxx', email: 'ali.orucov@almet.az', location: 'Baku HQ', businessFunction: 'Holding', positionGroup: 'VC' },
         { id: 'HLD2', name: 'Şəfa Nəcəfova Məmməd Qizi', title: 'DEPUTY CHAIRMAN ON BUSINESS TRANSFORMATION & CULTURE', grade: '8', lineManagerId: 'HLD22', department: 'HR', unit: 'BUSINESS TRANSFORMATION', avatar: 'ŞN', phone: '+994 50 xxx xxxx', email: 'sefa.necefova@almet.az', location: 'Baku HQ', businessFunction: 'Holding', positionGroup: 'VC' },
@@ -98,105 +108,367 @@ const OrgChart = () => {
         { id: 'EUR2', name: 'Nitika Nanda', title: 'OPERATIONS SPECIALIST', grade: '3', lineManagerId: 'HLD3', department: 'Operations', unit: 'EUROPE OPERATIONS', avatar: 'NN', phone: '+44 xxx xxx xxxx', email: 'nitika.nanda@almet.eu', location: 'London', businessFunction: 'UK', positionGroup: 'SPECIALIST' }
     ];
 
-    // Improved spacing and dimensions
-    const cardGap = 50;
-    const connectorThickness = 2;
-    const halfCardGap = cardGap / 2;
-    const cardWidth = 280; // Standardized card width
-
-    const getHierarchyMap = (employees) => {
-        const map = {};
-        if (!employees || !Array.isArray(employees)) return map;
-        employees.forEach(emp => {
-            if (emp && emp.id != null) {
-                map[emp.id] = { ...emp, children: [] };
-            }
-        });
-        employees.forEach(emp => {
-            if (emp && emp.lineManagerId && map[emp.lineManagerId] && map[emp.id]) {
-                map[emp.lineManagerId].children.push(map[emp.id]);
-            }
-        });
-        return map;
-    };
-
-    const countAllSubordinatesRecursive = (employeeNode, hierarchyMap) => {
-        if (!employeeNode || !employeeNode.children || employeeNode.children.length === 0) {
-            return 0;
-        }
-        let count = employeeNode.children.length;
-        for (const childRef of employeeNode.children) {
-            const childNode = hierarchyMap[childRef.id];
-            if (childNode) {
-                 count += countAllSubordinatesRecursive(childNode, hierarchyMap);
-            }
-        }
-        return count;
-    };
-
-    const getLevelToCeoRecursive = (employeeId, flatEmployeeMap) => {
-        let level = 0;
-        if (!employeeId || !flatEmployeeMap[employeeId]) return -1;
-        let currentEmployee = flatEmployeeMap[employeeId];
-        while (currentEmployee && currentEmployee.lineManagerId && flatEmployeeMap[currentEmployee.lineManagerId]) {
-            currentEmployee = flatEmployeeMap[currentEmployee.lineManagerId];
-            level++;
-            if (level > employeeData.length + 5) {
-                console.error("getLevelToCeoRecursive: Potential infinite loop detected for employeeId:", employeeId);
-                return -2; 
-            }
-        }
-        return level;
-    };
-
-    const getColleaguesInUnitCount = (currentEmployee, allEmployees) => {
-        if (!currentEmployee || !currentEmployee.unit) return 0;
-        return allEmployees.filter(emp => emp && emp.id !== currentEmployee.id && emp.unit === currentEmployee.unit).length;
-    };
-
-    const getColleaguesInBusinessFunctionCount = (currentEmployee, allEmployees) => {
-        if (!currentEmployee || !currentEmployee.businessFunction) return 0;
-        return allEmployees.filter(emp => emp && emp.id !== currentEmployee.id && emp.businessFunction === currentEmployee.businessFunction).length;
-    };
-
-    const augmentedAndMappedData = useMemo(() => {
-        const validEmployeeData = employeeData.filter(emp => emp && emp.id != null);
+    // Calculate enhanced employee metrics
+    const enhancedEmployeeData = useMemo(() => {
+        const hierarchyMap = {};
         
-        const flatMapForCeoLevel = {};
-        validEmployeeData.forEach(emp => flatMapForCeoLevel[emp.id] = { ...emp });
+        // Build hierarchy map
+        employeeData.forEach(emp => {
+            hierarchyMap[emp.id] = { ...emp, children: [] };
+        });
+        
+        employeeData.forEach(emp => {
+            if (emp.lineManagerId && hierarchyMap[emp.lineManagerId]) {
+                hierarchyMap[emp.lineManagerId].children.push(hierarchyMap[emp.id]);
+            }
+        });
 
-        const hierarchyMapForSubordinates = getHierarchyMap(validEmployeeData);
+        // Calculate metrics for each employee
+        const calculateMetrics = (employee) => {
+            // Level to CEO
+            const getLevelToCeo = (empId) => {
+                let level = 0;
+                let current = hierarchyMap[empId];
+                while (current && current.lineManagerId) {
+                    level++;
+                    current = hierarchyMap[current.lineManagerId];
+                    if (level > 10) break; // Prevent infinite loops
+                }
+                return level;
+            };
 
-        const augmented = validEmployeeData.map((emp) => {
-            const employeeNodeInHierarchy = hierarchyMapForSubordinates[emp.id];
+            // Total subordinates (recursive)
+            const getTotalSubordinates = (empId) => {
+                const emp = hierarchyMap[empId];
+                if (!emp || !emp.children.length) return 0;
+                
+                let total = emp.children.length;
+                emp.children.forEach(child => {
+                    total += getTotalSubordinates(child.id);
+                });
+                return total;
+            };
+
+            // Colleagues in same unit
+            const getColleaguesInUnit = (employee) => {
+                return employeeData.filter(emp => 
+                    emp.id !== employee.id && 
+                    emp.unit === employee.unit
+                ).length;
+            };
+
+            // Colleagues in same business function
+            const getColleaguesInBusinessFunction = (employee) => {
+                return employeeData.filter(emp => 
+                    emp.id !== employee.id && 
+                    emp.businessFunction === employee.businessFunction
+                ).length;
+            };
+
+            return {
+                ...employee,
+                levelToCeo: getLevelToCeo(employee.id),
+                directReports: hierarchyMap[employee.id]?.children?.length || 0,
+                totalSubordinates: getTotalSubordinates(employee.id),
+                colleaguesInUnit: getColleaguesInUnit(employee),
+                colleaguesInBusinessFunction: getColleaguesInBusinessFunction(employee),
+                manager: employee.lineManagerId ? hierarchyMap[employee.lineManagerId] : null
+            };
+        };
+
+        return employeeData.map(calculateMetrics);
+    }, [employeeData]);
+
+    // Toggle node expansion
+    const toggleNodeExpansion = useCallback((nodeId) => {
+        setExpandedNodes(prev => {
+            const newExpanded = new Set(prev);
+            if (newExpanded.has(nodeId)) {
+                newExpanded.delete(nodeId);
+            } else {
+                newExpanded.add(nodeId);
+            }
+            return newExpanded;
+        });
+    }, []);
+
+    // Fullscreen functionality
+    const toggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            containerRef.current?.requestFullscreen().then(() => {
+                setIsFullscreen(true);
+            }).catch(err => {
+                console.error('Fullscreen request failed:', err);
+            });
+        } else {
+            document.exitFullscreen().then(() => {
+                setIsFullscreen(false);
+            }).catch(err => {
+                console.error('Exit fullscreen failed:', err);
+            });
+        }
+    }, []);
+
+    // Listen for fullscreen changes
+    useEffect(() => {
+        const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+        };
+
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    // Enhanced Avatar Component
+    const Avatar = ({ employee, size = 'md' }) => {
+        const sizes = {
+            sm: 'w-8 h-8 text-xs',
+            md: 'w-12 h-12 text-sm',
+            lg: 'w-16 h-16 text-base',
+        };
+
+        if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
+        
+        const colors = getEmployeeColor(employee);
+        return (
+            <div 
+                className={`${sizes[size]} rounded-xl flex items-center justify-center font-bold text-white relative flex-shrink-0 ring-2 ring-white shadow-lg`}
+                style={{ 
+                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
+                }}
+            >
+                {employee.avatar || '?'}
+            </div>
+        );
+    };
+
+    // Custom React Flow Node Component with responsive sizing
+    const EmployeeNode = ({ data }) => {
+        const employee = data.employee;
+        const colors = getEmployeeColor(employee);
+        const directReports = data.directReports || 0;
+        const hasChildren = directReports > 0;
+        const isExpanded = expandedNodes.has(employee.id);
+        const shouldShowChildren = hasChildren && isExpanded;
+
+        return (
+            <div className="relative">
+                <Handle type="target" position={Position.Top} className="opacity-0" />
+                
+                <div 
+                    className={`${bgCard} border-2 rounded-xl shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-105 w-[280px] min-h-[140px]`}
+                    style={{ borderColor: colors.primary }}
+                    onClick={() => data.onSelect && data.onSelect(employee)}
+                >
+                    {/* Compact Header */}
+                    <div className="p-4 pb-2">
+                        <div className="flex items-start gap-3">
+                            <Avatar employee={employee} size="sm" />
+                            <div className="flex-1 min-w-0">
+                                <h3 className={`font-bold ${textHeader} text-sm leading-tight mb-1`}>
+                                    {employee.name}
+                                </h3>
+                                <p className={`${textSecondary} text-xs leading-relaxed line-clamp-2`}>
+                                    {employee.title}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Compact Badges */}
+                    <div className="flex items-center gap-2 px-4 mb-2">
+                        <span 
+                            className="inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white"
+                            style={{ backgroundColor: colors.badge }}
+                        >
+                            G{employee.grade}
+                        </span>
+                        <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${bgAccent} ${textPrimary}`}>
+                            {employee.department}
+                        </span>
+                    </div>
+
+                    {/* Compact Details */}
+                    <div className={`px-4 pb-4 border-t ${borderColor} pt-2 space-y-1`}>
+                        <div className={`flex items-center ${textSecondary} text-xs`}>
+                            <MapPin className="w-3 h-3 mr-2 flex-shrink-0" />
+                            <span className="font-medium truncate">{employee.location}</span>
+                        </div>
+                        
+                        {directReports > 0 && (
+                            <div className={`flex items-center font-semibold text-xs`} style={{ color: colors.primary }}>
+                                <Users className="w-3 h-3 mr-2 flex-shrink-0" />
+                                <span>{directReports} Reports</span>
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Expand/Collapse Button */}
+                    {hasChildren && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleNodeExpansion(employee.id);
+                            }}
+                            className={`
+                                absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 z-30 
+                                w-6 h-6 rounded-full text-white
+                                flex items-center justify-center hover:scale-110 transition-all duration-200
+                                shadow-lg hover:shadow-xl
+                                ring-2 ring-white
+                            `}
+                            style={{ 
+                                background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
+                            }}
+                            aria-label={isExpanded ? "Collapse node" : "Expand node"}
+                        >
+                            {isExpanded ? <Minus className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                        </button>
+                    )}
+                </div>
+                
+                {shouldShowChildren && <Handle type="source" position={Position.Bottom} className="opacity-0" />}
+            </div>
+        );
+    };
+
+    const nodeTypes = {
+        employee: EmployeeNode,
+    };
+
+    // Enhanced Dagre layout function with better horizontal spacing
+    const getLayoutedElements = (nodes, edges, direction = 'TB') => {
+        const dagreGraph = new dagre.graphlib.Graph();
+        dagreGraph.setDefaultEdgeLabel(() => ({}));
+        
+        // Different settings for horizontal vs vertical
+        if (direction === 'LR') {
+            dagreGraph.setGraph({ 
+                rankdir: direction, 
+                ranksep: 200, // More space between levels horizontally
+                nodesep: 60,  // Less space between siblings
+                edgesep: 20,
+                marginx: 40,
+                marginy: 40
+            });
+        } else {
+            dagreGraph.setGraph({ 
+                rankdir: direction, 
+                ranksep: 120, // Good for vertical
+                nodesep: 80,  // Good space between siblings
+                edgesep: 20,
+                marginx: 40,
+                marginy: 40
+            });
+        }
+
+        nodes.forEach((node) => {
+            // Smaller width for horizontal to prevent overlap
+            const nodeWidth = direction === 'LR' ? 300 : 320;
+            const nodeHeight = direction === 'LR' ? 160 : 180;
+            dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+        });
+
+        edges.forEach((edge) => {
+            dagreGraph.setEdge(edge.source, edge.target);
+        });
+
+        dagre.layout(dagreGraph);
+
+        const layoutedNodes = nodes.map((node) => {
+            const nodeWithPosition = dagreGraph.node(node.id);
+            const nodeWidth = direction === 'LR' ? 300 : 320;
+            const nodeHeight = direction === 'LR' ? 160 : 180;
             
             return {
-                ...emp,
-                totalSubordinates: employeeNodeInHierarchy ? countAllSubordinatesRecursive(employeeNodeInHierarchy, hierarchyMapForSubordinates) : 0,
-                levelToCeo: getLevelToCeoRecursive(emp.id, flatMapForCeoLevel),
-                colleaguesInUnitCount: getColleaguesInUnitCount(emp, validEmployeeData),
-                colleaguesInBusinessFunctionCount: getColleaguesInBusinessFunctionCount(emp, validEmployeeData),
+                ...node,
+                position: {
+                    x: nodeWithPosition.x - (nodeWidth / 2),
+                    y: nodeWithPosition.y - (nodeHeight / 2),
+                },
             };
         });
 
-        const finalHierarchyMap = getHierarchyMap(augmented);
-        const finalRoots = augmented.filter(item => (!item.lineManagerId || !finalHierarchyMap[item.lineManagerId]));
-        
-        const augmentedFlatMap = {};
-        augmented.forEach(emp => augmentedFlatMap[emp.id] = emp);
+        return { nodes: layoutedNodes, edges };
+    };
 
-        return {
-            augmentedDataList: augmented,
-            hierarchyMap: finalHierarchyMap,
-            roots: finalRoots.map(r => finalHierarchyMap[r.id]).filter(Boolean),
-            augmentedFlatMap: augmentedFlatMap,
+    // Create nodes and edges from employee data with expand/collapse logic
+    const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
+        const hierarchyMap = {};
+        
+        // Build hierarchy map
+        enhancedEmployeeData.forEach(emp => {
+            hierarchyMap[emp.id] = { ...emp, children: [] };
+        });
+        
+        enhancedEmployeeData.forEach(emp => {
+            if (emp.lineManagerId && hierarchyMap[emp.lineManagerId]) {
+                hierarchyMap[emp.lineManagerId].children.push(hierarchyMap[emp.id]);
+            }
+        });
+
+        // Get visible nodes based on expansion state
+        const getVisibleNodes = (nodeId, parentExpanded = true) => {
+            const node = hierarchyMap[nodeId];
+            if (!node) return [];
+            
+            const visibleNodes = parentExpanded ? [node] : [];
+            const isExpanded = expandedNodes.has(nodeId);
+            
+            if (isExpanded && node.children) {
+                node.children.forEach(child => {
+                    visibleNodes.push(...getVisibleNodes(child.id, parentExpanded && isExpanded));
+                });
+            }
+            
+            return visibleNodes;
         };
-    }, [employeeData]);
-    
-    const { augmentedDataList, hierarchyMap, roots: organizationTree, augmentedFlatMap } = augmentedAndMappedData;
-    
-    const filteredEmployees = useMemo(() => { 
-        return augmentedDataList.filter(emp => {
+
+        // Start from root nodes
+        const rootNodes = enhancedEmployeeData.filter(emp => !emp.lineManagerId);
+        const visibleEmployees = [];
+        
+        rootNodes.forEach(root => {
+            visibleEmployees.push(...getVisibleNodes(root.id, true));
+        });
+
+        // Create nodes for visible employees
+        const nodes = visibleEmployees.map(employee => ({
+            id: employee.id,
+            type: 'employee',
+            position: { x: 0, y: 0 },
+            data: {
+                employee,
+                directReports: hierarchyMap[employee.id]?.children?.length || 0,
+                onSelect: setSelectedEmployee
+            },
+        }));
+
+        // Create edges between visible nodes
+        const edges = [];
+        visibleEmployees.forEach(emp => {
+            if (emp.lineManagerId && visibleEmployees.find(ve => ve.id === emp.lineManagerId)) {
+                edges.push({
+                    id: `${emp.lineManagerId}-${emp.id}`,
+                    source: emp.lineManagerId,
+                    target: emp.id,
+                    type: 'smoothstep',
+                    style: { 
+                        stroke: darkMode ? '#64748b' : '#94a3b8', 
+                        strokeWidth: 2,
+                        opacity: 0.8 
+                    },
+                    animated: true,
+                });
+            }
+        });
+
+        return getLayoutedElements(nodes, edges);
+    }, [enhancedEmployeeData, expandedNodes, darkMode]);
+
+    // Filter logic
+    const filteredEmployees = useMemo(() => {
+        return enhancedEmployeeData.filter(emp => {
             if (!emp) return false;
             const empName = emp.name || "";
             const empTitle = emp.title || "";
@@ -210,29 +482,8 @@ const OrgChart = () => {
             const matchesLocation = filters.location === 'all' || (emp.location && emp.location === filters.location);
             return matchesSearch && matchesDepartment && matchesGrade && matchesLocation;
         });
-    }, [augmentedDataList, searchTerm, filters]);
-    
-    const toggleNode = (nodeId) => {
-        setExpandedNodes(prev => {
-            const newExpanded = new Set(prev);
-            if (newExpanded.has(nodeId)) newExpanded.delete(nodeId);
-            else newExpanded.add(nodeId);
-            return newExpanded;
-        });
-    };
+    }, [searchTerm, filters, enhancedEmployeeData]);
 
-    const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 25, 200));
-    const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 25, 50));
-    const handleResetZoom = () => setZoomLevel(100);
-    
-    const toggleFullscreen = () => {
-        if (!document.fullscreenElement) {
-            containerRef.current?.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.error("Fullscreen request failed:", err));
-        } else {
-            document.exitFullscreen().then(() => setIsFullscreen(false)).catch(err => console.error("Exit fullscreen failed:", err));
-        }
-    };
-    
     const clearAllFilters = () => {
         setFilters({ department: 'all', grade: 'all', location: 'all' });
         setSearchTerm('');
@@ -242,762 +493,368 @@ const OrgChart = () => {
         Object.values(filters).some(f => f !== 'all') || searchTerm !== ''
     , [filters, searchTerm]);
 
-    // Panning logic
-    useEffect(() => {
-        const handleMouseMove = (e) => {
-            if (!isDragging || !scrollContainerRef.current) return;
-            const dx = e.clientX - startX;
-            const dy = e.clientY - startY;
-            scrollContainerRef.current.scrollLeft = scrollLeftStart - dx;
-            scrollContainerRef.current.scrollTop = scrollTopStart - dy;
-        };
+    // Enhanced Export to PNG functionality
+    const exportToPNG = useCallback(async () => {
+        try {
+            // Show loading indicator
+            const loadingToast = document.createElement('div');
+            loadingToast.innerHTML = 'Exporting chart...';
+            loadingToast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 9999;
+                background: #3b82f6; color: white; padding: 12px 24px;
+                border-radius: 8px; font-size: 14px; font-weight: 500;
+            `;
+            document.body.appendChild(loadingToast);
 
-        const handleMouseUp = () => {
-            setIsDragging(false);
-            if (scrollContainerRef.current) {
-                scrollContainerRef.current.style.cursor = 'grab';
+            // Wait a bit for the chart to fully render
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Dynamically import html2canvas
+            const html2canvas = (await import('html2canvas')).default;
+            
+            // Get the React Flow container
+            const reactFlowElement = document.querySelector('.react-flow__viewport');
+            if (!reactFlowElement) {
+                throw new Error('Chart viewport not found');
             }
-        };
 
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
+            // Get the parent container for better bounds
+            const flowContainer = document.querySelector('.react-flow');
+            const containerRect = flowContainer.getBoundingClientRect();
 
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [isDragging, startX, startY, scrollLeftStart, scrollTopStart]);
+            // Create canvas with proper sizing
+            const canvas = await html2canvas(flowContainer, {
+                backgroundColor: darkMode ? '#0f172a' : '#f8fafc',
+                scale: 1.5, // Good balance between quality and file size
+                useCORS: true,
+                allowTaint: true,
+                scrollX: 0,
+                scrollY: 0,
+                width: containerRect.width,
+                height: containerRect.height,
+                onclone: (clonedDoc) => {
+                    // Ensure all styles are preserved in clone
+                    const clonedFlowElements = clonedDoc.querySelectorAll('.react-flow__node');
+                    clonedFlowElements.forEach(node => {
+                        node.style.transform = node.style.transform || '';
+                    });
+                }
+            });
 
-    const handleMouseDown = (e) => {
-        if (e.button !== 0) return;
-        if (e.target.closest('.employee-card-action') || e.target.closest('button')) { 
-            return;
+            // Remove loading indicator
+            document.body.removeChild(loadingToast);
+
+            // Create a new canvas with proper dimensions and title
+            const finalCanvas = document.createElement('canvas');
+            const ctx = finalCanvas.getContext('2d');
+            const padding = 60;
+            const titleHeight = 80;
+            
+            finalCanvas.width = canvas.width + (padding * 2);
+            finalCanvas.height = canvas.height + titleHeight + (padding * 2);
+
+            // Fill background
+            ctx.fillStyle = darkMode ? '#0f172a' : '#f8fafc';
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+            // Add title
+            ctx.fillStyle = darkMode ? '#e2e8f0' : '#1e293b';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Organizational Chart', finalCanvas.width / 2, 40);
+
+            // Add subtitle with date
+            ctx.font = '16px Arial';
+            ctx.fillStyle = darkMode ? '#94a3b8' : '#64748b';
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+            ctx.fillText(`Generated on ${dateStr}`, finalCanvas.width / 2, 65);
+
+            // Draw the chart
+            ctx.drawImage(canvas, padding, titleHeight, canvas.width, canvas.height);
+
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `org-chart-${now.toISOString().split('T')[0]}.png`;
+            link.href = finalCanvas.toDataURL('image/png', 0.95);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Success message
+            const successToast = document.createElement('div');
+            successToast.innerHTML = '✓ Chart exported successfully!';
+            successToast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 9999;
+                background: #10b981; color: white; padding: 12px 24px;
+                border-radius: 8px; font-size: 14px; font-weight: 500;
+            `;
+            document.body.appendChild(successToast);
+            setTimeout(() => document.body.removeChild(successToast), 3000);
+            
+        } catch (error) {
+            console.error('Export failed:', error);
+            const errorToast = document.createElement('div');
+            errorToast.innerHTML = '✗ Export failed. Please try again.';
+            errorToast.style.cssText = `
+                position: fixed; top: 20px; right: 20px; z-index: 9999;
+                background: #ef4444; color: white; padding: 12px 24px;
+                border-radius: 8px; font-size: 14px; font-weight: 500;
+            `;
+            document.body.appendChild(errorToast);
+            setTimeout(() => document.body.removeChild(errorToast), 3000);
         }
+    }, [darkMode]);
 
-        setIsDragging(true);
-        setStartX(e.clientX);
-        setStartY(e.clientY);
-        setScrollLeftStart(scrollContainerRef.current.scrollLeft);
-        setScrollTopStart(scrollContainerRef.current.scrollTop);
-        scrollContainerRef.current.style.cursor = 'grabbing';
-        e.preventDefault();
-    };
+    // React Flow component with layout
+    const FlowComponent = () => {
+        const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+        const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+        const { fitView } = useReactFlow();
 
-    const resetPan = () => {
-        if (scrollContainerRef.current) {
-            scrollContainerRef.current.scrollLeft = 0;
-            scrollContainerRef.current.scrollTop = 0;
-        }
-    };
+        // Update nodes when expansion changes
+        useEffect(() => {
+            setNodes(initialNodes);
+            setEdges(initialEdges);
+        }, [initialNodes, initialEdges, setNodes, setEdges]);
 
-    // Enhanced Avatar Component
-    const Avatar = ({ employee, size = 'md' }) => {
-        const sizes = {
-            sm: 'w-8 h-8 text-xs',
-            md: 'w-10 h-10 text-sm',
-            lg: 'w-12 h-12 text-base',
-        };
+        const onLayout = useCallback((direction) => {
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                nodes,
+                edges,
+                direction
+            );
+            setNodes([...layoutedNodes]);
+            setEdges([...layoutedEdges]);
+            
+            setTimeout(() => fitView(), 0);
+        }, [nodes, edges, setNodes, setEdges, fitView]);
 
-        if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
-        
-        const colors = getEmployeeColor(employee);
+        useEffect(() => {
+            setTimeout(() => fitView(), 100);
+        }, [fitView]);
+
         return (
-            <div 
-                className={`${sizes[size]} rounded-xl flex items-center justify-center font-semibold text-white relative flex-shrink-0 ring-2 ring-white dark:ring-almet-san-juan`}
-                style={{ 
-                    background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
-                    boxShadow: `0 4px 12px rgba(0,0,0,0.15)`
-                }}
+            <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                nodeTypes={nodeTypes}
+                connectionMode={ConnectionMode.Strict}
+                fitView
+                className={darkMode ? 'dark' : ''}
+                style={{ backgroundColor: darkMode ? '#0f172a' : '#f8fafc' }}
             >
-                {employee.avatar || '?'}
-            </div>
+                <Background color={darkMode ? '#334155' : '#e2e8f0'} gap={20} />
+                <Controls className={darkMode ? 'react-flow__controls-dark' : ''} />
+                <MiniMap 
+                    className={darkMode ? 'react-flow__minimap-dark' : ''}
+                    nodeColor={(node) => {
+                        const employee = node.data?.employee;
+                        return getEmployeeColor(employee).primary;
+                    }}
+                />
+                <Panel position="top-right" className="space-x-2">
+                    <button 
+                        onClick={() => onLayout('TB')}
+                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium`}
+                    >
+                        Vertical
+                    </button>
+                    <button 
+                        onClick={() => onLayout('LR')}
+                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium`}
+                    >
+                        Horizontal
+                    </button>
+                </Panel>
+            </ReactFlow>
         );
     };
 
-    // Enhanced Employee Card Component
-    const EmployeeCard = ({ employee, onClick, hasChildren, isExpanded, onToggleExpand, variant = 'tree' }) => {
-        if (!employee) return null;
-        const directReportsCount = hierarchyMap[employee.id]?.children?.length || 0;
-        const colors = getEmployeeColor(employee);
-
-        const isDetailVariant = variant === 'detail';
-        const isGridVariant = variant === 'grid';
-        const isTreeVariant = variant === 'tree';
-
-        const cardBaseStyle = `${bgCard} border ${borderColor} rounded-2xl transition-all duration-300 overflow-hidden backdrop-blur-sm`;
-        const interactiveStyle = onClick ? `cursor-pointer hover:${bgCardHover} hover:border-almet-sapphire/40 ${shadowCard} hover:shadow-lg hover:-translate-y-1 employee-card-action` : "";
-        
-        let cardPadding = 'p-4';
-        let cardWidth = 'w-72'; // Standardized width
-
-        if (isGridVariant) {
-            cardPadding = 'p-5';
-            cardWidth = 'w-80';
-        } else if (isDetailVariant) {
-            cardWidth = 'w-64';
-            cardPadding = 'p-3';
-        }
-
-        if (isDetailVariant) {
-            return (
-                <div
-                    className={`${cardBaseStyle} ${interactiveStyle} ${cardPadding} flex items-center gap-3 ${cardWidth}`}
-                    onClick={onClick}
+    // Grid View Component
+    const GridView = () => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+            {filteredEmployees.map(employee => (
+                <div 
+                    key={employee.id}
+                    className={`${bgCard} border ${borderColor} rounded-2xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105`}
+                    onClick={() => setSelectedEmployee(employee)}
                 >
-                    <Avatar employee={employee} size="sm" />
-                    <div className="flex-1 min-w-0">
-                        <h4 className={`font-semibold ${textPrimary} text-sm truncate`} title={employee.name}>{employee.name}</h4>
-                        <p className={`${textSecondary} text-xs truncate mt-0.5`} title={employee.title}>{employee.title}</p>
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div className="relative group">
-                <div
-                    className={`${cardBaseStyle} ${interactiveStyle} ${cardPadding} ${cardWidth} flex flex-col relative`}
-                    onClick={onClick}
-                >
-                    {/* Header with Avatar and Name */}
                     <div className="flex items-start gap-4 mb-4">
-                        <Avatar employee={employee} size={isGridVariant ? 'lg' : 'md'} />
+                        <Avatar employee={employee} size="md" />
                         <div className="flex-1 min-w-0">
-                            <h3 className={`font-semibold ${textHeader} ${isGridVariant ? 'text-base' : 'text-sm'} leading-tight truncate mb-1`} title={employee.name}>
+                            <h3 className={`font-bold ${textHeader} text-base leading-tight mb-2`}>
                                 {employee.name}
                             </h3>
-                            <p className={`${textSecondary} text-xs leading-relaxed line-clamp-2`} title={employee.title}>
+                            <p className={`${textSecondary} text-sm`}>
                                 {employee.title}
                             </p>
                         </div>
                     </div>
                     
-                    {/* Badges */}
-                    <div className="flex items-center gap-2 mb-4">
-                        <span 
-                            className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium text-white"
-                            style={{ backgroundColor: colors.badge }}
-                        >
-                            Grade {employee.grade}
-                        </span>
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${bgAccent} ${textPrimary}`}>
-                            {employee.department}
-                        </span>
-                    </div>
-
-                    {/* Details */}
-                    <div className={`mt-auto pt-4 border-t ${borderColor} space-y-3 text-xs`}>
-                        <div className={`flex items-center ${textSecondary}`}>
-                            <MapPin className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
-                            <span className="truncate font-medium" title={employee.location}>{employee.location}</span>
+                    <div className="space-y-2">
+                        <div className={`flex items-center ${textSecondary} text-sm`}>
+                            <MapPin className="w-4 h-4 mr-2" />
+                            <span>{employee.location}</span>
                         </div>
-                        
-                        {directReportsCount > 0 && (
-                            <div className={`flex items-center font-semibold`} style={{ color: colors.primary }}>
-                                <Users className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
-                                <span>{directReportsCount} Direct Report{directReportsCount !== 1 ? 's' : ''}</span>
-                            </div>
-                        )}
-                        
-                        {isGridVariant && employee.totalSubordinates > directReportsCount && (
-                            <div className={`flex items-center ${textSecondary}`}>
-                                <UsersRound className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
-                                <span>{employee.totalSubordinates} Total Subordinate{employee.totalSubordinates !== 1 ? 's' : ''}</span>
-                            </div>
-                        )}
-                        
-                        {isGridVariant && (
-                            <div className={`flex items-center ${textSecondary}`}>
-                                <Target className="w-3.5 h-3.5 mr-2 flex-shrink-0" />
-                                <span>Level to CEO: {employee.levelToCeo >= 0 ? employee.levelToCeo : 'N/A'}</span>
-                            </div>
-                         )}
                     </div>
                 </div>
-                
-                {/* Enhanced Expand/Collapse Button */}
-                {hasChildren && onToggleExpand && isTreeVariant && (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onToggleExpand(); }}
-                        className={`
-                            employee-card-action
-                            absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-20 
-                            w-6 h-6 rounded-full text-white
-                            flex items-center justify-center hover:scale-110 transition-all duration-200
-                            shadow-lg hover:shadow-xl
-                            ${darkMode ? 'ring-2 ring-almet-san-juan' : 'ring-2 ring-white'}
-                        `}
-                        style={{ 
-                            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
-                        }}
-                        aria-label={isExpanded ? "Collapse node" : "Expand node"}
-                    >
-                        {isExpanded ? <Minus className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                    </button>
-                )}
-            </div>
-        );
-    };
-    
-    // Enhanced Tree Node Component with Better Connection Lines
-    const TreeNode = ({ node, level = 0 }) => {
-        if (!node || !node.id) return null;
-        const nodeChildren = hierarchyMap[node.id]?.children || [];
-        const hasChildren = nodeChildren.length > 0;
-        const isExpanded = expandedNodes.has(node.id);
-
-        const horizontalLineWidth = nodeChildren.length > 1 ? (nodeChildren.length - 1) * (cardWidth + cardGap) : 0;
-
-        return (
-            <div className="flex flex-col items-center relative">
-                {/* Incoming Vertical Line */}
-                {level > 0 && (
-                    <div 
-                        className="absolute top-0 left-1/2 transform -translate-x-0.5"
-                        style={{
-                            height: `${halfCardGap}px`,
-                            width: `${connectorThickness}px`,
-                            backgroundColor: connectionColor,
-                            opacity: 0.8,
-                            zIndex: 1
-                        }}
-                    />
-                )}
-
-                {/* Employee Card */}
-                <EmployeeCard
-                    employee={node}
-                    onClick={() => augmentedFlatMap[node.id] ? setSelectedEmployee(augmentedFlatMap[node.id]) : null}
-                    hasChildren={hasChildren}
-                    isExpanded={isExpanded}
-                    onToggleExpand={() => toggleNode(node.id)}
-                    variant="tree"
-                />
-
-                {/* Outgoing Connection Lines */}
-                {hasChildren && isExpanded && (
-                    <div 
-                        className="relative flex flex-col items-center w-full"
-                        style={{ marginTop: `${halfCardGap}px` }} 
-                    >
-                        {/* Vertical line from card to horizontal line */}
-                        <div 
-                            className="absolute top-0 left-1/2 transform -translate-x-0.5"
-                            style={{
-                                height: `${halfCardGap}px`,
-                                width: `${connectorThickness}px`,
-                                backgroundColor: connectionColor,
-                                opacity: 0.8,
-                                zIndex: 1
-                            }}
-                        />
-
-                        {/* Horizontal connecting line */}
-                        {nodeChildren.length > 0 && (
-                            <div 
-                                className="absolute left-1/2 transform -translate-x-1/2"
-                                style={{
-                                    top: `${halfCardGap}px`,
-                                    height: `${connectorThickness}px`,
-                                    backgroundColor: connectionColor,
-                                    opacity: 0.8,
-                                    width: `${Math.max(connectorThickness, horizontalLineWidth)}px`,
-                                    zIndex: 1
-                                }}
-                            />
-                        )}
-                        
-                        {/* Children nodes container */}
-                        <div 
-                            className="flex justify-center items-start" 
-                            style={{ 
-                                paddingTop: `${halfCardGap}px`, 
-                                gap: `${cardGap}px`,
-                            }}
-                        >
-                            {nodeChildren.map((childNode) => (
-                                <TreeNode key={childNode.id} node={childNode} level={level + 1} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const GridView = () => (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-6">
-            {filteredEmployees.map(employee => (
-                <EmployeeCard
-                    key={employee.id}
-                    employee={employee}
-                    onClick={() => setSelectedEmployee(employee)}
-                    variant="grid"
-                />
             ))}
         </div>
     );
 
-    const navigateToEmployee = (employeeId) => {
-        if (!employeeId) return;
-        const employeeToShow = augmentedFlatMap[employeeId];
-        if (employeeToShow) {
-            setSelectedEmployee(employeeToShow);
-        }
-    };
-
-    // New state for All Direct Reports modal
-    const [showAllReportsModal, setShowAllReportsModal] = useState(false);
-    const [reportsToShow, setReportsToShow] = useState([]);
-
-    const AllDirectReportsModal = ({ reports, onClose, onSelectEmployee, darkMode }) => {
-        const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
-        const textHeader = darkMode ? "text-gray-100" : "text-gray-800";
-        const textMuted = darkMode ? "text-almet-bali-hai" : "text-gray-400";
-        const borderColor = darkMode ? "border-almet-comet/30" : "border-gray-200";
-
-        return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className={`${bgCard} rounded-2xl shadow-2xl w-full max-w-lg flex flex-col border ${borderColor} max-h-[85vh]`}>
-                    <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
-                        <h2 className={`text-xl font-semibold ${textHeader}`}>All Direct Reports ({reports.length})</h2>
-                        <button onClick={onClose} className={`${textMuted} hover:${textHeader} p-2 hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-xl transition-colors`}>
-                            <X size={20} aria-label="Close direct reports modal"/>
-                        </button>
-                    </div>
-                    <div className="p-6 space-y-3 overflow-y-auto">
-                        {reports.map(report => (
-                            <EmployeeCard
-                                key={report.id}
-                                employee={report}
-                                onClick={() => {
-                                    onSelectEmployee(report.id);
-                                    onClose();
-                                }}
-                                variant="detail"
-                            />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const EmployeeDetailModal = ({ employee: currentSelectedEmployee, onClose }) => {
-        const detailModalRef = useRef(null);
-        useEffect(() => { if (detailModalRef.current) detailModalRef.current.scrollTop = 0; }, [currentSelectedEmployee]);
-
-        if (!currentSelectedEmployee || !augmentedFlatMap[currentSelectedEmployee.id]) return null;
-        
-        const detailedEmployee = augmentedFlatMap[currentSelectedEmployee.id];
-        const directReports = hierarchyMap[detailedEmployee.id]?.children || [];
-        const manager = detailedEmployee.lineManagerId ? augmentedFlatMap[detailedEmployee.lineManagerId] : null;
-        const colors = getEmployeeColor(detailedEmployee);
-
-        const getHierarchyPath = (empId, flatMap) => {
-            const path = [];
-            let current = flatMap[empId];
-            while(current) {
-                path.unshift(current);
-                if (!current.lineManagerId) break;
-                current = flatMap[current.lineManagerId];
-            }
-            return path;
-        };
-        const hierarchyPath = getHierarchyPath(detailedEmployee.id, augmentedFlatMap);
-
-        return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200 ease-in-out">
-                <div className={`${bgCard} rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col border ${borderColor}`}>
-                    <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
-                        <div className="flex items-center gap-4">
-                            <Avatar employee={detailedEmployee} size="lg" />
-                            <div>
-                                <h2 className={`text-xl font-semibold ${textHeader}`}>{detailedEmployee.name}</h2>
-                                <p className={`${textSecondary} text-sm mt-1`}>{detailedEmployee.title}</p>
-                            </div>
-                        </div>
-                        <button onClick={onClose} className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-xl transition-colors`}>
-                            <X size={24} aria-label="Close modal"/>
-                        </button>
-                    </div>
-
-                    <div ref={detailModalRef} className="p-6 overflow-y-auto flex-grow space-y-6">
-                        {/* Hierarchy Path */}
-                        {hierarchyPath.length > 1 && (
-                            <div className={`border-b ${borderColor} pb-4`}>
-                                <h4 className={`font-semibold ${textSecondary} mb-3 text-sm uppercase tracking-wider`}>Hierarchy Path</h4>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {hierarchyPath.map((emp, index) => (
-                                        <React.Fragment key={emp.id}>
-                                            <span 
-                                                className={`cursor-pointer hover:underline px-2 py-1 rounded-lg transition-colors ${emp.id === detailedEmployee.id ? 'bg-almet-sapphire text-white' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
-                                                onClick={() => navigateToEmployee(emp.id)}
-                                            >
-                                                {emp.name.split(' ')[0]}
-                                            </span>
-                                            {index < hierarchyPath.length - 1 && <span className="mx-1 text-gray-400">→</span>}
-                                        </React.Fragment>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Employee Details Grid */}
-                        <div>
-                            <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Employee Details</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <DetailItem icon={<Building2 />} label="Department" value={detailedEmployee.department} colors={colors} />
-                                <DetailItem icon={<Layers />} label="Unit" value={detailedEmployee.unit} colors={colors} />
-                                <DetailItem icon={<Award />} label="Grade" value={`G${detailedEmployee.grade}`} colors={colors} />
-                                <DetailItem icon={<Briefcase />} label="Position Group" value={detailedEmployee.positionGroup} colors={colors} />
-                                <DetailItem icon={<MapPin />} label="Location" value={detailedEmployee.location} colors={colors} />
-                                <DetailItem icon={<Puzzle />} label="Business Function" value={detailedEmployee.businessFunction} colors={colors} />
-                            </div>
-                        </div>
-                        
-                        {/* Team & Network */}
-                        <div className={`border-t ${borderColor} pt-4`}>
-                            <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Team & Network</h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {detailedEmployee.levelToCeo >= 0 && <DetailItem icon={<Target />} label="Level to CEO" value={detailedEmployee.levelToCeo.toString()} colors={colors} />}
-                                {directReports.length > 0 && <DetailItem icon={<Users />} label="Direct Reports" value={directReports.length.toString()} colors={colors} />}
-                                {detailedEmployee.totalSubordinates > 0 && <DetailItem icon={<UsersRound />} label="Total Subordinates" value={detailedEmployee.totalSubordinates.toString()} colors={colors} />}
-                                {detailedEmployee.colleaguesInUnitCount >= 0 && <DetailItem icon={<Building2 />} label="Colleagues in Unit" value={detailedEmployee.colleaguesInUnitCount.toString()} colors={colors} />}
-                                {detailedEmployee.colleaguesInBusinessFunctionCount >= 0 && <DetailItem icon={<Briefcase />} label="Colleagues in Business Function" value={detailedEmployee.colleaguesInBusinessFunctionCount.toString()} colors={colors} />}
-                            </div>
-                        </div>
-                        
-                        {/* Manager */}
-                        {manager && (
-                            <div className={`border-t ${borderColor} pt-4`}>
-                                <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Reports To</h4>
-                                <EmployeeCard 
-                                    employee={manager} 
-                                    onClick={() => navigateToEmployee(manager.id)}
-                                    variant="detail"
-                                />
-                            </div>
-                        )}
-                        
-                        {/* Direct Reports */}
-                        {directReports.length > 0 && (
-                            <div className={`border-t ${borderColor} pt-4`}>
-                                <h4 className={`font-semibold ${textSecondary} mb-4 text-sm uppercase tracking-wider`}>Direct Reports ({directReports.length})</h4>
-                                <div className="space-y-3">
-                                    {directReports.slice(0, 3).map(report => (
-                                        <EmployeeCard
-                                            key={report.id}
-                                            employee={report}
-                                            onClick={() => navigateToEmployee(report.id)}
-                                            variant="detail"
-                                        />
-                                    ))}
-                                    {directReports.length > 3 && (
-                                        <button 
-                                            onClick={() => { 
-                                                setReportsToShow(directReports); 
-                                                setShowAllReportsModal(true); 
-                                            }}
-                                            className={`text-sm ${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors hover:underline px-2 py-1 rounded-lg hover:${bgAccent}`}
-                                        >
-                                            View all {directReports.length} reports →
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const DetailItem = ({ icon, label, value, colors }) => (
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-almet-comet/20">
-            <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center`} style={{ backgroundColor: colors.bg }}>
-                {React.cloneElement(icon, { className: "w-4 h-4", style: { color: colors.primary } })}
-            </div>
-            <div className="min-w-0 flex-1">
-                <p className={`text-xs ${textMuted} font-medium`}>{label}</p>
-                <p className={`${textPrimary} font-semibold text-sm truncate mt-0.5`} title={value || 'N/A'}>{value || 'N/A'}</p>
-            </div>
-        </div>
-    );
-
-    const ColorLegend = ({ hierarchyColors, onClose, darkMode }) => {
-        const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
-        const textHeader = darkMode ? "text-gray-100" : "text-gray-800";
-        const textPrimary = darkMode ? "text-gray-200" : "text-gray-700";
-        const textMuted = darkMode ? "text-almet-bali-hai" : "text-gray-400";
-        const borderColor = darkMode ? "border-almet-comet/30" : "border-gray-200";
-
-        return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                <div className={`${bgCard} rounded-2xl shadow-2xl w-full max-w-sm flex flex-col border ${borderColor}`}>
-                    <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
-                        <h2 className={`text-xl font-semibold ${textHeader}`}>Position Levels</h2>
-                        <button onClick={onClose} className={`${textMuted} hover:${textHeader} p-2 hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-xl transition-colors`}>
-                            <X size={20} aria-label="Close legend"/>
-                        </button>
-                    </div>
-                    <div className="p-6 space-y-3 overflow-y-auto">
-                        {Object.entries(hierarchyColors).map(([group, colors]) => (
-                            <div key={group} className="flex items-center gap-4 p-3 rounded-xl bg-gray-50 dark:bg-almet-comet/20">
-                                <div 
-                                    className="w-8 h-8 rounded-xl flex-shrink-0 ring-2 ring-white dark:ring-almet-san-juan" 
-                                    style={{ background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)` }}
-                                />
-                                <span className={`${textPrimary} text-sm font-semibold`}>
-                                    {group.replace(/([A-Z])/g, ' $1').trim()}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    // Export to PNG Functionality
-    const exportChart = async () => {
-        if (!chartRef.current) return;
-
-        const originalTransform = chartRef.current.style.transform;
-        const originalTransformOrigin = chartRef.current.style.transformOrigin;
-        const currentScrollLeft = scrollContainerRef.current.scrollLeft;
-        const currentScrollTop = scrollContainerRef.current.scrollTop;
-
-        scrollContainerRef.current.scrollLeft = 0;
-        scrollContainerRef.current.scrollTop = 0;
-        chartRef.current.style.transform = 'scale(1)';
-        chartRef.current.style.transformOrigin = 'top left';
-
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-
-        try {
-            const domToImage = (await import('dom-to-image')).default;
-            const dataUrl = await domToImage.toPng(chartRef.current, {
-                quality: 0.95,
-                width: chartRef.current.scrollWidth,
-                height: chartRef.current.scrollHeight,
-            });
-
-            const link = document.createElement('a');
-            link.download = 'org-chart.png';
-            link.href = dataUrl;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-        } catch (error) {
-            console.error('Error exporting chart:', error);
-            alert('Failed to export chart. Please try again.');
-        } finally {
-            chartRef.current.style.transform = originalTransform;
-            chartRef.current.style.transformOrigin = originalTransformOrigin;
-            scrollContainerRef.current.scrollLeft = currentScrollLeft;
-            scrollContainerRef.current.scrollTop = currentScrollTop;
-        }
-    };
-
-    const departments = useMemo(() => [...new Set(augmentedDataList.map(emp => emp.department).filter(Boolean))].sort(), [augmentedDataList]);
-    const grades = useMemo(() => [...new Set(augmentedDataList.map(emp => emp.grade).filter(Boolean))].sort((a, b) => parseInt(b) - parseInt(a)), [augmentedDataList]);
-    const locations = useMemo(() => [...new Set(augmentedDataList.map(emp => emp.location).filter(Boolean))].sort(), [augmentedDataList]);
+    const departments = useMemo(() => [...new Set(employeeData.map(emp => emp.department).filter(Boolean))].sort(), []);
+    const grades = useMemo(() => [...new Set(employeeData.map(emp => emp.grade).filter(Boolean))].sort((a, b) => parseInt(b) - parseInt(a)), []);
+    const locations = useMemo(() => [...new Set(employeeData.map(emp => emp.location).filter(Boolean))].sort(), []);
 
     return (
         <DashboardLayout>
-            <div ref={containerRef} className={`h-full ${isFullscreen ? `fixed inset-0 z-40 ${bgApp}` : bgApp} flex flex-col`}>
-                {/* Enhanced Header */}
+            <div ref={containerRef} className={`${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'} ${bgApp} flex flex-col`}>
+                {/* Smaller Header */}
                 <div className={`${bgCard} shadow-lg border-b ${borderColor} sticky top-0 z-30 backdrop-blur-md`}>
-                    <div className="px-6 py-4">
+                    <div className="px-4 py-3">
                         <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl flex items-center justify-center shadow-lg`}>
-                                    <Building2 className="w-5 h-5 text-white" />
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
+                                    <Building2 className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
-                                    <h1 className={`text-lg font-bold ${textHeader}`}>Organizational Chart</h1>
-                                    <p className={`text-sm ${textSecondary}`}>
-                                        Total Employees: {augmentedDataList.length} 
-                                        {filteredEmployees.length !== augmentedDataList.length && ` • Filtered: ${filteredEmployees.length}`}
+                                    <h1 className={`text-base font-bold ${textHeader}`}>Organizational Chart</h1>
+                                    <p className={`text-xs ${textSecondary}`}>
+                                        Total: {employeeData.length} 
+                                        {filteredEmployees.length !== employeeData.length && ` • Filtered: ${filteredEmployees.length}`}
                                     </p>
                                 </div>
                             </div>
                             
-                            <div className="flex items-center gap-3">
-                                {/* Enhanced Search */}
+                            <div className="flex items-center gap-2">
+                                {/* Search */}
                                 <div className="relative">
-                                    <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted} w-4 h-4 pointer-events-none`} />
+                                    <Search className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 ${textMuted} w-3.5 h-3.5 pointer-events-none`} />
                                     <input 
                                         type="text" 
-                                        placeholder="Search employees..." 
+                                        placeholder="Search..." 
                                         value={searchTerm} 
                                         onChange={(e) => setSearchTerm(e.target.value)} 
-                                        className={`pl-10 pr-4 py-2.5 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire w-56 ${bgCard} ${textPrimary} text-sm transition-all duration-200 focus:w-64 shadow-sm`} 
+                                        className={`pl-8 pr-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-44 ${bgCard} ${textPrimary} text-sm transition-all duration-200 shadow-sm`} 
                                     />
                                 </div>
                                 
                                 {/* View Mode Toggle */}
-                                <div className={`flex rounded-xl border ${borderColor} ${bgCard} p-1 shadow-sm`}>
+                                <div className={`flex rounded-lg border ${borderColor} ${bgCard} p-0.5 shadow-sm`}>
                                     <button 
                                         onClick={() => setViewMode('tree')} 
-                                        title="Tree View" 
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${viewMode === 'tree' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'tree' ? 'bg-blue-600 text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
                                     >
-                                        <TreePine size={16} />Tree
+                                        <TreePine size={14} />Tree
                                     </button>
                                     <button 
                                         onClick={() => setViewMode('grid')} 
-                                        title="Grid View" 
-                                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
                                     >
-                                        <Grid size={16} />Grid
+                                        <Grid size={14} />Grid
                                     </button>
                                 </div>
                                 
                                 {/* Control Buttons */}
                                 <button 
                                     onClick={() => setShowFilters(!showFilters)} 
-                                    title="Filters" 
-                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textPrimary} shadow-sm relative`}
+                                    title="Filters"
+                                    className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textPrimary} shadow-sm relative`}
                                 >
-                                    <Filter size={16} />
+                                    <Filter size={14} />
                                     {areFiltersActive && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-almet-sapphire rounded-full border-2 border-white dark:border-almet-san-juan"></div>
+                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full border border-white"></div>
                                     )}
                                 </button>
                                 
                                 <button 
                                     onClick={() => setShowLegend(true)} 
-                                    title="Position Legend" 
-                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                    title="Legend"
+                                    className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
                                 >
-                                    <Info size={16} />
+                                    <Info size={14} />
                                 </button>
-                                
-                                {/* Zoom Controls */}
-                                <div className={`flex items-center border ${borderColor} rounded-xl ${bgCard} shadow-sm`}>
-                                    <button 
-                                        onClick={handleZoomOut} 
-                                        className={`p-2.5 hover:${bgAccent} transition-colors ${textMuted} hover:${textPrimary} rounded-l-xl`} 
-                                        title="Zoom Out"
-                                    >
-                                        <ZoomOut size={16} />
-                                    </button>
-                                    <span className={`px-3 text-sm ${textMuted} min-w-[3rem] text-center border-x ${borderColor}`}>
-                                        {zoomLevel}%
-                                    </span>
-                                    <button 
-                                        onClick={handleZoomIn} 
-                                        className={`p-2.5 hover:${bgAccent} transition-colors ${textMuted} hover:${textPrimary} rounded-r-xl`} 
-                                        title="Zoom In"
-                                    >
-                                        <ZoomIn size={16} />
-                                    </button>
-                                </div>
-                                
+
                                 <button 
-                                    onClick={handleResetZoom} 
-                                    title="Reset Zoom" 
-                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                    onClick={exportToPNG} 
+                                    title="Export PNG"
+                                    className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
                                 >
-                                    <RotateCcw size={16} />
-                                </button>
-                                
-                                <button 
-                                    onClick={resetPan} 
-                                    title="Reset Position" 
-                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="m4 4 7.07 17.68 2.51-7.07 7.07-2.51L4 4Z"/>
-                                        <path d="m13 13 6 6"/>
-                                    </svg>
-                                </button>
-                                
-                                <button 
-                                    onClick={exportChart} 
-                                    title="Export as PNG" 
-                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                                        <polyline points="14 2 14 8 20 8"/>
-                                        <circle cx="10" cy="13" r="2"/>
-                                        <path d="m20 17-1.29-1.29a1 1 0 0 0-1.32-.08L13 19"/>
-                                        <path d="m13 19-2.5-2.5"/>
-                                    </svg>
+                                    <Download size={14} />
                                 </button>
                                 
                                 <button 
                                     onClick={toggleFullscreen} 
-                                    className={`p-2.5 border ${borderColor} rounded-xl hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`} 
                                     title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                                    className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
                                 >
-                                    {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                                    {isFullscreen ? <Shrink size={14} /> : <Expand size={14} />}
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Enhanced Filters Panel */}
+                {/* Smaller Filters Panel */}
                 {showFilters && (
-                    <div className={`${bgCard} border-b ${borderColor} shadow-md sticky ${isFullscreen ? 'top-0' : 'top-[73px]'} z-20 backdrop-blur-sm`}>
-                        <div className="px-6 py-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className={`text-base font-semibold ${textHeader} flex items-center gap-2`}>
-                                    <Filter size={18} />
+                    <div className={`${bgCard} border-b ${borderColor} shadow-md sticky ${isFullscreen ? 'top-[57px]' : 'top-[65px]'} z-20 backdrop-blur-sm`}>
+                        <div className="px-4 py-3">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className={`text-sm font-semibold ${textHeader} flex items-center gap-2`}>
+                                    <Filter size={16} />
                                     Filters
                                 </h3>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                     <button 
                                         onClick={clearAllFilters} 
-                                        className={`text-sm ${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors hover:underline font-medium`}
+                                        className={`text-xs ${textMuted} hover:text-blue-600 transition-colors hover:underline font-medium`}
                                     >
                                         Clear All
                                     </button>
                                     <button 
                                         onClick={() => setShowFilters(false)} 
-                                        className={`p-1.5 hover:${bgAccent} rounded-xl ${textMuted} hover:${textPrimary} transition-colors`}
+                                        className={`p-1 hover:${bgAccent} rounded-lg ${textMuted} hover:${textPrimary} transition-colors`}
                                     >
-                                        <X size={16} />
+                                        <X size={14} />
                                     </button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
-                                    <label htmlFor="department-filter" className={`block text-sm font-medium ${textSecondary} mb-2`}>Department</label>
+                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Department</label>
                                     <select 
-                                        id="department-filter" 
                                         value={filters.department} 
                                         onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))} 
-                                        className={`w-full p-3 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire ${bgCard} ${textPrimary} shadow-sm`}
+                                        className={`w-full p-2.5 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${bgCard} ${textPrimary} shadow-sm text-sm`}
                                     >
                                         <option value="all">All Departments</option>
                                         {departments.map(dept => (<option key={dept} value={dept}>{dept}</option>))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="grade-filter" className={`block text-sm font-medium ${textSecondary} mb-2`}>Grade</label>
+                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Grade</label>
                                     <select 
-                                        id="grade-filter" 
                                         value={filters.grade} 
                                         onChange={(e) => setFilters(prev => ({ ...prev, grade: e.target.value }))} 
-                                        className={`w-full p-3 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire ${bgCard} ${textPrimary} shadow-sm`}
+                                        className={`w-full p-2.5 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${bgCard} ${textPrimary} shadow-sm text-sm`}
                                     >
                                         <option value="all">All Grades</option>
                                         {grades.map(grade => (<option key={grade} value={grade}>Grade {grade}</option>))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label htmlFor="location-filter" className={`block text-sm font-medium ${textSecondary} mb-2`}>Location</label>
+                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Location</label>
                                     <select 
-                                        id="location-filter" 
                                         value={filters.location} 
                                         onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))} 
-                                        className={`w-full p-3 border ${borderColor} rounded-xl focus:ring-2 focus:ring-almet-sapphire/50 focus:border-almet-sapphire ${bgCard} ${textPrimary} shadow-sm`}
+                                        className={`w-full p-2.5 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${bgCard} ${textPrimary} shadow-sm text-sm`}
                                     >
                                         <option value="all">All Locations</option>
                                         {locations.map(location => (<option key={location} value={location}>{location}</option>))}
@@ -1009,64 +866,200 @@ const OrgChart = () => {
                 )}
 
                 {/* Main Chart Container */}
-                <div 
-                    ref={scrollContainerRef} 
-                    className="relative overflow-auto flex-grow"
-                    style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-                    onMouseDown={handleMouseDown}
-                >
+                <div className="relative overflow-hidden flex-grow">
                     {viewMode === 'tree' ? (
-                        <div 
-                            ref={chartRef} 
-                            className="p-12 w-full min-h-full" 
-                            style={{ 
-                                transform: `scale(${zoomLevel / 100})`, 
-                                transformOrigin: 'top center', 
-                                minWidth: 'max-content' 
-                            }}
-                        >
-                            <div className="flex justify-center flex-col items-center">
-                                {organizationTree.map(rootNode => (
-                                    rootNode && rootNode.id ? 
-                                    <TreeNode key={rootNode.id} node={rootNode} /> : null
-                                ))}
+                        <ReactFlowProvider>
+                            <div className="w-full h-full">
+                                <FlowComponent />
                             </div>
-                        </div>
+                        </ReactFlowProvider>
                     ) : (
                         <GridView />
                     )}
                 </div>
 
-                {/* Modals */}
-                <EmployeeDetailModal
-                    employee={selectedEmployee}
-                    onClose={() => setSelectedEmployee(null)}
-                />
-                
-                {showLegend && (
-                    <ColorLegend 
-                        hierarchyColors={hierarchyColors} 
-                        onClose={() => setShowLegend(false)} 
-                        darkMode={darkMode} 
-                    />
-                )}
-                
-                {showAllReportsModal && (
-                    <AllDirectReportsModal
-                        reports={reportsToShow}
-                        onClose={() => setShowAllReportsModal(false)}
-                        onSelectEmployee={navigateToEmployee}
-                        darkMode={darkMode}
-                    />
+                {/* Smaller Employee Detail Modal */}
+                {selectedEmployee && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200 ease-in-out">
+                        <div className={`${bgCard} rounded-xl shadow-2xl max-w-3xl w-full max-h-[85vh] flex flex-col border ${borderColor}`}>
+                            <div className={`flex items-center justify-between p-4 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-xl z-10`}>
+                                <div className="flex items-center gap-3">
+                                    <Avatar employee={selectedEmployee} size="md" />
+                                    <div>
+                                        <h2 className={`text-lg font-semibold ${textHeader}`}>{selectedEmployee.name}</h2>
+                                        <p className={`${textSecondary} text-sm mt-0.5`}>{selectedEmployee.title}</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setSelectedEmployee(null)} className={`${textMuted} hover:${textPrimary} p-1.5 hover:${bgAccent} rounded-lg transition-colors`}>
+                                    <X size={20} aria-label="Close modal"/>
+                                </button>
+                            </div>
+
+                            <div className="p-4 overflow-y-auto flex-grow space-y-4">
+                                {/* Basic Employee Details */}
+                                <div>
+                                    <h4 className={`font-semibold ${textSecondary} mb-3 text-xs uppercase tracking-wider`}>Employee Details</h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <SmallDetailItem icon={<Building2 />} label="Department" value={selectedEmployee.department} />
+                                        <SmallDetailItem icon={<Layers />} label="Unit" value={selectedEmployee.unit} />
+                                        <SmallDetailItem icon={<Award />} label="Grade" value={`G${selectedEmployee.grade}`} />
+                                        <SmallDetailItem icon={<Briefcase />} label="Position" value={selectedEmployee.positionGroup} />
+                                        <SmallDetailItem icon={<MapPin />} label="Location" value={selectedEmployee.location} />
+                                        <SmallDetailItem icon={<Puzzle />} label="Function" value={selectedEmployee.businessFunction} />
+                                    </div>
+                                </div>
+
+                                {/* Team Metrics */}
+                                <div className={`border-t ${borderColor} pt-4`}>
+                                    <h4 className={`font-semibold ${textSecondary} mb-3 text-xs uppercase tracking-wider`}>Team Metrics</h4>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        <SmallMetricItem 
+                                            icon={<Target />} 
+                                            label="Level to CEO" 
+                                            value={selectedEmployee.levelToCeo} 
+                                        />
+                                        <SmallMetricItem 
+                                            icon={<Users />} 
+                                            label="Direct Reports" 
+                                            value={selectedEmployee.directReports} 
+                                        />
+                                        <SmallMetricItem 
+                                            icon={<UsersRound />} 
+                                            label="Total Team" 
+                                            value={selectedEmployee.totalSubordinates} 
+                                        />
+                                        <SmallMetricItem 
+                                            icon={<Building2 />} 
+                                            label="Unit Colleagues" 
+                                            value={selectedEmployee.colleaguesInUnit} 
+                                        />
+                                        <SmallMetricItem 
+                                            icon={<Briefcase />} 
+                                            label="Function Colleagues" 
+                                            value={selectedEmployee.colleaguesInBusinessFunction} 
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {/* Contact */}
+                                <div className={`border-t ${borderColor} pt-4`}>
+                                    <h4 className={`font-semibold ${textSecondary} mb-3 text-xs uppercase tracking-wider`}>Contact</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <SmallDetailItem icon={<Phone />} label="Phone" value={selectedEmployee.phone} />
+                                        <SmallDetailItem icon={<Mail />} label="Email" value={selectedEmployee.email} />
+                                    </div>
+                                </div>
+
+                                {/* Manager */}
+                                {selectedEmployee.manager && (
+                                    <div className={`border-t ${borderColor} pt-4`}>
+                                        <h4 className={`font-semibold ${textSecondary} mb-3 text-xs uppercase tracking-wider`}>Reports To</h4>
+                                        <div 
+                                            className={`${bgCard} border ${borderColor} rounded-lg p-3 cursor-pointer hover:${bgCardHover} transition-colors flex items-center gap-3`}
+                                            onClick={() => setSelectedEmployee(selectedEmployee.manager)}
+                                        >
+                                            <Avatar employee={selectedEmployee.manager} size="sm" />
+                                            <div className="flex-1">
+                                                <h5 className={`font-semibold ${textHeader} text-sm`}>{selectedEmployee.manager.name}</h5>
+                                                <p className={`${textSecondary} text-xs`}>{selectedEmployee.manager.title}</p>
+                                            </div>
+                                            <ArrowUp className={`w-4 h-4 ${textMuted}`} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Direct Reports List */}
+                                {selectedEmployee.directReports > 0 && (
+                                    <div className={`border-t ${borderColor} pt-4`}>
+                                        <h4 className={`font-semibold ${textSecondary} mb-3 text-xs uppercase tracking-wider`}>
+                                            Direct Reports ({selectedEmployee.directReports})
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {enhancedEmployeeData
+                                                .filter(emp => emp.lineManagerId === selectedEmployee.id)
+                                                .map(report => (
+                                                    <div 
+                                                        key={report.id}
+                                                        className={`${bgCard} border ${borderColor} rounded-lg p-3 cursor-pointer hover:${bgCardHover} transition-colors flex items-center gap-3`}
+                                                        onClick={() => setSelectedEmployee(report)}
+                                                    >
+                                                        <Avatar employee={report} size="sm" />
+                                                        <div className="flex-1">
+                                                            <h5 className={`font-semibold ${textHeader} text-sm`}>{report.name}</h5>
+                                                            <p className={`${textSecondary} text-xs`}>{report.title}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className={`text-xs ${textMuted}`}>Grade {report.grade}</p>
+                                                            <p className={`text-xs ${textSecondary}`}>{report.department}</p>
+                                                        </div>
+                                                        <ArrowDown className={`w-4 h-4 ${textMuted}`} />
+                                                    </div>
+                                                ))
+                                            }
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 )}
 
-                {/* Enhanced Styles */}
+                {/* Position Legend Modal */}
+                {showLegend && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                        <div className={`${bgCard} rounded-2xl shadow-2xl w-full max-w-sm flex flex-col border ${borderColor}`}>
+                            <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-2xl z-10`}>
+                                <h2 className={`text-xl font-semibold ${textHeader}`}>Position Levels</h2>
+                                <button onClick={() => setShowLegend(false)} className={`${textMuted} hover:${textHeader} p-2 hover:${bgAccent} rounded-xl transition-colors`}>
+                                    <X size={20} aria-label="Close legend"/>
+                                </button>
+                            </div>
+                            <div className="p-6 space-y-3 overflow-y-auto">
+                                {Object.entries(hierarchyColors).map(([group, colors]) => (
+                                    <div key={group} className={`flex items-center gap-4 p-3 rounded-xl ${bgAccent}`}>
+                                        <div 
+                                            className="w-8 h-8 rounded-xl flex-shrink-0 ring-2 ring-white shadow-lg" 
+                                            style={{ background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)` }}
+                                        />
+                                        <span className={`${textPrimary} text-sm font-semibold`}>
+                                            {group.replace(/([A-Z])/g, ' $1').trim()}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {                                /* Enhanced Styles */}
                 <style jsx>{`
+                    /* Line clamp utility */
                     .line-clamp-2 { 
                         display: -webkit-box; 
                         -webkit-line-clamp: 2; 
                         -webkit-box-orient: vertical; 
                         overflow: hidden; 
+                    }
+
+                    /* React Flow Dark Mode Styles */
+                    .react-flow__controls-dark {
+                        background: #1e293b;
+                        border: 1px solid #475569;
+                    }
+                    
+                    .react-flow__controls-dark button {
+                        background: #334155;
+                        border-color: #475569;
+                        color: #e2e8f0;
+                    }
+                    
+                    .react-flow__controls-dark button:hover {
+                        background: #475569;
+                    }
+                    
+                    .react-flow__minimap-dark {
+                        background: #1e293b;
+                        border: 1px solid #475569;
                     }
                     
                     /* Enhanced Scrollbar Styling */
@@ -1089,42 +1082,6 @@ const OrgChart = () => {
                         background-clip: content-box;
                     }
                     
-                    /* Backdrop Blur */
-                    .backdrop-blur-sm { 
-                        backdrop-filter: blur(8px); 
-                        -webkit-backdrop-filter: blur(8px); 
-                    }
-                    .backdrop-blur-md { 
-                        backdrop-filter: blur(12px); 
-                        -webkit-backdrop-filter: blur(12px); 
-                    }
-                    
-                    /* Focus Styles */
-                    .focus\\:ring-almet-sapphire\\/50:focus { 
-                        --tw-ring-color: rgba(48, 83, 155, 0.5); 
-                    }
-                    .focus\\:border-almet-sapphire:focus { 
-                        border-color: #30539b; 
-                    }
-                    
-                    /* Custom Gradient Backgrounds */
-                    .bg-gradient-to-br { 
-                        background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)); 
-                    }
-                    
-                    /* Smooth Transitions */
-                    * {
-                        transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-                        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-                        transition-duration: 200ms;
-                    }
-                    
-                    /* Enhanced Card Hover Effects */
-                    .employee-card-action:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-                    }
-                    
                     /* Enhanced Button Animations */
                     button:active {
                         transform: scale(0.98);
@@ -1134,13 +1091,44 @@ const OrgChart = () => {
                     button:focus-visible, 
                     input:focus-visible, 
                     select:focus-visible {
-                        outline: 2px solid #30539b;
+                        outline: 2px solid #3b82f6;
                         outline-offset: 2px;
+                    }
+
+                    /* Responsive node sizing for horizontal layout */
+                    .react-flow[data-direction="LR"] .react-flow__node {
+                        max-width: 280px;
                     }
                 `}</style>
             </div>
         </DashboardLayout>
     );
 };
+
+// Small Detail Item Component for compact modal
+const SmallDetailItem = ({ icon, label, value }) => (
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-gray-50 dark:bg-slate-700">
+        <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+            {React.cloneElement(icon, { className: "w-3 h-3 text-blue-600 dark:text-blue-400" })}
+        </div>
+        <div className="min-w-0 flex-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{label}</p>
+            <p className="text-gray-800 dark:text-gray-200 font-semibold text-xs truncate" title={value || 'N/A'}>{value || 'N/A'}</p>
+        </div>
+    </div>
+);
+
+// Small Metric Item Component for compact display
+const SmallMetricItem = ({ icon, label, value }) => (
+    <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+        <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+            {React.cloneElement(icon, { className: "w-3 h-3 text-blue-600 dark:text-blue-400" })}
+        </div>
+        <div className="flex-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{label}</p>
+            <p className="text-gray-800 dark:text-gray-200 font-bold text-sm">{value}</p>
+        </div>
+    </div>
+);
 
 export default OrgChart;

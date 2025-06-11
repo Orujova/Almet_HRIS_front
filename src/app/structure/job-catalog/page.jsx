@@ -335,7 +335,7 @@ export default function JobCatalogPage() {
         }`}
       >
         <BarChart3 size={16} />
-        İş Kataloquna Baxış
+        Job Catalog Overview
       </button>
       <button
         onClick={() => setActiveView('structure')}
@@ -346,7 +346,7 @@ export default function JobCatalogPage() {
         }`}
       >
         <Layers size={16} />
-        Biznes Funksiyalar Strukturu
+        Business Functions Structure
       </button>
       <button
         onClick={() => setActiveView('matrix')}
@@ -357,7 +357,7 @@ export default function JobCatalogPage() {
         }`}
       >
         <Grid size={16} />
-        Hierarkiya Matrix
+        Hierarchy Matrix
       </button>
     </div>
   );
@@ -447,7 +447,7 @@ export default function JobCatalogPage() {
               </span>
               <span className="flex items-center">
                 <Users size={12} className="mr-1" />
-                {job.currentEmployees} işçi
+                {job.currentEmployees} employees
               </span>
             </div>
           </div>
@@ -475,7 +475,7 @@ export default function JobCatalogPage() {
               <Briefcase className="h-5 w-5 text-almet-sapphire" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Ümumi İş Yeri</p>
+              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Jobs</p>
               <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.totalJobs}</p>
             </div>
           </div>
@@ -487,7 +487,7 @@ export default function JobCatalogPage() {
               <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Ümumi İşçi</p>
+              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Employees</p>
               <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.totalEmployees}</p>
             </div>
           </div>
@@ -499,7 +499,7 @@ export default function JobCatalogPage() {
               <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Orta Hesabla</p>
+              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Average</p>
               <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.avgEmployeesPerJob}</p>
             </div>
           </div>
@@ -511,7 +511,7 @@ export default function JobCatalogPage() {
               <Award className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Aktiv İş Yerləri</p>
+              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Active Jobs</p>
               <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.activeJobs}</p>
             </div>
           </div>
@@ -526,7 +526,7 @@ export default function JobCatalogPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input
               type="text"
-              placeholder="İş yerlərində axtarış..."
+              placeholder="Search jobs..."
               className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -542,7 +542,7 @@ export default function JobCatalogPage() {
               }`}
             >
               <Filter size={16} />
-              Filtrlər
+              Filters
               {Object.values(selectedFilters).some(v => v) && (
                 <span className="bg-red-500 text-white rounded-full w-2 h-2"></span>
               )}
@@ -566,12 +566,12 @@ export default function JobCatalogPage() {
 
             <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
               <Plus size={16} />
-              Əlavə Et
+              Add
             </button>
 
             <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
               <Download size={16} />
-              İxrac
+              Export
             </button>
           </div>
         </div>
@@ -583,18 +583,18 @@ export default function JobCatalogPage() {
               {Object.entries(filterOptions).map(([key, options]) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1 capitalize">
-                    {key === 'units' ? 'Bölmə' : 
-                     key === 'departments' ? 'Departament' :
-                     key === 'hierarchies' ? 'Hierarkiya' :
-                     key === 'jobFunctions' ? 'İş Funksiyası' :
-                     'Məkan'}
+                    {key === 'units' ? 'Unit' : 
+                     key === 'departments' ? 'Department' :
+                     key === 'hierarchies' ? 'Hierarchy' :
+                     key === 'jobFunctions' ? 'Job Function' :
+                     'Location'}
                   </label>
                   <select
                     value={selectedFilters[key]}
                     onChange={(e) => setSelectedFilters(prev => ({ ...prev, [key]: e.target.value }))}
                     className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
                   >
-                    <option value="">Hamısı</option>
+                    <option value="">All</option>
                     {options.map(option => (
                       <option key={option} value={option}>{option}</option>
                     ))}
@@ -606,13 +606,13 @@ export default function JobCatalogPage() {
             {Object.values(selectedFilters).some(v => v) && (
               <div className="mt-4 flex justify-between items-center">
                 <span className="text-sm text-gray-600 dark:text-almet-bali-hai">
-                  {filteredJobs.length} / {jobCatalogData.length} iş yeri göstərilir
+                  Showing {filteredJobs.length} / {jobCatalogData.length} jobs
                 </span>
                 <button
                   onClick={clearFilters}
                   className="text-sm text-almet-sapphire dark:text-almet-steel-blue hover:underline"
                 >
-                  Filtrləri təmizlə
+                  Clear Filters
                 </button>
               </div>
             )}
@@ -634,9 +634,9 @@ export default function JobCatalogPage() {
       {filteredJobs.length === 0 && (
         <div className="text-center py-12">
           <Briefcase className="mx-auto h-12 w-12 text-gray-400 dark:text-almet-bali-hai mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">İş yeri tapılmadı</h3>
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Jobs Found</h3>
           <p className="text-gray-500 dark:text-almet-bali-hai">
-            Axtarış meyarlarınızı və ya filtrlərini düzəldin.
+            Adjust your search criteria or filters.
           </p>
         </div>
       )}
@@ -647,9 +647,9 @@ export default function JobCatalogPage() {
   const StructureView = () => (
     <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm">
       <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Biznes Funksiyalar Strukturu</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Business Functions Structure</h2>
         <p className="text-gray-600 dark:text-almet-bali-hai">
-          Təşkilatın biznes funksiyalarının strukturu
+          Structure of the organization's business functions
         </p>
       </div>
       
@@ -657,10 +657,10 @@ export default function JobCatalogPage() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-200 dark:border-almet-comet">
-              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Bölmə</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Departament</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">İş Funksiyası</th>
-              <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Əməliyyatlar</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Unit</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Department</th>
+              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Job Function</th>
+              <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -688,11 +688,11 @@ export default function JobCatalogPage() {
       <div className="mt-6 flex justify-end gap-3">
         <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
           <Plus size={16} />
-          Yeni Əlavə Et
+          Add New
         </button>
         <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
           <Download size={16} />
-          İxrac Et
+          Export
         </button>
       </div>
     </div>
@@ -709,24 +709,24 @@ export default function JobCatalogPage() {
         <div className="mb-6">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Hierarkiya Matrix</h2>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Hierarchy Matrix</h2>
               <p className="text-gray-600 dark:text-almet-bali-hai">
-                Hierarkiya səviyyələri üzrə iş yerlərinin paylanması
+                Distribution of jobs by hierarchy levels
               </p>
             </div>
             
             <div className="flex items-center gap-3">
               <label className="text-sm font-medium text-gray-700 dark:text-almet-bali-hai">
-                Matrix Görünüşü:
+                Matrix View:
               </label>
               <select
                 value={matrixView}
                 onChange={(e) => setMatrixView(e.target.value)}
                 className="p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
               >
-                <option value="department">Departament üzrə</option>
-                <option value="function">İş Funksiyası üzrə</option>
-                <option value="unit">Bölmə üzrə</option>
+                <option value="department">By Department</option>
+                <option value="function">By Job Function</option>
+                <option value="unit">By Unit</option>
               </select>
             </div>
           </div>
@@ -737,7 +737,7 @@ export default function JobCatalogPage() {
             <thead>
               <tr>
                 <th className="sticky left-0 bg-gray-100 dark:bg-almet-san-juan border border-gray-300 dark:border-almet-comet p-3 text-left font-semibold text-gray-900 dark:text-white min-w-[150px]">
-                  Hierarkiya
+                  Hierarchy
                 </th>
                 {columns.map(col => (
                   <th key={col} className="border border-gray-300 dark:border-almet-comet p-2 text-center font-medium text-gray-900 dark:text-white text-xs min-w-[120px]">
@@ -790,16 +790,16 @@ export default function JobCatalogPage() {
         
         <div className="mt-6 flex justify-between items-center">
           <div className="text-sm text-gray-600 dark:text-almet-bali-hai">
-            Ümumi {jobCatalogData.length} iş yeri, {stats.totalEmployees} işçi
+            Total {jobCatalogData.length} jobs, {stats.totalEmployees} employees
           </div>
           <div className="flex gap-3">
             <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
               <Plus size={16} />
-              Yeni İş Yeri
+              New Job
             </button>
             <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
               <Download size={16} />
-              Matrix İxrac
+              Export Matrix
             </button>
           </div>
         </div>
@@ -812,9 +812,9 @@ export default function JobCatalogPage() {
       <div className="p-6 bg-almet-mystic dark:bg-gray-900 min-h-screen">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">İş Kataloqu</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Job Catalog</h1>
           <p className="text-gray-600 dark:text-almet-bali-hai">
-            Təşkilat daxilindəki bütün iş yerlərinin ətraflı icmalı
+            A detailed overview of all jobs within the organization
           </p>
         </div>
 
@@ -843,7 +843,7 @@ export default function JobCatalogPage() {
                       </span>
                       <span className="flex items-center text-sm text-gray-600 dark:text-almet-bali-hai">
                         <Users size={16} className="mr-1" />
-                        {selectedJob.currentEmployees} işçi
+                        {selectedJob.currentEmployees} employees
                       </span>
                     </div>
                   </div>
@@ -861,33 +861,33 @@ export default function JobCatalogPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                   {/* Job Information */}
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">İş Məlumatları</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Job Information</h3>
                     <div className="space-y-3">
                       <div className="flex items-center">
                         <Building2 size={16} className="mr-2 text-almet-sapphire" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Bölmə: {selectedJob.unit}</span>
+                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Unit: {selectedJob.unit}</span>
                       </div>
                       <div className="flex items-center">
                         <Target size={16} className="mr-2 text-green-500" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Departament: {selectedJob.department}</span>
+                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Department: {selectedJob.department}</span>
                       </div>
                       <div className="flex items-center">
                         <Briefcase size={16} className="mr-2 text-purple-500" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Funksiya: {selectedJob.jobFunction}</span>
+                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Function: {selectedJob.jobFunction}</span>
                       </div>
                       <div className="flex items-center">
                         <MapPin size={16} className="mr-2 text-red-500" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Məkan: {selectedJob.location}</span>
+                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Location: {selectedJob.location}</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Statistics */}
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Cari Vəziyyət</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Current Status</h3>
                     <div className="space-y-3">
                       <div className="flex justify-between items-center p-3 bg-almet-mystic dark:bg-almet-san-juan rounded-lg">
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Cari İşçi Sayı</span>
+                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Current Employee Count</span>
                         <span className="font-semibold text-gray-900 dark:text-white">{selectedJob.currentEmployees}</span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-almet-mystic dark:bg-almet-san-juan rounded-lg">
@@ -902,7 +902,7 @@ export default function JobCatalogPage() {
 
                 {/* Description */}
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3">İş Təsviri</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Job Description</h3>
                   <p className="text-gray-600 dark:text-almet-bali-hai text-sm leading-relaxed">
                     {selectedJob.description}
                   </p>
@@ -910,7 +910,7 @@ export default function JobCatalogPage() {
 
                 {/* Requirements */}
                 <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Tələblər</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Requirements</h3>
                   <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-almet-bali-hai">
                     {selectedJob.requirements.map((req, index) => (
                       <li key={index}>{req}</li>
@@ -921,13 +921,13 @@ export default function JobCatalogPage() {
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-almet-comet">
                   <button className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors">
-                    Düzəliş Et
+                    Edit
                   </button>
                   <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    İşçiləri Gör
+                    View Employees
                   </button>
                   <button className="px-4 py-2 bg-almet-waterloo dark:bg-almet-comet text-white rounded-lg hover:bg-almet-san-juan dark:hover:bg-almet-waterloo transition-colors">
-                    Təsviri Yüklə
+                    Download Description
                   </button>
                 </div>
               </div>
