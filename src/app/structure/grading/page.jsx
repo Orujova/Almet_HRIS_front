@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-import { BarChart3, TrendingUp, Calculator, Save, Archive, Eye, Trash2, Plus, X } from "lucide-react";
+import { BarChart3, TrendingUp, Calculator, Save, Archive, Eye, Trash2, Plus, X, GitCompare } from "lucide-react";
 
 const GradingPage = () => {
   const { darkMode } = useTheme();
@@ -31,10 +31,14 @@ const GradingPage = () => {
       }
     });
     return {
+      id: 'current',
+      name: 'Current Structure',
       grades: data,
       gradeOrder: [...initialGradeNamesOrder],
       verticalAvg: 0.54,
       horizontalAvg: 0.08,
+      baseValue1: 30000,
+      status: 'current'
     };
   }, [initialExcelData, initialGradeNamesOrder]);
   
@@ -259,7 +263,7 @@ const GradingPage = () => {
   const handleSaveAsCurrent = (draftId) => {
     const selectedDraft = draftScenarios.find((s) => s.id === draftId);
     if (selectedDraft) {
-      setCurrentData(selectedDraft.data);
+      setCurrentData({...selectedDraft.data, id: 'current', name: 'Current Structure', status: 'current'});
       setDraftScenarios(draftScenarios.filter((s) => s.id !== draftId));
       alert("Scenario has been set as current grade structure!");
     }
@@ -288,16 +292,22 @@ const GradingPage = () => {
     setSelectedForComparison(prev => {
       if (prev.includes(scenarioId)) {
         return prev.filter(id => id !== scenarioId);
-      } else if (prev.length < 3) { // Limit to 3 scenarios for comparison
+      } else if (prev.length < 4) { // Limit to 4 scenarios (3 drafts + current)
         return [...prev, scenarioId];
       }
       return prev;
     });
   };
 
+  const startComparison = () => {
+    if (selectedForComparison.length >= 2) {
+      setIsDetailOpen(true);
+    }
+  };
+
   const getBalanceScore = useCallback((scenario) => {
-    const verticalAvg = scenario.data.verticalAvg || 0;
-    const horizontalAvg = scenario.data.horizontalAvg || 0;
+    const verticalAvg = scenario.data ? scenario.data.verticalAvg || 0 : scenario.verticalAvg || 0;
+    const horizontalAvg = scenario.data ? scenario.data.horizontalAvg || 0 : scenario.horizontalAvg || 0;
     const deviation = Math.abs(verticalAvg - horizontalAvg);
     return (verticalAvg + horizontalAvg) / (1 + deviation); 
   }, []);
@@ -308,6 +318,14 @@ const GradingPage = () => {
       return getBalanceScore(scenario) > getBalanceScore(best) ? scenario : best;
     }, draftScenarios[0]);
   }, [draftScenarios, getBalanceScore]);
+
+  // Get scenarios for comparison (including current)
+  const getScenarioForComparison = (scenarioId) => {
+    if (scenarioId === 'current') {
+      return currentData;
+    }
+    return draftScenarios.find(s => s.id === scenarioId) || archivedScenarios.find(s => s.id === scenarioId);
+  };
 
   return (
     <DashboardLayout>
@@ -322,16 +340,6 @@ const GradingPage = () => {
               Manage salary grades and compensation structures
             </p>
           </div>
-          <button
-            onClick={toggleCompareMode}
-            className={`px-4 py-2 text-sm rounded-lg border transition-colors ${
-              compareMode 
-                ? 'bg-almet-sapphire text-white border-almet-sapphire' 
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-          >
-            {compareMode ? 'Exit Compare' : 'Compare Scenarios'}
-          </button>
         </div>
 
         {/* Current Situation */}
@@ -487,14 +495,28 @@ const GradingPage = () => {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
             <h2 className="text-lg font-medium text-almet-cloud-burst dark:text-white">Draft Scenarios</h2>
-            {compareMode && selectedForComparison.length >= 2 && (
+            <div className="flex gap-3">
+              {compareMode && selectedForComparison.length >= 2 && (
+                <button
+                  onClick={startComparison}
+                  className="bg-green-600 text-white px-4 py-2 text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                >
+                  <Eye size={16} />
+                  Compare ({selectedForComparison.length})
+                </button>
+              )}
               <button
-                onClick={() => setIsDetailOpen(true)}
-                className="bg-almet-sapphire text-white px-4 py-2 text-sm rounded-lg hover:bg-almet-astral transition-colors"
+                onClick={toggleCompareMode}
+                className={`px-4 py-2 text-sm rounded-lg border transition-colors flex items-center gap-2 ${
+                  compareMode 
+                    ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' 
+                    : 'bg-almet-sapphire text-white border-almet-sapphire hover:bg-almet-astral'
+                }`}
               >
-                Compare Selected ({selectedForComparison.length})
+                <GitCompare size={16} />
+                {compareMode ? 'Cancel' : 'Compare'}
               </button>
-            )}
+            </div>
           </div>
 
           <div className="p-6">
@@ -520,6 +542,49 @@ const GradingPage = () => {
                     >
                       View
                     </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Add Current Structure to comparison mode */}
+            {compareMode && (
+              <div className="mb-6">
+                <h3 className="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Include Current Structure in Comparison:</h3>
+                <div 
+                  className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                    selectedForComparison.includes('current')
+                      ? "border-almet-sapphire bg-blue-50 dark:bg-blue-900/20"
+                      : "border-gray-200 dark:border-gray-700 hover:shadow-md"
+                  }`}
+                  onClick={() => toggleScenarioForComparison('current')}
+                >
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-medium text-almet-cloud-burst dark:text-white">Current Structure</h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Active grade structure</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={selectedForComparison.includes('current')}
+                      onChange={() => toggleScenarioForComparison('current')}
+                      className="w-4 h-4 text-almet-sapphire rounded focus:ring-almet-sapphire"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                        {(currentData.verticalAvg * 100).toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">Vertical</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                        {(currentData.horizontalAvg * 100).toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-gray-600 dark:text-gray-400">Horizontal</div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -690,21 +755,23 @@ const GradingPage = () => {
                 {compareMode && selectedForComparison.length >= 2 ? (
                   // Comparison View
                   <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {selectedForComparison.map(scenarioId => {
-                        const scenario = draftScenarios.find(s => s.id === scenarioId);
+                        const scenario = getScenarioForComparison(scenarioId);
                         if (!scenario) return null;
+                        
+                        const scenarioData = scenario.data || scenario;
                         return (
                           <div key={scenarioId} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                             <h3 className="font-semibold text-lg mb-3">{scenario.name}</h3>
                             <div className="space-y-2">
                               <div className="flex justify-between">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">Vertical Avg:</span>
-                                <span className="font-medium">{(scenario.data.verticalAvg * 100).toFixed(1)}%</span>
+                                <span className="font-medium">{(scenarioData.verticalAvg * 100).toFixed(1)}%</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">Horizontal Avg:</span>
-                                <span className="font-medium">{(scenario.data.horizontalAvg * 100).toFixed(1)}%</span>
+                                <span className="font-medium">{(scenarioData.horizontalAvg * 100).toFixed(1)}%</span>
                               </div>
                               {scenario.metrics && (
                                 <>
@@ -736,7 +803,7 @@ const GradingPage = () => {
                           <tr className="border-b border-gray-200 dark:border-gray-700">
                             <th className="text-left py-3 text-sm font-medium text-gray-600 dark:text-gray-400">Grade</th>
                             {selectedForComparison.map(scenarioId => {
-                              const scenario = draftScenarios.find(s => s.id === scenarioId);
+                              const scenario = getScenarioForComparison(scenarioId);
                               return scenario ? (
                                 <th key={scenarioId} className="text-center py-3 text-sm font-medium text-gray-600 dark:text-gray-400">
                                   {scenario.name}
@@ -750,15 +817,16 @@ const GradingPage = () => {
                             <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700">
                               <td className="py-3 text-sm font-medium">{gradeName}</td>
                               {selectedForComparison.map(scenarioId => {
-                                const scenario = draftScenarios.find(s => s.id === scenarioId);
-                                const gradeData = scenario?.data.grades[gradeName];
+                                const scenario = getScenarioForComparison(scenarioId);
+                                const scenarioData = scenario?.data || scenario;
+                                const gradeData = scenarioData?.grades[gradeName];
                                 return (
                                   <td key={scenarioId} className="py-3 text-center">
                                     {gradeData ? (
                                       <div>
                                         <div className="font-mono font-semibold">${(gradeData.M || 0).toLocaleString()}</div>
                                         <div className="text-xs text-gray-500">
-                                          V: {gradeData.vertical}% / H: {gradeData.horizontal}%
+                                          V: {gradeData.vertical || 0}% / H: {gradeData.horizontal || 0}%
                                         </div>
                                       </div>
                                     ) : '-'}
@@ -776,15 +844,15 @@ const GradingPage = () => {
                   <div className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-almet-sapphire">${parseFloat(selectedScenario.data.baseValue1).toLocaleString()}</div>
+                        <div className="text-2xl font-bold text-almet-sapphire">${parseFloat(selectedScenario.data?.baseValue1 || selectedScenario.baseValue1 || 0).toLocaleString()}</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">Base Value</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-almet-sapphire">{(selectedScenario.data.verticalAvg * 100).toFixed(1)}%</div>
+                        <div className="text-2xl font-bold text-almet-sapphire">{((selectedScenario.data?.verticalAvg || selectedScenario.verticalAvg || 0) * 100).toFixed(1)}%</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">Vertical Average</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-bold text-almet-sapphire">{(selectedScenario.data.horizontalAvg * 100).toFixed(1)}%</div>
+                        <div className="text-2xl font-bold text-almet-sapphire">{((selectedScenario.data?.horizontalAvg || selectedScenario.horizontalAvg || 0) * 100).toFixed(1)}%</div>
                         <div className="text-sm text-gray-600 dark:text-gray-400">Horizontal Average</div>
                       </div>
                       {selectedScenario.metrics && (
@@ -816,8 +884,9 @@ const GradingPage = () => {
                           </tr>
                         </thead>
                         <tbody>
-                          {selectedScenario.data.gradeOrder.map((gradeName) => {
-                            const values = selectedScenario.data.grades[gradeName];
+                          {(selectedScenario.data?.gradeOrder || selectedScenario.gradeOrder || []).map((gradeName) => {
+                            const scenarioData = selectedScenario.data || selectedScenario;
+                            const values = scenarioData.grades[gradeName];
                             if (!values) return null;
                             return (
                               <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700">
