@@ -1,4 +1,4 @@
-// src/store/slices/gradingSlice.js - Tam dosya (selector fix'li)
+// src/store/slices/gradingSlice.js - FIXED VERSION WITH REDUX INTEGRATION
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { gradingApi } from '@/services/gradingApi';
 
@@ -54,6 +54,18 @@ export const fetchCurrentGrades = createAsyncThunk(
   }
 );
 
+export const fetchCurrentStructure = createAsyncThunk(
+  'grading/fetchCurrentStructure',
+  async (gradingSystemId, { rejectWithValue }) => {
+    try {
+      const response = await gradingApi.getCurrentStructure(gradingSystemId);
+      return gradingApi.formatCurrentStructure(response.data);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 export const fetchScenarios = createAsyncThunk(
   'grading/fetchScenarios',
   async ({ gradingSystemId, status }, { rejectWithValue }) => {
@@ -84,6 +96,18 @@ export const fetchScenarioStatistics = createAsyncThunk(
   }
 );
 
+export const calculateDynamicScenario = createAsyncThunk(
+  'grading/calculateDynamicScenario',
+  async (scenarioData, { rejectWithValue }) => {
+    try {
+      const response = await gradingApi.calculateDynamic(scenarioData);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 export const createScenario = createAsyncThunk(
   'grading/createScenario',
   async (scenarioData, { rejectWithValue, getState }) => {
@@ -96,6 +120,18 @@ export const createScenario = createAsyncThunk(
       
       const response = await gradingApi.createScenario(backendData);
       return gradingApi.formatScenarioFromBackend(response.data);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const saveDraftScenario = createAsyncThunk(
+  'grading/saveDraftScenario',
+  async (scenarioData, { rejectWithValue }) => {
+    try {
+      const response = await gradingApi.saveDraft(scenarioData);
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -124,6 +160,7 @@ export const applyScenario = createAsyncThunk(
         // Refresh current data and scenarios
         const { grading } = getState();
         await Promise.all([
+          dispatch(fetchCurrentStructure(grading.selectedSystemId)),
           dispatch(fetchCurrentScenario(grading.selectedSystemId)),
           dispatch(fetchCurrentGrades(grading.selectedSystemId)),
           dispatch(fetchScenarios({ gradingSystemId: grading.selectedSystemId, status: 'DRAFT' })),
@@ -181,8 +218,17 @@ const initialState = {
   positionGroups: [],
   
   // Current scenario and grades
+  currentStructure: null,
   currentScenario: null,
   currentGrades: [],
+  
+  // Scenario inputs and calculations
+  scenarioInputs: {
+    baseValue1: '',
+    gradeOrder: [],
+    grades: {}
+  },
+  calculatedOutputs: {},
   
   // Scenarios by status
   draftScenarios: [],
@@ -194,13 +240,14 @@ const initialState = {
   // Loading states
   loading: {
     systems: false,
+    currentStructure: false,
     currentScenario: false,
     currentGrades: false,
     draftScenarios: false,
     archivedScenarios: false,
     statistics: false,
-    creating: false,
     calculating: false,
+    creating: false,
     applying: false,
     archiving: false,
     duplicating: false,
@@ -210,13 +257,14 @@ const initialState = {
   // Error states
   error: {
     systems: null,
+    currentStructure: null,
     currentScenario: null,
     currentGrades: null,
     draftScenarios: null,
     archivedScenarios: null,
     statistics: null,
-    creating: null,
     calculating: null,
+    creating: null,
     applying: null,
     archiving: null,
     duplicating: null,
@@ -230,6 +278,23 @@ const gradingSlice = createSlice({
   reducers: {
     setSelectedSystemId: (state, action) => {
       state.selectedSystemId = action.payload;
+    },
+    setScenarioInputs: (state, action) => {
+      state.scenarioInputs = { ...state.scenarioInputs, ...action.payload };
+    },
+    updateScenarioInput: (state, action) => {
+      const { field, value } = action.payload;
+      state.scenarioInputs[field] = value;
+    },
+    updateGradeInput: (state, action) => {
+      const { gradeName, field, value } = action.payload;
+      if (!state.scenarioInputs.grades[gradeName]) {
+        state.scenarioInputs.grades[gradeName] = {};
+      }
+      state.scenarioInputs.grades[gradeName][field] = value;
+    },
+    setCalculatedOutputs: (state, action) => {
+      state.calculatedOutputs = action.payload;
     },
     clearErrors: (state) => {
       Object.keys(state.error).forEach(key => {
@@ -265,6 +330,47 @@ const gradingSlice = createSlice({
         state.positionGroups = action.payload.position_groups || [];
       })
 
+    // Fetch current structure
+    builder
+      .addCase(fetchCurrentStructure.pending, (state) => {
+        state.loading.currentStructure = true;
+        state.error.currentStructure = null;
+      })
+      .addCase(fetchCurrentStructure.fulfilled, (state, action) => {
+        state.loading.currentStructure = false;
+        state.currentStructure = action.payload;
+        
+        // Initialize scenario inputs if structure loaded
+        if (action.payload && action.payload.gradeOrder.length > 0) {
+          const initialGrades = {};
+          action.payload.gradeOrder.forEach((gradeName, index) => {
+            initialGrades[gradeName] = { 
+              vertical: index < (action.payload.gradeOrder.length - 1) ? '' : null,
+              horizontal: ''
+            };
+          });
+          
+          state.scenarioInputs = {
+            baseValue1: '',
+            gradeOrder: action.payload.gradeOrder,
+            grades: initialGrades
+          };
+          
+          // Initialize calculated outputs
+          const initialOutputs = {};
+          action.payload.gradeOrder.forEach((gradeName) => {
+            initialOutputs[gradeName] = { 
+              LD: "", LQ: "", M: "", UQ: "", UD: "" 
+            };
+          });
+          state.calculatedOutputs = initialOutputs;
+        }
+      })
+      .addCase(fetchCurrentStructure.rejected, (state, action) => {
+        state.loading.currentStructure = false;
+        state.error.currentStructure = action.payload;
+      })
+
     // Fetch current scenario
     builder
       .addCase(fetchCurrentScenario.pending, (state) => {
@@ -294,6 +400,23 @@ const gradingSlice = createSlice({
       .addCase(fetchCurrentGrades.rejected, (state, action) => {
         state.loading.currentGrades = false;
         state.error.currentGrades = action.payload;
+      })
+
+    // Calculate dynamic scenario
+    builder
+      .addCase(calculateDynamicScenario.pending, (state) => {
+        state.loading.calculating = true;
+        state.error.calculating = null;
+      })
+      .addCase(calculateDynamicScenario.fulfilled, (state, action) => {
+        state.loading.calculating = false;
+        if (action.payload.calculatedOutputs) {
+          state.calculatedOutputs = action.payload.calculatedOutputs;
+        }
+      })
+      .addCase(calculateDynamicScenario.rejected, (state, action) => {
+        state.loading.calculating = false;
+        state.error.calculating = action.payload;
       })
 
     // Fetch scenarios
@@ -344,6 +467,24 @@ const gradingSlice = createSlice({
       .addCase(fetchScenarioStatistics.rejected, (state, action) => {
         state.loading.statistics = false;
         state.error.statistics = action.payload;
+      })
+
+    // Save draft scenario
+    builder
+      .addCase(saveDraftScenario.pending, (state) => {
+        state.loading.creating = true;
+        state.error.creating = null;
+      })
+      .addCase(saveDraftScenario.fulfilled, (state, action) => {
+        state.loading.creating = false;
+        if (action.payload.success && action.payload.scenario) {
+          const formattedScenario = gradingApi.formatScenarioFromBackend(action.payload.scenario);
+          state.draftScenarios.unshift(formattedScenario);
+        }
+      })
+      .addCase(saveDraftScenario.rejected, (state, action) => {
+        state.loading.creating = false;
+        state.error.creating = action.payload;
       })
 
     // Create scenario
@@ -460,7 +601,15 @@ const gradingSlice = createSlice({
   }
 })
 
-export const { setSelectedSystemId, clearErrors, clearError } = gradingSlice.actions;
+export const { 
+  setSelectedSystemId, 
+  setScenarioInputs, 
+  updateScenarioInput, 
+  updateGradeInput, 
+  setCalculatedOutputs, 
+  clearErrors, 
+  clearError 
+} = gradingSlice.actions;
 
 export default gradingSlice.reducer;
 
@@ -468,15 +617,18 @@ export default gradingSlice.reducer;
 export const selectGradingSystems = (state) => state.grading.gradingSystems;
 export const selectSelectedSystemId = (state) => state.grading.selectedSystemId;
 export const selectPositionGroups = (state) => state.grading.positionGroups;
+export const selectCurrentStructure = (state) => state.grading.currentStructure;
 export const selectCurrentScenario = (state) => state.grading.currentScenario;
 export const selectCurrentGrades = (state) => state.grading.currentGrades;
+export const selectScenarioInputs = (state) => state.grading.scenarioInputs;
+export const selectCalculatedOutputs = (state) => state.grading.calculatedOutputs;
 export const selectDraftScenarios = (state) => state.grading.draftScenarios;
 export const selectArchivedScenarios = (state) => state.grading.archivedScenarios;
 export const selectStatistics = (state) => state.grading.statistics;
 export const selectLoading = (state) => state.grading.loading;
 export const selectErrors = (state) => state.grading.error;
 
-// MEMOIZED SELECTORS - Hataları çözen kısım
+// MEMOIZED SELECTORS
 export const selectIsLoading = createSelector(
   [selectLoading],
   (loading) => Object.values(loading).some(isLoading => isLoading)
@@ -507,6 +659,48 @@ export const selectAvailableForComparison = createSelector(
       });
     }
     return scenarios;
+  }
+);
+
+export const selectBestDraftScenario = createSelector(
+  [selectDraftScenarios],
+  (draftScenarios) => {
+    if (draftScenarios.length === 0) return null;
+    
+    const getBalanceScore = (scenario) => {
+      const verticalAvg = scenario.data ? scenario.data.verticalAvg || 0 : scenario.verticalAvg || 0;
+      const horizontalAvg = scenario.data ? scenario.data.horizontalAvg || 0 : scenario.horizontalAvg || 0;
+      const deviation = Math.abs(verticalAvg - horizontalAvg);
+      return (verticalAvg + horizontalAvg) / (1 + deviation);
+    };
+
+    return draftScenarios.reduce((best, scenario) => {
+      return getBalanceScore(scenario) > getBalanceScore(best) ? scenario : best;
+    }, draftScenarios[0]);
+  }
+);
+
+export const selectNewScenarioDisplayData = createSelector(
+  [selectScenarioInputs, selectCalculatedOutputs],
+  (scenarioInputs, calculatedOutputs) => {
+    if (!scenarioInputs.gradeOrder.length) return null;
+    
+    const combinedGrades = {};
+    scenarioInputs.gradeOrder.forEach((gradeName) => {
+      const inputGrade = scenarioInputs.grades[gradeName] || { vertical: '', horizontal: '' };
+      const outputGrade = calculatedOutputs[gradeName] || { LD: "", LQ: "", M: "", UQ: "", UD: "" };
+      
+      combinedGrades[gradeName] = {
+        ...inputGrade,
+        ...outputGrade
+      };
+    });
+    
+    return {
+      baseValue1: scenarioInputs.baseValue1,
+      gradeOrder: scenarioInputs.gradeOrder,
+      grades: combinedGrades,
+    };
   }
 );
 
