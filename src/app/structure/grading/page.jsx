@@ -388,13 +388,13 @@ const GradingPage = () => {
               </div>
             </div>
 
-            {/* Global Horizontal Intervals */}
+       
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-indigo-50 dark:bg-indigo-900/20">
               <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
                 <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-md">
                   <Calculator size={12} className="text-indigo-600" />
                 </div>
-                Global Horizontal Intervals
+                 Horizontal Intervals
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {['LD_to_LQ', 'LQ_to_M', 'M_to_UQ', 'UQ_to_UD'].map((intervalKey) => {
@@ -446,9 +446,7 @@ const GradingPage = () => {
                         <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
                           <div>Vertical %</div>
                         </th>
-                        <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                          <div>Horizontal</div>
-                        </th>
+                       
                         <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LD</th>
                         <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LQ</th>
                         <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai bg-blue-50 dark:bg-blue-900/20">Median</th>
@@ -525,15 +523,7 @@ const GradingPage = () => {
                                 </div>
                               )}
                             </td>
-                            
-                            {/* Horizontal - Global Status */}
-                            <td className="py-3 px-3 text-center">
-                              <div className="flex flex-col items-center">
-                                <span className="text-xs text-blue-600 font-medium flex items-center gap-1">
-                                  🌐 Global
-                                </span>
-                              </div>
-                            </td>
+                           
                             
                             {/* Calculated Values */}
                             <td className="py-3 px-3 text-xs text-right font-mono">
