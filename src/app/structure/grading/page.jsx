@@ -1,4 +1,3 @@
-
 "use client";
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -100,6 +99,98 @@ const GradingPage = () => {
   const formatCurrency = (value) => {
     const numValue = safeValue(value);
     return numValue.toLocaleString();
+  };
+
+  // FIXED: Get comparison data with proper input value extraction
+  const getComparisonData = (scenarioId) => {
+    if (scenarioId === 'current') {
+      return {
+        scenario: currentData,
+        data: currentData,
+        name: 'Current Structure',
+        status: 'current'
+      };
+    }
+    
+    // Find scenario in all collections
+    const allScenarios = [...draftScenarios, ...archivedScenarios];
+    const scenario = allScenarios.find(s => s.id === scenarioId);
+    
+    if (!scenario) return null;
+    
+    return {
+      scenario,
+      data: scenario.data || scenario,
+      name: scenario.name,
+      status: scenario.status || 'draft'
+    };
+  };
+
+  // FIXED: Get vertical input value for specific scenario and grade
+  const getVerticalInputValue = (scenarioId, gradeName) => {
+    if (scenarioId === 'current') {
+      return null; // Current structure doesn't have input values
+    }
+    
+    const allScenarios = [...draftScenarios, ...archivedScenarios];
+    const scenario = allScenarios.find(s => s.id === scenarioId);
+    
+    if (!scenario) return null;
+    
+    // Try to get from input_rates first (backend data)
+    if (scenario.input_rates && scenario.input_rates[gradeName] && scenario.input_rates[gradeName].vertical !== undefined) {
+      return scenario.input_rates[gradeName].vertical;
+    }
+    
+    // Try to get from data.positionVerticalInputs
+    if (scenario.data && scenario.data.positionVerticalInputs && scenario.data.positionVerticalInputs[gradeName] !== undefined) {
+      return scenario.data.positionVerticalInputs[gradeName];
+    }
+    
+    // Try to get from grades data
+    if (scenario.data && scenario.data.grades && scenario.data.grades[gradeName] && scenario.data.grades[gradeName].verticalInput !== undefined) {
+      return scenario.data.grades[gradeName].verticalInput;
+    }
+    
+    return null;
+  };
+
+  // FIXED: Get horizontal input values for specific scenario
+  const getHorizontalInputValues = (scenarioId) => {
+    if (scenarioId === 'current') {
+      return {
+        LD_to_LQ: 0,
+        LQ_to_M: 0,
+        M_to_UQ: 0,
+        UQ_to_UD: 0
+      };
+    }
+    
+    const allScenarios = [...draftScenarios, ...archivedScenarios];
+    const scenario = allScenarios.find(s => s.id === scenarioId);
+    
+    if (!scenario) return null;
+    
+    // Try to get from data.globalHorizontalIntervals first
+    if (scenario.data && scenario.data.globalHorizontalIntervals) {
+      return scenario.data.globalHorizontalIntervals;
+    }
+    
+    // Try to get from input_rates (any position should have the same global intervals)
+    if (scenario.input_rates) {
+      for (const [gradeName, gradeData] of Object.entries(scenario.input_rates)) {
+        if (gradeData && gradeData.horizontal_intervals) {
+          return gradeData.horizontal_intervals;
+        }
+      }
+    }
+    
+    return {
+      LD_to_LQ: 0,
+      LQ_to_M: 0,
+      M_to_UQ: 0,
+      UQ_to_UD: 0
+    };
   };
 
   // ENHANCED: Metrics display component with safe data handling
@@ -912,7 +1003,7 @@ const GradingPage = () => {
           </div>
         )}
 
-        {/* ENHANCED: Detail Modal with comprehensive data display */}
+        {/* FIXED: Detail Modal with enhanced comparison view */}
         {isDetailOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-2xl">
@@ -926,7 +1017,7 @@ const GradingPage = () => {
                       }
                     </h2>
                     <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      {compareMode ? 'Compare multiple scenarios side by side' : 'Detailed view with comprehensive data analysis'}
+                      {compareMode ? 'Compare multiple scenarios with input data visualization' : 'Detailed view with comprehensive data analysis'}
                     </p>
                   </div>
                   <button
@@ -940,49 +1031,66 @@ const GradingPage = () => {
 
               <div className="p-4">
                 {compareMode && selectedForComparison.length >= 2 ? (
-                  // ENHANCED: Comparison View with safe data handling
+                  // FIXED: Enhanced Comparison View with proper input data display
                   <div className="space-y-6">
-                    {/* Comparison Summary */}
+                    {/* FIXED: Comparison Summary with input data */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                       {selectedForComparison.map(scenarioId => {
-                        const scenario = getScenarioForComparison(scenarioId);
-                        if (!scenario) return null;
+                        const comparisonData = getComparisonData(scenarioId);
+                        if (!comparisonData) return null;
                         
-                        const scenarioData = scenario.data || scenario;
+                        const { scenario, data, name, status } = comparisonData;
+                        const horizontalInputs = getHorizontalInputValues(scenarioId);
+                        
                         return (
                           <div key={scenarioId} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
                             <h3 className="font-bold text-sm mb-3 text-almet-cloud-burst dark:text-white">
-                              {scenario.name || 'Unknown Scenario'}
+                              {name}
                             </h3>
                             <div className="space-y-2">
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Base Value:</span>
-                                <span className="font-semibold text-xs">{formatCurrency(scenarioData.baseValue1)}</span>
+                                <span className="font-semibold text-xs">{formatCurrency(data?.baseValue1)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Vertical Avg:</span>
-                                <span className="font-semibold text-xs text-blue-600">{formatPercentage(scenarioData.verticalAvg)}</span>
+                                <span className="font-semibold text-xs text-blue-600">{formatPercentage(data?.verticalAvg)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Horizontal Avg:</span>
-                                <span className="font-semibold text-xs text-green-600">{formatPercentage(scenarioData.horizontalAvg)}</span>
+                                <span className="font-semibold text-xs text-green-600">{formatPercentage(data?.horizontalAvg)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Status:</span>
                                 <span className={`text-xs font-semibold capitalize ${
-                                  scenario.status === 'current' ? 'text-green-600' : 
-                                  scenario.status === 'draft' ? 'text-blue-600' : 'text-gray-600'
+                                  status === 'current' ? 'text-green-600' : 
+                                  status === 'draft' ? 'text-blue-600' : 'text-gray-600'
                                 }`}>
-                                  {scenario.status || 'Draft'}
+                                  {status}
                                 </span>
                               </div>
                             </div>
+                            
+                            {/* FIXED: Horizontal Input Display */}
+                            {horizontalInputs && (
+                              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                                <div className="text-xs font-medium text-almet-cloud-burst dark:text-white mb-2">Horizontal Intervals:</div>
+                                <div className="grid grid-cols-2 gap-1 text-xs">
+                                  {Object.entries(horizontalInputs).map(([key, value]) => (
+                                    <div key={key} className="flex justify-between">
+                                      <span className="text-almet-waterloo dark:text-almet-bali-hai truncate">{key.replace(/_/g, '→').replace('to', '')}</span>
+                                      <span className="font-mono">{safeValue(value).toFixed(1)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
                     </div>
 
-                    {/* Detailed Comparison Table */}
+                    {/* FIXED: Detailed Comparison Table with input data */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                       <h3 className="text-sm font-semibold mb-3">Position-by-Position Comparison</h3>
                       <div className="overflow-x-auto">
@@ -991,44 +1099,116 @@ const GradingPage = () => {
                             <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                               <th className="text-left py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Grade</th>
                               {selectedForComparison.map(scenarioId => {
-                                const scenario = getScenarioForComparison(scenarioId);
-                                return scenario ? (
+                                const comparisonData = getComparisonData(scenarioId);
+                                return comparisonData ? (
                                   <th key={scenarioId} className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                                    <div className="font-medium">{scenario.name}</div>
-                                    <div className="text-xs font-normal text-gray-500">Median Values</div>
+                                    <div className="font-medium">{comparisonData.name}</div>
+                                    <div className="text-xs font-normal text-gray-500">Median | Vertical Input</div>
                                   </th>
                                 ) : null;
                               })}
                             </tr>
                           </thead>
                           <tbody>
-                            {(currentData?.gradeOrder || []).map(gradeName => (
-                              <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50">
-                                <td className="py-2 px-3 text-xs font-medium">{gradeName}</td>
-                                {selectedForComparison.map(scenarioId => {
-                                  const scenario = getScenarioForComparison(scenarioId);
-                                  const scenarioData = scenario?.data || scenario;
-                                  const gradeData = scenarioData?.grades?.[gradeName];
-                                  
-                                  return (
-                                    <td key={scenarioId} className="py-2 px-3 text-center">
-                                      {gradeData ? (
-                                        <div>
-                                          <div className="font-mono font-bold text-sm text-blue-600">
-                                            {formatCurrency(gradeData.M)}
-                                          </div>
-                                          <div className="text-xs text-gray-500">
-                                            V: {safeValue(gradeData.vertical, 0)}% | H: Global
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <span className="text-gray-400">-</span>
+                            {(currentData?.gradeOrder || []).map((gradeName, index) => {
+                              const isBasePosition = index === (currentData?.gradeOrder?.length - 1);
+                              
+                              return (
+                                <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50">
+                                  <td className="py-2 px-3 text-xs font-medium">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2 h-2 rounded-full ${
+                                        index === 0 ? 'bg-red-500' : isBasePosition ? 'bg-blue-500' : 'bg-gray-400'
+                                      }`} />
+                                      {gradeName}
+                                      {isBasePosition && (
+                                        <span className="text-xs bg-blue-100 text-blue-700 px-1 py-0.5 rounded">Base</span>
                                       )}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
+                                    </div>
+                                  </td>
+                                  {selectedForComparison.map(scenarioId => {
+                                    const comparisonData = getComparisonData(scenarioId);
+                                    const data = comparisonData?.data;
+                                    const gradeData = data?.grades?.[gradeName];
+                                    const verticalInput = getVerticalInputValue(scenarioId, gradeName);
+                                    
+                                    return (
+                                      <td key={scenarioId} className="py-2 px-3 text-center">
+                                        {gradeData ? (
+                                          <div>
+                                            <div className="font-mono font-bold text-sm text-blue-600">
+                                              {formatCurrency(gradeData.M)}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1">
+                                              {!isBasePosition ? (
+                                                verticalInput !== null && verticalInput !== undefined ? (
+                                                  <span className="text-orange-600 font-medium">
+                                                    V: {safeValue(verticalInput)}%
+                                                  </span>
+                                                ) : (
+                                                  <span className="text-gray-400">V: N/A</span>
+                                                )
+                                              ) : (
+                                                <span className="text-blue-600 font-medium">Base Position</span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* FIXED: Horizontal Intervals Comparison */}
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold mb-3 text-almet-cloud-burst dark:text-white">
+                        Horizontal Intervals Comparison
+                      </h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b border-indigo-200 dark:border-indigo-800">
+                              <th className="text-left py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Interval</th>
+                              {selectedForComparison.map(scenarioId => {
+                                const comparisonData = getComparisonData(scenarioId);
+                                return comparisonData ? (
+                                  <th key={scenarioId} className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
+                                    {comparisonData.name}
+                                  </th>
+                                ) : null;
+                              })}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {['LD_to_LQ', 'LQ_to_M', 'M_to_UQ', 'UQ_to_UD'].map(intervalKey => {
+                              const displayName = intervalKey.replace(/_to_/g, ' → ').replace(/_/g, ' ');
+                              
+                              return (
+                                <tr key={intervalKey} className="border-b border-indigo-100 dark:border-indigo-900">
+                                  <td className="py-2 px-3 text-xs font-medium">{displayName}</td>
+                                  {selectedForComparison.map(scenarioId => {
+                                    const horizontalInputs = getHorizontalInputValues(scenarioId);
+                                    const intervalValue = horizontalInputs?.[intervalKey];
+                                    
+                                    return (
+                                      <td key={scenarioId} className="py-2 px-3 text-center">
+                                        <span className="font-mono text-sm text-green-600 font-bold">
+                                          {safeValue(intervalValue).toFixed(1)}%
+                                        </span>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -1117,8 +1297,6 @@ const GradingPage = () => {
                       ) : null;
                     })()}
 
-                
-
                     {/* ENHANCED: Detailed Grade Table with comprehensive data display */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                       <h3 className="text-sm font-semibold mb-3">Detailed Grade Breakdown</h3>
@@ -1127,7 +1305,7 @@ const GradingPage = () => {
                           <thead>
                             <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                               <th className="text-left py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Grade</th>
-                              <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Vertical %</th>
+                              <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Vertical Input %</th>
                               <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Horizontal</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LD</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LQ</th>
@@ -1144,15 +1322,7 @@ const GradingPage = () => {
                               const isTopPosition = index === 0;
                               
                               // Extract vertical value with multiple fallbacks
-                              let verticalValue = null;
-                              if (selectedScenario.input_rates && selectedScenario.input_rates[gradeName]) {
-                                const gradeInput = selectedScenario.input_rates[gradeName];
-                                if (gradeInput.vertical !== null && gradeInput.vertical !== undefined) {
-                                  verticalValue = gradeInput.vertical;
-                                }
-                              } else if (values.vertical !== null && values.vertical !== undefined) {
-                                verticalValue = values.vertical;
-                              }
+                              let verticalValue = getVerticalInputValue(selectedScenario.id, gradeName);
                               
                               return (
                                 <tr key={gradeName} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50 ${
@@ -1174,15 +1344,19 @@ const GradingPage = () => {
                                     </div>
                                   </td>
                                   
-                                  {/* Vertical Input Display */}
+                                  {/* FIXED: Vertical Input Display */}
                                   <td className="py-3 px-3 text-xs text-center">
-                                    {!isBasePosition && verticalValue !== null && verticalValue !== undefined ? (
-                                      <span className="font-mono font-semibold text-sm text-blue-600">
-                                        {safeValue(verticalValue).toFixed(1)}%
-                                      </span>
+                                    {!isBasePosition ? (
+                                      verticalValue !== null && verticalValue !== undefined ? (
+                                        <span className="font-mono font-semibold text-sm text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded">
+                                          {safeValue(verticalValue).toFixed(1)}%
+                                        </span>
+                                      ) : (
+                                        <span className="text-gray-400 italic">No Input</span>
+                                      )
                                     ) : (
-                                      <span className="text-gray-400 italic">
-                                        N/A {isBasePosition ? '(Base)' : ''}
+                                      <span className="text-blue-600 font-medium text-xs">
+                                        N/A (Base)
                                       </span>
                                     )}
                                   </td>

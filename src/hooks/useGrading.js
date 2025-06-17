@@ -1,4 +1,4 @@
-// src/hooks/useGrading.js - ENHANCED: Complete data management with proper initialization
+// src/hooks/useGrading.js - FIXED: Enhanced comparison data extraction
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -35,6 +35,7 @@ import {
   selectValidationSummary,
   selectInputSummary
 } from '@/store/slices/gradingSlice';
+import { gradingApi } from '@/services/gradingApi';
 
 const useGrading = () => {
   const dispatch = useDispatch();
@@ -484,18 +485,82 @@ const useGrading = () => {
     setIsDetailOpen(true);
   }, [selectedForComparison]);
 
+  // FIXED: Enhanced scenario retrieval for comparison with proper data access
   const getScenarioForComparison = useCallback((scenarioId) => {
+    console.log('🔍 Getting scenario for comparison:', scenarioId);
+    
     if (scenarioId === 'current') {
-      return currentData;
+      console.log('✅ Returning current structure data');
+      return {
+        ...currentData,
+        name: 'Current Structure',
+        status: 'current'
+      };
     }
     
     // Search in all scenarios
     const allScenarios = [...draftScenarios, ...archivedScenarios];
     const scenario = allScenarios.find(s => s.id === scenarioId);
     
-    console.log('🔍 Found scenario for comparison:', scenario?.name);
-    return scenario;
+    if (scenario) {
+      console.log('✅ Found scenario for comparison:', scenario.name);
+      console.log('📊 Scenario input data check:', {
+        hasInputRates: !!(scenario.input_rates && Object.keys(scenario.input_rates).length > 0),
+        hasPositionVerticalInputs: !!(scenario.data && scenario.data.positionVerticalInputs),
+        hasGlobalHorizontalIntervals: !!(scenario.data && scenario.data.globalHorizontalIntervals)
+      });
+      return scenario;
+    }
+    
+    console.log('❌ Scenario not found for comparison:', scenarioId);
+    return null;
   }, [currentData, draftScenarios, archivedScenarios]);
+
+  // FIXED: Helper functions for extracting comparison data
+  const getVerticalInputValue = useCallback((scenarioId, gradeName) => {
+    console.log(`🔍 Getting vertical input for ${gradeName} in scenario ${scenarioId}`);
+    
+    if (scenarioId === 'current') {
+      console.log('❌ Current structure has no input values');
+      return null;
+    }
+    
+    const scenario = getScenarioForComparison(scenarioId);
+    if (!scenario) {
+      console.log('❌ Scenario not found');
+      return null;
+    }
+    
+    // Use the API helper function for consistent extraction
+    const value = gradingApi.extractVerticalInputForGrade(scenario, gradeName);
+    console.log(`📈 Extracted vertical input: ${value}`);
+    return value;
+  }, [getScenarioForComparison]);
+
+  const getHorizontalInputValues = useCallback((scenarioId) => {
+    console.log(`🔍 Getting horizontal inputs for scenario ${scenarioId}`);
+    
+    if (scenarioId === 'current') {
+      console.log('❌ Current structure has no input values');
+      return {
+        LD_to_LQ: 0,
+        LQ_to_M: 0,
+        M_to_UQ: 0,
+        UQ_to_UD: 0
+      };
+    }
+    
+    const scenario = getScenarioForComparison(scenarioId);
+    if (!scenario) {
+      console.log('❌ Scenario not found');
+      return null;
+    }
+    
+    // Use the API helper function for consistent extraction
+    const values = gradingApi.extractHorizontalInputs(scenario);
+    console.log(`🌐 Extracted horizontal inputs:`, values);
+    return values;
+  }, [getScenarioForComparison]);
 
   // ENHANCED: Refresh data function
   const refreshData = useCallback(async () => {
@@ -613,7 +678,9 @@ const useGrading = () => {
     hasErrors,
     dataAvailability,
     inputsReady: !!(scenarioInputs.gradeOrder && scenarioInputs.gradeOrder.length > 0),
-    canSave: validationSummary.canSave
+    canSave: validationSummary.canSave,
+    compareMode,
+    selectedForComparison: selectedForComparison.length
   });
 
   return {
@@ -664,6 +731,10 @@ const useGrading = () => {
     calculateGrades,
     clearCalculatedOutputs,
     refreshData,
+    
+    // FIXED: Enhanced comparison helper functions
+    getVerticalInputValue,
+    getHorizontalInputValues,
     
     // ENHANCED: Utility functions
     clearErrors: () => dispatch(clearErrors()),

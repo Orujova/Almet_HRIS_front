@@ -1,4 +1,4 @@
-// src/store/slices/gradingSlice.js - ENHANCED: Complete API integration with proper data handling
+// src/store/slices/gradingSlice.js - FIXED: Enhanced data preservation for comparison
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { gradingApi } from '@/services/gradingApi';
 
@@ -41,7 +41,15 @@ export const fetchScenarios = createAsyncThunk(
       const scenarios = response.data.results || response.data || [];
       const formattedScenarios = scenarios
         .filter(scenario => scenario && scenario.id) // Filter out invalid scenarios
-        .map(scenario => gradingApi.formatScenarioForFrontend(scenario));
+        .map(scenario => {
+          const formatted = gradingApi.formatScenarioForFrontend(scenario);
+          console.log(`📊 Formatted scenario ${formatted?.name}:`, {
+            hasInputRates: !!(formatted?.input_rates && Object.keys(formatted.input_rates).length > 0),
+            hasPositionVerticalInputs: !!(formatted?.data?.positionVerticalInputs && Object.keys(formatted.data.positionVerticalInputs).length > 0),
+            hasGlobalHorizontalIntervals: !!(formatted?.data?.globalHorizontalIntervals && Object.values(formatted.data.globalHorizontalIntervals).some(v => v > 0))
+          });
+          return formatted;
+        });
       
       return { 
         scenarios: formattedScenarios,
@@ -60,7 +68,18 @@ export const fetchScenarioDetails = createAsyncThunk(
     try {
       const response = await gradingApi.getScenario(scenarioId);
       console.log('✅ Scenario details response:', response.data);
-      return gradingApi.formatScenarioForFrontend(response.data);
+      const formatted = gradingApi.formatScenarioForFrontend(response.data);
+      
+      // FIXED: Log detailed input data preservation
+      console.log(`🔍 Formatted scenario details for ${formatted?.name}:`, {
+        hasInputRates: !!(formatted?.input_rates && Object.keys(formatted.input_rates).length > 0),
+        hasPositionVerticalInputs: !!(formatted?.data?.positionVerticalInputs && Object.keys(formatted.data.positionVerticalInputs).length > 0),
+        inputRatesKeys: formatted?.input_rates ? Object.keys(formatted.input_rates) : [],
+        positionVerticalInputsKeys: formatted?.data?.positionVerticalInputs ? Object.keys(formatted.data.positionVerticalInputs) : [],
+        sampleVerticalInput: formatted?.input_rates ? Object.values(formatted.input_rates)[0]?.vertical : 'N/A'
+      });
+      
+      return formatted;
     } catch (error) {
       console.error('❌ Error fetching scenario details:', error);
       return rejectWithValue(error.response?.data?.error || error.message);
@@ -256,6 +275,15 @@ const gradingSlice = createSlice({
     setSelectedScenario: (state, action) => {
       state.selectedScenario = action.payload;
       console.log('🎯 Selected scenario:', action.payload?.name);
+      
+      // FIXED: Log input data availability for debugging
+      if (action.payload) {
+        console.log('🔍 Selected scenario input data:', {
+          hasInputRates: !!(action.payload.input_rates && Object.keys(action.payload.input_rates).length > 0),
+          hasPositionVerticalInputs: !!(action.payload.data?.positionVerticalInputs && Object.keys(action.payload.data.positionVerticalInputs).length > 0),
+          hasGlobalHorizontalIntervals: !!(action.payload.data?.globalHorizontalIntervals && Object.values(action.payload.data.globalHorizontalIntervals).some(v => v > 0))
+        });
+      }
     },
     
     clearErrors: (state) => {
@@ -372,7 +400,7 @@ const gradingSlice = createSlice({
         state.errors.calculating = action.payload;
       });
 
-    // Fetch Scenarios
+    // Fetch Scenarios - FIXED: Enhanced logging for input data preservation
     builder
       .addCase(fetchScenarios.pending, (state, action) => {
         const status = action.meta.arg.status;
@@ -391,6 +419,19 @@ const gradingSlice = createSlice({
           state.loading.draftScenarios = false;
           state.draftScenarios = scenarios;
           console.log('✅ Draft scenarios loaded:', scenarios.length, 'scenarios');
+          
+          // FIXED: Log input data availability for debugging
+          scenarios.forEach(scenario => {
+            if (scenario.input_rates || scenario.data?.positionVerticalInputs) {
+              console.log(`📊 Draft scenario ${scenario.name} input data:`, {
+                hasInputRates: !!(scenario.input_rates && Object.keys(scenario.input_rates).length > 0),
+                hasPositionVerticalInputs: !!(scenario.data?.positionVerticalInputs && Object.keys(scenario.data.positionVerticalInputs).length > 0),
+                inputRatesCount: scenario.input_rates ? Object.keys(scenario.input_rates).length : 0,
+                positionVerticalInputsCount: scenario.data?.positionVerticalInputs ? Object.keys(scenario.data.positionVerticalInputs).length : 0
+              });
+            }
+          });
+          
         } else if (status === 'ARCHIVED') {
           state.loading.archivedScenarios = false;
           state.archivedScenarios = scenarios;
@@ -408,7 +449,7 @@ const gradingSlice = createSlice({
         }
       });
 
-    // Fetch Scenario Details
+    // Fetch Scenario Details - FIXED: Enhanced logging for input data
     builder
       .addCase(fetchScenarioDetails.pending, (state) => {
         state.loading.scenarioDetails = true;
@@ -417,7 +458,20 @@ const gradingSlice = createSlice({
       .addCase(fetchScenarioDetails.fulfilled, (state, action) => {
         state.loading.scenarioDetails = false;
         state.selectedScenario = action.payload;
+        
         console.log('✅ Scenario details loaded:', action.payload?.name);
+        
+        // FIXED: Enhanced logging for input data verification
+        if (action.payload) {
+          console.log('🔍 Scenario details input data verification:', {
+            hasInputRates: !!(action.payload.input_rates && Object.keys(action.payload.input_rates).length > 0),
+            hasPositionVerticalInputs: !!(action.payload.data?.positionVerticalInputs && Object.keys(action.payload.data.positionVerticalInputs).length > 0),
+            hasGlobalHorizontalIntervals: !!(action.payload.data?.globalHorizontalIntervals && Object.values(action.payload.data.globalHorizontalIntervals).some(v => v > 0)),
+            inputRatesKeys: action.payload.input_rates ? Object.keys(action.payload.input_rates) : [],
+            positionVerticalInputsKeys: action.payload.data?.positionVerticalInputs ? Object.keys(action.payload.data.positionVerticalInputs) : [],
+            globalHorizontalIntervalsValues: action.payload.data?.globalHorizontalIntervals || {}
+          });
+        }
       })
       .addCase(fetchScenarioDetails.rejected, (state, action) => {
         state.loading.scenarioDetails = false;
