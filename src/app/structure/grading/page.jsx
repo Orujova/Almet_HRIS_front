@@ -1,4 +1,3 @@
-// src/app/structure/grading/page.jsx - SIMPLIFIED ADAPTED VERSION
 
 "use client";
 import React, { useState, useEffect } from "react";
@@ -11,7 +10,6 @@ import {
   Save, 
   Archive, 
   Eye, 
-  Trash2, 
   Plus, 
   X, 
   GitCompare, 
@@ -23,19 +21,22 @@ import {
   Calendar,
   User,
   DollarSign,
-  TrendingDown,
-  Activity
+  Activity,
+  Database,
+  Zap,
+  Settings
 } from "lucide-react";
 import useGrading from "@/hooks/useGrading";
 
 const GradingPage = () => {
   const { darkMode } = useTheme();
-  const [selectedBasePosition, setSelectedBasePosition] = useState(null);
   
-  // Use the enhanced hook
+  // ENHANCED: Use complete hook with all functionality
   const {
-    // Data
+    // Core data
     currentData,
+    currentScenario,
+    positionGroups,
     scenarioInputs,
     calculatedOutputs,
     newScenarioDisplayData,
@@ -43,17 +44,26 @@ const GradingPage = () => {
     archivedScenarios,
     selectedScenario,
     bestDraft,
-    inputSummary,
-    validationSummary,
+    basePositionName,
     
-    // UI State
+    // Computed state
+    validationSummary,
+    inputSummary,
+    dataAvailability,
+    
+    // UI state
     isDetailOpen,
     setIsDetailOpen,
     compareMode,
     selectedForComparison,
-    loading,
+    isLoading,
+    isCalculating,
     errors,
-    canSaveDraft,
+    hasErrors,
+    isInitialized,
+    
+    // Loading states (direct access)
+    loading,
     
     // Actions
     handleBaseValueChange,
@@ -67,88 +77,99 @@ const GradingPage = () => {
     toggleScenarioForComparison,
     startComparison,
     getScenarioForComparison,
-    calculateGrades
+    calculateGrades,
+    refreshData
   } = useGrading();
 
-  // Determine base position automatically
-  useEffect(() => {
-    if (currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0) {
-      const basePos = currentData.gradeOrder[currentData.gradeOrder.length - 1];
-      setSelectedBasePosition(basePos);
+  // ENHANCED: Safe value extraction with null handling
+  const safeValue = (value, defaultValue = 0) => {
+    if (value === null || value === undefined || value === '') {
+      return defaultValue;
     }
-  }, [currentData]);
-
-  // Get position for base value display
-  const getBasePositionName = () => {
-    if (selectedBasePosition) return selectedBasePosition;
-    if (currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0) {
-      return currentData.gradeOrder[currentData.gradeOrder.length - 1];
-    }
-    return "Base Position";
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? defaultValue : parsed;
   };
 
-  // Simplified metrics display component
+  // ENHANCED: Safe percentage display
+  const formatPercentage = (value, decimals = 1) => {
+    const numValue = safeValue(value);
+    return `${(numValue * 100).toFixed(decimals)}%`;
+  };
+
+  // ENHANCED: Safe currency display
+  const formatCurrency = (value) => {
+    const numValue = safeValue(value);
+    return numValue.toLocaleString();
+  };
+
+  // ENHANCED: Metrics display component with safe data handling
   const MetricsDisplay = ({ scenario, size = "sm" }) => {
     if (!scenario || !scenario.metrics) return null;
 
     const sizeClasses = size === "lg" ? "px-3 py-2 text-sm" : "px-2 py-1 text-xs";
+    const metrics = scenario.metrics;
 
     return (
       <div className={`space-y-1 ${sizeClasses}`}>
         <div className="flex justify-between">
           <span className="text-almet-waterloo dark:text-almet-bali-hai">Budget Impact:</span>
-          <span className="font-medium text-xs">{(scenario.metrics.totalBudgetImpact || 0).toLocaleString()}</span>
+          <span className="font-medium text-xs">{formatCurrency(metrics.totalBudgetImpact)}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-almet-waterloo dark:text-almet-bali-hai">Avg Increase:</span>
-          <span className={`font-medium text-xs ${(scenario.metrics.avgSalaryIncrease || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {(scenario.metrics.avgSalaryIncrease || 0) > 0 ? '+' : ''}{(scenario.metrics.avgSalaryIncrease || 0).toFixed(1)}%
+          <span className={`font-medium text-xs ${
+            safeValue(metrics.avgSalaryIncrease) > 0 ? 'text-green-600' : 'text-red-600'
+          }`}>
+            {safeValue(metrics.avgSalaryIncrease) > 0 ? '+' : ''}
+            {safeValue(metrics.avgSalaryIncrease).toFixed(1)}%
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-almet-waterloo dark:text-almet-bali-hai">Max Increase:</span>
           <span className="font-medium text-xs text-orange-600">
-            {(scenario.metrics.maxSalaryIncrease || 0).toFixed(1)}%
+            {safeValue(metrics.maxSalaryIncrease).toFixed(1)}%
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-almet-waterloo dark:text-almet-bali-hai">Positions:</span>
-          <span className="font-medium text-xs">{scenario.metrics.positionsAffected || 0}</span>
+          <span className="font-medium text-xs">{safeValue(metrics.positionsAffected, 0)}</span>
         </div>
       </div>
     );
   };
 
-
-
-  // Simplified loading component
+  // ENHANCED: Loading spinner with detailed messages
   const LoadingSpinner = ({ message = "Loading..." }) => (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
         <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-almet-sapphire mx-auto mb-3"></div>
         <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">{message}</p>
+        {!isInitialized && (
+          <p className="text-xs text-gray-500 mt-2">Initializing grading system...</p>
+        )}
       </div>
     </div>
   );
 
-  // Simplified error component
+  // ENHANCED: Error display with retry functionality
   const ErrorDisplay = ({ error, onRetry }) => (
     <div className="flex items-center justify-center min-h-screen">
       <div className="text-center max-w-md">
         <div className="text-red-500 mb-3">
-          <Archive size={32} className="mx-auto mb-2" />
-          <h3 className="text-base font-medium">Database Error</h3>
+          <AlertTriangle size={32} className="mx-auto mb-2" />
+          <h3 className="text-base font-medium">System Error</h3>
         </div>
         <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mb-3">{error}</p>
         <p className="text-xs text-gray-500 mb-3">
-          Please ensure position groups are configured in the database.
+          Please ensure the database is properly configured with position groups.
         </p>
         {onRetry && (
           <button
             onClick={onRetry}
-            className="bg-almet-sapphire text-white px-4 py-2 text-sm rounded-md hover:bg-almet-astral transition-colors"
+            className="bg-almet-sapphire text-white px-4 py-2 text-sm rounded-md hover:bg-almet-astral transition-colors flex items-center gap-2 mx-auto"
           >
-            Try Again
+            <RefreshCw size={12} />
+            Retry
           </button>
         )}
       </div>
@@ -156,7 +177,7 @@ const GradingPage = () => {
   );
 
   // Show loading state
-  if (loading && !currentData) {
+  if (isLoading && !isInitialized) {
     return (
       <DashboardLayout>
         <LoadingSpinner message="Loading grading system..." />
@@ -164,26 +185,14 @@ const GradingPage = () => {
     );
   }
 
-  // Show error
-  if (errors.load) {
+  // Show error if no current data
+  if (errors.currentStructure || !dataAvailability.hasCurrentData) {
     return (
       <DashboardLayout>
-        <ErrorDisplay error={errors.load} />
-      </DashboardLayout>
-    );
-  }
-
-  // Show no data state
-  if (!currentData) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <Calculator size={32} className="mx-auto mb-3 text-gray-400" />
-            <h3 className="text-base font-medium text-almet-waterloo dark:text-almet-bali-hai mb-2">No Grading Structure Found</h3>
-            <p className="text-xs text-gray-500">Please configure position groups in the database first.</p>
-          </div>
-        </div>
+        <ErrorDisplay 
+          error={errors.currentStructure || "No grading structure found in database"} 
+          onRetry={refreshData}
+        />
       </DashboardLayout>
     );
   }
@@ -191,7 +200,7 @@ const GradingPage = () => {
   return (
     <DashboardLayout>
       <div className="p-4 space-y-4 max-w-7xl mx-auto">
-        {/* Simplified Header */}
+        {/* ENHANCED: Header with system status */}
         <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -201,22 +210,13 @@ const GradingPage = () => {
               <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
                 Manage salary grades and compensation structures
               </p>
+             
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-right text-xs">
-                <p className="text-gray-500">Last Updated</p>
-                <p className="font-medium text-xs">{new Date().toLocaleDateString()}</p>
-              </div>
-              <div className="p-2 bg-almet-sapphire rounded-md">
-                <Activity size={16} className="text-white" />
-              </div>
-            </div>
+            
           </div>
-
-         
         </div>
 
-        {/* Current Situation - Simplified */}
+        {/* ENHANCED: Current Situation with safe data display */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-almet-mystic/50 dark:bg-almet-cloud-burst/20">
             <div className="flex items-center gap-2">
@@ -228,33 +228,39 @@ const GradingPage = () => {
                   Current Grade Structure
                 </h2>
                 <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                  Active compensation structure with {currentData.gradeOrder.length} position groups
+                  Active compensation structure with {currentData?.gradeOrder?.length || 0} position groups
                 </p>
               </div>
             </div>
           </div>
           
           <div className="p-4">
-            {/* Simplified Key Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            {/* ENHANCED: Key Metrics with safe calculations */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
                 <div className="text-xl font-bold text-blue-600 mb-1">
-                  {(currentData.verticalAvg * 100).toFixed(1)}%
+                  {formatPercentage(currentData?.verticalAvg)}
                 </div>
                 <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Vertical Average</div>
                 <div className="text-xs text-gray-500 mt-0.5">Position transitions</div>
               </div>
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
                 <div className="text-xl font-bold text-green-600 mb-1">
-                  {(currentData.horizontalAvg * 100).toFixed(1)}%
+                  {formatPercentage(currentData?.horizontalAvg)}
                 </div>
                 <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Horizontal Average</div>
                 <div className="text-xs text-gray-500 mt-0.5">Salary spreads</div>
               </div>
-          
+              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-md border border-purple-200 dark:border-purple-800">
+                <div className="text-xl font-bold text-purple-600 mb-1">
+                  {formatCurrency(currentData?.baseValue1)}
+                </div>
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Base Value</div>
+                <div className="text-xs text-gray-500 mt-0.5">{basePositionName}</div>
+              </div>
             </div>
 
-            {/* Simplified Grades Table */}
+            {/* ENHANCED: Current Structure Table with safe data display */}
             <div className="bg-gray-50 dark:bg-gray-900/50 rounded-md p-3">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -281,12 +287,11 @@ const GradingPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentData.gradeOrder.map((gradeName, index) => {
-                      const values = currentData.grades[gradeName];
-                      const isBasePosition = gradeName === getBasePositionName();
+                    {(currentData?.gradeOrder || []).map((gradeName, index) => {
+                      const values = currentData?.grades?.[gradeName] || {};
+                      const isBasePosition = gradeName === basePositionName;
                       const isTopPosition = index === 0;
                       
-                      if (!values) return null;
                       return (
                         <tr 
                           key={gradeName} 
@@ -314,19 +319,19 @@ const GradingPage = () => {
                             </div>
                           </td>
                           <td className="py-3 px-3 text-xs text-right font-mono text-almet-waterloo dark:text-almet-bali-hai">
-                            {(values.LD || 0).toLocaleString()}
+                            {formatCurrency(values.LD)}
                           </td>
                           <td className="py-3 px-3 text-xs text-right font-mono text-almet-waterloo dark:text-almet-bali-hai">
-                            {(values.LQ || 0).toLocaleString()}
+                            {formatCurrency(values.LQ)}
                           </td>
                           <td className="py-3 px-3 text-xs text-right font-mono font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20">
-                            {(values.M || 0).toLocaleString()}
+                            {formatCurrency(values.M)}
                           </td>
                           <td className="py-3 px-3 text-xs text-right font-mono text-almet-waterloo dark:text-almet-bali-hai">
-                            {(values.UQ || 0).toLocaleString()}
+                            {formatCurrency(values.UQ)}
                           </td>
                           <td className="py-3 px-3 text-xs text-right font-mono text-almet-waterloo dark:text-almet-bali-hai">
-                            {(values.UD || 0).toLocaleString()}
+                            {formatCurrency(values.UD)}
                           </td>
                         </tr>
                       );
@@ -338,44 +343,45 @@ const GradingPage = () => {
           </div>
         </div>
 
-        {/* Create New Scenario - Simplified */}
+        {/* ENHANCED: Create New Scenario with validation feedback */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-green-600 rounded-md">
-                <Plus size={16} className="text-white" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-green-600 rounded-md">
+                  <Plus size={16} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
+                    Create New Scenario
+                  </h2>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                    Design and test new compensation structures
+                  </p>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                  Create New Scenario
-                </h2>
-                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                  Design and test new compensation structures
-                </p>
-              </div>
-            </div>
             
-     
+            </div>
           </div>
           
           <div className="p-4 space-y-6">
-            {/* Base Value Input */}
+            {/* ENHANCED: Base Value Input with validation */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold text-almet-cloud-burst dark:text-white">
                 <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-md">
                   <Target size={12} className="text-blue-600" />
                 </div>
-                Base Value ({getBasePositionName()} LD)
+                Base Value ({basePositionName} LD)
               </label>
               <div className="max-w-md">
                 <input
                   type="number"
-                  value={scenarioInputs.baseValue1}
+                  value={scenarioInputs.baseValue1 || ''}
                   onChange={(e) => handleBaseValueChange(e.target.value)}
                   className={`w-full px-3 py-2 border rounded-md text-sm dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-colors ${
                     errors.baseValue1 ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                   }`}
-                  placeholder={`Enter base salary for ${getBasePositionName()}`}
+                  placeholder={`Enter base salary for ${basePositionName}`}
                   min="1"
                   step="1"
                 />
@@ -388,17 +394,19 @@ const GradingPage = () => {
               </div>
             </div>
 
-       
+            {/* ENHANCED: Global Horizontal Intervals with validation */}
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-indigo-50 dark:bg-indigo-900/20">
               <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
                 <div className="p-1.5 bg-indigo-100 dark:bg-indigo-900/30 rounded-md">
-                  <Calculator size={12} className="text-indigo-600" />
+                  <Settings size={12} className="text-indigo-600" />
                 </div>
-                 Horizontal Intervals
+                Global Horizontal Intervals 
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {['LD_to_LQ', 'LQ_to_M', 'M_to_UQ', 'UQ_to_UD'].map((intervalKey) => {
                   const displayName = intervalKey.replace(/_to_/g, ' → ').replace(/_/g, ' ');
+                  const errorKey = `global-horizontal-${intervalKey}`;
+                  
                   return (
                     <div key={intervalKey} className="space-y-1">
                       <label className="block text-xs font-medium text-almet-cloud-burst dark:text-white">
@@ -410,7 +418,7 @@ const GradingPage = () => {
                           value={scenarioInputs.globalHorizontalIntervals?.[intervalKey] || ''}
                           onChange={(e) => handleGlobalHorizontalChange(intervalKey, e.target.value)}
                           className={`w-full px-2 py-1.5 text-xs border rounded-md text-center dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire transition-colors ${
-                            errors[`global-horizontal-${intervalKey}`] ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                            errors[errorKey] ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                           }`}
                           placeholder="0"
                           min="0"
@@ -419,23 +427,40 @@ const GradingPage = () => {
                         />
                         <span className="absolute right-2 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">%</span>
                       </div>
-                      {errors[`global-horizontal-${intervalKey}`] && (
-                        <p className="text-red-500 text-xs">{errors[`global-horizontal-${intervalKey}`]}</p>
+                      {errors[errorKey] && (
+                        <p className="text-red-500 text-xs">{errors[errorKey]}</p>
                       )}
                     </div>
                   );
                 })}
               </div>
-             
+              {/* ENHANCED: Global intervals explanation */}
+              <div className="mt-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-indigo-200 dark:border-indigo-800">
+                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai text-center">
+                  These intervals are applied uniformly across all {scenarioInputs.gradeOrder?.length || 0} position groups for consistent salary spreads
+                </p>
+              </div>
             </div>
 
-            {/* Position Table */}
+            {/* ENHANCED: Position Table with real-time calculation */}
             {newScenarioDisplayData && (
               <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                  <Activity size={14} />
-                  Real-time Calculation Results
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                    <Activity size={14} />
+                    Real-time Calculation Results
+                    {isCalculating && (
+                      <RefreshCw size={12} className="animate-spin text-blue-500" />
+                    )}
+                  </h3>
+                  {newScenarioDisplayData.calculationProgress && (
+                    <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                      Progress: {newScenarioDisplayData.calculationProgress.calculatedPositions}/
+                      {newScenarioDisplayData.calculationProgress.totalPositions} positions calculated
+                    </div>
+                  )}
+                </div>
+                
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -444,9 +469,11 @@ const GradingPage = () => {
                           Grade Level
                         </th>
                         <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                          <div>Vertical %</div>
+                          Vertical %
                         </th>
-                       
+                        <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
+                          Status
+                        </th>
                         <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LD</th>
                         <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LQ</th>
                         <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai bg-blue-50 dark:bg-blue-900/20">Median</th>
@@ -456,16 +483,15 @@ const GradingPage = () => {
                     </thead>
                     <tbody>
                       {newScenarioDisplayData.gradeOrder.map((gradeName, index) => {
-                        const inputs = scenarioInputs.grades[gradeName] || {};
-                        const outputs = calculatedOutputs[gradeName] || { LD: "", LQ: "", M: "", UQ: "", UD: "" };
-
-                        const isBasePosition = gradeName === getBasePositionName();
+                        const gradeData = newScenarioDisplayData.grades[gradeName] || {};
+                        const isBasePosition = gradeName === basePositionName;
                         const isTopPosition = index === 0;
+                        const errorKey = `vertical-${gradeName}`;
                         
-                        // Enhanced LD value logic
+                        // Enhanced LD calculation for base position
                         const ldValue = isBasePosition && scenarioInputs.baseValue1 > 0 
-                          ? Math.round(scenarioInputs.baseValue1) 
-                          : outputs.LD;
+                          ? Math.round(parseFloat(scenarioInputs.baseValue1)) 
+                          : safeValue(gradeData.LD);
 
                         return (
                           <tr 
@@ -494,17 +520,17 @@ const GradingPage = () => {
                               </div>
                             </td>
                             
-                            {/* Vertical Input */}
+                            {/* ENHANCED: Vertical Input with validation feedback */}
                             <td className="py-3 px-3 text-center">
-                              {inputs.vertical !== null ? (
+                              {!isBasePosition ? (
                                 <div className="flex flex-col items-center space-y-1">
                                   <div className="relative">
                                     <input
                                       type="number"
-                                      value={inputs.vertical}
+                                      value={gradeData.vertical || ''}
                                       onChange={(e) => handleVerticalChange(gradeName, e.target.value)}
                                       className={`w-16 px-1.5 py-1 text-xs border rounded text-center dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-1 focus:ring-almet-sapphire transition-colors ${
-                                        errors[`vertical-${gradeName}`] ? "border-red-500" : "border-gray-300 dark:border-gray-600"
+                                        errors[errorKey] ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                                       }`}
                                       placeholder="0"
                                       min="0"
@@ -513,24 +539,44 @@ const GradingPage = () => {
                                     />
                                     <span className="absolute right-1 top-1/2 transform -translate-y-1/2 text-xs text-gray-500">%</span>
                                   </div>
-                                  {errors[`vertical-${gradeName}`] && (
-                                    <p className="text-red-500 text-xs">{errors[`vertical-${gradeName}`]}</p>
+                                  {errors[errorKey] && (
+                                    <p className="text-red-500 text-xs text-center">{errors[errorKey]}</p>
                                   )}
                                 </div>
                               ) : (
                                 <div className="flex flex-col items-center">
                                   <span className="text-xs text-gray-400 italic">N/A</span>
+                                  <span className="text-xs text-gray-400">(Base)</span>
                                 </div>
                               )}
                             </td>
-                           
                             
-                            {/* Calculated Values */}
+                            {/* ENHANCED: Status indicator */}
+                            <td className="py-3 px-3 text-center">
+                              {gradeData.isCalculated ? (
+                                <span className="text-xs text-green-600 font-medium flex items-center justify-center gap-1">
+                                  <CheckCircle size={8} />
+                                  Ready
+                                </span>
+                              ) : isBasePosition && scenarioInputs.baseValue1 > 0 ? (
+                                <span className="text-xs text-blue-600 font-medium flex items-center justify-center gap-1">
+                                  <Target size={8} />
+                                  Base
+                                </span>
+                              ) : (
+                                <span className="text-xs text-gray-400 italic">Pending</span>
+                              )}
+                            </td>
+                            
+                            {/* ENHANCED: Calculated Values with proper formatting */}
                             <td className="py-3 px-3 text-xs text-right font-mono">
-                              {ldValue ? (
-                                <span className={`${isBasePosition ? "font-bold text-blue-600" : ""} ${outputs.LD ? "text-green-600" : "text-almet-waterloo"}`}>
-                                  {Number(ldValue).toLocaleString()}
-                                  {isBasePosition && scenarioInputs.baseValue1 > 0 && !outputs.LD && (
+                              {ldValue > 0 ? (
+                                <span className={`${
+                                  isBasePosition ? "font-bold text-blue-600" : 
+                                  gradeData.isCalculated ? "text-green-600" : "text-almet-waterloo"
+                                }`}>
+                                  {formatCurrency(ldValue)}
+                                  {isBasePosition && scenarioInputs.baseValue1 > 0 && !gradeData.isCalculated && (
                                     <span className="ml-1 text-xs text-blue-600">(Input)</span>
                                   )}
                                 </span>
@@ -539,23 +585,23 @@ const GradingPage = () => {
                               )}
                             </td>
                             <td className="py-3 px-3 text-xs text-right font-mono">
-                              <span className={outputs.LQ ? "text-green-600" : "text-gray-400"}>
-                                {outputs.LQ ? Number(outputs.LQ).toLocaleString() : "-"}
+                              <span className={gradeData.LQ && gradeData.LQ !== "" ? "text-green-600" : "text-gray-400"}>
+                                {gradeData.LQ && gradeData.LQ !== "" ? formatCurrency(gradeData.LQ) : "-"}
                               </span>
                             </td>
                             <td className="py-3 px-3 text-xs text-right font-mono font-bold bg-blue-50 dark:bg-blue-900/20">
-                              <span className={outputs.M ? "text-green-600" : "text-gray-400"}>
-                                {outputs.M ? Number(outputs.M).toLocaleString() : "-"}
+                              <span className={gradeData.M && gradeData.M !== "" ? "text-green-600" : "text-gray-400"}>
+                                {gradeData.M && gradeData.M !== "" ? formatCurrency(gradeData.M) : "-"}
                               </span>
                             </td>
                             <td className="py-3 px-3 text-xs text-right font-mono">
-                              <span className={outputs.UQ ? "text-green-600" : "text-gray-400"}>
-                                {outputs.UQ ? Number(outputs.UQ).toLocaleString() : "-"}
+                              <span className={gradeData.UQ && gradeData.UQ !== "" ? "text-green-600" : "text-gray-400"}>
+                                {gradeData.UQ && gradeData.UQ !== "" ? formatCurrency(gradeData.UQ) : "-"}
                               </span>
                             </td>
                             <td className="py-3 px-3 text-xs text-right font-mono">
-                              <span className={outputs.UD ? "text-green-600" : "text-gray-400"}>
-                                {outputs.UD ? Number(outputs.UD).toLocaleString() : "-"}
+                              <span className={gradeData.UD && gradeData.UD !== "" ? "text-green-600" : "text-gray-400"}>
+                                {gradeData.UD && gradeData.UD !== "" ? formatCurrency(gradeData.UD) : "-"}
                               </span>
                             </td>
                           </tr>
@@ -567,35 +613,19 @@ const GradingPage = () => {
               </div>
             )}
 
-            {/* Save Button */}
-            <div className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                {!canSaveDraft ? (
-                  <div className="flex items-center gap-2 text-amber-600">
-                    <AlertTriangle size={12} />
-                    <div>
-                      {!validationSummary?.hasBaseValue && "Base value required. "}
-                      {!validationSummary?.hasCalculatedOutputs && "Calculation required. "}
-                      {validationSummary?.hasErrors && "Fix validation errors."}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <CheckCircle size={12} />
-                    <span>Ready to save draft scenario</span>
-                  </div>
-                )}
-              </div>
+            {/* ENHANCED: Save Button with detailed validation feedback */}
+            <div className="flex justify-end items-end p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
+           
               <button
                 onClick={handleSaveDraft}
-                disabled={!canSaveDraft || loading}
+                disabled={!validationSummary?.canSave || loading.saving}
                 className={`px-6 py-2 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${
-                  canSaveDraft && !loading
+                  validationSummary?.canSave && !loading.saving
                     ? "bg-almet-sapphire text-white hover:bg-almet-astral shadow-md hover:shadow-lg"
                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                 }`}
               >
-                {loading ? (
+                {loading.saving ? (
                   <>
                     <RefreshCw size={12} className="animate-spin" />
                     Saving...
@@ -611,7 +641,7 @@ const GradingPage = () => {
           </div>
         </div>
 
-        {/* Draft Scenarios */}
+        {/* ENHANCED: Draft Scenarios with improved data display */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-yellow-50 dark:bg-yellow-900/20">
             <div className="flex justify-between items-center">
@@ -654,8 +684,7 @@ const GradingPage = () => {
           </div>
 
           <div className="p-4">
-        
-            {/* Current Structure in comparison mode */}
+            {/* Current Structure for comparison */}
             {compareMode && (
               <div className="mb-4">
                 <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3">Include Current Structure:</h3>
@@ -683,19 +712,19 @@ const GradingPage = () => {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="text-center p-2 bg-white dark:bg-gray-800 rounded-md">
                       <div className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                        {(currentData.verticalAvg * 100).toFixed(1)}%
+                        {formatPercentage(currentData?.verticalAvg)}
                       </div>
                       <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Vertical</div>
                     </div>
                     <div className="text-center p-2 bg-white dark:bg-gray-800 rounded-md">
                       <div className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                        {(currentData.horizontalAvg * 100).toFixed(1)}%
+                        {formatPercentage(currentData?.horizontalAvg)}
                       </div>
                       <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Horizontal</div>
                     </div>
                     <div className="text-center p-2 bg-white dark:bg-gray-800 rounded-md">
                       <div className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                        {currentData.baseValue1 > 0 ? currentData.baseValue1.toLocaleString() : 'Not Set'}
+                        {formatCurrency(currentData?.baseValue1)}
                       </div>
                       <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Base Value</div>
                     </div>
@@ -704,7 +733,7 @@ const GradingPage = () => {
               </div>
             )}
 
-            {/* Draft Scenarios Grid */}
+            {/* ENHANCED: Draft Scenarios Grid with safe data handling */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {draftScenarios.length > 0 ? (
                 draftScenarios.map((scenario) => (
@@ -744,57 +773,64 @@ const GradingPage = () => {
                             className="w-4 h-4 text-almet-sapphire rounded focus:ring-almet-sapphire"
                           />
                         )}
-                        {bestDraft && bestDraft.id === scenario.id && !compareMode && (
-                          <span className="text-xs bg-green-600 text-white px-2 py-0.5 rounded-full font-medium flex items-center gap-1">
-                            ★ Best
-                          </span>
-                        )}
+                       
                       </div>
                     </div>
 
+                    {/* ENHANCED: Scenario metrics with safe data handling */}
                     <div className="grid grid-cols-3 gap-3 mb-4">
                       <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/30 rounded-md">
                         <div className="text-sm font-semibold text-blue-600">
-                          {((scenario.data?.verticalAvg || 0) * 100).toFixed(1)}%
+                          {formatPercentage(scenario.data?.verticalAvg)}
                         </div>
                         <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Vertical</div>
                       </div>
                       <div className="text-center p-2 bg-green-50 dark:bg-green-900/30 rounded-md">
                         <div className="text-sm font-semibold text-green-600">
-                          {((scenario.data?.horizontalAvg || 0) * 100).toFixed(1)}%
+                          {formatPercentage(scenario.data?.horizontalAvg)}
                         </div>
                         <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Horizontal</div>
                       </div>
                       <div className="text-center p-2 bg-purple-50 dark:bg-purple-900/30 rounded-md">
                         <div className="text-sm font-semibold text-purple-600">
-                          {(scenario.data?.baseValue1 || 0).toLocaleString()}
+                          {formatCurrency(scenario.data?.baseValue1)}
                         </div>
                         <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Base</div>
                       </div>
                     </div>
 
-                    {/* Metrics Display */}
+                    {/* ENHANCED: Metrics Display */}
                     <MetricsDisplay scenario={scenario} />
 
                     {!compareMode && (
                       <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
                         <button
                           onClick={(e) => { e.stopPropagation(); handleSaveAsCurrent(scenario.id); }}
-                          className="flex-1 bg-almet-sapphire text-white px-2 py-1.5 text-xs rounded-md hover:bg-almet-astral transition-all shadow-md flex items-center justify-center gap-1"
+                          disabled={loading.applying}
+                          className="flex-1 bg-almet-sapphire text-white px-2 py-1.5 text-xs rounded-md hover:bg-almet-astral transition-all shadow-md flex items-center justify-center gap-1 disabled:opacity-50"
                         >
-                          <CheckCircle size={10} />
+                          {loading.applying ? (
+                            <RefreshCw size={10} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={10} />
+                          )}
                           Apply
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleArchiveDraft(scenario.id); }}
-                          className="bg-gray-400 text-white px-2 py-1.5 text-xs rounded-md hover:bg-gray-500 transition-all shadow-md flex items-center justify-center gap-1"
+                          disabled={loading.archiving}
+                          className="bg-gray-400 text-white px-2 py-1.5 text-xs rounded-md hover:bg-gray-500 transition-all shadow-md flex items-center justify-center gap-1 disabled:opacity-50"
                         >
-                          <Archive size={10} />
+                          {loading.archiving ? (
+                            <RefreshCw size={10} className="animate-spin" />
+                          ) : (
+                            <Archive size={10} />
+                          )}
                           Archive
                         </button>
                       </div>
                     )}
-                  </div>
+                                </div>
                 ))
               ) : (
                 <div className="col-span-full text-center py-12">
@@ -818,7 +854,7 @@ const GradingPage = () => {
           </div>
         </div>
 
-        {/* Archived Scenarios */}
+        {/* ENHANCED: Archived Scenarios with safe data handling */}
         {archivedScenarios.length > 0 && (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
@@ -857,15 +893,15 @@ const GradingPage = () => {
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center">
                       <div>
-                        <div className="text-xs font-semibold">{((scenario.data?.verticalAvg || 0) * 100).toFixed(1)}%</div>
+                        <div className="text-xs font-semibold">{formatPercentage(scenario.data?.verticalAvg)}</div>
                         <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">V</div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold">{((scenario.data?.horizontalAvg || 0) * 100).toFixed(1)}%</div>
+                        <div className="text-xs font-semibold">{formatPercentage(scenario.data?.horizontalAvg)}</div>
                         <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">H</div>
                       </div>
                       <div>
-                        <div className="text-xs font-semibold">{(scenario.data?.baseValue1 || 0).toLocaleString()}</div>
+                        <div className="text-xs font-semibold">{formatCurrency(scenario.data?.baseValue1)}</div>
                         <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Base</div>
                       </div>
                     </div>
@@ -876,7 +912,7 @@ const GradingPage = () => {
           </div>
         )}
 
-        {/* Enhanced Detail Modal */}
+        {/* ENHANCED: Detail Modal with comprehensive data display */}
         {isDetailOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-6xl max-h-[95vh] overflow-y-auto border border-gray-200 dark:border-gray-700 shadow-2xl">
@@ -890,7 +926,7 @@ const GradingPage = () => {
                       }
                     </h2>
                     <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      {compareMode ? 'Compare multiple scenarios side by side' : 'Detailed view with global horizontal intervals'}
+                      {compareMode ? 'Compare multiple scenarios side by side' : 'Detailed view with comprehensive data analysis'}
                     </p>
                   </div>
                   <button
@@ -904,7 +940,7 @@ const GradingPage = () => {
 
               <div className="p-4">
                 {compareMode && selectedForComparison.length >= 2 ? (
-                  // Enhanced Comparison View
+                  // ENHANCED: Comparison View with safe data handling
                   <div className="space-y-6">
                     {/* Comparison Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -915,19 +951,30 @@ const GradingPage = () => {
                         const scenarioData = scenario.data || scenario;
                         return (
                           <div key={scenarioId} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800">
-                            <h3 className="font-bold text-sm mb-3 text-almet-cloud-burst dark:text-white">{scenario.name}</h3>
+                            <h3 className="font-bold text-sm mb-3 text-almet-cloud-burst dark:text-white">
+                              {scenario.name || 'Unknown Scenario'}
+                            </h3>
                             <div className="space-y-2">
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Base Value:</span>
-                                <span className="font-semibold text-xs">{(scenarioData.baseValue1 || 0).toLocaleString()}</span>
+                                <span className="font-semibold text-xs">{formatCurrency(scenarioData.baseValue1)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Vertical Avg:</span>
-                                <span className="font-semibold text-xs text-blue-600">{((scenarioData.verticalAvg || 0) * 100).toFixed(1)}%</span>
+                                <span className="font-semibold text-xs text-blue-600">{formatPercentage(scenarioData.verticalAvg)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Horizontal Avg:</span>
-                                <span className="font-semibold text-xs text-green-600">{((scenarioData.horizontalAvg || 0) * 100).toFixed(1)}%</span>
+                                <span className="font-semibold text-xs text-green-600">{formatPercentage(scenarioData.horizontalAvg)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Status:</span>
+                                <span className={`text-xs font-semibold capitalize ${
+                                  scenario.status === 'current' ? 'text-green-600' : 
+                                  scenario.status === 'draft' ? 'text-blue-600' : 'text-gray-600'
+                                }`}>
+                                  {scenario.status || 'Draft'}
+                                </span>
                               </div>
                             </div>
                           </div>
@@ -955,20 +1002,23 @@ const GradingPage = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {currentData.gradeOrder.map(gradeName => (
+                            {(currentData?.gradeOrder || []).map(gradeName => (
                               <tr key={gradeName} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50">
                                 <td className="py-2 px-3 text-xs font-medium">{gradeName}</td>
                                 {selectedForComparison.map(scenarioId => {
                                   const scenario = getScenarioForComparison(scenarioId);
                                   const scenarioData = scenario?.data || scenario;
                                   const gradeData = scenarioData?.grades?.[gradeName];
+                                  
                                   return (
                                     <td key={scenarioId} className="py-2 px-3 text-center">
                                       {gradeData ? (
                                         <div>
-                                          <div className="font-mono font-bold text-sm text-blue-600">{(gradeData.M || 0).toLocaleString()}</div>
+                                          <div className="font-mono font-bold text-sm text-blue-600">
+                                            {formatCurrency(gradeData.M)}
+                                          </div>
                                           <div className="text-xs text-gray-500">
-                                            V: {gradeData.vertical || 0}% | H: Global
+                                            V: {safeValue(gradeData.vertical, 0)}% | H: Global
                                           </div>
                                         </div>
                                       ) : (
@@ -985,27 +1035,27 @@ const GradingPage = () => {
                     </div>
                   </div>
                 ) : selectedScenario ? (
-                  // Enhanced Single Scenario Detail View
+                  // ENHANCED: Single Scenario Detail View with comprehensive data
                   <div className="space-y-6">
-                    {/* Scenario Overview - FIXED values display */}
+                    {/* ENHANCED: Scenario Overview with safe value extraction */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                       <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                         <div className="text-xl font-bold text-blue-600 mb-2">
-                          {parseFloat(selectedScenario.data?.baseValue1 || selectedScenario.baseValue1 || 0).toLocaleString()}
+                          {formatCurrency(selectedScenario.data?.baseValue1 || selectedScenario.baseValue1)}
                         </div>
                         <div className="text-xs font-semibold text-almet-cloud-burst dark:text-white">Base Value</div>
-                        <div className="text-xs text-gray-500 mt-1">{getBasePositionName()}</div>
+                        <div className="text-xs text-gray-500 mt-1">{basePositionName}</div>
                       </div>
                       <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
                         <div className="text-xl font-bold text-green-600 mb-2">
-                          {((selectedScenario.data?.verticalAvg !== undefined ? selectedScenario.data.verticalAvg : selectedScenario.vertical_avg || 0) * 100).toFixed(1)}%
+                          {formatPercentage(selectedScenario.data?.verticalAvg !== undefined ? selectedScenario.data.verticalAvg : selectedScenario.vertical_avg)}
                         </div>
                         <div className="text-xs font-semibold text-almet-cloud-burst dark:text-white">Vertical Average</div>
                         <div className="text-xs text-gray-500 mt-1">Position transitions</div>
                       </div>
                       <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
                         <div className="text-xl font-bold text-purple-600 mb-2">
-                          {((selectedScenario.data?.horizontalAvg !== undefined ? selectedScenario.data.horizontalAvg : selectedScenario.horizontal_avg || 0) * 100).toFixed(1)}%
+                          {formatPercentage(selectedScenario.data?.horizontalAvg !== undefined ? selectedScenario.data.horizontalAvg : selectedScenario.horizontal_avg)}
                         </div>
                         <div className="text-xs font-semibold text-almet-cloud-burst dark:text-white">Horizontal Average</div>
                         <div className="text-xs text-gray-500 mt-1">Global intervals</div>
@@ -1013,7 +1063,7 @@ const GradingPage = () => {
                       {selectedScenario.metrics && (
                         <div className="text-center p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                           <div className="text-xl font-bold text-yellow-600 mb-2">
-                            {(selectedScenario.metrics.totalBudgetImpact || 0).toLocaleString()}
+                            {formatCurrency(selectedScenario.metrics.totalBudgetImpact)}
                           </div>
                           <div className="text-xs font-semibold text-almet-cloud-burst dark:text-white">Budget Impact</div>
                           <div className="text-xs text-gray-500 mt-1">Total cost</div>
@@ -1021,115 +1071,55 @@ const GradingPage = () => {
                       )}
                     </div>
 
-                    {/* Global Intervals Display */}
-                    {(selectedScenario.data?.globalHorizontalIntervals || 
-                      (selectedScenario.input_rates && Object.keys(selectedScenario.input_rates).length > 0)) && (
-                      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
-                        <h3 className="font-semibold text-sm text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                          <span className="text-blue-600 text-lg">🌐</span>
-                          Global Horizontal Intervals (Applied to All Positions)
-                        </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {(() => {
-                            let intervals = selectedScenario.data?.globalHorizontalIntervals;
-                            
-                            if (!intervals || Object.values(intervals).every(v => v === 0)) {
-                              intervals = { LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0 };
-                              
-                              if (selectedScenario.input_rates) {
-                                for (const [gradeName, gradeData] of Object.entries(selectedScenario.input_rates)) {
-                                  if (gradeData && gradeData.horizontal_intervals) {
-                                    intervals = { ...gradeData.horizontal_intervals };
-                                    break;
-                                  }
-                                }
-                              }
-                            }
-                            
-                            return Object.entries(intervals).map(([key, value]) => {
+                    {/* ENHANCED: Global Intervals Display with safe data extraction */}
+                    {(() => {
+                      const globalIntervals = selectedScenario.data?.globalHorizontalIntervals || {};
+                      const hasIntervals = Object.values(globalIntervals).some(v => safeValue(v) > 0);
+                      
+                      // Fallback: extract from input_rates if no global intervals
+                      if (!hasIntervals && selectedScenario.input_rates) {
+                        for (const [gradeName, gradeData] of Object.entries(selectedScenario.input_rates)) {
+                          if (gradeData && gradeData.horizontal_intervals) {
+                            Object.assign(globalIntervals, gradeData.horizontal_intervals);
+                            break;
+                          }
+                        }
+                      }
+                      
+                      return hasIntervals || Object.values(globalIntervals).some(v => safeValue(v) > 0) ? (
+                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg p-4 border border-indigo-200 dark:border-indigo-800">
+                          <h3 className="font-semibold text-sm text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                            <span className="text-blue-600 text-lg">🌐</span>
+                            Global Horizontal Intervals 
+                          </h3>
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {Object.entries({
+                              LD_to_LQ: globalIntervals.LD_to_LQ || 0,
+                              LQ_to_M: globalIntervals.LQ_to_M || 0,
+                              M_to_UQ: globalIntervals.M_to_UQ || 0,
+                              UQ_to_UD: globalIntervals.UQ_to_UD || 0
+                            }).map(([key, value]) => {
                               const displayName = key.replace(/_to_/g, ' → ').replace(/_/g, ' ');
                               return (
                                 <div key={key} className="text-center p-3 bg-white dark:bg-gray-800 rounded-md border shadow-sm">
-                                  <div className="font-bold text-lg text-blue-600 mb-1">{value || 0}%</div>
+                                  <div className="font-bold text-lg text-blue-600 mb-1">{safeValue(value).toFixed(1)}%</div>
                                   <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{displayName}</div>
                                 </div>
                               );
-                            });
-                          })()}
-                        </div>
-                        <div className="mt-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-indigo-200 dark:border-indigo-800">
-                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai text-center">
-                            These intervals are applied uniformly across all {currentData.gradeOrder.length} position groups
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Simplified Metrics Display */}
-                    {selectedScenario.metrics && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                          <h4 className="font-semibold text-sm text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                            <DollarSign size={16} className="text-green-600" />
-                            Financial Impact
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Average Salary Increase:</span>
-                              <span className={`font-semibold text-sm ${(selectedScenario.metrics.avgSalaryIncrease || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {(selectedScenario.metrics.avgSalaryIncrease || 0) > 0 ? '+' : ''}{(selectedScenario.metrics.avgSalaryIncrease || 0).toFixed(1)}%
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Max Salary Increase:</span>
-                              <span className="font-semibold text-sm text-orange-600">
-                                {(selectedScenario.metrics.maxSalaryIncrease || 0).toFixed(1)}%
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Positions Affected:</span>
-                              <span className="font-semibold text-sm text-blue-600">{selectedScenario.metrics.positionsAffected || 0}</span>
-                            </div>
+                            })}
+                          </div>
+                          <div className="mt-3 p-2 bg-white dark:bg-gray-800 rounded-md border border-indigo-200 dark:border-indigo-800">
+                            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai text-center">
+                              These intervals are applied uniformly across all {(currentData?.gradeOrder || []).length} position groups
+                            </p>
                           </div>
                         </div>
-                        
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
-                          <h4 className="font-semibold text-sm text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                            <Info size={16} className="text-blue-600" />
-                            Scenario Information
-                          </h4>
-                          <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Created:</span>
-                              <span className="font-semibold text-xs">{new Date(selectedScenario.createdAt).toLocaleDateString()}</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Status:</span>
-                              <span className={`font-semibold capitalize px-2 py-0.5 rounded-full text-xs ${
-                                selectedScenario.status === 'current' ? 'bg-green-100 text-green-700' : 
-                                selectedScenario.status === 'draft' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                              }`}>
-                                {selectedScenario.status || 'Draft'}
-                              </span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Calculated:</span>
-                              <span className={`font-semibold text-xs ${selectedScenario.isCalculated ? 'text-green-600' : 'text-orange-600'}`}>
-                                {selectedScenario.isCalculated ? 'Yes' : 'No'}
-                              </span>
-                            </div>
-                            {selectedScenario.createdBy && (
-                              <div className="flex justify-between items-center">
-                                <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Created By:</span>
-                                <span className="font-semibold text-xs">{selectedScenario.createdBy}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                      ) : null;
+                    })()}
 
-                    {/* Enhanced Detailed Grade Table */}
+                
+
+                    {/* ENHANCED: Detailed Grade Table with comprehensive data display */}
                     <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-4">
                       <h3 className="text-sm font-semibold mb-3">Detailed Grade Breakdown</h3>
                       <div className="overflow-x-auto">
@@ -1137,12 +1127,8 @@ const GradingPage = () => {
                           <thead>
                             <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                               <th className="text-left py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Grade</th>
-                              <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                                <div>Vertical %</div>
-                              </th>
-                              <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                                <div>Horizontal</div>
-                              </th>
+                              <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Vertical %</th>
+                              <th className="text-center py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">Horizontal</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LD</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai">LQ</th>
                               <th className="text-right py-2 px-3 text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai bg-blue-50 dark:bg-blue-900/20">Median</th>
@@ -1151,24 +1137,27 @@ const GradingPage = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {(selectedScenario.data?.gradeOrder || selectedScenario.gradeOrder || currentData.gradeOrder).map((gradeName, index) => {
+                            {(selectedScenario.data?.gradeOrder || selectedScenario.gradeOrder || currentData?.gradeOrder || []).map((gradeName, index) => {
                               const scenarioData = selectedScenario.data || selectedScenario;
-                              const values = scenarioData.grades?.[gradeName];
-                              const isBasePosition = gradeName === getBasePositionName();
+                              const values = scenarioData.grades?.[gradeName] || {};
+                              const isBasePosition = gradeName === basePositionName;
                               const isTopPosition = index === 0;
                               
+                              // Extract vertical value with multiple fallbacks
                               let verticalValue = null;
                               if (selectedScenario.input_rates && selectedScenario.input_rates[gradeName]) {
                                 const gradeInput = selectedScenario.input_rates[gradeName];
                                 if (gradeInput.vertical !== null && gradeInput.vertical !== undefined) {
                                   verticalValue = gradeInput.vertical;
                                 }
+                              } else if (values.vertical !== null && values.vertical !== undefined) {
+                                verticalValue = values.vertical;
                               }
                               
-                              if (!values) return null;
-                              
                               return (
-                                <tr key={gradeName} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50 ${isBasePosition ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
+                                <tr key={gradeName} className={`border-b border-gray-100 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800/50 ${
+                                  isBasePosition ? 'bg-blue-50 dark:bg-blue-900/10' : ''
+                                }`}>
                                   <td className="py-3 px-3 text-xs font-medium">
                                     <div className="flex items-center gap-2">
                                       <div className={`w-2 h-2 rounded-full ${
@@ -1188,25 +1177,31 @@ const GradingPage = () => {
                                   {/* Vertical Input Display */}
                                   <td className="py-3 px-3 text-xs text-center">
                                     {!isBasePosition && verticalValue !== null && verticalValue !== undefined ? (
-                                      <span className="font-mono font-semibold text-sm text-blue-600">{parseFloat(verticalValue || "0").toFixed(1)}%</span>
+                                      <span className="font-mono font-semibold text-sm text-blue-600">
+                                        {safeValue(verticalValue).toFixed(1)}%
+                                      </span>
                                     ) : (
-                                      <span className="text-gray-400 italic">N/A {isBasePosition ? '(Base)' : ''}</span>
+                                      <span className="text-gray-400 italic">
+                                        N/A {isBasePosition ? '(Base)' : ''}
+                                      </span>
                                     )}
                                   </td>
                                   
-                                  {/* Horizontal - Global Status */}
+                                  {/* Horizontal Status */}
                                   <td className="py-3 px-3 text-xs text-center">
                                     <span className="text-xs text-blue-600 font-medium flex items-center justify-center gap-1">
                                       🌐 Global
                                     </span>
                                   </td>
                                   
-                                  {/* Calculated Values */}
-                                  <td className="py-3 px-3 text-xs text-right font-mono">{(values.LD || 0).toLocaleString()}</td>
-                                  <td className="py-3 px-3 text-xs text-right font-mono">{(values.LQ || 0).toLocaleString()}</td>
-                                  <td className="py-3 px-3 text-xs text-right font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20">{(values.M || 0).toLocaleString()}</td>
-                                  <td className="py-3 px-3 text-xs text-right font-mono">{(values.UQ || 0).toLocaleString()}</td>
-                                  <td className="py-3 px-3 text-xs text-right font-mono">{(values.UD || 0).toLocaleString()}</td>
+                                  {/* Calculated Values with safe extraction */}
+                                  <td className="py-3 px-3 text-xs text-right font-mono">{formatCurrency(values.LD)}</td>
+                                  <td className="py-3 px-3 text-xs text-right font-mono">{formatCurrency(values.LQ)}</td>
+                                  <td className="py-3 px-3 text-xs text-right font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20">
+                                    {formatCurrency(values.M)}
+                                  </td>
+                                  <td className="py-3 px-3 text-xs text-right font-mono">{formatCurrency(values.UQ)}</td>
+                                  <td className="py-3 px-3 text-xs text-right font-mono">{formatCurrency(values.UD)}</td>
                                 </tr>
                               );
                             })}
@@ -1215,7 +1210,7 @@ const GradingPage = () => {
                       </div>
                     </div>
 
-                    {/* Action Buttons for Single Scenario */}
+                    {/* ENHANCED: Action Buttons for Single Scenario */}
                     {selectedScenario.status === 'draft' && (
                       <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                         <button
@@ -1223,9 +1218,14 @@ const GradingPage = () => {
                             handleSaveAsCurrent(selectedScenario.id);
                             setIsDetailOpen(false);
                           }}
-                          className="bg-green-600 text-white px-6 py-2 text-sm font-medium rounded-md hover:bg-green-700 transition-all shadow-md flex items-center gap-2"
+                          disabled={loading.applying}
+                          className="bg-green-600 text-white px-6 py-2 text-sm font-medium rounded-md hover:bg-green-700 transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
                         >
-                          <CheckCircle size={14} />
+                          {loading.applying ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <CheckCircle size={14} />
+                          )}
                           Apply as Current
                         </button>
                         <button
@@ -1233,15 +1233,77 @@ const GradingPage = () => {
                             handleArchiveDraft(selectedScenario.id);
                             setIsDetailOpen(false);
                           }}
-                          className="bg-gray-500 text-white px-6 py-2 text-sm font-medium rounded-md hover:bg-gray-600 transition-all shadow-md flex items-center gap-2"
+                          disabled={loading.archiving}
+                          className="bg-gray-500 text-white px-6 py-2 text-sm font-medium rounded-md hover:bg-gray-600 transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
                         >
-                          <Archive size={14} />
+                          {loading.archiving ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <Archive size={14} />
+                          )}
                           Archive
                         </button>
                       </div>
                     )}
                   </div>
-                ) : null}
+                ) : (
+                  // No scenario selected fallback
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 mb-3">
+                      <Info size={48} className="mx-auto" />
+                    </div>
+                    <h3 className="text-base font-semibold text-almet-waterloo dark:text-almet-bali-hai mb-2">
+                      No Scenario Selected
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Please select a scenario to view details
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ENHANCED: Error Toast for displaying errors */}
+        {hasErrors && (
+          <div className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg max-w-md z-50">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-sm">System Error</h4>
+                <div className="text-xs mt-1 space-y-1">
+                  {Object.entries(errors).map(([key, message]) => (
+                    <div key={key}>{message}</div>
+                  ))}
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="ml-2 text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded transition-colors"
+              >
+                Reload
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ENHANCED: Loading overlay for specific operations */}
+        {(loading.saving || loading.applying || loading.archiving) && (
+          <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-40">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl">
+              <div className="flex items-center gap-3">
+                <RefreshCw size={24} className="animate-spin text-almet-sapphire" />
+                <div>
+                  <h3 className="font-semibold text-almet-cloud-burst dark:text-white">
+                    {loading.saving ? 'Saving Scenario...' : 
+                     loading.applying ? 'Applying Scenario...' : 
+                     loading.archiving ? 'Archiving Scenario...' : 'Processing...'}
+                  </h3>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                    Please wait while we process your request
+                  </p>
+                </div>
               </div>
             </div>
           </div>
