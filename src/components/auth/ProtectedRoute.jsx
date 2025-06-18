@@ -16,8 +16,7 @@ export default function ProtectedRoute({ children }) {
       const hasToken = !!localStorage.getItem("accessToken");
       
       if (!isAuthenticated && hasToken && !attemptedSilentLogin) {
-        // Try silent login first
-        console.log("🔄 Attempting silent login...");
+   
         setAttemptedSilentLogin(true);
         
         // Give it a moment for AuthContext to initialize

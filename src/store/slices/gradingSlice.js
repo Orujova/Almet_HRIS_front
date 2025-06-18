@@ -8,7 +8,7 @@ export const fetchCurrentStructure = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await gradingApi.getCurrentStructure();
-      console.log('✅ Current structure response:', response.data);
+  
       return gradingApi.formatCurrentStructure(response.data);
     } catch (error) {
       console.error('❌ Error fetching current structure:', error);
@@ -22,7 +22,7 @@ export const fetchCurrentScenario = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await gradingApi.getCurrentScenario();
-      console.log('✅ Current scenario response:', response.data);
+  
       return gradingApi.formatScenarioForFrontend(response.data);
     } catch (error) {
       console.error('❌ Error fetching current scenario:', error);
@@ -36,18 +36,14 @@ export const fetchScenarios = createAsyncThunk(
   async ({ status }, { rejectWithValue }) => {
     try {
       const response = await gradingApi.getScenarios({ status });
-      console.log(`✅ ${status} scenarios response:`, response.data);
+  
       
       const scenarios = response.data.results || response.data || [];
       const formattedScenarios = scenarios
         .filter(scenario => scenario && scenario.id) // Filter out invalid scenarios
         .map(scenario => {
           const formatted = gradingApi.formatScenarioForFrontend(scenario);
-          console.log(`📊 Formatted scenario ${formatted?.name}:`, {
-            hasInputRates: !!(formatted?.input_rates && Object.keys(formatted.input_rates).length > 0),
-            hasPositionVerticalInputs: !!(formatted?.data?.positionVerticalInputs && Object.keys(formatted.data.positionVerticalInputs).length > 0),
-            hasGlobalHorizontalIntervals: !!(formatted?.data?.globalHorizontalIntervals && Object.values(formatted.data.globalHorizontalIntervals).some(v => v > 0))
-          });
+   
           return formatted;
         });
       
@@ -67,17 +63,10 @@ export const fetchScenarioDetails = createAsyncThunk(
   async (scenarioId, { rejectWithValue }) => {
     try {
       const response = await gradingApi.getScenario(scenarioId);
-      console.log('✅ Scenario details response:', response.data);
+ 
       const formatted = gradingApi.formatScenarioForFrontend(response.data);
       
-      // FIXED: Log detailed input data preservation
-      console.log(`🔍 Formatted scenario details for ${formatted?.name}:`, {
-        hasInputRates: !!(formatted?.input_rates && Object.keys(formatted.input_rates).length > 0),
-        hasPositionVerticalInputs: !!(formatted?.data?.positionVerticalInputs && Object.keys(formatted.data.positionVerticalInputs).length > 0),
-        inputRatesKeys: formatted?.input_rates ? Object.keys(formatted.input_rates) : [],
-        positionVerticalInputsKeys: formatted?.data?.positionVerticalInputs ? Object.keys(formatted.data.positionVerticalInputs) : [],
-        sampleVerticalInput: formatted?.input_rates ? Object.values(formatted.input_rates)[0]?.vertical : 'N/A'
-      });
+    
       
       return formatted;
     } catch (error) {
@@ -92,7 +81,7 @@ export const fetchPositionGroups = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await gradingApi.getPositionGroups();
-      console.log('✅ Position groups response:', response.data);
+   
       return response.data.position_groups || [];
     } catch (error) {
       console.error('❌ Error fetching position groups:', error);
@@ -105,9 +94,9 @@ export const calculateDynamicScenario = createAsyncThunk(
   'grading/calculateDynamicScenario',
   async (scenarioData, { rejectWithValue }) => {
     try {
-      console.log('🧮 Starting dynamic calculation with:', scenarioData);
+    
       const response = await gradingApi.calculateDynamic(scenarioData);
-      console.log('✅ Calculation response:', response.data);
+    
       return response.data;
     } catch (error) {
       console.error('❌ Calculation error:', error);
@@ -120,9 +109,9 @@ export const saveDraftScenario = createAsyncThunk(
   'grading/saveDraftScenario',
   async (scenarioData, { rejectWithValue, dispatch }) => {
     try {
-      console.log('💾 Saving draft scenario:', scenarioData);
+   
       const response = await gradingApi.saveDraft(scenarioData);
-      console.log('✅ Save response:', response.data);
+
       
       if (response.data.success) {
         // Refresh draft scenarios after successful save
@@ -141,9 +130,9 @@ export const applyScenario = createAsyncThunk(
   'grading/applyScenario',
   async (scenarioId, { rejectWithValue, dispatch }) => {
     try {
-      console.log('🎯 Applying scenario:', scenarioId);
+    
       const response = await gradingApi.applyScenario(scenarioId);
-      console.log('✅ Apply response:', response.data);
+
       
       if (response.data.success) {
         // Refresh all data after successful application
@@ -167,9 +156,9 @@ export const archiveScenario = createAsyncThunk(
   'grading/archiveScenario',
   async (scenarioId, { rejectWithValue, dispatch }) => {
     try {
-      console.log('📦 Archiving scenario:', scenarioId);
+
       const response = await gradingApi.archiveScenario(scenarioId);
-      console.log('✅ Archive response:', response.data);
+
       
       if (response.data.success) {
         // Refresh scenarios after successful archive
@@ -243,13 +232,13 @@ const gradingSlice = createSlice({
     // Enhanced input handlers
     setScenarioInputs: (state, action) => {
       state.scenarioInputs = { ...state.scenarioInputs, ...action.payload };
-      console.log('📝 Updated scenario inputs:', state.scenarioInputs);
+ 
     },
     
     updateScenarioInput: (state, action) => {
       const { field, value } = action.payload;
       state.scenarioInputs[field] = value;
-      console.log(`📝 Updated ${field}:`, value);
+      
     },
     
     updateGradeInput: (state, action) => {
@@ -258,31 +247,27 @@ const gradingSlice = createSlice({
         state.scenarioInputs.grades[gradeName] = {};
       }
       state.scenarioInputs.grades[gradeName][field] = value;
-      console.log(`📝 Updated ${gradeName}.${field}:`, value);
+   
     },
     
     updateGlobalHorizontalInterval: (state, action) => {
       const { intervalKey, value } = action.payload;
       state.scenarioInputs.globalHorizontalIntervals[intervalKey] = value;
-      console.log(`📝 Updated global interval ${intervalKey}:`, value);
+
     },
     
     setCalculatedOutputs: (state, action) => {
       state.calculatedOutputs = action.payload;
-      console.log('🧮 Updated calculated outputs:', action.payload);
+ 
     },
     
     setSelectedScenario: (state, action) => {
       state.selectedScenario = action.payload;
-      console.log('🎯 Selected scenario:', action.payload?.name);
+     
       
       // FIXED: Log input data availability for debugging
       if (action.payload) {
-        console.log('🔍 Selected scenario input data:', {
-          hasInputRates: !!(action.payload.input_rates && Object.keys(action.payload.input_rates).length > 0),
-          hasPositionVerticalInputs: !!(action.payload.data?.positionVerticalInputs && Object.keys(action.payload.data.positionVerticalInputs).length > 0),
-          hasGlobalHorizontalIntervals: !!(action.payload.data?.globalHorizontalIntervals && Object.values(action.payload.data.globalHorizontalIntervals).some(v => v > 0))
-        });
+  
       }
     },
     
@@ -328,7 +313,7 @@ const gradingSlice = createSlice({
         });
         state.calculatedOutputs = initialOutputs;
         
-        console.log('🚀 Initialized scenario inputs for', currentData.gradeOrder.length, 'positions');
+  
       }
     }
   },
@@ -343,7 +328,7 @@ const gradingSlice = createSlice({
       .addCase(fetchCurrentStructure.fulfilled, (state, action) => {
         state.loading.currentStructure = false;
         state.currentStructure = action.payload;
-        console.log('✅ Current structure loaded:', action.payload);
+     
       })
       .addCase(fetchCurrentStructure.rejected, (state, action) => {
         state.loading.currentStructure = false;
@@ -359,7 +344,7 @@ const gradingSlice = createSlice({
       .addCase(fetchCurrentScenario.fulfilled, (state, action) => {
         state.loading.currentScenario = false;
         state.currentScenario = action.payload;
-        console.log('✅ Current scenario loaded:', action.payload?.name);
+
       })
       .addCase(fetchCurrentScenario.rejected, (state, action) => {
         state.loading.currentScenario = false;
@@ -375,7 +360,7 @@ const gradingSlice = createSlice({
       .addCase(fetchPositionGroups.fulfilled, (state, action) => {
         state.loading.positionGroups = false;
         state.positionGroups = action.payload;
-        console.log('✅ Position groups loaded:', action.payload.length, 'groups');
+
       })
       .addCase(fetchPositionGroups.rejected, (state, action) => {
         state.loading.positionGroups = false;
@@ -392,7 +377,7 @@ const gradingSlice = createSlice({
         state.loading.calculating = false;
         if (action.payload?.calculatedOutputs) {
           state.calculatedOutputs = action.payload.calculatedOutputs;
-          console.log('✅ Calculation completed with', Object.keys(action.payload.calculatedOutputs).length, 'grades');
+
         }
       })
       .addCase(calculateDynamicScenario.rejected, (state, action) => {
@@ -418,17 +403,12 @@ const gradingSlice = createSlice({
         if (status === 'DRAFT') {
           state.loading.draftScenarios = false;
           state.draftScenarios = scenarios;
-          console.log('✅ Draft scenarios loaded:', scenarios.length, 'scenarios');
+
           
           // FIXED: Log input data availability for debugging
           scenarios.forEach(scenario => {
             if (scenario.input_rates || scenario.data?.positionVerticalInputs) {
-              console.log(`📊 Draft scenario ${scenario.name} input data:`, {
-                hasInputRates: !!(scenario.input_rates && Object.keys(scenario.input_rates).length > 0),
-                hasPositionVerticalInputs: !!(scenario.data?.positionVerticalInputs && Object.keys(scenario.data.positionVerticalInputs).length > 0),
-                inputRatesCount: scenario.input_rates ? Object.keys(scenario.input_rates).length : 0,
-                positionVerticalInputsCount: scenario.data?.positionVerticalInputs ? Object.keys(scenario.data.positionVerticalInputs).length : 0
-              });
+    
             }
           });
           
@@ -459,18 +439,10 @@ const gradingSlice = createSlice({
         state.loading.scenarioDetails = false;
         state.selectedScenario = action.payload;
         
-        console.log('✅ Scenario details loaded:', action.payload?.name);
-        
+
         // FIXED: Enhanced logging for input data verification
         if (action.payload) {
-          console.log('🔍 Scenario details input data verification:', {
-            hasInputRates: !!(action.payload.input_rates && Object.keys(action.payload.input_rates).length > 0),
-            hasPositionVerticalInputs: !!(action.payload.data?.positionVerticalInputs && Object.keys(action.payload.data.positionVerticalInputs).length > 0),
-            hasGlobalHorizontalIntervals: !!(action.payload.data?.globalHorizontalIntervals && Object.values(action.payload.data.globalHorizontalIntervals).some(v => v > 0)),
-            inputRatesKeys: action.payload.input_rates ? Object.keys(action.payload.input_rates) : [],
-            positionVerticalInputsKeys: action.payload.data?.positionVerticalInputs ? Object.keys(action.payload.data.positionVerticalInputs) : [],
-            globalHorizontalIntervalsValues: action.payload.data?.globalHorizontalIntervals || {}
-          });
+        
         }
       })
       .addCase(fetchScenarioDetails.rejected, (state, action) => {
@@ -486,7 +458,7 @@ const gradingSlice = createSlice({
       })
       .addCase(saveDraftScenario.fulfilled, (state, action) => {
         state.loading.saving = false;
-        console.log('✅ Scenario saved successfully');
+
       })
       .addCase(saveDraftScenario.rejected, (state, action) => {
         state.loading.saving = false;
@@ -501,7 +473,7 @@ const gradingSlice = createSlice({
       })
       .addCase(applyScenario.fulfilled, (state, action) => {
         state.loading.applying = false;
-        console.log('✅ Scenario applied successfully');
+
       })
       .addCase(applyScenario.rejected, (state, action) => {
         state.loading.applying = false;
@@ -516,7 +488,7 @@ const gradingSlice = createSlice({
       })
       .addCase(archiveScenario.fulfilled, (state, action) => {
         state.loading.archiving = false;
-        console.log('✅ Scenario archived successfully');
+        ('✅ Scenario archived successfully');
       })
       .addCase(archiveScenario.rejected, (state, action) => {
         state.loading.archiving = false;

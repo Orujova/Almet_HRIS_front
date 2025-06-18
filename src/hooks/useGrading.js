@@ -1,4 +1,4 @@
-// src/hooks/useGrading.js - FIXED: Enhanced comparison data extraction
+// src/hooks/useGrading.js - FIXED: Current üçün Current Scenario-dan input data götürmək
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -40,9 +40,9 @@ import { gradingApi } from '@/services/gradingApi';
 const useGrading = () => {
   const dispatch = useDispatch();
   
-  // Redux state - ENHANCED with all selectors
-  const currentData = useSelector(selectCurrentStructure);
-  const currentScenario = useSelector(selectCurrentScenario);
+  // Redux state
+  const currentData = useSelector(selectCurrentStructure);        // Current Structure (yalnız calculated values)
+  const currentScenario = useSelector(selectCurrentScenario);     // Current Scenario (input + calculated values)
   const positionGroups = useSelector(selectPositionGroups);
   const scenarioInputs = useSelector(selectScenarioInputs);
   const calculatedOutputs = useSelector(selectCalculatedOutputs);
@@ -55,7 +55,7 @@ const useGrading = () => {
   const validationSummary = useSelector(selectValidationSummary);
   const inputSummary = useSelector(selectInputSummary);
 
-  // Local state for UI management
+  // Local state
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [compareMode, setCompareMode] = useState(false);
   const [selectedForComparison, setSelectedForComparison] = useState([]);
@@ -63,28 +63,25 @@ const useGrading = () => {
   const [lastCalculationInputs, setLastCalculationInputs] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // ENHANCED: Complete data loading with proper initialization
+  // Data loading (same as before)
   const loadInitialData = useCallback(async () => {
-    console.log('🚀 Starting initial data load...');
+
     
     try {
-      // Load core data in parallel
       const corePromises = [
         dispatch(fetchCurrentStructure()),
         dispatch(fetchPositionGroups()),
-        dispatch(fetchCurrentScenario())
+        dispatch(fetchCurrentScenario())  // ✅ Current Scenario-nu da yükləyirik
       ];
       
       const coreResults = await Promise.allSettled(corePromises);
       
-      // Check if core data loaded successfully
       const currentStructureResult = coreResults[0];
       if (currentStructureResult.status === 'fulfilled' && currentStructureResult.value.payload) {
-        console.log('✅ Core data loaded, initializing scenario inputs...');
+  
         dispatch(initializeScenarioInputs(currentStructureResult.value.payload));
       }
       
-      // Load scenarios
       const scenarioPromises = [
         dispatch(fetchScenarios({ status: 'DRAFT' })),
         dispatch(fetchScenarios({ status: 'ARCHIVED' }))
@@ -93,41 +90,36 @@ const useGrading = () => {
       await Promise.allSettled(scenarioPromises);
       
       setIsInitialized(true);
-      console.log('✅ Initial data load completed');
+  
       
     } catch (error) {
       console.error('❌ Error during initial data load:', error);
-      setIsInitialized(true); // Set to true even on error to prevent infinite loading
+      setIsInitialized(true);
     }
   }, [dispatch]);
 
-  // Initialize data on mount
   useEffect(() => {
     if (!isInitialized) {
       loadInitialData();
     }
   }, [loadInitialData, isInitialized]);
 
-  // ENHANCED: Base value handler with validation
+  // Input handlers (eyni qalır)
   const handleBaseValueChange = useCallback((value) => {
-    console.log('📊 Base value changed:', value);
+  
     
-    // Clear previous errors
     if (errors.baseValue1) {
       dispatch(clearErrors());
     }
     
-    // Validate input
     const numValue = parseFloat(value);
     if (value !== '' && (isNaN(numValue) || numValue <= 0)) {
       dispatch(setError({ field: 'baseValue1', message: 'Base value must be a positive number' }));
       return;
     }
     
-    // Update value
     dispatch(updateScenarioInput({ field: 'baseValue1', value }));
     
-    // Trigger calculation after delay
     const timer = setTimeout(() => {
       if (value && numValue > 0) {
         calculateGrades();
@@ -139,11 +131,8 @@ const useGrading = () => {
     return () => clearTimeout(timer);
   }, [dispatch, errors.baseValue1]);
 
-  // ENHANCED: Vertical change handler with position awareness
   const handleVerticalChange = useCallback((gradeName, value) => {
-    console.log('📈 Vertical changed for', gradeName, ':', value);
-    
-    // Clear previous errors for this field
+   
     const errorKey = `vertical-${gradeName}`;
     if (errors[errorKey]) {
       const newErrors = { ...errors };
@@ -151,7 +140,6 @@ const useGrading = () => {
       dispatch(clearErrors());
     }
     
-    // Validate input
     if (value !== '' && value !== null && value !== undefined) {
       const numValue = parseFloat(value);
       if (isNaN(numValue) || numValue < 0 || numValue > 100) {
@@ -163,10 +151,8 @@ const useGrading = () => {
       }
     }
     
-    // Update value
     dispatch(updateGradeInput({ gradeName, field: 'vertical', value }));
     
-    // Trigger calculation
     const timer = setTimeout(() => {
       calculateGrades();
     }, 500);
@@ -174,11 +160,9 @@ const useGrading = () => {
     return () => clearTimeout(timer);
   }, [dispatch, errors]);
 
-  // ENHANCED: Global horizontal change handler
   const handleGlobalHorizontalChange = useCallback((intervalKey, value) => {
-    console.log('🔄 Global horizontal changed:', intervalKey, '=', value);
+  
     
-    // Clear previous errors for this field
     const errorKey = `global-horizontal-${intervalKey}`;
     if (errors[errorKey]) {
       const newErrors = { ...errors };
@@ -186,7 +170,6 @@ const useGrading = () => {
       dispatch(clearErrors());
     }
     
-    // Validate input
     if (value !== '' && value !== null && value !== undefined) {
       const numValue = parseFloat(value);
       if (isNaN(numValue) || numValue < 0 || numValue > 100) {
@@ -198,10 +181,8 @@ const useGrading = () => {
       }
     }
     
-    // Update value using the specific action
     dispatch(updateGlobalHorizontalInterval({ intervalKey, value }));
     
-    // Trigger calculation
     const timer = setTimeout(() => {
       calculateGrades();
     }, 500);
@@ -209,9 +190,9 @@ const useGrading = () => {
     return () => clearTimeout(timer);
   }, [dispatch, errors]);
 
-  // ENHANCED: Clear calculated outputs with proper structure
+  // Digər funksiyalar eyni qalır...
   const clearCalculatedOutputs = useCallback(() => {
-    console.log('🧹 Clearing calculated outputs...');
+
     
     const emptyOutputs = {};
     if (scenarioInputs.gradeOrder && scenarioInputs.gradeOrder.length > 0) {
@@ -224,24 +205,21 @@ const useGrading = () => {
     }
   }, [dispatch, scenarioInputs.gradeOrder]);
 
-  // ENHANCED: Calculate grades with comprehensive validation
   const calculateGrades = useCallback(async () => {
     try {
-      console.log('🧮 Starting grade calculation...');
+
       
-      // Validate prerequisites
       if (!scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0) {
-        console.log('❌ No valid base value, clearing outputs');
+    
         clearCalculatedOutputs();
         return;
       }
 
       if (!scenarioInputs.gradeOrder || scenarioInputs.gradeOrder.length === 0) {
-        console.log('❌ No grade order defined');
+      
         return;
       }
 
-      // Check for meaningful inputs
       const hasVerticalInputs = Object.values(scenarioInputs.grades || {}).some(grade => 
         grade && grade.vertical !== null && grade.vertical !== '' && grade.vertical !== undefined && grade.vertical !== 0
       );
@@ -250,20 +228,12 @@ const useGrading = () => {
         interval !== '' && interval !== null && interval !== undefined && interval !== 0
       );
 
-      console.log('📊 Input validation:', {
-        baseValue: scenarioInputs.baseValue1,
-        hasVerticalInputs,
-        hasHorizontalInputs,
-        gradeCount: scenarioInputs.gradeOrder.length
-      });
-
       if (!hasVerticalInputs && !hasHorizontalInputs) {
-        console.log('❌ No meaningful inputs, clearing outputs');
+      
         clearCalculatedOutputs();
         return;
       }
 
-      // Avoid duplicate calculations
       const currentInputString = JSON.stringify({
         baseValue1: scenarioInputs.baseValue1,
         grades: scenarioInputs.grades,
@@ -271,19 +241,17 @@ const useGrading = () => {
       });
 
       if (currentInputString === lastCalculationInputs) {
-        console.log('⏭️ Same inputs, skipping calculation');
+      
         return;
       }
 
       setIsCalculating(true);
       setLastCalculationInputs(currentInputString);
 
-      // Format data for API with enhanced structure
       const formattedGrades = {};
       scenarioInputs.gradeOrder.forEach(gradeName => {
         const gradeInput = scenarioInputs.grades[gradeName] || {};
         
-        // Handle vertical input with proper null handling
         let verticalValue = gradeInput.vertical;
         if (verticalValue === '' || verticalValue === null || verticalValue === undefined) {
           verticalValue = null;
@@ -298,7 +266,6 @@ const useGrading = () => {
           }
         }
         
-        // Apply global horizontal intervals to ALL positions
         const cleanIntervals = {};
         Object.keys(scenarioInputs.globalHorizontalIntervals || {}).forEach(key => {
           const value = scenarioInputs.globalHorizontalIntervals[key];
@@ -325,12 +292,12 @@ const useGrading = () => {
         grades: formattedGrades
       };
 
-      console.log('📤 Sending calculation request:', calculationData);
+
 
       const response = await dispatch(calculateDynamicScenario(calculationData));
       
       if (response.type.endsWith('/fulfilled')) {
-        console.log('✅ Calculation successful:', response.payload);
+      
       } else {
         console.error('❌ Calculation failed:', response.payload);
       }
@@ -339,17 +306,12 @@ const useGrading = () => {
     } finally {
       setIsCalculating(false);
     }
-  }, [
-    dispatch, 
-    scenarioInputs, 
-    lastCalculationInputs, 
-    clearCalculatedOutputs
-  ]);
+  }, [dispatch, scenarioInputs, lastCalculationInputs, clearCalculatedOutputs]);
 
-  // ENHANCED: Save draft with comprehensive data preparation
+  // Save/Apply/Archive handlers (eyni qalır)
   const handleSaveDraft = useCallback(async () => {
     try {
-      console.log('💾 Starting save draft...');
+    
       
       if (!validationSummary.canSave) {
         console.error('❌ Cannot save draft - validation failed');
@@ -372,13 +334,12 @@ const useGrading = () => {
         calculatedOutputs: calculatedOutputs
       };
 
-      console.log('📤 Saving draft data:', draftData);
+    
 
       const response = await dispatch(saveDraftScenario(draftData));
       
       if (response.type.endsWith('/fulfilled')) {
-        console.log('✅ Draft saved successfully');
-        // Clear current inputs after successful save
+       
         dispatch(initializeScenarioInputs(currentData));
         clearCalculatedOutputs();
       } else {
@@ -387,23 +348,15 @@ const useGrading = () => {
     } catch (error) {
       console.error('❌ Error saving draft:', error);
     }
-  }, [
-    dispatch, 
-    validationSummary.canSave, 
-    scenarioInputs, 
-    calculatedOutputs, 
-    currentData, 
-    clearCalculatedOutputs
-  ]);
+  }, [dispatch, validationSummary.canSave, scenarioInputs, calculatedOutputs, currentData, clearCalculatedOutputs]);
 
-  // ENHANCED: Apply scenario with data refresh
   const handleSaveAsCurrent = useCallback(async (scenarioId) => {
     try {
-      console.log('🎯 Applying scenario:', scenarioId);
+   
       const response = await dispatch(applyScenario(scenarioId));
       
       if (response.type.endsWith('/fulfilled')) {
-        console.log('✅ Scenario applied successfully');
+   
         setIsDetailOpen(false);
       } else {
         console.error('❌ Failed to apply scenario:', response.payload);
@@ -413,14 +366,13 @@ const useGrading = () => {
     }
   }, [dispatch]);
 
-  // ENHANCED: Archive scenario with refresh
   const handleArchiveDraft = useCallback(async (scenarioId) => {
     try {
-      console.log('📦 Archiving scenario:', scenarioId);
+
       const response = await dispatch(archiveScenario(scenarioId));
       
       if (response.type.endsWith('/fulfilled')) {
-        console.log('✅ Scenario archived successfully');
+ 
         setIsDetailOpen(false);
       } else {
         console.error('❌ Failed to archive scenario:', response.payload);
@@ -430,18 +382,14 @@ const useGrading = () => {
     }
   }, [dispatch]);
 
-  // ENHANCED: View details with data fetching
   const handleViewDetails = useCallback(async (scenario) => {
     try {
-      console.log('🔍 Viewing scenario details:', scenario.name);
       
-      // If we need fresh data, fetch it
       if (scenario.id && scenario.status !== 'current') {
         const response = await dispatch(fetchScenarioDetails(scenario.id));
         if (response.type.endsWith('/fulfilled')) {
           dispatch(setSelectedScenario(response.payload));
         } else {
-          // Fallback to existing data
           dispatch(setSelectedScenario(scenario));
         }
       } else {
@@ -450,18 +398,17 @@ const useGrading = () => {
       
       setIsDetailOpen(true);
     } catch (error) {
-      console.error('❌ Error viewing details:', error);
-      // Fallback to existing data
+     
       dispatch(setSelectedScenario(scenario));
       setIsDetailOpen(true);
     }
   }, [dispatch]);
 
-  // ENHANCED: Comparison functions
+  // Comparison functions
   const toggleCompareMode = useCallback(() => {
     setCompareMode(prev => {
       const newMode = !prev;
-      console.log('🔄 Compare mode:', newMode ? 'ON' : 'OFF');
+
       if (!newMode) {
         setSelectedForComparison([]);
       }
@@ -475,25 +422,27 @@ const useGrading = () => {
         ? prev.filter(id => id !== scenarioId)
         : [...prev, scenarioId];
       
-      console.log('🔄 Comparison selection:', newSelection);
+   
       return newSelection;
     });
   }, []);
 
   const startComparison = useCallback(() => {
-    console.log('🚀 Starting comparison with:', selectedForComparison);
+  
     setIsDetailOpen(true);
   }, [selectedForComparison]);
 
-  // FIXED: Enhanced scenario retrieval for comparison with proper data access
+  // ✅ FIXED: Scenario retrieval for comparison - Current Scenario istifadə edirik
   const getScenarioForComparison = useCallback((scenarioId) => {
-    console.log('🔍 Getting scenario for comparison:', scenarioId);
+ 
     
     if (scenarioId === 'current') {
-      console.log('✅ Returning current structure data');
+    
+      // ✅ Current Scenario-dan input data götürürük, Current Structure-dan deyil
       return {
-        ...currentData,
-        name: 'Current Structure',
+        scenario: currentScenario,  // currentData deyil, currentScenario
+        data: currentScenario?.data || currentScenario,
+        name: 'Current Active Scenario',
         status: 'current'
       };
     }
@@ -503,45 +452,92 @@ const useGrading = () => {
     const scenario = allScenarios.find(s => s.id === scenarioId);
     
     if (scenario) {
-      console.log('✅ Found scenario for comparison:', scenario.name);
-      console.log('📊 Scenario input data check:', {
-        hasInputRates: !!(scenario.input_rates && Object.keys(scenario.input_rates).length > 0),
-        hasPositionVerticalInputs: !!(scenario.data && scenario.data.positionVerticalInputs),
-        hasGlobalHorizontalIntervals: !!(scenario.data && scenario.data.globalHorizontalIntervals)
-      });
-      return scenario;
+   
+      return {
+        scenario: scenario,
+        data: scenario.data || scenario,
+        name: scenario.name,
+        status: scenario.status.toLowerCase()
+      };
     }
     
-    console.log('❌ Scenario not found for comparison:', scenarioId);
-    return null;
-  }, [currentData, draftScenarios, archivedScenarios]);
 
-  // FIXED: Helper functions for extracting comparison data
+    return null;
+  }, [currentScenario, draftScenarios, archivedScenarios]); // currentData deyil, currentScenario
+
+  // ✅ FIXED: Helper functions - Current Scenario-dan input data götürürük
   const getVerticalInputValue = useCallback((scenarioId, gradeName) => {
-    console.log(`🔍 Getting vertical input for ${gradeName} in scenario ${scenarioId}`);
+  
     
     if (scenarioId === 'current') {
-      console.log('❌ Current structure has no input values');
+    
+      
+      // Current Scenario-dan input data götürürük
+      if (currentScenario && currentScenario.input_rates && currentScenario.input_rates[gradeName] && currentScenario.input_rates[gradeName].vertical !== undefined) {
+        const value = currentScenario.input_rates[gradeName].vertical;
+
+        return value;
+      }
+      
+      // Fallback: data.positionVerticalInputs
+      if (currentScenario && currentScenario.data && currentScenario.data.positionVerticalInputs && currentScenario.data.positionVerticalInputs[gradeName] !== undefined) {
+        const value = currentScenario.data.positionVerticalInputs[gradeName];
+   
+        return value;
+      }
+      
+
       return null;
     }
     
-    const scenario = getScenarioForComparison(scenarioId);
-    if (!scenario) {
-      console.log('❌ Scenario not found');
+    const comparisonData = getScenarioForComparison(scenarioId);
+    if (!comparisonData) {
+
       return null;
     }
     
-    // Use the API helper function for consistent extraction
-    const value = gradingApi.extractVerticalInputForGrade(scenario, gradeName);
-    console.log(`📈 Extracted vertical input: ${value}`);
-    return value;
-  }, [getScenarioForComparison]);
+    const { scenario } = comparisonData;
+    
+    // Check input_rates first (most reliable for scenarios)
+    if (scenario.input_rates && scenario.input_rates[gradeName] && scenario.input_rates[gradeName].vertical !== undefined) {
+      const value = scenario.input_rates[gradeName].vertical;
+
+      return value;
+    }
+    
+    // Fallback: Check data.positionVerticalInputs
+    if (scenario.data && scenario.data.positionVerticalInputs && scenario.data.positionVerticalInputs[gradeName] !== undefined) {
+      const value = scenario.data.positionVerticalInputs[gradeName];
+ 
+      return value;
+    }
+    
+
+    return null;
+  }, [currentScenario, getScenarioForComparison]);
 
   const getHorizontalInputValues = useCallback((scenarioId) => {
-    console.log(`🔍 Getting horizontal inputs for scenario ${scenarioId}`);
+  
     
     if (scenarioId === 'current') {
-      console.log('❌ Current structure has no input values');
+     
+      // Current Scenario-dan horizontal intervals götürürük
+      if (currentScenario && currentScenario.data && currentScenario.data.globalHorizontalIntervals) {
+     
+        return currentScenario.data.globalHorizontalIntervals;
+      }
+      
+      // Fallback: input_rates-dən götürmək
+      if (currentScenario && currentScenario.input_rates) {
+        for (const [gradeName, gradeData] of Object.entries(currentScenario.input_rates)) {
+          if (gradeData && gradeData.horizontal_intervals) {
+  
+            return gradeData.horizontal_intervals;
+          }
+        }
+      }
+      
+
       return {
         LD_to_LQ: 0,
         LQ_to_M: 0,
@@ -550,25 +546,50 @@ const useGrading = () => {
       };
     }
     
-    const scenario = getScenarioForComparison(scenarioId);
-    if (!scenario) {
-      console.log('❌ Scenario not found');
-      return null;
+    const comparisonData = getScenarioForComparison(scenarioId);
+    if (!comparisonData) {
+  
+      return {
+        LD_to_LQ: 0,
+        LQ_to_M: 0,
+        M_to_UQ: 0,
+        UQ_to_UD: 0
+      };
     }
     
-    // Use the API helper function for consistent extraction
-    const values = gradingApi.extractHorizontalInputs(scenario);
-    console.log(`🌐 Extracted horizontal inputs:`, values);
-    return values;
-  }, [getScenarioForComparison]);
+    const { scenario } = comparisonData;
+    
+    // Check data.globalHorizontalIntervals first
+    if (scenario.data && scenario.data.globalHorizontalIntervals) {
+  
+      return scenario.data.globalHorizontalIntervals;
+    }
+    
+    // Fallback: Check input_rates (get from any position - they should be the same)
+    if (scenario.input_rates) {
+      for (const [gradeName, gradeData] of Object.entries(scenario.input_rates)) {
+        if (gradeData && gradeData.horizontal_intervals) {
+    
+          return gradeData.horizontal_intervals;
+        }
+      }
+    }
+    
 
-  // ENHANCED: Refresh data function
+    return {
+      LD_to_LQ: 0,
+      LQ_to_M: 0,
+      M_to_UQ: 0,
+      UQ_to_UD: 0
+    };
+  }, [currentScenario, getScenarioForComparison]);
+
   const refreshData = useCallback(async () => {
-    console.log('🔄 Refreshing all data...');
+
     await loadInitialData();
   }, [loadInitialData]);
 
-  // ENHANCED: Combined scenario display data
+  // Combined scenario display data (eyni qalır)
   const newScenarioDisplayData = useMemo(() => {
     if (!scenarioInputs.gradeOrder || scenarioInputs.gradeOrder.length === 0) {
       return null;
@@ -584,7 +605,6 @@ const useGrading = () => {
       combinedGrades[gradeName] = {
         ...inputGrade,
         ...outputGrade,
-        // Enhanced: Add calculation status
         isCalculated: Object.values(outputGrade).some(value => value && value !== "")
       };
     });
@@ -594,7 +614,6 @@ const useGrading = () => {
       gradeOrder: scenarioInputs.gradeOrder,
       grades: combinedGrades,
       globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals,
-      // Enhanced: Add summary statistics
       calculationProgress: {
         totalPositions: scenarioInputs.gradeOrder.length,
         calculatedPositions: Object.values(combinedGrades).filter(grade => grade.isCalculated).length,
@@ -608,7 +627,7 @@ const useGrading = () => {
     };
   }, [scenarioInputs, calculatedOutputs]);
 
-  // ENHANCED: Auto-calculation effect with debouncing
+  // Auto-calculation effect (eyni qalır)
   useEffect(() => {
     if (!isInitialized || !scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0) {
       return;
@@ -624,22 +643,21 @@ const useGrading = () => {
 
     if (hasAnyInput) {
       const timer = setTimeout(() => {
-        console.log('⏰ Auto-triggering calculation...');
+
         calculateGrades();
-      }, 1000); // 1 second debounce
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
   }, [isInitialized, scenarioInputs, calculateGrades]);
 
-  // ENHANCED: Clear outputs when base value is invalid
   useEffect(() => {
     if (isInitialized && (!scenarioInputs.baseValue1 || parseFloat(scenarioInputs.baseValue1) <= 0)) {
       clearCalculatedOutputs();
     }
   }, [isInitialized, scenarioInputs.baseValue1, clearCalculatedOutputs]);
 
-  // ENHANCED: Determine base position
+  // Computed values
   const basePositionName = useMemo(() => {
     if (currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0) {
       return currentData.gradeOrder[currentData.gradeOrder.length - 1];
@@ -650,17 +668,14 @@ const useGrading = () => {
     return "Base Position";
   }, [currentData, scenarioInputs.gradeOrder]);
 
-  // ENHANCED: Loading state aggregation
   const isLoading = useMemo(() => {
     return Object.values(loading).some(Boolean) || isCalculating || !isInitialized;
   }, [loading, isCalculating, isInitialized]);
 
-  // ENHANCED: Error state aggregation
   const hasErrors = useMemo(() => {
     return Object.keys(errors).length > 0;
   }, [errors]);
 
-  // ENHANCED: Data availability checks
   const dataAvailability = useMemo(() => {
     return {
       hasCurrentData: !!(currentData && currentData.gradeOrder && currentData.gradeOrder.length > 0),
@@ -672,21 +687,12 @@ const useGrading = () => {
     };
   }, [currentData, currentScenario, positionGroups, draftScenarios, archivedScenarios, isInitialized]);
 
-  console.log('🔄 useGrading hook state:', {
-    isInitialized,
-    isLoading,
-    hasErrors,
-    dataAvailability,
-    inputsReady: !!(scenarioInputs.gradeOrder && scenarioInputs.gradeOrder.length > 0),
-    canSave: validationSummary.canSave,
-    compareMode,
-    selectedForComparison: selectedForComparison.length
-  });
+
 
   return {
-    // ENHANCED: Core data with availability flags
-    currentData,
-    currentScenario,
+    // Core data
+    currentData,         // Current Structure (calculated values only)
+    currentScenario,     // Current Scenario (input + calculated values) ✅
     positionGroups,
     scenarioInputs,
     calculatedOutputs,
@@ -697,12 +703,12 @@ const useGrading = () => {
     bestDraft,
     basePositionName,
     
-    // ENHANCED: Computed state
+    // Computed state
     validationSummary,
     inputSummary,
     dataAvailability,
     
-    // ENHANCED: UI state
+    // UI state
     isDetailOpen,
     setIsDetailOpen,
     compareMode,
@@ -713,10 +719,10 @@ const useGrading = () => {
     hasErrors,
     isInitialized,
     
-    // ENHANCED: Direct loading access for granular control
+    // Direct loading access
     loading,
     
-    // ENHANCED: Actions with comprehensive error handling
+    // Actions
     handleBaseValueChange,
     handleVerticalChange,
     handleGlobalHorizontalChange,
@@ -732,11 +738,11 @@ const useGrading = () => {
     clearCalculatedOutputs,
     refreshData,
     
-    // FIXED: Enhanced comparison helper functions
+    // ✅ FIXED: Comparison helper functions - Current Scenario istifadə edir
     getVerticalInputValue,
     getHorizontalInputValues,
     
-    // ENHANCED: Utility functions
+    // Utility functions
     clearErrors: () => dispatch(clearErrors()),
     setError: (field, message) => dispatch(setError({ field, message }))
   };

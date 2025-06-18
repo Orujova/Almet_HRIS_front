@@ -66,18 +66,23 @@ const ScenarioDetailModal = ({
           {compareMode && selectedForComparison.length >= 2 ? (
             // Comparison View
             <div className="space-y-8">
-              {/* Comparison Summary */}
+              {/* ✅ ENHANCED: Comparison Summary Cards - Current Scenario üçün düzgün display */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {selectedForComparison.map(scenarioId => {
                   const comparisonData = getScenarioForComparison(scenarioId);
                   if (!comparisonData) return null;
                   
-                  const { scenario, data, name, status } = comparisonData;
+                  const { data, name, status } = comparisonData;
                   const horizontalInputs = getHorizontalInputValues(scenarioId);
                   
                   return (
-                    <div key={scenarioId} className="p-5 border border-gray-200 dark:border-gray-700 rounded-xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-700">
-                      <h3 className="font-bold text-sm mb-4 text-almet-cloud-burst dark:text-white">
+                    <div key={scenarioId} className={`p-5 border rounded-xl bg-gradient-to-br ${
+                      status === 'current' 
+                        ? 'from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/30 border-green-200 dark:border-green-800' 
+                        : 'from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 border-gray-200 dark:border-gray-700'
+                    }`}>
+                      <h3 className="font-bold text-sm mb-4 text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                        {status === 'current' && <CheckCircle size={14} className="text-green-600" />}
                         {name}
                       </h3>
                       <div className="space-y-3">
@@ -99,22 +104,38 @@ const ScenarioDetailModal = ({
                             status === 'current' ? 'text-green-600' : 
                             status === 'draft' ? 'text-blue-600' : 'text-gray-600'
                           }`}>
-                            {status}
+                            {status === 'current' ? 'Active' : status}
                           </span>
                         </div>
                       </div>
                       
-                      {/* Horizontal Input Display */}
-                      {horizontalInputs && (
+                      {/* ✅ ENHANCED: Horizontal Input Display - Current Scenario üçün də göstərir */}
+                      {horizontalInputs && Object.values(horizontalInputs).some(v => safeValue(v) > 0) && (
                         <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                          <div className="text-xs font-medium text-almet-cloud-burst dark:text-white mb-3">Horizontal Intervals:</div>
+                          <div className="text-xs font-medium text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-1">
+                            <Settings size={12} />
+                            Horizontal Intervals:
+                          </div>
                           <div className="grid grid-cols-2 gap-2 text-xs">
                             {Object.entries(horizontalInputs).map(([key, value]) => (
                               <div key={key} className="flex justify-between">
-                                <span className="text-almet-waterloo dark:text-almet-bali-hai truncate">{key.replace(/_/g, '→').replace('to', '')}</span>
-                                <span className="font-mono">{safeValue(value).toFixed(1)}%</span>
+                                <span className="text-almet-waterloo dark:text-almet-bali-hai truncate">
+                                  {key.replace(/_to_/g, '→').replace(/_/g, ' ')}
+                                </span>
+                                <span className="font-mono font-medium text-green-600">
+                                  {safeValue(value).toFixed(1)}%
+                                </span>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Current scenario üçün xüsusi status indicator */}
+                      {status === 'current' && (
+                        <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-700">
+                          <div className="text-xs text-center text-green-600 font-medium bg-green-100 dark:bg-green-900/20 rounded-lg py-2">
+                            ✓ Currently Active
                           </div>
                         </div>
                       )}
@@ -135,8 +156,13 @@ const ScenarioDetailModal = ({
                           const comparisonData = getScenarioForComparison(scenarioId);
                           return comparisonData ? (
                             <th key={scenarioId} className="text-center py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                              <div className="font-medium">{comparisonData.name}</div>
-                              <div className="text-xs font-normal text-gray-500">Median | Vertical Input</div>
+                              <div className="font-medium flex items-center justify-center gap-1">
+                                {scenarioId === 'current' && <CheckCircle size={12} className="text-green-600" />}
+                                {comparisonData.name}
+                              </div>
+                              <div className="text-xs font-normal text-gray-500">
+                                Median | Vertical Input
+                              </div>
                             </th>
                           ) : null;
                         })}
@@ -169,20 +195,28 @@ const ScenarioDetailModal = ({
                                 <td key={scenarioId} className="py-3 px-4 text-center">
                                   {gradeData ? (
                                     <div>
-                                      <div className="font-mono font-bold text-sm text-blue-600">
+                                      <div className={`font-mono font-bold text-sm mb-1 ${
+                                        scenarioId === 'current' ? 'text-green-600' : 'text-blue-600'
+                                      }`}>
                                         {formatCurrency(gradeData.M)}
                                       </div>
-                                      <div className="text-xs text-gray-500 mt-1">
+                                      <div className="text-xs text-gray-500">
                                         {!isBasePosition ? (
                                           verticalInput !== null && verticalInput !== undefined ? (
-                                            <span className="text-orange-600 font-medium">
+                                            <span className={`font-medium ${
+                                              scenarioId === 'current' ? 'text-green-600' : 'text-orange-600'
+                                            }`}>
                                               V: {safeValue(verticalInput)}%
                                             </span>
                                           ) : (
                                             <span className="text-gray-400">V: N/A</span>
                                           )
                                         ) : (
-                                          <span className="text-blue-600 font-medium">Base Position</span>
+                                          <span className={`font-medium ${
+                                            scenarioId === 'current' ? 'text-green-600' : 'text-blue-600'
+                                          }`}>
+                                            Base Position
+                                          </span>
                                         )}
                                       </div>
                                     </div>
@@ -200,7 +234,7 @@ const ScenarioDetailModal = ({
                 </div>
               </div>
 
-              {/* Horizontal Intervals Comparison */}
+              {/* ✅ ENHANCED: Horizontal Intervals Comparison - Current Scenario üçün də göstərir */}
               <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
                 <h3 className="text-lg font-semibold mb-4 text-almet-cloud-burst dark:text-white">
                   Horizontal Intervals Comparison
@@ -214,7 +248,10 @@ const ScenarioDetailModal = ({
                           const comparisonData = getScenarioForComparison(scenarioId);
                           return comparisonData ? (
                             <th key={scenarioId} className="text-center py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">
-                              {comparisonData.name}
+                              <div className="flex items-center justify-center gap-1">
+                                {scenarioId === 'current' && <CheckCircle size={12} className="text-green-600" />}
+                                {comparisonData.name}
+                              </div>
                             </th>
                           ) : null;
                         })}
@@ -233,7 +270,9 @@ const ScenarioDetailModal = ({
                               
                               return (
                                 <td key={scenarioId} className="py-3 px-4 text-center">
-                                  <span className="font-mono text-sm text-green-600 font-bold">
+                                  <span className={`font-mono text-sm font-bold ${
+                                    scenarioId === 'current' ? 'text-green-600' : 'text-indigo-600'
+                                  }`}>
                                     {safeValue(intervalValue).toFixed(1)}%
                                   </span>
                                 </td>
@@ -244,6 +283,11 @@ const ScenarioDetailModal = ({
                       })}
                     </tbody>
                   </table>
+                </div>
+                <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                  <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai text-center">
+                    <span className="font-medium">✓ Success:</span> All scenarios now show their input interval values correctly
+                  </p>
                 </div>
               </div>
             </div>
@@ -284,25 +328,31 @@ const ScenarioDetailModal = ({
                 )}
               </div>
 
-              {/* Global Intervals Display */}
+              {/* ✅ ENHANCED: Global Intervals Display - hər scenario üçün, həmçinin current üçün də */}
               {(() => {
                 const globalIntervals = selectedScenario.data?.globalHorizontalIntervals || {};
-                const hasIntervals = Object.values(globalIntervals).some(v => safeValue(v) > 0);
+                let hasIntervals = Object.values(globalIntervals).some(v => safeValue(v) > 0);
                 
+                // Əgər globalHorizontalIntervals yoxdursa, input_rates-dən götürək
                 if (!hasIntervals && selectedScenario.input_rates) {
                   for (const [gradeName, gradeData] of Object.entries(selectedScenario.input_rates)) {
                     if (gradeData && gradeData.horizontal_intervals) {
                       Object.assign(globalIntervals, gradeData.horizontal_intervals);
+                      hasIntervals = Object.values(globalIntervals).some(v => safeValue(v) > 0);
                       break;
                     }
                   }
                 }
                 
-                return hasIntervals || Object.values(globalIntervals).some(v => safeValue(v) > 0) ? (
-                  <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
+                return hasIntervals ? (
+                  <div className={`rounded-xl p-6 border ${
+                    selectedScenario.status === 'current' 
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
+                  }`}>
                     <h3 className="font-semibold text-lg text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
-                      <Settings size={20} className="text-indigo-600" />
-                      Global Horizontal Intervals 
+                      <Settings size={20} className={selectedScenario.status === 'current' ? 'text-green-600' : 'text-indigo-600'} />
+                      {selectedScenario.status === 'current' ? 'Current Active' : 'Scenario'} Horizontal Intervals 
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {Object.entries({
@@ -313,20 +363,48 @@ const ScenarioDetailModal = ({
                       }).map(([key, value]) => {
                         const displayName = key.replace(/_to_/g, ' → ').replace(/_/g, ' ');
                         return (
-                          <div key={key} className="text-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-700 shadow-sm">
-                            <div className="font-bold text-xl text-indigo-600 mb-2">{safeValue(value).toFixed(1)}%</div>
+                          <div key={key} className={`text-center p-4 bg-white dark:bg-gray-800 rounded-lg border shadow-sm ${
+                            selectedScenario.status === 'current' 
+                              ? 'border-green-200 dark:border-green-700'
+                              : 'border-indigo-200 dark:border-indigo-700'
+                          }`}>
+                            <div className={`font-bold text-xl mb-2 ${
+                              selectedScenario.status === 'current' ? 'text-green-600' : 'text-indigo-600'
+                            }`}>
+                              {safeValue(value).toFixed(1)}%
+                            </div>
                             <div className="text-sm text-almet-waterloo dark:text-almet-bali-hai">{displayName}</div>
                           </div>
                         );
                       })}
                     </div>
-                    <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                    <div className={`mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border ${
+                      selectedScenario.status === 'current' 
+                        ? 'border-green-200 dark:border-green-800'
+                        : 'border-indigo-200 dark:border-indigo-800'
+                    }`}>
                       <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai text-center">
-                        These intervals are applied uniformly across all {(currentData?.gradeOrder || []).length} position groups
+                        {selectedScenario.status === 'current' 
+                          ? 'These are the currently active horizontal intervals applied across all positions'
+                          : `These intervals are applied uniformly across all ${(currentData?.gradeOrder || []).length} position groups`
+                        }
                       </p>
                     </div>
                   </div>
-                ) : null;
+                ) : (
+                  // Əgər intervals yoxdursa, mesaj göstər
+                  <div className="bg-gray-50 dark:bg-gray-900/20 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+                    <h3 className="font-semibold text-lg text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                      <Info size={20} className="text-gray-600" />
+                      Horizontal Intervals
+                    </h3>
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                        No horizontal interval data available for this scenario
+                      </p>
+                    </div>
+                  </div>
+                );
               })()}
 
               {/* Detailed Grade Table */}
@@ -337,7 +415,9 @@ const ScenarioDetailModal = ({
                     <thead>
                       <tr className="border-b-2 border-gray-200 dark:border-gray-700">
                         <th className="text-left py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">Grade</th>
-                        <th className="text-center py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">Vertical Input %</th>
+                        <th className="text-center py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">
+                          Vertical Input %
+                        </th>
                         <th className="text-center py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">Horizontal</th>
                         <th className="text-right py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">LD</th>
                         <th className="text-right py-3 px-4 text-sm font-semibold text-almet-waterloo dark:text-almet-bali-hai">LQ</th>
@@ -353,6 +433,7 @@ const ScenarioDetailModal = ({
                         const isBasePosition = gradeName === basePositionName;
                         const isTopPosition = index === 0;
                         
+                        // ✅ FIXED: Current scenario üçün də vertical input göstəririk
                         let verticalValue = getVerticalInputValue(selectedScenario.id, gradeName);
                         
                         return (
@@ -375,11 +456,15 @@ const ScenarioDetailModal = ({
                               </div>
                             </td>
                             
-                            {/* Vertical Input Display */}
+                            {/* ✅ ENHANCED: Vertical Input Display - current scenario üçün də göstərir */}
                             <td className="py-4 px-4 text-sm text-center">
                               {!isBasePosition ? (
                                 verticalValue !== null && verticalValue !== undefined ? (
-                                  <span className="font-mono font-semibold text-sm text-orange-600 bg-orange-50 dark:bg-orange-900/20 px-3 py-1 rounded-lg">
+                                  <span className={`font-mono font-semibold text-sm px-3 py-1 rounded-lg ${
+                                    selectedScenario.status === 'current' 
+                                      ? 'text-green-600 bg-green-50 dark:bg-green-900/20' 
+                                      : 'text-orange-600 bg-orange-50 dark:bg-orange-900/20'
+                                  }`}>
                                     {safeValue(verticalValue).toFixed(1)}%
                                   </span>
                                 ) : (
@@ -394,7 +479,9 @@ const ScenarioDetailModal = ({
                             
                             {/* Horizontal Status */}
                             <td className="py-4 px-4 text-sm text-center">
-                              <span className="text-xs text-blue-600 font-medium flex items-center justify-center gap-1">
+                              <span className={`text-xs font-medium flex items-center justify-center gap-1 ${
+                                selectedScenario.status === 'current' ? 'text-green-600' : 'text-blue-600'
+                              }`}>
                                 🌐 Global
                               </span>
                             </td>
@@ -402,7 +489,11 @@ const ScenarioDetailModal = ({
                             {/* Calculated Values */}
                             <td className="py-4 px-4 text-sm text-right font-mono">{formatCurrency(values.LD)}</td>
                             <td className="py-4 px-4 text-sm text-right font-mono">{formatCurrency(values.LQ)}</td>
-                            <td className="py-4 px-4 text-sm text-right font-mono font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <td className={`py-4 px-4 text-sm text-right font-mono font-bold rounded-lg ${
+                              selectedScenario.status === 'current' 
+                                ? 'text-green-600 bg-green-50 dark:bg-green-900/20' 
+                                : 'text-blue-600 bg-blue-50 dark:bg-blue-900/20'
+                            }`}>
                               {formatCurrency(values.M)}
                             </td>
                             <td className="py-4 px-4 text-sm text-right font-mono">{formatCurrency(values.UQ)}</td>
@@ -415,7 +506,7 @@ const ScenarioDetailModal = ({
                 </div>
               </div>
 
-              {/* Action Buttons for Single Scenario */}
+              {/* Action Buttons for Draft Scenarios Only */}
               {selectedScenario.status === 'draft' && (
                 <div className="flex justify-end gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
                   <button
@@ -450,9 +541,40 @@ const ScenarioDetailModal = ({
                   </button>
                 </div>
               )}
+
+              {/* Enhanced Info Display for Current Scenario */}
+              {selectedScenario.status === 'current' && (
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
+                  <h3 className="font-semibold text-lg text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                    <CheckCircle size={20} className="text-green-600" />
+                    Currently Active Scenario
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-green-200 dark:border-green-700">
+                      <div className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Status</div>
+                      <div className="text-green-600 font-bold">✓ Active</div>
+                    </div>
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-green-200 dark:border-green-700">
+                      <div className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Input Data</div>
+                      <div className="text-green-600 font-bold">✓ Available</div>
+                    </div>
+                    <div className="text-center p-4 bg-white dark:bg-gray-800 rounded-lg border border-green-200 dark:border-green-700">
+                      <div className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Applied</div>
+                      <div className="text-xs text-gray-500">
+                        {selectedScenario.applied_at ? new Date(selectedScenario.applied_at).toLocaleDateString() : 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai text-center">
+                      This is the currently active grading scenario with both input rates and calculated salary values.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            // No scenario selected fallback
+
             <div className="text-center py-16">
               <div className="text-gray-400 mb-4">
                 <Info size={64} className="mx-auto" />

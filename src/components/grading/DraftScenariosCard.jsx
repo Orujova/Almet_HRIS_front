@@ -53,73 +53,38 @@ const DraftScenariosCard = ({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedScenarios = filteredAndSortedScenarios.slice(startIndex, startIndex + itemsPerPage);
 
-  const MetricsDisplay = ({ scenario, size = "sm" }) => {
-    if (!scenario || !scenario.metrics) return null;
-
-    const sizeClasses = size === "lg" ? "px-3 py-2 text-sm" : "px-2 py-1 text-xs";
-    const metrics = scenario.metrics;
-
-    return (
-      <div className={`space-y-1 ${sizeClasses}`}>
-        <div className="flex justify-between">
-          <span className="text-almet-waterloo dark:text-almet-bali-hai">Budget Impact:</span>
-          <span className="font-medium text-xs">{formatCurrency(metrics.totalBudgetImpact)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-almet-waterloo dark:text-almet-bali-hai">Avg Increase:</span>
-          <span className={`font-medium text-xs ${
-            (metrics.avgSalaryIncrease || 0) > 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {(metrics.avgSalaryIncrease || 0) > 0 ? '+' : ''}
-            {(metrics.avgSalaryIncrease || 0).toFixed(1)}%
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-almet-waterloo dark:text-almet-bali-hai">Positions:</span>
-          <span className="font-medium text-xs">{metrics.positionsAffected || 0}</span>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-b border-gray-200 dark:border-gray-700">
+        <div className="px-4 py-3 border-b border-almet-mystic dark:border-almet-comet">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
-              <Calculator size={16} className="text-white" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
-                Draft Scenarios
-              </h2>
-              <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
-                {draftScenarios.length} scenarios available for testing and application
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Calculator size={16} className="text-yellow-600" />
+            <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white">
+              Draft Scenarios ({draftScenarios.length})
+            </h3>
           </div>
           <div className="flex gap-2">
             {compareMode && selectedForComparison.length >= 2 && (
               <button
                 onClick={startComparison}
-                className="bg-green-600 text-white px-4 py-2 text-sm rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 shadow-md"
+                className="bg-green-600 text-white px-3 py-1 text-xs rounded flex items-center gap-1"
               >
-                <Eye size={14} />
+                <Eye size={12} />
                 Compare ({selectedForComparison.length})
               </button>
             )}
             <button
               onClick={toggleCompareMode}
-              className={`px-4 py-2 text-sm rounded-lg border transition-all flex items-center gap-2 shadow-md ${
+              className={`px-3 py-1 text-xs rounded flex items-center gap-1 ${
                 compareMode 
-                  ? 'bg-red-500 text-white border-red-500 hover:bg-red-600' 
-                  : 'bg-almet-sapphire text-white border-almet-sapphire hover:bg-almet-astral'
+                  ? 'bg-red-500 text-white' 
+                  : 'bg-almet-sapphire text-white'
               }`}
             >
-              <GitCompare size={14} />
-              {compareMode ? 'Cancel Compare' : 'Compare Scenarios'}
+              <GitCompare size={12} />
+              {compareMode ? 'Cancel' : 'Compare'}
             </button>
           </div>
         </div>
@@ -269,7 +234,7 @@ const DraftScenariosCard = ({
                   </div>
                 </div>
 
-                <MetricsDisplay scenario={scenario} />
+       
 
                 {!compareMode && (
                   <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">

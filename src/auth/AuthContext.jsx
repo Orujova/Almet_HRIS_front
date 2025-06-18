@@ -70,7 +70,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const initializeMsal = async () => {
       try {
-        console.log("🔄 MSAL başladılır...");
+       
         
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
@@ -95,7 +95,7 @@ export function AuthProvider({ children }) {
               setAccount(accounts[0]);
               console.log("✅ Token təsdiqləndi");
             } catch (error) {
-              console.log("❌ Token etibarsızdır, silindi");
+         
               await clearAuth();
             }
           } else {
@@ -290,7 +290,7 @@ export function AuthProvider({ children }) {
           account: loginResponse.account,
         });
 
-        console.log("🔑 ID Token alındı, backend-ə göndərilir...");
+   
 
         // Backend-ə göndər
         const backendResponse = await axios.post(

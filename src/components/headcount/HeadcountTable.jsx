@@ -317,7 +317,7 @@ const HeadcountTable = () => {
   };
 
   const handleBulkImportComplete = (results) => {
-    console.log("Bulk import completed:", results);
+
     refreshEmployees();
     fetchStatistics();
   };
