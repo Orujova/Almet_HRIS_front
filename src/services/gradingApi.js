@@ -1,4 +1,4 @@
-// src/services/gradingApi.js - FIXED: Enhanced API with proper input data preservation for comparison
+// src/services/gradingApi.js - FIXED: Enhanced API with proper current structure input data
 import api from './api';
 
 export const gradingApi = {
@@ -163,7 +163,7 @@ export const gradingApi = {
     return api.post(`/grading/scenarios/${scenarioId}/archive/`, {});
   },
 
-  // ENHANCED: Current structure formatter with null handling
+  // FIXED: Current structure formatter with proper input data preservation
   formatCurrentStructure: (backendData) => {
     console.log('🔄 Formatting current structure:', backendData);
     
@@ -176,13 +176,60 @@ export const gradingApi = {
         verticalAvg: 0,
         horizontalAvg: 0,
         baseValue1: 0,
-        status: 'current'
+        status: 'current',
+        data: {
+          baseValue1: 0,
+          gradeOrder: [],
+          grades: {},
+          globalHorizontalIntervals: {LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0},
+          verticalAvg: 0,
+          horizontalAvg: 0,
+          positionVerticalInputs: {},
+          inputRates: {},
+          hasCalculation: false,
+          isComplete: false
+        },
+        input_rates: {},
+        vertical_avg: 0,
+        horizontal_avg: 0
       };
     }
 
     // Enhanced data extraction with null safety
     const grades = {};
     const gradeOrder = Array.isArray(backendData.gradeOrder) ? backendData.gradeOrder : [];
+    
+    // FIXED: Extract input data from backend for current structure
+    const inputRates = backendData.input_rates || {};
+    const positionVerticalInputs = {};
+    const globalHorizontalIntervals = {
+      LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0
+    };
+    
+    // Extract position vertical inputs and global intervals
+    if (inputRates && typeof inputRates === 'object') {
+      gradeOrder.forEach(gradeName => {
+        const gradeInputData = inputRates[gradeName];
+        if (gradeInputData && typeof gradeInputData === 'object') {
+          // Extract vertical input
+          positionVerticalInputs[gradeName] = gradeInputData.vertical;
+          
+          // Extract global intervals from first position with intervals
+          const intervals = gradeInputData.horizontal_intervals;
+          if (intervals && typeof intervals === 'object' && !Object.values(globalHorizontalIntervals).some(v => v > 0)) {
+            Object.keys(globalHorizontalIntervals).forEach(key => {
+              if (key in intervals && intervals[key] != null) {
+                try {
+                  globalHorizontalIntervals[key] = parseFloat(intervals[key]) || 0;
+                } catch (e) {
+                  // Keep default value
+                }
+              }
+            });
+          }
+        }
+      });
+    }
     
     if (backendData.grades && typeof backendData.grades === 'object') {
       gradeOrder.forEach(gradeName => {
@@ -194,21 +241,18 @@ export const gradingApi = {
             M: parseFloat(gradeData.M || 0) || 0,
             UQ: parseFloat(gradeData.UQ || 0) || 0,
             UD: parseFloat(gradeData.UD || 0) || 0,
-            vertical: parseFloat(gradeData.vertical || 0) || 0,
-            horizontal_intervals: gradeData.horizontal_intervals || {
-              LD_to_LQ: 0,
-              LQ_to_M: 0,
-              M_to_UQ: 0,
-              UQ_to_UD: 0
-            }
+            
+            // FIXED: Include input data for comparison
+            vertical: gradeData.vertical || gradeData.verticalInput || positionVerticalInputs[gradeName] || null,
+            verticalInput: gradeData.verticalInput || positionVerticalInputs[gradeName] || null,
+            horizontal_intervals: gradeData.horizontal_intervals || globalHorizontalIntervals
           };
         } else {
           grades[gradeName] = {
             LD: 0, LQ: 0, M: 0, UQ: 0, UD: 0,
-            vertical: 0,
-            horizontal_intervals: {
-              LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0
-            }
+            vertical: positionVerticalInputs[gradeName] || null,
+            verticalInput: positionVerticalInputs[gradeName] || null,
+            horizontal_intervals: globalHorizontalIntervals
           };
         }
       });
@@ -222,14 +266,39 @@ export const gradingApi = {
       verticalAvg: parseFloat(backendData.verticalAvg || 0) || 0,
       horizontalAvg: parseFloat(backendData.horizontalAvg || 0) || 0,
       baseValue1: parseFloat(backendData.baseValue1 || 0) || 0,
-      status: 'current'
+      status: 'current',
+      
+      // FIXED: Add proper data structure for comparison
+      data: {
+        baseValue1: parseFloat(backendData.baseValue1 || 0) || 0,
+        gradeOrder: gradeOrder,
+        grades: grades,
+        globalHorizontalIntervals: globalHorizontalIntervals,
+        verticalAvg: parseFloat(backendData.verticalAvg || 0) || 0,
+        horizontalAvg: parseFloat(backendData.horizontalAvg || 0) || 0,
+        positionVerticalInputs: positionVerticalInputs,
+        inputRates: inputRates,
+        hasCalculation: Object.values(grades).some(grade => Object.values(grade).some(v => typeof v === 'number' && v > 0)),
+        isComplete: gradeOrder.length > 0 && Object.keys(grades).length > 0
+      },
+      
+      // FIXED: Preserve input data for comparison
+      input_rates: inputRates,
+      vertical_avg: parseFloat(backendData.vertical_avg || backendData.verticalAvg || 0) || 0,
+      horizontal_avg: parseFloat(backendData.horizontal_avg || backendData.horizontalAvg || 0) || 0
     };
 
-    console.log('✅ Formatted current structure:', result);
+    console.log('✅ Formatted current structure with input data:', {
+      hasInputRates: !!(result.input_rates && Object.keys(result.input_rates).length > 0),
+      hasPositionVerticalInputs: !!(result.data.positionVerticalInputs && Object.keys(result.data.positionVerticalInputs).length > 0),
+      hasGlobalHorizontalIntervals: Object.values(result.data.globalHorizontalIntervals).some(v => v > 0),
+      gradesCount: Object.keys(result.grades).length
+    });
+    
     return result;
   },
 
-  // FIXED: Enhanced scenario formatter with proper input data preservation
+  // Enhanced scenario formatter with proper input data preservation
   formatScenarioForFrontend: (backendScenario) => {
     console.log('🔄 Formatting scenario:', backendScenario?.name);
     
@@ -251,12 +320,9 @@ export const gradingApi = {
       gradeOrderLength: gradeOrder.length
     });
     
-    // FIXED: Extract global horizontal intervals with enhanced preservation
+    // Extract global horizontal intervals with enhanced preservation
     let globalHorizontalIntervals = {
-      LD_to_LQ: 0,
-      LQ_to_M: 0,
-      M_to_UQ: 0,
-      UQ_to_UD: 0
+      LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0
     };
     
     // Try to get from data.globalHorizontalIntervals first
@@ -283,7 +349,7 @@ export const gradingApi = {
     
     console.log('🌐 Global intervals extracted:', globalHorizontalIntervals);
     
-    // FIXED: Enhanced position vertical inputs extraction
+    // Enhanced position vertical inputs extraction
     const positionVerticalInputs = {};
     if (inputRates && typeof inputRates === 'object') {
       gradeOrder.forEach(gradeName => {
@@ -296,7 +362,7 @@ export const gradingApi = {
     
     console.log('📈 Position vertical inputs extracted:', positionVerticalInputs);
     
-    // FIXED: Format grades with enhanced data preservation
+    // Format grades with enhanced data preservation
     const formattedGrades = {};
     gradeOrder.forEach(gradeName => {
       const calculatedData = calculatedGrades[gradeName] || {};
@@ -312,7 +378,7 @@ export const gradingApi = {
         return isNaN(parsed) ? defaultValue : parsed;
       };
       
-      // FIXED: Preserve original input values properly
+      // Preserve original input values properly
       formattedGrades[gradeName] = {
         // Calculated values
         LD: extractValue(calculatedData, 'LD'),
@@ -321,7 +387,7 @@ export const gradingApi = {
         UQ: extractValue(calculatedData, 'UQ'),
         UD: extractValue(calculatedData, 'UD'),
         
-        // FIXED: Preserve original input data for comparison
+        // Preserve original input data for comparison
         vertical: inputData.vertical !== undefined ? inputData.vertical : null,
         verticalInput: inputData.vertical, // Explicit input value for details
         
@@ -331,7 +397,6 @@ export const gradingApi = {
     });
 
     console.log('📊 Formatted grades:', Object.keys(formattedGrades).length, 'positions');
-    console.log('📋 Sample grade data:', formattedGrades[Object.keys(formattedGrades)[0]]);
 
     // Enhanced averages extraction with multiple sources
     let verticalAvg = 0;
@@ -375,7 +440,7 @@ export const gradingApi = {
       metrics.positionsAffected = parseInt(backendScenario.metrics.positionsAffected || 0) || 0;
     }
     
-    // FIXED: Build final formatted scenario with enhanced input data preservation
+    // Build final formatted scenario with enhanced input data preservation
     const formattedScenario = {
       id: backendScenario.id,
       name: backendScenario.name || 'Unnamed Scenario',
@@ -385,12 +450,12 @@ export const gradingApi = {
       calculationTimestamp: backendScenario.calculation_timestamp,
       appliedAt: backendScenario.applied_at,
       
-      // FIXED: Store original backend data for API calls and comparison
+      // Store original backend data for API calls and comparison
       vertical_avg: verticalAvg,
       horizontal_avg: horizontalAvg,
       input_rates: inputRates, // Preserve original input rates
       
-      // FIXED: Enhanced frontend-formatted data with input preservation
+      // Enhanced frontend-formatted data with input preservation
       data: {
         baseValue1: baseValue,
         gradeOrder: gradeOrder,
@@ -399,7 +464,7 @@ export const gradingApi = {
         verticalAvg: verticalAvg,
         horizontalAvg: horizontalAvg,
         
-        // FIXED: Explicit input data preservation for comparison
+        // Explicit input data preservation for comparison
         positionVerticalInputs: positionVerticalInputs, // Separate object for easy access
         inputRates: inputRates, // Keep original input rates accessible
         
@@ -417,128 +482,15 @@ export const gradingApi = {
     console.log(`✅ Formatted scenario ${formattedScenario.name}:`, {
       id: formattedScenario.id,
       status: formattedScenario.status,
-      verticalAvg: formattedScenario.data.verticalAvg,
-      horizontalAvg: formattedScenario.data.horizontalAvg,
-      baseValue: formattedScenario.data.baseValue1,
-      gradesCount: Object.keys(formattedScenario.data.grades).length,
-      hasGlobalIntervals: Object.values(formattedScenario.data.globalHorizontalIntervals).some(v => v > 0),
       hasInputData: Object.keys(formattedScenario.data.positionVerticalInputs).length > 0,
+      hasGlobalIntervals: Object.values(formattedScenario.data.globalHorizontalIntervals).some(v => v > 0),
       isCalculated: formattedScenario.isCalculated
     });
     
     return formattedScenario;
   },
 
-  // ENHANCED: Validation with comprehensive checks
-  validateScenarioData: (scenarioData) => {
-    const errors = {};
-    
-    console.log('🔍 Validating scenario data:', scenarioData);
-    
-    // Base value validation
-    if (!scenarioData.baseValue1 || scenarioData.baseValue1 <= 0) {
-      errors.baseValue1 = 'Base value must be greater than 0';
-    }
-    
-    // Grade order validation
-    if (!scenarioData.gradeOrder || !Array.isArray(scenarioData.gradeOrder) || scenarioData.gradeOrder.length === 0) {
-      errors.gradeOrder = 'Grade order is required';
-    }
-    
-    // Grades validation
-    if (!scenarioData.grades || typeof scenarioData.grades !== 'object') {
-      errors.grades = 'Grade inputs are required';
-    } else if (scenarioData.gradeOrder) {
-      // Validate individual grade inputs
-      scenarioData.gradeOrder.forEach((gradeName, index) => {
-        const grade = scenarioData.grades[gradeName];
-        const isBasePosition = index === (scenarioData.gradeOrder.length - 1);
-        
-        if (grade && !isBasePosition) {
-          // Validate vertical input for non-base positions
-          if (grade.vertical !== null && grade.vertical !== undefined && grade.vertical !== '') {
-            const verticalNum = parseFloat(grade.vertical);
-            if (isNaN(verticalNum) || verticalNum < 0 || verticalNum > 100) {
-              errors[`vertical-${gradeName}`] = `Vertical rate for ${gradeName} must be between 0-100`;
-            }
-          }
-        }
-      });
-    }
-    
-    // Global horizontal intervals validation
-    if (scenarioData.globalHorizontalIntervals && typeof scenarioData.globalHorizontalIntervals === 'object') {
-      const intervalNames = ['LD_to_LQ', 'LQ_to_M', 'M_to_UQ', 'UQ_to_UD'];
-      intervalNames.forEach(intervalName => {
-        const intervalValue = scenarioData.globalHorizontalIntervals[intervalName];
-        if (intervalValue !== null && intervalValue !== undefined && intervalValue !== '') {
-          const intervalNum = parseFloat(intervalValue);
-          if (isNaN(intervalNum) || intervalNum < 0 || intervalNum > 100) {
-            errors[`global-horizontal-${intervalName}`] = `${intervalName} rate must be between 0-100`;
-          }
-        }
-      });
-    }
-    
-    console.log('🔍 Validation results:', { 
-      errorsCount: Object.keys(errors).length, 
-      errors: Object.keys(errors) 
-    });
-    
-    return errors;
-  },
-
-  // ENHANCED: Data cleaning utilities
-  cleanScenarioData: (scenarioData) => {
-    console.log('🧹 Cleaning scenario data...');
-    
-    const cleaned = {
-      baseValue1: parseFloat(scenarioData.baseValue1) || 0,
-      gradeOrder: Array.isArray(scenarioData.gradeOrder) ? [...scenarioData.gradeOrder] : [],
-      grades: {},
-      globalHorizontalIntervals: {
-        LD_to_LQ: 0,
-        LQ_to_M: 0,
-        M_to_UQ: 0,
-        UQ_to_UD: 0
-      },
-      calculatedOutputs: scenarioData.calculatedOutputs || {}
-    };
-    
-    // Clean grades
-    if (scenarioData.grades && typeof scenarioData.grades === 'object') {
-      Object.keys(scenarioData.grades).forEach(gradeName => {
-        const grade = scenarioData.grades[gradeName];
-        if (grade && typeof grade === 'object') {
-          cleaned.grades[gradeName] = {
-            vertical: (grade.vertical !== null && grade.vertical !== undefined && grade.vertical !== '') 
-              ? parseFloat(grade.vertical) || null 
-              : null
-          };
-        }
-      });
-    }
-    
-    // Clean global intervals
-    if (scenarioData.globalHorizontalIntervals && typeof scenarioData.globalHorizontalIntervals === 'object') {
-      Object.keys(cleaned.globalHorizontalIntervals).forEach(key => {
-        const value = scenarioData.globalHorizontalIntervals[key];
-        cleaned.globalHorizontalIntervals[key] = (value !== null && value !== undefined && value !== '') 
-          ? parseFloat(value) || 0 
-          : 0;
-      });
-    }
-    
-    console.log('✅ Data cleaned:', {
-      baseValue: cleaned.baseValue1,
-      gradesCount: Object.keys(cleaned.grades).length,
-      intervalsSet: Object.values(cleaned.globalHorizontalIntervals).some(v => v > 0)
-    });
-    
-    return cleaned;
-  },
-
-  // FIXED: Helper functions for comparison data extraction
+  // Helper functions for comparison data extraction
   extractVerticalInputForGrade: (scenario, gradeName) => {
     console.log(`🔍 Extracting vertical input for ${gradeName} in scenario:`, scenario?.name);
     
@@ -592,10 +544,7 @@ export const gradingApi = {
     
     console.log(`❌ No horizontal inputs found`);
     return {
-      LD_to_LQ: 0,
-      LQ_to_M: 0,
-      M_to_UQ: 0,
-      UQ_to_UD: 0
+      LD_to_LQ: 0, LQ_to_M: 0, M_to_UQ: 0, UQ_to_UD: 0
     };
   }
 };
