@@ -9,9 +9,9 @@ import DashboardLayout from "../../../components/layout/DashboardLayout";
  * @returns {JSX.Element} - Headcount table page
  */
 const HeadcountTablePage = () => {
-  useEffect(() => {
-    document.title = "Employee Directory - Almet Holding HRIS";
-  }, []);
+  // useEffect(() => {
+  //   document.title = "Employee Directory - Almet Holding HRIS";
+  // }, []);
 
   return (
     <DashboardLayout>
