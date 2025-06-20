@@ -44,16 +44,16 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800 dark:to-slate-800 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gray-600 dark:bg-gray-500 rounded-lg flex items-center justify-center">
             <Archive size={16} className="text-white" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
               Archived Scenarios
             </h2>
-            <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
+            <p className="text-sm text-almet-waterloo dark:text-gray-300">
               {archivedScenarios.length} previous scenarios for reference
             </p>
           </div>
@@ -64,21 +64,21 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
         {/* Search and Filter */}
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="flex-1 relative">
-            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search archived scenarios..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-almet-sapphire dark:focus:ring-almet-sapphire"
             />
           </div>
           <div className="flex items-center gap-2">
-            <Filter size={16} className="text-gray-400" />
+            <Filter size={16} className="text-gray-400 dark:text-gray-500" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-almet-sapphire dark:focus:ring-almet-sapphire"
             >
               <option value="created_at">Sort by Date</option>
               <option value="name">Sort by Name</option>
@@ -98,7 +98,7 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
               >
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="font-medium text-almet-cloud-burst dark:text-white text-sm mb-1 line-clamp-2 group-hover:text-almet-sapphire transition-colors">
+                    <h3 className="font-medium text-almet-cloud-burst dark:text-white text-sm mb-1 line-clamp-2 group-hover:text-almet-sapphire dark:group-hover:text-almet-sapphire transition-colors">
                       {scenario.name}
                     </h3>
                     <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
@@ -107,11 +107,11 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <span className="text-xs bg-gray-500 text-white px-2 py-1 rounded-full font-medium">
+                    <span className="text-xs bg-gray-500 dark:bg-gray-600 text-white px-2 py-1 rounded-full font-medium">
                       Archived
                     </span>
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Eye size={14} className="text-almet-sapphire" />
+                      <Eye size={14} className="text-almet-sapphire dark:text-almet-sapphire" />
                     </div>
                   </div>
                 </div>
@@ -119,22 +119,22 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
                 {/* Quick Metrics */}
                 <div className="grid grid-cols-3 gap-2 text-center mb-3">
                   <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="text-xs font-semibold text-blue-600">
+                    <div className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                       {formatPercentage(scenario.data?.verticalAvg)}
                     </div>
-                    <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">V</div>
+                    <div className="text-xs text-almet-waterloo dark:text-gray-300">V</div>
                   </div>
                   <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="text-xs font-semibold text-green-600">
+                    <div className="text-xs font-semibold text-green-600 dark:text-green-400">
                       {formatPercentage(scenario.data?.horizontalAvg)}
                     </div>
-                    <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">H</div>
+                    <div className="text-xs text-almet-waterloo dark:text-gray-300">H</div>
                   </div>
                   <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="text-xs font-semibold text-purple-600">
+                    <div className="text-xs font-semibold text-purple-600 dark:text-purple-400">
                       {formatCurrency(scenario.data?.baseValue1)}
                     </div>
-                    <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Base</div>
+                    <div className="text-xs text-almet-waterloo dark:text-gray-300">Base</div>
                   </div>
                 </div>
 
@@ -147,7 +147,7 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
 
                 {/* Creator Info */}
                 {scenario.createdBy && (
-                  <div className="text-xs text-gray-400 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <div className="text-xs text-gray-400 dark:text-gray-500 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
                     Created by {scenario.createdBy}
                   </div>
                 )}
@@ -155,13 +155,13 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
             ))
           ) : (
             <div className="col-span-full text-center py-8">
-              <div className="text-gray-400 mb-3">
+              <div className="text-gray-400 dark:text-gray-500 mb-3">
                 <Archive size={48} className="mx-auto" />
               </div>
-              <h3 className="text-base font-semibold text-almet-waterloo dark:text-almet-bali-hai mb-2">
+              <h3 className="text-base font-semibold text-almet-waterloo dark:text-gray-300 mb-2">
                 {searchTerm ? 'No archived scenarios found' : 'No Archived Scenarios'}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 {searchTerm ? 'Try adjusting your search terms' : 'Archived scenarios will appear here'}
               </p>
             </div>
@@ -174,7 +174,7 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 text-almet-cloud-burst dark:text-white bg-white dark:bg-gray-800"
             >
               Previous
             </button>
@@ -186,8 +186,8 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
                   onClick={() => setCurrentPage(page)}
                   className={`px-3 py-2 text-sm rounded-lg ${
                     currentPage === page
-                      ? "bg-gray-600 text-white"
-                      : "border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      ? "bg-gray-600 dark:bg-gray-600 text-white"
+                      : "border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-almet-cloud-burst dark:text-white bg-white dark:bg-gray-800"
                   }`}
                 >
                   {page}
@@ -198,7 +198,7 @@ const ArchivedScenariosCard = ({ archivedScenarios, handleViewDetails }) => {
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 dark:hover:bg-gray-700 text-almet-cloud-burst dark:text-white bg-white dark:bg-gray-800"
             >
               Next
             </button>

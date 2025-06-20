@@ -1,4 +1,4 @@
-// src/app/structure/grading/page.jsx - Modern Tab-based Layout
+// src/app/structure/grading/page.jsx - Dark mode düzəldilmiş
 "use client";
 import React, { useState } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -12,7 +12,7 @@ import CreateScenarioCard from "@/components/grading/CreateScenarioCard";
 import DraftScenariosCard from "@/components/grading/DraftScenariosCard";
 import ArchivedScenariosCard from "@/components/grading/ArchivedScenariosCard";
 import ScenarioDetailModal from "@/components/grading/ScenarioDetailModal";
-import { LoadingSpinner, ErrorDisplay } from "@/components/grading/LoadingSpinner";
+import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
 
 // Icons
 import { 
@@ -27,7 +27,7 @@ import {
 // Tab Navigation Component
 const TabNavigation = ({ activeTab, setActiveTab, tabs }) => {
   return (
-    <div className="border-b border-almet-mystic dark:border-almet-comet mb-6">
+    <div className="border-b border-almet-mystic dark:border-gray-700 mb-6">
       <nav className="flex space-x-8" aria-label="Tabs">
         {tabs.map((tab) => (
           <button
@@ -35,8 +35,8 @@ const TabNavigation = ({ activeTab, setActiveTab, tabs }) => {
             onClick={() => setActiveTab(tab.id)}
             className={`py-4 px-2 border-b-3 font-medium text-sm transition-all duration-300 flex items-center gap-2 ${
               activeTab === tab.id
-                ? 'border-almet-sapphire text-almet-sapphire bg-gradient-to-t from-almet-mystic/30 to-transparent'
-                : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst hover:border-almet-bali-hai dark:text-almet-bali-hai dark:hover:text-white'
+                ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-sapphire bg-gradient-to-t from-almet-mystic/30 dark:from-gray-700/30 to-transparent'
+                : 'border-transparent text-almet-waterloo dark:text-gray-300 hover:text-almet-cloud-burst dark:hover:text-white hover:border-almet-bali-hai dark:hover:border-gray-500'
             }`}
           >
             <tab.icon size={18} />
@@ -44,8 +44,8 @@ const TabNavigation = ({ activeTab, setActiveTab, tabs }) => {
             {tab.count && (
               <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${
                 activeTab === tab.id 
-                  ? 'bg-almet-sapphire text-white' 
-                  : 'bg-almet-mystic text-almet-waterloo dark:bg-almet-comet dark:text-almet-bali-hai'
+                  ? 'bg-almet-sapphire dark:bg-almet-sapphire text-white' 
+                  : 'bg-almet-mystic dark:bg-gray-700 text-almet-waterloo dark:text-gray-300'
               }`}>
                 {tab.count}
               </span>
@@ -75,9 +75,6 @@ const CurrentStructureTab = ({
 
   return (
     <div className="space-y-6">
-   
-
-      {/* Current Structure Card */}
       <CurrentStructureCard 
         currentData={currentData}
         basePositionName={basePositionName}
@@ -102,8 +99,6 @@ const CreateScenarioTab = ({
 }) => {
   return (
     <div className="space-y-6">
-     
-
       <CreateScenarioCard 
         scenarioInputs={scenarioInputs}
         newScenarioDisplayData={newScenarioDisplayData}
@@ -137,8 +132,6 @@ const DraftScenariosTab = ({
 }) => {
   return (
     <div className="space-y-6">
-   
-
       <DraftScenariosCard 
         draftScenarios={draftScenarios}
         currentData={currentData}
@@ -160,8 +153,6 @@ const DraftScenariosTab = ({
 const ArchiveTab = ({ archivedScenarios, handleViewDetails }) => {
   return (
     <div className="space-y-6">
-
-
       {archivedScenarios.length > 0 ? (
         <ArchivedScenariosCard 
           archivedScenarios={archivedScenarios}
@@ -169,10 +160,10 @@ const ArchiveTab = ({ archivedScenarios, handleViewDetails }) => {
         />
       ) : (
         <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-          <div className="text-gray-400 mb-4">
+          <div className="text-gray-400 dark:text-gray-500 mb-4">
             <Archive size={64} className="mx-auto" />
           </div>
-          <h3 className="text-xl font-semibold text-almet-waterloo dark:text-almet-bali-hai mb-2">
+          <h3 className="text-xl font-semibold text-almet-waterloo dark:text-gray-300 mb-2">
             No Archived Scenarios
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -347,12 +338,12 @@ const GradingPage = () => {
       <div className="min-h-screen bg-gradient-to-br ">
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
           {/* Header */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-almet-comet p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-gray-700 p-6">
             <GradingHeader />
           </div>
 
           {/* Tab Navigation */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-almet-comet p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-gray-700 p-6">
             <TabNavigation 
               activeTab={activeTab} 
               setActiveTab={setActiveTab} 
@@ -386,9 +377,9 @@ const GradingPage = () => {
 
           {/* Enhanced Error Toast */}
           {hasErrors && (
-            <div className="fixed bottom-6 right-6 bg-red-500 text-white px-6 py-4 rounded-xl shadow-2xl max-w-md z-50 animate-slide-up border border-red-400">
+            <div className="fixed bottom-6 right-6 bg-red-500 dark:bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl max-w-md z-50 animate-slide-up border border-red-400 dark:border-red-500">
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-red-600 dark:bg-red-700 rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-white font-bold">!</span>
                 </div>
                 <div className="flex-1">
@@ -396,7 +387,7 @@ const GradingPage = () => {
                   <div className="text-xs space-y-1 opacity-90">
                     {Object.entries(errors).map(([key, message]) => (
                       <div key={key} className="flex items-start gap-1">
-                        <span className="text-red-200">•</span>
+                        <span className="text-red-200 dark:text-red-300">•</span>
                         <span>{message}</span>
                       </div>
                     ))}
@@ -404,7 +395,7 @@ const GradingPage = () => {
                 </div>
                 <button
                   onClick={() => window.location.reload()}
-                  className="ml-2 text-xs bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                  className="ml-2 text-xs bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-800 px-3 py-1.5 rounded-lg transition-colors font-medium"
                 >
                   Reload Page
                 </button>
@@ -415,15 +406,15 @@ const GradingPage = () => {
           {/* Enhanced Loading Overlay */}
           {(loading.saving || loading.applying || loading.archiving) && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 backdrop-blur-sm">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border border-almet-mystic dark:border-almet-comet max-w-sm mx-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border border-almet-mystic dark:border-gray-700 max-w-sm mx-4">
                 <div className="text-center">
-                  <div className="w-16 h-16 border-4 border-almet-mystic dark:border-gray-600 border-t-almet-sapphire rounded-full animate-spin mx-auto mb-4"></div>
+                  <div className="w-16 h-16 border-4 border-almet-mystic dark:border-gray-600 border-t-almet-sapphire dark:border-t-almet-sapphire rounded-full animate-spin mx-auto mb-4"></div>
                   <h3 className="font-semibold text-almet-cloud-burst dark:text-white text-lg mb-2">
                     {loading.saving ? 'Saving Scenario' : 
                      loading.applying ? 'Applying Scenario' : 
                      loading.archiving ? 'Archiving Scenario' : 'Processing'}
                   </h3>
-                  <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                  <p className="text-sm text-almet-waterloo dark:text-gray-300">
                     {loading.saving ? 'Creating new draft scenario...' :
                      loading.applying ? 'Setting as current structure...' :
                      loading.archiving ? 'Moving to archive...' :
@@ -431,9 +422,9 @@ const GradingPage = () => {
                   </p>
                   <div className="mt-4 flex justify-center">
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-almet-sapphire rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-almet-sapphire rounded-full animate-bounce animation-delay-200"></div>
-                      <div className="w-2 h-2 bg-almet-sapphire rounded-full animate-bounce animation-delay-400"></div>
+                      <div className="w-2 h-2 bg-almet-sapphire dark:bg-almet-sapphire rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-almet-sapphire dark:bg-almet-sapphire rounded-full animate-bounce animation-delay-200"></div>
+                      <div className="w-2 h-2 bg-almet-sapphire dark:bg-almet-sapphire rounded-full animate-bounce animation-delay-400"></div>
                     </div>
                   </div>
                 </div>
