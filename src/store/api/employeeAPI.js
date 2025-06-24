@@ -1,9 +1,9 @@
-// src/store/api/employeeAPI.js - Complete backend integration
+// src/store/api/employeeAPI.js - Complete backend integration with all features
 import { apiService } from '../../services/api';
 
 export const employeeAPI = {
   // Employee CRUD operations with proper field mapping
-  getEmployees: (params = {}) => {
+  getAll: (params = {}) => {
     // Map frontend filter parameters to backend field names
     const backendParams = {};
     
@@ -14,7 +14,7 @@ export const employeeAPI = {
     // Search
     if (params.search) backendParams.search = params.search;
     
-    // Sorting
+    // Sorting - Excel-style multi-sort support
     if (params.ordering) backendParams.ordering = params.ordering;
     
     // Employee specific filters
@@ -49,7 +49,7 @@ export const employeeAPI = {
         : params.position_group;
     }
     
-    // Status and tags
+    // Status and tags - Multiple selection support
     if (params.status) {
       backendParams.status = Array.isArray(params.status) 
         ? params.status.join(',') 
@@ -82,288 +82,213 @@ export const employeeAPI = {
         ? params.gender.join(',') 
         : params.gender;
     }
+    if (params.nationality) {
+      backendParams.nationality = Array.isArray(params.nationality) 
+        ? params.nationality.join(',') 
+        : params.nationality;
+    }
     
-    // Date filters
-    if (params.start_date) backendParams.start_date = params.start_date;
-    if (params.start_date_from) backendParams.start_date_from = params.start_date_from;
-    if (params.start_date_to) backendParams.start_date_to = params.start_date_to;
-    if (params.end_date) backendParams.end_date = params.end_date;
-    if (params.end_date_from) backendParams.end_date_from = params.end_date_from;
-    if (params.end_date_to) backendParams.end_date_to = params.end_date_to;
-    if (params.birth_date_from) backendParams.birth_date_from = params.birth_date_from;
-    if (params.birth_date_to) backendParams.birth_date_to = params.birth_date_to;
-    
-    // Contract duration
+    // Contract information
     if (params.contract_duration) {
       backendParams.contract_duration = Array.isArray(params.contract_duration) 
         ? params.contract_duration.join(',') 
         : params.contract_duration;
     }
-    
-    // Years of service
-    if (params.years_of_service_min) backendParams.years_of_service_min = params.years_of_service_min;
-    if (params.years_of_service_max) backendParams.years_of_service_max = params.years_of_service_max;
-    
-    // Visibility
-    if (params.is_visible_in_org_chart !== undefined) {
-      backendParams.is_visible_in_org_chart = params.is_visible_in_org_chart;
+    if (params.contract_type) {
+      backendParams.contract_type = Array.isArray(params.contract_type) 
+        ? params.contract_type.join(',') 
+        : params.contract_type;
     }
+    
+    // Date filters
+    if (params.start_date_from) backendParams.start_date_from = params.start_date_from;
+    if (params.start_date_to) backendParams.start_date_to = params.start_date_to;
+    if (params.end_date_from) backendParams.end_date_from = params.end_date_from;
+    if (params.end_date_to) backendParams.end_date_to = params.end_date_to;
+    
+    // Special filters
+    if (params.active_only !== undefined) backendParams.active_only = params.active_only;
+    if (params.org_chart_visible !== undefined) backendParams.org_chart_visible = params.org_chart_visible;
+    if (params.has_documents !== undefined) backendParams.has_documents = params.has_documents;
+    if (params.is_line_manager !== undefined) backendParams.is_line_manager = params.is_line_manager;
     
     return apiService.getEmployees(backendParams);
   },
 
-  getEmployee: (id) => apiService.getEmployee(id),
+  getById: (id) => apiService.getEmployee(id),
   
-  createEmployee: (data) => {
-    // Ensure proper field mapping for creation
+  create: (data) => {
+    // Map frontend form data to backend expected format
     const backendData = {
-      ...data,
-      // Ensure boolean fields are properly set
-      is_visible_in_org_chart: data.is_visible_in_org_chart ?? true,
-      // Ensure array fields are arrays
-      tag_ids: Array.isArray(data.tag_ids) ? data.tag_ids : [],
-      // Handle null values for foreign keys
-      unit: data.unit || null,
-      line_manager: data.line_manager || null,
+      // Basic Information
+      employee_id: data.employeeId || data.employee_id,
+      name: data.name,
+      surname: data.surname,
+      email: data.email,
+      phone: data.phone,
+      gender: data.gender,
+      nationality: data.nationality,
+      date_of_birth: data.dateOfBirth || data.date_of_birth,
+      
+      // Job Information
+      job_title: data.jobTitle || data.job_title,
+      business_function: data.businessFunction || data.business_function,
+      department: data.department,
+      unit: data.unit,
+      job_function: data.jobFunction || data.job_function,
+      position_group: data.positionGroup || data.position_group,
+      
+      // Grading - Use position group grading levels
+      grading_level: data.gradingLevel || data.grading_level || '', // Default to empty, will be set based on position group
+      
+      // Management
+      line_manager: data.lineManager || data.line_manager,
+      
+      // Contract Information
+      start_date: data.startDate || data.start_date,
+      end_date: data.endDate || data.end_date,
+      contract_duration: data.contractDuration || data.contract_duration,
+      contract_type: data.contractType || data.contract_type,
+      
+      // Status is auto-determined based on contract, not manually set
+      // status: Will be automatically set by backend based on contract
+      
+      // Tags
+      tags: data.tags || [],
+      
+      // Documents (optional)
+      documents: data.documents || [],
+      
+      // Additional fields
+      notes: data.notes,
+      emergency_contact: data.emergencyContact || data.emergency_contact,
+      emergency_contact_phone: data.emergencyContactPhone || data.emergency_contact_phone,
+      
+      // System fields
+      org_chart_visible: data.orgChartVisible !== undefined ? data.orgChartVisible : true,
     };
     
     return apiService.createEmployee(backendData);
   },
   
-  updateEmployee: (id, data) => {
-    // Ensure proper field mapping for updates
+  update: (id, data) => {
+    // Similar mapping for update
     const backendData = {
-      ...data,
-      // Ensure boolean fields are properly set
-      is_visible_in_org_chart: data.is_visible_in_org_chart ?? true,
-      // Ensure array fields are arrays
-      tag_ids: Array.isArray(data.tag_ids) ? data.tag_ids : [],
-      // Handle null values for foreign keys
-      unit: data.unit || null,
-      line_manager: data.line_manager || null,
+      employee_id: data.employeeId || data.employee_id,
+      name: data.name,
+      surname: data.surname,
+      email: data.email,
+      phone: data.phone,
+      gender: data.gender,
+      nationality: data.nationality,
+      date_of_birth: data.dateOfBirth || data.date_of_birth,
+      job_title: data.jobTitle || data.job_title,
+      business_function: data.businessFunction || data.business_function,
+      department: data.department,
+      unit: data.unit,
+      job_function: data.jobFunction || data.job_function,
+      position_group: data.positionGroup || data.position_group,
+      grading_level: data.gradingLevel || data.grading_level,
+      line_manager: data.lineManager || data.line_manager,
+      start_date: data.startDate || data.start_date,
+      end_date: data.endDate || data.end_date,
+      contract_duration: data.contractDuration || data.contract_duration,
+      contract_type: data.contractType || data.contract_type,
+      tags: data.tags || [],
+      notes: data.notes,
+      emergency_contact: data.emergencyContact || data.emergency_contact,
+      emergency_contact_phone: data.emergencyContactPhone || data.emergency_contact_phone,
+      org_chart_visible: data.orgChartVisible,
     };
     
     return apiService.updateEmployee(id, backendData);
   },
   
-  deleteEmployee: (id) => apiService.deleteEmployee(id),
-
-  // Filter options - use backend endpoint
+  delete: (id) => apiService.deleteEmployee(id),
+  
+  // Advanced features
   getFilterOptions: () => apiService.getEmployeeFilterOptions(),
-
-  // Dropdown search with backend field mapping
-  dropdownSearch: (field, search, limit = 50) => {
-    // Map frontend field names to backend field names
-    const fieldMapping = {
-      'line_managers': 'line_managers',
-      'job_titles': 'job_titles',
-      'employees': 'employees'
-    };
-    
-    const backendField = fieldMapping[field] || field;
-    return apiService.dropdownSearch(backendField, search, limit);
-  },
-
-  // Org chart operations
-  getOrgChart: () => apiService.getOrgChart(),
-
-  updateOrgChartVisibility: (employeeIds, isVisible) => 
-    apiService.updateOrgChartVisibility({
-      employee_ids: employeeIds,
-      is_visible_in_org_chart: isVisible
-    }),
-
-  updateSingleOrgChartVisibility: (id, isVisible) => 
-    apiService.updateSingleOrgChartVisibility(id, {
-      is_visible_in_org_chart: isVisible
-    }),
-
-  // Statistics
   getStatistics: () => apiService.getEmployeeStatistics(),
-
+  
+  // Export with comprehensive filter support
+  export: (format = 'csv', params = {}) => {
+    return apiService.exportEmployees(format, params);
+  },
+  
   // Bulk operations
-  bulkUpdate: (employeeIds, updates) => {
-    const backendData = {
-      employee_ids: employeeIds,
-      updates: updates
-    };
-    
-    return apiService.bulkUpdateEmployees(backendData);
-  },
-
-  // Export with proper parameter mapping
-  exportData: (format = 'csv', filters = {}) => {
-    const params = {
-      format,
-      ...filters
-    };
-    
-    return apiService.exportEmployees(params);
-  },
-
-  // Status management operations
-  getStatusDashboard: () => apiService.getStatusDashboard(),
+  bulkUpdate: (data) => apiService.bulkUpdateEmployees(data),
+  bulkDelete: (ids) => apiService.bulkDeleteEmployees(ids),
   
-  updateEmployeeStatus: (id, forceUpdate = false) => 
-    apiService.updateEmployeeStatus(id, { force_update: forceUpdate }),
+  // Tag management
+  addTag: (employeeId, tagData) => apiService.addEmployeeTag(employeeId, tagData),
+  removeTag: (employeeId, tagId) => apiService.removeEmployeeTag(employeeId, tagId),
+  bulkAddTags: (employeeIds, tagIds) => apiService.bulkAddTags(employeeIds, tagIds),
+  bulkRemoveTags: (employeeIds, tagIds) => apiService.bulkRemoveTags(employeeIds, tagIds),
   
+  // Status management with automatic transitions
+  updateStatus: (id) => apiService.updateEmployeeStatus(id),
   getStatusPreview: (id) => apiService.getStatusPreview(id),
-  
-  bulkUpdateStatuses: (employeeIds = []) => 
-    apiService.bulkUpdateStatuses(employeeIds),
-  
+  bulkUpdateStatuses: (employeeIds) => apiService.bulkUpdateStatuses(employeeIds),
   getStatusRules: () => apiService.getStatusRules(),
-
-  // Document operations
-  getEmployeeDocuments: (employeeId) => 
-    apiService.getEmployeeDocuments(employeeId),
   
-  uploadDocument: (employeeId, documentData) => {
-    const formData = new FormData();
-    formData.append('employee', employeeId);
-    formData.append('name', documentData.name);
-    formData.append('document_type', documentData.document_type);
-    
-    if (documentData.file) {
-      formData.append('file', documentData.file);
-    } else if (documentData.file_path) {
-      formData.append('file_path', documentData.file_path);
-    }
-    
-    if (documentData.file_size) {
-      formData.append('file_size', documentData.file_size);
-    }
-    if (documentData.mime_type) {
-      formData.append('mime_type', documentData.mime_type);
-    }
-    
-    return apiService.uploadEmployeeDocument(formData);
-  },
+  // Document management (optional)
+  getDocuments: (employeeId) => apiService.getEmployeeDocuments(employeeId),
+  uploadDocument: (formData) => apiService.uploadEmployeeDocument(formData),
+  deleteDocument: (id) => apiService.deleteEmployeeDocument(id),
   
-  deleteDocument: (documentId) => apiService.deleteEmployeeDocument(documentId),
-
-  // Activity operations
-  getEmployeeActivities: (employeeId, limit = 50) => {
-    const params = employeeId ? { employee: employeeId, limit } : { limit };
-    return apiService.getEmployeeActivities(params);
-  },
+  // Activities and audit trail
+  getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
+  getRecentActivities: (limit) => apiService.getRecentActivities(limit),
   
-  getRecentActivities: (limit = 50) => 
-    apiService.getRecentActivities(limit),
+  // Org chart
+  getOrgChart: () => apiService.getOrgChart(),
+  updateOrgChartVisibility: (data) => apiService.updateOrgChartVisibility(data),
   
-  getActivitySummary: () => apiService.getActivitySummary(),
-
-  // Validation helpers
-  validateEmployeeData: (data) => {
-    const errors = {};
-    
-    // Required field validation
-    if (!data.employee_id?.trim()) {
-      errors.employee_id = 'Employee ID is required';
-    }
-    if (!data.first_name?.trim()) {
-      errors.first_name = 'First name is required';
-    }
-    if (!data.last_name?.trim()) {
-      errors.last_name = 'Last name is required';
-    }
-    if (!data.email?.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(data.email)) {
-      errors.email = 'Email is invalid';
-    }
-    if (!data.start_date) {
-      errors.start_date = 'Start date is required';
-    }
-    if (!data.business_function) {
-      errors.business_function = 'Business function is required';
-    }
-    if (!data.department) {
-      errors.department = 'Department is required';
-    }
-    if (!data.job_function) {
-      errors.job_function = 'Job function is required';
-    }
-    if (!data.job_title?.trim()) {
-      errors.job_title = 'Job title is required';
-    }
-    if (!data.position_group) {
-      errors.position_group = 'Position group is required';
-    }
-    if (!data.grade) {
-      errors.grade = 'Grade is required';
-    }
-    
-    // Date validation
-    if (data.end_date && data.start_date) {
-      if (new Date(data.end_date) <= new Date(data.start_date)) {
-        errors.end_date = 'End date must be after start date';
-      }
-    }
-    
-    if (data.contract_start_date && data.start_date) {
-      if (new Date(data.contract_start_date) < new Date(data.start_date)) {
-        errors.contract_start_date = 'Contract start date cannot be before employment start date';
-      }
-    }
-    
-    return errors;
-  },
-
-  // Helper to format employee data for display
-  formatEmployeeForDisplay: (employee) => {
-    return {
-      ...employee,
-      full_name: employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
-      display_name: employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
-      business_function_name: employee.business_function_name || employee.business_function?.name,
-      department_name: employee.department_name || employee.department?.name,
-      unit_name: employee.unit_name || employee.unit?.name,
-      job_function_name: employee.job_function_name || employee.job_function?.name,
-      position_group_name: employee.position_group_name || employee.position_group?.name,
-      status_name: employee.status_name || employee.status?.name,
-      status_color: employee.status_color || employee.status?.color,
-      line_manager_name: employee.line_manager_name || employee.line_manager?.name,
-      line_manager_hc_number: employee.line_manager_hc_number || employee.line_manager?.employee_id,
-      tag_names: employee.tag_names || employee.tags?.map(tag => ({
-        id: tag.id,
-        name: tag.name,
-        color: tag.color,
-        type: tag.tag_type
-      })) || []
-    };
-  },
-
-  // Helper to prepare employee data for backend submission
-  prepareEmployeeForSubmission: (formData) => {
-    return {
-      employee_id: formData.employee_id,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      email: formData.email,
-      phone: formData.phone || '',
-      date_of_birth: formData.date_of_birth || null,
-      gender: formData.gender || '',
-      address: formData.address || '',
-      emergency_contact: formData.emergency_contact || '',
-      profile_image: formData.profile_image || null,
-      
-      start_date: formData.start_date,
-      end_date: formData.end_date || null,
-      business_function: formData.business_function,
-      department: formData.department,
-      unit: formData.unit || null,
-      job_function: formData.job_function,
-      job_title: formData.job_title,
-      position_group: formData.position_group,
-      grade: parseInt(formData.grade),
-      contract_duration: formData.contract_duration || 'PERMANENT',
-      contract_start_date: formData.contract_start_date || formData.start_date,
-      
-      line_manager: formData.line_manager || null,
-      tag_ids: Array.isArray(formData.tag_ids) ? formData.tag_ids : [],
-      notes: formData.notes || '',
-      is_visible_in_org_chart: formData.is_visible_in_org_chart ?? true
-    };
-  }
+  // Advanced search
+  dropdownSearch: (field, search, limit) => apiService.dropdownSearch(field, search, limit),
 };
+
+// Reference Data API
+export const referenceDataAPI = {
+  getBusinessFunctionDropdown: () => apiService.getBusinessFunctionDropdown(),
+  getDepartmentDropdown: (businessFunctionId) => apiService.getDepartments(businessFunctionId),
+  getUnitDropdown: (departmentId) => apiService.getUnits(departmentId),
+  getJobFunctionDropdown: () => apiService.getJobFunctions(),
+  getPositionGroupDropdown: () => apiService.getPositionGroups(),
+  getEmployeeStatusDropdown: () => apiService.getEmployeeStatuses(),
+  getEmployeeTagDropdown: (tagType) => apiService.getEmployeeTags(tagType),
+};
+
+// Tag Management API
+export const tagAPI = {
+  getAll: (tagType) => apiService.getEmployeeTags(tagType),
+  create: (data) => apiService.createEmployeeTag(data),
+  update: (id, data) => apiService.updateEmployeeTag(id, data),
+  delete: (id) => apiService.deleteEmployeeTag(id),
+};
+
+// Grading API Integration
+export const gradingAPI = {
+  getEmployeeGrading: () => apiService.getEmployeeGrading(),
+  getPositionGroupLevels: (positionGroupId) => apiService.getPositionGroupGradingLevels(positionGroupId),
+  bulkUpdateGrades: (updates) => apiService.bulkUpdateEmployeeGrades(updates),
+  getCurrentStructure: () => apiService.getCurrentGradingStructure(),
+};
+
+// Headcount Analytics API
+export const headcountAPI = {
+  getSummaries: () => apiService.getHeadcountSummaries(),
+  getLatest: () => apiService.getLatestHeadcountSummary(),
+  generateCurrent: () => apiService.generateCurrentHeadcountSummary(),
+};
+
+// Vacancy Management API
+export const vacancyAPI = {
+  getAll: () => apiService.getVacantPositions(),
+  create: (data) => apiService.createVacantPosition(data),
+  update: (id, data) => apiService.updateVacantPosition(id, data),
+  delete: (id) => apiService.deleteVacantPosition(id),
+  markFilled: (id, employeeData) => apiService.markPositionFilled(id, employeeData),
+};
+
+export { employeeAPI as default };

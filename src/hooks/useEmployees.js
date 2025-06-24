@@ -1,6 +1,6 @@
-// src/hooks/useEmployees.js - Fixed with proper backend integration
+// src/hooks/useEmployees.js - Enhanced with comprehensive API integration
 import { useDispatch, useSelector } from 'react-redux';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   fetchEmployees,
   fetchEmployee,
@@ -9,8 +9,20 @@ import {
   deleteEmployee,
   fetchFilterOptions,
   fetchStatistics,
-  fetchLineManagers,
   bulkUpdateEmployees,
+  bulkDeleteEmployees,
+  addEmployeeTag,
+  removeEmployeeTag,
+  bulkAddTags,
+  bulkRemoveTags,
+  updateEmployeeStatus,
+  getStatusPreview,
+  bulkUpdateStatuses,
+  fetchEmployeeGrading,
+  bulkUpdateEmployeeGrades,
+  fetchEmployeeDocuments,
+  uploadEmployeeDocument,
+  deleteEmployeeDocument,
   fetchOrgChart,
   updateOrgChartVisibility,
   exportEmployees,
@@ -19,8 +31,9 @@ import {
   selectAllEmployees,
   clearSelection,
   setCurrentFilters,
-  clearFilters,
+  addFilter,
   removeFilter,
+  clearFilters,
   setSorting,
   addSort,
   removeSort,
@@ -43,9 +56,15 @@ import {
   selectOrgChart,
   selectPagination,
   selectSorting,
-  selectLineManagers,
+  selectGradingData,
+  selectDocuments,
   selectFormattedEmployees,
-  selectSortingForBackend
+  selectSortingForBackend,
+  selectFilteredEmployeesCount,
+  selectGetSortDirection,
+  selectIsSorted,
+  selectGetSortIndex,
+  selectApiParams
 } from '../store/slices/employeeSlice';
 
 export const useEmployees = () => {
@@ -65,162 +84,200 @@ export const useEmployees = () => {
   const orgChart = useSelector(selectOrgChart);
   const pagination = useSelector(selectPagination);
   const sorting = useSelector(selectSorting);
+  const gradingData = useSelector(selectGradingData);
+  const documents = useSelector(selectDocuments);
+  const filteredEmployeesCount = useSelector(selectFilteredEmployeesCount);
   const sortingForBackend = useSelector(selectSortingForBackend);
-  const lineManagers = useSelector(selectLineManagers);
-  
-  // Additional loading states
-  const { 
-    creating, 
-    updating, 
-    deleting, 
-    bulkUpdating, 
-    exporting,
-    loadingFilterOptions, 
-    loadingStatistics,
-    loadingEmployee,
-    loadingOrgChart,
-    loadingLineManagers,
-    showAdvancedFilters
-  } = useSelector(state => state.employees);
-
-  // Data fetching actions
-  const fetchEmployeesAction = useCallback((params = {}) => {
-    // Include current sorting in params
-    const paramsWithSort = {
-      ...params,
-      ordering: sortingForBackend
-    };
-    return dispatch(fetchEmployees(paramsWithSort));
-  }, [dispatch, sortingForBackend]);
-
-  const fetchEmployeeAction = useCallback((id) => 
-    dispatch(fetchEmployee(id)), [dispatch]);
-
-  const fetchFilterOptionsAction = useCallback(() => 
-    dispatch(fetchFilterOptions()), [dispatch]);
-
-  const fetchStatisticsAction = useCallback(() => 
-    dispatch(fetchStatistics()), [dispatch]);
-
-  const fetchLineManagersAction = useCallback((searchTerm = '') => 
-    dispatch(fetchLineManagers(searchTerm)), [dispatch]);
-
-  const fetchOrgChartAction = useCallback(() => 
-    dispatch(fetchOrgChart()), [dispatch]);
-
-  // CRUD operations
-  const createEmployeeAction = useCallback((data) => 
-    dispatch(createEmployee(data)), [dispatch]);
-
-  const updateEmployeeAction = useCallback((id, data) => 
-    dispatch(updateEmployee({ id, data })), [dispatch]);
-
-  const deleteEmployeeAction = useCallback((id) => 
-    dispatch(deleteEmployee(id)), [dispatch]);
-
-  const bulkUpdateEmployeesAction = useCallback((employeeIds, updates) => 
-    dispatch(bulkUpdateEmployees({ employeeIds, updates })), [dispatch]);
-
-  const updateOrgChartVisibilityAction = useCallback((employeeIds, isVisible) => 
-    dispatch(updateOrgChartVisibility({ employeeIds, isVisible })), [dispatch]);
-
-  const exportEmployeesAction = useCallback((format = 'csv', filters = {}) => 
-    dispatch(exportEmployees({ format, filters })), [dispatch]);
-
-  // Selection management
-  const setSelectedEmployeesAction = useCallback((ids) => 
-    dispatch(setSelectedEmployees(ids)), [dispatch]);
-
-  const toggleEmployeeSelectionAction = useCallback((id) => 
-    dispatch(toggleEmployeeSelection(id)), [dispatch]);
-
-  const selectAllEmployeesAction = useCallback(() => 
-    dispatch(selectAllEmployees()), [dispatch]);
-
-  const clearSelectionAction = useCallback(() => 
-    dispatch(clearSelection()), [dispatch]);
-
-  // Filter management
-  const setCurrentFiltersAction = useCallback((filters) => 
-    dispatch(setCurrentFilters(filters)), [dispatch]);
-
-  const clearFiltersAction = useCallback(() => 
-    dispatch(clearFilters()), [dispatch]);
-
-  const removeFilterAction = useCallback((key) => 
-    dispatch(removeFilter(key)), [dispatch]);
-
-  // Sorting management - Excel-like multi-sort
-  const setSortingAction = useCallback((field, direction) => 
-    dispatch(setSorting({ field, direction })), [dispatch]);
-
-  const addSortAction = useCallback((field, direction) => 
-    dispatch(addSort({ field, direction })), [dispatch]);
-
-  const removeSortAction = useCallback((field) => 
-    dispatch(removeSort(field)), [dispatch]);
-
-  const clearSortingAction = useCallback(() => 
-    dispatch(clearSorting()), [dispatch]);
-
-  // Pagination
-  const setPageSizeAction = useCallback((size) => 
-    dispatch(setPageSize(size)), [dispatch]);
-
-  const setCurrentPageAction = useCallback((page) => 
-    dispatch(setCurrentPage(page)), [dispatch]);
-
-  // UI state
-  const toggleAdvancedFiltersAction = useCallback(() => 
-    dispatch(toggleAdvancedFilters()), [dispatch]);
-
-  const setShowAdvancedFiltersAction = useCallback((show) => 
-    dispatch(setShowAdvancedFilters(show)), [dispatch]);
-
-  // Error management
-  const clearErrorsAction = useCallback(() => 
-    dispatch(clearErrors()), [dispatch]);
-
-  const clearCurrentEmployeeAction = useCallback(() => 
-    dispatch(clearCurrentEmployee()), [dispatch]);
+  const apiParams = useSelector(selectApiParams);
 
   // Helper functions
-  const buildQueryParams = useCallback((additionalParams = {}) => {
-    return {
-      page: pagination.currentPage,
-      page_size: pagination.pageSize,
-      ordering: sortingForBackend,
-      ...currentFilters,
-      ...additionalParams
-    };
-  }, [pagination.currentPage, pagination.pageSize, sortingForBackend, currentFilters]);
+  const getSortDirection = useSelector(selectGetSortDirection);
+  const isSorted = useSelector(selectIsSorted);
+  const getSortIndex = useSelector(selectGetSortIndex);
 
-  const refreshEmployees = useCallback((additionalParams = {}) => {
-    const params = buildQueryParams(additionalParams);
-    return fetchEmployeesAction(params);
-  }, [buildQueryParams, fetchEmployeesAction]);
+  // Basic CRUD Actions
+  const actions = {
+    // Fetch operations
+    fetchEmployees: useCallback((params) => dispatch(fetchEmployees(params)), [dispatch]),
+    fetchEmployee: useCallback((id) => dispatch(fetchEmployee(id)), [dispatch]),
+    
+    // Create/Update/Delete
+    createEmployee: useCallback((data) => dispatch(createEmployee(data)), [dispatch]),
+    updateEmployee: useCallback((id, data) => dispatch(updateEmployee({ id, data })), [dispatch]),
+    deleteEmployee: useCallback((id) => dispatch(deleteEmployee(id)), [dispatch]),
+    
+    // Filter and Statistics
+    fetchFilterOptions: useCallback(() => dispatch(fetchFilterOptions()), [dispatch]),
+    fetchStatistics: useCallback(() => dispatch(fetchStatistics()), [dispatch]),
+    
+    // Bulk Operations
+    bulkUpdateEmployees: useCallback((data) => dispatch(bulkUpdateEmployees(data)), [dispatch]),
+    bulkDeleteEmployees: useCallback((ids) => dispatch(bulkDeleteEmployees(ids)), [dispatch]),
+    
+    // Tag Management
+    addEmployeeTag: useCallback((employeeId, tagData) => 
+      dispatch(addEmployeeTag({ employeeId, tagData })), [dispatch]),
+    removeEmployeeTag: useCallback((employeeId, tagId) => 
+      dispatch(removeEmployeeTag({ employeeId, tagId })), [dispatch]),
+    bulkAddTags: useCallback((employeeIds, tagIds) => 
+      dispatch(bulkAddTags({ employeeIds, tagIds })), [dispatch]),
+    bulkRemoveTags: useCallback((employeeIds, tagIds) => 
+      dispatch(bulkRemoveTags({ employeeIds, tagIds })), [dispatch]),
+    
+    // Status Management with Auto-transitions
+    updateEmployeeStatus: useCallback((id) => dispatch(updateEmployeeStatus(id)), [dispatch]),
+    getStatusPreview: useCallback((id) => dispatch(getStatusPreview(id)), [dispatch]),
+    bulkUpdateStatuses: useCallback((employeeIds) => dispatch(bulkUpdateStatuses(employeeIds)), [dispatch]),
+    
+    // Grading Management
+    fetchEmployeeGrading: useCallback(() => dispatch(fetchEmployeeGrading()), [dispatch]),
+    bulkUpdateEmployeeGrades: useCallback((updates) => dispatch(bulkUpdateEmployeeGrades(updates)), [dispatch]),
+    
+    // Document Management (Optional)
+    fetchEmployeeDocuments: useCallback((employeeId) => dispatch(fetchEmployeeDocuments(employeeId)), [dispatch]),
+    uploadEmployeeDocument: useCallback((formData) => dispatch(uploadEmployeeDocument(formData)), [dispatch]),
+    deleteEmployeeDocument: useCallback((id) => dispatch(deleteEmployeeDocument(id)), [dispatch]),
+    
+    // Org Chart
+    fetchOrgChart: useCallback(() => dispatch(fetchOrgChart()), [dispatch]),
+    updateOrgChartVisibility: useCallback((data) => dispatch(updateOrgChartVisibility(data)), [dispatch]),
+    
+    // Export with Filters
+    exportEmployees: useCallback((format, params) => dispatch(exportEmployees({ format, params })), [dispatch]),
+    
+    // Selection Management
+    setSelectedEmployees: useCallback((employees) => dispatch(setSelectedEmployees(employees)), [dispatch]),
+    toggleEmployeeSelection: useCallback((employeeId) => dispatch(toggleEmployeeSelection(employeeId)), [dispatch]),
+    selectAllEmployees: useCallback(() => dispatch(selectAllEmployees()), [dispatch]),
+    clearSelection: useCallback(() => dispatch(clearSelection()), [dispatch]),
+    
+    // Filter Management
+    setCurrentFilters: useCallback((filters) => dispatch(setCurrentFilters(filters)), [dispatch]),
+    addFilter: useCallback((filter) => dispatch(addFilter(filter)), [dispatch]),
+    removeFilter: useCallback((key) => dispatch(removeFilter(key)), [dispatch]),
+    clearFilters: useCallback(() => dispatch(clearFilters()), [dispatch]),
+    
+    // Excel-style Sorting
+    setSorting: useCallback((field, direction) => dispatch(setSorting({ field, direction })), [dispatch]),
+    addSort: useCallback((field, direction) => dispatch(addSort({ field, direction })), [dispatch]),
+    removeSort: useCallback((field) => dispatch(removeSort(field)), [dispatch]),
+    clearSorting: useCallback(() => dispatch(clearSorting()), [dispatch]),
+    
+    // Pagination
+    setPageSize: useCallback((size) => dispatch(setPageSize(size)), [dispatch]),
+    setCurrentPage: useCallback((page) => dispatch(setCurrentPage(page)), [dispatch]),
+    
+    // UI State
+    toggleAdvancedFilters: useCallback(() => dispatch(toggleAdvancedFilters()), [dispatch]),
+    setShowAdvancedFilters: useCallback((show) => dispatch(setShowAdvancedFilters(show)), [dispatch]),
+    
+    // Error Management
+    clearErrors: useCallback(() => dispatch(clearErrors()), [dispatch]),
+    clearCurrentEmployee: useCallback(() => dispatch(clearCurrentEmployee()), [dispatch]),
+  };
 
-  // Check if has active filters
-  const hasActiveFilters = useCallback(() => {
-    return Object.keys(currentFilters).length > 0 || appliedFilters.length > 0;
-  }, [currentFilters, appliedFilters]);
+  // Computed values
+  const computed = {
+    // Loading states
+    isLoading: loading.employees || loading.creating || loading.updating || loading.deleting,
+    isCreating: loading.creating,
+    isUpdating: loading.updating,
+    isDeleting: loading.deleting,
+    isExporting: loading.exporting,
+    
+    // Selection
+    hasSelection: selectedEmployees.length > 0,
+    selectionCount: selectedEmployees.length,
+    isAllSelected: selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0,
+    
+    // Filters
+    hasActiveFilters: Object.keys(currentFilters).length > 0 || appliedFilters.length > 0,
+    activeFilterCount: Object.keys(currentFilters).length + appliedFilters.length,
+    
+    // Sorting
+    hasSorting: sorting.length > 0,
+    sortingCount: sorting.length,
+    
+    // Pagination
+    hasNextPage: pagination.page < pagination.totalPages,
+    hasPreviousPage: pagination.page > 1,
+    totalPages: pagination.totalPages,
+    totalItems: pagination.totalItems,
+    
+    // Data
+    isEmpty: formattedEmployees.length === 0,
+    filteredCount: filteredEmployeesCount,
+  };
 
-  // Get sort direction for a field
-  const getSortDirection = useCallback((field) => {
-    const sort = sorting.find(s => s.field === field);
-    return sort ? sort.direction : null;
-  }, [sorting]);
+  // Helper functions
+  const helpers = {
+    // Build query parameters for API calls
+    buildQueryParams: useCallback(() => apiParams, [apiParams]),
+    
+    // Refresh data
+    refreshEmployees: useCallback(() => {
+      dispatch(fetchEmployees(apiParams));
+    }, [dispatch, apiParams]),
+    
+    refreshStatistics: useCallback(() => {
+      dispatch(fetchStatistics());
+    }, [dispatch]),
+    
+    // Filter helpers
+    hasActiveFilters: useCallback(() => {
+      return Object.keys(currentFilters).length > 0 || appliedFilters.length > 0;
+    }, [currentFilters, appliedFilters]),
+    
+    // Sorting helpers
+    getSortDirection: useCallback((field) => getSortDirection(field), [getSortDirection]),
+    isSorted: useCallback((field) => isSorted(field), [isSorted]),
+    getSortIndex: useCallback((field) => getSortIndex(field), [getSortIndex]),
+    
+    // Selection helpers
+    isSelected: useCallback((employeeId) => selectedEmployees.includes(employeeId), [selectedEmployees]),
+    
+    // Export helpers
+    exportWithCurrentFilters: useCallback((format = 'csv') => {
+      return dispatch(exportEmployees({ format, params: apiParams }));
+    }, [dispatch, apiParams]),
+    
+    exportSelected: useCallback((format = 'csv') => {
+      const params = { ...apiParams, employee_ids: selectedEmployees.join(',') };
+      return dispatch(exportEmployees({ format, params }));
+    }, [dispatch, apiParams, selectedEmployees]),
+    
+    // Bulk action helpers
+    bulkActionOnSelected: useCallback((action, data = {}) => {
+      if (selectedEmployees.length === 0) return Promise.resolve();
+      
+      switch (action) {
+        case 'delete':
+          return dispatch(bulkDeleteEmployees(selectedEmployees));
+        case 'updateStatus':
+          return dispatch(bulkUpdateStatuses(selectedEmployees));
+        case 'addTags':
+          return dispatch(bulkAddTags({ employeeIds: selectedEmployees, tagIds: data.tagIds }));
+        case 'removeTags':
+          return dispatch(bulkRemoveTags({ employeeIds: selectedEmployees, tagIds: data.tagIds }));
+        case 'updateGrades':
+          const updates = selectedEmployees.map(id => ({ employee_id: id, ...data }));
+          return dispatch(bulkUpdateEmployeeGrades(updates));
+        default:
+          return Promise.resolve();
+      }
+    }, [dispatch, selectedEmployees]),
+  };
 
-  // Check if field is currently sorted
-  const isSorted = useCallback((field) => {
-    return sorting.some(s => s.field === field);
-  }, [sorting]);
+  // Auto-fetch on mount and when params change
+  useEffect(() => {
+    actions.fetchEmployees(apiParams);
+  }, [apiParams]);
 
-  // Get sort index for a field (for display purposes)
-  const getSortIndex = useCallback((field) => {
-    const index = sorting.findIndex(s => s.field === field);
-    return index >= 0 ? index + 1 : null;
-  }, [sorting]);
+  // Auto-fetch filter options on mount
+  useEffect(() => {
+    actions.fetchFilterOptions();
+    actions.fetchStatistics();
+  }, []);
 
   return {
     // Data
@@ -235,79 +292,30 @@ export const useEmployees = () => {
     orgChart,
     pagination,
     sorting,
-    sortingForBackend,
-    lineManagers,
+    gradingData,
+    documents,
     
     // Loading states
     loading,
-    creating,
-    updating,
-    deleting,
-    bulkUpdating,
-    exporting,
-    loadingFilterOptions,
-    loadingStatistics,
-    loadingEmployee,
-    loadingOrgChart,
-    loadingLineManagers,
-    
-    // UI state
-    showAdvancedFilters,
     
     // Error states
     error,
     
-    // Data fetching actions
-    fetchEmployees: fetchEmployeesAction,
-    fetchEmployee: fetchEmployeeAction,
-    fetchFilterOptions: fetchFilterOptionsAction,
-    fetchStatistics: fetchStatisticsAction,
-    fetchLineManagers: fetchLineManagersAction,
-    fetchOrgChart: fetchOrgChartAction,
-    refreshEmployees,
+    // Computed values
+    ...computed,
     
-    // CRUD operations
-    createEmployee: createEmployeeAction,
-    updateEmployee: updateEmployeeAction,
-    deleteEmployee: deleteEmployeeAction,
-    bulkUpdateEmployees: bulkUpdateEmployeesAction,
-    updateOrgChartVisibility: updateOrgChartVisibilityAction,
-    exportEmployees: exportEmployeesAction,
+    // Actions
+    ...actions,
     
-    // Selection management
-    setSelectedEmployees: setSelectedEmployeesAction,
-    toggleEmployeeSelection: toggleEmployeeSelectionAction,
-    selectAllEmployees: selectAllEmployeesAction,
-    clearSelection: clearSelectionAction,
+    // Helper functions
+    ...helpers,
     
-    // Filter management
-    setCurrentFilters: setCurrentFiltersAction,
-    clearFilters: clearFiltersAction,
-    removeFilter: removeFilterAction,
-    hasActiveFilters,
-    
-    // Sorting management
-    setSorting: setSortingAction,
-    addSort: addSortAction,
-    removeSort: removeSortAction,
-    clearSorting: clearSortingAction,
+    // Raw selectors for advanced usage
     getSortDirection,
     isSorted,
     getSortIndex,
-    
-    // Pagination
-    setPageSize: setPageSizeAction,
-    setCurrentPage: setCurrentPageAction,
-    
-    // UI state
-    toggleAdvancedFilters: toggleAdvancedFiltersAction,
-    setShowAdvancedFilters: setShowAdvancedFiltersAction,
-    
-    // Error management
-    clearErrors: clearErrorsAction,
-    clearCurrentEmployee: clearCurrentEmployeeAction,
-    
-    // Helper functions
-    buildQueryParams
+    sortingForBackend,
+    apiParams,
   };
 };
+
