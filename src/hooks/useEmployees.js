@@ -1,4 +1,4 @@
-// src/hooks/useEmployees.js - Enhanced with comprehensive API integration
+// src/hooks/useEmployees.js - UPDATED with complete backend integration
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect } from 'react';
 import {
@@ -16,15 +16,10 @@ import {
   bulkAddTags,
   bulkRemoveTags,
   updateEmployeeStatus,
-  getStatusPreview,
   bulkUpdateStatuses,
   fetchEmployeeGrading,
   bulkUpdateEmployeeGrades,
-  fetchEmployeeDocuments,
-  uploadEmployeeDocument,
-  deleteEmployeeDocument,
   fetchOrgChart,
-  updateOrgChartVisibility,
   exportEmployees,
   setSelectedEmployees,
   toggleEmployeeSelection,
@@ -57,7 +52,6 @@ import {
   selectPagination,
   selectSorting,
   selectGradingData,
-  selectDocuments,
   selectFormattedEmployees,
   selectSortingForBackend,
   selectFilteredEmployeesCount,
@@ -85,7 +79,6 @@ export const useEmployees = () => {
   const pagination = useSelector(selectPagination);
   const sorting = useSelector(selectSorting);
   const gradingData = useSelector(selectGradingData);
-  const documents = useSelector(selectDocuments);
   const filteredEmployeesCount = useSelector(selectFilteredEmployeesCount);
   const sortingForBackend = useSelector(selectSortingForBackend);
   const apiParams = useSelector(selectApiParams);
@@ -114,7 +107,7 @@ export const useEmployees = () => {
     bulkUpdateEmployees: useCallback((data) => dispatch(bulkUpdateEmployees(data)), [dispatch]),
     bulkDeleteEmployees: useCallback((ids) => dispatch(bulkDeleteEmployees(ids)), [dispatch]),
     
-    // Tag Management
+    // Tag Management - Enhanced with backend integration
     addEmployeeTag: useCallback((employeeId, tagData) => 
       dispatch(addEmployeeTag({ employeeId, tagData })), [dispatch]),
     removeEmployeeTag: useCallback((employeeId, tagId) => 
@@ -124,23 +117,25 @@ export const useEmployees = () => {
     bulkRemoveTags: useCallback((employeeIds, tagIds) => 
       dispatch(bulkRemoveTags({ employeeIds, tagIds })), [dispatch]),
     
-    // Status Management with Auto-transitions
-    updateEmployeeStatus: useCallback((id) => dispatch(updateEmployeeStatus(id)), [dispatch]),
-    getStatusPreview: useCallback((id) => dispatch(getStatusPreview(id)), [dispatch]),
+    // Status Management - Automatic transitions
+    updateEmployeeStatus: useCallback((employeeIds) => {
+      const ids = Array.isArray(employeeIds) ? employeeIds : [employeeIds];
+      return dispatch(updateEmployeeStatus(ids));
+    }, [dispatch]),
     bulkUpdateStatuses: useCallback((employeeIds) => dispatch(bulkUpdateStatuses(employeeIds)), [dispatch]),
+    
+    // Auto-update all employee statuses based on contract dates
+    autoUpdateAllStatuses: useCallback(() => {
+      // This will update all employees whose status should change based on dates
+      return dispatch(updateEmployeeStatus([])); // Empty array means update all eligible
+    }, [dispatch]),
     
     // Grading Management
     fetchEmployeeGrading: useCallback(() => dispatch(fetchEmployeeGrading()), [dispatch]),
     bulkUpdateEmployeeGrades: useCallback((updates) => dispatch(bulkUpdateEmployeeGrades(updates)), [dispatch]),
     
-    // Document Management (Optional)
-    fetchEmployeeDocuments: useCallback((employeeId) => dispatch(fetchEmployeeDocuments(employeeId)), [dispatch]),
-    uploadEmployeeDocument: useCallback((formData) => dispatch(uploadEmployeeDocument(formData)), [dispatch]),
-    deleteEmployeeDocument: useCallback((id) => dispatch(deleteEmployeeDocument(id)), [dispatch]),
-    
     // Org Chart
     fetchOrgChart: useCallback(() => dispatch(fetchOrgChart()), [dispatch]),
-    updateOrgChartVisibility: useCallback((data) => dispatch(updateOrgChartVisibility(data)), [dispatch]),
     
     // Export with Filters
     exportEmployees: useCallback((format, params) => dispatch(exportEmployees({ format, params })), [dispatch]),
@@ -237,14 +232,17 @@ export const useEmployees = () => {
     isSelected: useCallback((employeeId) => selectedEmployees.includes(employeeId), [selectedEmployees]),
     
     // Export helpers
-    exportWithCurrentFilters: useCallback((format = 'csv') => {
+    exportWithCurrentFilters: useCallback((format = 'excel') => {
       return dispatch(exportEmployees({ format, params: apiParams }));
     }, [dispatch, apiParams]),
     
-    exportSelected: useCallback((format = 'csv') => {
-      const params = { ...apiParams, employee_ids: selectedEmployees.join(',') };
+    exportSelected: useCallback((format = 'excel') => {
+      const params = { 
+        employee_ids: selectedEmployees,
+        format: format
+      };
       return dispatch(exportEmployees({ format, params }));
-    }, [dispatch, apiParams, selectedEmployees]),
+    }, [dispatch, selectedEmployees]),
     
     // Bulk action helpers
     bulkActionOnSelected: useCallback((action, data = {}) => {
@@ -262,10 +260,145 @@ export const useEmployees = () => {
         case 'updateGrades':
           const updates = selectedEmployees.map(id => ({ employee_id: id, ...data }));
           return dispatch(bulkUpdateEmployeeGrades(updates));
+        case 'updateLineManager':
+          return dispatch(bulkUpdateLineManager({ employeeIds: selectedEmployees, lineManagerId: data.lineManagerId }));
         default:
           return Promise.resolve();
       }
     }, [dispatch, selectedEmployees]),
+    
+    // Advanced filtering helpers
+    applyQuickFilter: useCallback((filterType, value) => {
+      const filterConfig = {
+        'active': { status: ['ACTIVE'] },
+        'onboarding': { status: ['ONBOARDING'] },
+        'onLeave': { status: ['ON_LEAVE'] },
+        'probation': { status: ['PROBATION'] },
+        'noManager': { line_manager: null },
+        'hasDocuments': { has_documents: true },
+        'noGrade': { grading_level: '' }
+      };
+      
+      if (filterConfig[filterType]) {
+        dispatch(setCurrentFilters({ ...currentFilters, ...filterConfig[filterType] }));
+      }
+    }, [dispatch, currentFilters]),
+    
+    // Search helpers
+    searchEmployees: useCallback((searchTerm) => {
+      dispatch(setCurrentFilters({ ...currentFilters, search: searchTerm }));
+    }, [dispatch, currentFilters]),
+    
+    // Tag management helpers
+    addTagToSelected: useCallback((tagId) => {
+      if (selectedEmployees.length === 0) return;
+      return dispatch(bulkAddTags({ employeeIds: selectedEmployees, tagIds: [tagId] }));
+    }, [dispatch, selectedEmployees]),
+    
+    removeTagFromSelected: useCallback((tagId) => {
+      if (selectedEmployees.length === 0) return;
+      return dispatch(bulkRemoveTags({ employeeIds: selectedEmployees, tagIds: [tagId] }));
+    }, [dispatch, selectedEmployees]),
+    
+    // Status management helpers
+    updateStatusForSelected: useCallback(() => {
+      if (selectedEmployees.length === 0) return;
+      return dispatch(updateEmployeeStatus(selectedEmployees));
+    }, [dispatch, selectedEmployees]),
+    
+    // Navigation helpers
+    goToPage: useCallback((page) => {
+      dispatch(setCurrentPage(page));
+    }, [dispatch]),
+    
+    goToNextPage: useCallback(() => {
+      if (computed.hasNextPage) {
+        dispatch(setCurrentPage(pagination.page + 1));
+      }
+    }, [dispatch, computed.hasNextPage, pagination.page]),
+    
+    goToPreviousPage: useCallback(() => {
+      if (computed.hasPreviousPage) {
+        dispatch(setCurrentPage(pagination.page - 1));
+      }
+    }, [dispatch, computed.hasPreviousPage, pagination.page]),
+    
+    // Validation helpers
+    validateEmployee: useCallback((employeeData) => {
+      const errors = {};
+      
+      // Required fields validation
+      if (!employeeData.first_name || !employeeData.first_name.trim()) {
+        errors.first_name = 'First name is required';
+      }
+      
+      if (!employeeData.last_name || !employeeData.last_name.trim()) {
+        errors.last_name = 'Last name is required';
+      }
+      
+      if (!employeeData.email || !employeeData.email.trim()) {
+        errors.email = 'Email is required';
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employeeData.email)) {
+        errors.email = 'Please enter a valid email address';
+      }
+      
+      if (!employeeData.employee_id || !employeeData.employee_id.trim()) {
+        errors.employee_id = 'Employee ID is required';
+      }
+      
+      if (!employeeData.job_title || !employeeData.job_title.trim()) {
+        errors.job_title = 'Job title is required';
+      }
+      
+      if (!employeeData.business_function) {
+        errors.business_function = 'Business function is required';
+      }
+      
+      if (!employeeData.department) {
+        errors.department = 'Department is required';
+      }
+      
+      if (!employeeData.job_function) {
+        errors.job_function = 'Job function is required';
+      }
+      
+      if (!employeeData.position_group) {
+        errors.position_group = 'Position group is required';
+      }
+      
+      if (!employeeData.start_date) {
+        errors.start_date = 'Start date is required';
+      }
+      
+      if (!employeeData.contract_duration) {
+        errors.contract_duration = 'Contract duration is required';
+      }
+      
+      // Date validation
+      if (employeeData.start_date && employeeData.end_date) {
+        const startDate = new Date(employeeData.start_date);
+        const endDate = new Date(employeeData.end_date);
+        
+        if (endDate <= startDate) {
+          errors.end_date = 'End date must be after start date';
+        }
+      }
+      
+      // Contract validation
+      if (employeeData.contract_start_date && employeeData.contract_end_date) {
+        const contractStart = new Date(employeeData.contract_start_date);
+        const contractEnd = new Date(employeeData.contract_end_date);
+        
+        if (contractEnd <= contractStart) {
+          errors.contract_end_date = 'Contract end date must be after contract start date';
+        }
+      }
+      
+      return {
+        isValid: Object.keys(errors).length === 0,
+        errors
+      };
+    }, []),
   };
 
   // Auto-fetch on mount and when params change
@@ -273,11 +406,23 @@ export const useEmployees = () => {
     actions.fetchEmployees(apiParams);
   }, [apiParams]);
 
-  // Auto-fetch filter options on mount
+  // Auto-fetch filter options and statistics on mount
   useEffect(() => {
     actions.fetchFilterOptions();
     actions.fetchStatistics();
   }, []);
+
+  // Auto-refresh statistics when employees change
+  useEffect(() => {
+    if (employees.length > 0) {
+      // Debounce statistics refresh
+      const timer = setTimeout(() => {
+        actions.fetchStatistics();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [employees.length]);
 
   return {
     // Data
@@ -293,7 +438,6 @@ export const useEmployees = () => {
     pagination,
     sorting,
     gradingData,
-    documents,
     
     // Loading states
     loading,
@@ -319,3 +463,97 @@ export const useEmployees = () => {
   };
 };
 
+// Additional hook for line manager selection
+export const useLineManagers = (searchTerm = '') => {
+  const dispatch = useDispatch();
+  const [lineManagers, setLineManagers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  
+  const fetchLineManagers = useCallback(async (search = '') => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await dispatch(getLineManagers({ search }));
+      
+      if (response.type.endsWith('/fulfilled')) {
+        setLineManagers(response.payload);
+      } else {
+        setError(response.payload);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to fetch line managers');
+    } finally {
+      setLoading(false);
+    }
+  }, [dispatch]);
+  
+  useEffect(() => {
+    fetchLineManagers(searchTerm);
+  }, [fetchLineManagers, searchTerm]);
+  
+  return {
+    lineManagers,
+    loading,
+    error,
+    refetch: fetchLineManagers
+  };
+};
+
+// Hook for employee form management
+export const useEmployeeForm = (initialData = null) => {
+  const [formData, setFormData] = useState(initialData || {});
+  const [errors, setErrors] = useState({});
+  const [isDirty, setIsDirty] = useState(false);
+  
+  const { validateEmployee } = useEmployees();
+  
+  const updateField = useCallback((field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+    
+    // Clear field error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  }, [errors]);
+  
+  const updateMultipleFields = useCallback((fields) => {
+    setFormData(prev => ({ ...prev, ...fields }));
+    setIsDirty(true);
+  }, []);
+  
+  const validateForm = useCallback(() => {
+    const validation = validateEmployee(formData);
+    setErrors(validation.errors);
+    return validation;
+  }, [formData, validateEmployee]);
+  
+  const resetForm = useCallback(() => {
+    setFormData(initialData || {});
+    setErrors({});
+    setIsDirty(false);
+  }, [initialData]);
+  
+  const clearErrors = useCallback(() => {
+    setErrors({});
+  }, []);
+  
+  return {
+    formData,
+    errors,
+    isDirty,
+    updateField,
+    updateMultipleFields,
+    validateForm,
+    resetForm,
+    clearErrors,
+    setFormData,
+    hasErrors: Object.keys(errors).length > 0
+  };
+};

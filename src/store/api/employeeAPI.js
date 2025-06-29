@@ -1,4 +1,4 @@
-// src/store/api/employeeAPI.js - Complete backend integration with all features
+// src/store/api/employeeAPI.js - UPDATED with complete backend integration
 import { apiService } from '../../services/api';
 
 export const employeeAPI = {
@@ -73,8 +73,6 @@ export const employeeAPI = {
         ? params.grade.join(',') 
         : params.grade;
     }
-    if (params.grade_min) backendParams.grade_min = params.grade_min;
-    if (params.grade_max) backendParams.grade_max = params.grade_max;
     
     // Personal information
     if (params.gender) {
@@ -82,22 +80,12 @@ export const employeeAPI = {
         ? params.gender.join(',') 
         : params.gender;
     }
-    if (params.nationality) {
-      backendParams.nationality = Array.isArray(params.nationality) 
-        ? params.nationality.join(',') 
-        : params.nationality;
-    }
     
     // Contract information
     if (params.contract_duration) {
       backendParams.contract_duration = Array.isArray(params.contract_duration) 
         ? params.contract_duration.join(',') 
         : params.contract_duration;
-    }
-    if (params.contract_type) {
-      backendParams.contract_type = Array.isArray(params.contract_type) 
-        ? params.contract_type.join(',') 
-        : params.contract_type;
     }
     
     // Date filters
@@ -109,7 +97,6 @@ export const employeeAPI = {
     // Special filters
     if (params.active_only !== undefined) backendParams.active_only = params.active_only;
     if (params.org_chart_visible !== undefined) backendParams.org_chart_visible = params.org_chart_visible;
-    if (params.has_documents !== undefined) backendParams.has_documents = params.has_documents;
     if (params.is_line_manager !== undefined) backendParams.is_line_manager = params.is_line_manager;
     
     return apiService.getEmployees(backendParams);
@@ -122,13 +109,15 @@ export const employeeAPI = {
     const backendData = {
       // Basic Information
       employee_id: data.employeeId || data.employee_id,
-      name: data.name,
-      surname: data.surname,
+      first_name: data.firstName || data.first_name || data.name,
+      last_name: data.lastName || data.last_name || data.surname,
       email: data.email,
       phone: data.phone,
       gender: data.gender,
-      nationality: data.nationality,
       date_of_birth: data.dateOfBirth || data.date_of_birth,
+      address: data.address,
+      emergency_contact: data.emergencyContact || data.emergency_contact,
+      profile_image: data.profileImage || data.profile_image,
       
       // Job Information
       job_title: data.jobTitle || data.job_title,
@@ -139,7 +128,7 @@ export const employeeAPI = {
       position_group: data.positionGroup || data.position_group,
       
       // Grading - Use position group grading levels
-      grading_level: data.gradingLevel || data.grading_level || '', // Default to empty, will be set based on position group
+      grading_level: data.gradingLevel || data.grading_level || '',
       
       // Management
       line_manager: data.lineManager || data.line_manager,
@@ -148,24 +137,17 @@ export const employeeAPI = {
       start_date: data.startDate || data.start_date,
       end_date: data.endDate || data.end_date,
       contract_duration: data.contractDuration || data.contract_duration,
-      contract_type: data.contractType || data.contract_type,
+      contract_start_date: data.contractStartDate || data.contract_start_date,
+      contract_end_date: data.contractEndDate || data.contract_end_date,
       
-      // Status is auto-determined based on contract, not manually set
-      // status: Will be automatically set by backend based on contract
+      // Visibility
+      is_visible_in_org_chart: data.isVisibleInOrgChart !== undefined ? data.isVisibleInOrgChart : true,
       
-      // Tags
-      tags: data.tags || [],
+      // Notes
+      notes: data.notes || '',
       
-      // Documents (optional)
-      documents: data.documents || [],
-      
-      // Additional fields
-      notes: data.notes,
-      emergency_contact: data.emergencyContact || data.emergency_contact,
-      emergency_contact_phone: data.emergencyContactPhone || data.emergency_contact_phone,
-      
-      // System fields
-      org_chart_visible: data.orgChartVisible !== undefined ? data.orgChartVisible : true,
+      // Tags (will be handled separately via tag API)
+      tag_ids: data.tags || data.tagIds || [],
     };
     
     return apiService.createEmployee(backendData);
@@ -175,13 +157,15 @@ export const employeeAPI = {
     // Similar mapping for update
     const backendData = {
       employee_id: data.employeeId || data.employee_id,
-      name: data.name,
-      surname: data.surname,
+      first_name: data.firstName || data.first_name || data.name,
+      last_name: data.lastName || data.last_name || data.surname,
       email: data.email,
       phone: data.phone,
       gender: data.gender,
-      nationality: data.nationality,
       date_of_birth: data.dateOfBirth || data.date_of_birth,
+      address: data.address,
+      emergency_contact: data.emergencyContact || data.emergency_contact,
+      profile_image: data.profileImage || data.profile_image,
       job_title: data.jobTitle || data.job_title,
       business_function: data.businessFunction || data.business_function,
       department: data.department,
@@ -193,12 +177,11 @@ export const employeeAPI = {
       start_date: data.startDate || data.start_date,
       end_date: data.endDate || data.end_date,
       contract_duration: data.contractDuration || data.contract_duration,
-      contract_type: data.contractType || data.contract_type,
-      tags: data.tags || [],
+      contract_start_date: data.contractStartDate || data.contract_start_date,
+      contract_end_date: data.contractEndDate || data.contract_end_date,
+      is_visible_in_org_chart: data.isVisibleInOrgChart,
       notes: data.notes,
-      emergency_contact: data.emergencyContact || data.emergency_contact,
-      emergency_contact_phone: data.emergencyContactPhone || data.emergency_contact_phone,
-      org_chart_visible: data.orgChartVisible,
+      tag_ids: data.tags || data.tagIds || [],
     };
     
     return apiService.updateEmployee(id, backendData);
@@ -211,13 +194,15 @@ export const employeeAPI = {
   getStatistics: () => apiService.getEmployeeStatistics(),
   
   // Export with comprehensive filter support
-  export: (format = 'csv', params = {}) => {
-    return apiService.exportEmployees(format, params);
+  export: (params = {}) => {
+    return apiService.exportEmployees(params);
   },
   
   // Bulk operations
   bulkUpdate: (data) => apiService.bulkUpdateEmployees(data),
   bulkDelete: (ids) => apiService.bulkDeleteEmployees(ids),
+  softDelete: (ids) => apiService.softDeleteEmployees(ids),
+  restore: (ids) => apiService.restoreEmployees(ids),
   
   // Tag management
   addTag: (employeeId, tagData) => apiService.addEmployeeTag(employeeId, tagData),
@@ -226,45 +211,21 @@ export const employeeAPI = {
   bulkRemoveTags: (employeeIds, tagIds) => apiService.bulkRemoveTags(employeeIds, tagIds),
   
   // Status management with automatic transitions
-  updateStatus: (id) => apiService.updateEmployeeStatus(id),
-  getStatusPreview: (id) => apiService.getStatusPreview(id),
-  bulkUpdateStatuses: (employeeIds) => apiService.bulkUpdateStatuses(employeeIds),
-  getStatusRules: () => apiService.getStatusRules(),
+  updateStatus: (employeeIds) => apiService.updateEmployeeStatus(employeeIds),
+  autoUpdateStatuses: () => apiService.autoUpdateStatuses(),
   
-  // Document management (optional)
-  getDocuments: (employeeId) => apiService.getEmployeeDocuments(employeeId),
-  uploadDocument: (formData) => apiService.uploadEmployeeDocument(formData),
-  deleteDocument: (id) => apiService.deleteEmployeeDocument(id),
+  // Line manager management
+  getLineManagers: (params) => apiService.getLineManagers(params),
+  updateLineManager: (employeeId, lineManagerId) => apiService.updateLineManager(employeeId, lineManagerId),
+  bulkUpdateLineManager: (employeeIds, lineManagerId) => apiService.bulkUpdateLineManager(employeeIds, lineManagerId),
   
   // Activities and audit trail
   getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
-  getRecentActivities: (limit) => apiService.getRecentActivities(limit),
   
   // Org chart
   getOrgChart: () => apiService.getOrgChart(),
+  getOrgChartFullTree: () => apiService.getOrgChartFullTree(),
   updateOrgChartVisibility: (data) => apiService.updateOrgChartVisibility(data),
-  
-  // Advanced search
-  dropdownSearch: (field, search, limit) => apiService.dropdownSearch(field, search, limit),
-};
-
-// Reference Data API
-export const referenceDataAPI = {
-  getBusinessFunctionDropdown: () => apiService.getBusinessFunctionDropdown(),
-  getDepartmentDropdown: (businessFunctionId) => apiService.getDepartments(businessFunctionId),
-  getUnitDropdown: (departmentId) => apiService.getUnits(departmentId),
-  getJobFunctionDropdown: () => apiService.getJobFunctions(),
-  getPositionGroupDropdown: () => apiService.getPositionGroups(),
-  getEmployeeStatusDropdown: () => apiService.getEmployeeStatuses(),
-  getEmployeeTagDropdown: (tagType) => apiService.getEmployeeTags(tagType),
-};
-
-// Tag Management API
-export const tagAPI = {
-  getAll: (tagType) => apiService.getEmployeeTags(tagType),
-  create: (data) => apiService.createEmployeeTag(data),
-  update: (id, data) => apiService.updateEmployeeTag(id, data),
-  delete: (id) => apiService.deleteEmployeeTag(id),
 };
 
 // Grading API Integration
@@ -272,23 +233,41 @@ export const gradingAPI = {
   getEmployeeGrading: () => apiService.getEmployeeGrading(),
   getPositionGroupLevels: (positionGroupId) => apiService.getPositionGroupGradingLevels(positionGroupId),
   bulkUpdateGrades: (updates) => apiService.bulkUpdateEmployeeGrades(updates),
-  getCurrentStructure: () => apiService.getCurrentGradingStructure(),
 };
 
 // Headcount Analytics API
 export const headcountAPI = {
-  getSummaries: () => apiService.getHeadcountSummaries(),
+  getSummaries: (params) => apiService.getHeadcountSummaries(params),
+  getSummary: (id) => apiService.getHeadcountSummary(id),
   getLatest: () => apiService.getLatestHeadcountSummary(),
   generateCurrent: () => apiService.generateCurrentHeadcountSummary(),
 };
 
 // Vacancy Management API
 export const vacancyAPI = {
-  getAll: () => apiService.getVacantPositions(),
+  getAll: (params) => apiService.getVacantPositions(params),
+  getById: (id) => apiService.getVacantPosition(id),
   create: (data) => apiService.createVacantPosition(data),
   update: (id, data) => apiService.updateVacantPosition(id, data),
   delete: (id) => apiService.deleteVacantPosition(id),
   markFilled: (id, employeeData) => apiService.markPositionFilled(id, employeeData),
+  getStatistics: () => apiService.getVacantPositionStatistics(),
+};
+
+// Tag Management API
+export const tagAPI = {
+  getAll: (tagType) => apiService.getEmployeeTags(tagType ? { tag_type: tagType } : {}),
+  getById: (id) => apiService.getEmployeeTag(id),
+  create: (data) => apiService.createEmployeeTag(data),
+  update: (id, data) => apiService.updateEmployeeTag(id, data),
+  delete: (id) => apiService.deleteEmployeeTag(id),
+};
+
+// Org Chart API
+export const orgChartAPI = {
+  getOrgChart: (params) => apiService.getOrgChart(params),
+  getOrgChartNode: (id) => apiService.getOrgChartNode(id),
+  getFullTree: () => apiService.getOrgChartFullTree(),
 };
 
 export { employeeAPI as default };

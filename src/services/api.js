@@ -1,4 +1,4 @@
-// src/services/api.js - ENHANCED: Complete headcount API integration
+// src/services/api.js - ENHANCED: Complete API integration with your backend
 import axios from "axios";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
@@ -62,12 +62,12 @@ const redirectToLogin = () => {
   }
 };
 
-// API Methods - Complete backend integration
+// ENHANCED API Service with complete backend integration
 export const apiService = {
   // Auth endpoints
   getCurrentUser: () => api.get("/me/"),
   
-  // Employee endpoints with comprehensive filtering and sorting
+  // Employee endpoints - comprehensive with all features
   getEmployees: (params = {}) => {
     const searchParams = new URLSearchParams();
     
@@ -89,144 +89,290 @@ export const apiService = {
   updateEmployee: (id, data) => api.put(`/employees/${id}/`, data),
   deleteEmployee: (id) => api.delete(`/employees/${id}/`),
   
-  // Employee specific endpoints
-  getEmployeeFilterOptions: () => api.get("/employees/filter_options/"),
+  // Employee statistics and filter options
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
+  getEmployeeFilterOptions: () => api.get("/employees/filter_options/"),
   
-  // Bulk operations
+  // Enhanced bulk operations
   bulkUpdateEmployees: (data) => api.post("/employees/bulk_update/", data),
   bulkDeleteEmployees: (ids) => api.post("/employees/bulk_delete/", { employee_ids: ids }),
+  softDeleteEmployees: (ids) => api.post("/employees/soft_delete/", { employee_ids: ids }),
+  restoreEmployees: (ids) => api.post("/employees/restore/", { employee_ids: ids }),
+
+  // Tag management - easy add/remove
+  addEmployeeTag: (employeeId, tagData) => api.post("/employees/add_tag/", { 
+    employee_id: employeeId, 
+    ...tagData 
+  }),
+  removeEmployeeTag: (employeeId, tagId) => api.post("/employees/remove_tag/", { 
+    employee_id: employeeId, 
+    tag_id: tagId 
+  }),
+  bulkAddTags: (employeeIds, tagIds) => api.post("/employees/bulk_add_tag/", { 
+    employee_ids: employeeIds, 
+    tag_ids: tagIds 
+  }),
+  bulkRemoveTags: (employeeIds, tagIds) => api.post("/employees/bulk_remove_tag/", { 
+    employee_ids: employeeIds, 
+    tag_ids: tagIds 
+  }),
+
+  // Status management - automatic transitions based on contract
+  updateEmployeeStatus: (employeeIds) => api.post("/employees/update_status/", { 
+    employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
+  }),
+  autoUpdateStatuses: () => api.post("/employees/auto_update_status/"),
   
-  // Export functionality with filters
-  exportEmployees: (format = 'csv', params = {}) => {
-    const searchParams = new URLSearchParams({
-      format,
-      ...params
+  // Line manager management
+  getLineManagers: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
     });
-    return api.get(`/employees/export_data/?${searchParams.toString()}`, {
-      responseType: format === 'excel' ? 'blob' : 'json'
+    return api.get(`/employees/line_managers/?${searchParams.toString()}`);
+  },
+  updateLineManager: (employeeId, lineManagerId) => api.post("/employees/update_single_line_manager/", { 
+    employee_id: employeeId, 
+    line_manager_id: lineManagerId 
+  }),
+  bulkUpdateLineManager: (employeeIds, lineManagerId) => api.post("/employees/bulk_update_line_manager/", { 
+    employee_ids: employeeIds, 
+    line_manager_id: lineManagerId 
+  }),
+
+  // Enhanced export with field selection
+  exportEmployees: (params = {}) => {
+    return api.post("/employees/export_selected/", params, {
+      responseType: 'blob'
     });
   },
-  
-  // Advanced search with dropdown suggestions
-  dropdownSearch: (field, search, limit = 50) => 
-    api.get(`/employees/dropdown_search/?field=${field}&search=${search}&limit=${limit}`),
-  
-  // Org chart endpoints
-  getOrgChart: () => api.get("/employees/org_chart/"),
-  updateOrgChartVisibility: (data) => api.patch("/employees/update_org_chart_visibility/", data),
-  updateSingleOrgChartVisibility: (id, data) => api.patch(`/employees/${id}/org_chart_visibility/`, data),
-  
-  // Status management with automatic transitions
-  getStatusDashboard: () => api.get("/employees/status-dashboard/"),
-  updateEmployeeStatus: (id) => api.post(`/employees/${id}/update-status/`),
-  getStatusPreview: (id) => api.get(`/employees/${id}/status-preview/`),
-  bulkUpdateStatuses: (employeeIds = []) => api.post("/employees/bulk-update-statuses/", { employee_ids: employeeIds }),
-  getStatusRules: () => api.get("/employees/status-rules/"),
-  
-  // Employee Tags Management
-  getEmployeeTags: (tagType = null) => {
-    const params = tagType ? `?tag_type=${tagType}` : '';
-    return api.get(`/employee-tags/dropdown_options/${params}`);
+
+  // Employee activities and audit trail
+  getEmployeeActivities: (employeeId) => api.get(`/employees/${employeeId}/activities/`),
+
+  // Business Functions
+  getBusinessFunctions: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/business-functions/?${searchParams.toString()}`);
   },
+  getBusinessFunction: (id) => api.get(`/business-functions/${id}/`),
+  createBusinessFunction: (data) => api.post("/business-functions/", data),
+  updateBusinessFunction: (id, data) => api.put(`/business-functions/${id}/`, data),
+  deleteBusinessFunction: (id) => api.delete(`/business-functions/${id}/`),
+
+  // Departments - hierarchical with business function dependency
+  getDepartments: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/departments/?${searchParams.toString()}`);
+  },
+  getDepartment: (id) => api.get(`/departments/${id}/`),
+  createDepartment: (data) => api.post("/departments/", data),
+  updateDepartment: (id, data) => api.put(`/departments/${id}/`, data),
+  deleteDepartment: (id) => api.delete(`/departments/${id}/`),
+
+  // Units - hierarchical with department dependency
+  getUnits: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/units/?${searchParams.toString()}`);
+  },
+  getUnit: (id) => api.get(`/units/${id}/`),
+  createUnit: (data) => api.post("/units/", data),
+  updateUnit: (id, data) => api.put(`/units/${id}/`, data),
+  deleteUnit: (id) => api.delete(`/units/${id}/`),
+
+  // Job Functions
+  getJobFunctions: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/job-functions/?${searchParams.toString()}`);
+  },
+  getJobFunction: (id) => api.get(`/job-functions/${id}/`),
+  createJobFunction: (data) => api.post("/job-functions/", data),
+  updateJobFunction: (id, data) => api.put(`/job-functions/${id}/`, data),
+  deleteJobFunction: (id) => api.delete(`/job-functions/${id}/`),
+
+  // Position Groups with grading levels
+  getPositionGroups: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/position-groups/?${searchParams.toString()}`);
+  },
+  getPositionGroup: (id) => api.get(`/position-groups/${id}/`),
+  getPositionGroupGradingLevels: (id) => api.get(`/position-groups/${id}/grading_levels/`),
+  createPositionGroup: (data) => api.post("/position-groups/", data),
+  updatePositionGroup: (id, data) => api.put(`/position-groups/${id}/`, data),
+  deletePositionGroup: (id) => api.delete(`/position-groups/${id}/`),
+
+  // Employee Statuses with duration configuration
+  getEmployeeStatuses: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/employee-statuses/?${searchParams.toString()}`);
+  },
+  getEmployeeStatus: (id) => api.get(`/employee-statuses/${id}/`),
+  createEmployeeStatus: (data) => api.post("/employee-statuses/", data),
+  updateEmployeeStatus: (id, data) => api.put(`/employee-statuses/${id}/`, data),
+  deleteEmployeeStatus: (id) => api.delete(`/employee-statuses/${id}/`),
+
+  // Employee Tags with types
+  getEmployeeTags: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/employee-tags/?${searchParams.toString()}`);
+  },
+  getEmployeeTag: (id) => api.get(`/employee-tags/${id}/`),
   createEmployeeTag: (data) => api.post("/employee-tags/", data),
   updateEmployeeTag: (id, data) => api.put(`/employee-tags/${id}/`, data),
   deleteEmployeeTag: (id) => api.delete(`/employee-tags/${id}/`),
-  
-  // Employee Tag Assignment
-  addEmployeeTag: (employeeId, tagData) => api.post(`/employees/${employeeId}/add_tag/`, tagData),
-  removeEmployeeTag: (employeeId, tagId) => api.delete(`/employees/${employeeId}/remove_tag/${tagId}/`),
-  bulkAddTags: (employeeIds, tagIds) => api.post("/employees/bulk_add_tags/", { 
-    employee_ids: employeeIds, 
-    tag_ids: tagIds 
-  }),
-  bulkRemoveTags: (employeeIds, tagIds) => api.post("/employees/bulk_remove_tags/", { 
-    employee_ids: employeeIds, 
-    tag_ids: tagIds 
-  }),
-  
-  // Reference data endpoints with hierarchical dependencies
-  getBusinessFunctions: () => api.get("/business-functions/"),
-  getBusinessFunctionDropdown: () => api.get("/business-functions/dropdown_options/"),
-  
-  getDepartments: (businessFunctionId = null) => {
-    const params = businessFunctionId ? `?business_function=${businessFunctionId}` : '';
-    return api.get(`/departments/dropdown_options/${params}`);
-  },
-  
-  getUnits: (departmentId = null) => {
-    const params = departmentId ? `?department=${departmentId}` : '';
-    return api.get(`/units/dropdown_options/${params}`);
-  },
-  
-  getJobFunctions: () => api.get("/job-functions/dropdown_options/"),
-  getPositionGroups: () => api.get("/position-groups/dropdown_options/"),
-  getEmployeeStatuses: () => api.get("/employee-statuses/dropdown_options/"),
-  
-  // Position Group Grading Integration
-  getPositionGroupGradingLevels: (positionGroupId) => 
-    api.get(`/position-groups/${positionGroupId}/grading_levels/`),
-  
-  // Employee Grading Management
+
+  // Employee Grading
   getEmployeeGrading: () => api.get("/employee-grading/"),
   bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
-  
-  // Documents Management (Optional)
-  getEmployeeDocuments: (employeeId = null) => {
-    const params = employeeId ? `?employee=${employeeId}` : '';
-    return api.get(`/employee-documents/${params}`);
-  },
-  uploadEmployeeDocument: (formData) => {
-    return api.post("/employee-documents/", formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+
+  // Org Chart
+  getOrgChart: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
     });
+    return api.get(`/org-chart/?${searchParams.toString()}`);
   },
-  deleteEmployeeDocument: (id) => api.delete(`/employee-documents/${id}/`),
-  
-  // Activities and Audit Trail
-  getEmployeeActivities: (employeeId = null) => {
-    const params = employeeId ? `?employee=${employeeId}` : '';
-    return api.get(`/employee-activities/${params}`);
-  },
-  getRecentActivities: (limit = 50) => api.get(`/employee-activities/recent_activities/?limit=${limit}`),
-  getActivitySummary: () => api.get("/employee-activities/activity_summary/"),
-  
+  getOrgChartNode: (id) => api.get(`/org-chart/${id}/`),
+  getOrgChartFullTree: () => api.get("/org-chart/full_tree/"),
+
   // Headcount Analytics
-  getHeadcountSummaries: () => api.get("/headcount-summaries/"),
-  getLatestHeadcountSummary: () => api.get("/headcount-summaries/latest/"),
+  getHeadcountSummaries: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/headcount-summaries/?${searchParams.toString()}`);
+  },
+  getHeadcountSummary: (id) => api.get(`/headcount-summaries/${id}/`),
   generateCurrentHeadcountSummary: () => api.post("/headcount-summaries/generate_current/"),
-  
-  // Vacant Positions Management
-  getVacantPositions: () => api.get("/vacant-positions/"),
+  getLatestHeadcountSummary: () => api.get("/headcount-summaries/latest/"),
+
+  // Vacant Positions
+  getVacantPositions: (params = {}) => {
+    const searchParams = new URLSearchParams();
+    Object.keys(params).forEach(key => {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+        searchParams.append(key, params[key]);
+      }
+    });
+    return api.get(`/vacant-positions/?${searchParams.toString()}`);
+  },
+  getVacantPosition: (id) => api.get(`/vacant-positions/${id}/`),
   createVacantPosition: (data) => api.post("/vacant-positions/", data),
   updateVacantPosition: (id, data) => api.put(`/vacant-positions/${id}/`, data),
   deleteVacantPosition: (id) => api.delete(`/vacant-positions/${id}/`),
-  markPositionFilled: (id, employeeData) => api.post(`/vacant-positions/${id}/mark_filled/`, employeeData),
-  
-  // Grading System Integration
-  getGradingSystems: () => api.get("/grading/systems/"),
-  getCurrentGradingStructure: () => api.get("/grading/scenarios/current/"),
-  getGradingScenarios: () => api.get("/grading/scenarios/"),
-  
+  markPositionFilled: (id, data) => api.post(`/vacant-positions/${id}/mark_filled/`, data),
+  getVacantPositionStatistics: () => api.get("/vacant-positions/statistics/"),
+
   // Test endpoints
-  testConnection: () => api.get("/employees/"),
+  testConnection: () => api.get("/"),
   testAuth: () => api.get("/me/"),
 };
 
-// Specialized API for Reference Data
+// Specialized APIs for better organization
 export const referenceDataAPI = {
-  getBusinessFunctionDropdown: () => apiService.getBusinessFunctionDropdown(),
-  getDepartmentDropdown: (businessFunctionId) => apiService.getDepartments(businessFunctionId),
-  getUnitDropdown: (departmentId) => apiService.getUnits(departmentId),
-  getJobFunctionDropdown: () => apiService.getJobFunctions(),
-  getPositionGroupDropdown: () => apiService.getPositionGroups(),
-  getEmployeeStatusDropdown: () => apiService.getEmployeeStatuses(),
-  getEmployeeTagDropdown: (tagType) => apiService.getEmployeeTags(tagType),
+  // Business Functions
+  getBusinessFunctions: () => apiService.getBusinessFunctions(),
+  getBusinessFunction: (id) => apiService.getBusinessFunction(id),
+  createBusinessFunction: (data) => apiService.createBusinessFunction(data),
+  updateBusinessFunction: (id, data) => apiService.updateBusinessFunction(id, data),
+  deleteBusinessFunction: (id) => apiService.deleteBusinessFunction(id),
+
+  // Departments with business function filtering
+  getDepartments: (businessFunctionId = null) => {
+    const params = businessFunctionId ? { business_function: businessFunctionId } : {};
+    return apiService.getDepartments(params);
+  },
+  getDepartment: (id) => apiService.getDepartment(id),
+  createDepartment: (data) => apiService.createDepartment(data),
+  updateDepartment: (id, data) => apiService.updateDepartment(id, data),
+  deleteDepartment: (id) => apiService.deleteDepartment(id),
+
+  // Units with department filtering
+  getUnits: (departmentId = null) => {
+    const params = departmentId ? { department: departmentId } : {};
+    return apiService.getUnits(params);
+  },
+  getUnit: (id) => apiService.getUnit(id),
+  createUnit: (data) => apiService.createUnit(data),
+  updateUnit: (id, data) => apiService.updateUnit(id, data),
+  deleteUnit: (id) => apiService.deleteUnit(id),
+
+  // Job Functions
+  getJobFunctions: () => apiService.getJobFunctions(),
+  getJobFunction: (id) => apiService.getJobFunction(id),
+  createJobFunction: (data) => apiService.createJobFunction(data),
+  updateJobFunction: (id, data) => apiService.updateJobFunction(id, data),
+  deleteJobFunction: (id) => apiService.deleteJobFunction(id),
+
+  // Position Groups
+  getPositionGroups: () => apiService.getPositionGroups(),
+  getPositionGroup: (id) => apiService.getPositionGroup(id),
+  getPositionGroupGradingLevels: (id) => apiService.getPositionGroupGradingLevels(id),
+  createPositionGroup: (data) => apiService.createPositionGroup(data),
+  updatePositionGroup: (id, data) => apiService.updatePositionGroup(id, data),
+  deletePositionGroup: (id) => apiService.deletePositionGroup(id),
+
+  // Employee Statuses
+  getEmployeeStatuses: () => apiService.getEmployeeStatuses(),
+  getEmployeeStatus: (id) => apiService.getEmployeeStatus(id),
+  createEmployeeStatus: (data) => apiService.createEmployeeStatus(data),
+  updateEmployeeStatus: (id, data) => apiService.updateEmployeeStatus(id, data),
+  deleteEmployeeStatus: (id) => apiService.deleteEmployeeStatus(id),
+
+  // Employee Tags with type filtering
+  getEmployeeTags: (tagType = null) => {
+    const params = tagType ? { tag_type: tagType } : {};
+    return apiService.getEmployeeTags(params);
+  },
+  getEmployeeTag: (id) => apiService.getEmployeeTag(id),
+  createEmployeeTag: (data) => apiService.createEmployeeTag(data),
+  updateEmployeeTag: (id, data) => apiService.updateEmployeeTag(id, data),
+  deleteEmployeeTag: (id) => apiService.deleteEmployeeTag(id),
 };
 
-// Employee API with enhanced features
 export const employeeAPI = {
   // Basic CRUD
   getAll: (params) => apiService.getEmployees(params),
@@ -235,54 +381,65 @@ export const employeeAPI = {
   update: (id, data) => apiService.updateEmployee(id, data),
   delete: (id) => apiService.deleteEmployee(id),
   
-  // Advanced features
-  getFilterOptions: () => apiService.getEmployeeFilterOptions(),
+  // Statistics and filter options
   getStatistics: () => apiService.getEmployeeStatistics(),
-  export: (format, params) => apiService.exportEmployees(format, params),
+  getFilterOptions: () => apiService.getEmployeeFilterOptions(),
   
   // Bulk operations
   bulkUpdate: (data) => apiService.bulkUpdateEmployees(data),
   bulkDelete: (ids) => apiService.bulkDeleteEmployees(ids),
+  softDelete: (ids) => apiService.softDeleteEmployees(ids),
+  restore: (ids) => apiService.restoreEmployees(ids),
   
-  // Tags management
+  // Tag management
   addTag: (employeeId, tagData) => apiService.addEmployeeTag(employeeId, tagData),
   removeTag: (employeeId, tagId) => apiService.removeEmployeeTag(employeeId, tagId),
   bulkAddTags: (employeeIds, tagIds) => apiService.bulkAddTags(employeeIds, tagIds),
   bulkRemoveTags: (employeeIds, tagIds) => apiService.bulkRemoveTags(employeeIds, tagIds),
   
   // Status management
-  updateStatus: (id) => apiService.updateEmployeeStatus(id),
-  getStatusPreview: (id) => apiService.getStatusPreview(id),
-  bulkUpdateStatuses: (employeeIds) => apiService.bulkUpdateStatuses(employeeIds),
+  updateStatus: (employeeIds) => apiService.updateEmployeeStatus(employeeIds),
+  autoUpdateStatuses: () => apiService.autoUpdateStatuses(),
   
-  // Grading
-  getWithGrading: () => apiService.getEmployeeGrading(),
-  bulkUpdateGrades: (updates) => apiService.bulkUpdateEmployeeGrades(updates),
+  // Line manager management
+  getLineManagers: (params) => apiService.getLineManagers(params),
+  updateLineManager: (employeeId, lineManagerId) => apiService.updateLineManager(employeeId, lineManagerId),
+  bulkUpdateLineManager: (employeeIds, lineManagerId) => apiService.bulkUpdateLineManager(employeeIds, lineManagerId),
   
-  // Documents
-  getDocuments: (employeeId) => apiService.getEmployeeDocuments(employeeId),
-  uploadDocument: (formData) => apiService.uploadEmployeeDocument(formData),
-  deleteDocument: (id) => apiService.deleteEmployeeDocument(id),
+  // Export
+  export: (params) => apiService.exportEmployees(params),
   
   // Activities
   getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
-  getRecentActivities: (limit) => apiService.getRecentActivities(limit),
 };
 
-// Tag Management API
-export const tagAPI = {
-  getAll: (tagType) => apiService.getEmployeeTags(tagType),
-  create: (data) => apiService.createEmployeeTag(data),
-  update: (id, data) => apiService.updateEmployeeTag(id, data),
-  delete: (id) => apiService.deleteEmployeeTag(id),
-};
-
-// Grading API
 export const gradingAPI = {
   getEmployeeGrading: () => apiService.getEmployeeGrading(),
-  getPositionGroupLevels: (positionGroupId) => apiService.getPositionGroupGradingLevels(positionGroupId),
   bulkUpdateGrades: (updates) => apiService.bulkUpdateEmployeeGrades(updates),
-  getCurrentStructure: () => apiService.getCurrentGradingStructure(),
+  getPositionGroupLevels: (positionGroupId) => apiService.getPositionGroupGradingLevels(positionGroupId),
+};
+
+export const orgChartAPI = {
+  getOrgChart: (params) => apiService.getOrgChart(params),
+  getOrgChartNode: (id) => apiService.getOrgChartNode(id),
+  getFullTree: () => apiService.getOrgChartFullTree(),
+};
+
+export const headcountAPI = {
+  getSummaries: (params) => apiService.getHeadcountSummaries(params),
+  getSummary: (id) => apiService.getHeadcountSummary(id),
+  generateCurrent: () => apiService.generateCurrentHeadcountSummary(),
+  getLatest: () => apiService.getLatestHeadcountSummary(),
+};
+
+export const vacancyAPI = {
+  getAll: (params) => apiService.getVacantPositions(params),
+  getById: (id) => apiService.getVacantPosition(id),
+  create: (data) => apiService.createVacantPosition(data),
+  update: (id, data) => apiService.updateVacantPosition(id, data),
+  delete: (id) => apiService.deleteVacantPosition(id),
+  markFilled: (id, data) => apiService.markPositionFilled(id, data),
+  getStatistics: () => apiService.getVacantPositionStatistics(),
 };
 
 export default api;
