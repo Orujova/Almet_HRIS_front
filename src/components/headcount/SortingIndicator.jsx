@@ -1,12 +1,43 @@
-import { SortAsc, SortDesc, ArrowUpDown } from "lucide-react";
+// src/components/headcount/SortingIndicator.jsx - Column sorting indicator
+import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
-const SortingIndicator = ({ direction }) => {
-  if (direction === 'asc') {
-    return <SortAsc size={14} className="ml-1" />;
-  } else if (direction === 'desc') {
-    return <SortDesc size={14} className="ml-1" />;
+/**
+ * Sorting Indicator Component
+ * Shows sort direction and order for table columns
+ */
+const SortingIndicator = ({
+  direction = null, // 'asc', 'desc', or null
+  sortIndex = null, // Number for multi-sort order
+  size = 14,
+  className = ""
+}) => {
+  // No sorting applied
+  if (!direction) {
+    return (
+      <ChevronsUpDown 
+        size={size} 
+        className={`text-gray-400 ${className}`}
+      />
+    );
   }
-  return <ArrowUpDown size={14} className="ml-1 opacity-50" />;
+
+  return (
+    <div className={`flex items-center ${className}`}>
+      {/* Sort direction indicator */}
+      {direction === 'asc' ? (
+        <ChevronUp size={size} className="text-almet-sapphire" />
+      ) : (
+        <ChevronDown size={size} className="text-almet-sapphire" />
+      )}
+      
+      {/* Multi-sort index */}
+      {sortIndex && (
+        <span className="text-xs text-almet-sapphire ml-1 font-medium">
+          {sortIndex}
+        </span>
+      )}
+    </div>
+  );
 };
 
 export default SortingIndicator;

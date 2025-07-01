@@ -91,7 +91,7 @@ export const apiService = {
   
   // Employee statistics and filter options
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
-  getEmployeeFilterOptions: () => api.get("/employees/filter_options/"),
+
   
   // Enhanced bulk operations
   bulkUpdateEmployees: (data) => api.post("/employees/bulk_update/", data),

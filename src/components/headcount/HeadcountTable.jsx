@@ -1,6 +1,6 @@
-// src/components/headcount/HeadcountTable.jsx - Fixed without office filter + Excel-like sorting
+// src/components/headcount/HeadcountTable.jsx - Optimized to prevent request loops
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useEmployees } from "../../hooks/useEmployees";
 
@@ -13,11 +13,12 @@ import Pagination from "./Pagination";
 import ActionMenu from "./ActionMenu";
 import HierarchyLegend from "./HierarchyLegend";
 import ColorSelector from "./ColorModeSelector";
+import ExportModal from "./ExportModal";
 
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
   
-  // Redux hooks
+  // Redux hooks with complete API integration
   const {
     formattedEmployees,
     loading,
@@ -25,13 +26,14 @@ const HeadcountTable = () => {
     filterOptions,
     selectedEmployees,
     currentFilters,
-    appliedFilters,
     pagination,
     sorting,
     statistics,
+    gradingData,
     fetchEmployees,
     fetchFilterOptions,
     fetchStatistics,
+    fetchEmployeeGrading,
     setSelectedEmployees,
     toggleEmployeeSelection,
     selectAllEmployees,
@@ -46,13 +48,13 @@ const HeadcountTable = () => {
     setPageSize,
     setCurrentPage,
     bulkUpdateEmployees,
-    updateOrgChartVisibility,
+    bulkDeleteEmployees,
+    bulkAddTags,
+    bulkRemoveTags,
+    updateEmployeeStatus,
     exportEmployees,
     deleteEmployee,
     clearErrors,
-    refreshEmployees,
-    buildQueryParams,
-    hasActiveFilters,
     getSortDirection,
     isSorted,
     getSortIndex
@@ -64,17 +66,39 @@ const HeadcountTable = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [employeeVisibility, setEmployeeVisibility] = useState({});
 
-  // Initialize data on mount
-  useEffect(() => {
-    fetchFilterOptions();
-    fetchStatistics();
-    clearErrors();
-  }, []);
+  // Refs to track initialization
+  const initialized = useRef(false);
+  const lastApiParams = useRef(null);
 
-  // Build filter parameters for API
-  const apiParams = useMemo(() => {
+  // Initialize data only once on mount
+  useEffect(() => {
+    const initializeData = async () => {
+      if (initialized.current) return;
+      
+      try {
+        initialized.current = true;
+        clearErrors();
+        
+        // Run initial data fetch in parallel to avoid multiple requests
+        await Promise.all([
+          fetchFilterOptions(),
+          fetchStatistics(),
+          fetchEmployeeGrading()
+        ]);
+      } catch (error) {
+        console.error('Failed to initialize data:', error);
+        initialized.current = false; // Allow retry
+      }
+    };
+
+    initializeData();
+  }, []); // Empty dependency array - run only once
+
+  // Debounced API params builder
+  const buildApiParams = useMemo(() => {
     const params = {
       page: pagination.currentPage,
       page_size: pagination.pageSize
@@ -87,19 +111,31 @@ const HeadcountTable = () => {
 
     // Add quick filters
     if (statusFilter !== "all") {
-      params.statusFilter = statusFilter;
+      params.status = statusFilter;
     }
     if (departmentFilter !== "all") {
-      params.departmentFilter = departmentFilter;
+      params.department = departmentFilter;
     }
 
     // Add advanced filters
     Object.keys(currentFilters).forEach(key => {
       const value = currentFilters[key];
       if (value !== undefined && value !== null && value !== '') {
-        params[key] = value;
+        if (Array.isArray(value) && value.length > 0) {
+          params[key] = value;
+        } else if (!Array.isArray(value)) {
+          params[key] = value;
+        }
       }
     });
+
+    // Add Excel-style sorting
+    if (sorting && sorting.length > 0) {
+      const orderingFields = sorting.map(sort => 
+        sort.direction === 'desc' ? `-${sort.field}` : sort.field
+      );
+      params.ordering = orderingFields.join(',');
+    }
 
     return params;
   }, [
@@ -108,53 +144,79 @@ const HeadcountTable = () => {
     searchTerm, 
     statusFilter, 
     departmentFilter, 
-    currentFilters
+    currentFilters,
+    sorting
   ]);
 
-  // Fetch employees when filters change
+  // Debounced fetch function to prevent excessive API calls
+  const debouncedFetchEmployees = useCallback(
+    (() => {
+      let timeoutId;
+      
+      return (params) => {
+        // Clear existing timeout
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        
+        // Check if params actually changed
+        const paramsString = JSON.stringify(params);
+        if (lastApiParams.current === paramsString) {
+          return; // No change, skip request
+        }
+        
+        // Set new timeout
+        timeoutId = setTimeout(() => {
+          lastApiParams.current = paramsString;
+          fetchEmployees(params);
+        }, 300); // 300ms debounce
+      };
+    })(),
+    [fetchEmployees]
+  );
+
+  // Fetch employees when params change (debounced)
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      fetchEmployees(apiParams);
-    }, 300); // Debounce API calls
+    if (initialized.current) {
+      debouncedFetchEmployees(buildApiParams);
+    }
+  }, [buildApiParams, debouncedFetchEmployees]);
 
-    return () => clearTimeout(timeoutId);
-  }, [apiParams]);
-
-  // Handler functions
-  const handleSearchChange = (value) => {
+  // Handler functions with optimizations
+  const handleSearchChange = useCallback((value) => {
     setSearchTerm(value);
     setCurrentPage(1);
-  };
+  }, [setCurrentPage]);
 
-  const toggleAdvancedFilter = () => {
-    setIsAdvancedFilterOpen(!isAdvancedFilterOpen);
-  };
+  const toggleAdvancedFilter = useCallback(() => {
+    setIsAdvancedFilterOpen(prev => !prev);
+  }, []);
 
-  const handleApplyAdvancedFilters = (filters) => {
+  const handleApplyAdvancedFilters = useCallback((filters) => {
     setCurrentFilters(filters);
     setIsAdvancedFilterOpen(false);
     setCurrentPage(1);
-  };
+  }, [setCurrentFilters, setCurrentPage]);
 
-  const handleClearAllFilters = () => {
+  const handleClearAllFilters = useCallback(() => {
     clearFilters();
     setStatusFilter("all");
     setDepartmentFilter("all");
     setSearchTerm("");
     setCurrentPage(1);
-  };
+  }, [clearFilters, setCurrentPage]);
 
-  const handleStatusChange = (value) => {
+  const handleStatusChange = useCallback((value) => {
     setStatusFilter(value);
     setCurrentPage(1);
-  };
+  }, [setCurrentPage]);
 
-  const handleDepartmentChange = (value) => {
+  const handleDepartmentChange = useCallback((value) => {
     setDepartmentFilter(value);
     setCurrentPage(1);
-  };
+  }, [setCurrentPage]);
 
-  const handleClearFilter = (key) => {
+  const handleClearFilter = useCallback((key) => {
     if (key === "status") {
       setStatusFilter("all");
     } else if (key === "department") {
@@ -163,10 +225,10 @@ const HeadcountTable = () => {
       removeFilter(key);
     }
     setCurrentPage(1);
-  };
+  }, [removeFilter, setCurrentPage]);
 
-  // Excel-like sorting handlers
-  const handleSort = (field, ctrlKey = false) => {
+  // Excel-like sorting handlers with multi-column support
+  const handleSort = useCallback((field, ctrlKey = false) => {
     if (ctrlKey) {
       // Multi-sort with Ctrl+Click
       const currentDirection = getSortDirection(field);
@@ -189,170 +251,133 @@ const HeadcountTable = () => {
       const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
       setSorting(field, newDirection);
     }
-  };
+  }, [getSortDirection, addSort, removeSort, setSorting]);
 
-  const handleGetSortDirection = (field) => {
-    return getSortDirection(field);
-  };
-
-  const handleGetSortIndex = (field) => {
-    return getSortIndex(field);
-  };
-
-  const toggleSelectAll = () => {
+  // Selection handlers
+  const toggleSelectAll = useCallback(() => {
     if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
       clearSelection();
     } else {
       selectAllEmployees();
     }
-  };
+  }, [selectedEmployees.length, formattedEmployees.length, clearSelection, selectAllEmployees]);
 
-  const toggleActionMenu = () => {
-    setIsActionMenuOpen(!isActionMenuOpen);
-  };
+  const toggleActionMenu = useCallback(() => {
+    setIsActionMenuOpen(prev => !prev);
+  }, []);
 
-  const handleBulkAction = async (action) => {
+  // Enhanced bulk action handler with proper API integration
+  const handleBulkAction = useCallback(async (action, options = {}) => {
     setIsActionMenuOpen(false);
 
+    if (selectedEmployees.length === 0 && action !== "export") {
+      alert("Please select employees first");
+      return;
+    }
+
     try {
-      if (action === "export") {
-        const result = await exportEmployees('csv', apiParams);
-        
-        if (result.meta?.requestStatus === 'fulfilled') {
-          // Create and download CSV file
-          const csvData = result.payload.data || [];
-          const csvContent = convertToCSV(csvData);
-          downloadCSV(csvContent, `employees_export_${new Date().toISOString().split('T')[0]}.csv`);
-        }
-      } else if (action === "delete") {
-        if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`)) {
-          for (const employeeId of selectedEmployees) {
-            await deleteEmployee(employeeId);
-          }
-          clearSelection();
-          refreshEmployees();
-        }
-      } else if (action === "changeManager") {
-        const newManagerId = prompt('Enter the new line manager employee ID:');
-        if (newManagerId) {
-          const result = await bulkUpdateEmployees(selectedEmployees, { line_manager: newManagerId });
-          
-          if (result.meta?.requestStatus === 'fulfilled') {
+      switch (action) {
+        case "export":
+          setIsExportModalOpen(true);
+          break;
+
+        case "delete":
+          if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)?`)) {
+            await bulkDeleteEmployees(selectedEmployees);
             clearSelection();
-            refreshEmployees();
+            // Refresh data after successful action
+            debouncedFetchEmployees(buildApiParams);
           }
-        }
+          break;
+
+        case "updateStatus":
+          if (options.newStatus) {
+            await updateEmployeeStatus(selectedEmployees, options.newStatus);
+            clearSelection();
+            debouncedFetchEmployees(buildApiParams);
+          }
+          break;
+
+        case "addTags":
+          if (options.tagIds && options.tagIds.length > 0) {
+            await bulkAddTags(selectedEmployees, options.tagIds);
+            clearSelection();
+            debouncedFetchEmployees(buildApiParams);
+          }
+          break;
+
+        case "removeTags":
+          if (options.tagIds && options.tagIds.length > 0) {
+            await bulkRemoveTags(selectedEmployees, options.tagIds);
+            clearSelection();
+            debouncedFetchEmployees(buildApiParams);
+          }
+          break;
+
+        case "bulkUpdate":
+          if (options.updates) {
+            await bulkUpdateEmployees({
+              employee_ids: selectedEmployees,
+              updates: options.updates
+            });
+            clearSelection();
+            debouncedFetchEmployees(buildApiParams);
+          }
+          break;
+
+        default:
+          console.warn(`Unknown bulk action: ${action}`);
       }
     } catch (error) {
-      console.error('Bulk action failed:', error);
-      alert('Operation failed. Please try again.');
+      console.error(`Failed to perform bulk action ${action}:`, error);
+      alert(`Failed to ${action}. Please try again.`);
     }
-  };
+  }, [selectedEmployees, clearSelection, bulkDeleteEmployees, updateEmployeeStatus, bulkAddTags, bulkRemoveTags, bulkUpdateEmployees, debouncedFetchEmployees, buildApiParams]);
 
-  const handleEmployeeAction = async (employeeId, action) => {
-    const employee = formattedEmployees.find((emp) => emp.id === employeeId);
-    if (!employee) return;
-
+  // Handle export functionality
+  const handleExport = useCallback(async (exportOptions) => {
     try {
-      if (action === "delete") {
-        if (confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone.`)) {
-          const result = await deleteEmployee(employeeId);
-          if (result.meta?.requestStatus === 'fulfilled') {
-            refreshEmployees();
-          }
-        }
-      } else if (action === "addTag") {
-        const tagName = prompt('Enter tag name for employee:');
-        if (tagName) {
-          alert(`Tag "${tagName}" would be added to employee ${employee.name}`);
-        }
-      } else if (action === "changeManager") {
-        const newManagerId = prompt('Enter new line manager employee ID:');
-        if (newManagerId) {
-          const result = await bulkUpdateEmployees([employeeId], { line_manager: newManagerId });
-          
-          if (result.meta?.requestStatus === 'fulfilled') {
-            refreshEmployees();
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Employee action failed:', error);
-      alert('Operation failed. Please try again.');
-    }
-  };
+      const exportParams = {
+        ...buildApiParams,
+        selectedEmployees: exportOptions.type === 'selected' ? selectedEmployees : null,
+        format: exportOptions.format || 'excel',
+        includeFields: exportOptions.includeFields
+      };
 
-  const handleVisibilityChange = async (employeeId, newVisibility) => {
-    try {
-      // Update local state immediately
-      setEmployeeVisibility(prev => ({
-        ...prev,
-        [employeeId]: newVisibility,
-      }));
-
-      // Call backend API
-      const result = await updateOrgChartVisibility([employeeId], newVisibility);
-
+      const result = await exportEmployees(exportParams);
+      
       if (result.meta?.requestStatus === 'fulfilled') {
-        console.log('Visibility updated successfully');
+        // Handle file download
+        const blob = new Blob([result.payload], {
+          type: exportOptions.format === 'excel' 
+            ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            : 'text/csv'
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `employees_export_${new Date().toISOString().split('T')[0]}.${exportOptions.format === 'excel' ? 'xlsx' : 'csv'}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
       }
     } catch (error) {
-      console.error('Failed to update visibility:', error);
-      // Revert local state on error
-      setEmployeeVisibility(prev => ({
-        ...prev,
-        [employeeId]: !newVisibility,
-      }));
-      alert('Failed to update visibility. Please try again.');
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExportModalOpen(false);
     }
-  };
+  }, [buildApiParams, selectedEmployees, exportEmployees]);
 
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-  };
-
-  const handleItemsPerPageChange = (value) => {
-    setPageSize(value);
-    setCurrentPage(1);
-  };
-
-  const handleBulkImportComplete = (results) => {
-
-    refreshEmployees();
+  const handleBulkImportComplete = useCallback(() => {
+    // Refresh all data after bulk import
     fetchStatistics();
-  };
+    debouncedFetchEmployees(buildApiParams);
+  }, [fetchStatistics, debouncedFetchEmployees, buildApiParams]);
 
-  // Helper functions
-  const convertToCSV = (data) => {
-    if (!Array.isArray(data) || data.length === 0) return '';
-    
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header] || '';
-          return `"${value.toString().replace(/"/g, '""')}"`;
-        }).join(',')
-      )
-    ].join('\n');
-    
-    return csvContent;
-  };
-
-  const downloadCSV = (content, filename) => {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Active filters for display (removed office filter)
+  // Active filters for display
   const activeFilters = useMemo(() => {
     const filters = [];
     
@@ -363,36 +388,32 @@ const HeadcountTable = () => {
       filters.push({ key: "department", label: `Department: ${departmentFilter}` });
     }
     
-    appliedFilters.forEach(filter => {
-      filters.push(filter);
+    Object.entries(currentFilters).forEach(([key, value]) => {
+      if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
+        const label = Array.isArray(value) ? value.join(', ') : value;
+        filters.push({ key, label: `${key}: ${label}` });
+      }
     });
     
     return filters;
-  }, [statusFilter, departmentFilter, appliedFilters]);
+  }, [statusFilter, departmentFilter, currentFilters]);
 
-  const hasActiveFiltersCheck = searchTerm || 
-    Object.keys(currentFilters).length > 0 || 
-    statusFilter !== "all" || 
-    departmentFilter !== "all";
-
-  if (error) {
+  // Error handling
+  if (error?.fetch) {
     return (
       <div className="container mx-auto pt-3 max-w-full">
-        <div className="text-center py-8">
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
-            <div className="flex items-center justify-center mb-4">
-              <div className="bg-red-100 dark:bg-red-800 p-3 rounded-full">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-lg font-medium text-red-800 dark:text-red-300 mb-2">Error Loading Employees</h3>
-            <p className="text-red-600 dark:text-red-400 mb-4">
-              {typeof error === 'string' ? error : error?.message || 'Failed to load employee data'}
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
+          <div className="text-red-600 dark:text-red-400">
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>
+            <p className="text-sm mb-4">
+              {error?.fetch?.message || 'Failed to load employee data'}
             </p>
             <button 
-              onClick={() => refreshEmployees()}
+              onClick={() => {
+                initialized.current = false;
+                lastApiParams.current = null;
+                window.location.reload();
+              }}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
             >
               Try Again
@@ -413,6 +434,7 @@ const HeadcountTable = () => {
           isActionMenuOpen={isActionMenuOpen}
           selectedEmployees={selectedEmployees}
           onBulkImportComplete={handleBulkImportComplete}
+          statistics={statistics}
         />
 
         {/* Action Menu */}
@@ -422,6 +444,7 @@ const HeadcountTable = () => {
               isOpen={isActionMenuOpen}
               onClose={() => setIsActionMenuOpen(false)}
               onAction={handleBulkAction}
+              selectedCount={selectedEmployees.length}
             />
           </div>
         )}
@@ -437,7 +460,7 @@ const HeadcountTable = () => {
         />
       )}
 
-      {/* Quick Filter Panel - Without Office Filter */}
+      {/* Search and Quick Filters */}
       <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3">
         <SearchBar
           searchTerm={searchTerm}
@@ -463,7 +486,7 @@ const HeadcountTable = () => {
         <HierarchyLegend />
       </div>
 
-      {/* Sorting Info Panel */}
+      {/* Multi-level Sorting Info */}
       {sorting.length > 1 && (
         <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-center justify-between">
@@ -481,12 +504,6 @@ const HeadcountTable = () => {
                     className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
                   >
                     {index + 1}. {sort.field} {sort.direction === 'asc' ? '↑' : '↓'}
-                    <button
-                      onClick={() => removeSort(sort.field)}
-                      className="ml-1 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-                    >
-                      ×
-                    </button>
                   </span>
                 ))}
               </div>
@@ -495,48 +512,51 @@ const HeadcountTable = () => {
               onClick={clearSorting}
               className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
             >
-              Clear all sorting
+              Clear All
             </button>
           </div>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-            Hold Ctrl/Cmd and click column headers to add multiple sort levels
-          </p>
         </div>
       )}
 
       {/* Employee Table */}
       <EmployeeTable
         employees={formattedEmployees}
+        loading={loading.fetch}
         selectedEmployees={selectedEmployees}
-        selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
-        onToggleSelectAll={toggleSelectAll}
-        onToggleEmployeeSelection={toggleEmployeeSelection}
+        onEmployeeSelect={toggleEmployeeSelection}
+        onSelectAll={toggleSelectAll}
         onSort={handleSort}
-        getSortDirection={handleGetSortDirection}
-        getSortIndex={handleGetSortIndex}
-        isSorted={isSorted}
+        getSortDirection={getSortDirection}
+        getSortIndex={getSortIndex}
+        onEmployeeVisibilityToggle={(id, visible) => 
+          setEmployeeVisibility(prev => ({ ...prev, [id]: visible }))
+        }
         employeeVisibility={employeeVisibility}
-        onVisibilityChange={handleVisibilityChange}
-        onEmployeeAction={handleEmployeeAction}
-        hasFilters={hasActiveFiltersCheck}
-        onClearFilters={handleClearAllFilters}
-        loading={loading}
-        multiSort={sorting.length > 1}
+        gradingData={gradingData}
       />
 
       {/* Pagination */}
-      {formattedEmployees.length > 0 && (
+      <div className="mt-6">
         <Pagination
           currentPage={pagination.currentPage}
           totalPages={pagination.totalPages}
-          itemsPerPage={pagination.pageSize}
-          totalItems={pagination.totalEmployees}
-          startIndex={(pagination.currentPage - 1) * pagination.pageSize}
-          endIndex={Math.min(pagination.currentPage * pagination.pageSize, pagination.totalEmployees)}
-          onPageChange={handlePageChange}
-          onItemsPerPageChange={handleItemsPerPageChange}
+          totalItems={pagination.count}
+          pageSize={pagination.pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+          loading={loading.fetch}
         />
-      )}
+      </div>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={handleExport}
+        totalEmployees={pagination.count}
+        filteredCount={formattedEmployees.length}
+        selectedEmployees={selectedEmployees}
+      />
     </div>
   );
 };

@@ -652,13 +652,7 @@ const OrgChart = () => {
             >
                 <Background color={darkMode ? '#334155' : '#e2e8f0'} gap={20} />
                 <Controls className={darkMode ? 'react-flow__controls-dark' : ''} />
-                <MiniMap 
-                    className={darkMode ? 'react-flow__minimap-dark' : ''}
-                    nodeColor={(node) => {
-                        const employee = node.data?.employee;
-                        return getEmployeeColor(employee).primary;
-                    }}
-                />
+               
                 <Panel position="top-right" className="space-x-2">
                     <button 
                         onClick={() => onLayout('TB')}

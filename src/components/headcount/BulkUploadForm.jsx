@@ -1,5 +1,5 @@
-// src/components/headcount/BulkUploadForm.jsx
-import { useState } from "react";
+// src/components/headcount/BulkUploadForm.jsx - Fixed and optimized (keeping existing)
+import { useState, useCallback } from "react";
 import { 
   Upload, 
   Download, 
@@ -14,8 +14,9 @@ import {
 import { useTheme } from "../common/ThemeProvider";
 
 /**
- * Bulk Employee Upload Form Component
+ * Bulk Employee Upload Form Component - Optimized
  * Handles Excel file import/export for employee data
+ * Prevents multiple uploads and provides better UX
  */
 const BulkUploadForm = ({ onClose, onImportComplete }) => {
   const { darkMode } = useTheme();
@@ -36,214 +37,217 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
     ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
     : "bg-gray-100 hover:bg-gray-200 text-gray-700";
 
-  // Sample data for template
-  const sampleEmployeeData = [
-    {
-      empNo: "HLD001",
-      firstName: "John",
-      lastName: "Doe",
-      email: "john.doe@almetholding.com",
-      phone: "+994 50 123 4567",
-      dateOfBirth: "1990-01-15",
-      address: "Baku, Azerbaijan",
-      emergencyContact: "Jane Doe: Wife: +994 50 987 6543",
-      businessFunction: "Holding",
-      department: "FINANCE",
-      unit: "FINANCE OPERATIONS",
-      jobFunction: "SENIOR BUDGETING & CONTROLLING SPECIALIST",
-      jobTitle: "Mühasib",
-      positionGroup: "SENIOR SPECIALIST",
-      grade: "4",
-      lineManager: "Şirin Camalli Rasad Oglu",
-      lineManagerHcNumber: "HLD01",
-      office: "Baku HQ",
-      startDate: "2024-01-01",
-      status: "ACTIVE"
-    },
-    {
-      empNo: "HLD002",
-      firstName: "Sarah",
-      lastName: "Smith",
-      email: "sarah.smith@almetholding.com",
-      phone: "+994 50 234 5678",
-      dateOfBirth: "1988-05-22",
-      address: "Baku, Azerbaijan",
-      emergencyContact: "Michael Smith: Husband: +994 50 876 5432",
-      businessFunction: "Holding",
-      department: "HR",
-      unit: "BUSINESS SUPPORT",
-      jobFunction: "HR BUSINESS PARTNER",
-      jobTitle: "İnsan resursları üzrə mütəxəssis",
-      positionGroup: "SPECIALIST",
-      grade: "3",
-      lineManager: "Şirin Camalli Rasad Oglu",
-      lineManagerHcNumber: "HLD01",
-      office: "Baku HQ",
-      startDate: "2024-01-15",
-      status: "ACTIVE"
-    }
-  ];
-
-  // Download sample Excel template
-  const downloadTemplate = () => {
-    // Create CSV content
+  // Download template function
+  const downloadTemplate = useCallback(() => {
+    // Create a sample template with headers
     const headers = [
-      "empNo", "firstName", "lastName", "email", "phone", "dateOfBirth",
-      "address", "emergencyContact", "businessFunction", "department", 
-      "unit", "jobFunction", "jobTitle", "positionGroup", "grade",
-      "lineManager", "lineManagerHcNumber", "office", "startDate", "endDate", "status"
+      'employee_id', 'first_name', 'last_name', 'email', 'phone',
+      'job_title', 'business_function', 'department', 'unit',
+      'job_function', 'position_group', 'start_date', 'contract_duration',
+      'grading_level', 'line_manager_email', 'address', 'date_of_birth',
+      'gender', 'emergency_contact', 'notes', 'tags'
     ];
 
-    const csvContent = [
-      headers.join(","),
-      ...sampleEmployeeData.map(emp => 
-        headers.map(header => {
-          const value = emp[header] || "";
-          // Escape commas and quotes in CSV
-          return `"${value.toString().replace(/"/g, '""')}"`;
-        }).join(",")
-      )
-    ].join("\n");
+    const sampleData = [
+      [
+        'EMP001', 'John', 'Doe', 'john.doe@company.com', '+994501234567',
+        'Software Engineer', 'Technology', 'IT Department', 'Development',
+        'Engineering', 'Individual Contributor', '2024-01-15', 'Permanent',
+        'mid_level', 'manager@company.com', '123 Main St, Baku', '1990-05-15',
+        'M', 'Jane Doe - +994501234568', 'Experienced developer', 'javascript,react,nodejs'
+      ]
+    ];
 
-    // Create and download file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "employee_template.csv");
-    link.style.visibility = "hidden";
+    const csvContent = [headers, ...sampleData]
+      .map(row => row.map(field => `"${field}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'employee_import_template.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    // Show success message
-    alert("Template downloaded successfully! Fill in your employee data and upload it back.");
-  };
+    window.URL.revokeObjectURL(url);
+  }, []);
 
   // Handle drag events
-  const handleDrag = (e) => {
+  const handleDrag = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
+    
     if (e.type === "dragenter" || e.type === "dragover") {
       setDragActive(true);
     } else if (e.type === "dragleave") {
       setDragActive(false);
     }
-  };
+  }, []);
 
   // Handle file drop
-  const handleDrop = (e) => {
+  const handleDrop = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
     
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFileUpload(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length) {
+      const file = e.dataTransfer.files[0];
+      handleFileValidation(file);
     }
-  };
+  }, []);
 
   // Handle file selection
-  const handleFileSelect = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFileUpload(e.target.files[0]);
+  const handleFileSelect = useCallback((e) => {
+    if (e.target.files && e.target.files.length) {
+      const file = e.target.files[0];
+      handleFileValidation(file);
     }
-  };
+  }, []);
 
-  // Process uploaded file
-  const handleFileUpload = (file) => {
+  // Validate selected file
+  const handleFileValidation = useCallback((file) => {
+    // Reset previous state
+    setUploadResults(null);
+    setValidationErrors([]);
+
     // Validate file type
-    const validTypes = [
-      'text/csv',
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      'text/csv'
     ];
+    
+    if (!allowedTypes.includes(file.type)) {
+      alert('Please upload a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+      return;
+    }
 
-    if (!validTypes.includes(file.type) && !file.name.match(/\.(csv|xlsx|xls)$/i)) {
-      alert("Please upload a valid Excel (.xlsx, .xls) or CSV file.");
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB');
       return;
     }
 
     setUploadedFile(file);
-    setValidationErrors([]);
-    setUploadResults(null);
-  };
+  }, []);
 
-  // Process and validate the uploaded data
-  const processUpload = async () => {
-    if (!uploadedFile) return;
+  // Process uploaded file
+  const processUpload = useCallback(async () => {
+    if (!uploadedFile || isProcessing) return;
 
     setIsProcessing(true);
     
     try {
-      // Simulate file processing (in real app, you'd parse the actual file)
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
 
-      // Mock validation results
-      const mockResults = {
-        totalRows: 25,
-        validRows: 23,
-        errorRows: 2,
-        duplicates: 1,
-        newEmployees: 22,
-        updatedEmployees: 1
-      };
+      // Mock API call - replace with actual endpoint
+      const response = await fetch('/api/employees/bulk-import/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
 
-      const mockErrors = [
-        { row: 5, field: "email", message: "Invalid email format", value: "invalid-email" },
-        { row: 12, field: "empNo", message: "Employee ID already exists", value: "HLD001" },
-        { row: 18, field: "startDate", message: "Invalid date format", value: "2024/13/45" }
-      ];
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
 
-      setUploadResults(mockResults);
-      setValidationErrors(mockErrors);
+      const result = await response.json();
       
+      setUploadResults({
+        totalRows: result.total_rows || 0,
+        validRows: result.valid_rows || 0,
+        invalidRows: result.invalid_rows || 0,
+        errors: result.errors || []
+      });
+
+      setValidationErrors(result.errors || []);
+
     } catch (error) {
-      alert("Error processing file: " + error.message);
+      console.error('Upload processing failed:', error);
+      alert('Failed to process file. Please try again.');
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [uploadedFile, isProcessing]);
 
-  // Confirm and import data
-  const confirmImport = () => {
-    if (!uploadResults) return;
+  // Confirm import
+  const confirmImport = useCallback(async () => {
+    if (!uploadResults || uploadResults.validRows === 0) return;
 
-    // Mock import process
-    alert(`Successfully imported ${uploadResults.validRows} employees!`);
-    
-    if (onImportComplete) {
-      onImportComplete(uploadResults);
+    try {
+      setIsProcessing(true);
+
+      // Mock API call for actual import
+      const response = await fetch('/api/employees/bulk-import/confirm/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          file_id: uploadResults.file_id // Assume we get this from previous call
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Import failed');
+      }
+
+      const result = await response.json();
+      
+      // Call completion callback
+      if (onImportComplete) {
+        onImportComplete(result);
+      }
+
+      // Close modal
+      onClose();
+
+    } catch (error) {
+      console.error('Import failed:', error);
+      alert('Failed to import employees. Please try again.');
+    } finally {
+      setIsProcessing(false);
     }
-    
-    onClose();
-  };
+  }, [uploadResults, onImportComplete, onClose]);
 
   // Reset form
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setUploadedFile(null);
     setUploadResults(null);
     setValidationErrors([]);
     setIsProcessing(false);
-  };
+  }, []);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className={`${bgCard} rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto`}>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className={`${bgCard} rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
-            <Users className="mr-3 text-almet-sapphire" size={24} />
-            <h2 className={`text-xl font-bold ${textPrimary}`}>Bulk Employee Import</h2>
+            <Upload className="w-6 h-6 text-almet-sapphire mr-3" />
+            <div>
+              <h2 className={`text-xl font-bold ${textPrimary}`}>Bulk Import Employees</h2>
+              <p className={`text-sm ${textMuted}`}>
+                Upload an Excel or CSV file to import multiple employees
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 ${textMuted}`}
+            className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
           >
-            <X size={20} />
+            <X size={20} className={textSecondary} />
           </button>
         </div>
 
-        <div className="p-6">
+        {/* Content */}
+        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
           {!uploadedFile ? (
             // Upload Section
             <>
@@ -280,7 +284,9 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
               {/* Upload Area */}
               <div
                 className={`border-2 border-dashed ${
-                  dragActive ? 'border-almet-sapphire bg-blue-50 dark:bg-blue-900/20' : borderColor
+                  dragActive 
+                    ? 'border-almet-sapphire bg-blue-50 dark:bg-blue-900/20' 
+                    : borderColor
                 } rounded-xl p-8 transition-colors`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
@@ -377,29 +383,29 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                     </div>
                     <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-center">
                       <div className="text-2xl font-bold text-red-600 dark:text-red-400">
-                        {uploadResults.errorRows}
+                        {uploadResults.invalidRows}
                       </div>
-                      <div className={`text-sm ${textMuted}`}>Errors</div>
+                      <div className={`text-sm ${textMuted}`}>Invalid</div>
                     </div>
                     <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-center">
                       <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                        {uploadResults.duplicates}
+                        {validationErrors.length}
                       </div>
-                      <div className={`text-sm ${textMuted}`}>Duplicates</div>
+                      <div className={`text-sm ${textMuted}`}>Errors</div>
                     </div>
                   </div>
 
                   {/* Validation Errors */}
                   {validationErrors.length > 0 && (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                      <div className="flex items-start mb-3">
-                        <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-                        <h4 className="font-medium text-red-800 dark:text-red-300">
+                      <div className="flex items-center mb-3">
+                        <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+                        <h3 className={`font-medium text-red-800 dark:text-red-300`}>
                           Validation Errors ({validationErrors.length})
-                        </h4>
+                        </h3>
                       </div>
-                      <div className="space-y-2 max-h-32 overflow-y-auto">
-                        {validationErrors.map((error, index) => (
+                      <div className="max-h-40 overflow-y-auto space-y-2">
+                        {validationErrors.slice(0, 10).map((error, index) => (
                           <div key={index} className="text-sm text-red-700 dark:text-red-400">
                             <span className="font-medium">Row {error.row}:</span> {error.message}
                             {error.value && (
@@ -409,6 +415,11 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                             )}
                           </div>
                         ))}
+                        {validationErrors.length > 10 && (
+                          <div className="text-sm text-red-600 dark:text-red-400 italic">
+                            ... and {validationErrors.length - 10} more errors
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -417,15 +428,25 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                   <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={confirmImport}
-                      disabled={uploadResults.validRows === 0}
+                      disabled={uploadResults.validRows === 0 || isProcessing}
                       className={`${btnPrimary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50`}
                     >
-                      <CheckCircle size={16} className="mr-2" />
-                      Import {uploadResults.validRows} Valid Employees
+                      {isProcessing ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                          Importing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={16} className="mr-2" />
+                          Import {uploadResults.validRows} Valid Employees
+                        </>
+                      )}
                     </button>
                     <button
                       onClick={resetForm}
-                      className={`${btnSecondary} px-6 py-3 rounded-lg font-medium flex items-center justify-center`}
+                      disabled={isProcessing}
+                      className={`${btnSecondary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50`}
                     >
                       <Upload size={16} className="mr-2" />
                       Upload Different File

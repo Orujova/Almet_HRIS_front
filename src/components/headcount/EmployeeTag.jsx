@@ -1,58 +1,125 @@
-// src/components/headcount/EmployeeTag.jsx - Updated to handle backend tag structure
-"use client";
+// src/components/headcount/EmployeeTag.jsx - Tag Display Component
+import { X } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
-const EmployeeTag = ({ tag }) => {
+/**
+ * Employee Tag Component
+ * Displays employee tags with type-based colors and optional remove functionality
+ */
+const EmployeeTag = ({ 
+  tag, 
+  size = "md", 
+  removable = false, 
+  onRemove, 
+  className = "",
+  onClick
+}) => {
   const { darkMode } = useTheme();
-  
-  // Handle both string tags and object tags from backend
-  const tagName = typeof tag === 'string' ? tag : tag?.name || '';
-  const tagColor = typeof tag === 'object' ? tag?.color : null;
-  const tagType = typeof tag === 'object' ? tag?.type : null;
-  
-  // Choose color based on tag type or name
-  let bgColor = '';
-  let textColor = '';
-  
-  if (tagColor) {
-    // Use color from backend
-    bgColor = `bg-[${tagColor}]`;
-    textColor = 'text-white';
-  } else {
-    // Fallback to predefined colors
-    switch (tagName.toLowerCase()) {
-      case 'sick leave':
-        bgColor = darkMode ? 'bg-orange-900' : 'bg-orange-100';
-        textColor = darkMode ? 'text-orange-300' : 'text-orange-800';
-        break;
-      case 'maternity':
-        bgColor = darkMode ? 'bg-pink-900' : 'bg-pink-100';
-        textColor = darkMode ? 'text-pink-300' : 'text-pink-800';
-        break;
-      case 'suspension':
-        bgColor = darkMode ? 'bg-red-900' : 'bg-red-100';
-        textColor = darkMode ? 'text-red-300' : 'text-red-800';
-        break;
-      case 'remote work':
-        bgColor = darkMode ? 'bg-blue-900' : 'bg-blue-100';
-        textColor = darkMode ? 'text-blue-300' : 'text-blue-800';
-        break;
-      case 'part-time':
-        bgColor = darkMode ? 'bg-yellow-900' : 'bg-yellow-100';
-        textColor = darkMode ? 'text-yellow-300' : 'text-yellow-800';
-        break;
-      default:
-        bgColor = darkMode ? 'bg-gray-700' : 'bg-gray-200';
-        textColor = darkMode ? 'text-gray-300' : 'text-gray-800';
+
+  // Tag type color mapping
+  const getTagTypeColor = (tagType) => {
+    const typeColors = {
+      'skill': {
+        bg: darkMode ? 'bg-blue-900/20' : 'bg-blue-100',
+        text: darkMode ? 'text-blue-300' : 'text-blue-800',
+        border: darkMode ? 'border-blue-800' : 'border-blue-200'
+      },
+      'department': {
+        bg: darkMode ? 'bg-green-900/20' : 'bg-green-100',
+        text: darkMode ? 'text-green-300' : 'text-green-800',
+        border: darkMode ? 'border-green-800' : 'border-green-200'
+      },
+      'project': {
+        bg: darkMode ? 'bg-purple-900/20' : 'bg-purple-100',
+        text: darkMode ? 'text-purple-300' : 'text-purple-800',
+        border: darkMode ? 'border-purple-800' : 'border-purple-200'
+      },
+      'certification': {
+        bg: darkMode ? 'bg-yellow-900/20' : 'bg-yellow-100',
+        text: darkMode ? 'text-yellow-300' : 'text-yellow-800',
+        border: darkMode ? 'border-yellow-800' : 'border-yellow-200'
+      },
+      'other': {
+        bg: darkMode ? 'bg-gray-700' : 'bg-gray-100',
+        text: darkMode ? 'text-gray-300' : 'text-gray-800',
+        border: darkMode ? 'border-gray-600' : 'border-gray-200'
+      }
+    };
+
+    return typeColors[tagType] || typeColors['other'];
+  };
+
+  // Size variants
+  const sizeClasses = {
+    xs: 'px-1.5 py-0.5 text-xs',
+    sm: 'px-2 py-0.5 text-xs',
+    md: 'px-2.5 py-1 text-sm',
+    lg: 'px-3 py-1.5 text-sm'
+  };
+
+  // Handle tag data - support both object and string formats
+  const tagData = typeof tag === 'string' ? { name: tag, tag_type: 'other' } : tag;
+  const tagName = tagData.name || tagData.label || 'Unknown';
+  const tagType = tagData.tag_type || tagData.type || 'other';
+  const tagDescription = tagData.description;
+
+  const colors = getTagTypeColor(tagType);
+
+  // Handle remove click
+  const handleRemove = (e) => {
+    e.stopPropagation();
+    if (onRemove) {
+      onRemove(tag);
     }
-  }
+  };
+
+  // Handle tag click
+  const handleClick = (e) => {
+    if (onClick) {
+      onClick(tag, e);
+    }
+  };
 
   return (
-    <span 
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${bgColor} ${textColor}`}
-      style={tagColor ? { backgroundColor: tagColor, color: 'white' } : {}}
+    <span
+      className={`
+        inline-flex items-center font-medium rounded-full border transition-colors
+        ${sizeClasses[size]}
+        ${colors.bg}
+        ${colors.text}
+        ${colors.border}
+        ${onClick ? 'cursor-pointer hover:opacity-80' : ''}
+        ${className}
+      `}
+      onClick={handleClick}
+      title={tagDescription || `${tagType} tag: ${tagName}`}
     >
-      {tagName}
+      {/* Tag type indicator (optional dot) */}
+      <span 
+        className={`w-1.5 h-1.5 rounded-full mr-1.5 flex-shrink-0 ${
+          tagType === 'skill' ? 'bg-blue-500' :
+          tagType === 'department' ? 'bg-green-500' :
+          tagType === 'project' ? 'bg-purple-500' :
+          tagType === 'certification' ? 'bg-yellow-500' :
+          'bg-gray-500'
+        }`}
+      />
+      
+      {/* Tag name */}
+      <span className="truncate max-w-24">
+        {tagName}
+      </span>
+
+      {/* Remove button */}
+      {removable && onRemove && (
+        <button
+          onClick={handleRemove}
+          className={`ml-1 ${colors.text} hover:text-red-500 transition-colors flex-shrink-0`}
+          title="Remove tag"
+        >
+          <X size={size === 'xs' ? 10 : size === 'sm' ? 12 : 14} />
+        </button>
+      )}
     </span>
   );
 };

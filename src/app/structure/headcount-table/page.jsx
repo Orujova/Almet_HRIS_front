@@ -1,4 +1,4 @@
-// src/app/structure/headcount-table/page.jsx
+// src/app/structure/headcount-table/page.jsx - Enhanced Main Headcount Page
 "use client";
 import { useEffect } from "react";
 import HeadcountTable from "../../../components/headcount/HeadcountTable";
@@ -6,12 +6,20 @@ import DashboardLayout from "../../../components/layout/DashboardLayout";
 
 /**
  * Employee Headcount Table Page - Main employee directory
- * @returns {JSX.Element} - Headcount table page
+ * Features:
+ * - Complete API integration
+ * - Multi-column sorting (Excel-style)
+ * - Advanced filtering with multi-selection
+ * - Bulk operations (export, update, delete)
+ * - Tags management
+ * - Status management
+ * - Real-time statistics
+ * @returns {JSX.Element} - Enhanced headcount table page
  */
 const HeadcountTablePage = () => {
-  // useEffect(() => {
-  //   document.title = "Employee Directory - Almet Holding HRIS";
-  // }, []);
+  useEffect(() => {
+    document.title = "Employee Directory - Almet Holding HRIS";
+  }, []);
 
   return (
     <DashboardLayout>
