@@ -152,7 +152,7 @@ const Sidebar = ({ collapsed = false }) => {
               A
             </div>
             <span className="text-almet-cloud-burst dark:text-white text-sm font-medium">
-              ALMET CENTRAL
+               MY ALMET
             </span>
           </div>
         )}
