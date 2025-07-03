@@ -1,8 +1,11 @@
-// src/store/api/employeeAPI.js - UPDATED with complete backend integration
+// src/store/api/employeeAPI.js - Complete Employee API with all endpoints including grading
 import { apiService } from '../../services/api';
 
 export const employeeAPI = {
-  // Employee CRUD operations with proper field mapping
+  // ========================================
+  // EMPLOYEE CRUD OPERATIONS
+  // ========================================
+  
   getAll: (params = {}) => {
     // Map frontend filter parameters to backend field names
     const backendParams = {};
@@ -186,56 +189,81 @@ export const employeeAPI = {
     
     return apiService.updateEmployee(id, backendData);
   },
+
+  partialUpdate: (id, data) => {
+    return apiService.partialUpdateEmployee(id, data);
+  },
   
   delete: (id) => apiService.deleteEmployee(id),
   
-  // Advanced features
-  getFilterOptions: () => apiService.getEmployeeFilterOptions(),
+  // ========================================
+  // EMPLOYEE STATISTICS AND ANALYTICS
+  // ========================================
   getStatistics: () => apiService.getEmployeeStatistics(),
+  getFilterOptions: () => apiService.getEmployeeFilterOptions(),
   
-  // Export with comprehensive filter support
-  export: (params = {}) => {
-    return apiService.exportEmployees(params);
-  },
-  
-  // Bulk operations
+  // ========================================
+  // BULK OPERATIONS
+  // ========================================
   bulkUpdate: (data) => apiService.bulkUpdateEmployees(data),
   bulkDelete: (ids) => apiService.bulkDeleteEmployees(ids),
   softDelete: (ids) => apiService.softDeleteEmployees(ids),
   restore: (ids) => apiService.restoreEmployees(ids),
+  bulkCreate: (data) => apiService.bulkCreateEmployees(data),
   
-  // Tag management
-  addTag: (employeeId, tagData) => apiService.addEmployeeTag(employeeId, tagData),
-  removeTag: (employeeId, tagId) => apiService.removeEmployeeTag(employeeId, tagId),
+  // ========================================
+  // TAG MANAGEMENT
+  // ========================================
+  addTag: (data) => apiService.addEmployeeTag(data),
+  removeTag: (data) => apiService.removeEmployeeTag(data),
   bulkAddTags: (employeeIds, tagIds) => apiService.bulkAddTags(employeeIds, tagIds),
   bulkRemoveTags: (employeeIds, tagIds) => apiService.bulkRemoveTags(employeeIds, tagIds),
   
-  // Status management with automatic transitions
+  // ========================================
+  // STATUS MANAGEMENT
+  // ========================================
   updateStatus: (employeeIds) => apiService.updateEmployeeStatus(employeeIds),
   autoUpdateStatuses: () => apiService.autoUpdateStatuses(),
   
-  // Line manager management
+  // ========================================
+  // LINE MANAGER MANAGEMENT
+  // ========================================
   getLineManagers: (params) => apiService.getLineManagers(params),
   updateLineManager: (employeeId, lineManagerId) => apiService.updateLineManager(employeeId, lineManagerId),
   bulkUpdateLineManager: (employeeIds, lineManagerId) => apiService.bulkUpdateLineManager(employeeIds, lineManagerId),
   
-  // Activities and audit trail
-  getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
+  // ========================================
+  // EXPORT AND TEMPLATES
+  // ========================================
+  export: (params = {}) => apiService.exportEmployees(params),
+  downloadTemplate: () => apiService.downloadEmployeeTemplate(),
   
-  // Org chart
-  getOrgChart: () => apiService.getOrgChart(),
-  getOrgChartFullTree: () => apiService.getOrgChartFullTree(),
-  updateOrgChartVisibility: (data) => apiService.updateOrgChartVisibility(data),
-};
+  // ========================================
+  // ACTIVITIES AND AUDIT TRAIL
+  // ========================================
+  getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
 
-// Grading API Integration
-export const gradingAPI = {
+  // ========================================
+  // GRADING MANAGEMENT
+  // ========================================
   getEmployeeGrading: () => apiService.getEmployeeGrading(),
-  getPositionGroupLevels: (positionGroupId) => apiService.getPositionGroupGradingLevels(positionGroupId),
   bulkUpdateGrades: (updates) => apiService.bulkUpdateEmployeeGrades(updates),
+  updateSingleGrade: (employeeId, gradingLevel) => {
+    const updates = [{ employee_id: employeeId, grading_level: gradingLevel }];
+    return apiService.bulkUpdateEmployeeGrades(updates);
+  },
+  
+  // ========================================
+  // ORG CHART MANAGEMENT
+  // ========================================
+  getOrgChart: (params) => apiService.getOrgChart(params),
+  getOrgChartNode: (id) => apiService.getOrgChartNode(id),
+  getOrgChartFullTree: () => apiService.getOrgChartFullTree(),
 };
 
-// Headcount Analytics API
+// ========================================
+// HEADCOUNT ANALYTICS API
+// ========================================
 export const headcountAPI = {
   getSummaries: (params) => apiService.getHeadcountSummaries(params),
   getSummary: (id) => apiService.getHeadcountSummary(id),
@@ -243,31 +271,18 @@ export const headcountAPI = {
   generateCurrent: () => apiService.generateCurrentHeadcountSummary(),
 };
 
-// Vacancy Management API
+// ========================================
+// VACANCY MANAGEMENT API
+// ========================================
 export const vacancyAPI = {
   getAll: (params) => apiService.getVacantPositions(params),
   getById: (id) => apiService.getVacantPosition(id),
   create: (data) => apiService.createVacantPosition(data),
   update: (id, data) => apiService.updateVacantPosition(id, data),
+  partialUpdate: (id, data) => apiService.partialUpdateVacantPosition(id, data),
   delete: (id) => apiService.deleteVacantPosition(id),
   markFilled: (id, employeeData) => apiService.markPositionFilled(id, employeeData),
   getStatistics: () => apiService.getVacantPositionStatistics(),
-};
-
-// Tag Management API
-export const tagAPI = {
-  getAll: (tagType) => apiService.getEmployeeTags(tagType ? { tag_type: tagType } : {}),
-  getById: (id) => apiService.getEmployeeTag(id),
-  create: (data) => apiService.createEmployeeTag(data),
-  update: (id, data) => apiService.updateEmployeeTag(id, data),
-  delete: (id) => apiService.deleteEmployeeTag(id),
-};
-
-// Org Chart API
-export const orgChartAPI = {
-  getOrgChart: (params) => apiService.getOrgChart(params),
-  getOrgChartNode: (id) => apiService.getOrgChartNode(id),
-  getFullTree: () => apiService.getOrgChartFullTree(),
 };
 
 export { employeeAPI as default };

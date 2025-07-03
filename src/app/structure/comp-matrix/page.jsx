@@ -1,12 +1,56 @@
-'use client'
-import React, { useState, useMemo, use } from 'react';
-import { Plus, Edit, Eye, Trash2, Save, X, Search, Filter, BarChart3, Users, Target, Grid, List, Download, Upload, ChevronDown, ChevronRight } from 'lucide-react';
+'use client';
+import React, { useState, useMemo } from 'react';
+import { Plus, Edit, Trash2, Save, X, Search, Grid, Target, BarChart3, Download, Upload, ChevronDown, ChevronRight } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 
+// Reusable Button Component
+const ActionButton = ({ onClick, icon: Icon, label, color = 'almet-sapphire', disabled = false }) => {
+  const { darkMode } = useTheme();
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+        disabled
+          ? 'opacity-50 cursor-not-allowed'
+          : `bg-${color} text-white hover:bg-${color === 'almet-sapphire' ? 'almet-astral' : 'green-700'}`
+      } ${darkMode ? 'dark:bg-opacity-90' : ''}`}
+      aria-label={label}
+      title={label}
+    >
+      <Icon size={16} />
+      {label}
+    </button>
+  );
+};
+
+// Reusable Input Component
+const InputField = ({ label, value, onChange, placeholder, type = 'text', required = false, className = '' }) => {
+  const { darkMode } = useTheme();
+  const borderColor = darkMode ? 'border-almet-comet' : 'border-gray-200';
+  return (
+    <div className="space-y-1">
+      <label className={`block text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-almet-cloud-burst'}`}>
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className={`w-full px-3 py-1.5 border ${borderColor} rounded-lg text-sm ${
+          darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
+        } focus:outline-none focus:ring-2 focus:ring-almet-sapphire ${className}`}
+      />
+    </div>
+  );
+};
+
 const CompetencyMatrixSystem = () => {
   const { darkMode } = useTheme();
-  const [activeView, setActiveView] = useState('skills'); // skills, behavioral, matrix
+  const [activeView, setActiveView] = useState('skills');
   const [editMode, setEditMode] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
@@ -14,18 +58,20 @@ const CompetencyMatrixSystem = () => {
   const [showAddGroupForm, setShowAddGroupForm] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [expandedGroups, setExpandedGroups] = useState(new Set());
+  const [newItem, setNewItem] = useState({ group: '', item: '', description: '' });
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Theme-dependent classes using Almet colors
-  const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
-  const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
-  const bgCardHover = darkMode ? "bg-almet-san-juan" : "bg-gray-50";
-  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
-  const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
-  const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
-  const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
+  // Theme-dependent classes
+  const bgApp = darkMode ? 'bg-gray-900' : 'bg-almet-mystic';
+  const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
+  const bgCardHover = darkMode ? 'bg-almet-san-juan' : 'bg-gray-50';
+  const textPrimary = darkMode ? 'text-white' : 'text-almet-cloud-burst';
+  const textSecondary = darkMode ? 'text-almet-bali-hai' : 'text-gray-700';
+  const textMuted = darkMode ? 'text-gray-400' : 'text-almet-waterloo';
+  const borderColor = darkMode ? 'border-almet-comet' : 'border-gray-200';
+  const bgAccent = darkMode ? 'bg-almet-comet' : 'bg-almet-mystic';
 
-  // Core Skills Groups (from first image)
+  // Sample data (unchanged)
   const [skillsData, setSkillsData] = useState({
     'GENERAL MANAGEMENT SKILLS': [
       'Strategy Setting',
@@ -42,7 +88,7 @@ const CompetencyMatrixSystem = () => {
       'Data Analysis',
       'Marketing Communications',
       'Management KPIs & Reports',
-      'Financial Statements'
+      'Financial Statements',
     ],
     'GENERAL PROFESSIONAL SKILLS': [
       'Policies & procedures design',
@@ -57,7 +103,7 @@ const CompetencyMatrixSystem = () => {
       'QMS standards and processes',
       'Occupational Health & Safety',
       'Documents Administration & Control',
-      'Office & Space Management'
+      'Office & Space Management',
     ],
     'COMMERCIAL': [
       'Consumer & Supplier market data',
@@ -73,7 +119,7 @@ const CompetencyMatrixSystem = () => {
       'Credit Insurance Terms and Agreement',
       'Cargo Insurance Terms and Agreement',
       'Netsuite report creation and analysing',
-      'Netsuite dashboards usage for Sales & Targets'
+      'Netsuite dashboards usage for Sales & Targets',
     ],
     'OPERATIONS': [],
     'FINANCE': [],
@@ -81,10 +127,9 @@ const CompetencyMatrixSystem = () => {
     'PROCUREMENT': [],
     'INFORMATION TECHNOLOGIES': [],
     'HSE General': [],
-    'SECURITY': []
+    'SECURITY': [],
   });
 
-  // Behavioral Competencies (from second image)
   const [behavioralData, setBehavioralData] = useState({
     'RESULTS ORIENTATION': [
       'Sets goals and focuses on accomplishment',
@@ -92,14 +137,14 @@ const CompetencyMatrixSystem = () => {
       'Takes appropriate risks to reach tough goals',
       'Overcomes setbacks and adjusts the plan of action to realize goals',
       'Develops a sense of urgency in others to complete tasks',
-      'Corrects actions if the result is below the expectation'
+      'Corrects actions if the result is below the expectation',
     ],
     'NEGOTIATION': [
       'Clearly knows own strengths & weaknesses',
       'Explores maximum information about the client\'s strengths & weaknesses prior to starting negotiations',
       'Creates a Win Win picture at the time',
       'Build Personal relations if has positive impact on negotiation outcome',
-      'Keeps goals in mind at stages of negotiation'
+      'Keeps goals in mind at stages of negotiation',
     ],
     'BUILDING RELATIONS': [],
     'CUSTOMER FOCUS': [],
@@ -109,31 +154,25 @@ const CompetencyMatrixSystem = () => {
     'CREATIVITY': [],
     'BUSINESS ETHICS': [],
     'INITIATIVE': [],
-    'COMMUNICATION': []
+    'COMMUNICATION': [],
   });
 
-  // Matrix data for positions vs competencies
   const [matrixData, setMatrixData] = useState({});
 
-  // Add new item form
-  const [newItem, setNewItem] = useState({ group: '', item: '', description: '' });
-
-  // Filter data based on search and selected group
+  // Filter data
   const getFilteredData = (data) => {
     if (!data) return {};
-    
     let filtered = { ...data };
-    
     if (selectedGroup) {
       filtered = { [selectedGroup]: data[selectedGroup] || [] };
     }
-    
     if (searchTerm) {
       const searchFiltered = {};
-      Object.keys(filtered).forEach(group => {
-        const items = filtered[group].filter(item => 
-          item.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          group.toLowerCase().includes(searchTerm.toLowerCase())
+      Object.keys(filtered).forEach((group) => {
+        const items = filtered[group].filter(
+          (item) =>
+            item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            group.toLowerCase().includes(searchTerm.toLowerCase())
         );
         if (items.length > 0) {
           searchFiltered[group] = items;
@@ -141,7 +180,6 @@ const CompetencyMatrixSystem = () => {
       });
       filtered = searchFiltered;
     }
-    
     return filtered;
   };
 
@@ -149,58 +187,56 @@ const CompetencyMatrixSystem = () => {
   const setCurrentData = activeView === 'skills' ? setSkillsData : setBehavioralData;
   const filteredData = getFilteredData(currentData);
 
-  // Add new item
+  // Handlers
   const handleAddItem = () => {
     if (!newItem.group || !newItem.item) return;
-    
-    setCurrentData(prev => ({
-      ...prev,
-      [newItem.group]: [...(prev[newItem.group] || []), newItem.item]
-    }));
-    
-    setNewItem({ group: '', item: '', description: '' });
-    setShowAddForm(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      setCurrentData((prev) => ({
+        ...prev,
+        [newItem.group]: [...(prev[newItem.group] || []), newItem.item],
+      }));
+      setNewItem({ group: '', item: '', description: '' });
+      setShowAddForm(false);
+      setIsLoading(false);
+    }, 500);
   };
 
-  // Add new group
   const handleAddGroup = () => {
     if (!newGroupName.trim()) return;
-    
-    setCurrentData(prev => ({
-      ...prev,
-      [newGroupName.trim()]: []
-    }));
-    
-    setNewGroupName('');
-    setShowAddGroupForm(false);
+    setIsLoading(true);
+    setTimeout(() => {
+      setCurrentData((prev) => ({
+        ...prev,
+        [newGroupName.trim()]: [],
+      }));
+      setNewGroupName('');
+      setShowAddGroupForm(false);
+      setIsLoading(false);
+    }, 500);
   };
 
-  // Delete group
   const handleDeleteGroup = (groupName) => {
-    if (!confirm(`Are you sure you want to delete the group "${groupName}" and all its items?`)) return;
-    
-    setCurrentData(prev => {
-      const newData = { ...prev };
-      delete newData[groupName];
-      return newData;
-    });
-    
-    // Clear selected group if it was deleted
-    if (selectedGroup === groupName) {
-      setSelectedGroup('');
-    }
-    
-    // Remove from expanded groups
-    setExpandedGroups(prev => {
-      const newExpanded = new Set(prev);
-      newExpanded.delete(groupName);
-      return newExpanded;
-    });
+    if (!confirm(`Are you sure you want to delete "${groupName}" and its items?`)) return;
+    setIsLoading(true);
+    setTimeout(() => {
+      setCurrentData((prev) => {
+        const newData = { ...prev };
+        delete newData[groupName];
+        return newData;
+      });
+      if (selectedGroup === groupName) setSelectedGroup('');
+      setExpandedGroups((prev) => {
+        const newExpanded = new Set(prev);
+        newExpanded.delete(groupName);
+        return newExpanded;
+      });
+      setIsLoading(false);
+    }, 500);
   };
 
-  // Toggle group expansion
   const toggleGroupExpansion = (groupName) => {
-    setExpandedGroups(prev => {
+    setExpandedGroups((prev) => {
       const newExpanded = new Set(prev);
       if (newExpanded.has(groupName)) {
         newExpanded.delete(groupName);
@@ -211,23 +247,27 @@ const CompetencyMatrixSystem = () => {
     });
   };
 
-  // Delete item
   const handleDeleteItem = (group, itemIndex) => {
-    setCurrentData(prev => ({
-      ...prev,
-      [group]: prev[group].filter((_, index) => index !== itemIndex)
-    }));
+    setIsLoading(true);
+    setTimeout(() => {
+      setCurrentData((prev) => ({
+        ...prev,
+        [group]: prev[group].filter((_, index) => index !== itemIndex),
+      }));
+      setIsLoading(false);
+    }, 500);
   };
 
-  // Edit item
   const handleEditItem = (group, itemIndex, newValue) => {
-    setCurrentData(prev => ({
-      ...prev,
-      [group]: prev[group].map((item, index) => 
-        index === itemIndex ? newValue : item
-      )
-    }));
-    setEditMode(null);
+    setIsLoading(true);
+    setTimeout(() => {
+      setCurrentData((prev) => ({
+        ...prev,
+        [group]: prev[group].map((item, index) => (index === itemIndex ? newValue : item)),
+      }));
+      setEditMode(null);
+      setIsLoading(false);
+    }, 500);
   };
 
   // Stats
@@ -235,20 +275,20 @@ const CompetencyMatrixSystem = () => {
     const totalGroups = Object.keys(currentData).length;
     const totalItems = Object.values(currentData).reduce((sum, items) => sum + items.length, 0);
     const avgItemsPerGroup = totalGroups > 0 ? Math.round(totalItems / totalGroups * 10) / 10 : 0;
-    
     return { totalGroups, totalItems, avgItemsPerGroup };
   }, [currentData]);
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, color = "almet-sapphire" }) => (
-    <div className={`${bgCard} rounded-lg p-6 border ${borderColor} shadow-sm`}>
+  // Stat Card Component
+  const StatCard = ({ title, value, subtitle, icon: Icon, color = 'almet-sapphire' }) => (
+    <div className={`${bgCard} rounded-lg p-4 border ${borderColor} shadow-sm hover:shadow-md transition-shadow`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className={`text-sm font-medium ${textMuted}`}>{title}</p>
-          <p className={`text-2xl font-bold text-${color} dark:text-${color}`}>{value}</p>
+          <p className={`text-xs font-medium ${textMuted}`}>{title}</p>
+          <p className={`text-xl font-bold text-${color} dark:text-${color}`}>{value}</p>
           {subtitle && <p className={`text-xs ${textMuted}`}>{subtitle}</p>}
         </div>
-        <div className={`p-3 bg-${color}/10 dark:bg-${color}/20 rounded-lg`}>
-          <Icon className={`h-6 w-6 text-${color} dark:text-${color}`} />
+        <div className={`p-2 bg-${color}/10 dark:bg-${color}/20 rounded-lg`}>
+          <Icon className={`h-5 w-5 text-${color} dark:text-${color}`} />
         </div>
       </div>
     </div>
@@ -256,207 +296,180 @@ const CompetencyMatrixSystem = () => {
 
   return (
     <DashboardLayout>
-      <div className={`min-h-screen ${bgApp} p-6`}>
+      <div className={`min-h-screen ${bgApp} p-4 sm:p-6`}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-6">
+          <header className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
               <div>
-                <h1 className={`text-3xl font-bold ${textPrimary}`}>Competency Matrix</h1>
-                <p className={`${textSecondary} mt-1`}>
-                  Manage employee skills and behavioral competencies
-                </p>
+                <h1 className={`text-2xl font-bold ${textPrimary}`}>Competency Matrix</h1>
+                <p className={`text-sm ${textSecondary} mt-1`}>Manage employee skills and behavioral competencies</p>
               </div>
-              <div className="flex gap-3">
-                <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                  <Upload size={16} />
-                  Import
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors">
-                  <Download size={16} />
-                  Export
-                </button>
+              <div className="flex gap-2 mt-4 sm:mt-0">
+                <ActionButton icon={Upload} label="Import" color="green-600" />
+                <ActionButton icon={Download} label="Export" />
               </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <StatCard 
-                title="Total Groups" 
-                value={stats.totalGroups} 
-                icon={Grid}
-                color="almet-sapphire"
-              />
-              <StatCard 
-                title="Total Items" 
-                value={stats.totalItems} 
-                icon={Target}
-                color="green-600"
-              />
-              <StatCard 
-                title="Avg Per Group" 
-                value={stats.avgItemsPerGroup} 
-                subtitle="items"
-                icon={BarChart3}
-                color="purple-600"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <StatCard title="Total Groups" value={stats.totalGroups} icon={Grid} color="almet-sapphire" />
+              <StatCard title="Total Items" value={stats.totalItems} icon={Target} color="green-600" />
+              <StatCard title="Avg Per Group" value={stats.avgItemsPerGroup} subtitle="items" icon={BarChart3} color="purple-600" />
             </div>
 
             {/* Navigation Tabs */}
-            <div className={`flex space-x-1 ${bgAccent} rounded-lg p-1`}>
+            <nav className={`flex space-x-1 ${bgAccent} rounded-lg p-1`}>
               {[
                 { id: 'skills', name: 'Core Skills', icon: Target },
-                { id: 'behavioral', name: 'Behavioral Competencies', icon: Users },
-                { id: 'matrix', name: 'Competency Matrix', icon: Grid }
+                { id: 'behavioral', name: 'Behavioral Competencies', icon: Grid },
+                { id: 'matrix', name: 'Competency Matrix', icon: Grid },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveView(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     activeView === tab.id
                       ? `${bgCard} text-almet-sapphire dark:text-almet-steel-blue shadow-sm`
                       : `${textSecondary} hover:${textPrimary}`
                   }`}
+                  aria-label={`Switch to ${tab.name}`}
                 >
                   <tab.icon size={16} />
                   {tab.name}
                 </button>
               ))}
-            </div>
-          </div>
+            </nav>
+          </header>
 
           {/* Search and Filter */}
           {activeView !== 'matrix' && (
-            <div className={`${bgCard} rounded-lg p-6 mb-6 border ${borderColor} shadow-sm`}>
-              <div className="flex flex-col md:flex-row gap-4">
+            <section className={`${bgCard} rounded-lg p-4 border ${borderColor} shadow-sm mb-6`}>
+              <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex-1 relative">
-                  <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={20} />
-                  <input
-                    type="text"
-                    placeholder="Search..."
+                  <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={16} />
+                  <InputField
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                    placeholder="Search..."
+                    className="pl-9"
                   />
                 </div>
                 <select
                   value={selectedGroup}
                   onChange={(e) => setSelectedGroup(e.target.value)}
-                  className={`px-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  className={`px-3 py-1.5 border ${borderColor} rounded-lg text-sm ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  aria-label="Select group"
                 >
                   <option value="">All Groups</option>
-                  {Object.keys(currentData).map(group => (
-                    <option key={group} value={group}>{group}</option>
+                  {Object.keys(currentData).map((group) => (
+                    <option key={group} value={group}>
+                      {group}
+                    </option>
                   ))}
                 </select>
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors"
-                >
-                  <Plus size={16} />
-                  Add Item
-                </button>
-                <button
-                  onClick={() => setShowAddGroupForm(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Plus size={16} />
-                  Add Group
-                </button>
+                <ActionButton icon={Plus} label="Add Item" onClick={() => setShowAddForm(true)} />
+                <ActionButton icon={Plus} label="Add Group" color="green-600" onClick={() => setShowAddGroupForm(true)} />
               </div>
-            </div>
+            </section>
           )}
 
           {/* Content */}
-          <div className={`${bgCard} rounded-lg border ${borderColor} shadow-sm`}>
+          <section className={`${bgCard} rounded-lg border ${borderColor} shadow-sm`}>
             {activeView === 'matrix' ? (
-              <div className="p-6">
-                <h2 className={`text-xl font-bold ${textPrimary} mb-4`}>Competency Matrix</h2>
-                <p className={`${textSecondary} mb-6`}>
-                  This section is for creating relationships between positions and competencies. 
-                  Currently working with fake data.
-                </p>
+              <div className="p-4">
+                <h2 className={`text-lg font-bold ${textPrimary} mb-3`}>Competency Matrix</h2>
+                <p className={`text-sm ${textSecondary} mb-4`}>This section is for creating relationships between positions and competencies.</p>
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
-                  <p className="text-yellow-800 dark:text-yellow-200">
+                  <p className="text-yellow-800 dark:text-yellow-200 text-sm">
                     🚧 This feature is under development. Matrix view will be added after the database structure is completed.
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="p-6">
-                <h2 className={`text-xl font-bold ${textPrimary} mb-6`}>
+              <div className="p-4">
+                <h2 className={`text-lg font-bold ${textPrimary} mb-4`}>
                   {activeView === 'skills' ? 'Core Skills Groups' : 'Behavioral Competencies'}
                 </h2>
-                
-                {Object.keys(filteredData).map(group => {
+                {Object.keys(filteredData).map((group) => {
                   const isExpanded = expandedGroups.has(group);
-                  
                   return (
-                    <div key={group} className="mb-8 last:mb-0">
-                      <div className="flex items-center justify-between mb-4">
+                    <article key={group} className="mb-6 last:mb-0">
+                      <div className="flex items-center justify-between mb-3">
                         <button
                           onClick={() => toggleGroupExpansion(group)}
-                          className={`flex items-center gap-3 text-lg font-semibold ${textPrimary} ${bgAccent} px-4 py-2 rounded-lg hover:${bgCardHover} transition-colors`}
+                          className={`flex items-center gap-2 text-base font-semibold ${textPrimary} ${bgAccent} px-3 py-1.5 rounded-lg hover:${bgCardHover} transition-colors`}
+                          aria-label={`Toggle ${group} group`}
                         >
-                          {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                           {group}
                         </button>
                         <div className="flex items-center gap-2">
-                          <span className={`text-sm ${textMuted} ${bgAccent} px-3 py-1 rounded-full`}>
+                          <span className={`text-xs ${textMuted} ${bgAccent} px-2 py-1 rounded-full`}>
                             {filteredData[group].length} items
                           </span>
                           <button
                             onClick={() => handleDeleteGroup(group)}
-                            className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                            aria-label={`Delete ${group} group`}
                             title="Delete Group"
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
-                      
                       {isExpanded && (
-                        <div className="grid gap-3 ml-8">
+                        <div className="grid gap-2 ml-6">
                           {filteredData[group].map((item, index) => (
-                            <div key={index} className={`flex items-center justify-between p-4 ${bgCardHover} rounded-lg border ${borderColor} hover:shadow-sm transition-all`}>
+                            <div
+                              key={index}
+                              className={`flex items-center justify-between p-3 ${bgCardHover} rounded-lg border ${borderColor} hover:shadow-sm transition-all`}
+                            >
                               {editMode === `${group}-${index}` ? (
                                 <div className="flex-1 flex items-center gap-2">
-                                  <input
-                                    type="text"
+                                  <InputField
                                     value={item}
                                     onChange={(e) => {
                                       const newData = { ...currentData };
                                       newData[group][index] = e.target.value;
                                       setCurrentData(newData);
                                     }}
-                                    className={`flex-1 px-3 py-2 border ${borderColor} rounded ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                                    className="flex-1"
                                   />
                                   <button
                                     onClick={() => handleEditItem(group, index, item)}
-                                    className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                                    className="p-1.5 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                                    aria-label="Save changes"
+                                    title="Save"
                                   >
                                     <Save size={16} />
                                   </button>
                                   <button
                                     onClick={() => setEditMode(null)}
-                                    className={`p-2 ${textMuted} hover:${bgAccent} rounded transition-colors`}
+                                    className={`p-1.5 ${textMuted} hover:${bgAccent} rounded transition-colors`}
+                                    aria-label="Cancel edit"
+                                    title="Cancel"
                                   >
                                     <X size={16} />
                                   </button>
                                 </div>
                               ) : (
                                 <>
-                                  <span className={`${textPrimary} font-medium`}>{item}</span>
+                                  <span className={`text-sm ${textPrimary} font-medium`}>{item}</span>
                                   <div className="flex items-center gap-2">
                                     <button
                                       onClick={() => setEditMode(`${group}-${index}`)}
-                                      className="p-2 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors"
+                                      className="p-1.5 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors"
+                                      aria-label={`Edit ${item}`}
+                                      title="Edit"
                                     >
                                       <Edit size={16} />
                                     </button>
                                     <button
                                       onClick={() => handleDeleteItem(group, index)}
-                                      className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                                      className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                                      aria-label={`Delete ${item}`}
+                                      title="Delete"
                                     >
                                       <Trash2 size={16} />
                                     </button>
@@ -465,104 +478,110 @@ const CompetencyMatrixSystem = () => {
                               )}
                             </div>
                           ))}
-                          
                           {filteredData[group].length === 0 && (
-                            <div className={`text-center py-8 ${textMuted} ml-8`}>
-                              No items in this group yet
+                            <div className={`text-center py-6 ${textMuted} text-sm ml-6`}>
+                              No items in this group yet.{' '}
+                              <button
+                                onClick={() => setShowAddForm(true)}
+                                className="text-almet-sapphire hover:underline"
+                              >
+                                Add one now
+                              </button>
                             </div>
                           )}
                         </div>
                       )}
-                      
                       {!isExpanded && filteredData[group].length === 0 && (
-                        <div className={`text-center py-4 ${textMuted} text-sm italic ml-8`}>
+                        <div className={`text-center py-3 ${textMuted} text-xs italic ml-6`}>
                           Click to expand - No items in this group yet
                         </div>
                       )}
-                    </div>
+                    </article>
                   );
                 })}
-                
                 {Object.keys(filteredData).length === 0 && (
-                  <div className="text-center py-12">
-                    <Target className={`mx-auto h-12 w-12 ${textMuted} mb-4`} />
-                    <h3 className={`text-lg font-medium ${textPrimary} mb-2`}>No Results Found</h3>
-                    <p className={textMuted}>
-                      Adjust your search criteria or add new items.
+                  <div className="text-center py-10">
+                    <Target className={`mx-auto h-10 w-10 ${textMuted} mb-3`} />
+                    <h3 className={`text-base font-medium ${textPrimary} mb-2`}>No Results Found</h3>
+                    <p className={`text-sm ${textMuted}`}>
+                      Adjust your search or{' '}
+                      <button
+                        onClick={() => setShowAddForm(true)}
+                        className="text-almet-sapphire hover:underline"
+                      >
+                        add new items
+                      </button>
+                      .
                     </p>
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </section>
 
           {/* Add Item Modal */}
           {showAddForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className={`${bgCard} rounded-lg p-6 w-full max-w-md border ${borderColor}`}>
-                <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Add New Item</h3>
-                
-                <div className="space-y-4">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className={`${bgCard} rounded-lg p-5 w-full max-w-md border ${borderColor} shadow-lg`}>
+                <h3 className={`text-base font-semibold ${textPrimary} mb-3`}>Add New Item</h3>
+                <div className="space-y-3">
                   <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                      Group
+                    <label className={`block text-xs font-medium ${textSecondary}`}>
+                      Group <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={newItem.group}
-                      onChange={(e) => setNewItem({...newItem, group: e.target.value})}
-                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                      onChange={(e) => setNewItem({ ...newItem, group: e.target.value })}
+                      className={`w-full px-3 py-1.5 border ${borderColor} rounded-lg text-sm ${
+                        darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
+                      } focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                      aria-label="Select group"
                     >
                       <option value="">Select group</option>
-                      {Object.keys(currentData).map(group => (
-                        <option key={group} value={group}>{group}</option>
+                      {Object.keys(currentData).map((group) => (
+                        <option key={group} value={group}>
+                          {group}
+                        </option>
                       ))}
                     </select>
                   </div>
-                  
+                  <InputField
+                    label="Item Name"
+                    value={newItem.item}
+                    onChange={(e) => setNewItem({ ...newItem, item: e.target.value })}
+                    placeholder="Enter item name"
+                    required
+                  />
                   <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                      Item Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newItem.item}
-                      onChange={(e) => setNewItem({...newItem, item: e.target.value})}
-                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                      placeholder="Enter item name"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                      Description (optional)
-                    </label>
+                    <label className={`block text-xs font-medium ${textSecondary}`}>Description (optional)</label>
                     <textarea
                       value={newItem.description}
-                      onChange={(e) => setNewItem({...newItem, description: e.target.value})}
-                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
+                      className={`w-full px-3 py-1.5 border ${borderColor} rounded-lg text-sm ${
+                        darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
+                      } focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                       rows="3"
                       placeholder="Enter item description"
                     />
                   </div>
                 </div>
-                
-                <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 mt-4">
                   <button
                     onClick={() => {
                       setShowAddForm(false);
                       setNewItem({ group: '', item: '', description: '' });
                     }}
-                    className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors`}
+                    className={`px-3 py-1.5 text-sm ${textSecondary} hover:${textPrimary} transition-colors`}
+                    aria-label="Cancel"
                   >
                     Cancel
                   </button>
-                  <button
+                  <ActionButton
+                    icon={Plus}
+                    label="Add Item"
                     onClick={handleAddItem}
-                    disabled={!newItem.group || !newItem.item}
-                    className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Add Item
-                  </button>
+                    disabled={isLoading || !newItem.group || !newItem.item}
+                  />
                 </div>
               </div>
             </div>
@@ -570,43 +589,35 @@ const CompetencyMatrixSystem = () => {
 
           {/* Add Group Modal */}
           {showAddGroupForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className={`${bgCard} rounded-lg p-6 w-full max-w-md border ${borderColor}`}>
-                <h3 className={`text-lg font-semibold ${textPrimary} mb-4`}>Add New Group</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                      Group Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newGroupName}
-                      onChange={(e) => setNewGroupName(e.target.value)}
-                      className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                      placeholder="Enter group name"
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddGroup()}
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end gap-3 mt-6">
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className={`${bgCard} rounded-lg p-5 w-full max-w-md border ${borderColor} shadow-lg`}>
+                <h3 className={`text-base font-semibold ${textPrimary} mb-3`}>Add New Group</h3>
+                <InputField
+                  label="Group Name"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  placeholder="Enter group name"
+                  required
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddGroup()}
+                />
+                <div className="flex justify-end gap-3 mt-4">
                   <button
                     onClick={() => {
                       setShowAddGroupForm(false);
                       setNewGroupName('');
                     }}
-                    className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors`}
+                    className={`px-3 py-1.5 text-sm ${textSecondary} hover:${textPrimary} transition-colors`}
+                    aria-label="Cancel"
                   >
                     Cancel
                   </button>
-                  <button
+                  <ActionButton
+                    icon={Plus}
+                    label="Add Group"
+                    color="green-600"
                     onClick={handleAddGroup}
-                    disabled={!newGroupName.trim()}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Add Group
-                  </button>
+                    disabled={isLoading || !newGroupName.trim()}
+                  />
                 </div>
               </div>
             </div>
