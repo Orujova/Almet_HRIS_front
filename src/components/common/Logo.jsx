@@ -45,7 +45,7 @@ const Logo = () => {
           A
         </div>
         <span className="text-gray-800 dark:text-white font-semibold">
-          ALMET CENTRAL
+         MY ALMET
         </span>
       </div>
     </Link>

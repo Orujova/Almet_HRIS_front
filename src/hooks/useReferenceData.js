@@ -1,4 +1,4 @@
-// src/hooks/useReferenceData.js - UPDATED with complete backend integration
+// src/hooks/useReferenceData.js - Fixed with Helper Functions
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -103,60 +103,72 @@ export const useReferenceData = () => {
     }, [dispatch]),
   };
 
-  // Helper functions
+  // Helper functions with proper error handling
   const helpers = {
     // Get specific items by ID
     getBusinessFunctionById: useCallback((id) => {
+      if (!id || !Array.isArray(businessFunctions)) return null;
       return businessFunctions.find(bf => bf.id === parseInt(id));
     }, [businessFunctions]),
     
     getDepartmentById: useCallback((id) => {
+      if (!id || !Array.isArray(departments)) return null;
       return departments.find(dept => dept.id === parseInt(id));
     }, [departments]),
     
     getUnitById: useCallback((id) => {
+      if (!id || !Array.isArray(units)) return null;
       return units.find(unit => unit.id === parseInt(id));
     }, [units]),
     
     getJobFunctionById: useCallback((id) => {
+      if (!id || !Array.isArray(jobFunctions)) return null;
       return jobFunctions.find(jf => jf.id === parseInt(id));
     }, [jobFunctions]),
     
     getPositionGroupById: useCallback((id) => {
+      if (!id || !Array.isArray(positionGroups)) return null;
       return positionGroups.find(pg => pg.id === parseInt(id));
     }, [positionGroups]),
     
     getEmployeeStatusById: useCallback((id) => {
+      if (!id || !Array.isArray(employeeStatuses)) return null;
       return employeeStatuses.find(status => status.id === parseInt(id));
     }, [employeeStatuses]),
     
     getEmployeeTagById: useCallback((id) => {
+      if (!id || !Array.isArray(employeeTags)) return null;
       return employeeTags.find(tag => tag.id === parseInt(id));
     }, [employeeTags]),
     
     // Get departments for specific business function
-    getDepartmentsForBusinessFunction: useCallback((businessFunctionId) => {
+    getDepartmentsByBusinessFunction: useCallback((businessFunctionId) => {
+      if (!businessFunctionId || !Array.isArray(departments)) return [];
       return departments.filter(dept => dept.business_function === parseInt(businessFunctionId));
     }, [departments]),
     
     // Get units for specific department
-    getUnitsForDepartment: useCallback((departmentId) => {
+    getUnitsByDepartment: useCallback((departmentId) => {
+      if (!departmentId || !Array.isArray(units)) return [];
       return units.filter(unit => unit.department === parseInt(departmentId));
     }, [units]),
     
     // Get tags by type
     getTagsByType: useCallback((tagType) => {
+      if (!tagType || !Array.isArray(employeeTags)) return [];
       return employeeTags.filter(tag => tag.tag_type === tagType);
     }, [employeeTags]),
     
     // Validation helpers
     isValidBusinessFunction: useCallback((id) => {
-      return businessFunctions.some(bf => bf.id === parseInt(id) && bf.is_active);
+      if (!id || !Array.isArray(businessFunctions)) return false;
+      return businessFunctions.some(bf => bf.id === parseInt(id) && bf.is_active !== false);
     }, [businessFunctions]),
     
     isValidDepartment: useCallback((id, businessFunctionId = null) => {
+      if (!id || !Array.isArray(departments)) return false;
       const department = departments.find(dept => dept.id === parseInt(id));
-      if (!department || !department.is_active) return false;
+      if (!department || department.is_active === false) return false;
       
       if (businessFunctionId) {
         return department.business_function === parseInt(businessFunctionId);
@@ -166,8 +178,9 @@ export const useReferenceData = () => {
     }, [departments]),
     
     isValidUnit: useCallback((id, departmentId = null) => {
+      if (!id || !Array.isArray(units)) return false;
       const unit = units.find(u => u.id === parseInt(id));
-      if (!unit || !unit.is_active) return false;
+      if (!unit || unit.is_active === false) return false;
       
       if (departmentId) {
         return unit.department === parseInt(departmentId);
@@ -177,17 +190,121 @@ export const useReferenceData = () => {
     }, [units]),
     
     // Data availability checks
-    hasBusinessFunctions: useCallback(() => businessFunctions.length > 0, [businessFunctions]),
-    hasDepartments: useCallback(() => departments.length > 0, [departments]),
-    hasUnits: useCallback(() => units.length > 0, [units]),
-    hasJobFunctions: useCallback(() => jobFunctions.length > 0, [jobFunctions]),
-    hasPositionGroups: useCallback(() => positionGroups.length > 0, [positionGroups]),
-    hasEmployeeStatuses: useCallback(() => employeeStatuses.length > 0, [employeeStatuses]),
-    hasEmployeeTags: useCallback(() => employeeTags.length > 0, [employeeTags]),
+    hasBusinessFunctions: useCallback(() => Array.isArray(businessFunctions) && businessFunctions.length > 0, [businessFunctions]),
+    hasDepartments: useCallback(() => Array.isArray(departments) && departments.length > 0, [departments]),
+    hasUnits: useCallback(() => Array.isArray(units) && units.length > 0, [units]),
+    hasJobFunctions: useCallback(() => Array.isArray(jobFunctions) && jobFunctions.length > 0, [jobFunctions]),
+    hasPositionGroups: useCallback(() => Array.isArray(positionGroups) && positionGroups.length > 0, [positionGroups]),
+    hasEmployeeStatuses: useCallback(() => Array.isArray(employeeStatuses) && employeeStatuses.length > 0, [employeeStatuses]),
+    hasEmployeeTags: useCallback(() => Array.isArray(employeeTags) && employeeTags.length > 0, [employeeTags]),
     
     // Loading state checks
-    isAnyLoading: useCallback(() => Object.values(loading).some(Boolean), [loading]),
-    hasAnyError: useCallback(() => Object.values(error).some(err => err !== null), [error]),
+    isAnyLoading: useCallback(() => Object.values(loading || {}).some(Boolean), [loading]),
+    hasAnyError: useCallback(() => Object.values(error || {}).some(err => err !== null), [error]),
+
+    // Get formatted options for dropdowns
+    getFormattedBusinessFunctions: useCallback(() => {
+      if (!Array.isArray(businessFunctions)) return [];
+      return businessFunctions
+        .filter(bf => bf.is_active !== false)
+        .map(bf => ({
+          value: bf.id,
+          label: bf.name,
+          code: bf.code,
+          employee_count: bf.employee_count
+        }));
+    }, [businessFunctions]),
+
+    getFormattedDepartments: useCallback((businessFunctionId = null) => {
+      let filteredDepartments = Array.isArray(departments) ? departments : [];
+      
+      if (businessFunctionId) {
+        filteredDepartments = filteredDepartments.filter(
+          dept => dept.business_function === parseInt(businessFunctionId)
+        );
+      }
+      
+      return filteredDepartments
+        .filter(dept => dept.is_active !== false)
+        .map(dept => ({
+          value: dept.id,
+          label: dept.name,
+          business_function: dept.business_function,
+          business_function_name: dept.business_function_name
+        }));
+    }, [departments]),
+
+    getFormattedUnits: useCallback((departmentId = null) => {
+      let filteredUnits = Array.isArray(units) ? units : [];
+      
+      if (departmentId) {
+        filteredUnits = filteredUnits.filter(
+          unit => unit.department === parseInt(departmentId)
+        );
+      }
+      
+      return filteredUnits
+        .filter(unit => unit.is_active !== false)
+        .map(unit => ({
+          value: unit.id,
+          label: unit.name,
+          department: unit.department,
+          department_name: unit.department_name
+        }));
+    }, [units]),
+
+    getFormattedJobFunctions: useCallback(() => {
+      if (!Array.isArray(jobFunctions)) return [];
+      return jobFunctions
+        .filter(jf => jf.is_active !== false)
+        .map(jf => ({
+          value: jf.id,
+          label: jf.name,
+          description: jf.description
+        }));
+    }, [jobFunctions]),
+
+    getFormattedPositionGroups: useCallback(() => {
+      if (!Array.isArray(positionGroups)) return [];
+      return positionGroups
+        .filter(pg => pg.is_active !== false)
+        .sort((a, b) => (a.hierarchy_level || 0) - (b.hierarchy_level || 0))
+        .map(pg => ({
+          value: pg.id,
+          label: pg.display_name || pg.name,
+          hierarchy_level: pg.hierarchy_level,
+          grading_levels: pg.grading_levels
+        }));
+    }, [positionGroups]),
+
+    getFormattedEmployeeStatuses: useCallback(() => {
+      if (!Array.isArray(employeeStatuses)) return [];
+      return employeeStatuses
+        .filter(status => status.is_active !== false)
+        .map(status => ({
+          value: status.id,
+          label: status.name,
+          status_type: status.status_type,
+          color: status.color
+        }));
+    }, [employeeStatuses]),
+
+    getFormattedEmployeeTags: useCallback((tagType = null) => {
+      let filteredTags = Array.isArray(employeeTags) ? employeeTags : [];
+      
+      if (tagType) {
+        filteredTags = filteredTags.filter(tag => tag.tag_type === tagType);
+      }
+      
+      return filteredTags
+        .filter(tag => tag.is_active !== false)
+        .map(tag => ({
+          value: tag.id,
+          label: tag.name,
+          tag_type: tag.tag_type,
+          color: tag.color
+        }));
+    }, [employeeTags])
   };
 
   // Auto-fetch basic reference data on mount
@@ -201,31 +318,31 @@ export const useReferenceData = () => {
 
   return {
     // Raw data
-    businessFunctions,
-    departments,
-    units,
-    jobFunctions,
-    positionGroups,
-    employeeStatuses,
-    employeeTags,
+    businessFunctions: businessFunctions || [],
+    departments: departments || [],
+    units: units || [],
+    jobFunctions: jobFunctions || [],
+    positionGroups: positionGroups || [],
+    employeeStatuses: employeeStatuses || [],
+    employeeTags: employeeTags || [],
     
     // Formatted data for dropdowns
-    businessFunctionsDropdown,
-    departmentsDropdown,
-    unitsDropdown,
-    jobFunctionsDropdown,
-    positionGroupsDropdown,
-    employeeStatusesDropdown,
-    employeeTagsDropdown,
+    businessFunctionsDropdown: businessFunctionsDropdown || [],
+    departmentsDropdown: departmentsDropdown || [],
+    unitsDropdown: unitsDropdown || [],
+    jobFunctionsDropdown: jobFunctionsDropdown || [],
+    positionGroupsDropdown: positionGroupsDropdown || [],
+    employeeStatusesDropdown: employeeStatusesDropdown || [],
+    employeeTagsDropdown: employeeTagsDropdown || [],
     
     // Combined form data
-    formData,
+    formData: formData || {},
     
     // Loading states
-    loading,
+    loading: loading || {},
     
     // Error states
-    error,
+    error: error || {},
     
     // Actions
     ...actions,
@@ -241,10 +358,10 @@ export const useHierarchicalReferenceData = () => {
   const [selectedBusinessFunction, setSelectedBusinessFunction] = useState(null);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   
-  const businessFunctions = useSelector(selectBusinessFunctionsForDropdown);
-  const departments = useSelector(selectDepartmentsForDropdown);
-  const units = useSelector(selectUnitsForDropdown);
-  const loading = useSelector(selectReferenceDataLoading);
+  const businessFunctions = useSelector(selectBusinessFunctionsForDropdown) || [];
+  const departments = useSelector(selectDepartmentsForDropdown) || [];
+  const units = useSelector(selectUnitsForDropdown) || [];
+  const loading = useSelector(selectReferenceDataLoading) || {};
 
   // Auto-load departments when business function changes
   useEffect(() => {
@@ -286,9 +403,9 @@ export const useHierarchicalReferenceData = () => {
     setSelectedDepartment,
     
     // Loading states
-    isLoadingBusinessFunctions: loading.businessFunctions,
-    isLoadingDepartments: loading.departments,
-    isLoadingUnits: loading.units,
+    isLoadingBusinessFunctions: loading.businessFunctions || false,
+    isLoadingDepartments: loading.departments || false,
+    isLoadingUnits: loading.units || false,
     
     // Helper functions
     resetSelection: useCallback(() => {
@@ -325,6 +442,7 @@ export const usePositionGroupGradingLevels = (positionGroupId) => {
       })
       .catch(err => {
         setError(err.response?.data?.error || err.message || 'Failed to fetch grading levels');
+        setGradingLevels([]);
       })
       .finally(() => {
         setLoading(false);
