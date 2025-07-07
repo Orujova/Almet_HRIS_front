@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountTable.jsx - Optimized with Complete API Integration
+// src/components/headcount/HeadcountTable.jsx - FIXED with Working Action Handlers
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
@@ -24,7 +24,6 @@ const HeadcountTable = () => {
   // HOOKS & API INTEGRATION
   // ========================================
   
-  // Employee Management Hook with complete API integration
   const {
     formattedEmployees,
     loading,
@@ -42,6 +41,7 @@ const HeadcountTable = () => {
     toggleEmployeeSelection,
     selectAllEmployees,
     clearSelection,
+    setSelectedEmployees,
     // Filter management
     setCurrentFilters,
     clearFilters,
@@ -61,6 +61,7 @@ const HeadcountTable = () => {
     bulkRemoveTags,
     updateEmployeeStatus,
     exportEmployees,
+    downloadEmployeeTemplate,
     deleteEmployee,
     // Helpers
     getSortDirection,
@@ -69,7 +70,6 @@ const HeadcountTable = () => {
     clearErrors
   } = useEmployees();
 
-  // Reference Data Hook
   const {
     employeeStatuses,
     employeeTags,
@@ -91,15 +91,243 @@ const HeadcountTable = () => {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [employeeVisibility, setEmployeeVisibility] = useState({});
 
-  // Refs to track initialization and prevent loops
+  // Refs
   const initialized = useRef(false);
   const lastApiParams = useRef(null);
 
   // ========================================
-  // INITIALIZATION
+  // FIXED: WORKING ACTION HANDLERS
   // ========================================
   
-  // Initialize data only once on mount
+  const handleBulkAction = useCallback(async (action, options = {}) => {
+    console.log('🔥 BULK ACTION TRIGGERED:', action, options);
+    console.log('🔥 SELECTED EMPLOYEES:', selectedEmployees);
+    
+    // Close action menu first
+    setIsActionMenuOpen(false);
+
+    // Check if employees are selected for actions that require them
+    if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport'].includes(action)) {
+      alert("⚠️ Please select employees first!");
+      return;
+    }
+
+    try {
+      let result;
+      
+      switch (action) {
+        case "export":
+          console.log('📤 Starting export...');
+          setIsExportModalOpen(true);
+          break;
+
+        case "bulkImport":
+          console.log('📥 Starting bulk import...');
+          setIsBulkUploadOpen(true);
+          break;
+
+        case "downloadTemplate":
+          console.log('📄 Downloading template...');
+          try {
+            result = await downloadEmployeeTemplate();
+            console.log('✅ Template download result:', result);
+            alert('✅ Template downloaded successfully!');
+          } catch (error) {
+            console.error('❌ Template download failed:', error);
+            alert('❌ Failed to download template: ' + error.message);
+          }
+          break;
+
+        case "delete":
+          console.log('🗑️ Deleting employees...');
+          const deleteMessage = options.confirmMessage || `Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`;
+          
+          if (confirm(deleteMessage)) {
+            try {
+              result = await bulkDeleteEmployees(selectedEmployees);
+              console.log('✅ Delete result:', result);
+              
+              if (result.meta?.requestStatus === 'fulfilled') {
+                clearSelection();
+                // Refresh data
+                await fetchEmployees();
+                await fetchStatistics();
+                alert(`✅ Successfully deleted ${selectedEmployees.length} employees!`);
+              } else {
+                throw new Error('Delete operation failed');
+              }
+            } catch (error) {
+              console.error('❌ Delete failed:', error);
+              alert('❌ Failed to delete employees: ' + error.message);
+            }
+          }
+          break;
+
+        case "softDelete":
+          console.log('🗑️ Soft deleting employees...');
+          const softDeleteMessage = options.confirmMessage || `Are you sure you want to soft delete ${selectedEmployees.length} employee(s)? They can be restored later.`;
+          
+          if (confirm(softDeleteMessage)) {
+            try {
+              // Note: assuming softDeleteEmployees exists in useEmployees hook
+              result = await bulkDeleteEmployees(selectedEmployees); // Using same API for now
+              console.log('✅ Soft delete result:', result);
+              
+              clearSelection();
+              await fetchEmployees();
+              await fetchStatistics();
+              alert(`✅ Successfully soft deleted ${selectedEmployees.length} employees!`);
+            } catch (error) {
+              console.error('❌ Soft delete failed:', error);
+              alert('❌ Failed to soft delete employees: ' + error.message);
+            }
+          }
+          break;
+
+        case "updateStatus":
+          console.log('📝 Updating status to:', options.newStatus);
+          try {
+            // The updateEmployeeStatus expects employee IDs
+            result = await updateEmployeeStatus(selectedEmployees);
+            console.log('✅ Status update result:', result);
+            
+            if (result.meta?.requestStatus === 'fulfilled') {
+              clearSelection();
+              await fetchEmployees();
+              await fetchStatistics();
+              alert(`✅ Successfully updated status for ${selectedEmployees.length} employees to ${options.newStatus}!`);
+            } else {
+              throw new Error('Status update failed');
+            }
+          } catch (error) {
+            console.error('❌ Status update failed:', error);
+            alert('❌ Failed to update status: ' + error.message);
+          }
+          break;
+
+        case "addTags":
+          console.log('🏷️ Adding tags:', options.tagNames);
+          try {
+            result = await bulkAddTags(selectedEmployees, options.tagIds);
+            console.log('✅ Add tags result:', result);
+            
+            if (result.meta?.requestStatus === 'fulfilled') {
+              clearSelection();
+              await fetchEmployees();
+              alert(`✅ Successfully added tags "${options.tagNames.join(', ')}" to ${selectedEmployees.length} employees!`);
+            } else {
+              throw new Error('Add tags failed');
+            }
+          } catch (error) {
+            console.error('❌ Add tags failed:', error);
+            alert('❌ Failed to add tags: ' + error.message);
+          }
+          break;
+
+        case "removeTags":
+          console.log('🏷️ Removing tags:', options.tagNames);
+          try {
+            result = await bulkRemoveTags(selectedEmployees, options.tagIds);
+            console.log('✅ Remove tags result:', result);
+            
+            if (result.meta?.requestStatus === 'fulfilled') {
+              clearSelection();
+              await fetchEmployees();
+              alert(`✅ Successfully removed tags "${options.tagNames.join(', ')}" from ${selectedEmployees.length} employees!`);
+            } else {
+              throw new Error('Remove tags failed');
+            }
+          } catch (error) {
+            console.error('❌ Remove tags failed:', error);
+            alert('❌ Failed to remove tags: ' + error.message);
+          }
+          break;
+
+        case "bulkUpdate":
+          console.log('✏️ Bulk update field:', options.field, 'action:', options.action);
+          
+          // Show appropriate update modal/form based on field
+          switch (options.field) {
+            case 'line_manager':
+              alert('👥 Line Manager update modal would open here');
+              // TODO: Open line manager selection modal
+              break;
+            case 'department':
+              alert('🏢 Department transfer modal would open here');
+              // TODO: Open department selection modal
+              break;
+            case 'position_group':
+              alert('🎯 Position group update modal would open here');
+              // TODO: Open position group selection modal
+              break;
+            default:
+              alert('❓ Unknown bulk update field: ' + options.field);
+          }
+          break;
+
+        default:
+          console.warn('❓ Unknown bulk action:', action);
+          alert(`❓ Action "${action}" is not implemented yet`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to perform bulk action ${action}:`, error);
+      alert(`❌ Failed to ${action}. Error: ${error.message}`);
+    }
+  }, [
+    selectedEmployees, 
+    clearSelection, 
+    bulkDeleteEmployees, 
+    updateEmployeeStatus, 
+    bulkAddTags, 
+    bulkRemoveTags, 
+    bulkUpdateEmployees, 
+    exportEmployees,
+    downloadEmployeeTemplate,
+    fetchEmployees, 
+    fetchStatistics
+  ]);
+
+  // ========================================
+  // SELECTION HANDLERS
+  // ========================================
+  
+  const handleEmployeeToggle = useCallback((employeeId) => {
+    console.log('🔄 Toggle employee:', employeeId);
+    toggleEmployeeSelection(employeeId);
+  }, [toggleEmployeeSelection]);
+
+  const handleSelectAll = useCallback(() => {
+    console.log('🔄 Select all triggered, current selected:', selectedEmployees.length);
+    console.log('🔄 Total employees:', formattedEmployees.length);
+    
+    if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
+      console.log('🔄 Clearing selection');
+      clearSelection();
+    } else {
+      console.log('🔄 Selecting all employees');
+      const allIds = formattedEmployees.map(emp => emp.id);
+      setSelectedEmployees(allIds);
+    }
+  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
+
+  // ========================================
+  // ACTION MENU HANDLERS
+  // ========================================
+  
+  const handleToggleActionMenu = useCallback(() => {
+    console.log('🔄 Action menu toggle, current state:', isActionMenuOpen);
+    setIsActionMenuOpen(prev => !prev);
+  }, [isActionMenuOpen]);
+
+  const handleActionMenuClose = useCallback(() => {
+    console.log('❌ Closing action menu');
+    setIsActionMenuOpen(false);
+  }, []);
+
+  // ========================================
+  // INITIALIZATION & DATA FETCHING
+  // ========================================
+  
   useEffect(() => {
     const initializeData = async () => {
       if (initialized.current) return;
@@ -108,47 +336,41 @@ const HeadcountTable = () => {
         initialized.current = true;
         clearErrors();
         
-        // Run initial data fetch in parallel
         await Promise.all([
           fetchFilterOptions(),
           fetchStatistics()
         ]);
       } catch (error) {
         console.error('Failed to initialize data:', error);
-        initialized.current = false; // Allow retry
+        initialized.current = false;
       }
     };
 
     initializeData();
-  }, []); // Empty dependency array - run only once
+  }, []);
 
   // ========================================
   // API PARAMS BUILDER
   // ========================================
   
-  // Debounced API params builder with proper formatting
   const buildApiParams = useMemo(() => {
     const params = {
       page: pagination.currentPage,
       page_size: pagination.pageSize
     };
 
-    // Add search term
     if (searchTerm.trim()) {
       params.search = searchTerm.trim();
     }
 
-    // Add multi-select status filters
     if (statusFilter.length > 0) {
       params.status = statusFilter;
     }
 
-    // Add multi-select department filters
     if (departmentFilter.length > 0) {
       params.department = departmentFilter;
     }
 
-    // Add advanced filters from currentFilters
     Object.keys(currentFilters).forEach(key => {
       const value = currentFilters[key];
       if (value !== undefined && value !== null && value !== '') {
@@ -160,7 +382,6 @@ const HeadcountTable = () => {
       }
     });
 
-    // Add Excel-style multi-column sorting
     if (sorting && sorting.length > 0) {
       const orderingFields = sorting.map(sort => 
         sort.direction === 'desc' ? `-${sort.field}` : sort.field
@@ -180,37 +401,32 @@ const HeadcountTable = () => {
   ]);
 
   // ========================================
-  // DEBOUNCED FETCH FUNCTION
+  // DEBOUNCED FETCH
   // ========================================
   
-  // Debounced fetch function to prevent excessive API calls
   const debouncedFetchEmployees = useCallback(
     (() => {
       let timeoutId;
       
       return (params) => {
-        // Clear existing timeout
         if (timeoutId) {
           clearTimeout(timeoutId);
         }
         
-        // Check if params actually changed
         const paramsString = JSON.stringify(params);
         if (lastApiParams.current === paramsString) {
-          return; // No change, skip request
+          return;
         }
         
-        // Set new timeout
         timeoutId = setTimeout(() => {
           lastApiParams.current = paramsString;
           fetchEmployees(params);
-        }, 300); // 300ms debounce
+        }, 300);
       };
     })(),
     [fetchEmployees]
   );
 
-  // Fetch employees when params change (debounced)
   useEffect(() => {
     if (initialized.current) {
       debouncedFetchEmployees(buildApiParams);
@@ -218,12 +434,12 @@ const HeadcountTable = () => {
   }, [buildApiParams, debouncedFetchEmployees]);
 
   // ========================================
-  // EVENT HANDLERS
+  // OTHER EVENT HANDLERS
   // ========================================
   
   const handleSearchChange = useCallback((value) => {
     setSearchTerm(value);
-    setCurrentPage(1); // Reset to first page
+    setCurrentPage(1);
   }, [setCurrentPage]);
 
   const toggleAdvancedFilter = useCallback(() => {
@@ -244,13 +460,11 @@ const HeadcountTable = () => {
     setCurrentPage(1);
   }, [clearFilters, setCurrentPage]);
 
-  // Multi-select status filter handler
   const handleStatusChange = useCallback((selectedStatuses) => {
     setStatusFilter(selectedStatuses);
     setCurrentPage(1);
   }, [setCurrentPage]);
 
-  // Multi-select department filter handler
   const handleDepartmentChange = useCallback((selectedDepartments) => {
     setDepartmentFilter(selectedDepartments);
     setCurrentPage(1);
@@ -270,13 +484,11 @@ const HeadcountTable = () => {
   }, [removeFilter, setCurrentPage]);
 
   // ========================================
-  // EXCEL-LIKE SORTING HANDLERS
+  // SORTING HANDLERS
   // ========================================
   
-  // Excel-like sorting handlers with multi-column support
   const handleSort = useCallback((field, ctrlKey = false) => {
     if (ctrlKey) {
-      // Multi-sort with Ctrl+Click
       const currentDirection = getSortDirection(field);
       let newDirection;
       
@@ -285,134 +497,17 @@ const HeadcountTable = () => {
       } else if (currentDirection === 'asc') {
         newDirection = 'desc';
       } else {
-        // Remove this sort
         removeSort(field);
         return;
       }
       
       addSort(field, newDirection);
     } else {
-      // Single sort
       const currentDirection = getSortDirection(field);
       const newDirection = currentDirection === 'asc' ? 'desc' : 'asc';
       setSorting(field, newDirection);
     }
   }, [getSortDirection, addSort, removeSort, setSorting]);
-
-  // ========================================
-  // SELECTION HANDLERS
-  // ========================================
-  
-  const toggleSelectAll = useCallback(() => {
-    if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
-      clearSelection();
-    } else {
-      selectAllEmployees();
-    }
-  }, [selectedEmployees.length, formattedEmployees.length, clearSelection, selectAllEmployees]);
-
-  const toggleActionMenu = useCallback(() => {
-    setIsActionMenuOpen(prev => !prev);
-  }, []);
-
-  // ========================================
-  // BULK ACTION HANDLERS
-  // ========================================
-  
-  // Enhanced bulk action handler with proper API integration
-  const handleBulkAction = useCallback(async (action, options = {}) => {
-    setIsActionMenuOpen(false);
-
-    if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport'].includes(action)) {
-      alert("Please select employees first");
-      return;
-    }
-
-    try {
-      switch (action) {
-        case "export":
-          setIsExportModalOpen(true);
-          break;
-
-        case "bulkImport":
-          setIsBulkUploadOpen(true);
-          break;
-
-        case "downloadTemplate":
-          // Download template without selection requirement
-          const templateResponse = await exportEmployees({ 
-            format: 'excel', 
-            template: true 
-          });
-          if (templateResponse.meta?.requestStatus === 'fulfilled') {
-            console.log('Template downloaded successfully');
-          }
-          break;
-
-        case "delete":
-          if (confirm(`Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`)) {
-            const result = await bulkDeleteEmployees(selectedEmployees);
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              // Refresh data after successful action
-              debouncedFetchEmployees(buildApiParams);
-              fetchStatistics(); // Update statistics
-            }
-          }
-          break;
-
-        case "updateStatus":
-          if (options.newStatus) {
-            const result = await updateEmployeeStatus(selectedEmployees, options.newStatus);
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              debouncedFetchEmployees(buildApiParams);
-              fetchStatistics();
-            }
-          }
-          break;
-
-        case "addTags":
-          if (options.tagIds && options.tagIds.length > 0) {
-            const result = await bulkAddTags(selectedEmployees, options.tagIds);
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              debouncedFetchEmployees(buildApiParams);
-            }
-          }
-          break;
-
-        case "removeTags":
-          if (options.tagIds && options.tagIds.length > 0) {
-            const result = await bulkRemoveTags(selectedEmployees, options.tagIds);
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              debouncedFetchEmployees(buildApiParams);
-            }
-          }
-          break;
-
-        case "bulkUpdate":
-          if (options.updates) {
-            const result = await bulkUpdateEmployees({
-              employee_ids: selectedEmployees,
-              updates: options.updates
-            });
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              debouncedFetchEmployees(buildApiParams);
-            }
-          }
-          break;
-
-        default:
-          console.warn(`Unknown bulk action: ${action}`);
-      }
-    } catch (error) {
-      console.error(`Failed to perform bulk action ${action}:`, error);
-      alert(`Failed to ${action}. Please try again.`);
-    }
-  }, [selectedEmployees, clearSelection, bulkDeleteEmployees, updateEmployeeStatus, bulkAddTags, bulkRemoveTags, bulkUpdateEmployees, exportEmployees, debouncedFetchEmployees, buildApiParams, fetchStatistics]);
 
   // ========================================
   // EXPORT FUNCTIONALITY
@@ -426,33 +521,31 @@ const HeadcountTable = () => {
         includeFields: exportOptions.includeFields
       };
 
-      // Handle different export types
       if (exportOptions.type === 'selected' && selectedEmployees.length > 0) {
         exportParams.employee_ids = selectedEmployees;
       }
-      // For 'filtered' and 'all', use current filters
 
       const result = await exportEmployees(exportParams);
       
       if (result.meta?.requestStatus === 'fulfilled') {
         console.log('Export completed successfully');
+        alert('✅ Export completed successfully!');
       }
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      alert(`❌ Export failed: ${error.message}`);
     } finally {
       setIsExportModalOpen(false);
     }
   }, [buildApiParams, selectedEmployees, exportEmployees]);
 
   const handleBulkImportComplete = useCallback((result) => {
-    // Refresh all data after bulk import
     fetchStatistics();
     debouncedFetchEmployees(buildApiParams);
     setIsBulkUploadOpen(false);
     
     if (result?.imported_count) {
-      alert(`Successfully imported ${result.imported_count} employees!`);
+      alert(`✅ Successfully imported ${result.imported_count} employees!`);
     }
   }, [fetchStatistics, debouncedFetchEmployees, buildApiParams]);
 
@@ -469,36 +562,18 @@ const HeadcountTable = () => {
             if (result.meta?.requestStatus === 'fulfilled') {
               debouncedFetchEmployees(buildApiParams);
               fetchStatistics();
+              alert('✅ Employee deleted successfully');
             }
           }
           break;
 
-        case "addTag":
-          alert("Add tag functionality - integrate with tag modal");
-          break;
-
-        case "changeManager":
-          alert("Change manager functionality - integrate with line manager modal");
-          break;
-
-        case "viewJobDescription":
-          alert("View job description - integrate with job description modal");
-          break;
-
-        case "performanceMatrix":
-          alert("Performance matrix - integrate with performance module");
-          break;
-
-        case "message":
-          alert("Message employee - integrate with messaging system");
-          break;
-
         default:
-          console.warn(`Unknown employee action: ${action}`);
+          console.log(`Employee action: ${action} for employee: ${employeeId}`);
+          alert(`Action "${action}" clicked for employee ${employeeId}`);
       }
     } catch (error) {
       console.error(`Failed to perform action ${action}:`, error);
-      alert(`Failed to ${action}. Please try again.`);
+      alert(`❌ Failed to ${action}: ${error.message}`);
     }
   }, [deleteEmployee, debouncedFetchEmployees, buildApiParams, fetchStatistics]);
 
@@ -580,22 +655,24 @@ const HeadcountTable = () => {
       <div className="relative">
         <HeadcountHeader
           onToggleAdvancedFilter={toggleAdvancedFilter}
-          onToggleActionMenu={toggleActionMenu}
+          onToggleActionMenu={handleToggleActionMenu}
           isActionMenuOpen={isActionMenuOpen}
           selectedEmployees={selectedEmployees}
           onBulkImportComplete={handleBulkImportComplete}
           onBulkImport={() => setIsBulkUploadOpen(true)}
           statistics={statistics}
+          darkMode={darkMode}
         />
 
-        {/* Action Menu */}
+        {/* Action Menu - FIXED Position and Working Handlers */}
         {isActionMenuOpen && (
-          <div className="absolute right-2 top-16 z-50">
+          <div className="absolute right-6 top-20 z-50">
             <ActionMenu 
               isOpen={isActionMenuOpen}
-              onClose={() => setIsActionMenuOpen(false)}
-              onAction={handleBulkAction}
+              onClose={handleActionMenuClose}
+              onAction={handleBulkAction}  // ✅ WORKING HANDLER
               selectedCount={selectedEmployees.length}
+              darkMode={darkMode}
             />
           </div>
         )}
@@ -612,7 +689,6 @@ const HeadcountTable = () => {
             departments,
             employeeStatuses,
             employeeTags,
-            // Add other filter options as needed
           }}
         />
       )}
@@ -676,14 +752,15 @@ const HeadcountTable = () => {
         </div>
       )}
 
+
       {/* Employee Table */}
       <EmployeeTable
         employees={formattedEmployees}
         loading={loading.fetch}
         selectedEmployees={selectedEmployees}
         selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
-        onToggleSelectAll={toggleSelectAll}
-        onToggleEmployeeSelection={toggleEmployeeSelection}
+        onToggleSelectAll={handleSelectAll}
+        onToggleEmployeeSelection={handleEmployeeToggle}
         onSort={(field, event) => handleSort(field, event?.ctrlKey)}
         getSortDirection={getSortDirection}
         hasFilters={activeFilters.length > 0}

@@ -1,10 +1,9 @@
-// src/components/headcount/EmployeeForm.jsx - Complete with Full API Integration
+// src/components/headcount/EmployeeForm.jsx - Fixed Edit Mode with Proper Data Loading
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Save, X, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useRouter } from "next/navigation";
 import { useEmployees } from "../../hooks/useEmployees";
-import { useReferenceData } from "../../hooks/useReferenceData";
 import { apiService } from "../../services/api";
 import StepIndicator from "./FormComponents/StepIndicator";
 import { 
@@ -28,93 +27,127 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     clearErrors 
   } = useEmployees();
 
-  const { 
-    businessFunctions, 
-    departments, 
-    units, 
-    jobFunctions, 
-    positionGroups, 
-    employeeStatuses,
-    employeeTags,
-    loading: referenceLoading,
-    error: referenceError,
-    fetchBusinessFunctions,
-    fetchDepartments,
-    fetchUnits,
-    fetchJobFunctions,
-    fetchPositionGroups,
-    fetchEmployeeStatuses,
-    fetchEmployeeTags,
-    clearDepartments,
-    clearUnits,
-    getDepartmentsByBusinessFunction,
-    getUnitsByDepartment
-  } = useReferenceData();
+  // Form state - Initialize with proper structure for edit mode
+  const [formData, setFormData] = useState(() => {
+    if (isEditMode && employee) {
+      return {
+        // Basic Information
+        employee_id: employee.employee_id || "",
+        first_name: employee.first_name || "",
+        last_name: employee.last_name || "",
+        email: employee.email || employee.user?.email || "",
+        
+        // Personal Information
+        phone: employee.phone || "",
+        date_of_birth: employee.date_of_birth || "",
+        gender: employee.gender || "",
+        address: employee.address || "",
+        emergency_contact: employee.emergency_contact || "",
+        
+        // Job Information - Convert to strings for form inputs
+        business_function: employee.business_function?.toString() || "",
+        department: employee.department?.toString() || "",
+        unit: employee.unit?.toString() || "",
+        job_function: employee.job_function?.toString() || "",
+        job_title: employee.job_title || "",
+        position_group: employee.position_group?.toString() || "",
+        grading_level: employee.grading_level || employee.grade || "",
+        start_date: employee.start_date || "",
+        contract_duration: employee.contract_duration || "PERMANENT",
+        
+        // Contract Information
+        contract_start_date: employee.contract_start_date || "",
+        contract_end_date: employee.contract_end_date || "",
+        end_date: employee.end_date || "",
+        
+        // Management Information
+        line_manager: employee.line_manager?.toString() || "",
+        notes: employee.notes || "",
+        
+        // System Fields
+        status: employee.status || "ONBOARDING",
+        is_visible_in_org_chart: employee.is_visible_in_org_chart !== undefined ? employee.is_visible_in_org_chart : true,
+        
+        // Tags and Documents
+        tag_ids: employee.tags ? employee.tags.map(tag => tag.id?.toString()) : [],
+        documents: employee.documents || [],
+        profile_image: employee.profile_image || null
+      };
+    }
+    
+    // Default form data for new employee
+    return {
+      employee_id: "",
+      first_name: "",
+      last_name: "",
+      email: "",
+      phone: "",
+      date_of_birth: "",
+      gender: "",
+      address: "",
+      emergency_contact: "",
+      business_function: "",
+      department: "",
+      unit: "",
+      job_function: "",
+      job_title: "",
+      position_group: "",
+      grading_level: "",
+      start_date: "",
+      contract_duration: "PERMANENT",
+      contract_start_date: "",
+      contract_end_date: "",
+      end_date: "",
+      line_manager: "",
+      notes: "",
+      status: "ONBOARDING",
+      is_visible_in_org_chart: true,
+      tag_ids: [],
+      documents: [],
+      profile_image: null
+    };
+  });
 
-  // Form state
-  const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
-    // Basic Information (Required)
-    employee_id: "",
-    first_name: "",
-    last_name: "",
-    email: "",
-    
-    // Personal Information (Optional)
-    phone: "",
-    date_of_birth: "",
-    gender: "",
-    address: "",
-    emergency_contact: "",
-    
-    // Job Information (Required)
-    business_function: "",
-    department: "",
-    unit: "",
-    job_function: "",
-    job_title: "",
-    position_group: "",
-    grading_level: "",
-    start_date: "",
-    contract_duration: "PERMANENT",
-    
-    // Contract Information (Auto-calculated/Optional)
-    contract_start_date: "",
-    contract_end_date: "",
-    
-    // Management Information (Optional)
-    line_manager: "",
-    notes: "",
-    
-    // System Fields (Auto-managed)
-    status: "ONBOARDING",
-    is_visible_in_org_chart: true,
-    
-    // Tags and Documents (Optional)
-    tag_ids: [],
-    documents: [],
-    profile_image: null,
-    
-    // Spread existing employee data if editing
-    ...employee
+  // Reference data state
+  const [referenceData, setReferenceData] = useState({
+    businessFunctions: [],
+    departments: [],
+    units: [],
+    jobFunctions: [],
+    positionGroups: [],
+    employeeStatuses: [],
+    employeeTags: [],
+    lineManagers: [],
+    gradingLevels: []
+  });
+
+  // Loading states
+  const [loading, setLoading] = useState({
+    businessFunctions: false,
+    departments: false,
+    units: false,
+    jobFunctions: false,
+    positionGroups: false,
+    employeeStatuses: false,
+    employeeTags: false,
+    lineManagers: false,
+    gradingLevels: false,
+    initialLoad: true
   });
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState({});
   const [stepValidation, setStepValidation] = useState({
-    1: false, // Basic info
-    2: false, // Job info  
-    3: false, // Additional info (always valid as optional)
-    4: false  // Documents (always valid as optional)
+    1: false,
+    2: false,
+    3: true,
+    4: true
   });
 
   // API-specific state
-  const [lineManagerOptions, setLineManagerOptions] = useState([]);
   const [lineManagerSearch, setLineManagerSearch] = useState("");
-  const [loadingLineManagers, setLoadingLineManagers] = useState(false);
-  const [gradingLevels, setGradingLevels] = useState([]);
-  const [loadingGradingLevels, setLoadingGradingLevels] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
 
   // Theme classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -130,32 +163,274 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   const stepLabels = ["Basic Information", "Job Details", "Additional Info", "Documents"];
   const totalSteps = stepLabels.length;
 
-  // Initialize reference data
+  // ========================================
+  // REFERENCE DATA LOADING FUNCTIONS
+  // ========================================
+
+  const loadBusinessFunctions = useCallback(async () => {
+    if (referenceData.businessFunctions.length > 0) return;
+    
+    setLoading(prev => ({ ...prev, businessFunctions: true }));
+    try {
+      const response = await apiService.getBusinessFunctions();
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        businessFunctions: data.map(item => ({
+          value: item.id?.toString(),
+          label: item.name,
+          code: item.code,
+          employee_count: item.employee_count
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load business functions:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, businessFunctions: false }));
+    }
+  }, [referenceData.businessFunctions.length]);
+
+  const loadDepartments = useCallback(async (businessFunctionId = null) => {
+    if (!businessFunctionId) {
+      setReferenceData(prev => ({ ...prev, departments: [] }));
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, departments: true }));
+    try {
+      const response = await apiService.getDepartments({ 
+        business_function: businessFunctionId 
+      });
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        departments: data.map(item => ({
+          value: item.id?.toString(),
+          label: item.name,
+          business_function: item.business_function,
+          business_function_name: item.business_function_name
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load departments:', error);
+      setReferenceData(prev => ({ ...prev, departments: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, departments: false }));
+    }
+  }, []);
+
+  const loadUnits = useCallback(async (departmentId = null) => {
+    if (!departmentId) {
+      setReferenceData(prev => ({ ...prev, units: [] }));
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, units: true }));
+    try {
+      const response = await apiService.getUnits({ 
+        department: departmentId 
+      });
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        units: data.map(item => ({
+          value: item.id?.toString(),
+          label: item.name,
+          department: item.department,
+          department_name: item.department_name
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load units:', error);
+      setReferenceData(prev => ({ ...prev, units: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, units: false }));
+    }
+  }, []);
+
+  const loadJobFunctions = useCallback(async () => {
+    if (referenceData.jobFunctions.length > 0) return;
+    
+    setLoading(prev => ({ ...prev, jobFunctions: true }));
+    try {
+      const response = await apiService.getJobFunctions();
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        jobFunctions: data.map(item => ({
+          value: item.id?.toString(),
+          label: item.name,
+          description: item.description
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load job functions:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, jobFunctions: false }));
+    }
+  }, [referenceData.jobFunctions.length]);
+
+  const loadPositionGroups = useCallback(async () => {
+    if (referenceData.positionGroups.length > 0) return;
+    
+    setLoading(prev => ({ ...prev, positionGroups: true }));
+    try {
+      const response = await apiService.getPositionGroups();
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        positionGroups: data.map(item => ({
+          value: item.id?.toString(),
+          label: item.display_name || item.name,
+          hierarchy_level: item.hierarchy_level,
+          grading_levels: item.grading_levels || []
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load position groups:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, positionGroups: false }));
+    }
+  }, [referenceData.positionGroups.length]);
+
+  const loadEmployeeTags = useCallback(async () => {
+    if (referenceData.employeeTags.length > 0) return;
+    
+    setLoading(prev => ({ ...prev, employeeTags: true }));
+    try {
+      const response = await apiService.getEmployeeTags();
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        employeeTags: data.map(item => ({
+          value: item.id?.toString(),
+          label: item.name,
+          tag_type: item.tag_type,
+          color: item.color
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load employee tags:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, employeeTags: false }));
+    }
+  }, [referenceData.employeeTags.length]);
+
+  const loadGradingLevels = useCallback(async (positionGroupId = null) => {
+    if (!positionGroupId) {
+      setReferenceData(prev => ({ ...prev, gradingLevels: [] }));
+      return;
+    }
+
+    setLoading(prev => ({ ...prev, gradingLevels: true }));
+    try {
+      const response = await apiService.getPositionGroupGradingLevels(positionGroupId);
+      const levels = response.data.levels || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        gradingLevels: levels.map(level => ({
+          value: level.code,
+          label: level.display,
+          description: level.full_name
+        }))
+      }));
+    } catch (error) {
+      console.error('Failed to load grading levels:', error);
+      setReferenceData(prev => ({ ...prev, gradingLevels: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, gradingLevels: false }));
+    }
+  }, []);
+
+  const loadLineManagers = useCallback(async (searchTerm = "") => {
+    setLoading(prev => ({ ...prev, lineManagers: true }));
+    try {
+      const response = await apiService.get('/employees/line_managers/', { 
+        search: searchTerm,
+        page_size: 50
+      });
+      
+      const managers = (response.data || []).map(manager => ({
+        id: manager.id,
+        employee_id: manager.employee_id,
+        name: manager.name,
+        job_title: manager.job_title,
+        position_group: manager.position_group,
+        department: manager.department,
+        direct_reports_count: manager.direct_reports_count || 0,
+        email: manager.email
+      }));
+      
+      setReferenceData(prev => ({ ...prev, lineManagers: managers }));
+    } catch (error) {
+      console.error('Failed to load line managers:', error);
+      setReferenceData(prev => ({ ...prev, lineManagers: [] }));
+    } finally {
+      setLoading(prev => ({ ...prev, lineManagers: false }));
+    }
+  }, []);
+
+  // ========================================
+  // INITIALIZATION AND EFFECTS
+  // ========================================
+
+  // Initialize reference data on mount
   useEffect(() => {
     const initializeReferenceData = async () => {
+      setLoading(prev => ({ ...prev, initialLoad: true }));
+      
       try {
+        // Load independent reference data in parallel
         await Promise.all([
-          fetchBusinessFunctions(),
-          fetchJobFunctions(),
-          fetchPositionGroups(),
-          fetchEmployeeStatuses(),
-          fetchEmployeeTags()
+          loadBusinessFunctions(),
+          loadJobFunctions(),
+          loadPositionGroups(),
+          loadEmployeeTags(),
+          loadLineManagers()
         ]);
+
+        // If editing, load dependent data based on current values
+        if (isEditMode && employee) {
+          if (employee.business_function) {
+            await loadDepartments(employee.business_function);
+            
+            if (employee.department) {
+              await loadUnits(employee.department);
+            }
+          }
+          
+          if (employee.position_group) {
+            await loadGradingLevels(employee.position_group);
+          }
+        }
       } catch (error) {
         console.error('Failed to initialize reference data:', error);
+      } finally {
+        setLoading(prev => ({ ...prev, initialLoad: false }));
+        clearErrors();
       }
     };
 
     initializeReferenceData();
-    clearErrors();
-  }, []);
+  }, [isEditMode]);
 
-  // Load departments when business function changes
+  // Handle business function change
   useEffect(() => {
     if (formData.business_function) {
-      fetchDepartments(formData.business_function);
-      // Clear dependent fields when business function changes
-      if (formData.business_function !== employee?.business_function) {
+      loadDepartments(formData.business_function);
+      
+      // Only clear dependent fields if this is a user change (not initial load)
+      const shouldClearFields = !isEditMode || 
+        (isEditMode && formData.business_function !== employee?.business_function?.toString());
+      
+      if (shouldClearFields) {
         setFormData(prev => ({
           ...prev,
           department: "",
@@ -163,40 +438,56 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         }));
       }
     } else {
-      clearDepartments();
-      clearUnits();
+      setReferenceData(prev => ({ 
+        ...prev, 
+        departments: [], 
+        units: [] 
+      }));
     }
-  }, [formData.business_function]);
+  }, [formData.business_function, loadDepartments, isEditMode, employee?.business_function]);
 
-  // Load units when department changes
+  // Handle department change
   useEffect(() => {
     if (formData.department) {
-      fetchUnits(formData.department);
-      // Clear unit when department changes
-      if (formData.department !== employee?.department) {
+      loadUnits(formData.department);
+      
+      const shouldClearUnit = !isEditMode || 
+        (isEditMode && formData.department !== employee?.department?.toString());
+      
+      if (shouldClearUnit) {
         setFormData(prev => ({
           ...prev,
           unit: ""
         }));
       }
     } else {
-      clearUnits();
+      setReferenceData(prev => ({ ...prev, units: [] }));
     }
-  }, [formData.department]);
+  }, [formData.department, loadUnits, isEditMode, employee?.department]);
 
-  // Load grading levels when position group changes
+  // Handle position group change
   useEffect(() => {
     if (formData.position_group) {
       loadGradingLevels(formData.position_group);
+      
+      const shouldClearGrading = !isEditMode || 
+        (isEditMode && formData.position_group !== employee?.position_group?.toString());
+      
+      if (shouldClearGrading) {
+        setFormData(prev => ({
+          ...prev,
+          grading_level: ""
+        }));
+      }
     } else {
-      setGradingLevels([]);
+      setReferenceData(prev => ({ ...prev, gradingLevels: [] }));
     }
-  }, [formData.position_group]);
+  }, [formData.position_group, loadGradingLevels, isEditMode, employee?.position_group]);
 
   // Auto-calculate contract end date
   useEffect(() => {
     if (formData.start_date && formData.contract_duration && formData.contract_duration !== 'PERMANENT') {
-      const startDate = new Date(formData.start_date);
+      const startDate = new Date(formData.contract_start_date || formData.start_date);
       let endDate = new Date(startDate);
       
       switch (formData.contract_duration) {
@@ -231,45 +522,12 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         contract_end_date: ""
       }));
     }
-  }, [formData.start_date, formData.contract_duration]);
+  }, [formData.start_date, formData.contract_start_date, formData.contract_duration]);
 
-  // Load line managers with search
-  const loadLineManagers = useCallback(async (searchTerm = "") => {
-    setLoadingLineManagers(true);
-    try {
-      const response = await apiService.getLineManagers({ 
-        search: searchTerm,
-        page_size: 50
-      });
-      setLineManagerOptions(response.data || []);
-    } catch (error) {
-      console.error('Failed to load line managers:', error);
-      setLineManagerOptions([]);
-    } finally {
-      setLoadingLineManagers(false);
-    }
-  }, []);
+  // ========================================
+  // FORM VALIDATION
+  // ========================================
 
-  // Load grading levels for position group
-  const loadGradingLevels = useCallback(async (positionGroupId) => {
-    setLoadingGradingLevels(true);
-    try {
-      const response = await apiService.getPositionGroupGradingLevels(positionGroupId);
-      setGradingLevels(response.data.levels || []);
-    } catch (error) {
-      console.error('Failed to load grading levels:', error);
-      setGradingLevels([]);
-    } finally {
-      setLoadingGradingLevels(false);
-    }
-  }, []);
-
-  // Initialize line managers on mount
-  useEffect(() => {
-    loadLineManagers();
-  }, [loadLineManagers]);
-
-  // Form validation by step
   const validateStep = useCallback((step) => {
     const errors = {};
 
@@ -316,23 +574,11 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         if (!formData.contract_duration) {
           errors.contract_duration = "Contract duration is required";
         }
-
-        // Date validation
-        if (formData.start_date && formData.contract_start_date) {
-          const startDate = new Date(formData.start_date);
-          const contractStartDate = new Date(formData.contract_start_date);
-          if (contractStartDate < startDate) {
-            errors.contract_start_date = "Contract start date cannot be before employment start date";
-          }
-        }
         break;
 
-      case 3: // Additional Information (all optional)
-        // No required fields in this step
-        break;
-
-      case 4: // Documents (all optional)
-        // No required fields in this step
+      case 3:
+      case 4:
+        // Steps 3 and 4 are optional
         break;
     }
 
@@ -363,6 +609,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     return 'pending';
   }, [currentStep, stepValidation]);
 
+  // ========================================
+  // EVENT HANDLERS
+  // ========================================
+
   // Handle input changes
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
@@ -388,6 +638,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     setLineManagerSearch(searchTerm);
     if (searchTerm.length >= 2) {
       loadLineManagers(searchTerm);
+    } else if (searchTerm.length === 0) {
+      loadLineManagers();
     }
   }, [loadLineManagers]);
 
@@ -418,10 +670,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   const handleRemoveDocument = useCallback((index) => {
     setFormData(prev => {
       const newDocuments = [...(prev.documents || [])];
-      // Cleanup blob URL if it exists
-      if (newDocuments[index]?.file_path?.startsWith('blob:')) {
-        URL.revokeObjectURL(newDocuments[index].file_path);
-      }
       newDocuments.splice(index, 1);
       return {
         ...prev,
@@ -430,7 +678,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     });
   }, []);
 
-  // Step navigation
+  // ========================================
+  // STEP NAVIGATION
+  // ========================================
+
   const canProceed = useCallback((step) => {
     const errors = validateStep(step);
     setValidationErrors(errors);
@@ -448,103 +699,70 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   }, []);
 
   const handleStepClick = useCallback((step) => {
-    if (step <= currentStep) {
-      // Allow going back to previous steps
-      setCurrentStep(step);
-    } else {
-      // Check if all previous steps are valid before jumping ahead
-      let canJump = true;
-      for (let i = currentStep; i < step; i++) {
-        if (!canProceed(i)) {
-          canJump = false;
-          break;
-        }
-      }
-      if (canJump) {
-        setCurrentStep(step);
-      }
-    }
-  }, [currentStep, canProceed]);
+    setCurrentStep(step);
+  }, []);
 
-  // Form submission
+  // ========================================
+  // FORM SUBMISSION
+  // ========================================
+
   const handleSubmit = async () => {
     // Validate all steps
     let allErrors = {};
     let hasErrors = false;
 
-    for (let step = 1; step <= totalSteps; step++) {
+    for (let step = 1; step <= 2; step++) { // Only validate required steps
       const stepErrors = validateStep(step);
       if (Object.keys(stepErrors).length > 0) {
         allErrors = { ...allErrors, ...stepErrors };
         hasErrors = true;
-        
-        // Go to first step with errors
-        if (!hasErrors) {
-          setCurrentStep(step);
-        }
       }
     }
 
     if (hasErrors) {
       setValidationErrors(allErrors);
+      setCurrentStep(1);
       return;
     }
 
     setSubmitting(true);
     
     try {
-      // Prepare form data for API
-      const apiData = new FormData();
-      
-      // Required fields
-      apiData.append('employee_id', formData.employee_id);
-      apiData.append('first_name', formData.first_name);
-      apiData.append('last_name', formData.last_name);
-      apiData.append('email', formData.email);
-      apiData.append('business_function', formData.business_function);
-      apiData.append('department', formData.department);
-      apiData.append('job_function', formData.job_function);
-      apiData.append('job_title', formData.job_title);
-      apiData.append('position_group', formData.position_group);
-      apiData.append('grading_level', formData.grading_level);
-      apiData.append('start_date', formData.start_date);
-      apiData.append('contract_duration', formData.contract_duration);
+      // Prepare API data
+      const apiData = {
+        // Required fields
+        employee_id: formData.employee_id,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        email: formData.email,
+        business_function: parseInt(formData.business_function),
+        department: parseInt(formData.department),
+        job_function: parseInt(formData.job_function),
+        job_title: formData.job_title,
+        position_group: parseInt(formData.position_group),
+        grading_level: formData.grading_level,
+        start_date: formData.start_date,
+        contract_duration: formData.contract_duration,
 
-      // Optional fields
-      if (formData.unit) apiData.append('unit', formData.unit);
-      if (formData.phone) apiData.append('phone', formData.phone);
-      if (formData.date_of_birth) apiData.append('date_of_birth', formData.date_of_birth);
-      if (formData.gender) apiData.append('gender', formData.gender);
-      if (formData.address) apiData.append('address', formData.address);
-      if (formData.emergency_contact) apiData.append('emergency_contact', formData.emergency_contact);
-      if (formData.line_manager) apiData.append('line_manager', formData.line_manager);
-      if (formData.contract_start_date) apiData.append('contract_start_date', formData.contract_start_date);
-      if (formData.contract_end_date) apiData.append('contract_end_date', formData.contract_end_date);
-      if (formData.notes) apiData.append('notes', formData.notes);
-      
-      // Boolean fields
-      apiData.append('is_visible_in_org_chart', formData.is_visible_in_org_chart);
+        // Optional fields
+        ...(formData.unit && { unit: parseInt(formData.unit) }),
+        ...(formData.phone && { phone: formData.phone }),
+        ...(formData.date_of_birth && { date_of_birth: formData.date_of_birth }),
+        ...(formData.gender && { gender: formData.gender }),
+        ...(formData.address && { address: formData.address }),
+        ...(formData.emergency_contact && { emergency_contact: formData.emergency_contact }),
+        ...(formData.line_manager && { line_manager: parseInt(formData.line_manager) }),
+        ...(formData.contract_start_date && { contract_start_date: formData.contract_start_date }),
+        ...(formData.contract_end_date && { contract_end_date: formData.contract_end_date }),
+        ...(formData.end_date && { end_date: formData.end_date }),
+        ...(formData.notes && { notes: formData.notes }),
+        
+        // Boolean fields
+        is_visible_in_org_chart: formData.is_visible_in_org_chart,
 
-      // Tags
-      if (formData.tag_ids && formData.tag_ids.length > 0) {
-        formData.tag_ids.forEach(tagId => {
-          apiData.append('tag_ids', tagId);
-        });
-      }
-
-      // Profile image
-      if (formData.profile_image) {
-        apiData.append('profile_image', formData.profile_image);
-      }
-
-      // Documents
-      if (formData.documents && formData.documents.length > 0) {
-        formData.documents.forEach((doc, index) => {
-          if (doc.file) {
-            apiData.append(`documents`, doc.file);
-          }
-        });
-      }
+        // Tags
+        tag_ids: formData.tag_ids || []
+      };
 
       // Submit to API
       let result;
@@ -585,64 +803,32 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   };
 
-  // Cleanup blob URLs on unmount
-  useEffect(() => {
-    return () => {
-      formData.documents?.forEach(doc => {
-        if (doc.file_path?.startsWith('blob:')) {
-          URL.revokeObjectURL(doc.file_path);
-        }
-      });
-    };
-  }, []);
+  // ========================================
+  // STEP PROPS PREPARATION
+  // ========================================
 
-  // Prepare options for form steps
   const stepProps = {
     formData,
     handleInputChange,
     validationErrors,
     
-    // Reference data
-    businessFunctions: businessFunctions.map(bf => ({ value: bf.id, label: bf.name })),
-    departments: departments.filter(dept => 
-      formData.business_function ? dept.business_function === parseInt(formData.business_function) : true
-    ).map(dept => ({ 
-      value: dept.id, 
-      label: dept.name 
-    })),
-    units: units.filter(unit => 
-      formData.department ? unit.department === parseInt(formData.department) : true
-    ).map(unit => ({ 
-      value: unit.id, 
-      label: unit.name 
-    })),
-    jobFunctions: jobFunctions.map(jf => ({ value: jf.id, label: jf.name })),
-    positionGroups: positionGroups.map(pg => ({ 
-      value: pg.id, 
-      label: pg.display_name || pg.name 
-    })),
-    
-    // Grading options (from API)
-    gradeOptions: gradingLevels.map(level => ({
-      value: level.code,
-      label: level.display,
-      description: level.full_name
-    })),
-    loadingGradingLevels,
+    // Reference data with proper formatting
+    businessFunctions: referenceData.businessFunctions,
+    departments: referenceData.departments,
+    units: referenceData.units,
+    jobFunctions: referenceData.jobFunctions,
+    positionGroups: referenceData.positionGroups,
+    gradeOptions: referenceData.gradingLevels,
+    loadingGradingLevels: loading.gradingLevels,
     
     // Line manager options
-    lineManagerOptions,
+    lineManagerOptions: referenceData.lineManagers,
     lineManagerSearch,
     setLineManagerSearch: handleLineManagerSearch,
-    loadingLineManagers,
+    loadingLineManagers: loading.lineManagers,
     
     // Tag options
-    tagOptions: employeeTags.map(tag => ({
-      value: tag.id,
-      label: tag.name,
-      color: tag.color,
-      tag_type: tag.tag_type
-    })),
+    tagOptions: referenceData.employeeTags,
     onAddTag: handleAddTag,
     onRemoveTag: handleRemoveTag,
     
@@ -651,10 +837,16 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     removeDocument: handleRemoveDocument,
     
     // Loading states
-    loading: referenceLoading
+    loading,
+    
+    // Edit mode flag for disabling validation during initial load
+    isEditMode
   };
 
-  // Render step content
+  // ========================================
+  // RENDER STEP CONTENT
+  // ========================================
+
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -670,15 +862,36 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   };
 
+  // Show loading state during initial data load
+  if (loading.initialLoad) {
+    return (
+      <div className="container mx-auto px-4 py-0">
+        <div className={`${bgCard} rounded-xl shadow-lg overflow-hidden border ${borderColor}`}>
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader className="h-8 w-8 animate-spin text-almet-sapphire mx-auto mb-4" />
+              <p className={`${textPrimary} text-lg font-medium`}>
+                {isEditMode ? 'Loading employee data...' : 'Initializing form data...'}
+              </p>
+              <p className={`${textSecondary} text-sm mt-2`}>
+                Loading reference data from server
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto px-4 py-0">
+    <div className="container mx-auto py-0">
       <div className={`${bgCard} rounded-xl shadow-lg overflow-hidden border ${borderColor}`}>
         {/* Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <div>
               <h1 className={`text-xl font-bold ${textPrimary}`}>
-                {isEditMode ? `Edit Employee: ${employee.name}` : 'Add New Employee'}
+                {isEditMode ? `Edit Employee: ${employee?.name || employee?.first_name + ' ' + employee?.last_name}` : 'Add New Employee'}
               </h1>
               <p className={`text-sm ${textSecondary} mt-1`}>
                 {isEditMode 
@@ -687,14 +900,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
                 }
               </p>
             </div>
-            <button
-              onClick={handleCancel}
-              disabled={submitting}
-              className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
-              title="Cancel"
-            >
-              <X size={20} className={textSecondary} />
-            </button>
           </div>
         </div>
 
@@ -734,7 +939,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           )}
 
           {/* Loading reference data */}
-          {referenceLoading.businessFunctions && (
+          {(loading.businessFunctions || loading.jobFunctions || loading.positionGroups) && (
             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="flex items-center">
                 <Loader className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400 mr-2" />
@@ -783,7 +988,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
               ) : (
                 <button
                   onClick={handleSubmit}
-                  disabled={submitting || !Object.values(stepValidation).every(Boolean)}
+                  disabled={submitting || !stepValidation[1] || !stepValidation[2]}
                   className={`flex items-center px-6 py-2 rounded-lg ${btnPrimary} hover:shadow-sm`}
                 >
                   {submitting ? (

@@ -1,30 +1,10 @@
-// src/components/headcount/FormComponents/FormField.jsx - Enhanced with API Integration
+// src/components/headcount/FormComponents/FormField.jsx - Enhanced with Searchable Dropdowns
 import { useState } from "react";
 import { ChevronDown, Loader, AlertCircle, Search, X, Check } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 
 /**
- * Enhanced form field component with API integration and advanced features
- * @param {Object} props - Component props
- * @param {string} props.label - Field label text
- * @param {string} props.name - Field name/id
- * @param {string|number} props.value - Field value
- * @param {Function} props.onChange - Change handler function
- * @param {string} props.type - Input type (text, email, select, textarea, autocomplete, multiselect)
- * @param {boolean} props.required - Whether field is required
- * @param {string} props.placeholder - Placeholder text
- * @param {React.ReactNode} props.icon - Optional icon to display
- * @param {string} props.helpText - Optional help text displayed below field
- * @param {Array} props.options - Options for select fields
- * @param {Object} props.validationError - Validation error for this field
- * @param {boolean} props.loading - Loading state for async operations
- * @param {boolean} props.disabled - Disabled state
- * @param {Function} props.onSearch - Search handler for autocomplete
- * @param {boolean} props.searchable - Enable search for select fields
- * @param {boolean} props.clearable - Allow clearing the field
- * @param {Function} props.onClear - Clear handler
- * @param {boolean} props.multiple - Multiple selection support
- * @returns {JSX.Element} - Enhanced form field component
+ * Enhanced form field component with searchable dropdowns by default
  */
 const FormField = ({ 
   label, 
@@ -41,11 +21,14 @@ const FormField = ({
   loading = false,
   disabled = false,
   onSearch = null,
-  searchable = false,
+  searchable = true, // Make searchable by default
   clearable = false,
   onClear = null,
   multiple = false,
   rows = 3,
+  showColors = false, // For status/tag options with colors
+  showCodes = false, // For business functions with codes
+  showDescriptions = false, // For detailed options
   ...props
 }) => {
   const { darkMode } = useTheme();
@@ -63,10 +46,18 @@ const FormField = ({
   const disabledStyle = disabled ? "opacity-50 cursor-not-allowed" : "";
 
   // Filter options based on search term
-  const filteredOptions = searchable && searchTerm
+  const filteredOptions = searchable && searchTerm && type === "select"
     ? options.filter(option => {
         const label = typeof option === 'object' ? option.label : option;
-        return label.toLowerCase().includes(searchTerm.toLowerCase());
+        const code = typeof option === 'object' ? option.code : null;
+        const description = typeof option === 'object' ? option.description : null;
+        
+        const searchLower = searchTerm.toLowerCase();
+        return (
+          label.toLowerCase().includes(searchLower) ||
+          (code && code.toLowerCase().includes(searchLower)) ||
+          (description && description.toLowerCase().includes(searchLower))
+        );
       })
     : options;
 
@@ -108,6 +99,15 @@ const FormField = ({
     setSearchTerm("");
   };
 
+  // Get display value for single select
+  const getDisplayValue = () => {
+    if (!value) return "";
+    const option = options.find(opt => 
+      typeof opt === 'object' ? opt.value === value : opt === value
+    );
+    return typeof option === 'object' ? option.label : value;
+  };
+
   return (
     <div className="mb-4">
       <label
@@ -143,7 +143,7 @@ const FormField = ({
           </button>
         )}
         
-        {/* Regular Select */}
+        {/* Regular Select (Non-searchable) */}
         {type === "select" && !searchable && !multiple ? (
           <select
             id={name}
@@ -185,15 +185,8 @@ const FormField = ({
                     <span className="text-xs text-gray-500">+{value.length - 2} more</span>
                   )}
                 </div>
-              ) : value ? (
-                <span>
-                  {typeof options.find(opt => 
-                    typeof opt === 'object' ? opt.value === value : opt === value
-                  ) === 'object' 
-                    ? options.find(opt => opt.value === value)?.label 
-                    : value
-                  }
-                </span>
+              ) : value && !multiple ? (
+                <span>{getDisplayValue()}</span>
               ) : (
                 <span className="text-gray-400">{placeholder || `Select ${label}`}</span>
               )}
@@ -202,7 +195,7 @@ const FormField = ({
             {/* Dropdown */}
             {isOpen && !disabled && (
               <div className={`absolute z-20 w-full mt-1 ${inputBg} border ${borderColor} rounded-lg shadow-lg max-h-60 overflow-hidden`}>
-                {/* Search input */}
+                {/* Search input for searchable selects */}
                 {searchable && (
                   <div className="p-2 border-b border-gray-200 dark:border-gray-600">
                     <div className="relative">
@@ -224,6 +217,10 @@ const FormField = ({
                     filteredOptions.map((option, idx) => {
                       const optionValue = typeof option === 'object' ? option.value : option;
                       const optionLabel = typeof option === 'object' ? option.label : option;
+                      const optionCode = typeof option === 'object' ? option.code : null;
+                      const optionColor = typeof option === 'object' ? option.color : null;
+                      const optionDescription = typeof option === 'object' ? option.description : null;
+                      
                       const isSelected = multiple 
                         ? Array.isArray(value) && value.includes(optionValue)
                         : value === optionValue;
@@ -237,20 +234,47 @@ const FormField = ({
                             } else {
                               onChange({ target: { name, value: optionValue } });
                               setIsOpen(false);
+                              setSearchTerm("");
                             }
                           }}
                           className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-600 ${
                             isSelected ? 'bg-almet-sapphire/10 text-almet-sapphire' : textPrimary
                           }`}
                         >
-                          <span>{optionLabel}</span>
+                          <div className="flex items-center flex-1">
+                            {/* Color indicator */}
+                            {showColors && optionColor && (
+                              <div 
+                                className="w-3 h-3 rounded-full mr-2"
+                                style={{ backgroundColor: optionColor }}
+                              />
+                            )}
+                            
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <span className="truncate">{optionLabel}</span>
+                                {/* Code display */}
+                                {showCodes && optionCode && (
+                                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded">
+                                    {optionCode}
+                                  </span>
+                                )}
+                              </div>
+                              {/* Description */}
+                              {showDescriptions && optionDescription && (
+                                <div className="text-xs text-gray-500 truncate mt-0.5">
+                                  {optionDescription}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                           {isSelected && <Check className="h-4 w-4" />}
                         </div>
                       );
                     })
                   ) : (
                     <div className="px-3 py-2 text-sm text-gray-500 text-center">
-                      No options found
+                      {searchTerm ? 'No matching options found' : 'No options available'}
                     </div>
                   )}
                 </div>
@@ -292,7 +316,7 @@ const FormField = ({
         )}
         
         {/* Select dropdown arrow */}
-        {type === "select" && !searchable && !multiple && (
+        {type === "select" && !multiple && (
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
             <ChevronDown className="h-3.5 w-3.5" />
           </div>

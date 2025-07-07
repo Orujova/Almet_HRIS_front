@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Enhanced with Full API Integration
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Enhanced with Multi-Select Tags and Image Upload
 import { useState, useEffect, useCallback } from "react";
 import { 
   Users, 
@@ -16,10 +16,15 @@ import {
   UserCheck,
   Building,
   Mail,
-  Phone
+  Phone,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Trash2
 } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
+import MultiSelectDropdown from "../MultiSelectDropdown";
 
 const FormStep3AdditionalInfo = ({
   formData,
@@ -38,12 +43,12 @@ const FormStep3AdditionalInfo = ({
   
   // Local state
   const [showLineManagerDropdown, setShowLineManagerDropdown] = useState(false);
-  const [tagSearchTerm, setTagSearchTerm] = useState("");
-  const [tagFilter, setTagFilter] = useState("all");
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagType, setNewTagType] = useState("OTHER");
   const [creatingTag, setCreatingTag] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Theme classes
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
@@ -54,31 +59,21 @@ const FormStep3AdditionalInfo = ({
   const bgAccent = darkMode ? "bg-gray-700" : "bg-gray-50";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const focusRing = "focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire";
-  const errorBorder = "border-red-500 focus:border-red-500 focus:ring-red-500";
 
-  // Get selected tags
-  const selectedTags = tagOptions.filter(tag => 
-    formData.tag_ids && formData.tag_ids.includes(tag.value)
-  );
-
-  // Filter available tags
-  const availableTags = tagOptions.filter(tag => {
-    const isNotSelected = !formData.tag_ids || !formData.tag_ids.includes(tag.value);
-    const matchesSearch = !tagSearchTerm || 
-      tag.label.toLowerCase().includes(tagSearchTerm.toLowerCase());
-    const matchesFilter = tagFilter === "all" || tag.tag_type === tagFilter;
-    
-    return isNotSelected && matchesSearch && matchesFilter;
-  });
+  // Initialize image preview if editing
+  useEffect(() => {
+    if (formData.profile_image && typeof formData.profile_image === 'string') {
+      setImagePreview(formData.profile_image);
+    }
+  }, [formData.profile_image]);
 
   // Find selected line manager
-  const selectedLineManager = lineManagerOptions.find(manager => 
-    manager.id === formData.line_manager
-  );
+  const selectedLineManager = Array.isArray(lineManagerOptions) 
+    ? lineManagerOptions.find(manager => manager.id === parseInt(formData.line_manager))
+    : null;
 
-  // Tag types for filtering
+  // Tag types for filtering and creation
   const tagTypes = [
-    { value: "all", label: "All Types" },
     { value: "SKILL", label: "Skills" },
     { value: "DEPARTMENT", label: "Department" },
     { value: "PROJECT", label: "Projects" },
@@ -90,18 +85,27 @@ const FormStep3AdditionalInfo = ({
   // Handle line manager selection
   const handleLineManagerSelect = (manager) => {
     handleInputChange({
-      target: { name: 'line_manager', value: manager.id }
+      target: { name: 'line_manager', value: manager.id.toString() }
     });
     setLineManagerSearch("");
     setShowLineManagerDropdown(false);
   };
 
-  // Handle line manager search
-  const handleLineManagerSearchChange = (e) => {
+  // Handle line manager search with proper debouncing
+  const handleLineManagerSearchChange = useCallback((e) => {
     const value = e.target.value;
     setLineManagerSearch(value);
-    setShowLineManagerDropdown(value.length >= 2);
-  };
+    setShowLineManagerDropdown(value.length >= 1);
+  }, [setLineManagerSearch]);
+
+  // Auto-trigger search when search term changes
+  useEffect(() => {
+    if (lineManagerSearch && lineManagerSearch.length >= 2) {
+      setShowLineManagerDropdown(true);
+    } else if (lineManagerSearch.length === 0) {
+      setShowLineManagerDropdown(false);
+    }
+  }, [lineManagerSearch]);
 
   // Clear line manager
   const clearLineManager = () => {
@@ -117,7 +121,6 @@ const FormStep3AdditionalInfo = ({
     
     setCreatingTag(true);
     try {
-      // Create new tag via API
       const newTag = {
         name: newTagName.trim(),
         tag_type: newTagType,
@@ -125,12 +128,10 @@ const FormStep3AdditionalInfo = ({
         is_active: true
       };
       
-      // This would be handled by the parent component
       if (onAddTag) {
         await onAddTag(newTag);
       }
       
-      // Reset form
       setNewTagName("");
       setNewTagType("OTHER");
       setShowCreateTag(false);
@@ -150,20 +151,73 @@ const FormStep3AdditionalInfo = ({
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
-  // Get tag color classes
-  const getTagColorClasses = (color, isSelected = false) => {
-    if (!color) {
-      return isSelected 
-        ? 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200'
-        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600';
-    }
-    
-    // Convert hex to Tailwind-like classes (simplified)
-    const baseColor = color.startsWith('#') ? color.slice(1) : color;
-    return isSelected
-      ? `bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-700`
-      : `bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-600`;
+  // Handle tag selection change from MultiSelectDropdown
+  const handleTagSelectionChange = (selectedTagIds) => {
+    handleInputChange({
+      target: { 
+        name: 'tag_ids', 
+        value: selectedTagIds
+      }
+    });
   };
+
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image size must be less than 5MB');
+      return;
+    }
+
+    setUploadingImage(true);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const imageUrl = e.target.result;
+      setImagePreview(imageUrl);
+      
+      // Store the file in form data
+      handleInputChange({
+        target: { name: 'profile_image', value: file }
+      });
+      
+      setUploadingImage(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Remove image
+  const handleRemoveImage = () => {
+    setImagePreview(null);
+    handleInputChange({
+      target: { name: 'profile_image', value: null }
+    });
+    
+    // Clear file input
+    const fileInput = document.getElementById('profile-image-upload');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
+  // Format tag options for MultiSelectDropdown
+  const formattedTagOptions = (tagOptions || []).map(tag => ({
+    value: tag.value,
+    label: tag.label,
+    color: tag.color,
+    description: tag.tag_type ? `Type: ${tag.tag_type}` : undefined,
+    tag_type: tag.tag_type
+  }));
 
   return (
     <div className="space-y-6">
@@ -176,6 +230,85 @@ const FormStep3AdditionalInfo = ({
         <span className={`text-xs ${textMuted} bg-purple-100 dark:bg-purple-900/20 px-2 py-1 rounded-full`}>
           Optional
         </span>
+      </div>
+
+      {/* Profile Image Section */}
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Camera className="text-blue-500" size={16} />
+          <h4 className={`text-sm font-medium ${textPrimary}`}>Profile Image</h4>
+        </div>
+
+        <div className="flex items-start space-x-6">
+          {/* Image Preview */}
+          <div className="relative">
+            <div className={`w-24 h-24 rounded-lg border-2 border-dashed ${borderColor} flex items-center justify-center overflow-hidden`}>
+              {imagePreview ? (
+                <img 
+                  src={imagePreview} 
+                  alt="Profile preview" 
+                  className="w-full h-full object-cover rounded-lg"
+                />
+              ) : (
+                <div className="text-center">
+                  <ImageIcon size={24} className={textMuted} />
+                  <p className={`text-xs ${textMuted} mt-1`}>No Image</p>
+                </div>
+              )}
+              
+              {/* Loading overlay */}
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                  <Loader size={16} className="text-white animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Remove button */}
+            {imagePreview && !uploadingImage && (
+              <button
+                type="button"
+                onClick={handleRemoveImage}
+                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                title="Remove image"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+
+          {/* Upload controls */}
+          <div className="flex-1">
+            <input
+              type="file"
+              id="profile-image-upload"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+              disabled={uploadingImage}
+            />
+            
+            <div className="space-y-3">
+              <label
+                htmlFor="profile-image-upload"
+                className={`inline-flex items-center px-4 py-2 rounded-lg border transition-colors cursor-pointer ${
+                  uploadingImage 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : `${bgInput} ${textSecondary} hover:bg-gray-100 dark:hover:bg-gray-600`
+                }`}
+              >
+                <Upload size={16} className="mr-2" />
+                {imagePreview ? 'Change Image' : 'Upload Image'}
+              </label>
+              
+              <div className={`text-xs ${textMuted} space-y-1`}>
+                <p>• Recommended size: 400x400 pixels</p>
+                <p>• Supported formats: JPG, PNG, GIF</p>
+                <p>• Maximum file size: 5MB</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Line Manager Section */}
@@ -203,7 +336,7 @@ const FormStep3AdditionalInfo = ({
             <input
               type="text"
               placeholder="Search for line manager by name, employee ID, or department..."
-              value={lineManagerSearch}
+              value={lineManagerSearch || ""}
               onChange={handleLineManagerSearchChange}
               className={`w-full pl-10 pr-10 py-3 rounded-lg border transition-colors duration-200 ${bgInput} ${focusRing} ${textPrimary} text-sm`}
             />
@@ -215,7 +348,7 @@ const FormStep3AdditionalInfo = ({
           </div>
 
           {/* Line Manager Dropdown */}
-          {showLineManagerDropdown && lineManagerOptions.length > 0 && (
+          {showLineManagerDropdown && Array.isArray(lineManagerOptions) && lineManagerOptions.length > 0 && (
             <div className={`absolute z-20 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-64 overflow-y-auto`}>
               {lineManagerOptions.map((manager) => (
                 <button
@@ -229,14 +362,14 @@ const FormStep3AdditionalInfo = ({
                       <Users size={16} className="text-almet-sapphire" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium ${textPrimary} text-sm`}>{manager.name}</p>
+                      <p className={`font-medium ${textPrimary} text-sm`}>{manager.name || 'Unknown'}</p>
                       <p className={`text-xs ${textMuted} mt-1`}>
-                        {manager.employee_id} • {manager.job_title}
+                        {manager.employee_id || 'N/A'} • {manager.job_title || 'No Title'}
                       </p>
                       <div className="flex items-center space-x-3 mt-1">
                         <span className={`text-xs ${textMuted}`}>
                           <Building size={12} className="inline mr-1" />
-                          {manager.department}
+                          {manager.department || 'N/A'}
                         </span>
                         {manager.direct_reports_count > 0 && (
                           <span className={`text-xs ${textMuted}`}>
@@ -253,7 +386,7 @@ const FormStep3AdditionalInfo = ({
           )}
 
           {/* No results message */}
-          {showLineManagerDropdown && lineManagerSearch && lineManagerOptions.length === 0 && !loadingLineManagers && (
+          {showLineManagerDropdown && lineManagerSearch && Array.isArray(lineManagerOptions) && lineManagerOptions.length === 0 && !loadingLineManagers && (
             <div className={`absolute z-20 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg p-4 text-center`}>
               <p className={`text-sm ${textMuted}`}>
                 No line managers found. Try a different search term.
@@ -271,14 +404,14 @@ const FormStep3AdditionalInfo = ({
                   <Users size={18} className="text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className={`font-medium ${textPrimary}`}>{selectedLineManager.name}</p>
+                  <p className={`font-medium ${textPrimary}`}>{selectedLineManager.name || 'Unknown'}</p>
                   <p className={`text-sm ${textMuted}`}>
-                    {selectedLineManager.employee_id} • {selectedLineManager.job_title}
+                    {selectedLineManager.employee_id || 'N/A'} • {selectedLineManager.job_title || 'No Title'}
                   </p>
                   <div className="flex items-center space-x-3 mt-1">
                     <span className={`text-xs ${textMuted}`}>
                       <Building size={10} className="inline mr-1" />
-                      {selectedLineManager.department}
+                      {selectedLineManager.department || 'N/A'}
                     </span>
                     {selectedLineManager.email && (
                       <span className={`text-xs ${textMuted}`}>
@@ -309,136 +442,36 @@ const FormStep3AdditionalInfo = ({
             <Tag className="text-green-500" size={16} />
             <h4 className={`text-sm font-medium ${textPrimary}`}>Employee Tags</h4>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowCreateTag(!showCreateTag)}
-            className="text-xs text-blue-500 hover:text-blue-600 transition-colors flex items-center"
-          >
-            <Plus size={12} className="mr-1" />
-            Create New Tag
-          </button>
+        
         </div>
 
-        {/* Create New Tag Form */}
-        {showCreateTag && (
-          <div className={`p-4 border ${borderColor} rounded-lg ${bgAccent}`}>
-            <h5 className={`text-sm font-medium ${textPrimary} mb-3`}>Create New Tag</h5>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input
-                type="text"
-                placeholder="Tag name"
-                value={newTagName}
-                onChange={(e) => setNewTagName(e.target.value)}
-                className={`px-3 py-2 rounded border ${bgInput} ${textPrimary} text-sm ${focusRing}`}
-              />
-              <select
-                value={newTagType}
-                onChange={(e) => setNewTagType(e.target.value)}
-                className={`px-3 py-2 rounded border ${bgInput} ${textPrimary} text-sm ${focusRing}`}
-              >
-                {tagTypes.slice(1).map(type => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-              <div className="flex space-x-2">
-                <button
-                  type="button"
-                  onClick={handleCreateTag}
-                  disabled={!newTagName.trim() || creatingTag}
-                  className="flex-1 px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50 transition-colors"
-                >
-                  {creatingTag ? <Loader size={14} className="animate-spin mx-auto" /> : 'Create'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateTag(false)}
-                  className="px-3 py-2 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+     
 
-        {/* Tag Filter and Search */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
-            <input
-              type="text"
-              placeholder="Search tags..."
-              value={tagSearchTerm}
-              onChange={(e) => setTagSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2 text-sm rounded border ${bgInput} ${textPrimary} ${focusRing}`}
-            />
-          </div>
-          <select
-            value={tagFilter}
-            onChange={(e) => setTagFilter(e.target.value)}
-            className={`px-3 py-2 rounded border ${bgInput} ${textPrimary} text-sm ${focusRing}`}
-          >
-            {tagTypes.map(type => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
+        {/* Multi-Select Tags Dropdown */}
+        <div>
+          <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+            Select Tags
+          </label>
+          <MultiSelectDropdown
+            options={formattedTagOptions}
+            selectedValues={formData.tag_ids || []}
+            onChange={handleTagSelectionChange}
+            placeholder="Search and select tags..."
+            showColors={true}
+            showDescriptions={true}
+            searchable={true}
+            className="w-full"
+          />
+          
+          {formData.tag_ids && formData.tag_ids.length > 0 && (
+            <div className={`text-xs ${textMuted} mt-2`}>
+              {formData.tag_ids.length} tag{formData.tag_ids.length !== 1 ? 's' : ''} selected
+            </div>
+          )}
         </div>
-
-        {/* Selected Tags */}
-        {selectedTags.length > 0 && (
-          <div className="space-y-2">
-            <p className={`text-xs font-medium ${textSecondary}`}>
-              Selected Tags ({selectedTags.length}):
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {selectedTags.map((tag) => (
-                <span
-                  key={tag.value}
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors ${getTagColorClasses(tag.color, true)}`}
-                >
-                  {tag.label}
-                  <button
-                    type="button"
-                    onClick={() => onRemoveTag(tag.value)}
-                    className="ml-2 hover:text-red-500 transition-colors"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Available Tags */}
-        {availableTags.length > 0 && (
-          <div className="space-y-2">
-            <p className={`text-xs font-medium ${textSecondary}`}>
-              Available Tags ({availableTags.length}):
-            </p>
-            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-              {availableTags.map((tag) => (
-                <button
-                  key={tag.value}
-                  type="button"
-                  onClick={() => onAddTag(tag.value)}
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium transition-colors hover:shadow-sm ${getTagColorClasses(tag.color, false)}`}
-                >
-                  <Plus size={10} className="mr-1" />
-                  {tag.label}
-                  {tag.tag_type && (
-                    <span className={`ml-1 text-[10px] opacity-75`}>
-                      ({tag.tag_type})
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* No tags message */}
-        {availableTags.length === 0 && selectedTags.length === 0 && (
+        {(!formattedTagOptions || formattedTagOptions.length === 0) && (
           <div className={`text-center py-6 ${bgAccent} rounded-lg border ${borderColor}`}>
             <Tag size={32} className={`mx-auto mb-3 ${textMuted} opacity-50`} />
             <p className={`text-sm ${textMuted}`}>
@@ -519,25 +552,7 @@ const FormStep3AdditionalInfo = ({
         />
       </div>
 
-      {/* Information Panel */}
-      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-        <div className="flex items-start space-x-2">
-          <AlertCircle className="text-purple-500 mt-0.5 flex-shrink-0" size={16} />
-          <div className="space-y-2">
-            <h4 className={`text-sm font-medium text-purple-800 dark:text-purple-300`}>
-              Additional Information Guidelines
-            </h4>
-            <ul className="text-xs text-purple-700 dark:text-purple-400 space-y-1">
-              <li>• All fields in this section are completely optional</li>
-              <li>• Line manager assignment helps establish clear reporting relationships</li>
-              <li>• Tags are useful for filtering, categorizing, and managing employees</li>
-              <li>• Organization chart visibility can be toggled anytime after creation</li>
-              <li>• Notes are private and only visible to authorized HR personnel</li>
-              <li>• You can modify all these settings after employee creation</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+    
 
       {/* Click outside handler for line manager dropdown */}
       {showLineManagerDropdown && (

@@ -129,15 +129,7 @@ const ActionsDropdown = ({ employeeId, onAction }) => {
                 <span>Performance Managament</span>
               </div>
             </button>
-            <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left`}
-              onClick={() => handleAction("message")}
-            >
-              <div className="flex items-center">
-                <MessageSquare size={16} className="mr-2 text-cyan-500" />
-                <span>Message</span>
-              </div>
-            </button>
+           
             <button
               className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-2 text-sm w-full text-left border-t border-gray-200 dark:border-gray-700 mt-1 pt-1`}
               onClick={() => handleAction("delete")}

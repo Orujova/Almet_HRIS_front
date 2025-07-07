@@ -37,42 +37,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
     ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
     : "bg-gray-100 hover:bg-gray-200 text-gray-700";
 
-  // Download template function
-  const downloadTemplate = useCallback(() => {
-    // Create a sample template with headers
-    const headers = [
-      'employee_id', 'first_name', 'last_name', 'email', 'phone',
-      'job_title', 'business_function', 'department', 'unit',
-      'job_function', 'position_group', 'start_date', 'contract_duration',
-      'grading_level', 'line_manager_email', 'address', 'date_of_birth',
-      'gender', 'emergency_contact', 'notes', 'tags'
-    ];
-
-    const sampleData = [
-      [
-        'EMP001', 'John', 'Doe', 'john.doe@company.com', '+994501234567',
-        'Software Engineer', 'Technology', 'IT Department', 'Development',
-        'Engineering', 'Individual Contributor', '2024-01-15', 'Permanent',
-        'mid_level', 'manager@company.com', '123 Main St, Baku', '1990-05-15',
-        'M', 'Jane Doe - +994501234568', 'Experienced developer', 'javascript,react,nodejs'
-      ]
-    ];
-
-    const csvContent = [headers, ...sampleData]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'employee_import_template.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  }, []);
-
+ 
   // Handle drag events
   const handleDrag = useCallback((e) => {
     e.preventDefault();

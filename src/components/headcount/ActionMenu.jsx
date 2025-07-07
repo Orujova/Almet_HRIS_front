@@ -1,32 +1,94 @@
-// src/components/headcount/ActionMenu.jsx - Enhanced Bulk Operations Menu
-import { useState } from "react";
+// src/components/headcount/ActionMenu.jsx - FIXED with proper API integration
+import { useState,useEffect } from "react";
+import { useReferenceData } from "../../hooks/useReferenceData";
+import { useEmployees } from "../../hooks/useEmployees";
 import { 
   Download, 
   Trash2, 
   Edit3, 
   Tag, 
-  UserCheck, 
   Upload,
-  MoreHorizontal,
   X,
-  Plus,
-  Minus,
   FileSpreadsheet,
-  Users
+  ChevronRight,
+  Check
 } from "lucide-react";
-import { useTheme } from "../common/ThemeProvider";
-import { useReferenceData } from "../../hooks/useReferenceData";
+
+// Import the new modals
+import TagManagementModal from "./TagManagementModal";
+import BulkEditModal from "./BulkEditModal";
 
 /**
- * Enhanced Action Menu for bulk operations on selected employees
- * Supports all bulk operations with proper API integration
+ * FIXED Action Menu with correct API integration and proper bulk actions
  */
-const ActionMenu = ({ isOpen, onClose, onAction, selectedCount = 0 }) => {
-  const { darkMode } = useTheme();
+const ActionMenu = ({ 
+  isOpen, 
+  onClose, 
+  onAction, 
+  selectedCount = 0,
+  selectedEmployees = [],
+  darkMode = false 
+}) => {
   const [subMenuOpen, setSubMenuOpen] = useState(null);
-  
-  // Get reference data for bulk operations
-  const { employeeStatuses, employeeTags } = useReferenceData();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+
+  // Get reference data from useReferenceData hook
+  const {
+    employeeTags,
+    businessFunctions,
+    departments,
+    units,
+    jobFunctions,
+    positionGroups,
+    loading: refLoading,
+    error: refError,
+    // Actions to fetch data if not available
+    fetchEmployeeTags,
+    fetchBusinessFunctions,
+    fetchDepartments,
+    fetchUnits,
+    fetchJobFunctions,
+    fetchPositionGroups
+  } = useReferenceData();
+
+  // Get employee-specific data including line managers
+  const {
+    getLineManagers,
+    lineManagers
+  } = useEmployees();
+
+  // Fetch reference data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Fetch tags if not available
+      if (!employeeTags || employeeTags.length === 0) {
+        fetchEmployeeTags?.();
+      }
+      
+      // Fetch other reference data if not available
+      if (!businessFunctions || businessFunctions.length === 0) {
+        fetchBusinessFunctions?.();
+      }
+      
+      if (!departments || departments.length === 0) {
+        fetchDepartments?.();
+      }
+      
+      if (!units || units.length === 0) {
+        fetchUnits?.();
+      }
+      
+      if (!jobFunctions || jobFunctions.length === 0) {
+        fetchJobFunctions?.();
+      }
+      
+      if (!positionGroups || positionGroups.length === 0) {
+        fetchPositionGroups?.();
+      }
+    }
+  }, [isOpen, employeeTags, businessFunctions, departments, units, jobFunctions, positionGroups]);
 
   // Theme classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -38,312 +100,272 @@ const ActionMenu = ({ isOpen, onClose, onAction, selectedCount = 0 }) => {
 
   if (!isOpen) return null;
 
-  // Handle action with options
-  const handleActionWithOptions = (action, options = {}) => {
-    onAction(action, options);
-    onClose();
+  // ========================================
+  // FIXED API-INTEGRATED ACTION HANDLERS
+  // ========================================
+
+  const handleActionWithAPI = async (action, options = {}) => {
+    console.log('🚀 API Action triggered:', action, 'Options:', options, 'Selected:', selectedCount);
+    
+    if (isProcessing) return; // Prevent double clicks
+    
+    try {
+      setIsProcessing(true);
+      
+      // Handle modal-based actions - FIXED action names
+      if (action === 'manageTags') {
+        setIsTagModalOpen(true);
+        setIsProcessing(false);
+        return;
+      }
+      
+      if (action === 'bulkEdit') {
+        // Load line managers if not already loaded
+        if (getLineManagers && (!lineManagers || lineManagers.length === 0)) {
+          try {
+            await getLineManagers();
+          } catch (error) {
+            console.warn('Failed to load line managers:', error);
+            // Continue anyway, modal will work without line managers
+          }
+        }
+        setIsBulkEditModalOpen(true);
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Call the parent's action handler for other actions with CORRECT action names
+      await onAction(action, {
+        ...options,
+        selectedCount,
+        selectedEmployeeIds: selectedEmployees
+      });
+      
+      onClose(); // Close menu on successful action
+      
+    } catch (error) {
+      console.error('❌ Action failed:', error);
+      // Parent component will handle error display
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  // Handle sub-menu toggle
-  const handleSubMenuToggle = (menuType) => {
-    setSubMenuOpen(subMenuOpen === menuType ? null : menuType);
+  // FIXED: Handle modal actions with correct API mapping
+  const handleModalAction = async (action, options) => {
+    try {
+      // Map modal actions to correct bulk actions
+      let mappedAction = action;
+      let mappedOptions = options;
+      
+      if (action === 'addTags') {
+        mappedAction = 'bulkAddTags';
+        mappedOptions = {
+          employeeIds: selectedEmployees,
+          tagIds: options.tagIds
+        };
+      } else if (action === 'removeTags') {
+        mappedAction = 'bulkRemoveTags'; 
+        mappedOptions = {
+          employeeIds: selectedEmployees,
+          tagIds: options.tagIds
+        };
+      } else if (action === 'bulkEdit' || action === 'bulkUpdate') {
+        mappedAction = 'bulkEdit'; // Use the correct action name
+        mappedOptions = {
+          ...options,
+          selectedEmployeeIds: selectedEmployees
+        };
+      }
+      
+      await onAction(mappedAction, mappedOptions);
+      
+      // Close modals after successful action
+      setIsTagModalOpen(false);
+      setIsBulkEditModalOpen(false);
+      onClose();
+    } catch (error) {
+      console.error('❌ Modal action failed:', error);
+      throw error; // Re-throw to let modal handle the error
+    }
   };
-
-  // Tag type options for bulk tag operations
-  const tagTypeOptions = [
-    { value: "skill", label: "Skills", color: "text-blue-600" },
-    { value: "department", label: "Department Tags", color: "text-green-600" },
-    { value: "project", label: "Projects", color: "text-purple-600" },
-    { value: "certification", label: "Certifications", color: "text-yellow-600" },
-    { value: "other", label: "Other", color: "text-gray-600" }
-  ];
-
-  // Available status options for bulk update
-  const statusOptions = employeeStatuses.filter(status => status.is_active);
 
   return (
-    <div className="relative">
-      <div 
-        className="fixed inset-0 z-40" 
-        onClick={onClose}
-      />
-      
-      <div className={`absolute right-0 top-0 z-50 ${bgCard} rounded-lg shadow-xl border ${borderColor} min-w-64 max-w-80`}>
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <div>
-            <h3 className={`text-sm font-semibold ${textPrimary}`}>Bulk Actions</h3>
-            <p className={`text-xs ${textMuted}`}>
-              {selectedCount} employee{selectedCount !== 1 ? 's' : ''} selected
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className={`p-1 rounded ${bgHover} transition-colors`}
-          >
-            <X size={16} className={textSecondary} />
-          </button>
-        </div>
-
-        {/* Menu Items */}
-        <div className="py-2">
-          {/* Export Options */}
-          <div className="px-2">
-            <button
-              onClick={() => handleActionWithOptions('export')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-            >
-              <Download size={16} className="mr-3 text-blue-500" />
-              <div className="flex-1 text-left">
-                <div>Export Data</div>
-                <div className={`text-xs ${textMuted}`}>Export selected employees</div>
+    <>
+      <div className="relative">
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={onClose}
+        />
+        
+        <div className={`absolute right-0 top-0 z-50 ${bgCard} rounded-lg shadow-xl border ${borderColor} w-64 overflow-hidden`}>
+          {/* Header with processing indicator */}
+          <div className={`px-4 py-3 border-b ${borderColor} bg-gray-50 dark:bg-gray-700/50`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className={`text-sm font-medium ${textPrimary} flex items-center`}>
+                  {isProcessing && (
+                    <div className="w-3 h-3 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                  )}
+                  Bulk Actions
+                </h3>
+                <p className={`text-xs ${textMuted}`}>
+                  {selectedCount} employee{selectedCount !== 1 ? 's' : ''} selected
+                </p>
               </div>
-            </button>
-          </div>
-
-          <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
-
-          {/* Status Update */}
-          <div className="px-2">
-            <button
-              onClick={() => handleSubMenuToggle('status')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-            >
-              <UserCheck size={16} className="mr-3 text-green-500" />
-              <div className="flex-1 text-left">
-                <div>Update Status</div>
-                <div className={`text-xs ${textMuted}`}>Change employment status</div>
-              </div>
-              <MoreHorizontal size={14} className={textMuted} />
-            </button>
-
-            {/* Status Sub-menu */}
-            {subMenuOpen === 'status' && (
-              <div className={`mt-2 ml-6 ${bgCard} border ${borderColor} rounded-lg shadow-lg`}>
-                {statusOptions.map((status) => (
-                  <button
-                    key={status.id}
-                    onClick={() => handleActionWithOptions('updateStatus', { newStatus: status.name })}
-                    className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-                  >
-                    <div 
-                      className="w-3 h-3 rounded-full mr-3"
-                      style={{ backgroundColor: status.color }}
-                    />
-                    <div className="flex-1 text-left">
-                      <div>{status.name}</div>
-                      {status.description && (
-                        <div className={`text-xs ${textMuted}`}>{status.description}</div>
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Tag Management */}
-          <div className="px-2">
-            <button
-              onClick={() => handleSubMenuToggle('tags')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-            >
-              <Tag size={16} className="mr-3 text-purple-500" />
-              <div className="flex-1 text-left">
-                <div>Manage Tags</div>
-                <div className={`text-xs ${textMuted}`}>Add or remove tags</div>
-              </div>
-              <MoreHorizontal size={14} className={textMuted} />
-            </button>
-
-            {/* Tags Sub-menu */}
-            {subMenuOpen === 'tags' && (
-              <div className={`mt-2 ml-6 ${bgCard} border ${borderColor} rounded-lg shadow-lg`}>
-                {/* Add Tags */}
-                <div className="p-2 border-b border-gray-200 dark:border-gray-700">
-                  <div className={`text-xs font-medium ${textSecondary} mb-2`}>Add Tags</div>
-                  {tagTypeOptions.map((tagType) => {
-                    const tagsOfType = employeeTags.filter(tag => tag.tag_type === tagType.value);
-                    if (tagsOfType.length === 0) return null;
-                    
-                    return (
-                      <div key={`add-${tagType.value}`} className="mb-2">
-                        <button
-                          onClick={() => handleSubMenuToggle(`addTags-${tagType.value}`)}
-                          className={`w-full flex items-center px-2 py-1 text-xs rounded transition-colors ${bgHover} ${textSecondary}`}
-                        >
-                          <Plus size={12} className={`mr-2 ${tagType.color}`} />
-                          <span>{tagType.label}</span>
-                          <MoreHorizontal size={10} className="ml-auto" />
-                        </button>
-                        
-                        {subMenuOpen === `addTags-${tagType.value}` && (
-                          <div className={`mt-1 ml-4 ${bgCard} border ${borderColor} rounded max-h-32 overflow-y-auto`}>
-                            {tagsOfType.map((tag) => (
-                              <button
-                                key={tag.id}
-                                onClick={() => handleActionWithOptions('addTags', { tagIds: [tag.id] })}
-                                className={`w-full text-left px-2 py-1 text-xs rounded transition-colors ${bgHover} ${textSecondary}`}
-                              >
-                                {tag.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Remove Tags */}
-                <div className="p-2">
-                  <div className={`text-xs font-medium ${textSecondary} mb-2`}>Remove Tags</div>
-                  {tagTypeOptions.map((tagType) => {
-                    const tagsOfType = employeeTags.filter(tag => tag.tag_type === tagType.value);
-                    if (tagsOfType.length === 0) return null;
-                    
-                    return (
-                      <div key={`remove-${tagType.value}`} className="mb-2">
-                        <button
-                          onClick={() => handleSubMenuToggle(`removeTags-${tagType.value}`)}
-                          className={`w-full flex items-center px-2 py-1 text-xs rounded transition-colors ${bgHover} ${textSecondary}`}
-                        >
-                          <Minus size={12} className={`mr-2 text-red-500`} />
-                          <span>{tagType.label}</span>
-                          <MoreHorizontal size={10} className="ml-auto" />
-                        </button>
-                        
-                        {subMenuOpen === `removeTags-${tagType.value}` && (
-                          <div className={`mt-1 ml-4 ${bgCard} border ${borderColor} rounded max-h-32 overflow-y-auto`}>
-                            {tagsOfType.map((tag) => (
-                              <button
-                                key={tag.id}
-                                onClick={() => handleActionWithOptions('removeTags', { tagIds: [tag.id] })}
-                                className={`w-full text-left px-2 py-1 text-xs rounded transition-colors ${bgHover} ${textSecondary}`}
-                              >
-                                {tag.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Bulk Edit */}
-          <div className="px-2">
-            <button
-              onClick={() => handleSubMenuToggle('bulkEdit')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-            >
-              <Edit3 size={16} className="mr-3 text-orange-500" />
-              <div className="flex-1 text-left">
-                <div>Bulk Edit</div>
-                <div className={`text-xs ${textMuted}`}>Update multiple fields</div>
-              </div>
-              <MoreHorizontal size={14} className={textMuted} />
-            </button>
-
-            {/* Bulk Edit Sub-menu */}
-            {subMenuOpen === 'bulkEdit' && (
-              <div className={`mt-2 ml-6 ${bgCard} border ${borderColor} rounded-lg shadow-lg`}>
-                <button
-                  onClick={() => handleActionWithOptions('bulkUpdate', { field: 'line_manager' })}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-                >
-                  <Users size={14} className="mr-3 text-blue-500" />
-                  <div className="text-left">
-                    <div>Update Line Manager</div>
-                    <div className={`text-xs ${textMuted}`}>Assign new line manager</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleActionWithOptions('bulkUpdate', { field: 'department' })}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-                >
-                  <Users size={14} className="mr-3 text-green-500" />
-                  <div className="text-left">
-                    <div>Transfer Department</div>
-                    <div className={`text-xs ${textMuted}`}>Move to different department</div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => handleActionWithOptions('bulkUpdate', { field: 'position_group' })}
-                  className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-                >
-                  <Users size={14} className="mr-3 text-purple-500" />
-                  <div className="text-left">
-                    <div>Update Position Group</div>
-                    <div className={`text-xs ${textMuted}`}>Change position group</div>
-                  </div>
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
-
-          {/* Import/Upload */}
-          <div className="px-2">
-            <button
-              onClick={() => handleActionWithOptions('bulkImport')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-            >
-              <Upload size={16} className="mr-3 text-blue-500" />
-              <div className="flex-1 text-left">
-                <div>Bulk Import</div>
-                <div className={`text-xs ${textMuted}`}>Import from Excel/CSV</div>
-              </div>
-            </button>
-          </div>
-
-          {/* Template Download */}
-          <div className="px-2">
-            <button
-              onClick={() => handleActionWithOptions('downloadTemplate')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors ${bgHover} ${textPrimary}`}
-            >
-              <FileSpreadsheet size={16} className="mr-3 text-green-500" />
-              <div className="flex-1 text-left">
-                <div>Download Template</div>
-                <div className={`text-xs ${textMuted}`}>Excel template for import</div>
-              </div>
-            </button>
-          </div>
-
-          <div className="h-px bg-gray-200 dark:bg-gray-700 my-2" />
-
-          {/* Delete */}
-          <div className="px-2">
-            <button
-              onClick={() => handleActionWithOptions('delete')}
-              className={`w-full flex items-center px-3 py-2 text-sm rounded transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400`}
-            >
-              <Trash2 size={16} className="mr-3" />
-              <div className="flex-1 text-left">
-                <div>Delete Employees</div>
-                <div className={`text-xs ${textMuted}`}>Permanently remove selected</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* Footer */}
-        {selectedCount > 0 && (
-          <div className={`px-4 py-3 border-t ${borderColor} bg-gray-50 dark:bg-gray-800/50`}>
-            <div className={`text-xs ${textMuted} text-center`}>
-              Actions will be applied to {selectedCount} employee{selectedCount !== 1 ? 's' : ''}
+              <button
+                onClick={onClose}
+                disabled={isProcessing}
+                className={`p-1 rounded ${bgHover} transition-colors disabled:opacity-50`}
+              >
+                <X size={14} className={textSecondary} />
+              </button>
             </div>
           </div>
-        )}
+
+          {/* Menu Items */}
+          <div className="py-1 max-h-96 overflow-y-auto">
+            {/* Export & Import Section */}
+            <div className="px-2">
+              <button
+                onClick={() => handleActionWithAPI('export', {
+                  type: 'selected',
+                  format: 'excel'
+                })}
+                disabled={isProcessing || selectedCount === 0}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50 disabled:cursor-not-allowed`}
+              >
+                <Download size={16} className="mr-3 text-blue-500 flex-shrink-0" />
+                <span>Export Selected ({selectedCount})</span>
+              </button>
+
+              <button
+                onClick={() => handleActionWithAPI('downloadTemplate')}
+                disabled={isProcessing}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50`}
+              >
+                <FileSpreadsheet size={16} className="mr-3 text-indigo-500 flex-shrink-0" />
+                <span>Download Template</span>
+              </button>
+
+          
+            </div>
+
+            <div className={`h-px ${borderColor} my-2`} />
+
+            {/* FIXED: Tag Management and Bulk Edit - Opens Modal with correct action names */}
+            <div className="px-2">
+              <button
+                onClick={() => handleActionWithAPI('manageTags')}
+                disabled={isProcessing || selectedCount === 0}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50`}
+              >
+                <Tag size={16} className="mr-3 text-purple-500 flex-shrink-0" />
+                <span className="flex-1 text-left">Manage Tags</span>
+                <ChevronRight size={12} className={`${textMuted}`} />
+              </button>
+
+              {/* FIXED: Bulk Edit - correct action name */}
+              <button
+                onClick={() => handleActionWithAPI('bulkEdit')}
+                disabled={isProcessing || selectedCount === 0}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50`}
+              >
+                <Edit3 size={16} className="mr-3 text-orange-500 flex-shrink-0" />
+                <span className="flex-1 text-left">Bulk Edit</span>
+                <ChevronRight size={12} className={`${textMuted}`} />
+              </button>
+            </div>
+
+            <div className={`h-px ${borderColor} my-2`} />
+
+            {/* Dangerous Actions */}
+            <div className="px-2">
+              <button
+                onClick={() => handleActionWithAPI('softDelete', {
+                  confirmMessage: `Are you sure you want to soft delete ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}? They can be restored later.`
+                })}
+                disabled={isProcessing || selectedCount === 0}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 disabled:opacity-50`}
+              >
+                <Trash2 size={16} className="mr-3 flex-shrink-0" />
+                <span>Soft Delete ({selectedCount})</span>
+              </button>
+
+              <button
+                onClick={() => handleActionWithAPI('delete', {
+                  confirmMessage: `⚠️ PERMANENT DELETE: Are you sure you want to permanently delete ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}? This action CANNOT be undone!`
+                })}
+                disabled={isProcessing || selectedCount === 0}
+                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 disabled:opacity-50`}
+              >
+                <Trash2 size={16} className="mr-3 flex-shrink-0" />
+                <span>Permanent Delete ({selectedCount})</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Footer with status */}
+          {selectedCount > 0 && (
+            <div className={`px-4 py-3 border-t ${borderColor} bg-gray-50 dark:bg-gray-700/50`}>
+              <div className={`text-xs ${textMuted} text-center flex items-center justify-center`}>
+                {isProcessing ? (
+                  <>
+                    <div className="w-3 h-3 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Check size={12} className="mr-1 text-green-500" />
+                    Actions apply to{' '}
+                    <span className="font-medium text-blue-600 dark:text-blue-400 ml-1">
+                      {selectedCount} employee{selectedCount !== 1 ? 's' : ''}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {refError?.employeeTags && (
+            <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
+              <p className="text-xs text-red-600 dark:text-red-400 text-center">
+                ⚠️ Error loading reference data. Some features may be limited.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* FIXED: Tag Management Modal with proper data */}
+      <TagManagementModal
+        isOpen={isTagModalOpen}
+        onClose={() => setIsTagModalOpen(false)}
+        onAction={handleModalAction}
+        selectedEmployees={selectedEmployees}
+        employeeTags={employeeTags || []}
+        loading={refLoading?.employeeTags || false}
+        darkMode={darkMode}
+      />
+
+      {/* FIXED: Bulk Edit Modal with proper reference data */}
+      <BulkEditModal
+        isOpen={isBulkEditModalOpen}
+        onClose={() => setIsBulkEditModalOpen(false)}
+        onAction={handleModalAction}
+        selectedEmployees={selectedEmployees}
+        referenceData={{
+          lineManagers: lineManagers || [],
+          departments: departments || [],
+          units: units || [],
+          positionGroups: positionGroups || [],
+          businessFunctions: businessFunctions || []
+        }}
+        loading={refLoading?.departments || refLoading?.lineManagers || false}
+        darkMode={darkMode}
+      />
+    </>
   );
 };
 

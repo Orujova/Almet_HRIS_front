@@ -1,7 +1,9 @@
-// src/app/structure/employee/[id]/page.jsx
+// src/app/structure/employee/[id]/page.jsx - Complete Fixed Version
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Provider } from "react-redux";
+import { store } from "../../../../store";
 import Link from "next/link";
 import { 
   ChevronLeft, 
@@ -24,7 +26,10 @@ import {
   AlertTriangle,
   FileText,
   Activity,
-  Clock
+  Clock,
+  Eye,
+  EyeOff,
+  Loader
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
@@ -33,15 +38,23 @@ import EmployeeStatusBadge from "@/components/headcount/EmployeeStatusBadge";
 import EmployeeTag from "@/components/headcount/EmployeeTag";
 
 /**
- * Employee Detail Page with Two Column Layout
+ * Employee Detail Page Content Component with Fixed Data Display
  */
-export default function EmployeeDetailPage() {
+const EmployeeDetailPageContent = () => {
   const { id } = useParams();
   const router = useRouter();
   const { darkMode } = useTheme();
-  const { fetchEmployee, currentEmployee, loadingEmployee, employeeError, clearCurrentEmployee } = useEmployees();
+  const { 
+    fetchEmployee, 
+    currentEmployee, 
+    loading, 
+    error, 
+    clearCurrentEmployee,
+    deleteEmployee 
+  } = useEmployees();
   
   const [activeTab, setActiveTab] = useState('overview');
+  const [deleting, setDeleting] = useState(false);
 
   // Theme-dependent classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -76,17 +89,115 @@ export default function EmployeeDetailPage() {
     return () => {
       clearCurrentEmployee();
     };
-  }, [id]);
+  }, [id, fetchEmployee, clearCurrentEmployee]);
+
+ 
+
+  // Enhanced field getters with proper nested data extraction
+  const getFieldValue = (field, fallback = 'N/A') => {
+    if (!currentEmployee) {
+      console.log(`getFieldValue: currentEmployee is null/undefined for field "${field}"`);
+      return fallback;
+    }
+    
+    // Direct field mappings based on your data structure
+    const fieldMappings = {
+      // Basic employee info
+      'name': currentEmployee.name || currentEmployee.full_name,
+      'employee_id': currentEmployee.employee_id,
+      'job_title': currentEmployee.job_title,
+      'email': currentEmployee.email,
+      'phone': currentEmployee.phone,
+      'address': currentEmployee.address,
+      'date_of_birth': currentEmployee.date_of_birth,
+      'gender': currentEmployee.gender,
+      'emergency_contact': currentEmployee.emergency_contact,
+      'start_date': currentEmployee.start_date,
+      'end_date': currentEmployee.end_date,
+      'notes': currentEmployee.notes,
+      'grading_level': currentEmployee.grading_level,
+      'contract_duration': currentEmployee.contract_duration,
+      'contract_start_date': currentEmployee.contract_start_date,
+      'contract_end_date': currentEmployee.contract_end_date,
+      'is_visible_in_org_chart': currentEmployee.is_visible_in_org_chart,
+      
+      // Business function data
+      'business_function_name': currentEmployee.business_function_detail?.name,
+      'business_function_code': currentEmployee.business_function_detail?.code,
+      'business_function_description': currentEmployee.business_function_detail?.description,
+      
+      // Department data
+      'department_name': currentEmployee.department_detail?.name,
+      'department_business_function': currentEmployee.department_detail?.business_function_name,
+      
+      // Unit data
+      'unit_name': currentEmployee.unit_detail?.name,
+      'unit_department': currentEmployee.unit_detail?.department_name,
+      
+      // Job function data
+      'job_function_name': currentEmployee.job_function_detail?.name,
+      'job_function_description': currentEmployee.job_function_detail?.description,
+      
+      // Position group data
+      'position_group_name': currentEmployee.position_group_detail?.name,
+      'position_group_display_name': currentEmployee.position_group_detail?.display_name,
+      'hierarchy_level': currentEmployee.position_group_detail?.hierarchy_level,
+      'grading_shorthand': currentEmployee.position_group_detail?.grading_shorthand,
+      
+      // Status data
+      'status_name': currentEmployee.status_detail?.name,
+      'status_type': currentEmployee.status_detail?.status_type,
+      'status_color': currentEmployee.status_detail?.color,
+      
+      // Line manager data
+      'line_manager_name': currentEmployee.line_manager_detail?.name || currentEmployee.line_manager_detail?.full_name,
+      'line_manager_id': currentEmployee.line_manager_detail?.id,
+      'line_manager_employee_id': currentEmployee.line_manager_detail?.employee_id,
+      'line_manager_hc_number': currentEmployee.line_manager_detail?.employee_id,
+      
+      // Contract duration display
+      'contract_duration_display': currentEmployee.contract_duration_display || 
+        (currentEmployee.contract_duration === 'PERMANENT' ? 'Permanent' : currentEmployee.contract_duration),
+        
+      // Grading display
+      'grading_display': currentEmployee.grading_display || 
+        (currentEmployee.grading_level ? currentEmployee.grading_level.replace('_', '-') : null)
+    };
+    
+    const value = fieldMappings[field];
+    
+    if (value === undefined || value === null || value === '') {
+      console.log(`getFieldValue: field "${field}" is null/undefined/empty`);
+      return fallback;
+    }
+    
+    console.log(`getFieldValue: field "${field}" = "${value}"`);
+    return value;
+  };
 
   // Handler functions
   const handleEditEmployee = () => {
     router.push(`/structure/employee/${id}/edit`);
   };
 
-  const handleDeleteEmployee = () => {
-    if (confirm("Are you sure you want to delete this employee? This action cannot be undone.")) {
-      alert("Employee deleted successfully!");
-      router.push("/structure/headcount-table");
+  const handleDeleteEmployee = async () => {
+    if (!confirm("Are you sure you want to delete this employee? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const result = await deleteEmployee(id);
+      if (result.type.endsWith('/fulfilled')) {
+        router.push("/structure/headcount-table");
+      } else {
+        alert("Failed to delete employee. Please try again.");
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert("Failed to delete employee. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -108,22 +219,6 @@ export default function EmployeeDetailPage() {
     const names = name.split(" ");
     if (names.length === 1) return names[0].charAt(0);
     return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`;
-  };
-
-  // Get department color for the avatar
-  const getDepartmentColor = (department) => {
-    if (!department) return "bg-almet-sapphire";
-    const dept = department.toUpperCase();
-    if (dept.includes("BUSINESS DEVELOPMENT")) return "bg-blue-500";
-    if (dept.includes("FINANCE")) return "bg-green-500";
-    if (dept.includes("COMPLIANCE")) return "bg-red-500";
-    if (dept.includes("HR")) return "bg-purple-500";
-    if (dept.includes("ADMINISTRATIVE")) return "bg-yellow-500";
-    if (dept.includes("OPERATIONS")) return "bg-orange-500";
-    if (dept.includes("PROJECTS MANAGEMENT")) return "bg-teal-500";
-    if (dept.includes("TRADE")) return "bg-indigo-500";
-    if (dept.includes("STOCK SALES")) return "bg-pink-500";
-    return "bg-almet-sapphire";
   };
 
   // Format date
@@ -170,51 +265,62 @@ export default function EmployeeDetailPage() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  // Enhanced display name function
+  const getDisplayName = () => {
+    if (currentEmployee.name) return currentEmployee.name;
+    if (currentEmployee.full_name) return currentEmployee.full_name;
+    const firstName = currentEmployee.first_name || '';
+    const lastName = currentEmployee.last_name || '';
+    const combined = `${firstName} ${lastName}`.trim();
+    return combined || 'Unknown Employee';
+  };
+
+  // Enhanced email function
+  const getEmail = () => {
+    return currentEmployee.email || currentEmployee.user?.email || 'No email';
+  };
+
   // Loading state
-  if (loadingEmployee) {
+  if (loading.employee) {
     return (
-      <DashboardLayout>
-        <div className="container mx-auto px-4 py-10">
-          <div className="flex flex-col items-center justify-center h-64">
-            <div className="w-16 h-16 border-4 border-almet-sapphire border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className={`${textPrimary} text-base font-medium`}>Loading employee details...</p>
-          </div>
+      <div className="container mx-auto px-4 py-10">
+        <div className="flex flex-col items-center justify-center h-64">
+          <Loader className="w-16 h-16 text-almet-sapphire animate-spin mb-4" />
+          <p className={`${textPrimary} text-base font-medium`}>Loading employee details...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   // Error state
-  if (employeeError || !currentEmployee) {
+  if (error.employee || !currentEmployee) {
     return (
-      <DashboardLayout>
-        <div className="container mx-auto px-4 py-8">
-          <div className={`${bgCard} rounded-lg border border-red-300 dark:border-red-700 p-6 shadow-md`}>
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <AlertCircle className="h-5 w-5 text-red-500" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-base font-medium text-red-800 dark:text-red-300">
-                  Error Loading Employee
-                </h3>
-                <p className="mt-2 text-sm text-red-700 dark:text-red-400">
-                  {employeeError || "Employee not found"}
-                </p>
-                <div className="mt-4">
-                  <Link
-                    href="/structure/headcount-table"
-                    className="inline-flex items-center px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800 transition-colors text-sm"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Return to Headcount Table
-                  </Link>
-                </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className={`${bgCard} rounded-lg border border-red-300 dark:border-red-700 p-6 shadow-md`}>
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <AlertCircle className="h-5 w-5 text-red-500" />
+            </div>
+            <div className="ml-4">
+              <h3 className="text-base font-medium text-red-800 dark:text-red-300">
+                Error Loading Employee
+              </h3>
+              <p className="mt-2 text-sm text-red-700 dark:text-red-400">
+                {error.employee || "Employee not found"}
+              </p>
+              <div className="mt-4">
+                <Link
+                  href="/structure/headcount-table"
+                  className="inline-flex items-center px-4 py-2 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-md hover:bg-red-200 dark:hover:bg-red-800 transition-colors text-sm"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-2" />
+                  Return to Headcount Table
+                </Link>
               </div>
             </div>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
@@ -225,416 +331,513 @@ export default function EmployeeDetailPage() {
       </div>
       <div className="flex-1 min-w-0">
         <p className={`text-[10px] font-medium ${textMuted} uppercase tracking-wider`}>{label}</p>
-        {isLink && linkPath ? (
+        {isLink && linkPath && value !== 'N/A' ? (
           <Link href={linkPath} className={`${textPrimary} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors font-medium break-all text-xs`}>
-            {value || "N/A"}
+            {value}
           </Link>
         ) : (
-          <p className={`${textPrimary} font-medium break-all text-xs`}>{value || "N/A"}</p>
+          <p className={`${textPrimary} font-medium break-all text-xs`}>{value}</p>
         )}
       </div>
     </div>
   );
 
   return (
-    <DashboardLayout>
-      <div className="container mx-auto px-4 py-6">
-        {/* Back button */}
-        <div className="mb-6 flex justify-between items-center">
-          <Link
-            href="/structure/headcount-table"
-            className={`inline-flex items-center ${textPrimary} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors text-sm`}
-          >
-            <ChevronLeft size={16} className="mr-1" />
-            <span>Back to Headcount Table</span>
-          </Link>
-          <div className={`flex items-center ${textMuted} text-[10px]`}>
-            <Clock size={12} className="mr-1" />
-            <span>{currentDateTime}</span>
-          </div>
+    <div className="container mx-auto px-4 py-6">
+    
+      {/* Back button */}
+      <div className="mb-6 flex justify-between items-center">
+        <Link
+          href="/structure/headcount-table"
+          className={`inline-flex items-center ${textPrimary} hover:text-almet-sapphire dark:hover:text-almet-steel-blue transition-colors text-sm`}
+        >
+          <ChevronLeft size={16} className="mr-1" />
+          <span>Back to Headcount Table</span>
+        </Link>
+        <div className={`flex items-center ${textMuted} text-[10px]`}>
+          <Clock size={12} className="mr-1" />
+          <span>{currentDateTime}</span>
         </div>
+      </div>
 
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Left Column - Employee Profile */}
-          <div className="lg:col-span-1">
-            <div className={`${bgCard} rounded-xl ${shadowClass} overflow-hidden border ${borderColor} sticky top-6`}>
-              {/* Profile Header */}
-              <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral p-6 text-center">
-                {/* Profile Image/Avatar */}
-                <div className="mb-4">
-                  {currentEmployee.profile_image ? (
-                    <img
-                      src={currentEmployee.profile_image}
-                      alt={currentEmployee.name}
-                      className="w-20 h-20 rounded-full object-cover mx-auto border-4 border-white/30"
-                    />
+      {/* Two Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Left Column - Employee Profile */}
+        <div className="lg:col-span-1">
+          <div className={`${bgCard} rounded-xl ${shadowClass} overflow-hidden border ${borderColor} sticky top-6`}>
+            {/* Profile Header */}
+            <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral p-6 text-center">
+              {/* Profile Image/Avatar */}
+              <div className="mb-4">
+                {currentEmployee.profile_image ? (
+                  <img
+                    src={currentEmployee.profile_image}
+                    alt={getDisplayName()}
+                    className="w-20 h-20 rounded-full object-cover mx-auto border-4 border-white/30"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xl font-bold mx-auto border-4 border-white/30">
+                    {getInitials(getDisplayName())}
+                  </div>
+                )}
+              </div>
+              
+              {/* Name and Title */}
+              <h1 className="text-lg font-bold text-white mb-1">{getDisplayName()}</h1>
+              <p className="text-white/80 text-xs mb-3 line-clamp-2">{getFieldValue('job_title')}</p>
+              
+              {/* Status and Tags */}
+              <div className="flex justify-center items-center flex-wrap gap-2 mb-4">
+                <EmployeeStatusBadge 
+                  status={getFieldValue('status_name')} 
+                  color={getFieldValue('status_color')}
+                />
+                {currentEmployee.tag_details && currentEmployee.tag_details.map((tag, idx) => (
+                  <EmployeeTag key={idx} tag={tag} />
+                ))}
+              </div>
+
+              {/* Quick Info Badges */}
+              <div className="flex flex-wrap justify-center gap-2 text-[10px]">
+                {getFieldValue('employee_id') !== 'N/A' && (
+                  <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full">
+                    ID: {getFieldValue('employee_id')}
+                  </div>
+                )}
+                {(getFieldValue('grading_display') || getFieldValue('grading_level')) !== 'N/A' && (
+                  <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full">
+                    Grade: {getFieldValue('grading_display') || getFieldValue('grading_level')}
+                  </div>
+                )}
+                {getFieldValue('start_date') !== 'N/A' && (
+                  <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full">
+                    Joined: {formatDate(getFieldValue('start_date'))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleEditEmployee}
+                  className={`${btnPrimary} px-3 py-2 rounded-md flex items-center justify-center text-xs`}
+                >
+                  <Edit size={12} className="mr-1" />
+                  Edit
+                </button>
+                <button
+                  onClick={handleDeleteEmployee}
+                  disabled={deleting}
+                  className="bg-red-500/80 hover:bg-red-600/80 text-white px-3 py-2 rounded-md flex items-center justify-center text-xs transition-colors disabled:opacity-50"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader size={12} className="mr-1 animate-spin" />
+                      Deleting...
+                    </>
                   ) : (
-                    <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xl font-bold mx-auto border-4 border-white/30">
-                      {getInitials(currentEmployee.name)}
-                    </div>
+                    <>
+                      <UserX size={12} className="mr-1" />
+                      Delete
+                    </>
                   )}
-                </div>
-                
-                {/* Name and Title */}
-                <h1 className="text-lg font-bold text-white mb-1">{currentEmployee.name}</h1>
-                <p className="text-white/80 text-xs mb-3 line-clamp-2">{currentEmployee.job_title}</p>
-                
-                {/* Status and Tags */}
-                <div className="flex justify-center items-center flex-wrap gap-2 mb-4">
-                  <EmployeeStatusBadge 
-                    status={currentEmployee.status?.name || currentEmployee.status_name} 
-                    color={currentEmployee.status?.color || currentEmployee.status_color}
-                  />
-                  {currentEmployee.tags && currentEmployee.tags.map((tag, idx) => (
-                    <EmployeeTag key={idx} tag={tag} />
-                  ))}
-                </div>
-
-                {/* Quick Info Badges */}
-                <div className="flex flex-wrap justify-center gap-2 text-[10px]">
-                  {currentEmployee.employee_id && (
-                    <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full">
-                      ID: {currentEmployee.employee_id}
-                    </div>
-                  )}
-                  {currentEmployee.grade && (
-                    <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full">
-                      Grade: {currentEmployee.grade}
-                    </div>
-                  )}
-                  {currentEmployee.start_date && (
-                    <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full">
-                      Joined: {formatDate(currentEmployee.start_date)}
-                    </div>
-                  )}
-                </div>
+                </button>
               </div>
+            </div>
 
-              {/* Action Buttons */}
-              <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleEditEmployee}
-                    className={`${btnPrimary} px-3 py-2 rounded-md flex items-center justify-center text-xs`}
-                  >
-                    <Edit size={12} className="mr-1" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={handleDeleteEmployee}
-                    className="bg-red-500/80 hover:bg-red-600/80 text-white px-3 py-2 rounded-md flex items-center justify-center text-xs transition-colors"
-                  >
-                    <UserX size={12} className="mr-1" />
-                    Delete
-                  </button>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="p-4">
-                <h3 className={`${textPrimary} font-semibold mb-3 text-xs`}>Contact Information</h3>
-                <div className="space-y-0">
-                  <InfoItem 
-                    icon={<Mail size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                    label="Email"
-                    value={currentEmployee.user?.email || currentEmployee.email}
-                    isLink={true}
-                    linkPath={`mailto:${currentEmployee.user?.email || currentEmployee.email}`}
-                  />
-                  <InfoItem 
-                    icon={<Phone size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                    label="Phone"
-                    value={currentEmployee.phone}
-                    isLink={true}
-                    linkPath={`tel:${currentEmployee.phone}`}
-                  />
-                  <InfoItem 
-                    icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                    label="Birth Date"
-                    value={formatDate(currentEmployee.date_of_birth)}
-                  />
-                  <InfoItem 
-                    icon={<MapPin size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                    label="Address"
-                    value={currentEmployee.address}
-                  />
-                </div>
+            {/* Contact Information */}
+            <div className="p-4">
+              <h3 className={`${textPrimary} font-semibold mb-3 text-xs`}>Contact Information</h3>
+              <div className="space-y-0">
+                <InfoItem 
+                  icon={<Mail size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                  label="Email"
+                  value={getEmail()}
+                  isLink={true}
+                  linkPath={`mailto:${getEmail()}`}
+                />
+                <InfoItem 
+                  icon={<Phone size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                  label="Phone"
+                  value={getFieldValue('phone')}
+                  isLink={getFieldValue('phone') !== 'N/A'}
+                  linkPath={`tel:${getFieldValue('phone')}`}
+                />
+                <InfoItem 
+                  icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                  label="Birth Date"
+                  value={formatDate(getFieldValue('date_of_birth'))}
+                />
+                <InfoItem 
+                  icon={<MapPin size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                  label="Address"
+                  value={getFieldValue('address')}
+                />
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Right Column - Tabbed Content */}
-          <div className="lg:col-span-2">
-            {/* Tab Navigation */}
-            <div className={`${bgCard} rounded-xl ${shadowClass} border ${borderColor} mb-6 overflow-hidden`}>
-             <div className="flex border-b border-gray-100 dark:border-gray-700">
-               {[
-                 { id: 'overview', label: 'Overview', icon: <User size={14} /> },
-                 { id: 'job', label: 'Job Details', icon: <Briefcase size={14} /> },
-                 { id: 'documents', label: 'Documents', icon: <FileText size={14} /> },
-                 { id: 'activity', label: 'Activity', icon: <Activity size={14} /> }
-               ].map((tab) => (
-                 <button
-                   key={tab.id}
-                   onClick={() => setActiveTab(tab.id)}
-                   className={`flex-1 px-4 py-3 text-xs font-medium flex items-center justify-center transition-colors ${
-                     activeTab === tab.id
-                       ? 'text-almet-sapphire dark:text-almet-steel-blue border-b-2 border-almet-sapphire dark:border-almet-steel-blue bg-almet-sapphire/5 dark:bg-almet-sapphire/10'
-                       : `${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue hover:bg-gray-50 dark:hover:bg-gray-700/50`
-                   }`}
-                 >
-                   {tab.icon}
-                   <span className="ml-2 hidden sm:inline">{tab.label}</span>
-                 </button>
-               ))}
-             </div>
+        {/* Right Column - Tabbed Content */}
+        <div className="lg:col-span-2">
+          {/* Tab Navigation */}
+          <div className={`${bgCard} rounded-xl ${shadowClass} border ${borderColor} mb-6 overflow-hidden`}>
+           <div className="flex border-b border-gray-100 dark:border-gray-700">
+             {[
+               { id: 'overview', label: 'Overview', icon: <User size={14} /> },
+               { id: 'job', label: 'Job Details', icon: <Briefcase size={14} /> },
+               { id: 'documents', label: 'Documents', icon: <FileText size={14} /> },
+               { id: 'activity', label: 'Activity', icon: <Activity size={14} /> }
+             ].map((tab) => (
+               <button
+                 key={tab.id}
+                 onClick={() => setActiveTab(tab.id)}
+                 className={`flex-1 px-4 py-3 text-xs font-medium flex items-center justify-center transition-colors ${
+                   activeTab === tab.id
+                     ? 'text-almet-sapphire dark:text-almet-steel-blue border-b-2 border-almet-sapphire dark:border-almet-steel-blue bg-almet-sapphire/5 dark:bg-almet-sapphire/10'
+                     : `${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue hover:bg-gray-50 dark:hover:bg-gray-700/50`
+                 }`}
+               >
+                 {tab.icon}
+                 <span className="ml-2 hidden sm:inline">{tab.label}</span>
+               </button>
+             ))}
+           </div>
 
-             {/* Tab Content */}
-             <div className="p-6">
-               {activeTab === 'overview' && (
+           {/* Tab Content */}
+           <div className="p-6">
+             {activeTab === 'overview' && (
+               <div className="space-y-6">
+                 <div>
+                   <h3 className={`${textPrimary} text-base font-semibold mb-4`}>Quick Overview</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <User size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Full Name</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{getDisplayName()}</p>
+                     </div>
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <Calendar size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Date of Birth</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{formatDate(getFieldValue('date_of_birth'))}</p>
+                     </div>
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <User size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Gender</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{getFieldValue('gender')}</p>
+                     </div>
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <Mail size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Email Address</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{getEmail()}</p>
+                     </div>
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <Phone size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Phone Number</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{getFieldValue('phone')}</p>
+                     </div>
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <MapPin size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Primary Address</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{getFieldValue('address')}</p>
+                     </div>
+                     <div className={`${bgAccent} rounded-lg p-4`}>
+                       <div className="flex items-center mb-2">
+                         <AlertTriangle size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
+                         <span className={`${textMuted} text-xs font-medium`}>Emergency Contact</span>
+                       </div>
+                       <p className={`${textPrimary} font-semibold text-xs`}>{getFieldValue('emergency_contact')}</p>
+                     </div>
+                   </div>
+                 </div>
+               </div>
+             )}
+
+             {activeTab === 'job' && (
+               <div className="space-y-6">
+                 <h3 className={`${textPrimary} text-base font-semibold mb-4`}>Job Information</h3>
                  <div className="space-y-6">
-                   <div>
-                     <h3 className={`${textPrimary} text-base font-semibold mb-4`}>Quick Overview</h3>
+                   {/* Identification Section */}
+                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Identification</h4>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <User size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Full Name</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{currentEmployee.name || "N/A"}</p>
-                       </div>
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <Calendar size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Date of Birth</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{formatDate(currentEmployee.date_of_birth) || "N/A"}</p>
-                       </div>
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <MapPin size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Gender</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{currentEmployee.gender || "N/A"}</p>
-                       </div>
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <Mail size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Email Address</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{currentEmployee.user?.email || currentEmployee.email || "N/A"}</p>
-                       </div>
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <Phone size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Phone Number</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{currentEmployee.phone || "N/A"}</p>
-                       </div>
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <MapPin size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Primary Address</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{currentEmployee.address || "N/A"}</p>
-                       </div>
-                       <div className={`${bgAccent} rounded-lg p-4`}>
-                         <div className="flex items-center mb-2">
-                           <AlertTriangle size={14} className="text-almet-sapphire dark:text-almet-steel-blue mr-2" />
-                           <span className={`${textMuted} text-xs font-medium`}>Emergency Contact</span>
-                         </div>
-                         <p className={`${textPrimary} font-semibold text-xs`}>{currentEmployee.emergency_contact || "N/A"}</p>
-                       </div>
+                       <InfoItem 
+                         icon={<Briefcase size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="HC Number"
+                         value={getFieldValue('employee_id')}
+                       />
+                       <InfoItem 
+                         icon={<User size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Name"
+                         value={getDisplayName()}
+                       />
+                     </div>
+                   </div>
+
+                   {/* Role and Structure Section */}
+                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Role & Structure</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <InfoItem 
+                         icon={<Building size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Business Function"
+                         value={getFieldValue('business_function_name')}
+                       />
+                       <InfoItem 
+                         icon={<LayoutGrid size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Department"
+                         value={getFieldValue('department_name')}
+                       />
+                       <InfoItem 
+                         icon={<LayoutGrid size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Unit"
+                         value={getFieldValue('unit_name')}
+                       />
+                       <InfoItem 
+                         icon={<Target size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Job Function"
+                         value={getFieldValue('job_function_name')}
+                       />
+                       <InfoItem 
+                         icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Job Title"
+                         value={getFieldValue('job_title')}
+                       />
+                       <InfoItem 
+                         icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Position Group"
+                         value={getFieldValue('position_group_name')}
+                       />
+                       <InfoItem 
+                         icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Grade"
+                         value={getFieldValue('grading_display') || getFieldValue('grading_level')}
+                       />
+                     </div>
+                   </div>
+
+                   {/* Management Section */}
+                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Management</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <InfoItem 
+                         icon={<Users size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="LM HC Number"
+                         value={getFieldValue('line_manager_hc_number')}
+                       />
+                       <InfoItem 
+                         icon={<Users size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Line Manager"
+                         value={getFieldValue('line_manager_name')}
+                         isLink={getFieldValue('line_manager_id') !== 'N/A'}
+                         linkPath={getFieldValue('line_manager_id') !== 'N/A' ? 
+                           `/structure/employee/${getFieldValue('line_manager_id')}` : "#"}
+                       />
+                     </div>
+                   </div>
+
+                   {/* Employment Dates Section */}
+                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Employment Dates</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <InfoItem 
+                         icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Start Date"
+                         value={formatDate(getFieldValue('start_date'))}
+                       />
+                       <InfoItem 
+                         icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="End Date"
+                         value={formatDate(getFieldValue('end_date'))}
+                       />
+                       <InfoItem 
+                         icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Contract Duration"
+                         value={getFieldValue('contract_duration_display')}
+                       />
+                       <InfoItem 
+                         icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Contract Start"
+                         value={formatDate(getFieldValue('contract_start_date'))}
+                       />
+                     </div>
+                   </div>
+
+                   {/* Status Information */}
+                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Status Information</h4>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <InfoItem 
+                         icon={<AlertCircle size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Status"
+                         value={getFieldValue('status_name')}
+                       />
+                       <InfoItem 
+                         icon={<AlertCircle size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
+                         label="Status Type"
+                         value={getFieldValue('status_type')}
+                       />
+                     </div>
+                   </div>
+
+                   {/* Visibility Settings */}
+                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Visibility Settings</h4>
+                     <div className="flex items-center space-x-3">
+                       {getFieldValue('is_visible_in_org_chart', false) ? (
+                         <Eye className="text-green-500" size={16} />
+                       ) : (
+                         <EyeOff className="text-gray-400" size={16} />
+                       )}
+                       <span className={`text-sm ${textSecondary}`}>
+                         {getFieldValue('is_visible_in_org_chart', false)
+                           ? 'Visible in organization chart' 
+                           : 'Hidden from organization chart'
+                         }
+                       </span>
                      </div>
                    </div>
                  </div>
-               )}
+               </div>
+             )}
 
-               {activeTab === 'job' && (
-                 <div className="space-y-6">
-                   <h3 className={`${textPrimary} text-base font-semibold mb-4`}>Job Information</h3>
-                   <div className="space-y-6">
-                     {/* Identification Section */}
-                     <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-                       <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Identification</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <InfoItem 
-                           icon={<Briefcase size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="HC Number"
-                           value={currentEmployee.employee_id || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<User size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Name"
-                           value={currentEmployee.name || "N/A"}
-                         />
-                       </div>
-                     </div>
-
-                     {/* Role and Structure Section */}
-                     <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-                       <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Role & Structure</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <InfoItem 
-                           icon={<Building size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Business Function"
-                           value={currentEmployee.business_function?.name || currentEmployee.business_function_name || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<LayoutGrid size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Department"
-                           value={currentEmployee.department?.name || currentEmployee.department_name || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<LayoutGrid size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Unit"
-                           value={currentEmployee.unit?.name || currentEmployee.unit_name || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Target size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Job Function"
-                           value={currentEmployee.job_function?.name || currentEmployee.job_function_name || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Job Title"
-                           value={currentEmployee.job_title || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Position Group"
-                           value={currentEmployee.position_group?.name || currentEmployee.position_group_name || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Grade"
-                           value={currentEmployee.grade || "N/A"}
-                         />
-                       </div>
-                     </div>
-
-                     {/* Management Section */}
-                     <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-                       <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Management</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <InfoItem 
-                           icon={<Users size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="LM HC Number"
-                           value={currentEmployee.line_manager?.employee_id || currentEmployee.line_manager_hc_number || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Users size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Line Manager"
-                           value={currentEmployee.line_manager?.name || currentEmployee.line_manager_name || "N/A"}
-                           isLink={true}
-                           linkPath={currentEmployee.line_manager?.id ? `/structure/employee/${currentEmployee.line_manager.id}` : "#"}
-                         />
-                       </div>
-                     </div>
-
-                     {/* Employment Dates Section */}
-                     <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-                       <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Employment Dates</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         <InfoItem 
-                           icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Start Date"
-                           value={formatDate(currentEmployee.start_date) || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="End Date"
-                           value={formatDate(currentEmployee.end_date) || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Contract Duration"
-                           value={currentEmployee.contract_duration_display || currentEmployee.contract_duration || "N/A"}
-                         />
-                         <InfoItem 
-                           icon={<Calendar size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                           label="Contract Start"
-                           value={formatDate(currentEmployee.contract_start_date) || "N/A"}
-                         />
-                       </div>
-                     </div>
-                   </div>
+             {activeTab === 'documents' && (
+               <div className="space-y-4">
+                 <div className="flex justify-between items-center">
+                   <h3 className={`${textPrimary} text-base font-semibold`}>Documents</h3>
+                   <button className={`${btnPrimary} px-4 py-2 rounded-md text-xs`}>
+                     Upload Document
+                   </button>
                  </div>
-               )}
-
-               {activeTab === 'documents' && (
-                 <div className="space-y-4">
-                   <div className="flex justify-between items-center">
-                     <h3 className={`${textPrimary} text-base font-semibold`}>Documents</h3>
-                     <button className={`${btnPrimary} px-4 py-2 rounded-md text-xs`}>
-                       Upload Document
-                     </button>
-                   </div>
-                   {currentEmployee.documents && currentEmployee.documents.length > 0 ? (
-                     <div className="space-y-3">
-                       {currentEmployee.documents.map((doc) => (
-                         <div 
-                           key={doc.id}
-                           className={`flex items-center justify-between p-4 rounded-lg ${bgAccent} hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer border ${borderColor}`}
-                           onClick={() => handleDownloadDocument(doc)}
-                         >
-                           <div className="flex items-center">
-                             <div className="h-8 w-8 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg flex items-center justify-center mr-3">
-                               <FileText className="h-4 w-4 text-almet-sapphire dark:text-almet-steel-blue" />
-                             </div>
-                             <div>
-                               <p className={`${textPrimary} font-medium text-xs`}>{doc.name}</p>
-                               <p className={`${textMuted} text-[10px]`}>
-                                 {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
-                               </p>
-                             </div>
+                 {currentEmployee.documents && currentEmployee.documents.length > 0 ? (
+                   <div className="space-y-3">
+                     {currentEmployee.documents.map((doc) => (
+                       <div 
+                         key={doc.id}
+                         className={`flex items-center justify-between p-4 rounded-lg ${bgAccent} hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors cursor-pointer border ${borderColor}`}
+                         onClick={() => handleDownloadDocument(doc)}
+                       >
+                         <div className="flex items-center">
+                           <div className="h-8 w-8 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg flex items-center justify-center mr-3">
+                             <FileText className="h-4 w-4 text-almet-sapphire dark:text-almet-steel-blue" />
                            </div>
-                           <Download size={14} className={`${textMuted}`} />
-                         </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <div className={`text-center py-8 ${textMuted}`}>
-                       <FileText size={40} className="mx-auto mb-3 opacity-50" />
-                       <p className="text-xs">No documents available</p>
-                     </div>
-                   )}
-                 </div>
-               )}
-
-               {activeTab === 'activity' && (
-                 <div className="space-y-4">
-                   <h3 className={`${textPrimary} text-base font-semibold`}>Recent Activity</h3>
-                   {currentEmployee.recent_activities && currentEmployee.recent_activities.length > 0 ? (
-                     <div className="space-y-4">
-                       {currentEmployee.recent_activities.map((activity) => (
-                         <div key={activity.id} className={`flex items-start p-4 rounded-lg ${bgAccent} border ${borderColor}`}>
-                           <div className="h-6 w-6 bg-almet-sapphire rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                             <div className="h-2 w-2 bg-white rounded-full"></div>
-                           </div>
-                           <div className="flex-1">
-                             <h4 className={`${textPrimary} font-medium text-xs`}>{activity.activity_type}</h4>
-                             <p className={`${textSecondary} text-[10px] mt-1`}>{activity.description}</p>
-                             <p className={`${textMuted} text-[9px] mt-1`}>{formatDateTime(activity.timestamp)}</p>
+                           <div>
+                             <p className={`${textPrimary} font-medium text-xs`}>{doc.name}</p>
+                             <p className={`${textMuted} text-[10px]`}>
+                               {formatFileSize(doc.file_size)} • {formatDate(doc.uploaded_at)}
+                             </p>
                            </div>
                          </div>
-                       ))}
-                     </div>
-                   ) : (
-                     <div className={`text-center py-8 ${textMuted}`}>
-                       <Activity size={40} className="mx-auto mb-3 opacity-50" />
-                       <p className="text-xs">No recent activity</p>
-                     </div>
-                   )}
-                 </div>
-               )}
-             </div>
+                         <Download size={14} className={`${textMuted}`} />
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <div className={`text-center py-8 ${textMuted}`}>
+                     <FileText size={40} className="mx-auto mb-3 opacity-50" />
+                     <p className="text-xs">No documents available</p>
+                   </div>
+                 )}
+               </div>
+             )}
+
+             {activeTab === 'activity' && (
+               <div className="space-y-4">
+                 <h3 className={`${textPrimary} text-base font-semibold`}>Recent Activity</h3>
+                 {currentEmployee.activities && currentEmployee.activities.length > 0 ? (
+                   <div className="space-y-4">
+                     {currentEmployee.activities.map((activity) => (
+                       <div key={activity.id} className={`flex items-start p-4 rounded-lg ${bgAccent} border ${borderColor}`}>
+                         <div className="h-6 w-6 bg-almet-sapphire rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                           <div className="h-2 w-2 bg-white rounded-full"></div>
+                         </div>
+                         <div className="flex-1">
+                           <h4 className={`${textPrimary} font-medium text-xs`}>{activity.activity_type}</h4>
+                           <p className={`${textSecondary} text-[10px] mt-1`}>{activity.description}</p>
+                           <p className={`${textMuted} text-[9px] mt-1`}>
+                             By {activity.performed_by_name} • {formatDateTime(activity.created_at)}
+                           </p>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 ) : (
+                   <div className={`text-center py-8 ${textMuted}`}>
+                     <Activity size={40} className="mx-auto mb-3 opacity-50" />
+                     <p className="text-xs">No recent activity</p>
+                   </div>
+                 )}
+               </div>
+             )}
            </div>
          </div>
        </div>
      </div>
-   </DashboardLayout>
+
+     {/* Additional Notes Section */}
+     {getFieldValue('notes') !== 'N/A' && (
+       <div className={`${bgCard} rounded-xl ${shadowClass} border ${borderColor} p-6`}>
+         <h3 className={`${textPrimary} text-base font-semibold mb-3 flex items-center`}>
+           <FileText size={16} className="mr-2 text-almet-sapphire dark:text-almet-steel-blue" />
+           Additional Notes
+         </h3>
+         <div className={`${bgAccent} rounded-lg p-4`}>
+           <p className={`${textSecondary} text-sm leading-relaxed`}>
+             {getFieldValue('notes')}
+           </p>
+         </div>
+       </div>
+     )}
+
+     {/* Employee Tags Section */}
+     {currentEmployee.tag_details && currentEmployee.tag_details.length > 0 && (
+       <div className={`${bgCard} rounded-xl ${shadowClass} border ${borderColor} p-6`}>
+         <h3 className={`${textPrimary} text-base font-semibold mb-3 flex items-center`}>
+           <FileText size={16} className="mr-2 text-almet-sapphire dark:text-almet-steel-blue" />
+           Employee Tags
+         </h3>
+         <div className="flex flex-wrap gap-2">
+           {currentEmployee.tag_details.map((tag, idx) => (
+             <span
+               key={idx}
+               className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium"
+               style={{
+                 backgroundColor: tag.color ? `${tag.color}20` : '#e5e7eb',
+                 color: tag.color || '#374151',
+                 border: `1px solid ${tag.color || '#d1d5db'}`
+               }}
+             >
+               {tag.name || tag.label || 'Unknown Tag'}
+             </span>
+           ))}
+         </div>
+       </div>
+     )}
+   </div>
  );
+};
+
+export default function EmployeeDetailPage() {
+  return (
+    <DashboardLayout>
+      <Provider store={store}>
+        <EmployeeDetailPageContent />
+      </Provider>
+    </DashboardLayout>
+  );
 }

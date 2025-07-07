@@ -131,14 +131,7 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {}, filterOpti
     description: tag.description
   }));
 
-  // Tag type options
-  const tagTypeOptions = [
-    { value: "skill", label: "Skills" },
-    { value: "department", label: "Department Tags" },
-    { value: "project", label: "Projects" },
-    { value: "certification", label: "Certifications" },
-    { value: "other", label: "Other" }
-  ];
+
 
   // Gender options
   const genderOptions = [
@@ -148,15 +141,6 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {}, filterOpti
     { value: "N", label: "Prefer not to say" }
   ];
 
-  // Age range options
-  const ageRangeOptions = [
-    { value: "18-25", label: "18-25 years" },
-    { value: "26-35", label: "26-35 years" },
-    { value: "36-45", label: "36-45 years" },
-    { value: "46-55", label: "46-55 years" },
-    { value: "56-65", label: "56-65 years" },
-    { value: "65+", label: "65+ years" }
-  ];
 
   // Boolean filter options
   const booleanOptions = [
@@ -181,15 +165,7 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {}, filterOpti
     );
   };
 
-  // Filter tags based on selected tag types
-  const getFilteredTags = () => {
-    if (filters.tagTypes.length === 0) return tagOptions;
-    return tagOptions.filter(tag => 
-      filters.tagTypes.includes(tag.type)
-    );
-  };
-
-  // Handle single value change
+ 
   const handleInputChange = (name, value) => {
     setFilters(prev => ({
       ...prev,
@@ -526,31 +502,6 @@ const AdvancedFilterPanel = ({ onApply, onClose, initialFilters = {}, filterOpti
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Tag Types
-            </label>
-            <MultiSelectDropdown
-              options={tagTypeOptions}
-              placeholder="Select tag types..."
-              selectedValues={filters.tagTypes}
-              onChange={(values) => handleMultiSelectChange("tagTypes", values)}
-            />
-          </div>
-
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Tags
-            </label>
-            <MultiSelectDropdown
-              options={getFilteredTags()}
-              placeholder="Select tags..."
-              selectedValues={filters.tags}
-              onChange={(values) => handleMultiSelectChange("tags", values)}
-              showDescriptions={true}
-            />
           </div>
 
           <div>

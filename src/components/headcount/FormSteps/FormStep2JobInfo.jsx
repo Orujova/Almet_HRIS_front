@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep2JobInfo.jsx - Enhanced with Fixed API Integration
+// src/components/headcount/FormSteps/FormStep2JobInfo.jsx - Fixed with Proper API Integration
 import { useState, useEffect } from "react";
 import { Briefcase, Calendar, Info, Building, Users, Award, AlertCircle, Loader } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
@@ -47,54 +47,55 @@ const FormStep2JobInfo = ({
     return startDate.toISOString().split('T')[0];
   };
 
-  // Auto-calculate contract end date based on duration
-  useEffect(() => {
-    if (formData.start_date && formData.contract_duration && formData.contract_duration !== 'PERMANENT') {
-      const startDate = new Date(formData.contract_start_date || formData.start_date);
-      let endDate = new Date(startDate);
-      
-      switch (formData.contract_duration) {
-        case '3_MONTHS':
-          endDate.setMonth(endDate.getMonth() + 3);
-          break;
-        case '6_MONTHS':
-          endDate.setMonth(endDate.getMonth() + 6);
-          break;
-        case '1_YEAR':
-          endDate.setFullYear(endDate.getFullYear() + 1);
-          break;
-        case '2_YEARS':
-          endDate.setFullYear(endDate.getFullYear() + 2);
-          break;
-        case '3_YEARS':
-          endDate.setFullYear(endDate.getFullYear() + 3);
-          break;
-      }
-      
-      // Auto-update contract_end_date but don't override manual end_date
-      const autoEndDate = endDate.toISOString().split('T')[0];
-      handleInputChange({
-        target: { name: 'contract_end_date', value: autoEndDate }
-      });
-      
-      // If no manual end date is set, use contract end date as suggestion
-      if (!formData.end_date) {
-        handleInputChange({
-          target: { name: 'end_date', value: autoEndDate }
-        });
-      }
-    } else if (formData.contract_duration === 'PERMANENT') {
-      // Clear contract end date for permanent contracts
-      handleInputChange({
-        target: { name: 'contract_end_date', value: '' }
-      });
-    }
-  }, [formData.start_date, formData.contract_start_date, formData.contract_duration]);
-
   // Helper to check if dropdown has options
   const hasOptions = (options) => {
     return Array.isArray(options) && options.length > 0;
   };
+
+  // Get placeholder text based on loading state and dependencies
+  const getPlaceholder = (type, dependent = null, dependentValue = null) => {
+    if (dependent && !dependentValue) {
+      return `Select ${dependent} first`;
+    }
+    
+    if (loading[type]) {
+      return "Loading...";
+    }
+    
+    if (type === 'departments' && !hasOptions(departments) && formData.business_function) {
+      return "No departments available";
+    }
+    
+    if (type === 'units' && !hasOptions(units) && formData.department) {
+      return "No units available";
+    }
+    
+    if (type === 'gradeOptions' && !hasOptions(gradeOptions) && formData.position_group) {
+      return "No grading levels available";
+    }
+    
+    return `Select ${type.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
+  };
+
+  // Debug logging for development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      console.log('FormStep2JobInfo - Reference data received:', {
+        businessFunctions: businessFunctions?.length || 0,
+        departments: departments?.length || 0,
+        units: units?.length || 0,
+        jobFunctions: jobFunctions?.length || 0,
+        positionGroups: positionGroups?.length || 0,
+        gradeOptions: gradeOptions?.length || 0,
+        loading,
+        formData: {
+          business_function: formData.business_function,
+          department: formData.department,
+          position_group: formData.position_group
+        }
+      });
+    }
+  }, [businessFunctions, departments, units, jobFunctions, positionGroups, gradeOptions, loading, formData]);
 
   return (
     <div className="space-y-6">
@@ -202,7 +203,7 @@ const FormStep2JobInfo = ({
             validationError={validationErrors.business_function}
             helpText="Top-level organizational unit"
             loading={loading.businessFunctions}
-            placeholder={loading.businessFunctions ? "Loading..." : "Select Business Function"}
+            placeholder={loading.businessFunctions ? "Loading..." : "Select business function"}
           />
 
           <FormField
@@ -218,15 +219,7 @@ const FormStep2JobInfo = ({
             helpText="Department within business function"
             disabled={!formData.business_function}
             loading={loading.departments}
-            placeholder={
-              !formData.business_function 
-                ? "Select Business Function first" 
-                : loading.departments 
-                  ? "Loading..." 
-                  : hasOptions(departments)
-                    ? "Select Department"
-                    : "No departments available"
-            }
+            placeholder={getPlaceholder('departments', 'Business Function', formData.business_function)}
           />
 
           <FormField
@@ -241,26 +234,29 @@ const FormStep2JobInfo = ({
             helpText="Specific unit (optional)"
             disabled={!formData.department}
             loading={loading.units}
-            placeholder={
-              !formData.department 
-                ? "Select Department first" 
-                : loading.units 
-                  ? "Loading..." 
-                  : hasOptions(units)
-                    ? "Select Unit"
-                    : "No units available"
-            }
+            placeholder={getPlaceholder('units', 'Department', formData.department)}
             clearable={true}
           />
         </div>
 
-        {/* Organization hierarchy warning */}
+        {/* Organization hierarchy warnings */}
         {!hasOptions(departments) && formData.business_function && !loading.departments && (
           <div className={`p-3 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-lg`}>
             <div className="flex items-center">
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2" />
               <span className="text-sm text-amber-800 dark:text-amber-300">
                 No departments found for selected business function. Please contact administrator.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {!hasOptions(units) && formData.department && !loading.units && (
+          <div className={`p-3 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-lg`}>
+            <div className="flex items-center">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2" />
+              <span className="text-sm text-amber-800 dark:text-amber-300">
+                No units found for selected department. You can leave this field empty or contact administrator.
               </span>
             </div>
           </div>
@@ -287,7 +283,7 @@ const FormStep2JobInfo = ({
             validationError={validationErrors.job_function}
             helpText="Functional area of work"
             loading={loading.jobFunctions}
-            placeholder={loading.jobFunctions ? "Loading..." : "Select Job Function"}
+            placeholder={loading.jobFunctions ? "Loading..." : "Select job function"}
           />
 
           <FormField
@@ -316,7 +312,7 @@ const FormStep2JobInfo = ({
             validationError={validationErrors.position_group}
             helpText="Determines available grading levels"
             loading={loading.positionGroups}
-            placeholder={loading.positionGroups ? "Loading..." : "Select Position Group"}
+            placeholder={loading.positionGroups ? "Loading..." : "Select position group"}
           />
 
           <FormField
@@ -332,15 +328,7 @@ const FormStep2JobInfo = ({
             helpText="Salary grading level"
             disabled={!formData.position_group || loadingGradingLevels}
             loading={loadingGradingLevels}
-            placeholder={
-              !formData.position_group 
-                ? "Select Position Group first" 
-                : loadingGradingLevels 
-                  ? "Loading grading levels..." 
-                  : hasOptions(gradeOptions)
-                    ? "Select Grading Level"
-                    : "No grading levels available"
-            }
+            placeholder={getPlaceholder('gradeOptions', 'Position Group', formData.position_group)}
           />
         </div>
 
@@ -382,27 +370,10 @@ const FormStep2JobInfo = ({
         )}
       </div>
 
-      {/* System Information */}
-      <div className={`${bgInfo} border border-blue-100 dark:border-blue-800 rounded-lg p-4`}>
-        <div className="flex items-start">
-          <Info className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-          <div>
-            <h3 className={`text-sm font-medium text-blue-800 dark:text-blue-300 mb-2`}>
-              Automatic System Management
-            </h3>
-            <div className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
-              <p>• Employee status is automatically set to <strong>ONBOARDING</strong> for new employees</p>
-              <p>• Status transitions are managed based on contract type and duration</p>
-              <p>• Contract end dates are auto-calculated based on duration selection</p>
-              <p>• You can override the end date for early termination if needed</p>
-              <p>• Grading levels are fetched from the selected position group</p>
-            </div>
-          </div>
-        </div>
-      </div>
+   
 
       {/* Loading States Info */}
-      {Object.values(loading).some(Boolean) && (
+      {Object.values(loading || {}).some(Boolean) && (
         <div className="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <Loader className="animate-spin h-5 w-5 text-almet-sapphire mr-3" />
           <span className={`text-sm ${textSecondary}`}>
@@ -410,6 +381,8 @@ const FormStep2JobInfo = ({
           </span>
         </div>
       )}
+
+    
     </div>
   );
 };

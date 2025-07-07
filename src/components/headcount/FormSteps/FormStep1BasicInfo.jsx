@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Enhanced with API Integration
+// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Fixed for Edit Mode
 import { useState, useEffect } from "react";
 import { User, Mail, Hash, Phone, Calendar, MapPin, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
@@ -6,12 +6,13 @@ import FormField from "../FormComponents/FormField";
 import { apiService } from "../../../services/api";
 
 /**
- * Enhanced Basic Information step with real-time validation and API integration
+ * Enhanced Basic Information step with edit mode support
  */
 const FormStep1BasicInfo = ({ 
   formData, 
   handleInputChange, 
-  validationErrors 
+  validationErrors,
+  isEditMode = false
 }) => {
   const { darkMode } = useTheme();
   
@@ -27,8 +28,14 @@ const FormStep1BasicInfo = ({
   const bgAccent = darkMode ? "bg-gray-700" : "bg-gray-50";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
 
-  // Real-time employee ID validation
+  // Real-time employee ID validation (only for new employees or changed IDs)
   useEffect(() => {
+    // Skip validation in edit mode if ID hasn't changed
+    if (isEditMode && !formData._employee_id_changed) {
+      setEmployeeIdStatus({ checking: false, available: true });
+      return;
+    }
+
     if (formData.employee_id && formData.employee_id.length >= 3) {
       if (validationTimer) {
         clearTimeout(validationTimer);
@@ -37,17 +44,29 @@ const FormStep1BasicInfo = ({
       const timer = setTimeout(async () => {
         setEmployeeIdStatus({ checking: true, available: null });
         try {
-          // Check if employee ID is unique
           const response = await apiService.get('/employees/', { 
             employee_id: formData.employee_id,
             page_size: 1 
           });
           
           const exists = response.data.results && response.data.results.length > 0;
-          setEmployeeIdStatus({ 
-            checking: false, 
-            available: !exists 
-          });
+          
+          // In edit mode, if the existing employee has this ID, it's okay
+          if (isEditMode && exists) {
+            const existingEmployee = response.data.results[0];
+            // Check if it's the same employee being edited
+            const isSameEmployee = existingEmployee.id === formData.id || 
+                                 existingEmployee.employee_id === formData.original_employee_id;
+            setEmployeeIdStatus({ 
+              checking: false, 
+              available: isSameEmployee 
+            });
+          } else {
+            setEmployeeIdStatus({ 
+              checking: false, 
+              available: !exists 
+            });
+          }
         } catch (error) {
           console.error('Error checking employee ID:', error);
           setEmployeeIdStatus({ checking: false, available: null });
@@ -64,10 +83,16 @@ const FormStep1BasicInfo = ({
         clearTimeout(validationTimer);
       }
     };
-  }, [formData.employee_id]);
+  }, [formData.employee_id, formData._employee_id_changed, isEditMode, formData.id, formData.original_employee_id]);
 
-  // Real-time email validation
+  // Real-time email validation (only for new employees or changed emails)
   useEffect(() => {
+    // Skip validation in edit mode if email hasn't changed
+    if (isEditMode && !formData._email_changed) {
+      setEmailStatus({ checking: false, available: true });
+      return;
+    }
+
     if (formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       if (validationTimer) {
         clearTimeout(validationTimer);
@@ -76,17 +101,28 @@ const FormStep1BasicInfo = ({
       const timer = setTimeout(async () => {
         setEmailStatus({ checking: true, available: null });
         try {
-          // Check if email is unique
           const response = await apiService.get('/employees/', { 
             email: formData.email,
             page_size: 1 
           });
           
           const exists = response.data.results && response.data.results.length > 0;
-          setEmailStatus({ 
-            checking: false, 
-            available: !exists 
-          });
+          
+          // In edit mode, if the existing employee has this email, it's okay
+          if (isEditMode && exists) {
+            const existingEmployee = response.data.results[0];
+            const isSameEmployee = existingEmployee.id === formData.id || 
+                                 existingEmployee.email === formData.original_email;
+            setEmailStatus({ 
+              checking: false, 
+              available: isSameEmployee 
+            });
+          } else {
+            setEmailStatus({ 
+              checking: false, 
+              available: !exists 
+            });
+          }
         } catch (error) {
           console.error('Error checking email:', error);
           setEmailStatus({ checking: false, available: null });
@@ -103,7 +139,31 @@ const FormStep1BasicInfo = ({
         clearTimeout(validationTimer);
       }
     };
-  }, [formData.email]);
+  }, [formData.email, formData._email_changed, isEditMode, formData.id, formData.original_email]);
+
+  // Track field changes in edit mode
+  const handleFieldChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Mark fields as changed in edit mode
+    if (isEditMode) {
+      if (name === 'employee_id' && value !== formData.original_employee_id) {
+        e.target.value = value;
+        e.target.name = name;
+        handleInputChange(e);
+        handleInputChange({ target: { name: '_employee_id_changed', value: true } });
+      } else if (name === 'email' && value !== formData.original_email) {
+        e.target.value = value;
+        e.target.name = name;
+        handleInputChange(e);
+        handleInputChange({ target: { name: '_email_changed', value: true } });
+      } else {
+        handleInputChange(e);
+      }
+    } else {
+      handleInputChange(e);
+    }
+  };
 
   // Get validation icon for employee ID
   const getEmployeeIdValidationIcon = () => {
@@ -133,6 +193,39 @@ const FormStep1BasicInfo = ({
     return null;
   };
 
+  // Get validation help text
+  const getEmployeeIdHelpText = () => {
+    if (isEditMode && !formData._employee_id_changed) {
+      return "Current employee ID (change to validate availability)";
+    }
+    if (employeeIdStatus.checking) {
+      return "Checking availability...";
+    }
+    if (employeeIdStatus.available === true) {
+      return "Employee ID is available";
+    }
+    if (employeeIdStatus.available === false) {
+      return "Employee ID already exists";
+    }
+    return "Unique identifier for the employee";
+  };
+
+  const getEmailHelpText = () => {
+    if (isEditMode && !formData._email_changed) {
+      return "Current email address (change to validate availability)";
+    }
+    if (emailStatus.checking) {
+      return "Checking availability...";
+    }
+    if (emailStatus.available === true) {
+      return "Email is available";
+    }
+    if (emailStatus.available === false) {
+      return "Email already exists";
+    }
+    return "Business email address for system access";
+  };
+
   // Gender options
   const genderOptions = [
     { value: "MALE", label: "Male" },
@@ -153,6 +246,23 @@ const FormStep1BasicInfo = ({
         </div>
       </div>
 
+      {/* Edit Mode Notice */}
+      {isEditMode && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start">
+            <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+            <div>
+              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+                Editing Employee Information
+              </h4>
+              <p className="text-xs text-blue-600 dark:text-blue-400">
+                You are editing existing employee data. Employee ID and email will only be validated if you change them.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Essential Information Section */}
       <div className="space-y-4">
         <h3 className={`text-sm font-semibold ${textSecondary} flex items-center`}>
@@ -166,8 +276,8 @@ const FormStep1BasicInfo = ({
             <FormField
               label="Employee ID"
               name="employee_id"
-              value={formData.employee_id}
-              onChange={handleInputChange}
+              value={formData.employee_id || ""}
+              onChange={handleFieldChange}
               required={true}
               placeholder="e.g., EMP001, HLD123"
               icon={<Hash size={14} className={textMuted} />}
@@ -175,12 +285,7 @@ const FormStep1BasicInfo = ({
                 validationErrors.employee_id || 
                 (employeeIdStatus.available === false ? "Employee ID already exists" : null)
               }
-              helpText={
-                employeeIdStatus.checking ? "Checking availability..." :
-                employeeIdStatus.available === true ? "Employee ID is available" :
-                employeeIdStatus.available === false ? "Employee ID already exists" :
-                "Unique identifier for the employee"
-              }
+              helpText={getEmployeeIdHelpText()}
             />
             {/* Validation indicator */}
             <div className="absolute top-8 right-3 flex items-center">
@@ -193,8 +298,8 @@ const FormStep1BasicInfo = ({
             <FormField
               label="Email Address"
               name="email"
-              value={formData.email}
-              onChange={handleInputChange}
+              value={formData.email || ""}
+              onChange={handleFieldChange}
               type="email"
               required={true}
               placeholder="john.doe@company.com"
@@ -203,12 +308,7 @@ const FormStep1BasicInfo = ({
                 validationErrors.email || 
                 (emailStatus.available === false ? "Email address already exists" : null)
               }
-              helpText={
-                emailStatus.checking ? "Checking availability..." :
-                emailStatus.available === true ? "Email is available" :
-                emailStatus.available === false ? "Email already exists" :
-                "Business email address for system access"
-              }
+              helpText={getEmailHelpText()}
             />
             {/* Validation indicator */}
             <div className="absolute top-8 right-3 flex items-center">
@@ -229,7 +329,7 @@ const FormStep1BasicInfo = ({
           <FormField
             label="First Name"
             name="first_name"
-            value={formData.first_name}
+            value={formData.first_name || ""}
             onChange={handleInputChange}
             required={true}
             placeholder="John"
@@ -241,7 +341,7 @@ const FormStep1BasicInfo = ({
           <FormField
             label="Last Name"
             name="last_name"
-            value={formData.last_name}
+            value={formData.last_name || ""}
             onChange={handleInputChange}
             required={true}
             placeholder="Doe"
@@ -255,7 +355,7 @@ const FormStep1BasicInfo = ({
           <FormField
             label="Phone Number"
             name="phone"
-            value={formData.phone}
+            value={formData.phone || ""}
             onChange={handleInputChange}
             type="tel"
             placeholder="+994 XX XXX XX XX"
@@ -267,7 +367,7 @@ const FormStep1BasicInfo = ({
           <FormField
             label="Date of Birth"
             name="date_of_birth"
-            value={formData.date_of_birth}
+            value={formData.date_of_birth || ""}
             onChange={handleInputChange}
             type="date"
             icon={<Calendar size={14} className={textMuted} />}
@@ -278,7 +378,7 @@ const FormStep1BasicInfo = ({
           <FormField
             label="Gender"
             name="gender"
-            value={formData.gender}
+            value={formData.gender || ""}
             onChange={handleInputChange}
             type="select"
             options={genderOptions}
@@ -292,7 +392,7 @@ const FormStep1BasicInfo = ({
         <FormField
           label="Address"
           name="address"
-          value={formData.address}
+          value={formData.address || ""}
           onChange={handleInputChange}
           type="textarea"
           placeholder="Complete residential address..."
@@ -305,7 +405,7 @@ const FormStep1BasicInfo = ({
         <FormField
           label="Emergency Contact"
           name="emergency_contact"
-          value={formData.emergency_contact}
+          value={formData.emergency_contact || ""}
           onChange={handleInputChange}
           placeholder="Name: Relationship: Phone Number"
           icon={<Phone size={14} className={textMuted} />}
@@ -340,21 +440,6 @@ const FormStep1BasicInfo = ({
           </div>
         </div>
       )}
-
-      {/* Data Privacy Notice */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
-        <h4 className={`text-sm font-medium text-blue-800 dark:text-blue-300 mb-2 flex items-center`}>
-          <AlertCircle size={16} className="mr-2" />
-          Data Privacy & Guidelines
-        </h4>
-        <div className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
-          <p>• <strong>Employee ID:</strong> Must be unique across the organization. Format: [BU][Number] (e.g., HLD001, TRD015)</p>
-          <p>• <strong>Email:</strong> Will be used for system access and official communications</p>
-          <p>• <strong>Personal Data:</strong> All personal information is encrypted and stored securely</p>
-          <p>• <strong>Required Fields:</strong> Only Employee ID, Name, and Email are mandatory</p>
-          <p>• <strong>Data Access:</strong> Access is controlled based on user permissions and organizational hierarchy</p>
-        </div>
-      </div>
 
       {/* Validation Summary */}
       {Object.keys(validationErrors).length > 0 && (

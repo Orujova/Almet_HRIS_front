@@ -1,4 +1,4 @@
-// src/hooks/useReferenceData.js - Fixed with Helper Functions
+// src/hooks/useReferenceData.js - Fixed with Proper API Integration and Error Handling
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -35,29 +35,29 @@ export const useReferenceData = () => {
   const dispatch = useDispatch();
   
   // Raw data selectors
-  const businessFunctions = useSelector(selectBusinessFunctions);
-  const departments = useSelector(selectDepartments);
-  const units = useSelector(selectUnits);
-  const jobFunctions = useSelector(selectJobFunctions);
-  const positionGroups = useSelector(selectPositionGroups);
-  const employeeStatuses = useSelector(selectEmployeeStatuses);
-  const employeeTags = useSelector(selectEmployeeTags);
+  const businessFunctions = useSelector(selectBusinessFunctions) || [];
+  const departments = useSelector(selectDepartments) || [];
+  const units = useSelector(selectUnits) || [];
+  const jobFunctions = useSelector(selectJobFunctions) || [];
+  const positionGroups = useSelector(selectPositionGroups) || [];
+  const employeeStatuses = useSelector(selectEmployeeStatuses) || [];
+  const employeeTags = useSelector(selectEmployeeTags) || [];
   
   // Formatted data selectors for dropdowns
-  const businessFunctionsDropdown = useSelector(selectBusinessFunctionsForDropdown);
-  const departmentsDropdown = useSelector(selectDepartmentsForDropdown);
-  const unitsDropdown = useSelector(selectUnitsForDropdown);
-  const jobFunctionsDropdown = useSelector(selectJobFunctionsForDropdown);
-  const positionGroupsDropdown = useSelector(selectPositionGroupsForDropdown);
-  const employeeStatusesDropdown = useSelector(selectEmployeeStatusesForDropdown);
-  const employeeTagsDropdown = useSelector(selectEmployeeTagsForDropdown);
+  const businessFunctionsDropdown = useSelector(selectBusinessFunctionsForDropdown) || [];
+  const departmentsDropdown = useSelector(selectDepartmentsForDropdown) || [];
+  const unitsDropdown = useSelector(selectUnitsForDropdown) || [];
+  const jobFunctionsDropdown = useSelector(selectJobFunctionsForDropdown) || [];
+  const positionGroupsDropdown = useSelector(selectPositionGroupsForDropdown) || [];
+  const employeeStatusesDropdown = useSelector(selectEmployeeStatusesForDropdown) || [];
+  const employeeTagsDropdown = useSelector(selectEmployeeTagsForDropdown) || [];
   
   // Combined data for forms
-  const formData = useSelector(selectReferenceDataForEmployeeForm);
+  const formData = useSelector(selectReferenceDataForEmployeeForm) || {};
   
   // Loading and error states
-  const loading = useSelector(selectReferenceDataLoading);
-  const error = useSelector(selectReferenceDataError);
+  const loading = useSelector(selectReferenceDataLoading) || {};
+  const error = useSelector(selectReferenceDataError) || {};
 
   // Actions
   const actions = {
@@ -103,54 +103,63 @@ export const useReferenceData = () => {
     }, [dispatch]),
   };
 
-  // Helper functions with proper error handling
+  // Helper functions with proper error handling and null checks
   const helpers = {
-    // Get specific items by ID
+    // Get specific items by ID with safe null checking
     getBusinessFunctionById: useCallback((id) => {
       if (!id || !Array.isArray(businessFunctions)) return null;
-      return businessFunctions.find(bf => bf.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return businessFunctions.find(bf => bf.id === numericId) || null;
     }, [businessFunctions]),
     
     getDepartmentById: useCallback((id) => {
       if (!id || !Array.isArray(departments)) return null;
-      return departments.find(dept => dept.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return departments.find(dept => dept.id === numericId) || null;
     }, [departments]),
     
     getUnitById: useCallback((id) => {
       if (!id || !Array.isArray(units)) return null;
-      return units.find(unit => unit.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return units.find(unit => unit.id === numericId) || null;
     }, [units]),
     
     getJobFunctionById: useCallback((id) => {
       if (!id || !Array.isArray(jobFunctions)) return null;
-      return jobFunctions.find(jf => jf.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return jobFunctions.find(jf => jf.id === numericId) || null;
     }, [jobFunctions]),
     
     getPositionGroupById: useCallback((id) => {
       if (!id || !Array.isArray(positionGroups)) return null;
-      return positionGroups.find(pg => pg.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return positionGroups.find(pg => pg.id === numericId) || null;
     }, [positionGroups]),
     
     getEmployeeStatusById: useCallback((id) => {
       if (!id || !Array.isArray(employeeStatuses)) return null;
-      return employeeStatuses.find(status => status.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return employeeStatuses.find(status => status.id === numericId) || null;
     }, [employeeStatuses]),
     
     getEmployeeTagById: useCallback((id) => {
       if (!id || !Array.isArray(employeeTags)) return null;
-      return employeeTags.find(tag => tag.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return employeeTags.find(tag => tag.id === numericId) || null;
     }, [employeeTags]),
     
     // Get departments for specific business function
     getDepartmentsByBusinessFunction: useCallback((businessFunctionId) => {
       if (!businessFunctionId || !Array.isArray(departments)) return [];
-      return departments.filter(dept => dept.business_function === parseInt(businessFunctionId));
+      const numericId = typeof businessFunctionId === 'string' ? parseInt(businessFunctionId) : businessFunctionId;
+      return departments.filter(dept => dept.business_function === numericId);
     }, [departments]),
     
     // Get units for specific department
     getUnitsByDepartment: useCallback((departmentId) => {
       if (!departmentId || !Array.isArray(units)) return [];
-      return units.filter(unit => unit.department === parseInt(departmentId));
+      const numericId = typeof departmentId === 'string' ? parseInt(departmentId) : departmentId;
+      return units.filter(unit => unit.department === numericId);
     }, [units]),
     
     // Get tags by type
@@ -159,19 +168,22 @@ export const useReferenceData = () => {
       return employeeTags.filter(tag => tag.tag_type === tagType);
     }, [employeeTags]),
     
-    // Validation helpers
+    // Validation helpers with improved error handling
     isValidBusinessFunction: useCallback((id) => {
       if (!id || !Array.isArray(businessFunctions)) return false;
-      return businessFunctions.some(bf => bf.id === parseInt(id) && bf.is_active !== false);
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      return businessFunctions.some(bf => bf.id === numericId && bf.is_active !== false);
     }, [businessFunctions]),
     
     isValidDepartment: useCallback((id, businessFunctionId = null) => {
       if (!id || !Array.isArray(departments)) return false;
-      const department = departments.find(dept => dept.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      const department = departments.find(dept => dept.id === numericId);
       if (!department || department.is_active === false) return false;
       
       if (businessFunctionId) {
-        return department.business_function === parseInt(businessFunctionId);
+        const numericBfId = typeof businessFunctionId === 'string' ? parseInt(businessFunctionId) : businessFunctionId;
+        return department.business_function === numericBfId;
       }
       
       return true;
@@ -179,11 +191,13 @@ export const useReferenceData = () => {
     
     isValidUnit: useCallback((id, departmentId = null) => {
       if (!id || !Array.isArray(units)) return false;
-      const unit = units.find(u => u.id === parseInt(id));
+      const numericId = typeof id === 'string' ? parseInt(id) : id;
+      const unit = units.find(u => u.id === numericId);
       if (!unit || unit.is_active === false) return false;
       
       if (departmentId) {
-        return unit.department === parseInt(departmentId);
+        const numericDeptId = typeof departmentId === 'string' ? parseInt(departmentId) : departmentId;
+        return unit.department === numericDeptId;
       }
       
       return true;
@@ -202,16 +216,16 @@ export const useReferenceData = () => {
     isAnyLoading: useCallback(() => Object.values(loading || {}).some(Boolean), [loading]),
     hasAnyError: useCallback(() => Object.values(error || {}).some(err => err !== null), [error]),
 
-    // Get formatted options for dropdowns
+    // Get formatted options for dropdowns with safe transformation
     getFormattedBusinessFunctions: useCallback(() => {
       if (!Array.isArray(businessFunctions)) return [];
       return businessFunctions
-        .filter(bf => bf.is_active !== false)
+        .filter(bf => bf && bf.is_active !== false)
         .map(bf => ({
-          value: bf.id,
-          label: bf.name,
-          code: bf.code,
-          employee_count: bf.employee_count
+          value: bf.id?.toString() || '',
+          label: bf.name || 'Unknown',
+          code: bf.code || '',
+          employee_count: bf.employee_count || 0
         }));
     }, [businessFunctions]),
 
@@ -219,18 +233,19 @@ export const useReferenceData = () => {
       let filteredDepartments = Array.isArray(departments) ? departments : [];
       
       if (businessFunctionId) {
+        const numericId = typeof businessFunctionId === 'string' ? parseInt(businessFunctionId) : businessFunctionId;
         filteredDepartments = filteredDepartments.filter(
-          dept => dept.business_function === parseInt(businessFunctionId)
+          dept => dept && dept.business_function === numericId
         );
       }
       
       return filteredDepartments
-        .filter(dept => dept.is_active !== false)
+        .filter(dept => dept && dept.is_active !== false)
         .map(dept => ({
-          value: dept.id,
-          label: dept.name,
+          value: dept.id?.toString() || '',
+          label: dept.name || 'Unknown',
           business_function: dept.business_function,
-          business_function_name: dept.business_function_name
+          business_function_name: dept.business_function_name || ''
         }));
     }, [departments]),
 
@@ -238,54 +253,55 @@ export const useReferenceData = () => {
       let filteredUnits = Array.isArray(units) ? units : [];
       
       if (departmentId) {
+        const numericId = typeof departmentId === 'string' ? parseInt(departmentId) : departmentId;
         filteredUnits = filteredUnits.filter(
-          unit => unit.department === parseInt(departmentId)
+          unit => unit && unit.department === numericId
         );
       }
       
       return filteredUnits
-        .filter(unit => unit.is_active !== false)
+        .filter(unit => unit && unit.is_active !== false)
         .map(unit => ({
-          value: unit.id,
-          label: unit.name,
+          value: unit.id?.toString() || '',
+          label: unit.name || 'Unknown',
           department: unit.department,
-          department_name: unit.department_name
+          department_name: unit.department_name || ''
         }));
     }, [units]),
 
     getFormattedJobFunctions: useCallback(() => {
       if (!Array.isArray(jobFunctions)) return [];
       return jobFunctions
-        .filter(jf => jf.is_active !== false)
+        .filter(jf => jf && jf.is_active !== false)
         .map(jf => ({
-          value: jf.id,
-          label: jf.name,
-          description: jf.description
+          value: jf.id?.toString() || '',
+          label: jf.name || 'Unknown',
+          description: jf.description || ''
         }));
     }, [jobFunctions]),
 
     getFormattedPositionGroups: useCallback(() => {
       if (!Array.isArray(positionGroups)) return [];
       return positionGroups
-        .filter(pg => pg.is_active !== false)
+        .filter(pg => pg && pg.is_active !== false)
         .sort((a, b) => (a.hierarchy_level || 0) - (b.hierarchy_level || 0))
         .map(pg => ({
-          value: pg.id,
-          label: pg.display_name || pg.name,
-          hierarchy_level: pg.hierarchy_level,
-          grading_levels: pg.grading_levels
+          value: pg.id?.toString() || '',
+          label: pg.display_name || pg.name || 'Unknown',
+          hierarchy_level: pg.hierarchy_level || 0,
+          grading_levels: pg.grading_levels || []
         }));
     }, [positionGroups]),
 
     getFormattedEmployeeStatuses: useCallback(() => {
       if (!Array.isArray(employeeStatuses)) return [];
       return employeeStatuses
-        .filter(status => status.is_active !== false)
+        .filter(status => status && status.is_active !== false)
         .map(status => ({
-          value: status.id,
-          label: status.name,
-          status_type: status.status_type,
-          color: status.color
+          value: status.id?.toString() || '',
+          label: status.name || 'Unknown',
+          status_type: status.status_type || '',
+          color: status.color || '#gray'
         }));
     }, [employeeStatuses]),
 
@@ -293,56 +309,134 @@ export const useReferenceData = () => {
       let filteredTags = Array.isArray(employeeTags) ? employeeTags : [];
       
       if (tagType) {
-        filteredTags = filteredTags.filter(tag => tag.tag_type === tagType);
+        filteredTags = filteredTags.filter(tag => tag && tag.tag_type === tagType);
       }
       
       return filteredTags
-        .filter(tag => tag.is_active !== false)
+        .filter(tag => tag && tag.is_active !== false)
         .map(tag => ({
-          value: tag.id,
-          label: tag.name,
-          tag_type: tag.tag_type,
-          color: tag.color
+          value: tag.id?.toString() || '',
+          label: tag.name || 'Unknown',
+          tag_type: tag.tag_type || '',
+          color: tag.color || '#gray'
         }));
-    }, [employeeTags])
+    }, [employeeTags]),
+
+    // Safe array access helpers
+    safeGetArray: useCallback((arrayName) => {
+      const arrays = {
+        businessFunctions,
+        departments,
+        units,
+        jobFunctions,
+        positionGroups,
+        employeeStatuses,
+        employeeTags
+      };
+      
+      const array = arrays[arrayName];
+      return Array.isArray(array) ? array : [];
+    }, [businessFunctions, departments, units, jobFunctions, positionGroups, employeeStatuses, employeeTags]),
+
+    // Error handling helpers
+    getErrorMessage: useCallback((errorKey) => {
+      if (!error || typeof error !== 'object') return null;
+      const errorValue = error[errorKey];
+      
+      if (typeof errorValue === 'string') return errorValue;
+      if (errorValue && typeof errorValue === 'object' && errorValue.message) return errorValue.message;
+      if (errorValue && typeof errorValue === 'object' && errorValue.detail) return errorValue.detail;
+      
+      return null;
+    }, [error]),
+
+    hasError: useCallback((errorKey) => {
+      const errorMessage = helpers.getErrorMessage(errorKey);
+      return errorMessage !== null;
+    }, [error]),
+
+    // Loading state helpers
+    isLoading: useCallback((loadingKey) => {
+      if (!loading || typeof loading !== 'object') return false;
+      return Boolean(loading[loadingKey]);
+    }, [loading]),
+
+    // Hierarchical validation
+    validateHierarchy: useCallback((businessFunctionId, departmentId, unitId) => {
+      const validation = {
+        isValid: true,
+        errors: []
+      };
+
+      // Validate business function
+      if (businessFunctionId && !helpers.isValidBusinessFunction(businessFunctionId)) {
+        validation.isValid = false;
+        validation.errors.push('Invalid business function selected');
+      }
+
+      // Validate department belongs to business function
+      if (departmentId && !helpers.isValidDepartment(departmentId, businessFunctionId)) {
+        validation.isValid = false;
+        validation.errors.push('Department does not belong to selected business function');
+      }
+
+      // Validate unit belongs to department
+      if (unitId && !helpers.isValidUnit(unitId, departmentId)) {
+        validation.isValid = false;
+        validation.errors.push('Unit does not belong to selected department');
+      }
+
+      return validation;
+    }, [])
   };
 
   // Auto-fetch basic reference data on mount
   useEffect(() => {
-    actions.fetchBusinessFunctions();
-    actions.fetchJobFunctions();
-    actions.fetchPositionGroups();
-    actions.fetchEmployeeStatuses();
-    actions.fetchEmployeeTags();
+    if (!helpers.hasBusinessFunctions() && !loading.businessFunctions) {
+      actions.fetchBusinessFunctions();
+    }
+    if (!helpers.hasJobFunctions() && !loading.jobFunctions) {
+      actions.fetchJobFunctions();
+    }
+    if (!helpers.hasPositionGroups() && !loading.positionGroups) {
+      actions.fetchPositionGroups();
+    }
+    if (!helpers.hasEmployeeStatuses() && !loading.employeeStatuses) {
+      actions.fetchEmployeeStatuses();
+    }
+    if (!helpers.hasEmployeeTags() && !loading.employeeTags) {
+      actions.fetchEmployeeTags();
+    }
   }, []);
 
+  // Return comprehensive interface
   return {
-    // Raw data
-    businessFunctions: businessFunctions || [],
-    departments: departments || [],
-    units: units || [],
-    jobFunctions: jobFunctions || [],
-    positionGroups: positionGroups || [],
-    employeeStatuses: employeeStatuses || [],
-    employeeTags: employeeTags || [],
+    // Raw data (with safe defaults)
+    businessFunctions,
+    departments,
+    units,
+    jobFunctions,
+    positionGroups,
+    employeeStatuses,
+    employeeTags,
     
-    // Formatted data for dropdowns
-    businessFunctionsDropdown: businessFunctionsDropdown || [],
-    departmentsDropdown: departmentsDropdown || [],
-    unitsDropdown: unitsDropdown || [],
-    jobFunctionsDropdown: jobFunctionsDropdown || [],
-    positionGroupsDropdown: positionGroupsDropdown || [],
-    employeeStatusesDropdown: employeeStatusesDropdown || [],
-    employeeTagsDropdown: employeeTagsDropdown || [],
+    // Formatted data for dropdowns (with safe defaults)
+    businessFunctionsDropdown,
+    departmentsDropdown,
+    unitsDropdown,
+    jobFunctionsDropdown,
+    positionGroupsDropdown,
+    employeeStatusesDropdown,
+    employeeTagsDropdown,
     
     // Combined form data
-    formData: formData || {},
+    formData,
     
-    // Loading states
-    loading: loading || {},
+    // Loading states (with safe default)
+    loading,
     
-    // Error states
-    error: error || {},
+    // Error states (with safe default)
+    error,
     
     // Actions
     ...actions,
@@ -385,8 +479,10 @@ export const useHierarchicalReferenceData = () => {
 
   // Load business functions on mount
   useEffect(() => {
-    dispatch(fetchBusinessFunctions());
-  }, [dispatch]);
+    if (businessFunctions.length === 0 && !loading.businessFunctions) {
+      dispatch(fetchBusinessFunctions());
+    }
+  }, [dispatch, businessFunctions.length, loading.businessFunctions]);
 
   return {
     // Data
@@ -422,7 +518,7 @@ export const useHierarchicalReferenceData = () => {
   };
 };
 
-// Hook for position group grading levels
+// Hook for position group grading levels with enhanced error handling
 export const usePositionGroupGradingLevels = (positionGroupId) => {
   const [gradingLevels, setGradingLevels] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -435,13 +531,18 @@ export const usePositionGroupGradingLevels = (positionGroupId) => {
       
       // Import and use the API service
       import('../services/api').then(({ apiService }) => {
-        return apiService.getPositionGroupGradingLevels(positionGroupId);
+        return apiService.get(`/position-groups/${positionGroupId}/grading_levels/`);
       })
       .then(response => {
-        setGradingLevels(response.data.levels || []);
+        const levels = response.data?.levels || response.data || [];
+        setGradingLevels(Array.isArray(levels) ? levels : []);
       })
       .catch(err => {
-        setError(err.response?.data?.error || err.message || 'Failed to fetch grading levels');
+        const errorMessage = err.response?.data?.error || 
+                           err.response?.data?.detail || 
+                           err.message || 
+                           'Failed to fetch grading levels';
+        setError(errorMessage);
         setGradingLevels([]);
       })
       .finally(() => {
@@ -449,12 +550,14 @@ export const usePositionGroupGradingLevels = (positionGroupId) => {
       });
     } else {
       setGradingLevels([]);
+      setError(null);
     }
   }, [positionGroupId]);
   
   return {
     gradingLevels,
     loading,
-    error
+    error,
+    hasLevels: Array.isArray(gradingLevels) && gradingLevels.length > 0
   };
 };

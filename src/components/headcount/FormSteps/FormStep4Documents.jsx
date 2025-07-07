@@ -237,61 +237,7 @@ const FormStep4Documents = ({
         </div>
       </div>
 
-      {/* Final Review Section */}
-      <div className="mt-8 p-4 border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 rounded-lg">
-        <div className="flex items-center mb-2">
-          <Check size={16} className="text-green-500 mr-2" />
-          <h3 className={`text-green-800 dark:text-green-300 text-sm font-medium`}>Ready to Submit</h3>
-        </div>
-        <p className={`text-green-700 dark:text-green-400 text-xs mb-3`}>
-          Please review all information before submitting. You can edit the employee's information and upload additional documents at any time after submission.
-        </p>
-        
-        {/* Summary Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-          <div className="p-2 bg-white dark:bg-gray-800 rounded">
-            <p className={`${textMuted} text-xs uppercase font-medium`}>Name</p>
-            <p className={`${textPrimary} font-medium text-xs`}>
-              {formData.first_name} {formData.last_name}
-            </p>
-          </div>
-          
-          <div className="p-2 bg-white dark:bg-gray-800 rounded">
-            <p className={`${textMuted} text-xs uppercase font-medium`}>Job Title</p>
-            <p className={`${textPrimary} font-medium text-xs`}>
-              {formData.job_title || 'Not specified'}
-            </p>
-          </div>
-          
-          <div className="p-2 bg-white dark:bg-gray-800 rounded">
-            <p className={`${textMuted} text-xs uppercase font-medium`}>Position Group</p>
-            <p className={`${textPrimary} font-medium text-xs`}>
-              {formData.position_group_name || 'Not specified'}
-            </p>
-          </div>
-          
-          <div className="p-2 bg-white dark:bg-gray-800 rounded">
-            <p className={`${textMuted} text-xs uppercase font-medium`}>Contract</p>
-            <p className={`${textPrimary} font-medium text-xs`}>
-              {formData.contract_duration || 'PERMANENT'}
-            </p>
-          </div>
-          
-          <div className="p-2 bg-white dark:bg-gray-800 rounded">
-            <p className={`${textMuted} text-xs uppercase font-medium`}>Documents</p>
-            <p className={`${textPrimary} font-medium text-xs`}>
-              {formData.documents?.length || 0} uploaded
-            </p>
-          </div>
-          
-          <div className="p-2 bg-white dark:bg-gray-800 rounded">
-            <p className={`${textMuted} text-xs uppercase font-medium`}>Tags</p>
-            <p className={`${textPrimary} font-medium text-xs`}>
-              {formData.tag_ids?.length || 0} selected
-            </p>
-          </div>
-        </div>
-      </div>
+    
     </div>
   );
 };

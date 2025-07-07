@@ -440,21 +440,7 @@ const AddEmployeePage = () => {
               </div>
             </div>
 
-            {/* Quick tips */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start">
-                <Info className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
-                    Quick Start Tips
-                  </h3>
-                  <p className="text-sm text-blue-600 dark:text-blue-400">
-                    Employee status and grading are automatically managed. Document upload is optional. 
-                    Click the help buttons above for detailed guidance on each feature.
-                  </p>
-                </div>
-              </div>
-            </div>
+           
           </div>
 
           {/* Employee Form */}
