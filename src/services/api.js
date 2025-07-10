@@ -355,16 +355,6 @@ export const apiService = {
   getEmployeeGrading: () => api.get("/employee-grading/"),
   bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
 
-  // ========================================
-  // HEADCOUNT SUMMARIES ENDPOINTS
-  // ========================================
-  getHeadcountSummaries: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/headcount-summaries/?${queryString}`);
-  },
-  getHeadcountSummary: (id) => api.get(`/headcount-summaries/${id}/`),
-  generateCurrentHeadcountSummary: () => api.post("/headcount-summaries/generate_current/"),
-  getLatestHeadcountSummary: () => api.get("/headcount-summaries/latest/"),
 
   // ========================================
   // VACANT POSITIONS ENDPOINTS
