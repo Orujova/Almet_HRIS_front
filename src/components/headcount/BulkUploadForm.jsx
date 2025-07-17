@@ -1,4 +1,4 @@
-// src/components/headcount/BulkUploadForm.jsx - Fixed and optimized (keeping existing)
+// src/components/headcount/BulkUploadForm.jsx - FIXED with downloadTemplate function
 import { useState, useCallback } from "react";
 import { 
   Upload, 
@@ -12,14 +12,28 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
+import { useEmployees } from "../../hooks/useEmployees";
 
 /**
- * Bulk Employee Upload Form Component - Optimized
+ * Bulk Employee Upload Form Component - Fixed with template download
  * Handles Excel file import/export for employee data
  * Prevents multiple uploads and provides better UX
  */
 const BulkUploadForm = ({ onClose, onImportComplete }) => {
   const { darkMode } = useTheme();
+  
+  // ========================================
+  // HOOKS - Access to employee operations
+  // ========================================
+  const {
+    downloadEmployeeTemplate,
+    bulkUploadEmployees,
+    loading
+  } = useEmployees();
+
+  // ========================================
+  // LOCAL STATE
+  // ========================================
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -37,7 +51,34 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
     ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
     : "bg-gray-100 hover:bg-gray-200 text-gray-700";
 
- 
+  // ========================================
+  // DOWNLOAD TEMPLATE FUNCTION - FIXED
+  // ========================================
+  const downloadTemplate = useCallback(async () => {
+    try {
+      console.log('📄 Starting template download...');
+      setIsProcessing(true);
+      
+      const result = await downloadEmployeeTemplate();
+      console.log('✅ Template download completed:', result);
+      
+      // The downloadEmployeeTemplate function should handle the actual file download
+      // If it doesn't, we can show a success message
+      if (result) {
+        alert('✅ Template downloaded successfully!');
+      }
+    } catch (error) {
+      console.error('❌ Template download failed:', error);
+      alert('❌ Failed to download template: ' + (error.message || 'Unknown error'));
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [downloadEmployeeTemplate]);
+
+  // ========================================
+  // DRAG AND DROP HANDLERS
+  // ========================================
+  
   // Handle drag events
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -70,8 +111,14 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
     }
   }, []);
 
+  // ========================================
+  // FILE VALIDATION
+  // ========================================
+  
   // Validate selected file
   const handleFileValidation = useCallback((file) => {
+    console.log('📁 Validating file:', file.name, file.type, file.size);
+    
     // Reset previous state
     setUploadResults(null);
     setValidationErrors([]);
@@ -84,110 +131,141 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
     ];
     
     if (!allowedTypes.includes(file.type)) {
-      alert('Please upload a valid Excel (.xlsx, .xls) or CSV (.csv) file');
+      alert('❌ Please upload a valid Excel (.xlsx, .xls) or CSV (.csv) file');
       return;
     }
 
     // Validate file size (10MB limit)
     if (file.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
+      alert('❌ File size must be less than 10MB');
       return;
     }
 
+    console.log('✅ File validation passed');
     setUploadedFile(file);
   }, []);
 
-  // Process uploaded file
+  // ========================================
+  // FILE PROCESSING
+  // ========================================
+  
+  // Process uploaded file for validation
   const processUpload = useCallback(async () => {
     if (!uploadedFile || isProcessing) return;
 
+    console.log('🔄 Processing upload:', uploadedFile.name);
     setIsProcessing(true);
     
     try {
-      // Create FormData
-      const formData = new FormData();
-      formData.append('file', uploadedFile);
-
-      // Mock API call - replace with actual endpoint
-      const response = await fetch('/api/employees/bulk-import/', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const result = await response.json();
+      // Use the bulkUploadEmployees hook function
+      const result = await bulkUploadEmployees(uploadedFile);
+      console.log('✅ Upload processing result:', result);
+      
+      // Extract results from the API response
+      const uploadData = result.payload || result.data || result;
       
       setUploadResults({
-        totalRows: result.total_rows || 0,
-        validRows: result.valid_rows || 0,
-        invalidRows: result.invalid_rows || 0,
-        errors: result.errors || []
+        totalRows: uploadData.total_rows || uploadData.total || 0,
+        validRows: uploadData.valid_rows || uploadData.successful || 0,
+        invalidRows: uploadData.invalid_rows || uploadData.errors?.length || 0,
+        errors: uploadData.errors || [],
+        fileId: uploadData.file_id || uploadData.id
       });
 
-      setValidationErrors(result.errors || []);
+      setValidationErrors(uploadData.errors || []);
+
+      // If there are no validation errors and we have valid rows, we can proceed directly
+      if (uploadData.successful > 0 && (!uploadData.errors || uploadData.errors.length === 0)) {
+        console.log('✅ Upload completed successfully with no validation errors');
+        
+        // Call completion callback
+        if (onImportComplete) {
+          onImportComplete({
+            imported_count: uploadData.successful,
+            total_rows: uploadData.total_rows || uploadData.total,
+            errors: uploadData.errors || []
+          });
+        }
+        
+        // Close modal
+        onClose();
+        return;
+      }
 
     } catch (error) {
-      console.error('Upload processing failed:', error);
-      alert('Failed to process file. Please try again.');
+      console.error('❌ Upload processing failed:', error);
+      
+      // Handle different error types
+      let errorMessage = 'Failed to process file. Please try again.';
+      
+      if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      alert(`❌ Upload failed: ${errorMessage}`);
+      
+      // Reset file if there was an error
+      setUploadedFile(null);
     } finally {
       setIsProcessing(false);
     }
-  }, [uploadedFile, isProcessing]);
+  }, [uploadedFile, isProcessing, bulkUploadEmployees, onImportComplete, onClose]);
 
-  // Confirm import
+  // ========================================
+  // IMPORT CONFIRMATION
+  // ========================================
+  
+  // Confirm import (if needed for validation-only mode)
   const confirmImport = useCallback(async () => {
     if (!uploadResults || uploadResults.validRows === 0) return;
+
+    console.log('✅ Confirming import of', uploadResults.validRows, 'employees');
 
     try {
       setIsProcessing(true);
 
-      // Mock API call for actual import
-      const response = await fetch('/api/employees/bulk-import/confirm/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          file_id: uploadResults.file_id // Assume we get this from previous call
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Import failed');
-      }
-
-      const result = await response.json();
+      // For some APIs, the upload might be a two-step process
+      // In this case, we might need a separate confirmation endpoint
+      // For now, we'll assume the upload was already processed
       
       // Call completion callback
       if (onImportComplete) {
-        onImportComplete(result);
+        onImportComplete({
+          imported_count: uploadResults.validRows,
+          total_rows: uploadResults.totalRows,
+          errors: uploadResults.errors || []
+        });
       }
 
       // Close modal
       onClose();
 
     } catch (error) {
-      console.error('Import failed:', error);
-      alert('Failed to import employees. Please try again.');
+      console.error('❌ Import confirmation failed:', error);
+      alert('❌ Failed to confirm import. Please try again.');
     } finally {
       setIsProcessing(false);
     }
   }, [uploadResults, onImportComplete, onClose]);
 
+  // ========================================
+  // FORM RESET
+  // ========================================
+  
   // Reset form
   const resetForm = useCallback(() => {
+    console.log('🔄 Resetting form');
     setUploadedFile(null);
     setUploadResults(null);
     setValidationErrors([]);
     setIsProcessing(false);
   }, []);
+
+  // ========================================
+  // RENDER
+  // ========================================
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -236,10 +314,20 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
               <div className="mb-6">
                 <button
                   onClick={downloadTemplate}
-                  className={`${btnSecondary} px-6 py-3 rounded-lg flex items-center font-medium transition-colors w-full sm:w-auto`}
+                  disabled={isProcessing || loading.template}
+                  className={`${btnSecondary} px-6 py-3 rounded-lg flex items-center font-medium transition-colors w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <Download size={20} className="mr-2" />
-                  Download Excel Template
+                  {isProcessing || loading.template ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mr-2"></div>
+                      Downloading...
+                    </>
+                  ) : (
+                    <>
+                      <Download size={20} className="mr-2" />
+                      Download Excel Template
+                    </>
+                  )}
                 </button>
                 <p className={`text-xs ${textMuted} mt-2`}>
                   Contains sample data and all required fields
@@ -302,6 +390,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                   <button
                     onClick={resetForm}
                     className={`text-red-500 hover:text-red-600 p-1`}
+                    disabled={isProcessing}
                   >
                     <X size={16} />
                   </button>
@@ -312,10 +401,10 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
               {!uploadResults && (
                 <button
                   onClick={processUpload}
-                  disabled={isProcessing}
-                  className={`${btnPrimary} px-6 py-3 rounded-lg font-medium w-full sm:w-auto flex items-center justify-center disabled:opacity-50`}
+                  disabled={isProcessing || loading.upload}
+                  className={`${btnPrimary} px-6 py-3 rounded-lg font-medium w-full sm:w-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {isProcessing ? (
+                  {isProcessing || loading.upload ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                       Processing File...
@@ -372,7 +461,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                       <div className="max-h-40 overflow-y-auto space-y-2">
                         {validationErrors.slice(0, 10).map((error, index) => (
                           <div key={index} className="text-sm text-red-700 dark:text-red-400">
-                            <span className="font-medium">Row {error.row}:</span> {error.message}
+                            <span className="font-medium">Row {error.row || index + 1}:</span> {error.message || error}
                             {error.value && (
                               <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-800 rounded text-xs">
                                 "{error.value}"
@@ -394,7 +483,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                     <button
                       onClick={confirmImport}
                       disabled={uploadResults.validRows === 0 || isProcessing}
-                      className={`${btnPrimary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50`}
+                      className={`${btnPrimary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {isProcessing ? (
                         <>
@@ -411,7 +500,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                     <button
                       onClick={resetForm}
                       disabled={isProcessing}
-                      className={`${btnSecondary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50`}
+                      className={`${btnSecondary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <Upload size={16} className="mr-2" />
                       Upload Different File

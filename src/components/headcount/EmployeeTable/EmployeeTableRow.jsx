@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Backend API Integration Fixed
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED Tag Display Issue
 "use client";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
@@ -58,6 +58,52 @@ const EmployeeTableRow = ({
     }
     return phone;
   };
+
+  // FIXED: Tag processing with safe handling
+  const getTagsToDisplay = () => {
+    const tags = [];
+    
+    // Handle tag_names array (string names)
+    if (employee.tag_names && Array.isArray(employee.tag_names)) {
+      employee.tag_names.forEach((tagItem, idx) => {
+        if (typeof tagItem === 'string') {
+          // If it's a string, create a simple tag object
+          tags.push({
+            id: `tag_name_${idx}`,
+            name: tagItem,
+            tag_type: 'other',
+            color: '#gray'
+          });
+        } else if (typeof tagItem === 'object' && tagItem.name) {
+          // If it's already an object with name property
+          tags.push({
+            id: tagItem.id || `tag_obj_${idx}`,
+            name: tagItem.name,
+            tag_type: tagItem.tag_type || tagItem.type || 'other',
+            color: tagItem.color || '#gray'
+          });
+        }
+      });
+    }
+    
+    // Handle tags array (full tag objects)
+    if (employee.tags && Array.isArray(employee.tags)) {
+      employee.tags.forEach((tag, idx) => {
+        if (typeof tag === 'object' && tag.name) {
+          tags.push({
+            id: tag.id || `tag_full_${idx}`,
+            name: tag.name,
+            tag_type: tag.tag_type || tag.type || 'other',
+            color: tag.color || '#gray'
+          });
+        }
+      });
+    }
+    
+    return tags;
+  };
+
+  const tagsToDisplay = getTagsToDisplay();
 
   // Row style with border color and selection state
   const rowStyle = {
@@ -222,18 +268,10 @@ const EmployeeTableRow = ({
               End: {formatDate(employee.end_date)}
             </div>
           )}
-          {/* <div className={`text-[10px] ${styles.textMuted}`}>
-            {employee.contract_duration_display || employee.contract_duration || 'Unknown'}
-          </div>
-          {employee.years_of_service !== undefined && (
-            <div className={`text-[10px] ${styles.textMuted}`}>
-              {employee.years_of_service} yrs
-            </div>
-          )} */}
         </div>
       </td>
 
-      {/* Status & Tags */}
+      {/* Status & Tags - FIXED */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col justify-center space-y-1">
           <EmployeeStatusBadge 
@@ -242,29 +280,19 @@ const EmployeeTableRow = ({
             size="sm"
           />
           <div className="flex flex-wrap justify-center gap-1">
-            {employee.tag_names && employee.tag_names.length > 0 && 
-              employee.tag_names.slice(0, 3).map((tagName, idx) => (
-                <EmployeeTag 
-                  key={idx} 
-                  tag={{ name: tagName, tag_type: 'other' }}
-                  size="xs"
-                />
-              ))
-            }
-            {employee.tag_names && employee.tag_names.length > 3 && (
+            {/* FIXED: Display processed tags safely */}
+            {tagsToDisplay.slice(0, 3).map((tag, idx) => (
+              <EmployeeTag 
+                key={`tag-${tag.id || idx}`}
+                tag={tag}
+                size="xs"
+              />
+            ))}
+            {tagsToDisplay.length > 3 && (
               <span className={`text-xs ${styles.textMuted}`}>
-                +{employee.tag_names.length - 3}
+                +{tagsToDisplay.length - 3}
               </span>
             )}
-            {employee.tags && employee.tags.length > 0 &&
-              employee.tags.slice(0, 2).map((tag, idx) => (
-                <EmployeeTag 
-                  key={tag.id || idx} 
-                  tag={tag}
-                  size="xs"
-                />
-              ))
-            }
           </div>
         </div>
       </td>

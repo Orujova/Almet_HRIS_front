@@ -1,4 +1,4 @@
-// src/store/api/employeeAPI.js - Complete Employee API with all endpoints including grading
+// src/store/api/employeeAPI.js - UPDATED with complete backend integration
 import { apiService } from '../../services/api';
 
 export const employeeAPI = {
@@ -112,12 +112,13 @@ export const employeeAPI = {
     const backendData = {
       // Basic Information
       employee_id: data.employeeId || data.employee_id,
-      first_name: data.firstName || data.first_name || data.name,
-      last_name: data.lastName || data.last_name || data.surname,
+      first_name: data.firstName || data.first_name || data.name?.split(' ')[0],
+      last_name: data.lastName || data.last_name || data.name?.split(' ').slice(1).join(' '),
       email: data.email,
       phone: data.phone,
       gender: data.gender,
       date_of_birth: data.dateOfBirth || data.date_of_birth,
+      father_name: data.fatherName || data.father_name,
       address: data.address,
       emergency_contact: data.emergencyContact || data.emergency_contact,
       profile_image: data.profileImage || data.profile_image,
@@ -141,7 +142,9 @@ export const employeeAPI = {
       end_date: data.endDate || data.end_date,
       contract_duration: data.contractDuration || data.contract_duration,
       contract_start_date: data.contractStartDate || data.contract_start_date,
-      contract_end_date: data.contractEndDate || data.contract_end_date,
+      contract_extensions: data.contractExtensions || data.contract_extensions || 0,
+      last_extension_date: data.lastExtensionDate || data.last_extension_date,
+      renewal_status: data.renewalStatus || data.renewal_status || 'PENDING',
       
       // Visibility
       is_visible_in_org_chart: data.isVisibleInOrgChart !== undefined ? data.isVisibleInOrgChart : true,
@@ -160,12 +163,13 @@ export const employeeAPI = {
     // Similar mapping for update
     const backendData = {
       employee_id: data.employeeId || data.employee_id,
-      first_name: data.firstName || data.first_name || data.name,
-      last_name: data.lastName || data.last_name || data.surname,
+      first_name: data.firstName || data.first_name || data.name?.split(' ')[0],
+      last_name: data.lastName || data.last_name || data.name?.split(' ').slice(1).join(' '),
       email: data.email,
       phone: data.phone,
       gender: data.gender,
       date_of_birth: data.dateOfBirth || data.date_of_birth,
+      father_name: data.fatherName || data.father_name,
       address: data.address,
       emergency_contact: data.emergencyContact || data.emergency_contact,
       profile_image: data.profileImage || data.profile_image,
@@ -181,7 +185,9 @@ export const employeeAPI = {
       end_date: data.endDate || data.end_date,
       contract_duration: data.contractDuration || data.contract_duration,
       contract_start_date: data.contractStartDate || data.contract_start_date,
-      contract_end_date: data.contractEndDate || data.contract_end_date,
+      contract_extensions: data.contractExtensions || data.contract_extensions,
+      last_extension_date: data.lastExtensionDate || data.last_extension_date,
+      renewal_status: data.renewalStatus || data.renewal_status,
       is_visible_in_org_chart: data.isVisibleInOrgChart,
       notes: data.notes,
       tag_ids: data.tags || data.tagIds || [],
@@ -197,10 +203,16 @@ export const employeeAPI = {
   delete: (id) => apiService.deleteEmployee(id),
   
   // ========================================
+  // EMPLOYEE SPECIFIC DETAILS
+  // ========================================
+  getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
+  getDirectReports: (employeeId) => apiService.getEmployeeDirectReports(employeeId),
+  getStatusPreview: (employeeId) => apiService.getEmployeeStatusPreview(employeeId),
+  
+  // ========================================
   // EMPLOYEE STATISTICS AND ANALYTICS
   // ========================================
   getStatistics: () => apiService.getEmployeeStatistics(),
-  getFilterOptions: () => apiService.getEmployeeFilterOptions(),
   
   // ========================================
   // BULK OPERATIONS
@@ -209,28 +221,29 @@ export const employeeAPI = {
   bulkDelete: (ids) => apiService.bulkDeleteEmployees(ids),
   softDelete: (ids) => apiService.softDeleteEmployees(ids),
   restore: (ids) => apiService.restoreEmployees(ids),
-  bulkCreate: (data) => apiService.bulkCreateEmployees(data),
+  bulkUpload: (file) => apiService.bulkUploadEmployees(file),
   
   // ========================================
   // TAG MANAGEMENT
   // ========================================
   addTag: (data) => apiService.addEmployeeTag(data),
   removeTag: (data) => apiService.removeEmployeeTag(data),
-  bulkAddTags: (employeeIds, tagIds) => apiService.bulkAddTags(employeeIds, tagIds),
-  bulkRemoveTags: (employeeIds, tagIds) => apiService.bulkRemoveTags(employeeIds, tagIds),
-  
-  // ========================================
-  // STATUS MANAGEMENT
-  // ========================================
-  updateStatus: (employeeIds) => apiService.updateEmployeeStatus(employeeIds),
-  autoUpdateStatuses: () => apiService.autoUpdateStatuses(),
+  bulkAddTags: (employeeIds, tagId) => apiService.bulkAddTags(employeeIds, tagId),
+  bulkRemoveTags: (employeeIds, tagId) => apiService.bulkRemoveTags(employeeIds, tagId),
   
   // ========================================
   // LINE MANAGER MANAGEMENT
   // ========================================
-  getLineManagers: (params) => apiService.getLineManagers(params),
-  updateLineManager: (employeeId, lineManagerId) => apiService.updateLineManager(employeeId, lineManagerId),
-  bulkUpdateLineManager: (employeeIds, lineManagerId) => apiService.bulkUpdateLineManager(employeeIds, lineManagerId),
+  assignLineManager: (data) => apiService.assignLineManager(data),
+  bulkAssignLineManager: (data) => apiService.bulkAssignLineManager(data),
+  
+  // ========================================
+  // CONTRACT MANAGEMENT
+  // ========================================
+  extendContract: (data) => apiService.extendEmployeeContract(data),
+  bulkExtendContracts: (data) => apiService.bulkExtendContracts(data),
+  getContractExpiryAlerts: (params) => apiService.getContractExpiryAlerts(params),
+  getContractsExpiringSoon: (params) => apiService.getContractsExpiringSoon(params),
   
   // ========================================
   // EXPORT AND TEMPLATES
@@ -238,11 +251,6 @@ export const employeeAPI = {
   export: (params = {}) => apiService.exportEmployees(params),
   downloadTemplate: () => apiService.downloadEmployeeTemplate(),
   
-  // ========================================
-  // ACTIVITIES AND AUDIT TRAIL
-  // ========================================
-  getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
-
   // ========================================
   // GRADING MANAGEMENT
   // ========================================
@@ -259,16 +267,12 @@ export const employeeAPI = {
   getOrgChart: (params) => apiService.getOrgChart(params),
   getOrgChartNode: (id) => apiService.getOrgChartNode(id),
   getOrgChartFullTree: () => apiService.getOrgChartFullTree(),
-};
-
-// ========================================
-// HEADCOUNT ANALYTICS API
-// ========================================
-export const headcountAPI = {
-  getSummaries: (params) => apiService.getHeadcountSummaries(params),
-  getSummary: (id) => apiService.getHeadcountSummary(id),
-  getLatest: () => apiService.getLatestHeadcountSummary(),
-  generateCurrent: () => apiService.generateCurrentHeadcountSummary(),
+  getOrganizationalHierarchy: (params) => apiService.getOrganizationalHierarchy(params),
+  
+  // ========================================
+  // EMPLOYEE ANALYTICS
+  // ========================================
+  getAnalytics: (params) => apiService.getEmployeeAnalytics(params),
 };
 
 // ========================================
@@ -283,6 +287,19 @@ export const vacancyAPI = {
   delete: (id) => apiService.deleteVacantPosition(id),
   markFilled: (id, employeeData) => apiService.markPositionFilled(id, employeeData),
   getStatistics: () => apiService.getVacantPositionStatistics(),
+};
+
+// ========================================
+// CONTRACT CONFIG API
+// ========================================
+export const contractConfigAPI = {
+  getAll: (params) => apiService.getContractConfigs(params),
+  getById: (id) => apiService.getContractConfig(id),
+  create: (data) => apiService.createContractConfig(data),
+  update: (id, data) => apiService.updateContractConfig(id, data),
+  partialUpdate: (id, data) => apiService.partialUpdateContractConfig(id, data),
+  delete: (id) => apiService.deleteContractConfig(id),
+  testCalculations: (id) => apiService.testContractCalculations(id),
 };
 
 export { employeeAPI as default };

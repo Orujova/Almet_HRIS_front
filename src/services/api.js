@@ -1,4 +1,4 @@
-// src/services/api.js - Complete API Service with all endpoints
+// src/services/api.js - FIXED: Better error handling and Blob response handling
 import axios from "axios";
 
 // Base URL - environment dəyişkənindən və ya localhost
@@ -75,7 +75,7 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor - token refresh və error handling
+// FIXED: Response interceptor with better error handling
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -109,12 +109,50 @@ api.interceptors.response.use(
       }
     }
 
-    // Digər error handling
+    // FIXED: Better error handling for different response types
     if (error.response?.status >= 500) {
-      console.error('Server error:', error.response?.data);
+      // Handle different content types for server errors
+      let errorData = error.response?.data;
+      
+      if (errorData instanceof Blob) {
+        try {
+          const text = await errorData.text();
+          errorData = text ? JSON.parse(text) : { message: 'Server error' };
+        } catch (blobError) {
+          errorData = { message: 'Server error - unable to parse response' };
+        }
+      }
+      
+      console.error('Server error:', errorData);
     }
 
-    return Promise.reject(error);
+    // FIXED: Ensure error object is serializable for Redux
+    const serializableError = {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      method: error.config?.method,
+    };
+
+    // Handle specific error responses
+    if (error.response?.data) {
+      const responseData = error.response.data;
+      
+      // If it's a Blob, convert to text
+      if (responseData instanceof Blob) {
+        try {
+          const text = await responseData.text();
+          serializableError.data = text ? JSON.parse(text) : { message: 'Unknown error' };
+        } catch (blobError) {
+          serializableError.data = { message: 'Error parsing response' };
+        }
+      } else {
+        serializableError.data = responseData;
+      }
+    }
+
+    return Promise.reject(serializableError);
   }
 );
 
@@ -134,6 +172,31 @@ const buildQueryParams = (params = {}) => {
   });
   
   return searchParams.toString();
+};
+
+// FIXED: File download helper with better error handling
+const handleFileDownload = async (response, filename) => {
+  try {
+    // Check if response is successful
+    if (!response || response.status !== 200) {
+      throw new Error('Failed to download file');
+    }
+
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'download';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    return { success: true, filename };
+  } catch (error) {
+    console.error('File download failed:', error);
+    throw new Error(`Download failed: ${error.message}`);
+  }
 };
 
 // Ana API Service obyekti
@@ -239,7 +302,21 @@ export const apiService = {
   deleteEmployeeTag: (id) => api.delete(`/employee-tags/${id}/`),
 
   // ========================================
-  // EMPLOYEE ENDPOINTS - TAM CRUD İŞLEMLERİ
+  // CONTRACT CONFIGS ENDPOINTS
+  // ========================================
+  getContractConfigs: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/contract-configs/?${queryString}`);
+  },
+  getContractConfig: (id) => api.get(`/contract-configs/${id}/`),
+  createContractConfig: (data) => api.post("/contract-configs/", data),
+  updateContractConfig: (id, data) => api.put(`/contract-configs/${id}/`, data),
+  partialUpdateContractConfig: (id, data) => api.patch(`/contract-configs/${id}/`, data),
+  deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
+  testContractCalculations: (id) => api.get(`/contract-configs/${id}/test_calculations/`),
+
+  // ========================================
+  // EMPLOYEE ENDPOINTS - FIXED with better error handling
   // ========================================
   
   // Basic CRUD
@@ -283,70 +360,84 @@ export const apiService = {
   // Employee Activities və Audit Trail
   getEmployeeActivities: (employeeId) => api.get(`/employees/${employeeId}/activities/`),
 
+  // Employee Direct Reports
+  getEmployeeDirectReports: (employeeId) => api.get(`/employees/${employeeId}/direct_reports/`),
+
+  // Employee Status Preview
+  getEmployeeStatusPreview: (employeeId) => api.get(`/employees/${employeeId}/status_preview/`),
+
   // Employee Statistics və Filter Options
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
-  getEmployeeFilterOptions: () => api.get("/employees/filter_options/"),
 
   // Bulk Operations
   bulkUpdateEmployees: (data) => api.post("/employees/bulk_update/", data),
-  bulkDeleteEmployees: (employeeIds) => api.post("/employees/bulk_delete/", { 
+  bulkDeleteEmployees: (employeeIds) => api.post("/employees/bulk-delete/", { 
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
   }),
-  softDeleteEmployees: (employeeIds) => api.post("/employees/soft_delete/", { 
+  softDeleteEmployees: (employeeIds) => api.post("/employees/soft-delete/", { 
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
   }),
   restoreEmployees: (employeeIds) => api.post("/employees/restore/", { 
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
   }),
-  bulkCreateEmployees: (data) => api.post("/employees/bulk_create/", data),
 
   // Tag Management
-  addEmployeeTag: (data) => api.post("/employees/add_tag/", data),
-  removeEmployeeTag: (data) => api.post("/employees/remove_tag/", data),
-  bulkAddTags: (employeeIds, tagIds) => api.post("/employees/bulk_add_tag/", { 
+  addEmployeeTag: (data) => api.post("/employees/add-tag/", data),
+  removeEmployeeTag: (data) => api.post("/employees/remove-tag/", data),
+  bulkAddTags: (employeeIds, tagId) => api.post("/employees/bulk-add-tag/", { 
     employee_ids: employeeIds, 
-    tag_ids: tagIds 
+    tag_id: tagId 
   }),
-  bulkRemoveTags: (employeeIds, tagIds) => api.post("/employees/bulk_remove_tag/", { 
+  bulkRemoveTags: (employeeIds, tagId) => api.post("/employees/bulk-remove-tag/", { 
     employee_ids: employeeIds, 
-    tag_ids: tagIds 
+    tag_id: tagId 
   }),
-
-  // Status Management - Avtomatik status dəyişikliyi
-  updateEmployeeStatus: (employeeIds) => api.post("/employees/update_status/", { 
-    employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
-  }),
-  autoUpdateStatuses: () => api.post("/employees/auto_update_status/"),
 
   // Line Manager Management
-  getLineManagers: (params = {}) => {
+  assignLineManager: (data) => api.post("/employees/assign-line-manager/", data),
+  bulkAssignLineManager: (data) => api.post("/employees/bulk-assign-line-manager/", data),
+
+  // Contract Management
+  extendEmployeeContract: (data) => api.post("/employees/extend-contract/", data),
+  bulkExtendContracts: (data) => api.post("/employees/bulk-extend-contracts/", data),
+
+  // FIXED: Export with better error handling
+  exportEmployees: async (params = {}) => {
+    try {
+      const response = await api.post("/employees/export_selected/", params, {
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        }
+      });
+      
+      // Handle the file download
+      const filename = `employees_export_${new Date().toISOString().split('T')[0]}.xlsx`;
+      await handleFileDownload(response, filename);
+      
+      return { success: true, filename };
+    } catch (error) {
+      console.error('Export failed:', error);
+      throw error;
+    }
+  },
+
+  // Contract Expiry Alerts
+  getContractExpiryAlerts: (params = {}) => {
     const queryString = buildQueryParams(params);
-    return api.get(`/employees/line_managers/?${queryString}`);
-  },
-  updateLineManager: (employeeId, lineManagerId) => api.post("/employees/update_single_line_manager/", { 
-    employee_id: employeeId, 
-    line_manager_id: lineManagerId 
-  }),
-  bulkUpdateLineManager: (employeeIds, lineManagerId) => api.post("/employees/bulk_update_line_manager/", { 
-    employee_ids: employeeIds, 
-    line_manager_id: lineManagerId 
-  }),
-
-  // Export - Yalnız seçilmiş məlumatları export et
-  exportEmployees: (params = {}) => {
-    return api.post("/employees/export_selected/", params, {
-      responseType: 'blob',
-      headers: {
-        'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      }
-    });
+    return api.get(`/employees/contract-expiry-alerts/?${queryString}`);
   },
 
-  // Download Employee Template
-  downloadEmployeeTemplate: () => {
-    return api.get("/employees/download_template/", {
-      responseType: 'blob'
-    });
+  // Contracts Expiring Soon
+  getContractsExpiringSoon: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/employees/contracts_expiring_soon/?${queryString}`);
+  },
+
+  // Organizational Hierarchy
+  getOrganizationalHierarchy: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/employees/organizational_hierarchy/?${queryString}`);
   },
 
   // ========================================
@@ -355,6 +446,42 @@ export const apiService = {
   getEmployeeGrading: () => api.get("/employee-grading/"),
   bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
 
+  // ========================================
+  // BULK UPLOAD ENDPOINTS - FIXED
+  // ========================================
+  bulkUploadEmployees: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await api.post("/bulk-upload/", formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('Bulk upload failed:', error);
+      throw error;
+    }
+  },
+
+  // FIXED: Download Employee Template with proper file handling
+  downloadEmployeeTemplate: async () => {
+    try {
+      const response = await api.get("/bulk-upload/download_template/", {
+        responseType: 'blob'
+      });
+      
+      // Handle the file download
+      const filename = 'employee_template.xlsx';
+      await handleFileDownload(response, filename);
+      
+      return { success: true, filename };
+    } catch (error) {
+      console.error('Template download failed:', error);
+      throw error;
+    }
+  },
 
   // ========================================
   // VACANT POSITIONS ENDPOINTS
@@ -372,7 +499,7 @@ export const apiService = {
   getVacantPositionStatistics: () => api.get("/vacant-positions/statistics/"),
 
   // ========================================
-  // ORG CHART ENDPOINTS (əgər ayrıca endpoint varsa)
+  // ORG CHART ENDPOINTS
   // ========================================
   getOrgChart: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -380,6 +507,30 @@ export const apiService = {
   },
   getOrgChartNode: (id) => api.get(`/org-chart/${id}/`),
   getOrgChartFullTree: () => api.get("/org-chart/full_tree/"),
+
+  // ========================================
+  // EMPLOYEE ANALYTICS ENDPOINTS
+  // ========================================
+  getEmployeeAnalytics: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/employee-analytics/?${queryString}`);
+  },
+
+  // ========================================
+  // GRADING ENDPOINTS
+  // ========================================
+  getGrading: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/grading/?${queryString}`);
+  },
+
+  // ========================================
+  // CONTRACT STATUS ENDPOINTS
+  // ========================================
+  getContractStatus: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/contract-status/?${queryString}`);
+  },
 
   // ========================================
   // TEST ENDPOINTS
@@ -433,23 +584,20 @@ export const apiService = {
     });
   },
 
-  // Download file helper
-  downloadFile: (endpoint, filename, params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`${endpoint}${queryString ? `?${queryString}` : ''}`, {
-      responseType: 'blob'
-    }).then(response => {
-      const blob = new Blob([response.data]);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = filename || 'download';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+  // FIXED: Download file helper with better error handling
+  downloadFile: async (endpoint, filename, params = {}) => {
+    try {
+      const queryString = buildQueryParams(params);
+      const response = await api.get(`${endpoint}${queryString ? `?${queryString}` : ''}`, {
+        responseType: 'blob'
+      });
+      
+      await handleFileDownload(response, filename);
       return response;
-    });
+    } catch (error) {
+      console.error('Download failed:', error);
+      throw error;
+    }
   }
 };
 

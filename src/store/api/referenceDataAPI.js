@@ -171,16 +171,19 @@ export const referenceDataAPI = {
           color: item.color,
           affects_headcount: item.affects_headcount,
           allows_org_chart: item.allows_org_chart,
+          auto_transition_enabled: item.auto_transition_enabled,
+          auto_transition_days: item.auto_transition_days,
+          auto_transition_to: item.auto_transition_to,
+          auto_transition_to_name: item.auto_transition_to_name,
+          is_transitional: item.is_transitional,
+          transition_priority: item.transition_priority,
+          send_notifications: item.send_notifications,
+          notification_template: item.notification_template,
+          is_system_status: item.is_system_status,
+          is_default_for_new_employees: item.is_default_for_new_employees,
           employee_count: item.employee_count,
           is_active: item.is_active,
-          // Duration fields for different contract types
-          onboarding_duration: item.onboarding_duration,
-          probation_duration_3m: item.probation_duration_3m,
-          probation_duration_6m: item.probation_duration_6m,
-          probation_duration_1y: item.probation_duration_1y,
-          probation_duration_2y: item.probation_duration_2y,
-          probation_duration_3y: item.probation_duration_3y,
-          probation_duration_permanent: item.probation_duration_permanent
+          order: item.order
         }))
       };
     });
@@ -221,6 +224,38 @@ export const referenceDataAPI = {
   deleteEmployeeTag: (id) => apiService.deleteEmployeeTag(id),
 
   // ========================================
+  // CONTRACT CONFIGS
+  // ========================================
+  getContractConfigs: () => apiService.getContractConfigs(),
+  getContractConfig: (id) => apiService.getContractConfig(id),
+  getContractConfigDropdown: () => {
+    return apiService.getContractConfigs().then(response => {
+      const data = response.data.results || response.data || [];
+      return {
+        ...response,
+        data: data.map(item => ({
+          value: item.contract_type,
+          label: item.display_name,
+          contract_type: item.contract_type,
+          onboarding_days: item.onboarding_days,
+          probation_days: item.probation_days,
+          total_days_until_active: item.total_days_until_active,
+          enable_auto_transitions: item.enable_auto_transitions,
+          transition_to_inactive_on_end: item.transition_to_inactive_on_end,
+          notify_days_before_end: item.notify_days_before_end,
+          employee_count: item.employee_count,
+          is_active: item.is_active
+        }))
+      };
+    });
+  },
+  createContractConfig: (data) => apiService.createContractConfig(data),
+  updateContractConfig: (id, data) => apiService.updateContractConfig(id, data),
+  partialUpdateContractConfig: (id, data) => apiService.partialUpdateContractConfig(id, data),
+  deleteContractConfig: (id) => apiService.deleteContractConfig(id),
+  testContractCalculations: (id) => apiService.testContractCalculations(id),
+
+  // ========================================
   // HELPER FUNCTIONS
   // ========================================
   
@@ -232,13 +267,15 @@ export const referenceDataAPI = {
         jobFunctions,
         positionGroups,
         employeeStatuses,
-        employeeTags
+        employeeTags,
+        contractConfigs
       ] = await Promise.all([
         referenceDataAPI.getBusinessFunctionDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
         referenceDataAPI.getPositionGroupDropdown(),
         referenceDataAPI.getEmployeeStatusDropdown(),
-        referenceDataAPI.getEmployeeTagDropdown()
+        referenceDataAPI.getEmployeeTagDropdown(),
+        referenceDataAPI.getContractConfigDropdown()
       ]);
 
       return {
@@ -246,7 +283,8 @@ export const referenceDataAPI = {
         jobFunctions: jobFunctions.data,
         positionGroups: positionGroups.data,
         employeeStatuses: employeeStatuses.data,
-        employeeTags: employeeTags.data
+        employeeTags: employeeTags.data,
+        contractConfigs: contractConfigs.data
       };
     } catch (error) {
       throw new Error('Failed to fetch reference data: ' + error.message);
@@ -319,7 +357,8 @@ export const referenceDataAPI = {
         jobFunctions,
         positionGroups,
         employeeStatuses,
-        employeeTags
+        employeeTags,
+        contractConfigs
       ] = await Promise.all([
         referenceDataAPI.getBusinessFunctions(),
         referenceDataAPI.getDepartments(),
@@ -327,7 +366,8 @@ export const referenceDataAPI = {
         referenceDataAPI.getJobFunctions(),
         referenceDataAPI.getPositionGroups(),
         referenceDataAPI.getEmployeeStatuses(),
-        referenceDataAPI.getEmployeeTags()
+        referenceDataAPI.getEmployeeTags(),
+        referenceDataAPI.getContractConfigs()
       ]);
 
       return {
@@ -337,7 +377,8 @@ export const referenceDataAPI = {
         jobFunctions: jobFunctions.data.count || jobFunctions.data.length || 0,
         positionGroups: positionGroups.data.count || positionGroups.data.length || 0,
         employeeStatuses: employeeStatuses.data.count || employeeStatuses.data.length || 0,
-        employeeTags: employeeTags.data.count || employeeTags.data.length || 0
+        employeeTags: employeeTags.data.count || employeeTags.data.length || 0,
+        contractConfigs: contractConfigs.data.count || contractConfigs.data.length || 0
       };
     } catch (error) {
       throw new Error('Failed to fetch entity counts: ' + error.message);
@@ -350,7 +391,7 @@ export const referenceDataAPI = {
       const searchPromises = [];
       const searchTypes = types.length > 0 ? types : [
         'businessFunctions', 'departments', 'units', 'jobFunctions', 
-        'positionGroups', 'employeeStatuses', 'employeeTags'
+        'positionGroups', 'employeeStatuses', 'employeeTags', 'contractConfigs'
       ];
 
       if (searchTypes.includes('businessFunctions')) {
@@ -402,6 +443,13 @@ export const referenceDataAPI = {
         );
       }
 
+      if (searchTypes.includes('contractConfigs')) {
+        searchPromises.push(
+          referenceDataAPI.getContractConfigs({ search: searchTerm })
+            .then(res => ({ type: 'contractConfigs', data: res.data.results || res.data }))
+        );
+      }
+
       const results = await Promise.all(searchPromises);
       
       return results.reduce((acc, result) => {
@@ -410,6 +458,46 @@ export const referenceDataAPI = {
       }, {});
     } catch (error) {
       throw new Error('Failed to search reference data: ' + error.message);
+    }
+  },
+
+  // Get filtered data by active status
+  getActiveOnly: async (entityType) => {
+    try {
+      let response;
+      
+      switch (entityType) {
+        case 'businessFunctions':
+          response = await referenceDataAPI.getBusinessFunctions({ is_active: true });
+          break;
+        case 'departments':
+          response = await referenceDataAPI.getDepartments({ is_active: true });
+          break;
+        case 'units':
+          response = await referenceDataAPI.getUnits({ is_active: true });
+          break;
+        case 'jobFunctions':
+          response = await referenceDataAPI.getJobFunctions({ is_active: true });
+          break;
+        case 'positionGroups':
+          response = await referenceDataAPI.getPositionGroups({ is_active: true });
+          break;
+        case 'employeeStatuses':
+          response = await referenceDataAPI.getEmployeeStatuses({ is_active: true });
+          break;
+        case 'employeeTags':
+          response = await referenceDataAPI.getEmployeeTags({ is_active: true });
+          break;
+        case 'contractConfigs':
+          response = await referenceDataAPI.getContractConfigs({ is_active: true });
+          break;
+        default:
+          throw new Error(`Unknown entity type: ${entityType}`);
+      }
+      
+      return response.data.results || response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch active ${entityType}: ` + error.message);
     }
   }
 };

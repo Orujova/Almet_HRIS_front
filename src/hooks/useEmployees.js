@@ -1,13 +1,12 @@
-// src/hooks/useEmployees.js - Complete Employee Management Hook with Grading
+// src/hooks/useEmployees.js - FIXED: Prevent infinite loop and better dependency management
 import { useDispatch, useSelector } from 'react-redux';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   fetchEmployees,
   fetchEmployee,
   createEmployee,
   updateEmployee,
   deleteEmployee,
-  fetchFilterOptions,
   fetchStatistics,
   bulkUpdateEmployees,
   bulkDeleteEmployees,
@@ -17,21 +16,24 @@ import {
   removeEmployeeTag,
   bulkAddTags,
   bulkRemoveTags,
-  updateEmployeeStatus,
-  autoUpdateAllStatuses,
-  getLineManagers,
-  updateLineManager,
-  bulkUpdateLineManager,
+  assignLineManager,
+  bulkAssignLineManager,
+  extendEmployeeContract,
+  bulkExtendContracts,
+  getContractExpiryAlerts,
+  getContractsExpiringSoon,
   fetchEmployeeGrading,
   bulkUpdateEmployeeGrades,
   updateSingleEmployeeGrade,
   exportEmployees,
   downloadEmployeeTemplate,
+  bulkUploadEmployees,
   fetchEmployeeActivities,
+  fetchEmployeeDirectReports,
+  fetchEmployeeStatusPreview,
   fetchOrgChart,
   fetchOrgChartFullTree,
-  fetchHeadcountSummaries,
-  fetchVacantPositions,
+  fetchOrganizationalHierarchy,
   setSelectedEmployees,
   toggleEmployeeSelection,
   selectAllEmployees,
@@ -69,7 +71,6 @@ import {
   selectCurrentEmployee,
   selectEmployeeLoading,
   selectEmployeeError,
-  selectFilterOptions,
   selectSelectedEmployees,
   selectCurrentFilters,
   selectAppliedFilters,
@@ -81,13 +82,14 @@ import {
   selectGradingStatistics,
   selectAllGradingLevels,
   selectActivities,
-  selectLineManagers,
+  selectDirectReports,
+  selectStatusPreviews,
   selectViewMode,
   selectShowAdvancedFilters,
   selectShowGradingPanel,
   selectGradingMode,
-  selectHeadcountSummaries,
-  selectVacantPositions,
+  selectContractExpiryAlerts,
+  selectContractsExpiringSoon,
   selectFormattedEmployees,
   selectSortingForBackend,
   selectFilteredEmployeesCount,
@@ -111,8 +113,23 @@ import {
   selectEmployeeMetrics
 } from '../store/slices/employeeSlice';
 
+// ADDED: Import reference data actions for filter options
+import {
+  fetchBusinessFunctions,
+  fetchJobFunctions,
+  fetchPositionGroups,
+  fetchEmployeeStatuses,
+  fetchEmployeeTags
+} from '../store/slices/referenceDataSlice';
+
 export const useEmployees = () => {
   const dispatch = useDispatch();
+  
+  // ========================================
+  // REFS TO PREVENT INFINITE LOOPS
+  // ========================================
+  const isInitialized = useRef(false);
+  const lastFetchParams = useRef(null);
   
   // ========================================
   // MAIN DATA SELECTORS
@@ -122,7 +139,6 @@ export const useEmployees = () => {
   const currentEmployee = useSelector(selectCurrentEmployee);
   const loading = useSelector(selectEmployeeLoading);
   const error = useSelector(selectEmployeeError);
-  const filterOptions = useSelector(selectFilterOptions);
   const selectedEmployees = useSelector(selectSelectedEmployees);
   const currentFilters = useSelector(selectCurrentFilters);
   const appliedFilters = useSelector(selectAppliedFilters);
@@ -131,7 +147,8 @@ export const useEmployees = () => {
   const pagination = useSelector(selectPagination);
   const sorting = useSelector(selectSorting);
   const activities = useSelector(selectActivities);
-  const lineManagers = useSelector(selectLineManagers);
+  const directReports = useSelector(selectDirectReports);
+  const statusPreviews = useSelector(selectStatusPreviews);
   const viewMode = useSelector(selectViewMode);
   const showAdvancedFilters = useSelector(selectShowAdvancedFilters);
   
@@ -152,8 +169,8 @@ export const useEmployees = () => {
   // ========================================
   // ANALYTICS & STATISTICS SELECTORS
   // ========================================
-  const headcountSummaries = useSelector(selectHeadcountSummaries);
-  const vacantPositions = useSelector(selectVacantPositions);
+  const contractExpiryAlerts = useSelector(selectContractExpiryAlerts);
+  const contractsExpiringSoon = useSelector(selectContractsExpiringSoon);
   const employeesByStatus = useSelector(selectEmployeesByStatus);
   const employeesByDepartment = useSelector(selectEmployeesByDepartment);
   const newHires = useSelector(selectNewHires);
@@ -177,20 +194,44 @@ export const useEmployees = () => {
   const getSortIndex = useSelector(selectGetSortIndex);
 
   // ========================================
-  // BASIC CRUD ACTIONS
+  // BASIC CRUD ACTIONS - MEMOIZED TO PREVENT LOOPS
   // ========================================
   const actions = {
     // Fetch operations
     fetchEmployees: useCallback((params) => dispatch(fetchEmployees(params)), [dispatch]),
     fetchEmployee: useCallback((id) => dispatch(fetchEmployee(id)), [dispatch]),
     
+    // FIXED: fetchFilterOptions function to load reference data for filters
+    fetchFilterOptions: useCallback(() => {
+      console.log('🔄 Loading filter options (reference data)...');
+      
+      // Check if already initialized to prevent multiple calls
+      if (isInitialized.current) {
+        console.log('⚠️ Filter options already loaded, skipping...');
+        return Promise.resolve();
+      }
+      
+      isInitialized.current = true;
+      
+      return Promise.all([
+        dispatch(fetchBusinessFunctions()),
+        dispatch(fetchJobFunctions()), 
+        dispatch(fetchPositionGroups()),
+        dispatch(fetchEmployeeStatuses()),
+        dispatch(fetchEmployeeTags())
+      ]).catch(error => {
+        console.error('❌ Failed to load filter options:', error);
+        isInitialized.current = false; // Reset on error
+        throw error;
+      });
+    }, [dispatch]),
+    
     // Create/Update/Delete
     createEmployee: useCallback((data) => dispatch(createEmployee(data)), [dispatch]),
     updateEmployee: useCallback((id, data) => dispatch(updateEmployee({ id, data })), [dispatch]),
     deleteEmployee: useCallback((id) => dispatch(deleteEmployee(id)), [dispatch]),
     
-    // Filter and Statistics
-    fetchFilterOptions: useCallback(() => dispatch(fetchFilterOptions()), [dispatch]),
+    // Statistics
     fetchStatistics: useCallback(() => dispatch(fetchStatistics()), [dispatch]),
     
     // Bulk Operations
@@ -202,59 +243,55 @@ export const useEmployees = () => {
     // ========================================
     // TAG MANAGEMENT ACTIONS
     // ========================================
-    addEmployeeTag: useCallback((employeeId, tagData) => 
-      dispatch(addEmployeeTag({ employeeId, tagData })), [dispatch]),
-    removeEmployeeTag: useCallback((employeeId, tagId) => 
-      dispatch(removeEmployeeTag({ employeeId, tagId })), [dispatch]),
-    bulkAddTags: useCallback((employeeIds, tagIds) => 
-      dispatch(bulkAddTags({ employeeIds, tagIds })), [dispatch]),
-    bulkRemoveTags: useCallback((employeeIds, tagIds) => 
-      dispatch(bulkRemoveTags({ employeeIds, tagIds })), [dispatch]),
-    
-    // ========================================
-    // STATUS MANAGEMENT ACTIONS
-    // ========================================
-    updateEmployeeStatus: useCallback((employeeIds) => {
-      const ids = Array.isArray(employeeIds) ? employeeIds : [employeeIds];
-      return dispatch(updateEmployeeStatus(ids));
-    }, [dispatch]),
-    autoUpdateAllStatuses: useCallback(() => dispatch(autoUpdateAllStatuses()), [dispatch]),
+    addEmployeeTag: useCallback((employee_id, tag_id) => 
+      dispatch(addEmployeeTag({ employee_id, tag_id })), [dispatch]),
+    removeEmployeeTag: useCallback((employee_id, tag_id) => 
+      dispatch(removeEmployeeTag({ employee_id, tag_id })), [dispatch]),
+    bulkAddTags: useCallback((employee_ids, tag_id) => 
+      dispatch(bulkAddTags({ employee_ids, tag_id })), [dispatch]),
+    bulkRemoveTags: useCallback((employee_ids, tag_id) => 
+      dispatch(bulkRemoveTags({ employee_ids, tag_id })), [dispatch]),
     
     // ========================================
     // LINE MANAGER MANAGEMENT ACTIONS
     // ========================================
-    getLineManagers: useCallback((params) => dispatch(getLineManagers(params)), [dispatch]),
-    updateLineManager: useCallback((employeeId, lineManagerId) => 
-      dispatch(updateLineManager({ employeeId, lineManagerId })), [dispatch]),
-    bulkUpdateLineManager: useCallback((employeeIds, lineManagerId) => 
-      dispatch(bulkUpdateLineManager({ employeeIds, lineManagerId })), [dispatch]),
+    assignLineManager: useCallback((employee_id, line_manager_id) => 
+      dispatch(assignLineManager({ employee_id, line_manager_id })), [dispatch]),
+    bulkAssignLineManager: useCallback((employee_ids, line_manager_id) => 
+      dispatch(bulkAssignLineManager({ employee_ids, line_manager_id })), [dispatch]),
+    
+    // ========================================
+    // CONTRACT MANAGEMENT ACTIONS
+    // ========================================
+    extendEmployeeContract: useCallback((data) => dispatch(extendEmployeeContract(data)), [dispatch]),
+    bulkExtendContracts: useCallback((data) => dispatch(bulkExtendContracts(data)), [dispatch]),
+    getContractExpiryAlerts: useCallback((params) => dispatch(getContractExpiryAlerts(params)), [dispatch]),
+    getContractsExpiringSoon: useCallback((params) => dispatch(getContractsExpiringSoon(params)), [dispatch]),
     
     // ========================================
     // GRADING MANAGEMENT ACTIONS
     // ========================================
     fetchEmployeeGrading: useCallback(() => dispatch(fetchEmployeeGrading()), [dispatch]),
     bulkUpdateEmployeeGrades: useCallback((updates) => dispatch(bulkUpdateEmployeeGrades(updates)), [dispatch]),
-    updateSingleEmployeeGrade: useCallback((employeeId, gradingLevel) => 
-      dispatch(updateSingleEmployeeGrade({ employeeId, gradingLevel })), [dispatch]),
+    updateSingleEmployeeGrade: useCallback((employee_id, grading_level) => 
+      dispatch(updateSingleEmployeeGrade({ employee_id, grading_level })), [dispatch]),
     
     // ========================================
     // EXPORT & TEMPLATE ACTIONS
     // ========================================
     exportEmployees: useCallback((format, params) => dispatch(exportEmployees({ format, params })), [dispatch]),
     downloadEmployeeTemplate: useCallback(() => dispatch(downloadEmployeeTemplate()), [dispatch]),
+    bulkUploadEmployees: useCallback((file) => dispatch(bulkUploadEmployees(file)), [dispatch]),
     
     // ========================================
     // ACTIVITIES & ORG CHART ACTIONS
     // ========================================
     fetchEmployeeActivities: useCallback((employeeId) => dispatch(fetchEmployeeActivities(employeeId)), [dispatch]),
+    fetchEmployeeDirectReports: useCallback((employeeId) => dispatch(fetchEmployeeDirectReports(employeeId)), [dispatch]),
+    fetchEmployeeStatusPreview: useCallback((employeeId) => dispatch(fetchEmployeeStatusPreview(employeeId)), [dispatch]),
     fetchOrgChart: useCallback((params) => dispatch(fetchOrgChart(params)), [dispatch]),
     fetchOrgChartFullTree: useCallback(() => dispatch(fetchOrgChartFullTree()), [dispatch]),
-    
-    // ========================================
-    // HEADCOUNT & VACANCY ACTIONS
-    // ========================================
-    fetchHeadcountSummaries: useCallback((params) => dispatch(fetchHeadcountSummaries(params)), [dispatch]),
-    fetchVacantPositions: useCallback((params) => dispatch(fetchVacantPositions(params)), [dispatch]),
+    fetchOrganizationalHierarchy: useCallback((params) => dispatch(fetchOrganizationalHierarchy(params)), [dispatch]),
     
     // ========================================
     // SELECTION MANAGEMENT ACTIONS
@@ -315,8 +352,8 @@ export const useEmployees = () => {
     setQuickFilter: useCallback((type, value) => dispatch(setQuickFilter({ type, value })), [dispatch]),
     optimisticUpdateEmployee: useCallback((id, updates) => dispatch(optimisticUpdateEmployee({ id, updates })), [dispatch]),
     optimisticDeleteEmployee: useCallback((id) => dispatch(optimisticDeleteEmployee(id)), [dispatch]),
-    optimisticUpdateEmployeeGrade: useCallback((employeeId, gradingLevel) => 
-      dispatch(optimisticUpdateEmployeeGrade({ employeeId, gradingLevel })), [dispatch]),
+    optimisticUpdateEmployeeGrade: useCallback((employee_id, grading_level) => 
+      dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level })), [dispatch]),
   };
 
   // ========================================
@@ -331,6 +368,8 @@ export const useEmployees = () => {
     isExporting: loading.exporting,
     isLoadingTemplate: loading.template,
     isLoadingGrading: loading.grading,
+    isLoadingUpload: loading.upload,
+    isLoadingContractAlerts: loading.contractAlerts,
     
     // Selection
     hasSelection: selectedEmployees.length > 0,
@@ -367,17 +406,26 @@ export const useEmployees = () => {
     newHiresCount: statistics.recent_hires_30_days,
     onLeaveCount: employeesByStatus['ON_LEAVE'] || 0,
     contractEndingCount: employeesNeedingAttention.contractEnding.length,
+    statusUpdateCount: employeesNeedingAttention.statusUpdate.length,
+    
+    // Contract alerts
+    totalExpiringContracts: contractExpiryAlerts.total_expiring,
+    urgentContracts: contractExpiryAlerts.urgent_employees?.length || 0,
   };
 
   // ========================================
-  // HELPER FUNCTIONS
+  // HELPER FUNCTIONS - MEMOIZED TO PREVENT LOOPS
   // ========================================
   const helpers = {
     // ========================================
     // DATA REFRESH HELPERS
     // ========================================
     refreshEmployees: useCallback(() => {
-      dispatch(fetchEmployees(apiParams));
+      const currentParams = JSON.stringify(apiParams);
+      if (lastFetchParams.current !== currentParams) {
+        lastFetchParams.current = currentParams;
+        dispatch(fetchEmployees(apiParams));
+      }
     }, [dispatch, apiParams]),
     
     refreshStatistics: useCallback(() => {
@@ -388,11 +436,20 @@ export const useEmployees = () => {
       dispatch(fetchEmployeeGrading());
     }, [dispatch]),
     
+    refreshContractAlerts: useCallback(() => {
+      dispatch(getContractExpiryAlerts());
+      dispatch(getContractsExpiringSoon());
+    }, [dispatch]),
+    
     refreshAll: useCallback(() => {
-      dispatch(fetchEmployees(apiParams));
+      const currentParams = JSON.stringify(apiParams);
+      if (lastFetchParams.current !== currentParams) {
+        lastFetchParams.current = currentParams;
+        dispatch(fetchEmployees(apiParams));
+      }
       dispatch(fetchStatistics());
       dispatch(fetchEmployeeGrading());
-      dispatch(fetchFilterOptions());
+      dispatch(getContractExpiryAlerts());
     }, [dispatch, apiParams]),
     
     // ========================================
@@ -414,7 +471,8 @@ export const useEmployees = () => {
         'hasDocuments': { has_documents: true },
         'noGrade': { grading_level: '' },
         'newHires': { years_of_service_max: 0.25 },
-        'contractEnding': { contract_ending_30_days: true }
+        'contractEnding': { contract_ending_30_days: true },
+        'statusUpdate': { status_needs_update: true }
       };
       
       if (filterConfig[filterType]) {
@@ -452,6 +510,11 @@ export const useEmployees = () => {
               return value ? !emp.grading_level : !!emp.grading_level;
             case 'no_line_manager':
               return value ? !emp.line_manager : !!emp.line_manager;
+            case 'contract_ending':
+              if (!emp.contract_end_date) return false;
+              const endDate = new Date(emp.contract_end_date);
+              const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+              return value ? endDate <= thirtyDaysFromNow : endDate > thirtyDaysFromNow;
             default:
               return true;
           }
@@ -485,233 +548,36 @@ export const useEmployees = () => {
     }, [dispatch]),
     
     // ========================================
-    // BULK ACTION HELPERS
-    // ========================================
-    bulkActionOnSelected: useCallback((action, data = {}) => {
-      if (selectedEmployees.length === 0) {
-        throw new Error('No employees selected');
-      }
-      
-      switch (action) {
-        case 'delete':
-          return dispatch(bulkDeleteEmployees(selectedEmployees));
-        case 'softDelete':
-          return dispatch(softDeleteEmployees(selectedEmployees));
-        case 'restore':
-          return dispatch(restoreEmployees(selectedEmployees));
-        case 'updateStatus':
-          return dispatch(updateEmployeeStatus(selectedEmployees));
-        case 'addTags':
-          if (!data.tagIds || data.tagIds.length === 0) {
-            throw new Error('No tags specified');
-          }
-          return dispatch(bulkAddTags({ employeeIds: selectedEmployees, tagIds: data.tagIds }));
-        case 'removeTags':
-          if (!data.tagIds || data.tagIds.length === 0) {
-            throw new Error('No tags specified');
-          }
-          return dispatch(bulkRemoveTags({ employeeIds: selectedEmployees, tagIds: data.tagIds }));
-        case 'updateGrades':
-          if (!data.updates || data.updates.length === 0) {
-            throw new Error('No grade updates specified');
-          }
-          return dispatch(bulkUpdateEmployeeGrades(data.updates));
-        case 'updateLineManager':
-          if (!data.lineManagerId) {
-            throw new Error('No line manager specified');
-          }
-          return dispatch(bulkUpdateLineManager({ employeeIds: selectedEmployees, lineManagerId: data.lineManagerId }));
-        default:
-          throw new Error(`Unknown bulk action: ${action}`);
-      }
-    }, [dispatch, selectedEmployees]),
-    
-    // ========================================
-    // GRADING HELPERS
-    // ========================================
-    bulkGradeSelected: useCallback((gradingLevel) => {
-      if (selectedEmployees.length === 0) {
-        throw new Error('No employees selected for grading');
-      }
-      
-      const updates = selectedEmployees.map(employeeId => ({
-        employee_id: employeeId,
-        grading_level: gradingLevel
-      }));
-      
-      return dispatch(bulkUpdateEmployeeGrades(updates));
-    }, [dispatch, selectedEmployees]),
-    
-    gradeEmployeesByPositionGroup: useCallback((positionGroupId, gradingLevel) => {
-      const employeesInPositionGroup = employees.filter(emp => emp.position_group === positionGroupId);
-      
-      if (employeesInPositionGroup.length === 0) {
-        throw new Error('No employees found in this position group');
-      }
-      
-      const updates = employeesInPositionGroup.map(emp => ({
-        employee_id: emp.id,
-        grading_level: gradingLevel
-      }));
-      
-      return dispatch(bulkUpdateEmployeeGrades(updates));
-    }, [dispatch, employees]),
-    
-    getEligibleEmployeesForGrading: useCallback(() => {
-      return employees.filter(emp => {
-        // Filter out employees who can't be graded
-        if (emp.status_name === 'INACTIVE' || emp.status_name === 'TERMINATED') {
-          return false;
-        }
-        
-        // Check if employee is in probation (configurable rule)
-        if (emp.status_name === 'PROBATION') {
-          return false; // Can be made configurable
-        }
-        
-        return true;
-      });
-    }, [employees]),
-    
-    // ========================================
-    // ANALYTICS HELPERS
-    // ========================================
-    calculateRetentionRate: useCallback((periodInMonths = 12) => {
-      const cutoffDate = new Date();
-      cutoffDate.setMonth(cutoffDate.getMonth() - periodInMonths);
-      
-      const employeesAtStart = employees.filter(emp => {
-        const startDate = new Date(emp.start_date);
-        return startDate <= cutoffDate;
-      });
-      
-      const stillEmployed = employeesAtStart.filter(emp => {
-        return emp.status_name === 'ACTIVE' || emp.status_name === 'ON_LEAVE';
-      });
-      
-      return employeesAtStart.length > 0 ? (stillEmployed.length / employeesAtStart.length) * 100 : 0;
-    }, [employees]),
-    
-    calculateAverageTimeToGrade: useCallback(() => {
-      const gradedEmployees = employees.filter(emp => emp.grading_level && emp.start_date);
-      
-      if (gradedEmployees.length === 0) return 0;
-      
-      const totalDays = gradedEmployees.reduce((sum, emp) => {
-        const startDate = new Date(emp.start_date);
-        const gradingDate = new Date(emp.updated_at || emp.created_at);
-        const diffTime = Math.abs(gradingDate - startDate);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return sum + diffDays;
-      }, 0);
-      
-      return Math.round(totalDays / gradedEmployees.length);
-    }, [employees]),
-    
-    getPerformanceMetrics: useCallback(() => {
-      return {
-        totalEmployees: employees.length,
-        activeEmployees: employees.filter(emp => emp.status_name === 'ACTIVE').length,
-        gradingCompletion: gradingProgress,
-        averageServiceYears: employees.reduce((sum, emp) => sum + (emp.years_of_service || 0), 0) / employees.length || 0,
-        retentionRate: helpers.calculateRetentionRate(),
-        averageTimeToGrade: helpers.calculateAverageTimeToGrade(),
-        departmentDistribution: employeesByDepartment,
-        statusDistribution: employeesByStatus,
-        gradingDistribution: gradingDistribution
-      };
-    }, [employees, gradingProgress, employeesByDepartment, employeesByStatus, gradingDistribution]),
-    
-    // ========================================
-    // NAVIGATION HELPERS
-    // ========================================
-    goToPage: useCallback((page) => {
-      dispatch(setCurrentPage(page));
-    }, [dispatch]),
-    
-    goToNextPage: useCallback(() => {
-      if (computed.hasNextPage) {
-        dispatch(goToNextPage());
-      }
-    }, [dispatch, computed.hasNextPage]),
-    
-    goToPreviousPage: useCallback(() => {
-      if (computed.hasPreviousPage) {
-        dispatch(goToPreviousPage());
-      }
-    }, [dispatch, computed.hasPreviousPage]),
-    
-    // ========================================
     // VALIDATION HELPERS
     // ========================================
     validateEmployee: useCallback((employeeData) => {
       const errors = {};
       
-      // Required fields validation
-      if (!employeeData.first_name || !employeeData.first_name.trim()) {
+      // Basic validation
+      if (!employeeData.first_name?.trim()) {
         errors.first_name = 'First name is required';
       }
-      
-      if (!employeeData.last_name || !employeeData.last_name.trim()) {
+      if (!employeeData.last_name?.trim()) {
         errors.last_name = 'Last name is required';
       }
-      
-      if (!employeeData.email || !employeeData.email.trim()) {
+      if (!employeeData.email?.trim()) {
         errors.email = 'Email is required';
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(employeeData.email)) {
-        errors.email = 'Please enter a valid email address';
+        errors.email = 'Invalid email format';
       }
-      
-      if (!employeeData.employee_id || !employeeData.employee_id.trim()) {
+      if (!employeeData.employee_id?.trim()) {
         errors.employee_id = 'Employee ID is required';
       }
       
-      if (!employeeData.job_title || !employeeData.job_title.trim()) {
-        errors.job_title = 'Job title is required';
-      }
-      
+      // Business logic validation
       if (!employeeData.business_function) {
         errors.business_function = 'Business function is required';
       }
-      
-      if (!employeeData.department) {
-        errors.department = 'Department is required';
+      if (!employeeData.job_title?.trim()) {
+        errors.job_title = 'Job title is required';
       }
-      
-      if (!employeeData.job_function) {
-        errors.job_function = 'Job function is required';
-      }
-      
-      if (!employeeData.position_group) {
-        errors.position_group = 'Position group is required';
-      }
-      
       if (!employeeData.start_date) {
         errors.start_date = 'Start date is required';
-      }
-      
-      if (!employeeData.contract_duration) {
-        errors.contract_duration = 'Contract duration is required';
-      }
-      
-      // Date validation
-      if (employeeData.start_date && employeeData.end_date) {
-        const startDate = new Date(employeeData.start_date);
-        const endDate = new Date(employeeData.end_date);
-        
-        if (endDate <= startDate) {
-          errors.end_date = 'End date must be after start date';
-        }
-      }
-      
-      // Contract validation
-      if (employeeData.contract_start_date && employeeData.contract_end_date) {
-        const contractStart = new Date(employeeData.contract_start_date);
-        const contractEnd = new Date(employeeData.contract_end_date);
-        
-        if (contractEnd <= contractStart) {
-          errors.contract_end_date = 'Contract end date must be after contract start date';
-        }
       }
       
       return {
@@ -720,118 +586,111 @@ export const useEmployees = () => {
       };
     }, []),
     
-    validateGradeAssignment: useCallback((employeeData, gradingLevel) => {
-      const validation = { isValid: true, errors: [], warnings: [] };
+    // ========================================
+    // EMPLOYEE STATUS HELPERS
+    // ========================================
+    getEmployeeStatusInfo: useCallback((employee) => {
+      const status = employee.status_name || employee.status || 'Unknown';
+      const color = employee.status_color || '#gray';
+      const affectsHeadcount = employee.status_affects_headcount !== false;
       
-      if (!employeeData || !gradingLevel) {
-        validation.isValid = false;
-        validation.errors.push('Employee data and grading level are required');
-        return validation;
-      }
-      
-      // Check if employee is active
-      if (employeeData.status_name !== 'ACTIVE') {
-        validation.warnings.push('Employee is not currently active');
-      }
-      
-      // Check if employee has been with company long enough
-      if ((employeeData.years_of_service || 0) < 0.25) {
-        validation.warnings.push('Employee has less than 3 months of service');
-      }
-      
-      // Check if employee has line manager
-      if (!employeeData.line_manager) {
-        validation.warnings.push('Employee does not have a line manager assigned');
-      }
-      
-      return validation;
+      return {
+        status,
+        color,
+        affectsHeadcount,
+        isActive: status === 'ACTIVE',
+        isOnLeave: status === 'ON_LEAVE',
+        isOnboarding: status === 'ONBOARDING',
+        isProbation: status === 'PROBATION',
+        isInactive: status === 'INACTIVE'
+      };
     }, []),
     
     // ========================================
-    // UTILITY HELPERS
+    // CONTRACT HELPERS
     // ========================================
-    formatEmployeeDisplayName: useCallback((employee) => {
-      if (employee.name) return employee.name;
-      return `${employee.first_name || ''} ${employee.last_name || ''}`.trim() || 'Unknown Employee';
-    }, []),
-    
-    getEmployeeAge: useCallback((employee) => {
-      if (!employee.date_of_birth) return null;
-      const birthDate = new Date(employee.date_of_birth);
-      const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
+    getContractInfo: useCallback((employee) => {
+      const duration = employee.contract_duration || 'UNKNOWN';
+      const startDate = employee.contract_start_date || employee.start_date;
+      const endDate = employee.contract_end_date || employee.end_date;
+      const isPermanent = duration === 'PERMANENT';
       
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        return age - 1;
+      let urgency = 'normal';
+      if (!isPermanent && endDate) {
+        const today = new Date();
+        const contractEnd = new Date(endDate);
+        const diffTime = contractEnd - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) urgency = 'expired';
+        else if (diffDays <= 7) urgency = 'critical';
+        else if (diffDays <= 30) urgency = 'urgent';
+        else if (diffDays <= 60) urgency = 'attention';
       }
       
-      return age;
+      return {
+        duration,
+        startDate,
+        endDate,
+        isPermanent,
+        isTemporary: !isPermanent,
+        urgency,
+        daysRemaining: endDate ? Math.ceil((new Date(endDate) - new Date()) / (1000 * 60 * 60 * 24)) : null
+      };
     }, []),
     
-    getServiceDuration: useCallback((employee) => {
-      if (!employee.start_date) return null;
+    // ========================================
+    // GRADING HELPERS
+    // ========================================
+    getGradingInfo: useCallback((employee) => {
+      const level = employee.grading_level;
+      const display = employee.grading_display || (level ? level : 'No Grade');
+      const hasGrade = !!level;
       
-      const startDate = new Date(employee.start_date);
-      const today = new Date();
-      const diffTime = Math.abs(today - startDate);
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      const years = Math.floor(diffDays / 365);
-      const months = Math.floor((diffDays % 365) / 30);
-      
-      if (years > 0) {
-        return `${years} year${years > 1 ? 's' : ''} ${months} month${months > 1 ? 's' : ''}`;
-      } else {
-        return `${months} month${months > 1 ? 's' : ''}`;
-      }
-    }, []),
-    
-    getContractStatus: useCallback((employee) => {
-      if (!employee.contract_end_date) return 'Permanent';
-      
-      const endDate = new Date(employee.contract_end_date);
-      const today = new Date();
-      const diffTime = endDate - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 0) {
-        return 'Expired';
-      } else if (diffDays <= 30) {
-        return `Expires in ${diffDays} day${diffDays > 1 ? 's' : ''}`;
-      } else {
-        return 'Active';
-      }
+      return {
+        level,
+        display,
+        hasGrade,
+        needsGrade: !hasGrade
+      };
     }, [])
   };
 
   // ========================================
-  // AUTO-FETCH EFFECTS
+  // INITIALIZATION - CONTROLLED TO PREVENT LOOPS
   // ========================================
   
-  // Auto-fetch on mount and when params change
+  // FIXED: Only initialize once
   useEffect(() => {
-    actions.fetchEmployees(apiParams);
-  }, [apiParams]);
-
-  // Auto-fetch filter options and statistics on mount
-  useEffect(() => {
-    actions.fetchFilterOptions();
-    actions.fetchStatistics();
-    actions.fetchEmployeeGrading();
-  }, []);
-
-  // Auto-refresh statistics when employees change
-  useEffect(() => {
-    if (employees.length > 0) {
-      // Debounce statistics refresh
-      const timer = setTimeout(() => {
-        actions.fetchStatistics();
-      }, 1000);
-      
-      return () => clearTimeout(timer);
+    if (!isInitialized.current) {
+      console.log('🚀 Initializing useEmployees hook...');
+      actions.fetchFilterOptions().catch(error => {
+        console.error('❌ Failed to initialize useEmployees:', error);
+      });
     }
-  }, [employees.length]);
+  }, []); // Empty dependency array - only run once
+
+  // FIXED: Controlled fetching with parameter comparison
+  useEffect(() => {
+    if (isInitialized.current) {
+      const currentParams = JSON.stringify(apiParams);
+      if (lastFetchParams.current !== currentParams) {
+        console.log('🔄 API params changed, fetching employees...', apiParams);
+        lastFetchParams.current = currentParams;
+        dispatch(fetchEmployees(apiParams));
+      }
+    }
+  }, [apiParams, dispatch]); // Only depend on apiParams and dispatch
+
+  // FIXED: Initialize statistics and grading data only once
+  useEffect(() => {
+    if (isInitialized.current && statistics.total_employees === 0) {
+      console.log('📊 Fetching initial statistics and grading data...');
+      dispatch(fetchStatistics());
+      dispatch(fetchEmployeeGrading());
+      dispatch(getContractExpiryAlerts());
+    }
+  }, [isInitialized.current]); // Only run when initialized changes
 
   // ========================================
   // RETURN HOOK INTERFACE
@@ -843,7 +702,6 @@ export const useEmployees = () => {
     employees,
     formattedEmployees,
     currentEmployee,
-    filterOptions,
     selectedEmployees,
     currentFilters,
     appliedFilters,
@@ -852,7 +710,8 @@ export const useEmployees = () => {
     pagination,
     sorting,
     activities,
-    lineManagers,
+    directReports,
+    statusPreviews,
     viewMode,
     showAdvancedFilters,
     
@@ -873,8 +732,8 @@ export const useEmployees = () => {
     // ========================================
     // ANALYTICS DATA
     // ========================================
-    headcountSummaries,
-    vacantPositions,
+    contractExpiryAlerts,
+    contractsExpiringSoon,
     employeesByStatus,
     employeesByDepartment,
     newHires,
@@ -921,44 +780,6 @@ export const useEmployees = () => {
 // ========================================
 // ADDITIONAL SPECIALIZED HOOKS
 // ========================================
-
-// Hook for line manager selection and management
-export const useLineManagers = (searchTerm = '') => {
-  const dispatch = useDispatch();
-  const [lineManagers, setLineManagers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  const fetchLineManagers = useCallback(async (search = '') => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await dispatch(getLineManagers({ search }));
-      
-      if (response.type.endsWith('/fulfilled')) {
-        setLineManagers(response.payload);
-      } else {
-        setError(response.payload);
-      }
-    } catch (err) {
-      setError(err.message || 'Failed to fetch line managers');
-    } finally {
-      setLoading(false);
-    }
-  }, [dispatch]);
-  
-  useEffect(() => {
-    fetchLineManagers(searchTerm);
-  }, [fetchLineManagers, searchTerm]);
-  
-  return {
-    lineManagers,
-    loading,
-    error,
-    refetch: fetchLineManagers
-  };
-};
 
 // Hook for employee form management with validation
 export const useEmployeeForm = (initialData = null) => {
@@ -1023,6 +844,273 @@ export const useEmployeeForm = (initialData = null) => {
     setSubmitting,
     hasErrors: Object.keys(errors).length > 0,
     isValid: Object.keys(errors).length === 0 && isDirty
+  };
+};
+
+// Hook for contract management with alerts
+export const useContractManagement = () => {
+  const dispatch = useDispatch();
+  const contractExpiryAlerts = useSelector(selectContractExpiryAlerts);
+  const contractsExpiringSoon = useSelector(selectContractsExpiringSoon);
+  const loading = useSelector(selectEmployeeLoading);
+  const error = useSelector(selectEmployeeError);
+
+  const refreshAlerts = useCallback(() => {
+    dispatch(getContractExpiryAlerts());
+    dispatch(getContractsExpiringSoon());
+  }, [dispatch]);
+
+  const extendContract = useCallback((data) => {
+    return dispatch(extendEmployeeContract(data));
+  }, [dispatch]);
+
+  const bulkExtendContracts = useCallback((data) => {
+    return dispatch(bulkExtendContracts(data));
+  }, [dispatch]);
+
+  const getContractUrgency = useCallback((employee) => {
+    if (!employee.contract_end_date || employee.contract_duration === 'PERMANENT') {
+      return 'none';
+    }
+    
+    const endDate = new Date(employee.contract_end_date);
+    const today = new Date();
+    const diffTime = endDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 1000));
+    
+    if (diffDays < 0) return 'expired';
+    if (diffDays <= 7) return 'critical';
+    if (diffDays <= 30) return 'urgent';
+    if (diffDays <= 60) return 'attention';
+    return 'normal';
+  }, []);
+
+  const getContractsByUrgency = useCallback(() => {
+    const contracts = contractExpiryAlerts.all_employees || [];
+    
+    return contracts.reduce((acc, emp) => {
+      const urgency = getContractUrgency(emp);
+      if (!acc[urgency]) acc[urgency] = [];
+      acc[urgency].push(emp);
+      return acc;
+    }, {});
+  }, [contractExpiryAlerts, getContractUrgency]);
+
+  // FIXED: Only initialize once
+  useEffect(() => {
+    let isInitialized = false;
+    if (!isInitialized) {
+      isInitialized = true;
+      refreshAlerts();
+    }
+  }, []);
+
+  return {
+    contractExpiryAlerts,
+    contractsExpiringSoon,
+    loading: loading.contractAlerts,
+    error: error.contractAlerts,
+    refreshAlerts,
+    extendContract,
+    bulkExtendContracts,
+    getContractUrgency,
+    getContractsByUrgency,
+    hasExpiringContracts: contractExpiryAlerts.total_expiring > 0,
+    urgentContractsCount: contractExpiryAlerts.urgent_employees?.length || 0,
+    totalExpiringCount: contractExpiryAlerts.total_expiring || 0
+  };
+};
+
+// Hook for employee grading with bulk operations
+export const useEmployeeGrading = () => {
+  const dispatch = useDispatch();
+  const gradingData = useSelector(selectGradingData);
+  const gradingStatistics = useSelector(selectGradingStatistics);
+  const allGradingLevels = useSelector(selectAllGradingLevels);
+  const employeesNeedingGrades = useSelector(selectEmployeesNeedingGrades);
+  const employeesByGradeLevel = useSelector(selectEmployeesByGradeLevel);
+  const gradingProgress = useSelector(selectGradingProgress);
+  const loading = useSelector(selectEmployeeLoading);
+  const error = useSelector(selectEmployeeError);
+
+  const refreshGradingData = useCallback(() => {
+    dispatch(fetchEmployeeGrading());
+  }, [dispatch]);
+
+  const updateSingleGrade = useCallback((employee_id, grading_level) => {
+    // Optimistic update
+    dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level }));
+    // Actual API call
+    return dispatch(updateSingleEmployeeGrade({ employee_id, grading_level }));
+  }, [dispatch]);
+
+  const bulkUpdateGrades = useCallback((updates) => {
+    // Optimistic updates
+    updates.forEach(({ employee_id, grading_level }) => {
+      dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level }));
+    });
+    // Actual API call
+    return dispatch(bulkUpdateEmployeeGrades(updates));
+  }, [dispatch]);
+
+  const gradeAllInPositionGroup = useCallback((positionGroupId, gradingLevel) => {
+    const employeesInGroup = gradingData.employees?.filter(
+      emp => emp.position_group === positionGroupId
+    ) || [];
+    
+    if (employeesInGroup.length === 0) {
+      throw new Error('No employees found in this position group');
+    }
+
+    const updates = employeesInGroup.map(emp => ({
+      employee_id: emp.id || emp.employee_id,
+      grading_level: gradingLevel
+    }));
+
+    return bulkUpdateGrades(updates);
+  }, [gradingData, bulkUpdateGrades]);
+
+  const getGradingRecommendations = useCallback(() => {
+    const employees = gradingData.employees || [];
+    const recommendations = [];
+
+    employees.forEach(emp => {
+      if (!emp.grading_level) {
+        let recommendedLevel = '_M'; // Default to median
+        
+        // Basic logic for recommendations based on service years and position
+        const serviceYears = emp.years_of_service || 0;
+        const isManager = emp.direct_reports_count > 0;
+        
+        if (isManager && serviceYears > 2) {
+          recommendedLevel = '_UQ';
+        } else if (serviceYears > 5) {
+          recommendedLevel = '_UQ';
+        } else if (serviceYears > 2) {
+          recommendedLevel = '_M';
+        } else {
+          recommendedLevel = '_LQ';
+        }
+
+        recommendations.push({
+          employee_id: emp.id || emp.employee_id,
+          employee_name: emp.name,
+          current_level: emp.grading_level,
+          recommended_level: recommendedLevel,
+          reason: `Based on ${serviceYears} years of service${isManager ? ' and management role' : ''}`
+        });
+      }
+    });
+
+    return recommendations;
+  }, [gradingData]);
+
+  // FIXED: Only fetch if data is empty
+  useEffect(() => {
+    if (!gradingData.employees || gradingData.employees.length === 0) {
+      refreshGradingData();
+    }
+  }, []); // Empty dependency to run only once
+
+  return {
+    gradingData,
+    gradingStatistics,
+    allGradingLevels,
+    employeesNeedingGrades,
+    employeesByGradeLevel,
+    gradingProgress,
+    loading: loading.grading,
+    error: error.grading,
+    refreshGradingData,
+    updateSingleGrade,
+    bulkUpdateGrades,
+    gradeAllInPositionGroup,
+    getGradingRecommendations,
+    hasUngradedEmployees: employeesNeedingGrades.length > 0,
+    gradingCompletionRate: gradingProgress,
+    totalEmployeesCount: gradingStatistics.totalEmployees,
+    gradedEmployeesCount: gradingStatistics.gradedEmployees,
+    ungradedEmployeesCount: gradingStatistics.ungradedEmployees
+  };
+};
+
+// Hook for employee analytics and reporting
+export const useEmployeeAnalytics = () => {
+  const statistics = useSelector(selectStatistics);
+  const employeesByStatus = useSelector(selectEmployeesByStatus);
+  const employeesByDepartment = useSelector(selectEmployeesByDepartment);
+  const employeeMetrics = useSelector(selectEmployeeMetrics);
+  const dashboardSummary = useSelector(selectDashboardSummary);
+  const newHires = useSelector(selectNewHires);
+  const employeesNeedingAttention = useSelector(selectEmployeesNeedingAttention);
+
+  const getAnalyticsData = useCallback(() => {
+    return {
+      overview: {
+        totalEmployees: statistics.total_employees,
+        activeEmployees: statistics.active_employees,
+        inactiveEmployees: statistics.inactive_employees,
+        newHires: statistics.recent_hires_30_days,
+        contractEnding: statistics.upcoming_contract_endings_30_days
+      },
+      distribution: {
+        byStatus: statistics.by_status,
+        byBusinessFunction: statistics.by_business_function,
+        byPositionGroup: statistics.by_position_group,
+        byContractDuration: statistics.by_contract_duration
+      },
+      trends: {
+        monthlyHires: newHires.length,
+        retentionIndicators: {
+          noLineManager: employeesNeedingAttention.noLineManager.length,
+          onLeave: employeesNeedingAttention.onLeave.length,
+          statusUpdatesNeeded: employeesNeedingAttention.statusUpdate.length
+        }
+      },
+      performance: {
+        gradingProgress: employeeMetrics.performance.gradingProgress,
+        averageServiceYears: employeeMetrics.performance.averageServiceYears
+      },
+      demographics: {
+        genderDistribution: employeeMetrics.diversity.genderDistribution,
+        averageAge: employeeMetrics.diversity.averageAge
+      }
+    };
+  }, [statistics, employeeMetrics, newHires, employeesNeedingAttention]);
+
+  const getKPIs = useCallback(() => {
+    const analytics = getAnalyticsData();
+    
+    return {
+      headcount: {
+        total: analytics.overview.totalEmployees,
+        active: analytics.overview.activeEmployees,
+        growth: analytics.trends.monthlyHires
+      },
+      engagement: {
+        retention: 100 - ((analytics.trends.retentionIndicators.onLeave / analytics.overview.totalEmployees) * 100),
+        managementCoverage: 100 - ((analytics.trends.retentionIndicators.noLineManager / analytics.overview.totalEmployees) * 100)
+      },
+      performance: {
+        gradingCompletion: analytics.performance.gradingProgress,
+        averageTenure: analytics.performance.averageServiceYears
+      },
+      risk: {
+        contractRisk: (analytics.overview.contractEnding / analytics.overview.totalEmployees) * 100,
+        statusRisk: (analytics.trends.retentionIndicators.statusUpdatesNeeded / analytics.overview.totalEmployees) * 100
+      }
+    };
+  }, [getAnalyticsData]);
+
+  return {
+    statistics,
+    employeesByStatus,
+    employeesByDepartment,
+    employeeMetrics,
+    dashboardSummary,
+    getAnalyticsData,
+    getKPIs,
+    hasData: statistics.total_employees > 0
   };
 };
 

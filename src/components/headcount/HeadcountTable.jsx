@@ -694,7 +694,7 @@ const HeadcountTable = () => {
       )}
 
       {/* Search and Quick Filters */}
-      <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3">
+      <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3 mt-3">
         <SearchBar
           searchTerm={searchTerm}
           onSearchChange={handleSearchChange}

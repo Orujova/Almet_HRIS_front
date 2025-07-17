@@ -1,6 +1,6 @@
-// src/store/slices/employeeSlice.js - Complete Employee Management including Grading
+// src/store/slices/employeeSlice.js - UPDATED with complete backend integration
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
-import { employeeAPI, headcountAPI, vacancyAPI } from '../api/employeeAPI';
+import { employeeAPI } from '../api/employeeAPI';
 
 // ========================================
 // ASYNC THUNKS - EMPLOYEE OPERATIONS
@@ -14,7 +14,7 @@ export const fetchEmployees = createAsyncThunk(
       return {
         data: response.data.results || response.data,
         pagination: {
-          count: response.data.count || response.data.length || 0,
+          count: response.data.count || 0,
           next: response.data.next,
           previous: response.data.previous,
           current_page: response.data.current_page || params.page || 1,
@@ -77,20 +77,8 @@ export const deleteEmployee = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - STATISTICS & ANALYTICS
+// STATISTICS & ANALYTICS
 // ========================================
-
-export const fetchFilterOptions = createAsyncThunk(
-  'employees/fetchFilterOptions',
-  async (_, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.getFilterOptions();
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
 
 export const fetchStatistics = createAsyncThunk(
   'employees/fetchStatistics',
@@ -105,7 +93,7 @@ export const fetchStatistics = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - BULK OPERATIONS
+// BULK OPERATIONS
 // ========================================
 
 export const bulkUpdateEmployees = createAsyncThunk(
@@ -157,15 +145,15 @@ export const restoreEmployees = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - TAG MANAGEMENT
+// TAG MANAGEMENT
 // ========================================
 
 export const addEmployeeTag = createAsyncThunk(
   'employees/addEmployeeTag',
-  async ({ employeeId, tagData }, { rejectWithValue }) => {
+  async ({ employee_id, tag_id }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.addTag({ employeeId, tagData });
-      return { employeeId, tag: response.data };
+      const response = await employeeAPI.addTag({ employee_id, tag_id });
+      return { employee_id, tag: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -174,10 +162,10 @@ export const addEmployeeTag = createAsyncThunk(
 
 export const removeEmployeeTag = createAsyncThunk(
   'employees/removeEmployeeTag',
-  async ({ employeeId, tagId }, { rejectWithValue }) => {
+  async ({ employee_id, tag_id }, { rejectWithValue }) => {
     try {
-      await employeeAPI.removeTag({ employeeId, tagId });
-      return { employeeId, tagId };
+      await employeeAPI.removeTag({ employee_id, tag_id });
+      return { employee_id, tag_id };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -186,10 +174,10 @@ export const removeEmployeeTag = createAsyncThunk(
 
 export const bulkAddTags = createAsyncThunk(
   'employees/bulkAddTags',
-  async ({ employeeIds, tagIds }, { rejectWithValue }) => {
+  async ({ employee_ids, tag_id }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.bulkAddTags(employeeIds, tagIds);
-      return { employeeIds, tagIds, result: response.data };
+      const response = await employeeAPI.bulkAddTags(employee_ids, tag_id);
+      return { employee_ids, tag_id, result: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -198,10 +186,10 @@ export const bulkAddTags = createAsyncThunk(
 
 export const bulkRemoveTags = createAsyncThunk(
   'employees/bulkRemoveTags',
-  async ({ employeeIds, tagIds }, { rejectWithValue }) => {
+  async ({ employee_ids, tag_id }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.bulkRemoveTags(employeeIds, tagIds);
-      return { employeeIds, tagIds, result: response.data };
+      const response = await employeeAPI.bulkRemoveTags(employee_ids, tag_id);
+      return { employee_ids, tag_id, result: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -209,26 +197,78 @@ export const bulkRemoveTags = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - STATUS MANAGEMENT
+// LINE MANAGER MANAGEMENT
 // ========================================
 
-export const updateEmployeeStatus = createAsyncThunk(
-  'employees/updateEmployeeStatus',
-  async (employeeIds, { rejectWithValue }) => {
+export const assignLineManager = createAsyncThunk(
+  'employees/assignLineManager',
+  async ({ employee_id, line_manager_id }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.updateStatus(employeeIds);
-      return { employeeIds, result: response.data };
+      const response = await employeeAPI.assignLineManager({ employee_id, line_manager_id });
+      return { employee_id, line_manager_id, result: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
-export const autoUpdateAllStatuses = createAsyncThunk(
-  'employees/autoUpdateAllStatuses',
-  async (_, { rejectWithValue }) => {
+export const bulkAssignLineManager = createAsyncThunk(
+  'employees/bulkAssignLineManager',
+  async ({ employee_ids, line_manager_id }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.autoUpdateStatuses();
+      const response = await employeeAPI.bulkAssignLineManager({ employee_ids, line_manager_id });
+      return { employee_ids, line_manager_id, result: response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// ========================================
+// CONTRACT MANAGEMENT
+// ========================================
+
+export const extendEmployeeContract = createAsyncThunk(
+  'employees/extendEmployeeContract',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.extendContract(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const bulkExtendContracts = createAsyncThunk(
+  'employees/bulkExtendContracts',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.bulkExtendContracts(data);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const getContractExpiryAlerts = createAsyncThunk(
+  'employees/getContractExpiryAlerts',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.getContractExpiryAlerts(params);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const getContractsExpiringSoon = createAsyncThunk(
+  'employees/getContractsExpiringSoon',
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.getContractsExpiringSoon(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -237,47 +277,7 @@ export const autoUpdateAllStatuses = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - LINE MANAGER MANAGEMENT
-// ========================================
-
-export const getLineManagers = createAsyncThunk(
-  'employees/getLineManagers',
-  async (params = {}, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.getLineManagers(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const updateLineManager = createAsyncThunk(
-  'employees/updateLineManager',
-  async ({ employeeId, lineManagerId }, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.updateLineManager(employeeId, lineManagerId);
-      return { employeeId, lineManagerId, result: response.data };
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const bulkUpdateLineManager = createAsyncThunk(
-  'employees/bulkUpdateLineManager',
-  async ({ employeeIds, lineManagerId }, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.bulkUpdateLineManager(employeeIds, lineManagerId);
-      return { employeeIds, lineManagerId, result: response.data };
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-// ========================================
-// ASYNC THUNKS - GRADING MANAGEMENT
+// GRADING MANAGEMENT
 // ========================================
 
 export const fetchEmployeeGrading = createAsyncThunk(
@@ -306,10 +306,10 @@ export const bulkUpdateEmployeeGrades = createAsyncThunk(
 
 export const updateSingleEmployeeGrade = createAsyncThunk(
   'employees/updateSingleEmployeeGrade',
-  async ({ employeeId, gradingLevel }, { rejectWithValue }) => {
+  async ({ employee_id, grading_level }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.updateSingleGrade(employeeId, gradingLevel);
-      return { employeeId, gradingLevel, result: response.data };
+      const response = await employeeAPI.updateSingleGrade(employee_id, grading_level);
+      return { employee_id, grading_level, result: response.data };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -317,7 +317,7 @@ export const updateSingleEmployeeGrade = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - EXPORT & TEMPLATES
+// EXPORT & TEMPLATES
 // ========================================
 
 export const exportEmployees = createAsyncThunk(
@@ -375,8 +375,20 @@ export const downloadEmployeeTemplate = createAsyncThunk(
   }
 );
 
+export const bulkUploadEmployees = createAsyncThunk(
+  'employees/bulkUploadEmployees',
+  async (file, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.bulkUpload(file);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 // ========================================
-// ASYNC THUNKS - ACTIVITIES
+// ACTIVITIES
 // ========================================
 
 export const fetchEmployeeActivities = createAsyncThunk(
@@ -391,8 +403,32 @@ export const fetchEmployeeActivities = createAsyncThunk(
   }
 );
 
+export const fetchEmployeeDirectReports = createAsyncThunk(
+  'employees/fetchEmployeeDirectReports',
+  async (employeeId, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.getDirectReports(employeeId);
+      return { employeeId, directReports: response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const fetchEmployeeStatusPreview = createAsyncThunk(
+  'employees/fetchEmployeeStatusPreview',
+  async (employeeId, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.getStatusPreview(employeeId);
+      return { employeeId, statusPreview: response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 // ========================================
-// ASYNC THUNKS - ORG CHART
+// ORG CHART
 // ========================================
 
 export const fetchOrgChart = createAsyncThunk(
@@ -419,27 +455,11 @@ export const fetchOrgChartFullTree = createAsyncThunk(
   }
 );
 
-// ========================================
-// ASYNC THUNKS - HEADCOUNT & VACANCIES
-// ========================================
-
-export const fetchHeadcountSummaries = createAsyncThunk(
-  'employees/fetchHeadcountSummaries',
-  async (params = {}, { rejectWithValue }) => {
+export const fetchOrganizationalHierarchy = createAsyncThunk(
+  'employees/fetchOrganizationalHierarchy',
+  async (params, { rejectWithValue }) => {
     try {
-      const response = await headcountAPI.getSummaries(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const fetchVacantPositions = createAsyncThunk(
-  'employees/fetchVacantPositions',
-  async (params = {}, { rejectWithValue }) => {
-    try {
-      const response = await vacancyAPI.getAll(params);
+      const response = await employeeAPI.getOrganizationalHierarchy(params);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
@@ -457,17 +477,6 @@ const initialState = {
   // ========================================
   employees: [],
   currentEmployee: null,
-  filterOptions: {
-    businessFunctions: [],
-    departments: [],
-    units: [],
-    jobFunctions: [],
-    positionGroups: [],
-    employeeStatuses: [],
-    employeeTags: [],
-    contractDurations: [],
-    gradingLevels: []
-  },
   statistics: {
     total_employees: 0,
     active_employees: 0,
@@ -477,19 +486,44 @@ const initialState = {
     by_position_group: {},
     by_contract_duration: {},
     recent_hires_30_days: 0,
-    upcoming_contract_endings_30_days: 0
+    upcoming_contract_endings_30_days: 0,
+    status_update_analysis: {
+      employees_needing_updates: 0,
+      status_transitions: {}
+    }
   },
   orgChart: [],
   activities: {},
-  lineManagers: [],
-  headcountSummaries: [],
-  vacantPositions: [],
+  directReports: {},
+  statusPreviews: {},
+  contractExpiryAlerts: {
+    success: false,
+    days_ahead: 30,
+    total_expiring: 0,
+    urgent_employees: [],
+    all_employees: [],
+    urgency_breakdown: {},
+    department_breakdown: {},
+    line_manager_breakdown: {},
+    notification_recommendations: {
+      critical_contracts: [],
+      renewal_decisions_needed: [],
+      manager_notifications: []
+    }
+  },
+  contractsExpiringSoon: {
+    days: 30,
+    count: 0,
+    employees: []
+  },
 
   // ========================================
   // GRADING DATA
   // ========================================
-  gradingData: [],
-  gradingLevelsByPositionGroup: {},
+  gradingData: {
+    count: 0,
+    employees: []
+  },
   allGradingLevels: [
     { code: '_LD', display: '-LD', full_name: 'Lower Decile' },
     { code: '_LQ', display: '-LQ', full_name: 'Lower Quartile' },
@@ -532,18 +566,20 @@ const initialState = {
     updating: false,
     deleting: false,
     bulkOperations: false,
-    filterOptions: false,
     statistics: false,
     orgChart: false,
     grading: false,
     activities: false,
+    directReports: false,
+    statusPreview: false,
     exporting: false,
     statusUpdate: false,
     tagUpdate: false,
     lineManagerUpdate: false,
-    headcount: false,
-    vacancies: false,
-    template: false
+    contractUpdate: false,
+    template: false,
+    upload: false,
+    contractAlerts: false
   },
   
   // ========================================
@@ -556,18 +592,20 @@ const initialState = {
     update: null,
     delete: null,
     bulkOperations: null,
-    filterOptions: null,
     statistics: null,
     orgChart: null,
     grading: null,
     activities: null,
+    directReports: null,
+    statusPreview: null,
     export: null,
     statusUpdate: null,
     tagUpdate: null,
     lineManagerUpdate: null,
-    headcount: null,
-    vacancies: null,
-    template: null
+    contractUpdate: null,
+    template: null,
+    upload: null,
+    contractAlerts: null
   },
   
   // ========================================
@@ -826,23 +864,23 @@ const employeeSlice = createSlice({
     // GRADING OPTIMISTIC UPDATES
     // ========================================
     optimisticUpdateEmployeeGrade: (state, action) => {
-      const { employeeId, gradingLevel } = action.payload;
+      const { employee_id, grading_level } = action.payload;
       
       // Update in employees array
-      const employee = state.employees.find(emp => emp.id === employeeId);
+      const employee = state.employees.find(emp => emp.id === employee_id);
       if (employee) {
-        employee.grading_level = gradingLevel;
-        employee.grading_display = gradingLevel || 'No Grade';
+        employee.grading_level = grading_level;
+        employee.grading_display = grading_level || 'No Grade';
         employee._isOptimistic = true;
       }
       
       // Update in grading data
-      const gradingEmployee = state.gradingData.find(emp => 
-        emp.employee_id === employeeId || emp.id === employeeId
+      const gradingEmployee = state.gradingData.employees?.find(emp => 
+        emp.employee_id === employee_id || emp.id === employee_id
       );
       if (gradingEmployee) {
-        gradingEmployee.grading_level = gradingLevel;
-        gradingEmployee.grading_display = gradingLevel || 'No Grade';
+        gradingEmployee.grading_level = grading_level;
+        gradingEmployee.grading_display = grading_level || 'No Grade';
         gradingEmployee._isOptimistic = true;
       }
     }
@@ -962,16 +1000,247 @@ const employeeSlice = createSlice({
     // STATISTICS
     // ========================================
     builder
+      .addCase(fetchStatistics.pending, (state) => {
+        state.loading.statistics = true;
+        state.error.statistics = null;
+      })
       .addCase(fetchStatistics.fulfilled, (state, action) => {
+        state.loading.statistics = false;
         state.statistics = action.payload;
+      })
+      .addCase(fetchStatistics.rejected, (state, action) => {
+        state.loading.statistics = false;
+        state.error.statistics = action.payload;
       })
 
     // ========================================
-    // FILTER OPTIONS
+    // BULK OPERATIONS
     // ========================================
     builder
-      .addCase(fetchFilterOptions.fulfilled, (state, action) => {
-        state.filterOptions = action.payload;
+      .addCase(bulkUpdateEmployees.pending, (state) => {
+        state.loading.bulkOperations = true;
+        state.error.bulkOperations = null;
+      })
+      .addCase(bulkUpdateEmployees.fulfilled, (state, action) => {
+        state.loading.bulkOperations = false;
+        // Handle bulk update response
+        if (action.payload.updated_employees) {
+          action.payload.updated_employees.forEach(update => {
+            const employee = state.employees.find(emp => emp.id === update.employee_id);
+            if (employee) {
+              Object.assign(employee, update);
+            }
+          });
+        }
+        state.selectedEmployees = [];
+      })
+      .addCase(bulkUpdateEmployees.rejected, (state, action) => {
+        state.loading.bulkOperations = false;
+        state.error.bulkOperations = action.payload;
+      })
+
+    builder
+      .addCase(bulkDeleteEmployees.pending, (state) => {
+        state.loading.bulkOperations = true;
+        state.error.bulkOperations = null;
+      })
+      .addCase(bulkDeleteEmployees.fulfilled, (state, action) => {
+        state.loading.bulkOperations = false;
+        const deletedIds = action.payload;
+        state.employees = state.employees.filter(emp => !deletedIds.includes(emp.id));
+        state.selectedEmployees = state.selectedEmployees.filter(id => !deletedIds.includes(id));
+        state.statistics.total_employees -= deletedIds.length;
+      })
+      .addCase(bulkDeleteEmployees.rejected, (state, action) => {
+        state.loading.bulkOperations = false;
+        state.error.bulkOperations = action.payload;
+      })
+
+    builder
+      .addCase(softDeleteEmployees.pending, (state) => {
+        state.loading.bulkOperations = true;
+        state.error.bulkOperations = null;
+      })
+      .addCase(softDeleteEmployees.fulfilled, (state, action) => {
+        state.loading.bulkOperations = false;
+        const { ids } = action.payload;
+        ids.forEach(id => {
+          const employee = state.employees.find(emp => emp.id === id);
+          if (employee) {
+            employee.is_deleted = true;
+            employee.deleted_at = new Date().toISOString();
+          }
+        });
+        state.selectedEmployees = state.selectedEmployees.filter(id => !ids.includes(id));
+      })
+      .addCase(softDeleteEmployees.rejected, (state, action) => {
+        state.loading.bulkOperations = false;
+        state.error.bulkOperations = action.payload;
+      })
+
+    builder
+      .addCase(restoreEmployees.fulfilled, (state, action) => {
+        const { ids } = action.payload;
+        ids.forEach(id => {
+          const employee = state.employees.find(emp => emp.id === id);
+          if (employee) {
+            employee.is_deleted = false;
+            employee.deleted_at = null;
+          }
+        });
+      })
+
+    // ========================================
+    // TAG MANAGEMENT
+    // ========================================
+    builder
+      .addCase(addEmployeeTag.pending, (state) => {
+        state.loading.tagUpdate = true;
+        state.error.tagUpdate = null;
+      })
+      .addCase(addEmployeeTag.fulfilled, (state, action) => {
+        state.loading.tagUpdate = false;
+        const { employee_id, tag } = action.payload;
+        const employee = state.employees.find(emp => emp.id === employee_id);
+        if (employee) {
+          if (!employee.tag_names) employee.tag_names = [];
+          employee.tag_names.push(tag);
+        }
+      })
+      .addCase(addEmployeeTag.rejected, (state, action) => {
+        state.loading.tagUpdate = false;
+        state.error.tagUpdate = action.payload;
+      })
+
+    builder
+      .addCase(removeEmployeeTag.fulfilled, (state, action) => {
+        const { employee_id, tag_id } = action.payload;
+        const employee = state.employees.find(emp => emp.id === employee_id);
+        if (employee && employee.tag_names) {
+          employee.tag_names = employee.tag_names.filter(tag => tag.id !== tag_id);
+        }
+      })
+
+    builder
+      .addCase(bulkAddTags.fulfilled, (state, action) => {
+        const { employee_ids, tag_id, result } = action.payload;
+        if (result.tag_info) {
+          employee_ids.forEach(emp_id => {
+            const employee = state.employees.find(emp => emp.id === emp_id);
+            if (employee) {
+              if (!employee.tag_names) employee.tag_names = [];
+              employee.tag_names.push(result.tag_info);
+            }
+          });
+        }
+        state.selectedEmployees = [];
+      })
+
+    builder
+      .addCase(bulkRemoveTags.fulfilled, (state, action) => {
+        const { employee_ids, tag_id } = action.payload;
+        employee_ids.forEach(emp_id => {
+          const employee = state.employees.find(emp => emp.id === emp_id);
+          if (employee && employee.tag_names) {
+            employee.tag_names = employee.tag_names.filter(tag => tag.id !== tag_id);
+          }
+        });
+        state.selectedEmployees = [];
+      })
+
+    // ========================================
+    // LINE MANAGER MANAGEMENT
+    // ========================================
+    builder
+      .addCase(assignLineManager.pending, (state) => {
+        state.loading.lineManagerUpdate = true;
+        state.error.lineManagerUpdate = null;
+      })
+      .addCase(assignLineManager.fulfilled, (state, action) => {
+        state.loading.lineManagerUpdate = false;
+        const { employee_id, line_manager_id, result } = action.payload;
+        const employee = state.employees.find(emp => emp.id === employee_id);
+        if (employee && result.line_manager_info) {
+          employee.line_manager = line_manager_id;
+          employee.line_manager_name = result.line_manager_info.name;
+          employee.line_manager_hc_number = result.line_manager_info.employee_id;
+        }
+      })
+      .addCase(assignLineManager.rejected, (state, action) => {
+        state.loading.lineManagerUpdate = false;
+        state.error.lineManagerUpdate = action.payload;
+      })
+
+    builder
+      .addCase(bulkAssignLineManager.fulfilled, (state, action) => {
+        const { employee_ids, line_manager_id, result } = action.payload;
+        if (result.line_manager_info) {
+          employee_ids.forEach(emp_id => {
+            const employee = state.employees.find(emp => emp.id === emp_id);
+            if (employee) {
+              employee.line_manager = line_manager_id;
+              employee.line_manager_name = result.line_manager_info.name;
+              employee.line_manager_hc_number = result.line_manager_info.employee_id;
+            }
+          });
+        }
+        state.selectedEmployees = [];
+      })
+
+    // ========================================
+    // CONTRACT MANAGEMENT
+    // ========================================
+    builder
+      .addCase(extendEmployeeContract.pending, (state) => {
+        state.loading.contractUpdate = true;
+        state.error.contractUpdate = null;
+      })
+      .addCase(extendEmployeeContract.fulfilled, (state, action) => {
+        state.loading.contractUpdate = false;
+        const result = action.payload;
+        if (result.updated_employee) {
+          const employee = state.employees.find(emp => emp.id === result.updated_employee.employee_id);
+          if (employee) {
+            Object.assign(employee, result.updated_employee);
+          }
+        }
+      })
+      .addCase(extendEmployeeContract.rejected, (state, action) => {
+        state.loading.contractUpdate = false;
+        state.error.contractUpdate = action.payload;
+      })
+
+    builder
+      .addCase(bulkExtendContracts.fulfilled, (state, action) => {
+        const result = action.payload;
+        if (result.updated_employees) {
+          result.updated_employees.forEach(update => {
+            const employee = state.employees.find(emp => emp.id === update.employee_id);
+            if (employee) {
+              Object.assign(employee, update);
+            }
+          });
+        }
+        state.selectedEmployees = [];
+      })
+
+    builder
+      .addCase(getContractExpiryAlerts.pending, (state) => {
+        state.loading.contractAlerts = true;
+        state.error.contractAlerts = null;
+      })
+      .addCase(getContractExpiryAlerts.fulfilled, (state, action) => {
+        state.loading.contractAlerts = false;
+        state.contractExpiryAlerts = action.payload;
+      })
+      .addCase(getContractExpiryAlerts.rejected, (state, action) => {
+        state.loading.contractAlerts = false;
+        state.error.contractAlerts = action.payload;
+      })
+
+    builder
+      .addCase(getContractsExpiringSoon.fulfilled, (state, action) => {
+        state.contractsExpiringSoon = action.payload;
       })
 
     // ========================================
@@ -987,8 +1256,9 @@ const employeeSlice = createSlice({
         state.gradingData = action.payload;
         
         // Update grading statistics
-        const total = action.payload.length;
-        const graded = action.payload.filter(emp => emp.grading_level && emp.grading_level !== '').length;
+        const employees = action.payload.employees || [];
+        const total = employees.length;
+        const graded = employees.filter(emp => emp.grading_level && emp.grading_level !== '').length;
         
         state.gradingStatistics = {
           ...state.gradingStatistics,
@@ -1003,35 +1273,62 @@ const employeeSlice = createSlice({
       })
 
     builder
+      .addCase(bulkUpdateEmployeeGrades.pending, (state) => {
+        state.loading.grading = true;
+        state.error.grading = null;
+      })
       .addCase(bulkUpdateEmployeeGrades.fulfilled, (state, action) => {
+        state.loading.grading = false;
         const result = action.payload;
         
-        if (result.updated_employees) {
-          // Update employees array
-          result.updated_employees.forEach(update => {
-            const employee = state.employees.find(emp => emp.id === update.employee_id);
-            if (employee) {
-              employee.grading_level = update.grading_level;
-              employee.grading_display = update.grading_display;
-              employee._isOptimistic = false;
+        if (result.updated_count && result.updated_count > 0) {
+          // Update employees array - we'll refresh from server for accuracy
+          // Remove optimistic updates
+          state.employees.forEach(emp => {
+            if (emp._isOptimistic) {
+              delete emp._isOptimistic;
             }
           });
           
           // Update grading data
-          result.updated_employees.forEach(update => {
-            const gradingEmployee = state.gradingData.find(emp => 
-              emp.employee_id === update.employee_id || emp.id === update.employee_id
-            );
-            if (gradingEmployee) {
-              gradingEmployee.grading_level = update.grading_level;
-              gradingEmployee.grading_display = update.grading_display;
-              gradingEmployee._isOptimistic = false;
-            }
-          });
+          if (state.gradingData.employees) {
+            state.gradingData.employees.forEach(emp => {
+              if (emp._isOptimistic) {
+                delete emp._isOptimistic;
+              }
+            });
+          }
         }
         
         // Clear selection after successful bulk update
         state.selectedEmployees = [];
+      })
+      .addCase(bulkUpdateEmployeeGrades.rejected, (state, action) => {
+        state.loading.grading = false;
+        state.error.grading = action.payload;
+      })
+
+    builder
+      .addCase(updateSingleEmployeeGrade.fulfilled, (state, action) => {
+        const { employee_id, grading_level, result } = action.payload;
+        
+        // Update in employees array
+        const employee = state.employees.find(emp => emp.id === employee_id);
+        if (employee) {
+          employee.grading_level = grading_level;
+          employee.grading_display = grading_level || 'No Grade';
+          employee._isOptimistic = false;
+        }
+        
+        // Update in grading data
+        const gradingEmployee = state.gradingData.employees?.find(emp => 
+          emp.employee_id === employee_id || emp.id === employee_id
+        );
+        if (gradingEmployee) {
+          gradingEmployee.grading_level = grading_level;
+          gradingEmployee.grading_display = grading_level || 'No Grade';
+          gradingEmployee._isOptimistic = false;
+        }
       })
 
     // ========================================
@@ -1063,6 +1360,26 @@ const employeeSlice = createSlice({
         state.error.template = action.payload;
       })
 
+    builder
+      .addCase(bulkUploadEmployees.pending, (state) => {
+        state.loading.upload = true;
+        state.error.upload = null;
+      })
+      .addCase(bulkUploadEmployees.fulfilled, (state, action) => {
+        state.loading.upload = false;
+        const result = action.payload;
+        
+        // Add successfully created employees to the list
+        if (result.created_employees && result.created_employees.length > 0) {
+          state.employees.unshift(...result.created_employees);
+          state.statistics.total_employees += result.successful || 0;
+        }
+      })
+      .addCase(bulkUploadEmployees.rejected, (state, action) => {
+        state.loading.upload = false;
+        state.error.upload = action.payload;
+      })
+
     // ========================================
     // ORG CHART
     // ========================================
@@ -1073,98 +1390,69 @@ const employeeSlice = createSlice({
       })
       .addCase(fetchOrgChart.fulfilled, (state, action) => {
         state.loading.orgChart = false;
-        state.orgChart = action.payload.org_chart || action.payload.results || action.payload;
+        state.orgChart = action.payload;
       })
       .addCase(fetchOrgChart.rejected, (state, action) => {
         state.loading.orgChart = false;
         state.error.orgChart = action.payload;
       })
 
+    builder
+      .addCase(fetchOrgChartFullTree.fulfilled, (state, action) => {
+        state.orgChart = action.payload;
+      })
+
+    builder
+      .addCase(fetchOrganizationalHierarchy.fulfilled, (state, action) => {
+        state.orgChart = action.payload;
+      })
+
     // ========================================
     // ACTIVITIES
     // ========================================
     builder
+      .addCase(fetchEmployeeActivities.pending, (state) => {
+        state.loading.activities = true;
+        state.error.activities = null;
+      })
       .addCase(fetchEmployeeActivities.fulfilled, (state, action) => {
+        state.loading.activities = false;
         const { employeeId, activities } = action.payload;
         state.activities[employeeId] = activities;
       })
-
-    // ========================================
-    // LINE MANAGER UPDATES
-    // ========================================
-    builder
-      .addCase(getLineManagers.fulfilled, (state, action) => {
-        state.lineManagers = action.payload;
+      .addCase(fetchEmployeeActivities.rejected, (state, action) => {
+        state.loading.activities = false;
+        state.error.activities = action.payload;
       })
 
     builder
-      .addCase(updateLineManager.fulfilled, (state, action) => {
-        const { employeeId, lineManagerId, result } = action.payload;
-        const employee = state.employees.find(emp => emp.id === employeeId);
-        if (employee && result.line_manager_info) {
-          employee.line_manager = lineManagerId;
-          employee.line_manager_name = result.line_manager_info.name;
-          employee.line_manager_hc_number = result.line_manager_info.employee_id;
-        }
+      .addCase(fetchEmployeeDirectReports.pending, (state) => {
+        state.loading.directReports = true;
+        state.error.directReports = null;
       })
-
-    // ========================================
-    // STATUS UPDATES
-    // ========================================
-    builder
-      .addCase(autoUpdateAllStatuses.fulfilled, (state, action) => {
-        const result = action.payload;
-        if (result.updated_employees) {
-          result.updated_employees.forEach(update => {
-            const employee = state.employees.find(emp => emp.id === update.employee_id);
-            if (employee) {
-              employee.status_name = update.new_status;
-              employee.status_color = update.status_color;
-              employee.current_status_display = update.status_display;
-            }
-          });
-        }
+      .addCase(fetchEmployeeDirectReports.fulfilled, (state, action) => {
+        state.loading.directReports = false;
+        const { employeeId, directReports } = action.payload;
+        state.directReports[employeeId] = directReports;
       })
-
-    // ========================================
-    // SOFT DELETE & RESTORE
-    // ========================================
-    builder
-      .addCase(softDeleteEmployees.fulfilled, (state, action) => {
-        const { ids } = action.payload;
-        ids.forEach(id => {
-          const employee = state.employees.find(emp => emp.id === id);
-          if (employee) {
-            employee.is_deleted = true;
-            employee.deleted_at = new Date().toISOString();
-          }
-        });
-        state.selectedEmployees = state.selectedEmployees.filter(id => !ids.includes(id));
+      .addCase(fetchEmployeeDirectReports.rejected, (state, action) => {
+        state.loading.directReports = false;
+        state.error.directReports = action.payload;
       })
 
     builder
-      .addCase(restoreEmployees.fulfilled, (state, action) => {
-        const { ids } = action.payload;
-        ids.forEach(id => {
-          const employee = state.employees.find(emp => emp.id === id);
-          if (employee) {
-            employee.is_deleted = false;
-            employee.deleted_at = null;
-          }
-        });
+      .addCase(fetchEmployeeStatusPreview.pending, (state) => {
+        state.loading.statusPreview = true;
+        state.error.statusPreview = null;
       })
-
-    // ========================================
-    // HEADCOUNT & VACANCIES
-    // ========================================
-    builder
-      .addCase(fetchHeadcountSummaries.fulfilled, (state, action) => {
-        state.headcountSummaries = action.payload.results || action.payload;
+      .addCase(fetchEmployeeStatusPreview.fulfilled, (state, action) => {
+        state.loading.statusPreview = false;
+        const { employeeId, statusPreview } = action.payload;
+        state.statusPreviews[employeeId] = statusPreview;
       })
-
-    builder
-      .addCase(fetchVacantPositions.fulfilled, (state, action) => {
-        state.vacantPositions = action.payload.results || action.payload;
+      .addCase(fetchEmployeeStatusPreview.rejected, (state, action) => {
+        state.loading.statusPreview = false;
+        state.error.statusPreview = action.payload;
       });
   },
 });
@@ -1217,7 +1505,6 @@ export const selectEmployees = (state) => state.employees.employees;
 export const selectCurrentEmployee = (state) => state.employees.currentEmployee;
 export const selectEmployeeLoading = (state) => state.employees.loading;
 export const selectEmployeeError = (state) => state.employees.error;
-export const selectFilterOptions = (state) => state.employees.filterOptions;
 export const selectSelectedEmployees = (state) => state.employees.selectedEmployees;
 export const selectCurrentFilters = (state) => state.employees.currentFilters;
 export const selectAppliedFilters = (state) => state.employees.appliedFilters;
@@ -1229,13 +1516,14 @@ export const selectGradingData = (state) => state.employees.gradingData;
 export const selectGradingStatistics = (state) => state.employees.gradingStatistics;
 export const selectAllGradingLevels = (state) => state.employees.allGradingLevels;
 export const selectActivities = (state) => state.employees.activities;
-export const selectLineManagers = (state) => state.employees.lineManagers;
+export const selectDirectReports = (state) => state.employees.directReports;
+export const selectStatusPreviews = (state) => state.employees.statusPreviews;
 export const selectViewMode = (state) => state.employees.viewMode;
 export const selectShowAdvancedFilters = (state) => state.employees.showAdvancedFilters;
 export const selectShowGradingPanel = (state) => state.employees.showGradingPanel;
 export const selectGradingMode = (state) => state.employees.gradingMode;
-export const selectHeadcountSummaries = (state) => state.employees.headcountSummaries;
-export const selectVacantPositions = (state) => state.employees.vacantPositions;
+export const selectContractExpiryAlerts = (state) => state.employees.contractExpiryAlerts;
+export const selectContractsExpiringSoon = (state) => state.employees.contractsExpiringSoon;
 
 // ========================================
 // MEMOIZED SELECTORS
@@ -1279,7 +1567,9 @@ export const selectFormattedEmployees = createSelector(
     tagInfo: {
       tags: employee.tags || [],
       tagNames: employee.tag_names || [],
-      hasLeaveTag: (employee.tag_names || []).some(name => name.toLowerCase().includes('leave')),
+      hasLeaveTag: (employee.tag_names || []).some(tag => 
+        typeof tag === 'object' ? tag.type === 'LEAVE' : tag.toLowerCase().includes('leave')
+      ),
       tagCount: (employee.tags || []).length
     }
   }))
@@ -1398,7 +1688,8 @@ export const selectSelectionInfo = createSelector(
 export const selectEmployeesNeedingGrades = createSelector(
   [selectGradingData],
   (gradingData) => {
-    return gradingData.filter(emp => !emp.grading_level || emp.grading_level === '');
+    const employees = gradingData.employees || [];
+    return employees.filter(emp => !emp.grading_level || emp.grading_level === '');
   }
 );
 
@@ -1406,8 +1697,9 @@ export const selectEmployeesByGradeLevel = createSelector(
   [selectGradingData],
   (gradingData) => {
     const byGrade = {};
+    const employees = gradingData.employees || [];
     
-    gradingData.forEach(emp => {
+    employees.forEach(emp => {
       const grade = emp.grading_level || 'No Grade';
       if (!byGrade[grade]) {
         byGrade[grade] = [];
@@ -1423,8 +1715,9 @@ export const selectEmployeesByPositionGroup = createSelector(
   [selectGradingData],
   (gradingData) => {
     const byPositionGroup = {};
+    const employees = gradingData.employees || [];
     
-    gradingData.forEach(emp => {
+    employees.forEach(emp => {
       const positionGroup = emp.position_group_name || 'Unknown';
       if (!byPositionGroup[positionGroup]) {
         byPositionGroup[positionGroup] = [];
@@ -1514,7 +1807,8 @@ export const selectEmployeesNeedingAttention = createSelector(
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       return endDate <= thirtyDaysFromNow;
     }),
-    onLeave: employees.filter(emp => (emp.status_name || emp.status) === 'ON_LEAVE')
+    onLeave: employees.filter(emp => (emp.status_name || emp.status) === 'ON_LEAVE'),
+    statusUpdate: employees.filter(emp => emp.status_needs_update === true)
   })
 );
 
@@ -1537,8 +1831,8 @@ export const selectHasAnyError = createSelector(
 // ========================================
 
 export const selectDashboardSummary = createSelector(
-  [selectStatistics, selectEmployeesNeedingAttention, selectGradingProgress, selectVacantPositions],
-  (statistics, needingAttention, gradingProgress, vacantPositions) => ({
+  [selectStatistics, selectEmployeesNeedingAttention, selectGradingProgress, selectContractExpiryAlerts],
+  (statistics, needingAttention, gradingProgress, contractAlerts) => ({
     totalEmployees: statistics.total_employees,
     activeEmployees: statistics.active_employees,
     newHires: statistics.recent_hires_30_days,
@@ -1547,10 +1841,14 @@ export const selectDashboardSummary = createSelector(
       noLineManager: needingAttention.noLineManager.length,
       noGrading: needingAttention.noGrading.length,
       onLeave: needingAttention.onLeave.length,
-      contractEnding: needingAttention.contractEnding.length
+      contractEnding: needingAttention.contractEnding.length,
+      statusUpdate: needingAttention.statusUpdate.length
     },
     gradingProgress,
-    vacantPositionsCount: Array.isArray(vacantPositions) ? vacantPositions.length : 0
+    contractAlerts: {
+      totalExpiring: contractAlerts.total_expiring,
+      urgentContracts: contractAlerts.urgent_employees?.length || 0
+    }
   })
 );
 
@@ -1578,8 +1876,8 @@ export const selectEmployeeMetrics = createSelector(
       }, 0) / employees.filter(emp => emp.date_of_birth).length || 0
     },
     performance: {
-      gradingProgress: gradingData.length > 0 ? 
-        (gradingData.filter(emp => emp.grading_level).length / gradingData.length) * 100 : 0,
+      gradingProgress: gradingData.employees?.length > 0 ? 
+        (gradingData.employees.filter(emp => emp.grading_level).length / gradingData.employees.length) * 100 : 0,
       averageServiceYears: employees.reduce((sum, emp) => sum + (emp.years_of_service || 0), 0) / employees.length || 0
     },
     retention: {
