@@ -159,9 +159,7 @@ const EmployeeDetailPageContent = () => {
       'contract_duration_display': currentEmployee.contract_duration_display || 
         (currentEmployee.contract_duration === 'PERMANENT' ? 'Permanent' : currentEmployee.contract_duration),
         
-      // Grading display
-      'grading_display': currentEmployee.grading_display || 
-        (currentEmployee.grading_level ? currentEmployee.grading_level.replace('_', '-') : null)
+   
     };
     
     const value = fieldMappings[field];

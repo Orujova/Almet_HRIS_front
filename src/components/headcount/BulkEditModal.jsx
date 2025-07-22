@@ -1,28 +1,30 @@
-// src/components/headcount/BulkEditModal.jsx - FIXED with proper data fetching
-import { useState, useEffect, useMemo } from 'react';
-import { X, Edit3, Users, Building, User, Briefcase } from 'lucide-react';
+// src/components/headcount/BulkEditModal.jsx - FIXED API Integration
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Edit3, Users, User, Search, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
+import { useEmployees } from '../../hooks/useEmployees';
 
 const BulkEditModal = ({
   isOpen,
   onClose,
   onAction,
   selectedEmployees = [],
-  referenceData = {},
-  loading = false,
+  selectedEmployeeData = [],
   darkMode = false
 }) => {
-  const [selectedField, setSelectedField] = useState('');
   const [selectedValue, setSelectedValue] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // Extract reference data with safe defaults
+  // ========================================
+  // EMPLOYEES DATA FROM HOOK
+  // ========================================
   const {
-    lineManagers = [],
-    departments = [],
-    units = [],
-    positionGroups = [],
-    businessFunctions = []
-  } = referenceData;
+    formattedEmployees = [],
+    loading: employeesLoading = {},
+    refreshEmployees
+  } = useEmployees();
 
   // Theme classes
   const bgModal = darkMode ? "bg-gray-800" : "bg-white";
@@ -32,105 +34,139 @@ const BulkEditModal = ({
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const bgHover = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
   const bgInput = darkMode ? "bg-gray-700" : "bg-white";
+  const bgDropdown = darkMode ? "bg-gray-700" : "bg-white";
 
-  // Reset state when modal opens/closes
+  // ========================================
+  // PREPARE LINE MANAGER OPTIONS
+  // ========================================
+  const lineManagerOptions = useMemo(() => {
+    if (!formattedEmployees || formattedEmployees.length === 0) {
+      return [];
+    }
+
+    // Seçilmiş employeeləri filter et və line manager options hazırla
+    const availableManagers = formattedEmployees
+      .filter(emp => !selectedEmployees.includes(emp.id))
+      .map(emp => ({
+        id: emp.id,
+        value: emp.id,
+        label: emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+        name: emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+        employee_id: emp.employee_id,
+        jobTitle: emp.jobTitle || emp.job_title,
+        departmentName: emp.departmentInfo || emp.department_name,
+        businessFunction: emp.business_function_name,
+        email: emp.email,
+        isLineManager: emp.managementInfo?.isLineManager || emp.direct_reports_count > 0,
+        directReportsCount: emp.managementInfo?.directReportsCount || emp.direct_reports_count || 0
+      }))
+      .sort((a, b) => {
+        // Line managerləri əvvəl, sonra ad ilə sort et
+        if (a.isLineManager && !b.isLineManager) return -1;
+        if (!a.isLineManager && b.isLineManager) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    return availableManagers;
+  }, [formattedEmployees, selectedEmployees]);
+
+  // Axtarış əsasında filter
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm.trim()) return lineManagerOptions;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return lineManagerOptions.filter(option => 
+      option.name.toLowerCase().includes(searchLower) ||
+      option.employee_id?.toLowerCase().includes(searchLower) ||
+      option.email?.toLowerCase().includes(searchLower) ||
+      option.jobTitle?.toLowerCase().includes(searchLower) ||
+      option.departmentName?.toLowerCase().includes(searchLower) ||
+      option.businessFunction?.toLowerCase().includes(searchLower)
+    );
+  }, [lineManagerOptions, searchTerm]);
+
+  // Seçilmiş manager object
+  const selectedManager = useMemo(() => {
+    return lineManagerOptions.find(opt => opt.value === selectedValue);
+  }, [lineManagerOptions, selectedValue]);
+
+  // Loading state
+  const isDataLoading = employeesLoading?.employees;
+
+  // ========================================
+  // INITIALIZATION
+  // ========================================
   useEffect(() => {
     if (isOpen) {
-      setSelectedField('');
       setSelectedValue('');
+      setSearchTerm('');
+      setDropdownOpen(false);
+      
+      // Data refresh
+      if (refreshEmployees && typeof refreshEmployees === 'function') {
+        refreshEmployees();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, refreshEmployees]);
 
-  // Field options with their corresponding data
-  const fieldOptions = useMemo(() => [
-    {
-      value: 'line_manager',
-      label: 'Line Manager',
-      icon: User,
-      description: 'Change line manager for selected employees',
-      data: lineManagers,
-      displayKey: 'name',
-      valueKey: 'id'
-    },
-    {
-      value: 'department',
-      label: 'Department',
-      icon: Building,
-      description: 'Move employees to a different department',
-      data: departments,
-      displayKey: 'label',
-      valueKey: 'value'
-    },
-    {
-      value: 'unit',
-      label: 'Unit',
-      icon: Users,
-      description: 'Assign employees to a specific unit',
-      data: units,
-      displayKey: 'label',
-      valueKey: 'value'
-    },
-    {
-      value: 'position_group',
-      label: 'Position Group',
-      icon: Briefcase,
-      description: 'Change position group for employees',
-      data: positionGroups,
-      displayKey: 'label',
-      valueKey: 'value'
-    },
-    {
-      value: 'business_function',
-      label: 'Business Function',
-      icon: Building,
-      description: 'Move employees to different business function',
-      data: businessFunctions,
-      displayKey: 'label',
-      valueKey: 'value'
-    }
-  ], [lineManagers, departments, units, positionGroups, businessFunctions]);
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
 
-  // Get current field data
-  const currentFieldData = useMemo(() => {
-    const field = fieldOptions.find(f => f.value === selectedField);
-    if (!field) return [];
-    
-    return Array.isArray(field.data) ? field.data : [];
-  }, [fieldOptions, selectedField]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-  // Handle action execution
+  // ========================================
+  // EVENT HANDLERS
+  // ========================================
+
+  // Action handler
   const handleAction = async () => {
-    if (!selectedField) {
-      alert('Please select a field to edit');
-      return;
-    }
-
     if (!selectedValue) {
-      alert('Please select a value');
+      alert('Zəhmət olmasa line manager seçin');
       return;
     }
 
     if (selectedEmployees.length === 0) {
-      alert('No employees selected');
+      alert('Heç bir employee seçilməyib');
       return;
     }
 
     setIsProcessing(true);
     
     try {
-      await onAction('bulkEdit', {
-        field: selectedField,
-        value: selectedValue,
-        selectedEmployeeIds: selectedEmployees
+      // Backend-uyğun payload format
+      await onAction('bulkAssignLineManager', {
+        employee_ids: selectedEmployees,
+        line_manager_id: selectedValue
       });
       
-      // Close modal on success
+      console.log('✅ Line manager təyinatı uğurlu oldu');
       onClose();
     } catch (error) {
-      console.error('Bulk edit failed:', error);
-      alert(`Failed to update ${selectedField}: ${error.message}`);
+      console.error('❌ Line manager təyinatı uğursuz:', error);
+      alert(`Line manager təyinatı uğursuz: ${error.message}`);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Manager seçimi
+  const handleManagerSelect = (managerId) => {
+    setSelectedValue(managerId);
+    setDropdownOpen(false);
+    setSearchTerm('');
+  };
+
+  // Data refresh
+  const handleRefreshData = () => {
+    if (refreshEmployees && typeof refreshEmployees === 'function') {
+      refreshEmployees();
     }
   };
 
@@ -145,7 +181,7 @@ const BulkEditModal = ({
       />
       
       {/* Modal */}
-      <div className={`relative ${bgModal} rounded-lg shadow-xl w-full max-w-2xl mx-4  overflow-hidden`}>
+      <div className={`relative ${bgModal} rounded-lg shadow-xl w-full max-w-2xl mx-4 overflow-hidden`}>
         {/* Header */}
         <div className={`px-6 py-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center">
@@ -154,129 +190,280 @@ const BulkEditModal = ({
             </div>
             <div>
               <h2 className={`text-lg font-semibold ${textPrimary}`}>
-                Bulk Edit
+                Change Line Manager
               </h2>
               <p className={`text-sm ${textMuted}`}>
                 {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} selected
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isProcessing}
-            className={`p-2 rounded-lg ${bgHover} transition-colors disabled:opacity-50`}
-          >
-            <X className={`w-5 h-5 ${textSecondary}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Refresh button */}
+            <button
+              onClick={handleRefreshData}
+              disabled={isProcessing || isDataLoading}
+              className={`p-2 rounded-lg ${bgHover} transition-colors disabled:opacity-50`}
+              title="Refresh employee data"
+            >
+              <RefreshCw 
+                className={`w-4 h-4 ${textSecondary} ${isDataLoading ? 'animate-spin' : ''}`} 
+              />
+            </button>
+            <button
+              onClick={onClose}
+              disabled={isProcessing}
+              className={`p-2 rounded-lg ${bgHover} transition-colors disabled:opacity-50`}
+            >
+              <X className={`w-5 h-5 ${textSecondary}`} />
+            </button>
+          </div>
         </div>
+
+        {/* Loading State */}
+        {isDataLoading && (
+          <div className="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+            <div className="flex items-center">
+              <div className="w-4 h-4 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+              <span className="text-sm text-blue-800 dark:text-blue-300">
+                Employee məlumatları yüklənir...
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-6 space-y-6">
-          {/* Field Selection */}
-          <div>
-            <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
-              Select Field to Edit
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {fieldOptions.map((field) => {
-                const Icon = field.icon;
-                const isSelected = selectedField === field.value;
-                const hasData = Array.isArray(field.data) && field.data.length > 0;
-                
-                return (
-                  <div
-                    key={field.value}
-                    onClick={() => hasData ? setSelectedField(field.value) : null}
-                    className={`p-4 border rounded-lg transition-all ${
-                      !hasData 
-                        ? 'opacity-50 cursor-not-allowed' 
-                        : 'cursor-pointer ' + (isSelected 
-                          ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700' 
-                          : `${bgHover} ${borderColor}`)
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <Icon className={`w-5 h-5 mr-3 ${isSelected ? 'text-blue-500' : textMuted}`} />
-                      <div className="flex-1">
-                        <h3 className={`font-medium ${textPrimary}`}>
-                          {field.label}
-                          {!hasData && (
-                            <span className={`ml-2 text-xs ${textMuted}`}>
-                              (No data available)
-                            </span>
-                          )}
-                        </h3>
-                        <p className={`text-sm ${textMuted}`}>
-                          {field.description}
-                        </p>
-                      </div>
-                      {isSelected && hasData && (
-                        <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                          <div className="w-2 h-2 bg-white rounded-full"></div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Value Selection */}
-          {selectedField && (
+          {/* Selected Employees Display */}
+          {selectedEmployeeData.length > 0 && (
             <div>
               <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
-                Select New Value
+                Seçilmiş Employeelər ({selectedEmployeeData.length})
               </label>
-              
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="w-6 h-6 border border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
-                  <span className={textMuted}>Loading options...</span>
-                </div>
-              ) : currentFieldData.length === 0 ? (
-                <div className={`p-4 border ${borderColor} rounded-lg text-center`}>
-                  <p className={textMuted}>No options available for this field</p>
-                </div>
-              ) : (
-                <select
-                  value={selectedValue}
-                  onChange={(e) => setSelectedValue(e.target.value)}
-                  className={`w-full px-4 py-2 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+              <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                {selectedEmployeeData.map((emp) => (
+                  <div key={emp.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                          {(emp.first_name || emp.fullName || '').charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <div className={`font-medium ${textPrimary}`}>
+                          {emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()}
+                        </div>
+                        <div className={`text-xs ${textMuted}`}>
+                          {emp.employee_id} • {emp.jobTitle || emp.job_title}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`text-xs ${textMuted}`}>
+                      {emp.departmentInfo || emp.department_name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Line Manager Selection */}
+          <div>
+            <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
+              Yeni Line Manager Seçin
+            </label>
+            
+            {isDataLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 border border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
+                <span className={textMuted}>Employeelər yüklənir...</span>
+              </div>
+            ) : lineManagerOptions.length === 0 ? (
+              <div className={`p-4 border ${borderColor} rounded-lg text-center`}>
+                <Users className={`w-8 h-8 mx-auto mb-2 ${textMuted}`} />
+                <p className={textMuted}>Line manager kimi təyin edilə bilən employee yoxdur</p>
+                <button
+                  onClick={handleRefreshData}
+                  className="mt-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  <option value="">Choose an option...</option>
-                  {currentFieldData.map((item, index) => {
-                    const currentField = fieldOptions.find(f => f.value === selectedField);
-                    const value = item[currentField?.valueKey || 'id'];
-                    const label = item[currentField?.displayKey || 'name'] || item.label;
-                    
-                    return (
-                      <option key={`${selectedField}-${value}-${index}`} value={value}>
-                        {label}
-                        {item.employee_count !== undefined && ` (${item.employee_count} employees)`}
-                        {item.hierarchy_level !== undefined && ` - Level ${item.hierarchy_level}`}
-                      </option>
-                    );
-                  })}
-                </select>
+                  Yenidən Yüklə
+                </button>
+              </div>
+            ) : (
+              <div ref={dropdownRef} className="relative">
+                {/* Searchable Dropdown Input */}
+                <div
+                  onClick={() => !isProcessing && setDropdownOpen(!dropdownOpen)}
+                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} cursor-pointer flex items-center justify-between ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-center flex-1">
+                    <Search className={`w-4 h-4 mr-3 ${textMuted}`} />
+                    {selectedManager ? (
+                      <div className="flex-1">
+                        <div className="flex items-center flex-wrap gap-2">
+                          <span className={`font-medium ${textPrimary}`}>
+                            {selectedManager.name}
+                          </span>
+                          <span className={`text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600 ${textMuted}`}>
+                            {selectedManager.employee_id}
+                          </span>
+                          {selectedManager.isLineManager && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                              Manager
+                            </span>
+                          )}
+                        </div>
+                        <div className={`text-xs ${textMuted} mt-0.5 flex flex-wrap gap-2`}>
+                          <span>{selectedManager.jobTitle}</span>
+                          {selectedManager.departmentName && (
+                            <span>• {selectedManager.departmentName}</span>
+                          )}
+                          {selectedManager.directReportsCount > 0 && (
+                            <span>• {selectedManager.directReportsCount} reports</span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="Ad, ID, job title, department ilə axtarın..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDropdownOpen(true);
+                        }}
+                        disabled={isProcessing}
+                        className={`bg-transparent outline-none flex-1 ${textPrimary} disabled:opacity-50 placeholder:${textMuted}`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center ml-2">
+                    {selectedManager && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedValue('');
+                          setSearchTerm('');
+                        }}
+                        className={`mr-2 ${textMuted} hover:text-red-500 transition-colors`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    <ChevronDown 
+                      className={`w-4 h-4 ${textMuted} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
+                    />
+                  </div>
+                </div>
+
+                {/* Dropdown Menu */}
+                {dropdownOpen && !isProcessing && (
+                  <div className={`absolute z-20 w-full mt-1 ${bgDropdown} border ${borderColor} rounded-lg shadow-lg max-h-64 overflow-y-auto`}>
+                    {filteredOptions.length === 0 ? (
+                      <div className="px-4 py-8 text-center">
+                        <Users className={`w-8 h-8 mx-auto mb-2 ${textMuted}`} />
+                        <p className={textMuted}>
+                          {searchTerm ? 'Axtarışa uyğun employee tapılmadı' : 'Employee mövcud deyil'}
+                        </p>
+                        {searchTerm && (
+                          <button
+                            onClick={() => setSearchTerm('')}
+                            className="mt-2 text-sm text-blue-500 hover:text-blue-600"
+                          >
+                            Axtarışı təmizlə
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="py-1">
+                        {filteredOptions.map((manager) => (
+                          <div
+                            key={manager.id}
+                            onClick={() => handleManagerSelect(manager.value)}
+                            className={`px-4 py-3 cursor-pointer transition-colors ${bgHover} border-l-4 border-transparent hover:border-orange-500`}
+                          >
+                            <div className="flex items-center">
+                              <User className={`w-4 h-4 mr-3 ${textMuted} flex-shrink-0`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center flex-wrap gap-2 mb-1">
+                                  <span className={`font-medium ${textPrimary}`}>
+                                    {manager.name}
+                                  </span>
+                                  <span className={`text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600 ${textMuted}`}>
+                                    {manager.employee_id}
+                                  </span>
+                                  {manager.isLineManager && (
+                                    <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                                      Manager
+                                    </span>
+                                  )}
+                                </div>
+                                <div className={`text-xs ${textMuted} space-y-0.5`}>
+                                  <div>{manager.jobTitle}</div>
+                                  <div className="flex flex-wrap gap-1">
+                                    {manager.departmentName && (
+                                      <span>{manager.departmentName}</span>
+                                    )}
+                                    {manager.businessFunction && manager.departmentName && (
+                                      <span>•</span>
+                                    )}
+                                    {manager.businessFunction && (
+                                      <span>{manager.businessFunction}</span>
+                                    )}
+                                  </div>
+                                  {manager.directReportsCount > 0 && (
+                                    <div className="text-green-600 dark:text-green-400">
+                                      {manager.directReportsCount} direct report{manager.directReportsCount !== 1 ? 's' : ''}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Preview */}
+          {selectedManager && (
+            <div className={`p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg`}>
+              <h4 className={`font-medium ${textPrimary} mb-2`}>Dəyişiklik Önizləməsi</h4>
+              <p className={`text-sm ${textSecondary}`}>
+                <strong>{selectedManager.name}</strong> ({selectedManager.employee_id}) 
+                {' '}<strong>{selectedEmployees.length}</strong> employee-in line manager-i olaraq təyin ediləcək.
+              </p>
+              {selectedManager.isLineManager && (
+                <p className={`text-xs ${textMuted} mt-2 flex items-center`}>
+                  <span className="text-green-500 mr-1">✓</span>
+                  Bu employee artıq {selectedManager.directReportsCount} başqa employee-in manager-idir.
+                </p>
               )}
             </div>
           )}
 
-          {/* Preview */}
-          {selectedField && selectedValue && (
-            <div className={`p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg`}>
-              <h4 className={`font-medium ${textPrimary} mb-2`}>Preview Changes</h4>
-              <p className={`text-sm ${textSecondary}`}>
-                This will update the <strong>{fieldOptions.find(f => f.value === selectedField)?.label}</strong> for{' '}
-                <strong>{selectedEmployees.length}</strong> employee{selectedEmployees.length !== 1 ? 's' : ''} to{' '}
-                <strong>
-                  {currentFieldData.find(item => {
-                    const currentField = fieldOptions.find(f => f.value === selectedField);
-                    return item[currentField?.valueKey || 'id'] == selectedValue;
-                  })?.[fieldOptions.find(f => f.value === selectedField)?.displayKey || 'name']}
-                </strong>.
-              </p>
+          {/* Statistics */}
+          {lineManagerOptions.length > 0 && (
+            <div className={`text-xs ${textMuted} text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg`}>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="font-medium">Ümumi Employeelər</div>
+                  <div>{lineManagerOptions.length}</div>
+                </div>
+                <div>
+                  <div className="font-medium">Hazırda Manager</div>
+                  <div>{lineManagerOptions.filter(opt => opt.isLineManager).length}</div>
+                </div>
+              </div>
+              {searchTerm && (
+                <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                  <strong>{filteredOptions.length}</strong> nəticə "{searchTerm}" üçün
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -286,7 +473,7 @@ const BulkEditModal = ({
           <div className="flex items-center">
             {selectedEmployees.length > 0 && (
               <span className={`text-sm ${textMuted}`}>
-                {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} will be updated
+                {selectedEmployees.length} employee yenilənəcək
               </span>
             )}
           </div>
@@ -296,13 +483,13 @@ const BulkEditModal = ({
               disabled={isProcessing}
               className={`px-4 py-2 text-sm border ${borderColor} rounded-lg ${textSecondary} ${bgHover} transition-colors disabled:opacity-50`}
             >
-              Cancel
+              Ləğv et
             </button>
             <button
               onClick={handleAction}
-              disabled={isProcessing || !selectedField || !selectedValue || selectedEmployees.length === 0}
+              disabled={isProcessing || !selectedValue || selectedEmployees.length === 0}
               className={`px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                isProcessing || !selectedField || !selectedValue || selectedEmployees.length === 0
+                isProcessing || !selectedValue || selectedEmployees.length === 0
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                   : 'bg-orange-600 hover:bg-orange-700 text-white'
               }`}
@@ -310,10 +497,10 @@ const BulkEditModal = ({
               {isProcessing ? (
                 <div className="flex items-center">
                   <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Updating...
+                  Təyin edilir...
                 </div>
               ) : (
-                'Update Employees'
+                `Line Manager Təyin Et (${selectedEmployees.length})`
               )}
             </button>
           </div>

@@ -1,4 +1,4 @@
-// src/store/api/referenceDataAPI.js - Complete Reference Data API with all endpoints
+// src/store/api/referenceDataAPI.js - Backend endpointlərinə uyğun reference data API
 import { apiService } from '../../services/api';
 
 export const referenceDataAPI = {
@@ -8,7 +8,6 @@ export const referenceDataAPI = {
   getBusinessFunctions: () => apiService.getBusinessFunctions(),
   getBusinessFunction: (id) => apiService.getBusinessFunction(id),
   getBusinessFunctionDropdown: () => {
-    // Transform regular response to dropdown format
     return apiService.getBusinessFunctions().then(response => {
       const data = response.data.results || response.data || [];
       return {
@@ -25,7 +24,6 @@ export const referenceDataAPI = {
   },
   createBusinessFunction: (data) => apiService.createBusinessFunction(data),
   updateBusinessFunction: (id, data) => apiService.updateBusinessFunction(id, data),
-  partialUpdateBusinessFunction: (id, data) => apiService.partialUpdateBusinessFunction(id, data),
   deleteBusinessFunction: (id) => apiService.deleteBusinessFunction(id),
 
   // ========================================
@@ -52,7 +50,6 @@ export const referenceDataAPI = {
             employee_count: item.employee_count,
             unit_count: item.unit_count,
             head_of_department: item.head_of_department,
-            head_name: item.head_name,
             is_active: item.is_active
           }))
         }
@@ -61,7 +58,6 @@ export const referenceDataAPI = {
   },
   createDepartment: (data) => apiService.createDepartment(data),
   updateDepartment: (id, data) => apiService.updateDepartment(id, data),
-  partialUpdateDepartment: (id, data) => apiService.partialUpdateDepartment(id, data),
   deleteDepartment: (id) => apiService.deleteDepartment(id),
 
   // ========================================
@@ -86,7 +82,6 @@ export const referenceDataAPI = {
           business_function_name: item.business_function_name,
           employee_count: item.employee_count,
           unit_head: item.unit_head,
-          unit_head_name: item.unit_head_name,
           is_active: item.is_active
         }))
       };
@@ -94,7 +89,6 @@ export const referenceDataAPI = {
   },
   createUnit: (data) => apiService.createUnit(data),
   updateUnit: (id, data) => apiService.updateUnit(id, data),
-  partialUpdateUnit: (id, data) => apiService.partialUpdateUnit(id, data),
   deleteUnit: (id) => apiService.deleteUnit(id),
 
   // ========================================
@@ -119,7 +113,6 @@ export const referenceDataAPI = {
   },
   createJobFunction: (data) => apiService.createJobFunction(data),
   updateJobFunction: (id, data) => apiService.updateJobFunction(id, data),
-  partialUpdateJobFunction: (id, data) => apiService.partialUpdateJobFunction(id, data),
   deleteJobFunction: (id) => apiService.deleteJobFunction(id),
 
   // ========================================
@@ -151,7 +144,6 @@ export const referenceDataAPI = {
   getPositionGroupGradingLevels: (id) => apiService.getPositionGroupGradingLevels(id),
   createPositionGroup: (data) => apiService.createPositionGroup(data),
   updatePositionGroup: (id, data) => apiService.updatePositionGroup(id, data),
-  partialUpdatePositionGroup: (id, data) => apiService.partialUpdatePositionGroup(id, data),
   deletePositionGroup: (id) => apiService.deletePositionGroup(id),
 
   // ========================================
@@ -174,7 +166,6 @@ export const referenceDataAPI = {
           auto_transition_enabled: item.auto_transition_enabled,
           auto_transition_days: item.auto_transition_days,
           auto_transition_to: item.auto_transition_to,
-          auto_transition_to_name: item.auto_transition_to_name,
           is_transitional: item.is_transitional,
           transition_priority: item.transition_priority,
           send_notifications: item.send_notifications,
@@ -184,13 +175,12 @@ export const referenceDataAPI = {
           employee_count: item.employee_count,
           is_active: item.is_active,
           order: item.order
-        }))
+        })).sort((a, b) => (a.order || 0) - (b.order || 0))
       };
     });
   },
   createEmployeeStatus: (data) => apiService.createEmployeeStatus(data),
   updateEmployeeStatus: (id, data) => apiService.updateEmployeeStatus(id, data),
-  partialUpdateEmployeeStatus: (id, data) => apiService.partialUpdateEmployeeStatus(id, data),
   deleteEmployeeStatus: (id) => apiService.deleteEmployeeStatus(id),
 
   // ========================================
@@ -220,7 +210,6 @@ export const referenceDataAPI = {
   },
   createEmployeeTag: (data) => apiService.createEmployeeTag(data),
   updateEmployeeTag: (id, data) => apiService.updateEmployeeTag(id, data),
-  partialUpdateEmployeeTag: (id, data) => apiService.partialUpdateEmployeeTag(id, data),
   deleteEmployeeTag: (id) => apiService.deleteEmployeeTag(id),
 
   // ========================================
@@ -251,7 +240,6 @@ export const referenceDataAPI = {
   },
   createContractConfig: (data) => apiService.createContractConfig(data),
   updateContractConfig: (id, data) => apiService.updateContractConfig(id, data),
-  partialUpdateContractConfig: (id, data) => apiService.partialUpdateContractConfig(id, data),
   deleteContractConfig: (id) => apiService.deleteContractConfig(id),
   testContractCalculations: (id) => apiService.testContractCalculations(id),
 
@@ -291,7 +279,7 @@ export const referenceDataAPI = {
     }
   },
 
-  // Get hierarchical data (Business Function -> Department -> Unit)
+  // Get hierarchical data
   getHierarchicalData: async (businessFunctionId, departmentId) => {
     try {
       const promises = [referenceDataAPI.getBusinessFunctionDropdown()];
@@ -321,20 +309,17 @@ export const referenceDataAPI = {
     try {
       const validations = {};
 
-      // Validate business function
       if (businessFunctionId) {
         const bf = await referenceDataAPI.getBusinessFunction(businessFunctionId);
         validations.businessFunction = bf.data.is_active;
       }
 
-      // Validate department belongs to business function
       if (departmentId) {
         const dept = await referenceDataAPI.getDepartment(departmentId);
         validations.department = dept.data.is_active && 
           (!businessFunctionId || dept.data.business_function === parseInt(businessFunctionId));
       }
 
-      // Validate unit belongs to department
       if (unitId) {
         const unit = await referenceDataAPI.getUnit(unitId);
         validations.unit = unit.data.is_active && 

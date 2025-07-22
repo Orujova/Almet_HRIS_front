@@ -1,5 +1,5 @@
-// src/components/headcount/ActionMenu.jsx - FIXED with proper API integration
-import { useState,useEffect } from "react";
+// src/components/headcount/ActionMenu.jsx - FIXED API Integration
+import { useState, useEffect } from "react";
 import { useReferenceData } from "../../hooks/useReferenceData";
 import { useEmployees } from "../../hooks/useEmployees";
 import { 
@@ -11,84 +11,51 @@ import {
   X,
   FileSpreadsheet,
   ChevronRight,
-  Check
+  Check,
+  AlertCircle,
+  Loader
 } from "lucide-react";
 
-// Import the new modals
+// Import modals
 import TagManagementModal from "./TagManagementModal";
 import BulkEditModal from "./BulkEditModal";
 
-/**
- * FIXED Action Menu with correct API integration and proper bulk actions
- */
 const ActionMenu = ({ 
   isOpen, 
   onClose, 
   onAction, 
   selectedCount = 0,
   selectedEmployees = [],
+  selectedEmployeeData = [],
   darkMode = false 
 }) => {
-  const [subMenuOpen, setSubMenuOpen] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
 
-  // Get reference data from useReferenceData hook
+  // Get reference data using the hooks
   const {
-    employeeTags,
-    businessFunctions,
-    departments,
-    units,
-    jobFunctions,
-    positionGroups,
-    loading: refLoading,
-    error: refError,
-    // Actions to fetch data if not available
+    employeeTags = [],
+    businessFunctions = [],
+    departments = [],
+    units = [],
+    jobFunctions = [],
+    positionGroups = [],
+    loading = {},
+    error = {},
     fetchEmployeeTags,
     fetchBusinessFunctions,
-    fetchDepartments,
-    fetchUnits,
-    fetchJobFunctions,
-    fetchPositionGroups
+    hasEmployeeTags,
+    hasBusinessFunctions
   } = useReferenceData();
 
-  // Get employee-specific data including line managers
   const {
-    getLineManagers,
-    lineManagers
+    formattedEmployees = [],
+    exportEmployees,
+    downloadEmployeeTemplate,
+    softDeleteEmployees,
+    deleteEmployee
   } = useEmployees();
-
-  // Fetch reference data when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      // Fetch tags if not available
-      if (!employeeTags || employeeTags.length === 0) {
-        fetchEmployeeTags?.();
-      }
-      
-      // Fetch other reference data if not available
-      if (!businessFunctions || businessFunctions.length === 0) {
-        fetchBusinessFunctions?.();
-      }
-      
-      if (!departments || departments.length === 0) {
-        fetchDepartments?.();
-      }
-      
-      if (!units || units.length === 0) {
-        fetchUnits?.();
-      }
-      
-      if (!jobFunctions || jobFunctions.length === 0) {
-        fetchJobFunctions?.();
-      }
-      
-      if (!positionGroups || positionGroups.length === 0) {
-        fetchPositionGroups?.();
-      }
-    }
-  }, [isOpen, employeeTags, businessFunctions, departments, units, jobFunctions, positionGroups]);
 
   // Theme classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -98,21 +65,34 @@ const ActionMenu = ({
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const bgHover = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
+  // Initialize data when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (!hasEmployeeTags() && fetchEmployeeTags) {
+        fetchEmployeeTags();
+      }
+      
+      if (!hasBusinessFunctions() && fetchBusinessFunctions) {
+        fetchBusinessFunctions();
+      }
+    }
+  }, [isOpen, hasEmployeeTags, hasBusinessFunctions, fetchEmployeeTags, fetchBusinessFunctions]);
+
   if (!isOpen) return null;
 
   // ========================================
-  // FIXED API-INTEGRATED ACTION HANDLERS
+  // ACTION HANDLERS - Fixed for Backend API
   // ========================================
 
   const handleActionWithAPI = async (action, options = {}) => {
-    console.log('🚀 API Action triggered:', action, 'Options:', options, 'Selected:', selectedCount);
+    console.log('🚀 Action triggered:', action, 'Options:', options, 'Selected:', selectedCount);
     
-    if (isProcessing) return; // Prevent double clicks
+    if (isProcessing) return;
     
     try {
       setIsProcessing(true);
       
-      // Handle modal-based actions - FIXED action names
+      // Modal-based actions
       if (action === 'manageTags') {
         setIsTagModalOpen(true);
         setIsProcessing(false);
@@ -120,73 +100,111 @@ const ActionMenu = ({
       }
       
       if (action === 'bulkEdit') {
-        // Load line managers if not already loaded
-        if (getLineManagers && (!lineManagers || lineManagers.length === 0)) {
-          try {
-            await getLineManagers();
-          } catch (error) {
-            console.warn('Failed to load line managers:', error);
-            // Continue anyway, modal will work without line managers
-          }
-        }
         setIsBulkEditModalOpen(true);
         setIsProcessing(false);
         return;
       }
       
-      // Call the parent's action handler for other actions with CORRECT action names
-      await onAction(action, {
-        ...options,
-        selectedCount,
-        selectedEmployeeIds: selectedEmployees
-      });
+      // Direct API actions with proper backend endpoints
+      switch (action) {
+        case 'export':
+          console.log('📤 Starting export...');
+          await onAction('export', {
+            type: 'selected',
+            format: 'excel',
+            employee_ids: selectedEmployees
+          });
+          break;
+
+        case 'softDelete':
+          console.log('🗑️ Starting soft delete...');
+          await onAction('softDelete', {
+            employee_ids: selectedEmployees,
+            confirmMessage: options.confirmMessage
+          });
+          break;
+
+        case 'delete':
+          console.log('⚠️ Starting permanent delete...');
+          await onAction('delete', {
+            employee_ids: selectedEmployees,
+            confirmMessage: options.confirmMessage
+          });
+          break;
+
+        case 'downloadTemplate':
+          console.log('📄 Downloading template...');
+          await downloadEmployeeTemplate();
+          alert('✅ Template downloaded successfully!');
+          break;
+
+        default:
+          await onAction(action, {
+            ...options,
+            selectedCount,
+            selectedEmployeeIds: selectedEmployees
+          });
+      }
       
-      onClose(); // Close menu on successful action
+      onClose();
       
     } catch (error) {
       console.error('❌ Action failed:', error);
-      // Parent component will handle error display
+      alert(`❌ Action failed: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // FIXED: Handle modal actions with correct API mapping
+  // Modal action handler with proper API mapping
   const handleModalAction = async (action, options) => {
     try {
-      // Map modal actions to correct bulk actions
       let mappedAction = action;
-      let mappedOptions = options;
+      let mappedOptions = { ...options };
       
-      if (action === 'addTags') {
-        mappedAction = 'bulkAddTags';
-        mappedOptions = {
-          employeeIds: selectedEmployees,
-          tagIds: options.tagIds
-        };
-      } else if (action === 'removeTags') {
-        mappedAction = 'bulkRemoveTags'; 
-        mappedOptions = {
-          employeeIds: selectedEmployees,
-          tagIds: options.tagIds
-        };
-      } else if (action === 'bulkEdit' || action === 'bulkUpdate') {
-        mappedAction = 'bulkEdit'; // Use the correct action name
-        mappedOptions = {
-          ...options,
-          selectedEmployeeIds: selectedEmployees
-        };
+      // Map modal actions to backend API actions
+      switch (action) {
+        case 'addTags':
+        case 'removeTags':
+          mappedAction = action === 'addTags' ? 'bulkAddTags' : 'bulkRemoveTags';
+          mappedOptions = {
+            employee_ids: selectedEmployees,
+            tag_id: options.tag_id
+          };
+          break;
+
+        case 'bulkAddTags':
+        case 'bulkRemoveTags':
+          mappedOptions = {
+            employee_ids: selectedEmployees,
+            tag_id: options.tag_id
+          };
+          break;
+
+        case 'bulkAssignLineManager':
+          mappedOptions = {
+            employee_ids: selectedEmployees,
+            line_manager_id: options.line_manager_id
+          };
+          break;
+
+        default:
+          mappedOptions = {
+            employee_ids: selectedEmployees,
+            ...options
+          };
       }
       
+      console.log(`🔄 Executing modal action: ${mappedAction}`, mappedOptions);
       await onAction(mappedAction, mappedOptions);
       
-      // Close modals after successful action
+      // Close modals
       setIsTagModalOpen(false);
       setIsBulkEditModalOpen(false);
       onClose();
     } catch (error) {
       console.error('❌ Modal action failed:', error);
-      throw error; // Re-throw to let modal handle the error
+      throw error;
     }
   };
 
@@ -199,15 +217,15 @@ const ActionMenu = ({
         />
         
         <div className={`absolute right-0 top-0 z-50 ${bgCard} rounded-lg shadow-xl border ${borderColor} w-64 overflow-hidden`}>
-          {/* Header with processing indicator */}
+          {/* Header */}
           <div className={`px-4 py-3 border-b ${borderColor} bg-gray-50 dark:bg-gray-700/50`}>
             <div className="flex items-center justify-between">
               <div>
                 <h3 className={`text-sm font-medium ${textPrimary} flex items-center`}>
                   {isProcessing && (
-                    <div className="w-3 h-3 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <Loader className="w-3 h-3 animate-spin mr-2 text-blue-500" />
                   )}
-                  Bulk Actions
+                  Bulk Operations
                 </h3>
                 <p className={`text-xs ${textMuted}`}>
                   {selectedCount} employee{selectedCount !== 1 ? 's' : ''} selected
@@ -225,7 +243,7 @@ const ActionMenu = ({
 
           {/* Menu Items */}
           <div className="py-1 max-h-96 overflow-y-auto">
-            {/* Export & Import Section */}
+            {/* Export Section */}
             <div className="px-2">
               <button
                 onClick={() => handleActionWithAPI('export', {
@@ -239,40 +257,29 @@ const ActionMenu = ({
                 <span>Export Selected ({selectedCount})</span>
               </button>
 
-              <button
-                onClick={() => handleActionWithAPI('downloadTemplate')}
-                disabled={isProcessing}
-                className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50`}
-              >
-                <FileSpreadsheet size={16} className="mr-3 text-indigo-500 flex-shrink-0" />
-                <span>Download Template</span>
-              </button>
-
-          
             </div>
 
             <div className={`h-px ${borderColor} my-2`} />
 
-            {/* FIXED: Tag Management and Bulk Edit - Opens Modal with correct action names */}
-            <div className="px-2">
+            {/* Bulk Edit Section */}
+            <div className="px-2 space-y-1">
               <button
                 onClick={() => handleActionWithAPI('manageTags')}
                 disabled={isProcessing || selectedCount === 0}
                 className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50`}
               >
                 <Tag size={16} className="mr-3 text-purple-500 flex-shrink-0" />
-                <span className="flex-1 text-left">Manage Tags</span>
+                <span className="flex-1 text-left">Tag Management</span>
                 <ChevronRight size={12} className={`${textMuted}`} />
               </button>
 
-              {/* FIXED: Bulk Edit - correct action name */}
               <button
                 onClick={() => handleActionWithAPI('bulkEdit')}
                 disabled={isProcessing || selectedCount === 0}
                 className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors ${bgHover} ${textPrimary} disabled:opacity-50`}
               >
                 <Edit3 size={16} className="mr-3 text-orange-500 flex-shrink-0" />
-                <span className="flex-1 text-left">Bulk Edit</span>
+                <span className="flex-1 text-left">Change Line Manager</span>
                 <ChevronRight size={12} className={`${textMuted}`} />
               </button>
             </div>
@@ -280,10 +287,10 @@ const ActionMenu = ({
             <div className={`h-px ${borderColor} my-2`} />
 
             {/* Dangerous Actions */}
-            <div className="px-2">
+            <div className="px-2 space-y-1">
               <button
                 onClick={() => handleActionWithAPI('softDelete', {
-                  confirmMessage: `Are you sure you want to soft delete ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}? They can be restored later.`
+                  confirmMessage: `${selectedCount} employee-i soft delete etmək istədiyinizdən əminsiniz? Onlar daha sonra bərpa edilə bilər.`
                 })}
                 disabled={isProcessing || selectedCount === 0}
                 className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors hover:bg-orange-50 dark:hover:bg-orange-900/20 text-orange-600 dark:text-orange-400 disabled:opacity-50`}
@@ -294,7 +301,7 @@ const ActionMenu = ({
 
               <button
                 onClick={() => handleActionWithAPI('delete', {
-                  confirmMessage: `⚠️ PERMANENT DELETE: Are you sure you want to permanently delete ${selectedCount} employee${selectedCount !== 1 ? 's' : ''}? This action CANNOT be undone!`
+                  confirmMessage: `⚠️ PERMANENT DELETE: ${selectedCount} employee-i həmişəlik silmək istədiyinizdən əminsiniz? Bu əməliyyat GERİ ALINMAZ!`
                 })}
                 disabled={isProcessing || selectedCount === 0}
                 className={`w-full flex items-center px-3 py-2.5 text-sm rounded transition-colors hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 disabled:opacity-50`}
@@ -305,19 +312,19 @@ const ActionMenu = ({
             </div>
           </div>
 
-          {/* Footer with status */}
+          {/* Footer */}
           {selectedCount > 0 && (
             <div className={`px-4 py-3 border-t ${borderColor} bg-gray-50 dark:bg-gray-700/50`}>
               <div className={`text-xs ${textMuted} text-center flex items-center justify-center`}>
                 {isProcessing ? (
                   <>
-                    <div className="w-3 h-3 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <Loader className="w-3 h-3 animate-spin mr-2 text-blue-500" />
                     Processing...
                   </>
                 ) : (
                   <>
                     <Check size={12} className="mr-1 text-green-500" />
-                    Actions apply to{' '}
+                    Actions will apply to{' '}
                     <span className="font-medium text-blue-600 dark:text-blue-400 ml-1">
                       {selectedCount} employee{selectedCount !== 1 ? 's' : ''}
                     </span>
@@ -327,42 +334,49 @@ const ActionMenu = ({
             </div>
           )}
 
+          {/* Loading State */}
+          {(loading?.employeeTags || loading?.businessFunctions) && (
+            <div className="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-center">
+                <Loader className="w-3 h-3 animate-spin mr-2 text-blue-500" />
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                  Loading reference data...
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Error State */}
-          {refError?.employeeTags && (
+          {(error?.employeeTags || error?.businessFunctions) && (
             <div className="px-4 py-3 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
-              <p className="text-xs text-red-600 dark:text-red-400 text-center">
-                ⚠️ Error loading reference data. Some features may be limited.
-              </p>
+              <div className="flex items-center justify-center">
+                <AlertCircle size={12} className="mr-1 text-red-500" />
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  Failed to load data. Some features may be limited.
+                </p>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* FIXED: Tag Management Modal with proper data */}
+      {/* Tag Management Modal */}
       <TagManagementModal
         isOpen={isTagModalOpen}
         onClose={() => setIsTagModalOpen(false)}
         onAction={handleModalAction}
         selectedEmployees={selectedEmployees}
-        employeeTags={employeeTags || []}
-        loading={refLoading?.employeeTags || false}
+        selectedEmployeeData={selectedEmployeeData}
         darkMode={darkMode}
       />
 
-      {/* FIXED: Bulk Edit Modal with proper reference data */}
+      {/* Bulk Edit Modal */}
       <BulkEditModal
         isOpen={isBulkEditModalOpen}
         onClose={() => setIsBulkEditModalOpen(false)}
         onAction={handleModalAction}
         selectedEmployees={selectedEmployees}
-        referenceData={{
-          lineManagers: lineManagers || [],
-          departments: departments || [],
-          units: units || [],
-          positionGroups: positionGroups || [],
-          businessFunctions: businessFunctions || []
-        }}
-        loading={refLoading?.departments || refLoading?.lineManagers || false}
+        selectedEmployeeData={selectedEmployeeData}
         darkMode={darkMode}
       />
     </>

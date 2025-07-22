@@ -1,4 +1,4 @@
-// src/store/slices/referenceDataSlice.js - COMPLETE Reference Data Management
+// src/store/slices/referenceDataSlice.js - Backend endpointlərinə uyğun yenilənilib
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { referenceDataAPI } from '../api/referenceDataAPI';
 
@@ -13,7 +13,7 @@ export const fetchBusinessFunctions = createAsyncThunk(
       const response = await referenceDataAPI.getBusinessFunctionDropdown();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -25,7 +25,7 @@ export const fetchDepartments = createAsyncThunk(
       const response = await referenceDataAPI.getDepartmentDropdown(businessFunctionId);
       return response.data.results || response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -37,7 +37,7 @@ export const fetchUnits = createAsyncThunk(
       const response = await referenceDataAPI.getUnitDropdown(departmentId);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -49,7 +49,7 @@ export const fetchJobFunctions = createAsyncThunk(
       const response = await referenceDataAPI.getJobFunctionDropdown();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -61,7 +61,7 @@ export const fetchPositionGroups = createAsyncThunk(
       const response = await referenceDataAPI.getPositionGroupDropdown();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -73,7 +73,7 @@ export const fetchEmployeeStatuses = createAsyncThunk(
       const response = await referenceDataAPI.getEmployeeStatusDropdown();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -85,19 +85,7 @@ export const fetchEmployeeTags = createAsyncThunk(
       const response = await referenceDataAPI.getEmployeeTagDropdown(tagType);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
-
-export const fetchPositionGroupGradingLevels = createAsyncThunk(
-  'referenceData/fetchPositionGroupGradingLevels',
-  async (positionGroupId, { rejectWithValue }) => {
-    try {
-      const response = await referenceDataAPI.getPositionGroupGradingLevels(positionGroupId);
-      return { positionGroupId, levels: response.data.levels || [] };
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -109,7 +97,19 @@ export const fetchContractConfigs = createAsyncThunk(
       const response = await referenceDataAPI.getContractConfigDropdown();
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+export const fetchPositionGroupGradingLevels = createAsyncThunk(
+  'referenceData/fetchPositionGroupGradingLevels',
+  async (positionGroupId, { rejectWithValue }) => {
+    try {
+      const response = await referenceDataAPI.getPositionGroupGradingLevels(positionGroupId);
+      return { positionGroupId, levels: response.data.levels || [] };
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -123,11 +123,10 @@ export const createBusinessFunction = createAsyncThunk(
   async (data, { rejectWithValue, dispatch }) => {
     try {
       const response = await referenceDataAPI.createBusinessFunction(data);
-      // Refresh the list after creation
       dispatch(fetchBusinessFunctions());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -137,11 +136,10 @@ export const updateBusinessFunction = createAsyncThunk(
   async ({ id, data }, { rejectWithValue, dispatch }) => {
     try {
       const response = await referenceDataAPI.updateBusinessFunction(id, data);
-      // Refresh the list after update
       dispatch(fetchBusinessFunctions());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -151,11 +149,10 @@ export const deleteBusinessFunction = createAsyncThunk(
   async (id, { rejectWithValue, dispatch }) => {
     try {
       await referenceDataAPI.deleteBusinessFunction(id);
-      // Refresh the list after deletion
       dispatch(fetchBusinessFunctions());
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -169,13 +166,12 @@ export const createDepartment = createAsyncThunk(
   async (data, { rejectWithValue, dispatch }) => {
     try {
       const response = await referenceDataAPI.createDepartment(data);
-      // Refresh departments for the business function
       if (data.business_function) {
         dispatch(fetchDepartments(data.business_function));
       }
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -185,7 +181,6 @@ export const updateDepartment = createAsyncThunk(
   async ({ id, data }, { rejectWithValue, dispatch, getState }) => {
     try {
       const response = await referenceDataAPI.updateDepartment(id, data);
-      // Refresh departments for the current business function
       const state = getState();
       const currentDepartment = state.referenceData.departments.find(d => d.id === id || d.value === id);
       if (currentDepartment) {
@@ -193,7 +188,7 @@ export const updateDepartment = createAsyncThunk(
       }
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -205,13 +200,12 @@ export const deleteDepartment = createAsyncThunk(
       const state = getState();
       const department = state.referenceData.departments.find(d => d.id === id || d.value === id);
       await referenceDataAPI.deleteDepartment(id);
-      // Refresh departments for the business function
       if (department) {
         dispatch(fetchDepartments(department.business_function));
       }
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -225,13 +219,12 @@ export const createUnit = createAsyncThunk(
   async (data, { rejectWithValue, dispatch }) => {
     try {
       const response = await referenceDataAPI.createUnit(data);
-      // Refresh units for the department
       if (data.department) {
         dispatch(fetchUnits(data.department));
       }
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -241,7 +234,6 @@ export const updateUnit = createAsyncThunk(
   async ({ id, data }, { rejectWithValue, dispatch, getState }) => {
     try {
       const response = await referenceDataAPI.updateUnit(id, data);
-      // Refresh units for the current department
       const state = getState();
       const currentUnit = state.referenceData.units.find(u => u.id === id || u.value === id);
       if (currentUnit) {
@@ -249,7 +241,7 @@ export const updateUnit = createAsyncThunk(
       }
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -261,13 +253,12 @@ export const deleteUnit = createAsyncThunk(
       const state = getState();
       const unit = state.referenceData.units.find(u => u.id === id || u.value === id);
       await referenceDataAPI.deleteUnit(id);
-      // Refresh units for the department
       if (unit) {
         dispatch(fetchUnits(unit.department));
       }
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -284,7 +275,7 @@ export const createJobFunction = createAsyncThunk(
       dispatch(fetchJobFunctions());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -297,7 +288,7 @@ export const updateJobFunction = createAsyncThunk(
       dispatch(fetchJobFunctions());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -310,7 +301,7 @@ export const deleteJobFunction = createAsyncThunk(
       dispatch(fetchJobFunctions());
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -327,7 +318,7 @@ export const createPositionGroup = createAsyncThunk(
       dispatch(fetchPositionGroups());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -340,7 +331,7 @@ export const updatePositionGroup = createAsyncThunk(
       dispatch(fetchPositionGroups());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -353,7 +344,7 @@ export const deletePositionGroup = createAsyncThunk(
       dispatch(fetchPositionGroups());
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -370,7 +361,7 @@ export const createEmployeeStatus = createAsyncThunk(
       dispatch(fetchEmployeeStatuses());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -383,7 +374,7 @@ export const updateEmployeeStatus = createAsyncThunk(
       dispatch(fetchEmployeeStatuses());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -396,7 +387,7 @@ export const deleteEmployeeStatus = createAsyncThunk(
       dispatch(fetchEmployeeStatuses());
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -413,7 +404,7 @@ export const createEmployeeTag = createAsyncThunk(
       dispatch(fetchEmployeeTags(data.tag_type));
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -426,7 +417,7 @@ export const updateEmployeeTag = createAsyncThunk(
       dispatch(fetchEmployeeTags(data.tag_type));
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -439,7 +430,7 @@ export const deleteEmployeeTag = createAsyncThunk(
       dispatch(fetchEmployeeTags(tagType));
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -456,7 +447,7 @@ export const createContractConfig = createAsyncThunk(
       dispatch(fetchContractConfigs());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -469,7 +460,7 @@ export const updateContractConfig = createAsyncThunk(
       dispatch(fetchContractConfigs());
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -482,7 +473,7 @@ export const deleteContractConfig = createAsyncThunk(
       dispatch(fetchContractConfigs());
       return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.data || error.message);
     }
   }
 );
@@ -492,9 +483,7 @@ export const deleteContractConfig = createAsyncThunk(
 // ========================================
 
 const initialState = {
-  // ========================================
-  // MAIN DATA COLLECTIONS
-  // ========================================
+  // Main data collections
   businessFunctions: [],
   departments: [],
   units: [],
@@ -504,20 +493,14 @@ const initialState = {
   employeeTags: [],
   contractConfigs: [],
   
-  // ========================================
-  // GRADING LEVELS BY POSITION GROUP
-  // ========================================
-  gradingLevels: {}, // { positionGroupId: [levels] }
+  // Grading levels by position group
+  gradingLevels: {},
   
-  // ========================================
-  // HIERARCHICAL SELECTION STATE
-  // ========================================
+  // Hierarchical selection state
   selectedBusinessFunction: null,
   selectedDepartment: null,
   
-  // ========================================
-  // LOADING STATES
-  // ========================================
+  // Loading states
   loading: {
     businessFunctions: false,
     departments: false,
@@ -528,16 +511,12 @@ const initialState = {
     employeeTags: false,
     contractConfigs: false,
     gradingLevels: false,
-    
-    // CRUD operation loading states
     creating: false,
     updating: false,
     deleting: false,
   },
   
-  // ========================================
-  // ERROR STATES
-  // ========================================
+  // Error states
   error: {
     businessFunctions: null,
     departments: null,
@@ -548,16 +527,12 @@ const initialState = {
     employeeTags: null,
     contractConfigs: null,
     gradingLevels: null,
-    
-    // CRUD operation error states
     create: null,
     update: null,
     delete: null,
   },
   
-  // ========================================
-  // CACHE MANAGEMENT
-  // ========================================
+  // Cache management
   lastUpdated: {
     businessFunctions: null,
     departments: null,
@@ -569,12 +544,9 @@ const initialState = {
     contractConfigs: null,
   },
   
-  // Cache expiry time in milliseconds (5 minutes)
   cacheExpiry: 5 * 60 * 1000,
   
-  // ========================================
-  // METADATA AND STATISTICS
-  // ========================================
+  // Metadata and statistics
   entityCounts: {
     businessFunctions: 0,
     departments: 0,
@@ -586,9 +558,7 @@ const initialState = {
     contractConfigs: 0,
   },
   
-  // ========================================
-  // UI STATE
-  // ========================================
+  // UI state
   ui: {
     showInactive: false,
     filterText: '',
@@ -607,9 +577,7 @@ const referenceDataSlice = createSlice({
   name: 'referenceData',
   initialState,
   reducers: {
-    // ========================================
-    // HIERARCHICAL DATA MANAGEMENT
-    // ========================================
+    // Hierarchical data management
     clearDepartments: (state) => {
       state.departments = [];
       state.selectedDepartment = null;
@@ -634,12 +602,9 @@ const referenceDataSlice = createSlice({
       state.entityCounts.units = 0;
     },
     
-    // ========================================
-    // HIERARCHICAL SELECTION MANAGEMENT
-    // ========================================
+    // Hierarchical selection management
     setSelectedBusinessFunction: (state, action) => {
       state.selectedBusinessFunction = action.payload;
-      // Clear dependent data when business function changes
       if (!action.payload) {
         state.departments = [];
         state.units = [];
@@ -651,16 +616,13 @@ const referenceDataSlice = createSlice({
     
     setSelectedDepartment: (state, action) => {
       state.selectedDepartment = action.payload;
-      // Clear units when department changes
       if (!action.payload) {
         state.units = [];
         state.entityCounts.units = 0;
       }
     },
     
-    // ========================================
-    // ERROR MANAGEMENT
-    // ========================================
+    // Error management
     clearErrors: (state) => {
       Object.keys(state.error).forEach(key => {
         state.error[key] = null;
@@ -679,15 +641,12 @@ const referenceDataSlice = createSlice({
       state.error[key] = message;
     },
     
-    // ========================================
-    // CACHE MANAGEMENT
-    // ========================================
+    // Cache management
     invalidateCache: (state, action) => {
       const dataType = action.payload;
       if (dataType && state.lastUpdated[dataType]) {
         state.lastUpdated[dataType] = null;
       } else {
-        // Clear all cache
         Object.keys(state.lastUpdated).forEach(key => {
           state.lastUpdated[key] = null;
         });
@@ -699,13 +658,11 @@ const referenceDataSlice = createSlice({
       state.lastUpdated[dataType] = timestamp || Date.now();
     },
     
-    // ========================================
-    // DATA RESET
-    // ========================================
+    // Data reset
     resetReferenceData: (state) => {
       return {
         ...initialState,
-        ui: state.ui, // Preserve UI state
+        ui: state.ui,
       };
     },
     
@@ -719,9 +676,7 @@ const referenceDataSlice = createSlice({
       }
     },
     
-    // ========================================
-    // OPTIMISTIC UPDATES
-    // ========================================
+    // Optimistic updates
     optimisticAddItem: (state, action) => {
       const { type, item } = action.payload;
       if (state[type] && Array.isArray(state[type])) {
@@ -765,7 +720,6 @@ const referenceDataSlice = createSlice({
       }
     },
     
-    // Remove optimistic flags after successful API call
     removeOptimisticFlags: (state, action) => {
       const entityType = action.payload;
       if (state[entityType] && Array.isArray(state[entityType])) {
@@ -777,9 +731,7 @@ const referenceDataSlice = createSlice({
       }
     },
     
-    // ========================================
-    // UI STATE MANAGEMENT
-    // ========================================
+    // UI state management
     setShowInactive: (state, action) => {
       state.ui.showInactive = action.payload;
     },
@@ -802,9 +754,7 @@ const referenceDataSlice = createSlice({
       state.ui.isManagementMode = action.payload;
     },
     
-    // ========================================
-    // BULK OPERATIONS
-    // ========================================
+    // Bulk operations
     bulkUpdateActiveStatus: (state, action) => {
       const { entityType, ids, isActive } = action.payload;
       if (state[entityType] && Array.isArray(state[entityType])) {
@@ -829,9 +779,7 @@ const referenceDataSlice = createSlice({
       }
     },
     
-    // ========================================
-    // STATISTICS UPDATES
-    // ========================================
+    // Statistics updates
     updateEntityCounts: (state, action) => {
       const counts = action.payload;
       state.entityCounts = { ...state.entityCounts, ...counts };
@@ -848,13 +796,8 @@ const referenceDataSlice = createSlice({
     },
   },
   
-  // ========================================
-  // EXTRA REDUCERS
-  // ========================================
   extraReducers: (builder) => {
-    // ========================================
-    // BUSINESS FUNCTIONS
-    // ========================================
+    // Business functions
     builder
       .addCase(fetchBusinessFunctions.pending, (state) => {
         state.loading.businessFunctions = true;
@@ -865,7 +808,6 @@ const referenceDataSlice = createSlice({
         state.businessFunctions = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.businessFunctions = Date.now();
         state.entityCounts.businessFunctions = state.businessFunctions.length;
-        // Remove optimistic flags
         state.businessFunctions.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -875,9 +817,7 @@ const referenceDataSlice = createSlice({
         state.error.businessFunctions = action.payload;
       });
 
-    // ========================================
-    // DEPARTMENTS
-    // ========================================
+    // Departments
     builder
       .addCase(fetchDepartments.pending, (state) => {
         state.loading.departments = true;
@@ -888,7 +828,6 @@ const referenceDataSlice = createSlice({
         state.departments = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.departments = Date.now();
         state.entityCounts.departments = state.departments.length;
-        // Remove optimistic flags
         state.departments.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -898,9 +837,7 @@ const referenceDataSlice = createSlice({
         state.error.departments = action.payload;
       });
 
-    // ========================================
-    // UNITS
-    // ========================================
+    // Units
     builder
       .addCase(fetchUnits.pending, (state) => {
         state.loading.units = true;
@@ -911,7 +848,6 @@ const referenceDataSlice = createSlice({
         state.units = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.units = Date.now();
         state.entityCounts.units = state.units.length;
-        // Remove optimistic flags
         state.units.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -921,9 +857,7 @@ const referenceDataSlice = createSlice({
         state.error.units = action.payload;
       });
 
-    // ========================================
-    // JOB FUNCTIONS
-    // ========================================
+    // Job functions
     builder
       .addCase(fetchJobFunctions.pending, (state) => {
         state.loading.jobFunctions = true;
@@ -934,7 +868,6 @@ const referenceDataSlice = createSlice({
         state.jobFunctions = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.jobFunctions = Date.now();
         state.entityCounts.jobFunctions = state.jobFunctions.length;
-        // Remove optimistic flags
         state.jobFunctions.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -944,9 +877,7 @@ const referenceDataSlice = createSlice({
         state.error.jobFunctions = action.payload;
       });
 
-    // ========================================
-    // POSITION GROUPS
-    // ========================================
+    // Position groups
     builder
       .addCase(fetchPositionGroups.pending, (state) => {
         state.loading.positionGroups = true;
@@ -957,7 +888,6 @@ const referenceDataSlice = createSlice({
         state.positionGroups = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.positionGroups = Date.now();
         state.entityCounts.positionGroups = state.positionGroups.length;
-        // Remove optimistic flags
         state.positionGroups.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -967,9 +897,7 @@ const referenceDataSlice = createSlice({
         state.error.positionGroups = action.payload;
       });
 
-    // ========================================
-    // EMPLOYEE STATUSES
-    // ========================================
+    // Employee statuses
     builder
       .addCase(fetchEmployeeStatuses.pending, (state) => {
         state.loading.employeeStatuses = true;
@@ -980,7 +908,6 @@ const referenceDataSlice = createSlice({
         state.employeeStatuses = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.employeeStatuses = Date.now();
         state.entityCounts.employeeStatuses = state.employeeStatuses.length;
-        // Remove optimistic flags
         state.employeeStatuses.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -990,9 +917,7 @@ const referenceDataSlice = createSlice({
         state.error.employeeStatuses = action.payload;
       });
 
-    // ========================================
-    // EMPLOYEE TAGS
-    // ========================================
+    // Employee tags
     builder
       .addCase(fetchEmployeeTags.pending, (state) => {
         state.loading.employeeTags = true;
@@ -1003,7 +928,6 @@ const referenceDataSlice = createSlice({
         state.employeeTags = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.employeeTags = Date.now();
         state.entityCounts.employeeTags = state.employeeTags.length;
-        // Remove optimistic flags
         state.employeeTags.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -1013,9 +937,7 @@ const referenceDataSlice = createSlice({
         state.error.employeeTags = action.payload;
       });
 
-    // ========================================
-    // CONTRACT CONFIGS
-    // ========================================
+    // Contract configs
     builder
       .addCase(fetchContractConfigs.pending, (state) => {
         state.loading.contractConfigs = true;
@@ -1026,7 +948,6 @@ const referenceDataSlice = createSlice({
         state.contractConfigs = Array.isArray(action.payload) ? action.payload : [];
         state.lastUpdated.contractConfigs = Date.now();
         state.entityCounts.contractConfigs = state.contractConfigs.length;
-        // Remove optimistic flags
         state.contractConfigs.forEach(item => {
           if (item._isOptimistic) delete item._isOptimistic;
         });
@@ -1036,9 +957,7 @@ const referenceDataSlice = createSlice({
         state.error.contractConfigs = action.payload;
       });
 
-    // ========================================
-    // POSITION GROUP GRADING LEVELS
-    // ========================================
+    // Position group grading levels
     builder
       .addCase(fetchPositionGroupGradingLevels.pending, (state) => {
         state.loading.gradingLevels = true;
@@ -1054,9 +973,7 @@ const referenceDataSlice = createSlice({
         state.error.gradingLevels = action.payload;
       });
 
-    // ========================================
-    // CRUD OPERATIONS - CREATE
-    // ========================================
+    // CRUD operations - CREATE
     const createCases = [
       createBusinessFunction,
       createDepartment,
@@ -1076,7 +993,6 @@ const referenceDataSlice = createSlice({
         })
         .addCase(createAction.fulfilled, (state, action) => {
           state.loading.creating = false;
-          // Entity refresh is handled in the thunk
         })
         .addCase(createAction.rejected, (state, action) => {
           state.loading.creating = false;
@@ -1084,9 +1000,7 @@ const referenceDataSlice = createSlice({
         });
     });
 
-    // ========================================
-    // CRUD OPERATIONS - UPDATE
-    // ========================================
+    // CRUD operations - UPDATE
     const updateCases = [
       updateBusinessFunction,
       updateDepartment,
@@ -1106,7 +1020,6 @@ const referenceDataSlice = createSlice({
         })
         .addCase(updateAction.fulfilled, (state, action) => {
           state.loading.updating = false;
-          // Entity refresh is handled in the thunk
         })
         .addCase(updateAction.rejected, (state, action) => {
           state.loading.updating = false;
@@ -1114,9 +1027,7 @@ const referenceDataSlice = createSlice({
         });
     });
 
-    // ========================================
-    // CRUD OPERATIONS - DELETE
-    // ========================================
+    // CRUD operations - DELETE
     const deleteCases = [
       deleteBusinessFunction,
       deleteDepartment,
@@ -1136,7 +1047,6 @@ const referenceDataSlice = createSlice({
         })
         .addCase(deleteAction.fulfilled, (state, action) => {
           state.loading.deleting = false;
-          // Entity refresh is handled in the thunk
         })
         .addCase(deleteAction.rejected, (state, action) => {
           state.loading.deleting = false;
@@ -1146,49 +1056,31 @@ const referenceDataSlice = createSlice({
   },
 });
 
-// ========================================
-// ACTIONS EXPORT
-// ========================================
-
+// Actions export
 export const {
-  // Hierarchical data management
   clearDepartments,
   clearUnits,
   clearHierarchicalData,
   setSelectedBusinessFunction,
   setSelectedDepartment,
-  
-  // Error management
   clearErrors,
   clearError,
   setError,
-  
-  // Cache management
   invalidateCache,
   updateCacheTimestamp,
-  
-  // Data reset
   resetReferenceData,
   resetEntityData,
-  
-  // Optimistic updates
   optimisticAddItem,
   optimisticUpdateItem,
   optimisticRemoveItem,
   removeOptimisticFlags,
-  
-  // UI state management
   setShowInactive,
   setFilterText,
   setSorting,
   setSelectedEntityType,
   setManagementMode,
-  
-  // Bulk operations
   bulkUpdateActiveStatus,
   bulkDeleteItems,
-  
-  // Statistics
   updateEntityCounts,
   incrementEntityCount,
   decrementEntityCount,
@@ -1196,10 +1088,7 @@ export const {
 
 export default referenceDataSlice.reducer;
 
-// ========================================
-// BASE SELECTORS
-// ========================================
-
+// Base selectors
 const selectReferenceDataState = (state) => state.referenceData;
 
 // Raw data selectors
@@ -1225,10 +1114,7 @@ export const selectReferenceDataError = (state) => state.referenceData.error;
 export const selectReferenceDataUI = (state) => state.referenceData.ui;
 export const selectEntityCounts = (state) => state.referenceData.entityCounts;
 
-// ========================================
-// MEMOIZED SELECTORS
-// ========================================
-
+// Memoized selectors
 export const selectIsAnyReferenceDataLoading = createSelector(
   [selectReferenceDataLoading],
   (loading) => Object.values(loading).some(isLoading => isLoading)
@@ -1239,10 +1125,7 @@ export const selectHasAnyReferenceDataError = createSelector(
   (errors) => Object.values(errors).some(error => error !== null)
 );
 
-// ========================================
-// FORMATTED DROPDOWN SELECTORS
-// ========================================
-
+// Formatted dropdown selectors
 export const selectBusinessFunctionsForDropdown = createSelector(
   [selectBusinessFunctions, selectReferenceDataUI],
   (businessFunctions, ui) => {
@@ -1250,12 +1133,10 @@ export const selectBusinessFunctionsForDropdown = createSelector(
     
     let filtered = businessFunctions;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(bf => bf.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(bf => 
@@ -1264,7 +1145,6 @@ export const selectBusinessFunctionsForDropdown = createSelector(
       );
     }
     
-    // Sort
     filtered.sort((a, b) => {
       const aVal = a[ui.sortBy] || '';
       const bVal = b[ui.sortBy] || '';
@@ -1290,12 +1170,10 @@ export const selectDepartmentsForDropdown = createSelector(
     
     let filtered = departments;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(dept => dept.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(dept => 
@@ -1304,7 +1182,6 @@ export const selectDepartmentsForDropdown = createSelector(
       );
     }
     
-    // Sort
     filtered.sort((a, b) => {
       const aVal = a[ui.sortBy] || '';
       const bVal = b[ui.sortBy] || '';
@@ -1321,7 +1198,6 @@ export const selectDepartmentsForDropdown = createSelector(
       employee_count: dept.employee_count || 0,
       unit_count: dept.unit_count || 0,
       head_of_department: dept.head_of_department,
-      head_name: dept.head_name,
       is_active: dept.is_active !== false,
       _isOptimistic: dept._isOptimistic || false
     }));
@@ -1335,12 +1211,10 @@ export const selectUnitsForDropdown = createSelector(
     
     let filtered = units;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(unit => unit.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(unit => 
@@ -1349,7 +1223,6 @@ export const selectUnitsForDropdown = createSelector(
       );
     }
     
-    // Sort
     filtered.sort((a, b) => {
       const aVal = a[ui.sortBy] || '';
       const bVal = b[ui.sortBy] || '';
@@ -1365,7 +1238,6 @@ export const selectUnitsForDropdown = createSelector(
       business_function_name: unit.business_function_name,
       employee_count: unit.employee_count || 0,
       unit_head: unit.unit_head,
-      unit_head_name: unit.unit_head_name,
       is_active: unit.is_active !== false,
       _isOptimistic: unit._isOptimistic || false
     }));
@@ -1379,12 +1251,10 @@ export const selectJobFunctionsForDropdown = createSelector(
     
     let filtered = jobFunctions;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(jf => jf.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(jf => 
@@ -1393,7 +1263,6 @@ export const selectJobFunctionsForDropdown = createSelector(
       );
     }
     
-    // Sort
     filtered.sort((a, b) => {
       const aVal = a[ui.sortBy] || '';
       const bVal = b[ui.sortBy] || '';
@@ -1419,12 +1288,10 @@ export const selectPositionGroupsForDropdown = createSelector(
     
     let filtered = positionGroups;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(pg => pg.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(pg => 
@@ -1433,7 +1300,6 @@ export const selectPositionGroupsForDropdown = createSelector(
       );
     }
     
-    // Sort by hierarchy level first, then by sortBy field
     filtered.sort((a, b) => {
       if (ui.sortBy === 'hierarchy_level') {
         return ui.sortDirection === 'desc' 
@@ -1468,12 +1334,10 @@ export const selectEmployeeStatusesForDropdown = createSelector(
     
     let filtered = statuses;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(status => status.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(status => 
@@ -1482,7 +1346,6 @@ export const selectEmployeeStatusesForDropdown = createSelector(
       );
     }
     
-    // Sort by order first if available, then by sortBy field
     filtered.sort((a, b) => {
       if (ui.sortBy === 'order' || !ui.sortBy) {
         return (a.order || 0) - (b.order || 0);
@@ -1504,7 +1367,6 @@ export const selectEmployeeStatusesForDropdown = createSelector(
       auto_transition_enabled: status.auto_transition_enabled,
       auto_transition_days: status.auto_transition_days,
       auto_transition_to: status.auto_transition_to,
-      auto_transition_to_name: status.auto_transition_to_name,
       is_transitional: status.is_transitional,
       transition_priority: status.transition_priority,
       send_notifications: status.send_notifications,
@@ -1526,12 +1388,10 @@ export const selectEmployeeTagsForDropdown = createSelector(
     
     let filtered = tags;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(tag => tag.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(tag => 
@@ -1540,7 +1400,6 @@ export const selectEmployeeTagsForDropdown = createSelector(
       );
     }
     
-    // Sort
     filtered.sort((a, b) => {
       const aVal = a[ui.sortBy] || '';
       const bVal = b[ui.sortBy] || '';
@@ -1567,12 +1426,10 @@ export const selectContractConfigsForDropdown = createSelector(
     
     let filtered = configs;
     
-    // Filter by active status if needed
     if (!ui.showInactive) {
       filtered = filtered.filter(config => config.is_active !== false);
     }
     
-    // Filter by search text
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(config => 
@@ -1581,7 +1438,6 @@ export const selectContractConfigsForDropdown = createSelector(
       );
     }
     
-    // Sort
     filtered.sort((a, b) => {
       const aVal = a[ui.sortBy] || '';
       const bVal = b[ui.sortBy] || '';
@@ -1606,10 +1462,7 @@ export const selectContractConfigsForDropdown = createSelector(
   }
 );
 
-// ========================================
-// FILTERED DATA SELECTORS
-// ========================================
-
+// Filtered data selectors
 export const selectDepartmentsByBusinessFunction = createSelector(
   [selectDepartments, (state, businessFunctionId) => businessFunctionId],
   (departments, businessFunctionId) => {
@@ -1643,10 +1496,7 @@ export const selectPositionGroupGradingLevels = createSelector(
   }
 );
 
-// ========================================
-// COMBINED DATA SELECTORS
-// ========================================
-
+// Combined data selectors
 export const selectReferenceDataForEmployeeForm = createSelector(
   [
     selectBusinessFunctionsForDropdown,
@@ -1670,10 +1520,7 @@ export const selectReferenceDataForEmployeeForm = createSelector(
   })
 );
 
-// ========================================
-// CACHE MANAGEMENT SELECTORS
-// ========================================
-
+// Cache management selectors
 export const selectIsDataStale = createSelector(
   [selectReferenceDataState, (state, dataType) => dataType],
   (referenceData, dataType) => {
@@ -1683,30 +1530,7 @@ export const selectIsDataStale = createSelector(
   }
 );
 
-export const selectCacheStatus = createSelector(
-  [selectReferenceDataState],
-  (referenceData) => {
-    const now = Date.now();
-    const status = {};
-    
-    Object.entries(referenceData.lastUpdated).forEach(([key, timestamp]) => {
-      if (!timestamp) {
-        status[key] = 'not_loaded';
-      } else if (now - timestamp > referenceData.cacheExpiry) {
-        status[key] = 'stale';
-      } else {
-        status[key] = 'fresh';
-      }
-    });
-    
-    return status;
-  }
-);
-
-// ========================================
-// VALIDATION SELECTORS
-// ========================================
-
+// Validation selectors
 export const selectIsValidBusinessFunction = createSelector(
   [selectBusinessFunctions, (state, id) => id],
   (businessFunctions, id) => {
@@ -1753,401 +1577,3 @@ export const selectIsValidUnit = createSelector(
     return true;
   }
 );
-
-// ========================================
-// STATISTICS SELECTORS
-// ========================================
-
-export const selectReferenceDataStatistics = createSelector(
-  [selectEntityCounts, selectReferenceDataState],
-  (entityCounts, referenceData) => {
-    const totalEntities = Object.values(entityCounts).reduce((sum, count) => sum + count, 0);
-    
-    // Calculate active vs inactive counts
-    const activeInactiveCounts = {};
-    Object.entries(referenceData).forEach(([key, data]) => {
-      if (Array.isArray(data) && key !== 'gradingLevels') {
-        const active = data.filter(item => item.is_active !== false).length;
-        const inactive = data.length - active;
-        activeInactiveCounts[key] = { active, inactive, total: data.length };
-      }
-    });
-    
-    return {
-      totalEntities,
-      entityCounts,
-      activeInactiveCounts,
-      lastUpdatedTimes: referenceData.lastUpdated,
-      cacheStatus: Object.entries(referenceData.lastUpdated).reduce((acc, [key, timestamp]) => {
-        if (!timestamp) {
-          acc[key] = 'not_loaded';
-        } else if (Date.now() - timestamp > referenceData.cacheExpiry) {
-          acc[key] = 'stale';
-        } else {
-          acc[key] = 'fresh';
-        }
-        return acc;
-      }, {})
-    };
-  }
-);
-
-// ========================================
-// SEARCH AND FILTER SELECTORS
-// ========================================
-
-export const selectFilteredReferenceData = createSelector(
-  [
-    selectReferenceDataState,
-    (state, entityType) => entityType,
-    (state, entityType, searchTerm) => searchTerm,
-    (state, entityType, searchTerm, showInactive) => showInactive
-  ],
-  (referenceData, entityType, searchTerm = '', showInactive = false) => {
-    const data = referenceData[entityType];
-    if (!Array.isArray(data)) return [];
-    
-    let filtered = data;
-    
-    // Filter by active status
-    if (!showInactive) {
-      filtered = filtered.filter(item => item.is_active !== false);
-    }
-    
-    // Filter by search term
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(item => {
-        const searchableFields = ['name', 'label', 'code', 'description', 'display_name'];
-        return searchableFields.some(field => {
-          const value = item[field];
-          return value && value.toString().toLowerCase().includes(searchLower);
-        });
-      });
-    }
-    
-    return filtered;
-  }
-);
-
-// ========================================
-// HIERARCHY VALIDATION SELECTORS
-// ========================================
-
-export const selectHierarchyValidation = createSelector(
-  [
-    selectBusinessFunctions,
-    selectDepartments,
-    selectUnits,
-    (state, businessFunctionId, departmentId, unitId) => ({ businessFunctionId, departmentId, unitId })
-  ],
-  (businessFunctions, departments, units, { businessFunctionId, departmentId, unitId }) => {
-    const validation = {
-      isValid: true,
-      errors: [],
-      warnings: []
-    };
-    
-    // Validate business function
-    if (businessFunctionId) {
-      const bf = businessFunctions.find(bf => 
-        (bf.id || bf.value) === parseInt(businessFunctionId)
-      );
-      if (!bf) {
-        validation.isValid = false;
-        validation.errors.push('Invalid business function selected');
-      } else if (bf.is_active === false) {
-        validation.warnings.push('Selected business function is inactive');
-      }
-    }
-    
-    // Validate department belongs to business function
-    if (departmentId) {
-      const dept = departments.find(d => 
-        (d.id || d.value) === parseInt(departmentId)
-      );
-      if (!dept) {
-        validation.isValid = false;
-        validation.errors.push('Invalid department selected');
-      } else {
-        if (dept.is_active === false) {
-          validation.warnings.push('Selected department is inactive');
-        }
-        if (businessFunctionId && dept.business_function !== parseInt(businessFunctionId)) {
-          validation.isValid = false;
-          validation.errors.push('Department does not belong to selected business function');
-        }
-      }
-    }
-    
-    // Validate unit belongs to department
-    if (unitId) {
-      const unit = units.find(u => 
-        (u.id || u.value) === parseInt(unitId)
-      );
-      if (!unit) {
-        validation.isValid = false;
-        validation.errors.push('Invalid unit selected');
-      } else {
-        if (unit.is_active === false) {
-          validation.warnings.push('Selected unit is inactive');
-        }
-        if (departmentId && unit.department !== parseInt(departmentId)) {
-          validation.isValid = false;
-          validation.errors.push('Unit does not belong to selected department');
-        }
-      }
-    }
-    
-    return validation;
-  }
-);
-
-// ========================================
-// QUICK ACCESS SELECTORS
-// ========================================
-
-export const selectQuickAccessData = createSelector(
-  [selectReferenceDataState],
-  (referenceData) => {
-    const getActiveItems = (data, limit = 5) => {
-      if (!Array.isArray(data)) return [];
-      return data
-        .filter(item => item.is_active !== false)
-        .slice(0, limit)
-        .map(item => ({
-          id: item.id || item.value,
-          name: item.name || item.label || item.display_name,
-          count: item.employee_count || 0
-        }));
-    };
-    
-    return {
-      topBusinessFunctions: getActiveItems(referenceData.businessFunctions),
-      recentDepartments: getActiveItems(referenceData.departments),
-      popularJobFunctions: getActiveItems(referenceData.jobFunctions),
-      commonStatuses: getActiveItems(referenceData.employeeStatuses),
-      frequentTags: getActiveItems(referenceData.employeeTags)
-    };
-  }
-);
-
-// ========================================
-// FORM HELPER SELECTORS
-// ========================================
-
-export const selectFormOptions = createSelector(
-  [
-    selectBusinessFunctionsForDropdown,
-    selectDepartmentsForDropdown,
-    selectUnitsForDropdown,
-    selectJobFunctionsForDropdown,
-    selectPositionGroupsForDropdown,
-    selectEmployeeStatusesForDropdown,
-    selectEmployeeTagsForDropdown,
-    selectContractConfigsForDropdown,
-    (state, formContext) => formContext
-  ],
-  (
-    businessFunctions,
-    departments,
-    units,
-    jobFunctions,
-    positionGroups,
-    statuses,
-    tags,
-    contractConfigs,
-    formContext = {}
-  ) => {
-    const options = {
-      businessFunctions,
-      jobFunctions,
-      positionGroups,
-      statuses,
-      tags,
-      contractConfigs
-    };
-    
-    // Filter departments by selected business function
-    if (formContext.businessFunctionId) {
-      options.departments = departments.filter(dept => 
-        dept.business_function === parseInt(formContext.businessFunctionId)
-      );
-    } else {
-      options.departments = departments;
-    }
-    
-    // Filter units by selected department
-    if (formContext.departmentId) {
-      options.units = units.filter(unit => 
-        unit.department === parseInt(formContext.departmentId)
-      );
-    } else {
-      options.units = units;
-    }
-    
-    // Filter tags by type if specified
-    if (formContext.tagType) {
-      options.tags = tags.filter(tag => tag.tag_type === formContext.tagType);
-    }
-    
-    return options;
-  }
-);
-
-// ========================================
-// PERFORMANCE SELECTORS
-// ========================================
-
-export const selectReferenceDataLoadingStatus = createSelector(
-  [selectReferenceDataLoading, selectReferenceDataError],
-  (loading, error) => {
-    const entities = [
-      'businessFunctions',
-      'departments', 
-      'units',
-      'jobFunctions',
-      'positionGroups',
-      'employeeStatuses',
-      'employeeTags',
-      'contractConfigs'
-    ];
-    
-    const status = {};
-    entities.forEach(entity => {
-      if (loading[entity]) {
-        status[entity] = 'loading';
-      } else if (error[entity]) {
-        status[entity] = 'error';
-      } else {
-        status[entity] = 'idle';
-      }
-    });
-    
-    return {
-      individual: status,
-      isAnyLoading: Object.values(loading).some(Boolean),
-      hasAnyError: Object.values(error).some(err => err !== null),
-      isAllLoaded: entities.every(entity => status[entity] === 'idle'),
-      errorCount: Object.values(error).filter(err => err !== null).length,
-      loadingCount: Object.values(loading).filter(Boolean).length
-    };
-  }
-);
-
-// ========================================
-// DROPDOWN HELPER SELECTORS
-// ========================================
-
-export const selectDropdownData = createSelector(
-  [selectReferenceDataState],
-  (referenceData) => {
-    const createDropdownOptions = (data, valueField = 'id', labelField = 'name') => {
-      if (!Array.isArray(data)) return [];
-      
-      return data
-        .filter(item => item.is_active !== false)
-        .map(item => ({
-          value: item[valueField] || item.value,
-          label: item[labelField] || item.label || item.display_name || item.name,
-          ...item
-        }));
-    };
-    
-    return {
-      businessFunctions: createDropdownOptions(referenceData.businessFunctions),
-      departments: createDropdownOptions(referenceData.departments),
-      units: createDropdownOptions(referenceData.units),
-      jobFunctions: createDropdownOptions(referenceData.jobFunctions),
-      positionGroups: createDropdownOptions(referenceData.positionGroups, 'id', 'display_name'),
-      employeeStatuses: createDropdownOptions(referenceData.employeeStatuses),
-      employeeTags: createDropdownOptions(referenceData.employeeTags),
-      contractConfigs: createDropdownOptions(referenceData.contractConfigs, 'contract_type', 'display_name')
-    };
-  }
-);
-
-// ========================================
-// UTILITY SELECTORS
-// ========================================
-
-export const selectReferenceDataSummary = createSelector(
-  [selectReferenceDataStatistics, selectReferenceDataLoadingStatus],
-  (statistics, loadingStatus) => ({
-    ...statistics,
-    loadingStatus,
-    health: {
-      totalEntities: statistics.totalEntities,
-      loadedEntities: Object.keys(statistics.activeInactiveCounts).length,
-      errorEntities: loadingStatus.errorCount,
-      staleCacheCount: Object.values(statistics.cacheStatus).filter(status => status === 'stale').length
-    }
-  })
-);
-
-// ========================================
-// EXPORT ALL SELECTORS
-// ========================================
-
-export const referenceDataSelectors = {
-  // Base selectors
-  selectBusinessFunctions,
-  selectDepartments,
-  selectUnits,
-  selectJobFunctions,
-  selectPositionGroups,
-  selectEmployeeStatuses,
-  selectEmployeeTags,
-  selectContractConfigs,
-  selectGradingLevels,
-  selectSelectedBusinessFunction,
-  selectSelectedDepartment,
-  selectReferenceDataLoading,
-  selectReferenceDataError,
-  selectReferenceDataUI,
-  selectEntityCounts,
-  
-  // Computed selectors
-  selectIsAnyReferenceDataLoading,
-  selectHasAnyReferenceDataError,
-  
-  // Dropdown selectors
-  selectBusinessFunctionsForDropdown,
-  selectDepartmentsForDropdown,
-  selectUnitsForDropdown,
-  selectJobFunctionsForDropdown,
-  selectPositionGroupsForDropdown,
-  selectEmployeeStatusesForDropdown,
-  selectEmployeeTagsForDropdown,
-  selectContractConfigsForDropdown,
-  
-  // Filtered selectors
-  selectDepartmentsByBusinessFunction,
-  selectUnitsByDepartment,
-  selectTagsByType,
-  selectPositionGroupGradingLevels,
-  
-  // Combined selectors
-  selectReferenceDataForEmployeeForm,
-  selectFormOptions,
-  selectDropdownData,
-  
-  // Validation selectors
-  selectIsValidBusinessFunction,
-  selectIsValidDepartment,
-  selectIsValidUnit,
-  selectHierarchyValidation,
-  
-  // Cache selectors
-  selectIsDataStale,
-  selectCacheStatus,
-  
-  // Statistics selectors
-  selectReferenceDataStatistics,
-  selectReferenceDataLoadingStatus,
-  selectReferenceDataSummary,
-  
-  // Utility selectors
-  selectFilteredReferenceData,
-  selectQuickAccessData
-};

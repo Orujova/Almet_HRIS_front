@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountTable.jsx - FIXED with Working Action Handlers
+// src/components/headcount/HeadcountTable.jsx - FIXED: Filter Integration
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
@@ -37,15 +37,18 @@ const HeadcountTable = () => {
     fetchEmployees,
     fetchFilterOptions,
     fetchStatistics,
+    refreshEmployees,
+    refreshStatistics,
     // Selection management
     toggleEmployeeSelection,
     selectAllEmployees,
     clearSelection,
     setSelectedEmployees,
-    // Filter management
-    setCurrentFilters,
-    clearFilters,
+    // Filter management - FIXED: Using proper filter actions
+    updateFilter,
     removeFilter,
+    clearFilters,
+    setCurrentFilters,
     // Sorting management
     setSorting,
     addSort,
@@ -55,19 +58,22 @@ const HeadcountTable = () => {
     setPageSize,
     setCurrentPage,
     // Bulk operations
-    bulkUpdateEmployees,
-    bulkDeleteEmployees,
     bulkAddTags,
     bulkRemoveTags,
-    updateEmployeeStatus,
+    bulkAssignLineManager,
+    bulkExtendContracts,
+    softDeleteEmployees,
+    restoreEmployees,
     exportEmployees,
     downloadEmployeeTemplate,
+    bulkUploadEmployees,
     deleteEmployee,
     // Helpers
     getSortDirection,
     isSorted,
     getSortIndex,
-    clearErrors
+    clearErrors,
+    buildQueryParams
   } = useEmployees();
 
   const {
@@ -75,38 +81,192 @@ const HeadcountTable = () => {
     employeeTags,
     businessFunctions,
     departments,
-    loading: refLoading
+    units,
+    jobFunctions,
+    positionGroups,
+    loading: refLoading,
+    error: refError
   } = useReferenceData();
 
   // ========================================
-  // LOCAL STATE FOR UI
+  // LOCAL STATE FOR UI - FIXED: Synchronized with backend filters
   // ========================================
   
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
-  const [departmentFilter, setDepartmentFilter] = useState([]);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [employeeVisibility, setEmployeeVisibility] = useState({});
+
+  // FIXED: Local filter state synchronized with backend
+  const [localFilters, setLocalFilters] = useState({
+    search: "",
+    status: [],
+    department: [],
+    business_function: [],
+    unit: [],
+    job_function: [],
+    position_group: [],
+    tags: [],
+    grading_level: [],
+    contract_duration: [],
+    line_manager: [],
+    gender: [],
+    start_date_from: "",
+    start_date_to: "",
+    contract_end_date_from: "",
+    contract_end_date_to: "",
+    years_of_service_min: "",
+    years_of_service_max: "",
+
+    is_active: ""
+  });
 
   // Refs
   const initialized = useRef(false);
   const lastApiParams = useRef(null);
 
   // ========================================
-  // FIXED: WORKING ACTION HANDLERS
+  // FIXED: API PARAMS BUILDER - Proper Backend Format
+  // ========================================
+  
+  const apiParams = useMemo(() => {
+    const params = {
+      page: pagination.page || pagination.currentPage || 1,
+      page_size: pagination.pageSize || 25
+    };
+
+    // Search
+    if (localFilters.search?.trim()) {
+      params.search = localFilters.search.trim();
+    }
+
+    // Status filter - convert array to backend format
+    if (localFilters.status?.length > 0) {
+      params.status = localFilters.status.join(',');
+    }
+
+    // Department filter
+    if (localFilters.department?.length > 0) {
+      params.department = localFilters.department.join(',');
+    }
+
+    // Business function filter
+    if (localFilters.business_function?.length > 0) {
+      params.business_function = localFilters.business_function.join(',');
+    }
+
+    // Unit filter
+    if (localFilters.unit?.length > 0) {
+      params.unit = localFilters.unit.join(',');
+    }
+
+    // Job function filter
+    if (localFilters.job_function?.length > 0) {
+      params.job_function = localFilters.job_function.join(',');
+    }
+
+    // Position group filter
+    if (localFilters.position_group?.length > 0) {
+      params.position_group = localFilters.position_group.join(',');
+    }
+
+    // Tags filter
+    if (localFilters.tags?.length > 0) {
+      params.tags = localFilters.tags.join(',');
+    }
+
+    // Grading level filter
+    if (localFilters.grading_level?.length > 0) {
+      params.grading_level = localFilters.grading_level.join(',');
+    }
+
+    // Contract duration filter
+    if (localFilters.contract_duration?.length > 0) {
+      params.contract_duration = localFilters.contract_duration.join(',');
+    }
+
+    // Line manager filter
+    if (localFilters.line_manager?.length > 0) {
+      params.line_manager = localFilters.line_manager.join(',');
+    }
+
+    // Gender filter
+    if (localFilters.gender?.length > 0) {
+      params.gender = localFilters.gender.join(',');
+    }
+
+    // Date ranges
+    if (localFilters.start_date_from) {
+      params.start_date_from = localFilters.start_date_from;
+    }
+    if (localFilters.start_date_to) {
+      params.start_date_to = localFilters.start_date_to;
+    }
+    if (localFilters.contract_end_date_from) {
+      params.contract_end_date_from = localFilters.contract_end_date_from;
+    }
+    if (localFilters.contract_end_date_to) {
+      params.contract_end_date_to = localFilters.contract_end_date_to;
+    }
+
+    // Years of service range
+    if (localFilters.years_of_service_min) {
+      params.years_of_service_min = localFilters.years_of_service_min;
+    }
+    if (localFilters.years_of_service_max) {
+      params.years_of_service_max = localFilters.years_of_service_max;
+    }
+
+    if (localFilters.is_active && localFilters.is_active !== "all") {
+      params.is_active = localFilters.is_active === "true";
+    }
+
+    // Sorting
+    if (sorting && sorting.length > 0) {
+      const orderingFields = sorting.map(sort => 
+        sort.direction === 'desc' ? `-${sort.field}` : sort.field
+      );
+      params.ordering = orderingFields.join(',');
+    }
+
+    console.log('🔧 API Params built:', params);
+    return params;
+  }, [localFilters, pagination, sorting]);
+
+  // ========================================
+  // FIXED: DATA REFRESH HELPER
+  // ========================================
+  
+  const refreshAllData = useCallback(async () => {
+    console.log('🔄 Refreshing all data...');
+    try {
+      if (refreshEmployees && typeof refreshEmployees === 'function') {
+        await refreshEmployees();
+      } else {
+        await fetchEmployees(apiParams);
+      }
+      
+      if (refreshStatistics && typeof refreshStatistics === 'function') {
+        await refreshStatistics();
+      } else {
+        await fetchStatistics();
+      }
+      
+      console.log('✅ Data refresh completed');
+    } catch (error) {
+      console.error('❌ Data refresh failed:', error);
+    }
+  }, [refreshEmployees, refreshStatistics, fetchEmployees, fetchStatistics, apiParams]);
+
+  // ========================================
+  // FIXED: WORKING BULK ACTION HANDLERS
   // ========================================
   
   const handleBulkAction = useCallback(async (action, options = {}) => {
-    console.log('🔥 BULK ACTION TRIGGERED:', action, options);
-    console.log('🔥 SELECTED EMPLOYEES:', selectedEmployees);
-    
-    // Close action menu first
+    console.log('🔥 BULK ACTION:', action, options);
     setIsActionMenuOpen(false);
 
-    // Check if employees are selected for actions that require them
     if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport'].includes(action)) {
       alert("⚠️ Please select employees first!");
       return;
@@ -117,291 +277,248 @@ const HeadcountTable = () => {
       
       switch (action) {
         case "export":
-          console.log('📤 Starting export...');
           setIsExportModalOpen(true);
           break;
 
         case "bulkImport":
-          console.log('📥 Starting bulk import...');
           setIsBulkUploadOpen(true);
           break;
 
         case "downloadTemplate":
-          console.log('📄 Downloading template...');
           try {
             result = await downloadEmployeeTemplate();
-            console.log('✅ Template download result:', result);
             alert('✅ Template downloaded successfully!');
           } catch (error) {
             console.error('❌ Template download failed:', error);
-            alert('❌ Failed to download template: ' + error.message);
+            alert('❌ Template download failed: ' + error.message);
           }
           break;
 
         case "delete":
-          console.log('🗑️ Deleting employees...');
-          const deleteMessage = options.confirmMessage || `Are you sure you want to delete ${selectedEmployees.length} employee(s)? This action cannot be undone.`;
+        case "softDelete":
+          const deleteMessage = `Are you sure you want to ${action === 'softDelete' ? 'soft delete' : 'permanently delete'} ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?`;
           
           if (confirm(deleteMessage)) {
             try {
-              result = await bulkDeleteEmployees(selectedEmployees);
-              console.log('✅ Delete result:', result);
-              
-              if (result.meta?.requestStatus === 'fulfilled') {
-                clearSelection();
-                // Refresh data
-                await fetchEmployees();
-                await fetchStatistics();
-                alert(`✅ Successfully deleted ${selectedEmployees.length} employees!`);
+              if (action === "softDelete") {
+                result = await softDeleteEmployees(selectedEmployees);
               } else {
-                throw new Error('Delete operation failed');
+                const deletePromises = selectedEmployees.map(id => deleteEmployee(id));
+                await Promise.all(deletePromises);
               }
-            } catch (error) {
-              console.error('❌ Delete failed:', error);
-              alert('❌ Failed to delete employees: ' + error.message);
-            }
-          }
-          break;
-
-        case "softDelete":
-          console.log('🗑️ Soft deleting employees...');
-          const softDeleteMessage = options.confirmMessage || `Are you sure you want to soft delete ${selectedEmployees.length} employee(s)? They can be restored later.`;
-          
-          if (confirm(softDeleteMessage)) {
-            try {
-              // Note: assuming softDeleteEmployees exists in useEmployees hook
-              result = await bulkDeleteEmployees(selectedEmployees); // Using same API for now
-              console.log('✅ Soft delete result:', result);
               
               clearSelection();
-              await fetchEmployees();
-              await fetchStatistics();
-              alert(`✅ Successfully soft deleted ${selectedEmployees.length} employees!`);
+              await refreshAllData();
+              alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} ${action === 'softDelete' ? 'soft deleted' : 'deleted'} successfully!`);
             } catch (error) {
-              console.error('❌ Soft delete failed:', error);
-              alert('❌ Failed to soft delete employees: ' + error.message);
+              console.error(`❌ ${action} failed:`, error);
+              alert(`❌ ${action} failed: ${error.message}`);
             }
           }
           break;
 
-        case "updateStatus":
-          console.log('📝 Updating status to:', options.newStatus);
+        case "restore":
           try {
-            // The updateEmployeeStatus expects employee IDs
-            result = await updateEmployeeStatus(selectedEmployees);
-            console.log('✅ Status update result:', result);
-            
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              await fetchEmployees();
-              await fetchStatistics();
-              alert(`✅ Successfully updated status for ${selectedEmployees.length} employees to ${options.newStatus}!`);
-            } else {
-              throw new Error('Status update failed');
-            }
+            result = await restoreEmployees(selectedEmployees);
+            clearSelection();
+            await refreshAllData();
+            alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} restored successfully!`);
           } catch (error) {
-            console.error('❌ Status update failed:', error);
-            alert('❌ Failed to update status: ' + error.message);
+            console.error('❌ Restore failed:', error);
+            alert('❌ Restore failed: ' + error.message);
           }
           break;
 
-        case "addTags":
-          console.log('🏷️ Adding tags:', options.tagNames);
+        case "bulkAddTags":
           try {
-            result = await bulkAddTags(selectedEmployees, options.tagIds);
-            console.log('✅ Add tags result:', result);
+            const payload = {
+              employee_ids: options.employee_ids || selectedEmployees,
+              tag_id: options.tag_id
+            };
             
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              await fetchEmployees();
-              alert(`✅ Successfully added tags "${options.tagNames.join(', ')}" to ${selectedEmployees.length} employees!`);
-            } else {
-              throw new Error('Add tags failed');
-            }
+            result = await bulkAddTags(payload.employee_ids, payload.tag_id);
+            clearSelection();
+            await refreshAllData();
+            
+            const tagName = result?.tag_info?.name || 'Tag';
+            alert(`✅ "${tagName}" tag added to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
           } catch (error) {
-            console.error('❌ Add tags failed:', error);
-            alert('❌ Failed to add tags: ' + error.message);
+            console.error('❌ Tag addition failed:', error);
+            alert('❌ Tag addition failed: ' + error.message);
           }
           break;
 
-        case "removeTags":
-          console.log('🏷️ Removing tags:', options.tagNames);
+        case "bulkRemoveTags":
           try {
-            result = await bulkRemoveTags(selectedEmployees, options.tagIds);
-            console.log('✅ Remove tags result:', result);
+            const payload = {
+              employee_ids: options.employee_ids || selectedEmployees,
+              tag_id: options.tag_id
+            };
             
-            if (result.meta?.requestStatus === 'fulfilled') {
-              clearSelection();
-              await fetchEmployees();
-              alert(`✅ Successfully removed tags "${options.tagNames.join(', ')}" from ${selectedEmployees.length} employees!`);
-            } else {
-              throw new Error('Remove tags failed');
-            }
+            result = await bulkRemoveTags(payload.employee_ids, payload.tag_id);
+            clearSelection();
+            await refreshAllData();
+            alert(`✅ Tag removed from ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
           } catch (error) {
-            console.error('❌ Remove tags failed:', error);
-            alert('❌ Failed to remove tags: ' + error.message);
+            console.error('❌ Tag removal failed:', error);
+            alert('❌ Tag removal failed: ' + error.message);
           }
           break;
 
-        case "bulkUpdate":
-          console.log('✏️ Bulk update field:', options.field, 'action:', options.action);
-          
-          // Show appropriate update modal/form based on field
-          switch (options.field) {
-            case 'line_manager':
-              alert('👥 Line Manager update modal would open here');
-              // TODO: Open line manager selection modal
-              break;
-            case 'department':
-              alert('🏢 Department transfer modal would open here');
-              // TODO: Open department selection modal
-              break;
-            case 'position_group':
-              alert('🎯 Position group update modal would open here');
-              // TODO: Open position group selection modal
-              break;
-            default:
-              alert('❓ Unknown bulk update field: ' + options.field);
+        case "bulkAssignLineManager":
+          try {
+            const payload = {
+              employee_ids: options.employee_ids || selectedEmployees,
+              line_manager_id: options.line_manager_id
+            };
+            
+            result = await bulkAssignLineManager(payload.employee_ids, payload.line_manager_id);
+            clearSelection();
+            await refreshAllData();
+            
+            const managerName = result?.line_manager_info?.name || 'Line Manager';
+            alert(`✅ ${managerName} assigned as line manager to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
+          } catch (error) {
+            console.error('❌ Line manager assignment failed:', error);
+            alert('❌ Line manager assignment failed: ' + error.message);
+          }
+          break;
+
+        case "bulkExtendContracts":
+          try {
+            result = await bulkExtendContracts({
+              employee_ids: selectedEmployees,
+              new_contract_type: options.new_contract_type,
+              new_start_date: options.new_start_date,
+              reason: options.reason
+            });
+            
+            clearSelection();
+            await refreshAllData();
+            alert(`✅ Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
+          } catch (error) {
+            console.error('❌ Contract extension failed:', error);
+            alert('❌ Contract extension failed: ' + error.message);
           }
           break;
 
         default:
           console.warn('❓ Unknown bulk action:', action);
-          alert(`❓ Action "${action}" is not implemented yet`);
+          alert(`❓ "${action}" operation not implemented yet`);
       }
     } catch (error) {
-      console.error(`❌ Failed to perform bulk action ${action}:`, error);
-      alert(`❌ Failed to ${action}. Error: ${error.message}`);
+      console.error(`❌ Bulk action ${action} failed:`, error);
+      alert(`❌ ${action} failed. Error: ${error.message}`);
     }
   }, [
-    selectedEmployees, 
-    clearSelection, 
-    bulkDeleteEmployees, 
-    updateEmployeeStatus, 
-    bulkAddTags, 
-    bulkRemoveTags, 
-    bulkUpdateEmployees, 
-    exportEmployees,
+    selectedEmployees,
+    clearSelection,
+    refreshAllData,
+    softDeleteEmployees,
+    restoreEmployees,
+    bulkAddTags,
+    bulkRemoveTags,
+    bulkAssignLineManager,
+    bulkExtendContracts,
     downloadEmployeeTemplate,
-    fetchEmployees, 
-    fetchStatistics
+    deleteEmployee
   ]);
 
   // ========================================
-  // SELECTION HANDLERS
+  // FIXED: FILTER HANDLERS - Proper Synchronization
   // ========================================
-  
-  const handleEmployeeToggle = useCallback((employeeId) => {
-    console.log('🔄 Toggle employee:', employeeId);
-    toggleEmployeeSelection(employeeId);
-  }, [toggleEmployeeSelection]);
 
-  const handleSelectAll = useCallback(() => {
-    console.log('🔄 Select all triggered, current selected:', selectedEmployees.length);
-    console.log('🔄 Total employees:', formattedEmployees.length);
+  // Search handler
+  const handleSearchChange = useCallback((value) => {
+    console.log('🔍 Search changed:', value);
+    setLocalFilters(prev => ({ ...prev, search: value }));
+    setCurrentPage(1);
+  }, [setCurrentPage]);
+
+  // Status filter handler
+  const handleStatusChange = useCallback((selectedStatuses) => {
+    console.log('📊 Status filter changed:', selectedStatuses);
+    setLocalFilters(prev => ({ ...prev, status: selectedStatuses }));
+    setCurrentPage(1);
+  }, [setCurrentPage]);
+
+  // Department filter handler
+  const handleDepartmentChange = useCallback((selectedDepartments) => {
+    console.log('🏢 Department filter changed:', selectedDepartments);
+    setLocalFilters(prev => ({ ...prev, department: selectedDepartments }));
+    setCurrentPage(1);
+  }, [setCurrentPage]);
+
+  // Advanced filters handler
+  const handleApplyAdvancedFilters = useCallback((filters) => {
+    console.log('🔧 Advanced filters applied:', filters);
     
-    if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
-      console.log('🔄 Clearing selection');
-      clearSelection();
-    } else {
-      console.log('🔄 Selecting all employees');
-      const allIds = formattedEmployees.map(emp => emp.id);
-      setSelectedEmployees(allIds);
-    }
-  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
-
-  // ========================================
-  // ACTION MENU HANDLERS
-  // ========================================
-  
-  const handleToggleActionMenu = useCallback(() => {
-    console.log('🔄 Action menu toggle, current state:', isActionMenuOpen);
-    setIsActionMenuOpen(prev => !prev);
-  }, [isActionMenuOpen]);
-
-  const handleActionMenuClose = useCallback(() => {
-    console.log('❌ Closing action menu');
-    setIsActionMenuOpen(false);
-  }, []);
-
-  // ========================================
-  // INITIALIZATION & DATA FETCHING
-  // ========================================
-  
-  useEffect(() => {
-    const initializeData = async () => {
-      if (initialized.current) return;
-      
-      try {
-        initialized.current = true;
-        clearErrors();
-        
-        await Promise.all([
-          fetchFilterOptions(),
-          fetchStatistics()
-        ]);
-      } catch (error) {
-        console.error('Failed to initialize data:', error);
-        initialized.current = false;
-      }
-    };
-
-    initializeData();
-  }, []);
-
-  // ========================================
-  // API PARAMS BUILDER
-  // ========================================
-  
-  const buildApiParams = useMemo(() => {
-    const params = {
-      page: pagination.currentPage,
-      page_size: pagination.pageSize
-    };
-
-    if (searchTerm.trim()) {
-      params.search = searchTerm.trim();
-    }
-
-    if (statusFilter.length > 0) {
-      params.status = statusFilter;
-    }
-
-    if (departmentFilter.length > 0) {
-      params.department = departmentFilter;
-    }
-
-    Object.keys(currentFilters).forEach(key => {
-      const value = currentFilters[key];
-      if (value !== undefined && value !== null && value !== '') {
-        if (Array.isArray(value) && value.length > 0) {
-          params[key] = value;
-        } else if (!Array.isArray(value)) {
-          params[key] = value;
-        }
+    // Convert backend comma-separated format back to arrays for local state
+    const processedFilters = {};
+    
+    Object.entries(filters).forEach(([key, value]) => {
+      if (typeof value === 'string' && value.includes(',')) {
+        // Convert comma-separated string to array
+        processedFilters[key] = value.split(',').filter(Boolean);
+      } else if (Array.isArray(value)) {
+        processedFilters[key] = value;
+      } else {
+        processedFilters[key] = value;
       }
     });
 
-    if (sorting && sorting.length > 0) {
-      const orderingFields = sorting.map(sort => 
-        sort.direction === 'desc' ? `-${sort.field}` : sort.field
-      );
-      params.ordering = orderingFields.join(',');
-    }
+    setLocalFilters(prev => ({ ...prev, ...processedFilters }));
+    setIsAdvancedFilterOpen(false);
+    setCurrentPage(1);
+  }, [setCurrentPage]);
 
-    return params;
-  }, [
-    pagination.currentPage, 
-    pagination.pageSize, 
-    searchTerm, 
-    statusFilter, 
-    departmentFilter, 
-    currentFilters,
-    sorting
-  ]);
+  // Clear individual filter
+  const handleClearFilter = useCallback((key) => {
+    console.log('❌ Clearing filter:', key);
+    
+    if (key === "status") {
+      setLocalFilters(prev => ({ ...prev, status: [] }));
+    } else if (key === "department") {
+      setLocalFilters(prev => ({ ...prev, department: [] }));
+    } else if (key === "search") {
+      setLocalFilters(prev => ({ ...prev, search: "" }));
+    } else {
+      // Clear other filters
+      setLocalFilters(prev => ({ ...prev, [key]: Array.isArray(prev[key]) ? [] : "" }));
+    }
+    setCurrentPage(1);
+  }, [setCurrentPage]);
+
+  // Clear all filters
+  const handleClearAllFilters = useCallback(() => {
+    console.log('❌ Clearing all filters');
+    setLocalFilters({
+      search: "",
+      status: [],
+      department: [],
+      business_function: [],
+      unit: [],
+      job_function: [],
+      position_group: [],
+      tags: [],
+      grading_level: [],
+      contract_duration: [],
+      line_manager: [],
+      gender: [],
+      start_date_from: "",
+      start_date_to: "",
+      contract_end_date_from: "",
+      contract_end_date_to: "",
+      years_of_service_min: "",
+      years_of_service_max: "",
+      is_active: ""
+    });
+    clearFilters();
+    setCurrentPage(1);
+  }, [clearFilters, setCurrentPage]);
 
   // ========================================
-  // DEBOUNCED FETCH
+  // DEBOUNCED FETCH WITH PROPER PARAMS
   // ========================================
   
   const debouncedFetchEmployees = useCallback(
@@ -420,68 +537,76 @@ const HeadcountTable = () => {
         
         timeoutId = setTimeout(() => {
           lastApiParams.current = paramsString;
+          console.log('🚀 Fetching employees with params:', params);
           fetchEmployees(params);
-        }, 300);
+        }, 500); // Increased debounce time
       };
     })(),
     [fetchEmployees]
   );
 
-  useEffect(() => {
-    if (initialized.current) {
-      debouncedFetchEmployees(buildApiParams);
-    }
-  }, [buildApiParams, debouncedFetchEmployees]);
-
   // ========================================
-  // OTHER EVENT HANDLERS
+  // INITIALIZATION & DATA FETCHING
   // ========================================
   
-  const handleSearchChange = useCallback((value) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  }, [setCurrentPage]);
+  useEffect(() => {
+    const initializeData = async () => {
+      if (initialized.current) return;
+      
+      try {
+        initialized.current = true;
+        clearErrors();
+        
+        console.log('🚀 Initializing HeadcountTable...');
+        await Promise.all([
+          fetchFilterOptions(),
+          fetchStatistics()
+        ]);
+      } catch (error) {
+        console.error('Failed to initialize data:', error);
+        initialized.current = false;
+      }
+    };
 
-  const toggleAdvancedFilter = useCallback(() => {
-    setIsAdvancedFilterOpen(prev => !prev);
+    initializeData();
   }, []);
 
-  const handleApplyAdvancedFilters = useCallback((filters) => {
-    setCurrentFilters(filters);
-    setIsAdvancedFilterOpen(false);
-    setCurrentPage(1);
-  }, [setCurrentFilters, setCurrentPage]);
-
-  const handleClearAllFilters = useCallback(() => {
-    clearFilters();
-    setStatusFilter([]);
-    setDepartmentFilter([]);
-    setSearchTerm("");
-    setCurrentPage(1);
-  }, [clearFilters, setCurrentPage]);
-
-  const handleStatusChange = useCallback((selectedStatuses) => {
-    setStatusFilter(selectedStatuses);
-    setCurrentPage(1);
-  }, [setCurrentPage]);
-
-  const handleDepartmentChange = useCallback((selectedDepartments) => {
-    setDepartmentFilter(selectedDepartments);
-    setCurrentPage(1);
-  }, [setCurrentPage]);
-
-  const handleClearFilter = useCallback((key) => {
-    if (key === "status") {
-      setStatusFilter([]);
-    } else if (key === "department") {
-      setDepartmentFilter([]);
-    } else if (key === "search") {
-      setSearchTerm("");
-    } else {
-      removeFilter(key);
+  // Fetch employees when params change
+  useEffect(() => {
+    if (initialized.current) {
+      console.log('📡 API params changed, fetching employees...');
+      debouncedFetchEmployees(apiParams);
     }
-    setCurrentPage(1);
-  }, [removeFilter, setCurrentPage]);
+  }, [apiParams, debouncedFetchEmployees]);
+
+  // ========================================
+  // SELECTION HANDLERS
+  // ========================================
+  
+  const handleEmployeeToggle = useCallback((employeeId) => {
+    toggleEmployeeSelection(employeeId);
+  }, [toggleEmployeeSelection]);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
+      clearSelection();
+    } else {
+      const allIds = formattedEmployees.map(emp => emp.id);
+      setSelectedEmployees(allIds);
+    }
+  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
+
+  // ========================================
+  // ACTION MENU HANDLERS
+  // ========================================
+  
+  const handleToggleActionMenu = useCallback(() => {
+    setIsActionMenuOpen(prev => !prev);
+  }, []);
+
+  const handleActionMenuClose = useCallback(() => {
+    setIsActionMenuOpen(false);
+  }, []);
 
   // ========================================
   // SORTING HANDLERS
@@ -516,38 +641,47 @@ const HeadcountTable = () => {
   const handleExport = useCallback(async (exportOptions) => {
     try {
       const exportParams = {
-        ...buildApiParams,
         format: exportOptions.format || 'excel',
         includeFields: exportOptions.includeFields
       };
 
       if (exportOptions.type === 'selected' && selectedEmployees.length > 0) {
         exportParams.employee_ids = selectedEmployees;
+      } else if (exportOptions.type === 'filtered') {
+        Object.keys(apiParams).forEach(key => {
+          if (key !== 'page' && key !== 'page_size') {
+            exportParams[key] = apiParams[key];
+          }
+        });
       }
 
+      console.log('📤 Export params:', exportParams);
       const result = await exportEmployees(exportParams);
       
-      if (result.meta?.requestStatus === 'fulfilled') {
-        console.log('Export completed successfully');
-        alert('✅ Export completed successfully!');
-      }
+      console.log('✅ Export completed successfully:', result);
+      alert('✅ Export completed successfully!');
     } catch (error) {
-      console.error('Export failed:', error);
+      console.error('❌ Export failed:', error);
       alert(`❌ Export failed: ${error.message}`);
     } finally {
       setIsExportModalOpen(false);
     }
-  }, [buildApiParams, selectedEmployees, exportEmployees]);
+  }, [apiParams, selectedEmployees, exportEmployees]);
 
-  const handleBulkImportComplete = useCallback((result) => {
-    fetchStatistics();
-    debouncedFetchEmployees(buildApiParams);
-    setIsBulkUploadOpen(false);
-    
-    if (result?.imported_count) {
-      alert(`✅ Successfully imported ${result.imported_count} employees!`);
+  const handleBulkImportComplete = useCallback(async (result) => {
+    try {
+      await refreshAllData();
+      setIsBulkUploadOpen(false);
+      
+      if (result?.imported_count) {
+        alert(`✅ Successfully imported ${result.imported_count} employees!`);
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh after import:', error);
+      setIsBulkUploadOpen(false);
+      alert('⚠️ Import completed but failed to refresh data. Please refresh the page.');
     }
-  }, [fetchStatistics, debouncedFetchEmployees, buildApiParams]);
+  }, [refreshAllData]);
 
   // ========================================
   // EMPLOYEE ACTION HANDLERS
@@ -558,12 +692,9 @@ const HeadcountTable = () => {
       switch (action) {
         case "delete":
           if (confirm("Are you sure you want to delete this employee?")) {
-            const result = await deleteEmployee(employeeId);
-            if (result.meta?.requestStatus === 'fulfilled') {
-              debouncedFetchEmployees(buildApiParams);
-              fetchStatistics();
-              alert('✅ Employee deleted successfully');
-            }
+            await deleteEmployee(employeeId);
+            await refreshAllData();
+            alert('✅ Employee deleted successfully');
           }
           break;
 
@@ -575,7 +706,7 @@ const HeadcountTable = () => {
       console.error(`Failed to perform action ${action}:`, error);
       alert(`❌ Failed to ${action}: ${error.message}`);
     }
-  }, [deleteEmployee, debouncedFetchEmployees, buildApiParams, fetchStatistics]);
+  }, [deleteEmployee, refreshAllData]);
 
   // ========================================
   // ACTIVE FILTERS CALCULATION
@@ -584,50 +715,65 @@ const HeadcountTable = () => {
   const activeFilters = useMemo(() => {
     const filters = [];
     
-    if (searchTerm) {
-      filters.push({ key: "search", label: `Search: ${searchTerm}` });
+    if (localFilters.search) {
+      filters.push({ key: "search", label: `Search: ${localFilters.search}` });
     }
-    if (statusFilter.length > 0) {
+    if (localFilters.status?.length > 0) {
       filters.push({ 
         key: "status", 
-        label: statusFilter.length === 1 
-          ? `Status: ${statusFilter[0]}` 
-          : `Status: ${statusFilter.length} selected`
+        label: localFilters.status.length === 1 
+          ? `Status: ${localFilters.status[0]}` 
+          : `Status: ${localFilters.status.length} selected`
       });
     }
-    if (departmentFilter.length > 0) {
+    if (localFilters.department?.length > 0) {
       filters.push({ 
         key: "department", 
-        label: departmentFilter.length === 1 
-          ? `Department: ${departmentFilter[0]}` 
-          : `Department: ${departmentFilter.length} selected`
+        label: localFilters.department.length === 1 
+          ? `Department: ${localFilters.department[0]}` 
+          : `Department: ${localFilters.department.length} selected`
+      });
+    }
+    if (localFilters.business_function?.length > 0) {
+      filters.push({ 
+        key: "business_function", 
+        label: `Business Function: ${localFilters.business_function.length} selected`
+      });
+    }
+    if (localFilters.tags?.length > 0) {
+      filters.push({ 
+        key: "tags", 
+        label: `Tags: ${localFilters.tags.length} selected`
+      });
+    }
+    if (localFilters.grading_level?.length > 0) {
+      filters.push({ 
+        key: "grading_level", 
+        label: `Grades: ${localFilters.grading_level.length} selected`
+      });
+    }
+    if (localFilters.start_date_from || localFilters.start_date_to) {
+      filters.push({ 
+        key: "start_date", 
+        label: "Start Date Range"
       });
     }
     
-    Object.entries(currentFilters).forEach(([key, value]) => {
-      if (value && (Array.isArray(value) ? value.length > 0 : value !== '')) {
-        const label = Array.isArray(value) && value.length > 1
-          ? `${key}: ${value.length} selected`
-          : `${key}: ${Array.isArray(value) ? value[0] : value}`;
-        filters.push({ key, label });
-      }
-    });
-    
     return filters;
-  }, [searchTerm, statusFilter, departmentFilter, currentFilters]);
+  }, [localFilters]);
 
   // ========================================
   // ERROR HANDLING
   // ========================================
   
-  if (error?.fetch) {
+  if (error?.employees) {
     return (
       <div className="container mx-auto pt-3 max-w-full">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
           <div className="text-red-600 dark:text-red-400">
             <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>
             <p className="text-sm mb-4">
-              {error?.fetch?.message || 'Failed to load employee data'}
+              {error?.employees?.message || 'Failed to load employee data'}
             </p>
             <button 
               onClick={() => {
@@ -654,7 +800,7 @@ const HeadcountTable = () => {
       {/* Header with Statistics and Actions */}
       <div className="relative">
         <HeadcountHeader
-          onToggleAdvancedFilter={toggleAdvancedFilter}
+          onToggleAdvancedFilter={() => setIsAdvancedFilterOpen(!isAdvancedFilterOpen)}
           onToggleActionMenu={handleToggleActionMenu}
           isActionMenuOpen={isActionMenuOpen}
           selectedEmployees={selectedEmployees}
@@ -664,14 +810,16 @@ const HeadcountTable = () => {
           darkMode={darkMode}
         />
 
-        {/* Action Menu - FIXED Position and Working Handlers */}
+        {/* Action Menu */}
         {isActionMenuOpen && (
           <div className="absolute right-6 top-20 z-50">
             <ActionMenu 
               isOpen={isActionMenuOpen}
               onClose={handleActionMenuClose}
-              onAction={handleBulkAction}  // ✅ WORKING HANDLER
+              onAction={handleBulkAction}
               selectedCount={selectedEmployees.length}
+              selectedEmployees={selectedEmployees}
+              selectedEmployeeData={formattedEmployees.filter(emp => selectedEmployees.includes(emp.id))}
               darkMode={darkMode}
             />
           </div>
@@ -683,10 +831,13 @@ const HeadcountTable = () => {
         <AdvancedFilterPanel
           onApply={handleApplyAdvancedFilters}
           onClose={() => setIsAdvancedFilterOpen(false)}
-          initialFilters={currentFilters}
+          initialFilters={localFilters}
           filterOptions={{
             businessFunctions,
             departments,
+            units,
+            jobFunctions,
+            positionGroups,
             employeeStatuses,
             employeeTags,
           }}
@@ -696,18 +847,20 @@ const HeadcountTable = () => {
       {/* Search and Quick Filters */}
       <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3 mt-3">
         <SearchBar
-          searchTerm={searchTerm}
+          searchTerm={localFilters.search}
           onSearchChange={handleSearchChange}
+          placeholder="Search by name, email, employee ID, or job title..."
         />
         
         <div className="flex-shrink-0">
           <QuickFilterBar
             onStatusChange={handleStatusChange}
             onDepartmentChange={handleDepartmentChange}
-            statusFilter={statusFilter}
-            departmentFilter={departmentFilter}
+            statusFilter={localFilters.status}
+            departmentFilter={localFilters.department}
             activeFilters={activeFilters}
             onClearFilter={handleClearFilter}
+            onClearAllFilters={handleClearAllFilters}
             statusOptions={employeeStatuses}
             departmentOptions={departments}
           />
@@ -719,6 +872,39 @@ const HeadcountTable = () => {
         <ColorSelector />
         <HierarchyLegend />
       </div>
+
+      {/* Filter Summary */}
+      {activeFilters.length > 0 && (
+        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center flex-wrap gap-2">
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                Active Filters ({activeFilters.length}):
+              </span>
+              {activeFilters.map((filter) => (
+                <span 
+                  key={filter.key}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
+                >
+                  {filter.label}
+                  <button
+                    onClick={() => handleClearFilter(filter.key)}
+                    className="ml-1 text-blue-600 dark:text-blue-300 hover:text-red-500"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            <button
+              onClick={handleClearAllFilters}
+              className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
+            >
+              Clear All Filters
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Multi-level Sorting Info */}
       {sorting.length > 1 && (
@@ -752,11 +938,12 @@ const HeadcountTable = () => {
         </div>
       )}
 
+  
 
       {/* Employee Table */}
       <EmployeeTable
         employees={formattedEmployees}
-        loading={loading.fetch}
+        loading={loading.employees}
         selectedEmployees={selectedEmployees}
         selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
         onToggleSelectAll={handleSelectAll}
@@ -775,13 +962,13 @@ const HeadcountTable = () => {
       {/* Pagination */}
       <div className="mt-6">
         <Pagination
-          currentPage={pagination.currentPage}
+          currentPage={pagination.page || pagination.currentPage}
           totalPages={pagination.totalPages}
-          totalItems={pagination.count}
+          totalItems={pagination.count || pagination.totalItems}
           pageSize={pagination.pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={setPageSize}
-          loading={loading.fetch}
+          loading={loading.employees}
         />
       </div>
 
@@ -790,7 +977,7 @@ const HeadcountTable = () => {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         onExport={handleExport}
-        totalEmployees={pagination.count}
+        totalEmployees={statistics.total_employees}
         filteredCount={formattedEmployees.length}
         selectedEmployees={selectedEmployees}
       />

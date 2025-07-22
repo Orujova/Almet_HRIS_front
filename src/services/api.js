@@ -1,16 +1,16 @@
-// src/services/api.js - FIXED: Better error handling and Blob response handling
+// src/services/api.js - UPDATED: Backend endpointlərinə uyğun API service
 import axios from "axios";
 
-// Base URL - environment dəyişkənindən və ya localhost
+// Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-// Axios instance yaradılması
+// Axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 30000, // 30 saniyə timeout
+  timeout: 30000,
 });
 
 // Token management utility
@@ -53,7 +53,7 @@ const TokenManager = {
   }
 };
 
-// Request interceptor - hər request-ə token əlavə et
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
@@ -61,8 +61,8 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // CSRF token əgər varsa
-    const csrfToken = TokenManager.getCSRFToken?.() || null;
+    // CSRF token if available
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
     if (csrfToken) {
       config.headers['X-CSRFTOKEN'] = csrfToken;
     }
@@ -75,13 +75,13 @@ api.interceptors.request.use(
   }
 );
 
-// FIXED: Response interceptor with better error handling
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // 401 Unauthorized - token refresh et
+    // 401 Unauthorized - token refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       
@@ -98,7 +98,6 @@ api.interceptors.response.use(
         const newAccessToken = refreshResponse.data.access;
         TokenManager.setTokens(newAccessToken);
         
-        // Orijinal request-i yenidən göndər
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return api(originalRequest);
         
@@ -109,9 +108,8 @@ api.interceptors.response.use(
       }
     }
 
-    // FIXED: Better error handling for different response types
+    // Error handling for different response types
     if (error.response?.status >= 500) {
-      // Handle different content types for server errors
       let errorData = error.response?.data;
       
       if (errorData instanceof Blob) {
@@ -126,7 +124,7 @@ api.interceptors.response.use(
       console.error('Server error:', errorData);
     }
 
-    // FIXED: Ensure error object is serializable for Redux
+    // Serializable error for Redux
     const serializableError = {
       message: error.message,
       status: error.response?.status,
@@ -135,11 +133,9 @@ api.interceptors.response.use(
       method: error.config?.method,
     };
 
-    // Handle specific error responses
     if (error.response?.data) {
       const responseData = error.response.data;
       
-      // If it's a Blob, convert to text
       if (responseData instanceof Blob) {
         try {
           const text = await responseData.text();
@@ -156,7 +152,7 @@ api.interceptors.response.use(
   }
 );
 
-// Helper function - query parameters yaratmaq üçün
+// Query parameters helper
 const buildQueryParams = (params = {}) => {
   const searchParams = new URLSearchParams();
   
@@ -174,10 +170,9 @@ const buildQueryParams = (params = {}) => {
   return searchParams.toString();
 };
 
-// FIXED: File download helper with better error handling
+// File download helper
 const handleFileDownload = async (response, filename) => {
   try {
-    // Check if response is successful
     if (!response || response.status !== 200) {
       throw new Error('Failed to download file');
     }
@@ -199,18 +194,17 @@ const handleFileDownload = async (response, filename) => {
   }
 };
 
-// Ana API Service obyekti
+// API Service - Backend endpointlərinə uyğun
 export const apiService = {
   // ========================================
   // AUTH ENDPOINTS
   // ========================================
-  getCurrentUser: () => api.get("/me/"),
   login: (credentials) => api.post("/auth/login/", credentials),
   logout: () => api.post("/auth/logout/"),
   refreshToken: (refreshToken) => api.post("/auth/refresh/", { refresh: refreshToken }),
 
   // ========================================
-  // BUSINESS FUNCTIONS ENDPOINTS
+  // BUSINESS FUNCTIONS
   // ========================================
   getBusinessFunctions: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -219,11 +213,10 @@ export const apiService = {
   getBusinessFunction: (id) => api.get(`/business-functions/${id}/`),
   createBusinessFunction: (data) => api.post("/business-functions/", data),
   updateBusinessFunction: (id, data) => api.put(`/business-functions/${id}/`, data),
-  partialUpdateBusinessFunction: (id, data) => api.patch(`/business-functions/${id}/`, data),
   deleteBusinessFunction: (id) => api.delete(`/business-functions/${id}/`),
 
   // ========================================
-  // DEPARTMENTS ENDPOINTS
+  // DEPARTMENTS
   // ========================================
   getDepartments: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -232,11 +225,10 @@ export const apiService = {
   getDepartment: (id) => api.get(`/departments/${id}/`),
   createDepartment: (data) => api.post("/departments/", data),
   updateDepartment: (id, data) => api.put(`/departments/${id}/`, data),
-  partialUpdateDepartment: (id, data) => api.patch(`/departments/${id}/`, data),
   deleteDepartment: (id) => api.delete(`/departments/${id}/`),
 
   // ========================================
-  // UNITS ENDPOINTS
+  // UNITS
   // ========================================
   getUnits: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -245,11 +237,10 @@ export const apiService = {
   getUnit: (id) => api.get(`/units/${id}/`),
   createUnit: (data) => api.post("/units/", data),
   updateUnit: (id, data) => api.put(`/units/${id}/`, data),
-  partialUpdateUnit: (id, data) => api.patch(`/units/${id}/`, data),
   deleteUnit: (id) => api.delete(`/units/${id}/`),
 
   // ========================================
-  // JOB FUNCTIONS ENDPOINTS
+  // JOB FUNCTIONS
   // ========================================
   getJobFunctions: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -258,11 +249,10 @@ export const apiService = {
   getJobFunction: (id) => api.get(`/job-functions/${id}/`),
   createJobFunction: (data) => api.post("/job-functions/", data),
   updateJobFunction: (id, data) => api.put(`/job-functions/${id}/`, data),
-  partialUpdateJobFunction: (id, data) => api.patch(`/job-functions/${id}/`, data),
   deleteJobFunction: (id) => api.delete(`/job-functions/${id}/`),
 
   // ========================================
-  // POSITION GROUPS ENDPOINTS
+  // POSITION GROUPS
   // ========================================
   getPositionGroups: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -272,11 +262,10 @@ export const apiService = {
   getPositionGroupGradingLevels: (id) => api.get(`/position-groups/${id}/grading_levels/`),
   createPositionGroup: (data) => api.post("/position-groups/", data),
   updatePositionGroup: (id, data) => api.put(`/position-groups/${id}/`, data),
-  partialUpdatePositionGroup: (id, data) => api.patch(`/position-groups/${id}/`, data),
   deletePositionGroup: (id) => api.delete(`/position-groups/${id}/`),
 
   // ========================================
-  // EMPLOYEE STATUSES ENDPOINTS
+  // EMPLOYEE STATUSES
   // ========================================
   getEmployeeStatuses: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -285,11 +274,10 @@ export const apiService = {
   getEmployeeStatus: (id) => api.get(`/employee-statuses/${id}/`),
   createEmployeeStatus: (data) => api.post("/employee-statuses/", data),
   updateEmployeeStatus: (id, data) => api.put(`/employee-statuses/${id}/`, data),
-  partialUpdateEmployeeStatus: (id, data) => api.patch(`/employee-statuses/${id}/`, data),
   deleteEmployeeStatus: (id) => api.delete(`/employee-statuses/${id}/`),
 
   // ========================================
-  // EMPLOYEE TAGS ENDPOINTS
+  // EMPLOYEE TAGS
   // ========================================
   getEmployeeTags: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -298,28 +286,24 @@ export const apiService = {
   getEmployeeTag: (id) => api.get(`/employee-tags/${id}/`),
   createEmployeeTag: (data) => api.post("/employee-tags/", data),
   updateEmployeeTag: (id, data) => api.put(`/employee-tags/${id}/`, data),
-  partialUpdateEmployeeTag: (id, data) => api.patch(`/employee-tags/${id}/`, data),
   deleteEmployeeTag: (id) => api.delete(`/employee-tags/${id}/`),
 
   // ========================================
-  // CONTRACT CONFIGS ENDPOINTS
+  // CONTRACT CONFIGS
   // ========================================
   getContractConfigs: (params = {}) => {
     const queryString = buildQueryParams(params);
     return api.get(`/contract-configs/?${queryString}`);
   },
   getContractConfig: (id) => api.get(`/contract-configs/${id}/`),
+  testContractCalculations: (id) => api.get(`/contract-configs/${id}/test_calculations/`),
   createContractConfig: (data) => api.post("/contract-configs/", data),
   updateContractConfig: (id, data) => api.put(`/contract-configs/${id}/`, data),
-  partialUpdateContractConfig: (id, data) => api.patch(`/contract-configs/${id}/`, data),
   deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
-  testContractCalculations: (id) => api.get(`/contract-configs/${id}/test_calculations/`),
 
   // ========================================
-  // EMPLOYEE ENDPOINTS - FIXED with better error handling
+  // EMPLOYEES - Backend endpointlərinə uyğun
   // ========================================
-  
-  // Basic CRUD
   getEmployees: (params = {}) => {
     const queryString = buildQueryParams(params);
     return api.get(`/employees/?${queryString}`);
@@ -328,7 +312,6 @@ export const apiService = {
   getEmployee: (id) => api.get(`/employees/${id}/`),
   
   createEmployee: (data) => {
-    // Fayl yükləməsi üçün FormData istifadə et
     if (data instanceof FormData) {
       return api.post("/employees/", data, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -346,19 +329,15 @@ export const apiService = {
     return api.put(`/employees/${id}/`, data);
   },
   
-  partialUpdateEmployee: (id, data) => {
-    if (data instanceof FormData) {
-      return api.patch(`/employees/${id}/`, data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-    }
-    return api.patch(`/employees/${id}/`, data);
-  },
-  
   deleteEmployee: (id) => api.delete(`/employees/${id}/`),
 
-  // Employee Activities və Audit Trail
-  getEmployeeActivities: (employeeId) => api.get(`/employees/${employeeId}/activities/`),
+  // Employee Activities
+  getEmployeeActivities: (employeeId) => {
+    // Backend-də activities endpoint yoxdur, lakin employee detail-da activities var
+    return api.get(`/employees/${employeeId}/`).then(response => ({
+      data: response.data.activities || []
+    }));
+  },
 
   // Employee Direct Reports
   getEmployeeDirectReports: (employeeId) => api.get(`/employees/${employeeId}/direct_reports/`),
@@ -366,14 +345,12 @@ export const apiService = {
   // Employee Status Preview
   getEmployeeStatusPreview: (employeeId) => api.get(`/employees/${employeeId}/status_preview/`),
 
-  // Employee Statistics və Filter Options
+  // Employee Statistics
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
 
-  // Bulk Operations
-  bulkUpdateEmployees: (data) => api.post("/employees/bulk_update/", data),
-  bulkDeleteEmployees: (employeeIds) => api.post("/employees/bulk-delete/", { 
-    employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
-  }),
+  // ========================================
+  // BULK OPERATIONS
+  // ========================================
   softDeleteEmployees: (employeeIds) => api.post("/employees/soft-delete/", { 
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
   }),
@@ -381,7 +358,9 @@ export const apiService = {
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
   }),
 
-  // Tag Management
+  // ========================================
+  // TAG MANAGEMENT
+  // ========================================
   addEmployeeTag: (data) => api.post("/employees/add-tag/", data),
   removeEmployeeTag: (data) => api.post("/employees/remove-tag/", data),
   bulkAddTags: (employeeIds, tagId) => api.post("/employees/bulk-add-tag/", { 
@@ -393,15 +372,29 @@ export const apiService = {
     tag_id: tagId 
   }),
 
-  // Line Manager Management
+  // ========================================
+  // LINE MANAGER MANAGEMENT
+  // ========================================
   assignLineManager: (data) => api.post("/employees/assign-line-manager/", data),
   bulkAssignLineManager: (data) => api.post("/employees/bulk-assign-line-manager/", data),
 
-  // Contract Management
+  // ========================================
+  // CONTRACT MANAGEMENT
+  // ========================================
   extendEmployeeContract: (data) => api.post("/employees/extend-contract/", data),
   bulkExtendContracts: (data) => api.post("/employees/bulk-extend-contracts/", data),
+  getContractExpiryAlerts: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/employees/contract-expiry-alerts/?${queryString}`);
+  },
+  getContractsExpiringSoon: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/employees/contracts_expiring_soon/?${queryString}`);
+  },
 
-  // FIXED: Export with better error handling
+  // ========================================
+  // EXPORT & TEMPLATE
+  // ========================================
   exportEmployees: async (params = {}) => {
     try {
       const response = await api.post("/employees/export_selected/", params, {
@@ -411,7 +404,6 @@ export const apiService = {
         }
       });
       
-      // Handle the file download
       const filename = `employees_export_${new Date().toISOString().split('T')[0]}.xlsx`;
       await handleFileDownload(response, filename);
       
@@ -422,57 +414,12 @@ export const apiService = {
     }
   },
 
-  // Contract Expiry Alerts
-  getContractExpiryAlerts: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employees/contract-expiry-alerts/?${queryString}`);
-  },
-
-  // Contracts Expiring Soon
-  getContractsExpiringSoon: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employees/contracts_expiring_soon/?${queryString}`);
-  },
-
-  // Organizational Hierarchy
-  getOrganizationalHierarchy: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employees/organizational_hierarchy/?${queryString}`);
-  },
-
-  // ========================================
-  // EMPLOYEE GRADING ENDPOINTS
-  // ========================================
-  getEmployeeGrading: () => api.get("/employee-grading/"),
-  bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
-
-  // ========================================
-  // BULK UPLOAD ENDPOINTS - FIXED
-  // ========================================
-  bulkUploadEmployees: async (file) => {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      
-      const response = await api.post("/bulk-upload/", formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
-      return response;
-    } catch (error) {
-      console.error('Bulk upload failed:', error);
-      throw error;
-    }
-  },
-
-  // FIXED: Download Employee Template with proper file handling
   downloadEmployeeTemplate: async () => {
     try {
       const response = await api.get("/bulk-upload/download_template/", {
         responseType: 'blob'
       });
       
-      // Handle the file download
       const filename = 'employee_template.xlsx';
       await handleFileDownload(response, filename);
       
@@ -484,91 +431,71 @@ export const apiService = {
   },
 
   // ========================================
-  // VACANT POSITIONS ENDPOINTS
+  // BULK UPLOAD
   // ========================================
-  getVacantPositions: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/vacant-positions/?${queryString}`);
-  },
-  getVacantPosition: (id) => api.get(`/vacant-positions/${id}/`),
-  createVacantPosition: (data) => api.post("/vacant-positions/", data),
-  updateVacantPosition: (id, data) => api.put(`/vacant-positions/${id}/`, data),
-  partialUpdateVacantPosition: (id, data) => api.patch(`/vacant-positions/${id}/`, data),
-  deleteVacantPosition: (id) => api.delete(`/vacant-positions/${id}/`),
-  markPositionFilled: (id, data) => api.post(`/vacant-positions/${id}/mark_filled/`, data),
-  getVacantPositionStatistics: () => api.get("/vacant-positions/statistics/"),
-
-  // ========================================
-  // ORG CHART ENDPOINTS
-  // ========================================
-  getOrgChart: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/org-chart/?${queryString}`);
-  },
-  getOrgChartNode: (id) => api.get(`/org-chart/${id}/`),
-  getOrgChartFullTree: () => api.get("/org-chart/full_tree/"),
-
-  // ========================================
-  // EMPLOYEE ANALYTICS ENDPOINTS
-  // ========================================
-  getEmployeeAnalytics: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employee-analytics/?${queryString}`);
+  bulkUploadEmployees: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      return await api.post("/bulk-upload/", formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+    } catch (error) {
+      console.error('Bulk upload failed:', error);
+      throw error;
+    }
   },
 
   // ========================================
-  // GRADING ENDPOINTS
+  // EMPLOYEE GRADING
   // ========================================
-  getGrading: (params = {}) => {
+  getEmployeeGrading: () => api.get("/employee-grading/"),
+  bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
+
+  // ========================================
+  // ORGANIZATIONAL HIERARCHY
+  // ========================================
+  getOrganizationalHierarchy: (params = {}) => {
     const queryString = buildQueryParams(params);
-    return api.get(`/grading/?${queryString}`);
+    return api.get(`/employees/organizational_hierarchy/?${queryString}`);
   },
 
   // ========================================
-  // CONTRACT STATUS ENDPOINTS
+  // PROFILE IMAGES
   // ========================================
-  getContractStatus: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/contract-status/?${queryString}`);
+  uploadProfileImage: (employeeId, file) => {
+    const formData = new FormData();
+    formData.append('employee_id', employeeId);
+    formData.append('profile_image', file);
+    
+    return api.post("/profile-images/upload/", formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
   },
 
-  // ========================================
-  // TEST ENDPOINTS
-  // ========================================
-  testConnection: () => api.get("/"),
-  testAuth: () => api.get("/me/"),
+  deleteProfileImage: (employeeId) => api.post("/profile-images/delete/", { employee_id: employeeId }),
 
   // ========================================
   // UTILITY FUNCTIONS
   // ========================================
-  
-  // Generic GET request with params
   get: (endpoint, params = {}) => {
     const queryString = buildQueryParams(params);
     return api.get(`${endpoint}${queryString ? `?${queryString}` : ''}`);
   },
 
-  // Generic POST request
   post: (endpoint, data, options = {}) => {
     return api.post(endpoint, data, options);
   },
 
-  // Generic PUT request
   put: (endpoint, data, options = {}) => {
     return api.put(endpoint, data, options);
   },
 
-  // Generic PATCH request
-  patch: (endpoint, data, options = {}) => {
-    return api.patch(endpoint, data, options);
-  },
-
-  // Generic DELETE request
   delete: (endpoint, options = {}) => {
     return api.delete(endpoint, options);
   },
 
-  // File upload helper
   uploadFile: (endpoint, file, additionalData = {}) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -584,7 +511,6 @@ export const apiService = {
     });
   },
 
-  // FIXED: Download file helper with better error handling
   downloadFile: async (endpoint, filename, params = {}) => {
     try {
       const queryString = buildQueryParams(params);
@@ -601,8 +527,5 @@ export const apiService = {
   }
 };
 
-// Export default axios instance
 export default api;
-
-// Export token manager
 export { TokenManager };

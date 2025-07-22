@@ -1,6 +1,6 @@
-// src/hooks/useReferenceData.js - UPDATED with complete backend integration
+// src/hooks/useReferenceData.js - Backend endpointlərinə uyğun yenilənilib
 import { useDispatch, useSelector } from 'react-redux';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import {
   fetchBusinessFunctions,
   fetchDepartments,
@@ -10,6 +10,7 @@ import {
   fetchEmployeeStatuses,
   fetchEmployeeTags,
   fetchPositionGroupGradingLevels,
+  fetchContractConfigs,
   createBusinessFunction,
   updateBusinessFunction,
   deleteBusinessFunction,
@@ -31,6 +32,9 @@ import {
   createEmployeeTag,
   updateEmployeeTag,
   deleteEmployeeTag,
+  createContractConfig,
+  updateContractConfig,
+  deleteContractConfig,
   clearDepartments,
   clearUnits,
   clearHierarchicalData,
@@ -50,6 +54,7 @@ import {
   selectPositionGroups,
   selectEmployeeStatuses,
   selectEmployeeTags,
+  selectContractConfigs,
   selectGradingLevels,
   selectSelectedBusinessFunction,
   selectSelectedDepartment,
@@ -64,6 +69,7 @@ import {
   selectPositionGroupsForDropdown,
   selectEmployeeStatusesForDropdown,
   selectEmployeeTagsForDropdown,
+  selectContractConfigsForDropdown,
   selectReferenceDataForEmployeeForm,
   selectDepartmentsByBusinessFunction,
   selectUnitsByDepartment,
@@ -78,9 +84,7 @@ import {
 export const useReferenceData = () => {
   const dispatch = useDispatch();
   
-  // ========================================
-  // RAW DATA SELECTORS
-  // ========================================
+  // Raw data selectors
   const businessFunctions = useSelector(selectBusinessFunctions) || [];
   const departments = useSelector(selectDepartments) || [];
   const units = useSelector(selectUnits) || [];
@@ -88,13 +92,12 @@ export const useReferenceData = () => {
   const positionGroups = useSelector(selectPositionGroups) || [];
   const employeeStatuses = useSelector(selectEmployeeStatuses) || [];
   const employeeTags = useSelector(selectEmployeeTags) || [];
+  const contractConfigs = useSelector(selectContractConfigs) || [];
   const gradingLevels = useSelector(selectGradingLevels) || {};
   const selectedBusinessFunction = useSelector(selectSelectedBusinessFunction);
   const selectedDepartment = useSelector(selectSelectedDepartment);
   
-  // ========================================
-  // FORMATTED DATA SELECTORS FOR DROPDOWNS
-  // ========================================
+  // Formatted data selectors for dropdowns
   const businessFunctionsDropdown = useSelector(selectBusinessFunctionsForDropdown) || [];
   const departmentsDropdown = useSelector(selectDepartmentsForDropdown) || [];
   const unitsDropdown = useSelector(selectUnitsForDropdown) || [];
@@ -102,27 +105,20 @@ export const useReferenceData = () => {
   const positionGroupsDropdown = useSelector(selectPositionGroupsForDropdown) || [];
   const employeeStatusesDropdown = useSelector(selectEmployeeStatusesForDropdown) || [];
   const employeeTagsDropdown = useSelector(selectEmployeeTagsForDropdown) || [];
+  const contractConfigsDropdown = useSelector(selectContractConfigsForDropdown) || [];
   
-  // ========================================
-  // COMBINED DATA FOR FORMS
-  // ========================================
+  // Combined data for forms
   const formData = useSelector(selectReferenceDataForEmployeeForm) || {};
   
-  // ========================================
-  // LOADING AND ERROR STATES
-  // ========================================
+  // Loading and error states
   const loading = useSelector(selectReferenceDataLoading) || {};
   const error = useSelector(selectReferenceDataError) || {};
   const isAnyLoading = useSelector(selectIsAnyReferenceDataLoading);
   const hasAnyError = useSelector(selectHasAnyReferenceDataError);
 
-  // ========================================
-  // BASIC CRUD ACTIONS
-  // ========================================
+  // Basic CRUD actions
   const actions = {
-    // ========================================
-    // FETCH OPERATIONS
-    // ========================================
+    // Fetch operations
     fetchBusinessFunctions: useCallback(() => dispatch(fetchBusinessFunctions()), [dispatch]),
     fetchDepartments: useCallback((businessFunctionId) => dispatch(fetchDepartments(businessFunctionId)), [dispatch]),
     fetchUnits: useCallback((departmentId) => dispatch(fetchUnits(departmentId)), [dispatch]),
@@ -130,70 +126,58 @@ export const useReferenceData = () => {
     fetchPositionGroups: useCallback(() => dispatch(fetchPositionGroups()), [dispatch]),
     fetchEmployeeStatuses: useCallback(() => dispatch(fetchEmployeeStatuses()), [dispatch]),
     fetchEmployeeTags: useCallback((tagType) => dispatch(fetchEmployeeTags(tagType)), [dispatch]),
+    fetchContractConfigs: useCallback(() => dispatch(fetchContractConfigs()), [dispatch]),
     fetchPositionGroupGradingLevels: useCallback((positionGroupId) => 
       dispatch(fetchPositionGroupGradingLevels(positionGroupId)), [dispatch]),
     
-    // ========================================
-    // BUSINESS FUNCTIONS CRUD
-    // ========================================
+    // Business functions CRUD
     createBusinessFunction: useCallback((data) => dispatch(createBusinessFunction(data)), [dispatch]),
     updateBusinessFunction: useCallback((id, data) => dispatch(updateBusinessFunction({ id, data })), [dispatch]),
     deleteBusinessFunction: useCallback((id) => dispatch(deleteBusinessFunction(id)), [dispatch]),
     
-    // ========================================
-    // DEPARTMENTS CRUD
-    // ========================================
+    // Departments CRUD
     createDepartment: useCallback((data) => dispatch(createDepartment(data)), [dispatch]),
     updateDepartment: useCallback((id, data) => dispatch(updateDepartment({ id, data })), [dispatch]),
     deleteDepartment: useCallback((id) => dispatch(deleteDepartment(id)), [dispatch]),
     
-    // ========================================
-    // UNITS CRUD
-    // ========================================
+    // Units CRUD
     createUnit: useCallback((data) => dispatch(createUnit(data)), [dispatch]),
     updateUnit: useCallback((id, data) => dispatch(updateUnit({ id, data })), [dispatch]),
     deleteUnit: useCallback((id) => dispatch(deleteUnit(id)), [dispatch]),
     
-    // ========================================
-    // JOB FUNCTIONS CRUD
-    // ========================================
+    // Job functions CRUD
     createJobFunction: useCallback((data) => dispatch(createJobFunction(data)), [dispatch]),
     updateJobFunction: useCallback((id, data) => dispatch(updateJobFunction({ id, data })), [dispatch]),
     deleteJobFunction: useCallback((id) => dispatch(deleteJobFunction(id)), [dispatch]),
     
-    // ========================================
-    // POSITION GROUPS CRUD
-    // ========================================
+    // Position groups CRUD
     createPositionGroup: useCallback((data) => dispatch(createPositionGroup(data)), [dispatch]),
     updatePositionGroup: useCallback((id, data) => dispatch(updatePositionGroup({ id, data })), [dispatch]),
     deletePositionGroup: useCallback((id) => dispatch(deletePositionGroup(id)), [dispatch]),
     
-    // ========================================
-    // EMPLOYEE STATUSES CRUD
-    // ========================================
+    // Employee statuses CRUD
     createEmployeeStatus: useCallback((data) => dispatch(createEmployeeStatus(data)), [dispatch]),
     updateEmployeeStatus: useCallback((id, data) => dispatch(updateEmployeeStatus({ id, data })), [dispatch]),
     deleteEmployeeStatus: useCallback((id) => dispatch(deleteEmployeeStatus(id)), [dispatch]),
     
-    // ========================================
-    // EMPLOYEE TAGS CRUD
-    // ========================================
+    // Employee tags CRUD
     createEmployeeTag: useCallback((data) => dispatch(createEmployeeTag(data)), [dispatch]),
     updateEmployeeTag: useCallback((id, data) => dispatch(updateEmployeeTag({ id, data })), [dispatch]),
     deleteEmployeeTag: useCallback((id, tagType) => dispatch(deleteEmployeeTag({ id, tagType })), [dispatch]),
     
-    // ========================================
-    // HIERARCHICAL DATA MANAGEMENT
-    // ========================================
+    // Contract configs CRUD
+    createContractConfig: useCallback((data) => dispatch(createContractConfig(data)), [dispatch]),
+    updateContractConfig: useCallback((id, data) => dispatch(updateContractConfig({ id, data })), [dispatch]),
+    deleteContractConfig: useCallback((id) => dispatch(deleteContractConfig(id)), [dispatch]),
+    
+    // Hierarchical data management
     clearDepartments: useCallback(() => dispatch(clearDepartments()), [dispatch]),
     clearUnits: useCallback(() => dispatch(clearUnits()), [dispatch]),
     clearHierarchicalData: useCallback(() => dispatch(clearHierarchicalData()), [dispatch]),
     setSelectedBusinessFunction: useCallback((id) => dispatch(setSelectedBusinessFunction(id)), [dispatch]),
     setSelectedDepartment: useCallback((id) => dispatch(setSelectedDepartment(id)), [dispatch]),
     
-    // ========================================
-    // HIERARCHICAL DATA LOADING
-    // ========================================
+    // Hierarchical data loading
     loadDepartmentsForBusinessFunction: useCallback((businessFunctionId) => {
       if (businessFunctionId) {
         dispatch(fetchDepartments(businessFunctionId));
@@ -216,39 +200,30 @@ export const useReferenceData = () => {
       }
     }, [dispatch]),
     
-    // ========================================
-    // ERROR MANAGEMENT
-    // ========================================
+    // Error management
     clearErrors: useCallback(() => dispatch(clearErrors()), [dispatch]),
     clearError: useCallback((errorKey) => dispatch(clearError(errorKey)), [dispatch]),
     
-    // ========================================
-    // CACHE MANAGEMENT
-    // ========================================
+    // Cache management
     invalidateCache: useCallback((dataType) => dispatch(invalidateCache(dataType)), [dispatch]),
     resetReferenceData: useCallback(() => dispatch(resetReferenceData()), [dispatch]),
     
-    // ========================================
-    // OPTIMISTIC UPDATES
-    // ========================================
+    // Optimistic updates
     optimisticAdd: useCallback((type, item) => dispatch(optimisticAddItem({ type, item })), [dispatch]),
     optimisticUpdate: useCallback((type, id, updates) => dispatch(optimisticUpdateItem({ type, id, updates })), [dispatch]),
     optimisticRemove: useCallback((type, id) => dispatch(optimisticRemoveItem({ type, id })), [dispatch]),
     
-    // ========================================
-    // REFRESH ALL DATA
-    // ========================================
+    // Refresh all data
     refreshAllData: useCallback(() => {
       dispatch(fetchBusinessFunctions());
       dispatch(fetchJobFunctions());
       dispatch(fetchPositionGroups());
       dispatch(fetchEmployeeStatuses());
       dispatch(fetchEmployeeTags());
+      dispatch(fetchContractConfigs());
     }, [dispatch]),
     
-    // ========================================
-    // LOAD INITIAL DATA
-    // ========================================
+    // Load initial data
     loadInitialData: useCallback(() => {
       if (!businessFunctions.length && !loading.businessFunctions) {
         dispatch(fetchBusinessFunctions());
@@ -265,17 +240,16 @@ export const useReferenceData = () => {
       if (!employeeTags.length && !loading.employeeTags) {
         dispatch(fetchEmployeeTags());
       }
+      if (!contractConfigs.length && !loading.contractConfigs) {
+        dispatch(fetchContractConfigs());
+      }
     }, [dispatch, businessFunctions.length, jobFunctions.length, positionGroups.length, 
-        employeeStatuses.length, employeeTags.length, loading])
+        employeeStatuses.length, employeeTags.length, contractConfigs.length, loading])
   };
 
-  // ========================================
-  // HELPER FUNCTIONS WITH SAFE ERROR HANDLING
-  // ========================================
+  // Helper functions with safe error handling
   const helpers = {
-    // ========================================
-    // GET ITEMS BY ID WITH SAFE NULL CHECKING
-    // ========================================
+    // Get items by ID with safe null checking
     getBusinessFunctionById: useCallback((id) => {
       if (!id || !Array.isArray(businessFunctions)) return null;
       const numericId = typeof id === 'string' ? parseInt(id) : id;
@@ -318,9 +292,12 @@ export const useReferenceData = () => {
       return employeeTags.find(tag => (tag.id || tag.value) === numericId) || null;
     }, [employeeTags]),
     
-    // ========================================
-    // GET FILTERED DATA
-    // ========================================
+    getContractConfigById: useCallback((id) => {
+      if (!id || !Array.isArray(contractConfigs)) return null;
+      return contractConfigs.find(config => config.contract_type === id || config.id === id) || null;
+    }, [contractConfigs]),
+    
+    // Get filtered data
     getDepartmentsByBusinessFunction: useCallback((businessFunctionId) => {
       if (!businessFunctionId || !Array.isArray(departments)) return [];
       const numericId = typeof businessFunctionId === 'string' ? parseInt(businessFunctionId) : businessFunctionId;
@@ -343,9 +320,7 @@ export const useReferenceData = () => {
       return gradingLevels[positionGroupId] || [];
     }, [gradingLevels]),
     
-    // ========================================
-    // VALIDATION HELPERS WITH IMPROVED ERROR HANDLING
-    // ========================================
+    // Validation helpers with improved error handling
     isValidBusinessFunction: useCallback((id) => {
       if (!id || !Array.isArray(businessFunctions)) return false;
       const numericId = typeof id === 'string' ? parseInt(id) : id;
@@ -380,9 +355,7 @@ export const useReferenceData = () => {
       return true;
     }, [units]),
     
-    // ========================================
-    // DATA AVAILABILITY CHECKS
-    // ========================================
+    // Data availability checks
     hasBusinessFunctions: useCallback(() => Array.isArray(businessFunctions) && businessFunctions.length > 0, [businessFunctions]),
     hasDepartments: useCallback(() => Array.isArray(departments) && departments.length > 0, [departments]),
     hasUnits: useCallback(() => Array.isArray(units) && units.length > 0, [units]),
@@ -390,10 +363,9 @@ export const useReferenceData = () => {
     hasPositionGroups: useCallback(() => Array.isArray(positionGroups) && positionGroups.length > 0, [positionGroups]),
     hasEmployeeStatuses: useCallback(() => Array.isArray(employeeStatuses) && employeeStatuses.length > 0, [employeeStatuses]),
     hasEmployeeTags: useCallback(() => Array.isArray(employeeTags) && employeeTags.length > 0, [employeeTags]),
+    hasContractConfigs: useCallback(() => Array.isArray(contractConfigs) && contractConfigs.length > 0, [contractConfigs]),
     
-    // ========================================
-    // LOADING STATE CHECKS
-    // ========================================
+    // Loading state checks
     isLoading: useCallback((loadingKey) => {
       if (!loading || typeof loading !== 'object') return false;
       return Boolean(loading[loadingKey]);
@@ -402,9 +374,7 @@ export const useReferenceData = () => {
     isAnyLoading: useCallback(() => isAnyLoading, [isAnyLoading]),
     hasAnyError: useCallback(() => hasAnyError, [hasAnyError]),
 
-    // ========================================
-    // GET FORMATTED OPTIONS FOR DROPDOWNS WITH SAFE TRANSFORMATION
-    // ========================================
+    // Get formatted options for dropdowns with safe transformation
     getFormattedBusinessFunctions: useCallback(() => {
       if (!Array.isArray(businessFunctions)) return [];
       return businessFunctions
@@ -517,9 +487,21 @@ export const useReferenceData = () => {
         }));
     }, [employeeTags]),
 
-    // ========================================
-    // SAFE ARRAY ACCESS HELPERS
-    // ========================================
+    getFormattedContractConfigs: useCallback(() => {
+      if (!Array.isArray(contractConfigs)) return [];
+      return contractConfigs
+        .filter(config => config && config.is_active !== false)
+        .map(config => ({
+          value: config.contract_type || config.value || '',
+          label: config.display_name || config.label || 'Unknown',
+          contract_type: config.contract_type,
+          onboarding_days: config.onboarding_days || 0,
+          probation_days: config.probation_days || 0,
+          total_days_until_active: config.total_days_until_active || 0
+        }));
+    }, [contractConfigs]),
+
+    // Safe array access helpers
     safeGetArray: useCallback((arrayName) => {
       const arrays = {
         businessFunctions,
@@ -528,16 +510,15 @@ export const useReferenceData = () => {
         jobFunctions,
         positionGroups,
         employeeStatuses,
-        employeeTags
+        employeeTags,
+        contractConfigs
       };
       
       const array = arrays[arrayName];
       return Array.isArray(array) ? array : [];
-    }, [businessFunctions, departments, units, jobFunctions, positionGroups, employeeStatuses, employeeTags]),
+    }, [businessFunctions, departments, units, jobFunctions, positionGroups, employeeStatuses, employeeTags, contractConfigs]),
 
-    // ========================================
-    // ERROR HANDLING HELPERS
-    // ========================================
+    // Error handling helpers
     getErrorMessage: useCallback((errorKey) => {
       if (!error || typeof error !== 'object') return null;
       const errorValue = error[errorKey];
@@ -554,9 +535,7 @@ export const useReferenceData = () => {
       return errorMessage !== null;
     }, [error]),
 
-    // ========================================
-    // HIERARCHICAL VALIDATION
-    // ========================================
+    // Hierarchical validation
     validateHierarchy: useCallback((businessFunctionId, departmentId, unitId) => {
       const validation = {
         isValid: true,
@@ -584,9 +563,7 @@ export const useReferenceData = () => {
       return validation;
     }, []),
 
-    // ========================================
-    // CACHE MANAGEMENT HELPERS
-    // ========================================
+    // Cache management helpers
     isDataStale: useCallback((dataType) => {
       return useSelector(state => selectIsDataStale(state, dataType));
     }, []),
@@ -610,15 +587,16 @@ export const useReferenceData = () => {
           case 'employeeTags':
             actions.fetchEmployeeTags();
             break;
+          case 'contractConfigs':
+            actions.fetchContractConfigs();
+            break;
           default:
             break;
         }
       }
     }, [actions]),
 
-    // ========================================
-    // FORM HELPERS
-    // ========================================
+    // Form helpers
     getFormOptions: useCallback((businessFunctionId = null, departmentId = null) => {
       return {
         businessFunctions: helpers.getFormattedBusinessFunctions(),
@@ -627,13 +605,12 @@ export const useReferenceData = () => {
         jobFunctions: helpers.getFormattedJobFunctions(),
         positionGroups: helpers.getFormattedPositionGroups(),
         employeeStatuses: helpers.getFormattedEmployeeStatuses(),
-        employeeTags: helpers.getFormattedEmployeeTags()
+        employeeTags: helpers.getFormattedEmployeeTags(),
+        contractConfigs: helpers.getFormattedContractConfigs()
       };
     }, []),
 
-    // ========================================
-    // SEARCH AND FILTER HELPERS
-    // ========================================
+    // Search and filter helpers
     searchInData: useCallback((searchTerm, dataType) => {
       if (!searchTerm) return helpers.safeGetArray(dataType);
       
@@ -655,20 +632,14 @@ export const useReferenceData = () => {
     }, [])
   };
 
-  // ========================================
-  // AUTO-FETCH BASIC REFERENCE DATA ON MOUNT
-  // ========================================
+  // Auto-fetch basic reference data on mount
   useEffect(() => {
     actions.loadInitialData();
   }, [actions.loadInitialData]);
 
-  // ========================================
-  // RETURN COMPREHENSIVE INTERFACE
-  // ========================================
+  // Return comprehensive interface
   return {
-    // ========================================
-    // RAW DATA (WITH SAFE DEFAULTS)
-    // ========================================
+    // Raw data (with safe defaults)
     businessFunctions,
     departments,
     units,
@@ -676,13 +647,12 @@ export const useReferenceData = () => {
     positionGroups,
     employeeStatuses,
     employeeTags,
+    contractConfigs,
     gradingLevels,
     selectedBusinessFunction,
     selectedDepartment,
     
-    // ========================================
-    // FORMATTED DATA FOR DROPDOWNS (WITH SAFE DEFAULTS)
-    // ========================================
+    // Formatted data for dropdowns (with safe defaults)
     businessFunctionsDropdown,
     departmentsDropdown,
     unitsDropdown,
@@ -690,39 +660,28 @@ export const useReferenceData = () => {
     positionGroupsDropdown,
     employeeStatusesDropdown,
     employeeTagsDropdown,
+    contractConfigsDropdown,
     
-    // ========================================
-    // COMBINED FORM DATA
-    // ========================================
+    // Combined form data
     formData,
     
-    // ========================================
-    // LOADING STATES (WITH SAFE DEFAULT)
-    // ========================================
+    // Loading states (with safe default)
     loading,
     isAnyLoading,
     
-    // ========================================
-    // ERROR STATES (WITH SAFE DEFAULT)
-    // ========================================
+    // Error states (with safe default)
     error,
     hasAnyError,
     
-    // ========================================
-    // ACTIONS
-    // ========================================
+    // Actions
     ...actions,
     
-    // ========================================
-    // HELPER FUNCTIONS
-    // ========================================
+    // Helper functions
     ...helpers
   };
 };
 
-// ========================================
-// SPECIALIZED HOOK FOR HIERARCHICAL SELECTION
-// ========================================
+// Specialized hook for hierarchical selection
 export const useHierarchicalReferenceData = () => {
   const dispatch = useDispatch();
   const [selectedBusinessFunction, setSelectedBusinessFunction] = useState(null);
@@ -738,7 +697,7 @@ export const useHierarchicalReferenceData = () => {
   useEffect(() => {
     if (selectedBusinessFunction) {
       dispatch(fetchDepartments(selectedBusinessFunction));
-      setSelectedDepartment(null); // Reset department selection
+      setSelectedDepartment(null);
     } else {
       dispatch(clearDepartments());
       dispatch(clearUnits());
@@ -817,9 +776,7 @@ export const useHierarchicalReferenceData = () => {
   };
 };
 
-// ========================================
-// HOOK FOR POSITION GROUP GRADING LEVELS
-// ========================================
+// Hook for position group grading levels
 export const usePositionGroupGradingLevels = (positionGroupId) => {
   const dispatch = useDispatch();
   const [gradingLevels, setGradingLevels] = useState([]);
@@ -888,9 +845,7 @@ export const usePositionGroupGradingLevels = (positionGroupId) => {
   };
 };
 
-// ========================================
-// HOOK FOR MANAGING REFERENCE DATA FORMS
-// ========================================
+// Hook for managing reference data forms
 export const useReferenceDataForm = (entityType, initialData = null) => {
   const dispatch = useDispatch();
   const [formData, setFormData] = useState(initialData || {});
@@ -962,6 +917,14 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
           newErrors.tag_type = 'Tag type is required';
         }
         break;
+      case 'contractConfigs':
+        if (!formData.contract_type) {
+          newErrors.contract_type = 'Contract type is required';
+        }
+        if (!formData.display_name || !formData.display_name.trim()) {
+          newErrors.display_name = 'Display name is required';
+        }
+        break;
     }
     
     setErrors(newErrors);
@@ -1000,6 +963,9 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
           case 'employeeTags':
             action = updateEmployeeTag({ id: formData.id, data: formData });
             break;
+          case 'contractConfigs':
+            action = updateContractConfig({ id: formData.id, data: formData });
+            break;
           default:
             throw new Error(`Unknown entity type: ${entityType}`);
         }
@@ -1026,6 +992,9 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
             break;
           case 'employeeTags':
             action = createEmployeeTag(formData);
+            break;
+          case 'contractConfigs':
+            action = createContractConfig(formData);
             break;
           default:
             throw new Error(`Unknown entity type: ${entityType}`);
@@ -1082,6 +1051,9 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
           break;
         case 'employeeTags':
           action = deleteEmployeeTag({ id: formData.id, tagType: formData.tag_type });
+          break;
+        case 'contractConfigs':
+          action = deleteContractConfig(formData.id);
           break;
         default:
           throw new Error(`Unknown entity type: ${entityType}`);

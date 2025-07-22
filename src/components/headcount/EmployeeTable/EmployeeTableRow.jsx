@@ -223,11 +223,7 @@ const EmployeeTableRow = ({
           <div className={`text-[10px] ${styles.textMuted} text-center mt-1`}>
             {employee.grading_display || employee.grading_level || 'No Grade'}
           </div>
-          {employee.position_group_level && (
-            <div className={`text-[10px] ${styles.textMuted} text-center`}>
-              Level {employee.position_group_level}
-            </div>
-          )}
+         
         </div>
       </td>
 

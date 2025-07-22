@@ -86,18 +86,7 @@ const HeadcountHeader = ({
 
           {/* Sağ tərəf - Action düymələri */}
           <div className="flex items-center space-x-3">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className={`p-2 rounded-lg ${hoverBg} transition-colors ${textMuted} hover:text-almet-sapphire`}
-              title="Refresh data"
-            >
-              <RefreshCw 
-                size={18} 
-                className={refreshing ? 'animate-spin' : ''} 
-              />
-            </button>
-
+            
             <button
               onClick={onBulkImport}
               className={`flex items-center px-3 py-2 text-sm border ${borderColor} rounded-lg transition-colors ${textSecondary} ${hoverBg}`}

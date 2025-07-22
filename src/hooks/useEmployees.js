@@ -1,4 +1,4 @@
-// src/hooks/useEmployees.js - FIXED: Prevent infinite loop and better dependency management
+// src/hooks/useEmployees.js - Backend endpointlərinə uyğun yenilənilib
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import {
@@ -8,8 +8,6 @@ import {
   updateEmployee,
   deleteEmployee,
   fetchStatistics,
-  bulkUpdateEmployees,
-  bulkDeleteEmployees,
   softDeleteEmployees,
   restoreEmployees,
   addEmployeeTag,
@@ -31,8 +29,6 @@ import {
   fetchEmployeeActivities,
   fetchEmployeeDirectReports,
   fetchEmployeeStatusPreview,
-  fetchOrgChart,
-  fetchOrgChartFullTree,
   fetchOrganizationalHierarchy,
   setSelectedEmployees,
   toggleEmployeeSelection,
@@ -75,7 +71,6 @@ import {
   selectCurrentFilters,
   selectAppliedFilters,
   selectStatistics,
-  selectOrgChart,
   selectPagination,
   selectSorting,
   selectGradingData,
@@ -113,7 +108,7 @@ import {
   selectEmployeeMetrics
 } from '../store/slices/employeeSlice';
 
-// ADDED: Import reference data actions for filter options
+// Reference data import
 import {
   fetchBusinessFunctions,
   fetchJobFunctions,
@@ -125,15 +120,11 @@ import {
 export const useEmployees = () => {
   const dispatch = useDispatch();
   
-  // ========================================
-  // REFS TO PREVENT INFINITE LOOPS
-  // ========================================
+  // Refs to prevent infinite loops
   const isInitialized = useRef(false);
   const lastFetchParams = useRef(null);
   
-  // ========================================
-  // MAIN DATA SELECTORS
-  // ========================================
+  // Main data selectors
   const employees = useSelector(selectEmployees);
   const formattedEmployees = useSelector(selectFormattedEmployees);
   const currentEmployee = useSelector(selectCurrentEmployee);
@@ -143,7 +134,6 @@ export const useEmployees = () => {
   const currentFilters = useSelector(selectCurrentFilters);
   const appliedFilters = useSelector(selectAppliedFilters);
   const statistics = useSelector(selectStatistics);
-  const orgChart = useSelector(selectOrgChart);
   const pagination = useSelector(selectPagination);
   const sorting = useSelector(selectSorting);
   const activities = useSelector(selectActivities);
@@ -152,9 +142,7 @@ export const useEmployees = () => {
   const viewMode = useSelector(selectViewMode);
   const showAdvancedFilters = useSelector(selectShowAdvancedFilters);
   
-  // ========================================
-  // GRADING DATA SELECTORS
-  // ========================================
+  // Grading data selectors
   const gradingData = useSelector(selectGradingData);
   const gradingStatistics = useSelector(selectGradingStatistics);
   const allGradingLevels = useSelector(selectAllGradingLevels);
@@ -166,9 +154,7 @@ export const useEmployees = () => {
   const gradingProgress = useSelector(selectGradingProgress);
   const gradingDistribution = useSelector(selectGradingDistribution);
   
-  // ========================================
-  // ANALYTICS & STATISTICS SELECTORS
-  // ========================================
+  // Analytics & statistics selectors
   const contractExpiryAlerts = useSelector(selectContractExpiryAlerts);
   const contractsExpiringSoon = useSelector(selectContractsExpiringSoon);
   const employeesByStatus = useSelector(selectEmployeesByStatus);
@@ -178,9 +164,7 @@ export const useEmployees = () => {
   const dashboardSummary = useSelector(selectDashboardSummary);
   const employeeMetrics = useSelector(selectEmployeeMetrics);
   
-  // ========================================
-  // COMPUTED SELECTORS
-  // ========================================
+  // Computed selectors
   const filteredEmployeesCount = useSelector(selectFilteredEmployeesCount);
   const sortingForBackend = useSelector(selectSortingForBackend);
   const apiParams = useSelector(selectApiParams);
@@ -193,21 +177,18 @@ export const useEmployees = () => {
   const isSorted = useSelector(selectIsSorted);
   const getSortIndex = useSelector(selectGetSortIndex);
 
-  // ========================================
-  // BASIC CRUD ACTIONS - MEMOIZED TO PREVENT LOOPS
-  // ========================================
+  // CRUD actions - backend endpointlərinə uyğun
   const actions = {
     // Fetch operations
     fetchEmployees: useCallback((params) => dispatch(fetchEmployees(params)), [dispatch]),
     fetchEmployee: useCallback((id) => dispatch(fetchEmployee(id)), [dispatch]),
     
-    // FIXED: fetchFilterOptions function to load reference data for filters
+    // Filter options loading
     fetchFilterOptions: useCallback(() => {
-      console.log('🔄 Loading filter options (reference data)...');
+      console.log('🔄 Loading filter options...');
       
-      // Check if already initialized to prevent multiple calls
       if (isInitialized.current) {
-        console.log('⚠️ Filter options already loaded, skipping...');
+        console.log('⚠️ Filter options already loaded');
         return Promise.resolve();
       }
       
@@ -221,7 +202,7 @@ export const useEmployees = () => {
         dispatch(fetchEmployeeTags())
       ]).catch(error => {
         console.error('❌ Failed to load filter options:', error);
-        isInitialized.current = false; // Reset on error
+        isInitialized.current = false;
         throw error;
       });
     }, [dispatch]),
@@ -234,15 +215,11 @@ export const useEmployees = () => {
     // Statistics
     fetchStatistics: useCallback(() => dispatch(fetchStatistics()), [dispatch]),
     
-    // Bulk Operations
-    bulkUpdateEmployees: useCallback((data) => dispatch(bulkUpdateEmployees(data)), [dispatch]),
-    bulkDeleteEmployees: useCallback((ids) => dispatch(bulkDeleteEmployees(ids)), [dispatch]),
+    // Bulk Operations - backend endpointlərinə uyğun
     softDeleteEmployees: useCallback((ids) => dispatch(softDeleteEmployees(ids)), [dispatch]),
     restoreEmployees: useCallback((ids) => dispatch(restoreEmployees(ids)), [dispatch]),
     
-    // ========================================
-    // TAG MANAGEMENT ACTIONS
-    // ========================================
+    // Tag management
     addEmployeeTag: useCallback((employee_id, tag_id) => 
       dispatch(addEmployeeTag({ employee_id, tag_id })), [dispatch]),
     removeEmployeeTag: useCallback((employee_id, tag_id) => 
@@ -252,85 +229,63 @@ export const useEmployees = () => {
     bulkRemoveTags: useCallback((employee_ids, tag_id) => 
       dispatch(bulkRemoveTags({ employee_ids, tag_id })), [dispatch]),
     
-    // ========================================
-    // LINE MANAGER MANAGEMENT ACTIONS
-    // ========================================
+    // Line manager management
     assignLineManager: useCallback((employee_id, line_manager_id) => 
       dispatch(assignLineManager({ employee_id, line_manager_id })), [dispatch]),
     bulkAssignLineManager: useCallback((employee_ids, line_manager_id) => 
       dispatch(bulkAssignLineManager({ employee_ids, line_manager_id })), [dispatch]),
     
-    // ========================================
-    // CONTRACT MANAGEMENT ACTIONS
-    // ========================================
+    // Contract management
     extendEmployeeContract: useCallback((data) => dispatch(extendEmployeeContract(data)), [dispatch]),
     bulkExtendContracts: useCallback((data) => dispatch(bulkExtendContracts(data)), [dispatch]),
     getContractExpiryAlerts: useCallback((params) => dispatch(getContractExpiryAlerts(params)), [dispatch]),
     getContractsExpiringSoon: useCallback((params) => dispatch(getContractsExpiringSoon(params)), [dispatch]),
     
-    // ========================================
-    // GRADING MANAGEMENT ACTIONS
-    // ========================================
+    // Grading management
     fetchEmployeeGrading: useCallback(() => dispatch(fetchEmployeeGrading()), [dispatch]),
     bulkUpdateEmployeeGrades: useCallback((updates) => dispatch(bulkUpdateEmployeeGrades(updates)), [dispatch]),
     updateSingleEmployeeGrade: useCallback((employee_id, grading_level) => 
       dispatch(updateSingleEmployeeGrade({ employee_id, grading_level })), [dispatch]),
     
-    // ========================================
-    // EXPORT & TEMPLATE ACTIONS
-    // ========================================
+    // Export & template
     exportEmployees: useCallback((format, params) => dispatch(exportEmployees({ format, params })), [dispatch]),
     downloadEmployeeTemplate: useCallback(() => dispatch(downloadEmployeeTemplate()), [dispatch]),
     bulkUploadEmployees: useCallback((file) => dispatch(bulkUploadEmployees(file)), [dispatch]),
     
-    // ========================================
-    // ACTIVITIES & ORG CHART ACTIONS
-    // ========================================
+    // Activities & org chart
     fetchEmployeeActivities: useCallback((employeeId) => dispatch(fetchEmployeeActivities(employeeId)), [dispatch]),
     fetchEmployeeDirectReports: useCallback((employeeId) => dispatch(fetchEmployeeDirectReports(employeeId)), [dispatch]),
     fetchEmployeeStatusPreview: useCallback((employeeId) => dispatch(fetchEmployeeStatusPreview(employeeId)), [dispatch]),
-    fetchOrgChart: useCallback((params) => dispatch(fetchOrgChart(params)), [dispatch]),
-    fetchOrgChartFullTree: useCallback(() => dispatch(fetchOrgChartFullTree()), [dispatch]),
     fetchOrganizationalHierarchy: useCallback((params) => dispatch(fetchOrganizationalHierarchy(params)), [dispatch]),
     
-    // ========================================
-    // SELECTION MANAGEMENT ACTIONS
-    // ========================================
+    // Selection management
     setSelectedEmployees: useCallback((employees) => dispatch(setSelectedEmployees(employees)), [dispatch]),
     toggleEmployeeSelection: useCallback((employeeId) => dispatch(toggleEmployeeSelection(employeeId)), [dispatch]),
     selectAllEmployees: useCallback(() => dispatch(selectAllEmployees()), [dispatch]),
     selectAllVisible: useCallback(() => dispatch(selectAllVisible()), [dispatch]),
     clearSelection: useCallback(() => dispatch(clearSelection()), [dispatch]),
     
-    // ========================================
-    // FILTER MANAGEMENT ACTIONS
-    // ========================================
+    // Filter management
     setCurrentFilters: useCallback((filters) => dispatch(setCurrentFilters(filters)), [dispatch]),
     addFilter: useCallback((filter) => dispatch(addFilter(filter)), [dispatch]),
     removeFilter: useCallback((key) => dispatch(removeFilter(key)), [dispatch]),
     clearFilters: useCallback(() => dispatch(clearFilters()), [dispatch]),
     updateFilter: useCallback((key, value) => dispatch(updateFilter({ key, value })), [dispatch]),
     
-    // ========================================
-    // SORTING MANAGEMENT ACTIONS
-    // ========================================
+    // Sorting management
     setSorting: useCallback((field, direction) => dispatch(setSorting({ field, direction })), [dispatch]),
     addSort: useCallback((field, direction) => dispatch(addSort({ field, direction })), [dispatch]),
     removeSort: useCallback((field) => dispatch(removeSort(field)), [dispatch]),
     clearSorting: useCallback(() => dispatch(clearSorting()), [dispatch]),
     toggleSort: useCallback((field) => dispatch(toggleSort(field)), [dispatch]),
     
-    // ========================================
-    // PAGINATION ACTIONS
-    // ========================================
+    // Pagination
     setPageSize: useCallback((size) => dispatch(setPageSize(size)), [dispatch]),
     setCurrentPage: useCallback((page) => dispatch(setCurrentPage(page)), [dispatch]),
     goToNextPage: useCallback(() => dispatch(goToNextPage()), [dispatch]),
     goToPreviousPage: useCallback(() => dispatch(goToPreviousPage()), [dispatch]),
     
-    // ========================================
-    // UI STATE ACTIONS
-    // ========================================
+    // UI state
     toggleAdvancedFilters: useCallback(() => dispatch(toggleAdvancedFilters()), [dispatch]),
     setShowAdvancedFilters: useCallback((show) => dispatch(setShowAdvancedFilters(show)), [dispatch]),
     setViewMode: useCallback((mode) => dispatch(setViewMode(mode)), [dispatch]),
@@ -338,17 +293,13 @@ export const useEmployees = () => {
     toggleGradingPanel: useCallback(() => dispatch(toggleGradingPanel()), [dispatch]),
     setGradingMode: useCallback((mode) => dispatch(setGradingMode(mode)), [dispatch]),
     
-    // ========================================
-    // ERROR MANAGEMENT ACTIONS
-    // ========================================
+    // Error management
     clearErrors: useCallback(() => dispatch(clearErrors()), [dispatch]),
     clearError: useCallback((key) => dispatch(clearError(key)), [dispatch]),
     setError: useCallback((key, message) => dispatch(setError({ key, message })), [dispatch]),
     clearCurrentEmployee: useCallback(() => dispatch(clearCurrentEmployee()), [dispatch]),
     
-    // ========================================
-    // QUICK ACTIONS
-    // ========================================
+    // Quick actions
     setQuickFilter: useCallback((type, value) => dispatch(setQuickFilter({ type, value })), [dispatch]),
     optimisticUpdateEmployee: useCallback((id, updates) => dispatch(optimisticUpdateEmployee({ id, updates })), [dispatch]),
     optimisticDeleteEmployee: useCallback((id) => dispatch(optimisticDeleteEmployee(id)), [dispatch]),
@@ -356,9 +307,7 @@ export const useEmployees = () => {
       dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level })), [dispatch]),
   };
 
-  // ========================================
-  // COMPUTED VALUES
-  // ========================================
+  // Computed values
   const computed = {
     // Loading states
     isLoading: loading.employees || loading.creating || loading.updating || loading.deleting,
@@ -413,13 +362,9 @@ export const useEmployees = () => {
     urgentContracts: contractExpiryAlerts.urgent_employees?.length || 0,
   };
 
-  // ========================================
-  // HELPER FUNCTIONS - MEMOIZED TO PREVENT LOOPS
-  // ========================================
+  // Helper functions
   const helpers = {
-    // ========================================
-    // DATA REFRESH HELPERS
-    // ========================================
+    // Data refresh helpers
     refreshEmployees: useCallback(() => {
       const currentParams = JSON.stringify(apiParams);
       if (lastFetchParams.current !== currentParams) {
@@ -452,9 +397,7 @@ export const useEmployees = () => {
       dispatch(getContractExpiryAlerts());
     }, [dispatch, apiParams]),
     
-    // ========================================
-    // FILTER HELPERS
-    // ========================================
+    // Filter helpers
     buildQueryParams: useCallback(() => apiParams, [apiParams]),
     
     hasActiveFilters: useCallback(() => {
@@ -484,16 +427,12 @@ export const useEmployees = () => {
       dispatch(updateFilter({ key: 'search', value: searchTerm }));
     }, [dispatch]),
     
-    // ========================================
-    // SORTING HELPERS
-    // ========================================
+    // Sorting helpers
     getSortDirection: useCallback((field) => getSortDirection(field), [getSortDirection]),
     isSorted: useCallback((field) => isSorted(field), [isSorted]),
     getSortIndex: useCallback((field) => getSortIndex(field), [getSortIndex]),
     
-    // ========================================
-    // SELECTION HELPERS
-    // ========================================
+    // Selection helpers
     isSelected: useCallback((employeeId) => selectedEmployees.includes(employeeId), [selectedEmployees]),
     
     selectByFilter: useCallback((filterCriteria) => {
@@ -524,9 +463,7 @@ export const useEmployees = () => {
       dispatch(setSelectedEmployees(matchingEmployees.map(emp => emp.id)));
     }, [employees, dispatch]),
     
-    // ========================================
-    // EXPORT HELPERS
-    // ========================================
+    // Export helpers
     exportWithCurrentFilters: useCallback((format = 'excel') => {
       return dispatch(exportEmployees({ format, params: apiParams }));
     }, [dispatch, apiParams]),
@@ -547,9 +484,7 @@ export const useEmployees = () => {
       return dispatch(exportEmployees({ format, params: { all: true } }));
     }, [dispatch]),
     
-    // ========================================
-    // VALIDATION HELPERS
-    // ========================================
+    // Validation helpers
     validateEmployee: useCallback((employeeData) => {
       const errors = {};
       
@@ -586,9 +521,7 @@ export const useEmployees = () => {
       };
     }, []),
     
-    // ========================================
-    // EMPLOYEE STATUS HELPERS
-    // ========================================
+    // Employee status helpers
     getEmployeeStatusInfo: useCallback((employee) => {
       const status = employee.status_name || employee.status || 'Unknown';
       const color = employee.status_color || '#gray';
@@ -606,9 +539,7 @@ export const useEmployees = () => {
       };
     }, []),
     
-    // ========================================
-    // CONTRACT HELPERS
-    // ========================================
+    // Contract helpers
     getContractInfo: useCallback((employee) => {
       const duration = employee.contract_duration || 'UNKNOWN';
       const startDate = employee.contract_start_date || employee.start_date;
@@ -639,9 +570,7 @@ export const useEmployees = () => {
       };
     }, []),
     
-    // ========================================
-    // GRADING HELPERS
-    // ========================================
+    // Grading helpers
     getGradingInfo: useCallback((employee) => {
       const level = employee.grading_level;
       const display = employee.grading_display || (level ? level : 'No Grade');
@@ -656,11 +585,7 @@ export const useEmployees = () => {
     }, [])
   };
 
-  // ========================================
-  // INITIALIZATION - CONTROLLED TO PREVENT LOOPS
-  // ========================================
-  
-  // FIXED: Only initialize once
+  // Initialization - controlled to prevent loops
   useEffect(() => {
     if (!isInitialized.current) {
       console.log('🚀 Initializing useEmployees hook...');
@@ -668,9 +593,9 @@ export const useEmployees = () => {
         console.error('❌ Failed to initialize useEmployees:', error);
       });
     }
-  }, []); // Empty dependency array - only run once
+  }, []);
 
-  // FIXED: Controlled fetching with parameter comparison
+  // Controlled fetching with parameter comparison
   useEffect(() => {
     if (isInitialized.current) {
       const currentParams = JSON.stringify(apiParams);
@@ -680,9 +605,9 @@ export const useEmployees = () => {
         dispatch(fetchEmployees(apiParams));
       }
     }
-  }, [apiParams, dispatch]); // Only depend on apiParams and dispatch
+  }, [apiParams, dispatch]);
 
-  // FIXED: Initialize statistics and grading data only once
+  // Initialize statistics and grading data only once
   useEffect(() => {
     if (isInitialized.current && statistics.total_employees === 0) {
       console.log('📊 Fetching initial statistics and grading data...');
@@ -690,15 +615,11 @@ export const useEmployees = () => {
       dispatch(fetchEmployeeGrading());
       dispatch(getContractExpiryAlerts());
     }
-  }, [isInitialized.current]); // Only run when initialized changes
+  }, [isInitialized.current]);
 
-  // ========================================
-  // RETURN HOOK INTERFACE
-  // ========================================
+  // Return hook interface
   return {
-    // ========================================
-    // DATA
-    // ========================================
+    // Data
     employees,
     formattedEmployees,
     currentEmployee,
@@ -706,7 +627,6 @@ export const useEmployees = () => {
     currentFilters,
     appliedFilters,
     statistics,
-    orgChart,
     pagination,
     sorting,
     activities,
@@ -715,9 +635,7 @@ export const useEmployees = () => {
     viewMode,
     showAdvancedFilters,
     
-    // ========================================
-    // GRADING DATA
-    // ========================================
+    // Grading data
     gradingData,
     gradingStatistics,
     allGradingLevels,
@@ -729,9 +647,7 @@ export const useEmployees = () => {
     gradingProgress,
     gradingDistribution,
     
-    // ========================================
-    // ANALYTICS DATA
-    // ========================================
+    // Analytics data
     contractExpiryAlerts,
     contractsExpiringSoon,
     employeesByStatus,
@@ -741,32 +657,22 @@ export const useEmployees = () => {
     dashboardSummary,
     employeeMetrics,
     
-    // ========================================
-    // LOADING & ERROR STATES
-    // ========================================
+    // Loading & error states
     loading,
     error,
     isAnyLoading,
     hasAnyError,
     
-    // ========================================
-    // COMPUTED VALUES
-    // ========================================
+    // Computed values
     ...computed,
     
-    // ========================================
-    // ACTIONS
-    // ========================================
+    // Actions
     ...actions,
     
-    // ========================================
-    // HELPER FUNCTIONS
-    // ========================================
+    // Helper functions
     ...helpers,
     
-    // ========================================
-    // RAW SELECTORS FOR ADVANCED USAGE
-    // ========================================
+    // Raw selectors for advanced usage
     getSortDirection,
     isSorted,
     getSortIndex,
@@ -777,11 +683,7 @@ export const useEmployees = () => {
   };
 };
 
-// ========================================
-// ADDITIONAL SPECIALIZED HOOKS
-// ========================================
-
-// Hook for employee form management with validation
+// Employee form management hook
 export const useEmployeeForm = (initialData = null) => {
   const [formData, setFormData] = useState(initialData || {});
   const [errors, setErrors] = useState({});
@@ -847,7 +749,7 @@ export const useEmployeeForm = (initialData = null) => {
   };
 };
 
-// Hook for contract management with alerts
+// Contract management hook
 export const useContractManagement = () => {
   const dispatch = useDispatch();
   const contractExpiryAlerts = useSelector(selectContractExpiryAlerts);
@@ -896,7 +798,7 @@ export const useContractManagement = () => {
     }, {});
   }, [contractExpiryAlerts, getContractUrgency]);
 
-  // FIXED: Only initialize once
+  // Initialize only once
   useEffect(() => {
     let isInitialized = false;
     if (!isInitialized) {
@@ -921,7 +823,7 @@ export const useContractManagement = () => {
   };
 };
 
-// Hook for employee grading with bulk operations
+// Employee grading hook
 export const useEmployeeGrading = () => {
   const dispatch = useDispatch();
   const gradingData = useSelector(selectGradingData);
@@ -1005,12 +907,12 @@ export const useEmployeeGrading = () => {
     return recommendations;
   }, [gradingData]);
 
-  // FIXED: Only fetch if data is empty
+  // Fetch if data is empty
   useEffect(() => {
     if (!gradingData.employees || gradingData.employees.length === 0) {
       refreshGradingData();
     }
-  }, []); // Empty dependency to run only once
+  }, []);
 
   return {
     gradingData,
@@ -1034,7 +936,7 @@ export const useEmployeeGrading = () => {
   };
 };
 
-// Hook for employee analytics and reporting
+// Employee analytics hook
 export const useEmployeeAnalytics = () => {
   const statistics = useSelector(selectStatistics);
   const employeesByStatus = useSelector(selectEmployeesByStatus);
