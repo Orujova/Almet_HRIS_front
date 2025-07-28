@@ -1,4 +1,4 @@
-// src/services/api.js - UPDATED: Backend endpointlərinə uyğun API service
+// src/services/api.js - UPDATED: Yeni endpointlər və genişləndirilmiş funksionallıq
 import axios from "axios";
 
 // Base URL
@@ -152,7 +152,7 @@ api.interceptors.response.use(
   }
 );
 
-// Query parameters helper
+// Enhanced query parameters helper - Multiple Sorting və Advanced Filtering dəstəyi
 const buildQueryParams = (params = {}) => {
   const searchParams = new URLSearchParams();
   
@@ -160,7 +160,34 @@ const buildQueryParams = (params = {}) => {
     const value = params[key];
     if (value !== undefined && value !== null && value !== '') {
       if (Array.isArray(value)) {
-        searchParams.append(key, value.join(','));
+        // Handle arrays - for multiple selections and sorting
+        if (key === 'ordering' || key === 'sort') {
+          // Special handling for sorting arrays
+          if (value.length > 0) {
+            const sortString = value.map(sortObj => {
+              if (typeof sortObj === 'object' && sortObj.field && sortObj.direction) {
+                return sortObj.direction === 'desc' ? `-${sortObj.field}` : sortObj.field;
+              }
+              return sortObj;
+            }).join(',');
+            searchParams.append('ordering', sortString);
+          }
+        } else {
+          // Regular array handling for filters
+          searchParams.append(key, value.join(','));
+        }
+      } else if (typeof value === 'object') {
+        // Handle objects (like date ranges)
+        if (value.from && value.to) {
+          searchParams.append(`${key}_from`, value.from);
+          searchParams.append(`${key}_to`, value.to);
+        } else if (value.min !== null && value.max !== null) {
+          searchParams.append(`${key}_min`, value.min);
+          searchParams.append(`${key}_max`, value.max);
+        } else {
+          // Other object types, serialize as JSON
+          searchParams.append(key, JSON.stringify(value));
+        }
       } else {
         searchParams.append(key, value);
       }
@@ -194,7 +221,7 @@ const handleFileDownload = async (response, filename) => {
   }
 };
 
-// API Service - Backend endpointlərinə uyğun
+// API Service - Backend endpointlərinə uyğun və yenilənmiş
 export const apiService = {
   // ========================================
   // AUTH ENDPOINTS
@@ -302,7 +329,7 @@ export const apiService = {
   deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
 
   // ========================================
-  // EMPLOYEES - Backend endpointlərinə uyğun
+  // EMPLOYEES - Enhanced with comprehensive filtering and sorting
   // ========================================
   getEmployees: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -333,7 +360,6 @@ export const apiService = {
 
   // Employee Activities
   getEmployeeActivities: (employeeId) => {
-    // Backend-də activities endpoint yoxdur, lakin employee detail-da activities var
     return api.get(`/employees/${employeeId}/`).then(response => ({
       data: response.data.activities || []
     }));
@@ -349,13 +375,25 @@ export const apiService = {
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
 
   // ========================================
-  // BULK OPERATIONS
+  // BULK OPERATIONS - Enhanced
   // ========================================
   softDeleteEmployees: (employeeIds) => api.post("/employees/soft-delete/", { 
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
   }),
   restoreEmployees: (employeeIds) => api.post("/employees/restore/", { 
     employee_ids: Array.isArray(employeeIds) ? employeeIds : [employeeIds] 
+  }),
+
+  // ========================================
+  // ORG CHART VISIBILITY - YENİ ENDPOİNTLƏR
+  // ========================================
+  toggleOrgChartVisibility: (employeeId) => api.post("/employees/toggle-org-chart-visibility/", {
+    employee_id: employeeId
+  }),
+  
+  bulkToggleOrgChartVisibility: (employeeIds, setVisible) => api.post("/employees/bulk-toggle-org-chart-visibility/", {
+    employee_ids: employeeIds,
+    set_visible: setVisible
   }),
 
   // ========================================
@@ -477,7 +515,120 @@ export const apiService = {
   deleteProfileImage: (employeeId) => api.post("/profile-images/delete/", { employee_id: employeeId }),
 
   // ========================================
-  // UTILITY FUNCTIONS
+  // ADVANCED SEARCH & FILTERING METHODS - YENİ
+  // ========================================
+  
+  // Comprehensive employee search with all filter options
+  searchEmployeesAdvanced: (searchParams = {}) => {
+    // Process advanced search parameters
+    const processedParams = {
+      // Text-based searches
+      search: searchParams.search,
+      employee_search: searchParams.employee_search,
+      line_manager_search: searchParams.line_manager_search,
+      job_title_search: searchParams.job_title_search,
+      
+      // Multi-select filters
+      business_function: searchParams.business_function,
+      department: searchParams.department,
+      unit: searchParams.unit,
+      job_function: searchParams.job_function,
+      position_group: searchParams.position_group,
+      status: searchParams.status,
+      grading_level: searchParams.grading_level,
+      contract_duration: searchParams.contract_duration,
+      line_manager: searchParams.line_manager,
+      tags: searchParams.tags,
+      gender: searchParams.gender,
+      
+      // Date ranges
+      start_date_from: searchParams.start_date_range?.from,
+      start_date_to: searchParams.start_date_range?.to,
+      contract_end_date_from: searchParams.contract_end_date_range?.from,
+      contract_end_date_to: searchParams.contract_end_date_range?.to,
+      
+      // Numeric ranges
+      years_of_service_min: searchParams.years_of_service_range?.min,
+      years_of_service_max: searchParams.years_of_service_range?.max,
+      
+      // Boolean filters
+      is_active: searchParams.is_active,
+      is_visible_in_org_chart: searchParams.is_visible_in_org_chart,
+      is_deleted: searchParams.is_deleted,
+      
+      // Special filters
+      status_needs_update: searchParams.status_needs_update,
+      contract_expiring_days: searchParams.contract_expiring_days,
+      
+      // Sorting - Enhanced multiple sorting support
+      ordering: searchParams.sorting || searchParams.ordering,
+      
+      // Pagination
+      page: searchParams.page,
+      page_size: searchParams.page_size
+    };
+
+    return apiService.getEmployees(processedParams);
+  },
+
+  // Multiple sorting helper
+  buildSortingParams: (sortingArray) => {
+    if (!Array.isArray(sortingArray) || sortingArray.length === 0) {
+      return '';
+    }
+    
+    return sortingArray.map(sort => {
+      if (typeof sort === 'object' && sort.field && sort.direction) {
+        return sort.direction === 'desc' ? `-${sort.field}` : sort.field;
+      } else if (typeof sort === 'string') {
+        return sort;
+      }
+      return '';
+    }).filter(Boolean).join(',');
+  },
+
+  // Filter presets
+  applyFilterPreset: (presetName, additionalParams = {}) => {
+    const presets = {
+      'active_employees': {
+        status: ['ACTIVE'],
+        is_active: true
+      },
+      'new_hires': {
+        years_of_service_range: { min: 0, max: 0.25 }
+      },
+      'probation_employees': {
+        status: ['PROBATION']
+      },
+      'onboarding_employees': {
+        status: ['ONBOARDING']
+      },
+      'on_leave': {
+        status: ['ON_LEAVE']
+      },
+      'no_line_manager': {
+        line_manager: null
+      },
+      'needs_grading': {
+        grading_level: []
+      },
+      'contract_ending_soon': {
+        contract_expiring_days: 30
+      },
+      'org_chart_visible': {
+        is_visible_in_org_chart: true
+      },
+      'org_chart_hidden': {
+        is_visible_in_org_chart: false
+      }
+    };
+
+    const presetParams = presets[presetName] || {};
+    return apiService.searchEmployeesAdvanced({ ...presetParams, ...additionalParams });
+  },
+
+  // ========================================
+  // UTILITY FUNCTIONS - Enhanced
   // ========================================
   get: (endpoint, params = {}) => {
     const queryString = buildQueryParams(params);
@@ -523,6 +674,46 @@ export const apiService = {
     } catch (error) {
       console.error('Download failed:', error);
       throw error;
+    }
+  },
+
+  // ========================================
+  // BATCH OPERATIONS - Enhanced
+  // ========================================
+  batchOperation: async (operation, employeeIds, data = {}) => {
+    const operations = {
+      'delete': () => apiService.softDeleteEmployees(employeeIds),
+      'restore': () => apiService.restoreEmployees(employeeIds),
+      'add_tag': (tagId) => apiService.bulkAddTags(employeeIds, tagId),
+      'remove_tag': (tagId) => apiService.bulkRemoveTags(employeeIds, tagId),
+      'assign_manager': (managerId) => apiService.bulkAssignLineManager({
+        employee_ids: employeeIds,
+        line_manager_id: managerId
+      }),
+      'extend_contracts': (contractData) => apiService.bulkExtendContracts({
+        employee_ids: employeeIds,
+        ...contractData
+      }),
+      'show_in_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, true),
+      'hide_from_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, false),
+      'update_grades': (updates) => apiService.bulkUpdateEmployeeGrades(updates)
+    };
+
+    const operationFn = operations[operation];
+    if (!operationFn) {
+      throw new Error(`Unknown batch operation: ${operation}`);
+    }
+
+    if (operation === 'add_tag' || operation === 'remove_tag') {
+      return operationFn(data.tagId);
+    } else if (operation === 'assign_manager') {
+      return operationFn(data.managerId);
+    } else if (operation === 'extend_contracts') {
+      return operationFn(data);
+    } else if (operation === 'update_grades') {
+      return operationFn(data.updates);
+    } else {
+      return operationFn();
     }
   }
 };

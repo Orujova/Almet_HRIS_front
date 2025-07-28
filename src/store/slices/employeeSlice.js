@@ -1,9 +1,9 @@
-// src/store/slices/employeeSlice.js - Backend endpointlərinə uyğun yenilənilib
+// src/store/slices/employeeSlice.js - UPDATED: Yeni endpointlər və genişləndirilmiş funksionallıq
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { employeeAPI } from '../api/employeeAPI';
 
 // ========================================
-// ASYNC THUNKS - EMPLOYEE OPERATIONS
+// ASYNC THUNKS - EMPLOYEE OPERATIONS - Enhanced
 // ========================================
 
 export const fetchEmployees = createAsyncThunk(
@@ -93,7 +93,7 @@ export const fetchStatistics = createAsyncThunk(
 );
 
 // ========================================
-// BULK OPERATIONS
+// BULK OPERATIONS - Enhanced
 // ========================================
 
 export const softDeleteEmployees = createAsyncThunk(
@@ -114,6 +114,34 @@ export const restoreEmployees = createAsyncThunk(
     try {
       const response = await employeeAPI.restore(ids);
       return { ids, result: response.data };
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+// ========================================
+// ORG CHART VISIBILITY - YENİ ASYNC THUNKS
+// ========================================
+
+export const toggleOrgChartVisibility = createAsyncThunk(
+  'employees/toggleOrgChartVisibility',
+  async (employeeId, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.toggleOrgChartVisibility(employeeId);
+      return { employeeId, result: response.data };
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+export const bulkToggleOrgChartVisibility = createAsyncThunk(
+  'employees/bulkToggleOrgChartVisibility',
+  async ({ employeeIds, setVisible }, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.bulkToggleOrgChartVisibility(employeeIds, setVisible);
+      return { employeeIds, setVisible, result: response.data };
     } catch (error) {
       return rejectWithValue(error.data || error.message);
     }
@@ -389,7 +417,34 @@ export const fetchOrganizationalHierarchy = createAsyncThunk(
 );
 
 // ========================================
-// INITIAL STATE
+// ADVANCED SEARCH - YENİ ASYNC THUNKS
+// ========================================
+
+export const searchEmployeesAdvanced = createAsyncThunk(
+  'employees/searchEmployeesAdvanced',
+  async (searchParams, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.searchAdvanced(searchParams);
+      return {
+        data: response.data.results || response.data,
+        pagination: {
+          count: response.data.count || 0,
+          next: response.data.next,
+          previous: response.data.previous,
+          current_page: response.data.current_page || searchParams.page || 1,
+          total_pages: response.data.total_pages || Math.ceil((response.data.count || 0) / (searchParams.page_size || 25)),
+          page_size: response.data.page_size || searchParams.page_size || 25
+        },
+        searchParams
+      };
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+// ========================================
+// INITIAL STATE - Enhanced
 // ========================================
 
 const initialState = {
@@ -457,7 +512,7 @@ const initialState = {
     recentlyUpdated: []
   },
 
-  // UI state
+  // UI state - Enhanced
   selectedEmployees: [],
   currentFilters: {},
   appliedFilters: [],
@@ -471,7 +526,51 @@ const initialState = {
     hasPrevious: false
   },
   
-  // Loading states
+  // Advanced filtering state
+  advancedFilters: {
+    searchFilters: {
+      generalSearch: '',
+      employeeSearch: '',
+      managerSearch: '',
+      jobTitleSearch: ''
+    },
+    multiSelectFilters: {
+      businessFunctions: [],
+      departments: [],
+      units: [],
+      jobFunctions: [],
+      positionGroups: [],
+      statuses: [],
+      gradingLevels: [],
+      contractDurations: [],
+      lineManagers: [],
+      tags: [],
+      genders: []
+    },
+    dateRangeFilters: {
+      startDateRange: { from: null, to: null },
+      contractEndDateRange: { from: null, to: null }
+    },
+    numericRangeFilters: {
+      serviceYearsRange: { min: null, max: null }
+    },
+    booleanFilters: {
+      isActive: null,
+      isOrgChartVisible: null,
+      includeDeleted: false
+    },
+    specialFilters: {
+      needsStatusUpdate: null,
+      contractExpiringDays: null
+    }
+  },
+  
+  // Search state
+  lastSearchParams: null,
+  searchResults: [],
+  searchPagination: {},
+  
+  // Loading states - Enhanced
   loading: {
     employees: false,
     employee: false,
@@ -491,10 +590,12 @@ const initialState = {
     contractUpdate: false,
     template: false,
     upload: false,
-    contractAlerts: false
+    contractAlerts: false,
+    orgChart: false,
+    advancedSearch: false
   },
   
-  // Error states
+  // Error states - Enhanced
   error: {
     employees: null,
     employee: null,
@@ -514,18 +615,22 @@ const initialState = {
     contractUpdate: null,
     template: null,
     upload: null,
-    contractAlerts: null
+    contractAlerts: null,
+    orgChart: null,
+    advancedSearch: null
   },
   
-  // Feature flags & settings
+  // Feature flags & settings - Enhanced
   showAdvancedFilters: false,
   viewMode: 'table',
   showGradingPanel: false,
   gradingMode: 'individual',
+  filterMode: 'basic', // 'basic', 'advanced', 'custom'
+  sortingMode: 'single', // 'single', 'multiple'
 };
 
 // ========================================
-// SLICE DEFINITION
+// SLICE DEFINITION - Enhanced
 // ========================================
 
 const employeeSlice = createSlice({
@@ -563,7 +668,7 @@ const employeeSlice = createSlice({
       state.selectedEmployees = [];
     },
     
-    // Filter management
+    // Filter management - Enhanced
     setCurrentFilters: (state, action) => {
       state.currentFilters = action.payload;
     },
@@ -589,6 +694,7 @@ const employeeSlice = createSlice({
     clearFilters: (state) => {
       state.currentFilters = {};
       state.appliedFilters = [];
+      state.advancedFilters = initialState.advancedFilters;
     },
     
     updateFilter: (state, action) => {
@@ -601,10 +707,50 @@ const employeeSlice = createSlice({
       }
     },
     
-    // Sorting management
+    // ========================================
+    // ADVANCED FILTERING - YENİ REDUCER-LƏR
+    // ========================================
+    
+    setAdvancedFilters: (state, action) => {
+      state.advancedFilters = { ...state.advancedFilters, ...action.payload };
+    },
+    
+    updateAdvancedFilter: (state, action) => {
+      const { category, key, value } = action.payload;
+      if (state.advancedFilters[category]) {
+        state.advancedFilters[category][key] = value;
+      }
+    },
+    
+    clearAdvancedFilters: (state) => {
+      state.advancedFilters = initialState.advancedFilters;
+    },
+    
+    setFilterMode: (state, action) => {
+      state.filterMode = action.payload;
+    },
+    
+    // Sorting management - Enhanced Multiple Sorting
     setSorting: (state, action) => {
-      const { field, direction } = action.payload;
-      state.sorting = [{ field, direction }];
+      const { field, direction, multiple } = action.payload;
+      
+      if (multiple) {
+        // Set multiple sorting from array
+        state.sorting = multiple;
+      } else {
+        // Single sort
+        if (state.sortingMode === 'single') {
+          state.sorting = [{ field, direction }];
+        } else {
+          // Multiple sorting mode - add or update
+          const existingIndex = state.sorting.findIndex(s => s.field === field);
+          if (existingIndex !== -1) {
+            state.sorting[existingIndex].direction = direction;
+          } else {
+            state.sorting.push({ field, direction });
+          }
+        }
+      }
     },
     
     addSort: (state, action) => {
@@ -632,11 +778,28 @@ const employeeSlice = createSlice({
       const existingSort = state.sorting.find(s => s.field === field);
       
       if (!existingSort) {
-        state.sorting.push({ field, direction: 'asc' });
+        if (state.sortingMode === 'single') {
+          state.sorting = [{ field, direction: 'asc' }];
+        } else {
+          state.sorting.push({ field, direction: 'asc' });
+        }
       } else if (existingSort.direction === 'asc') {
         existingSort.direction = 'desc';
       } else {
         state.sorting = state.sorting.filter(s => s.field !== field);
+      }
+    },
+    
+    reorderSorts: (state, action) => {
+      const { oldIndex, newIndex } = action.payload;
+      const [removed] = state.sorting.splice(oldIndex, 1);
+      state.sorting.splice(newIndex, 0, removed);
+    },
+    
+    setSortingMode: (state, action) => {
+      state.sortingMode = action.payload;
+      if (action.payload === 'single' && state.sorting.length > 1) {
+        state.sorting = [state.sorting[0]]; // Keep only first sort
       }
     },
     
@@ -662,7 +825,7 @@ const employeeSlice = createSlice({
       }
     },
     
-    // UI state
+    // UI state - Enhanced
     toggleAdvancedFilters: (state) => {
       state.showAdvancedFilters = !state.showAdvancedFilters;
     },
@@ -709,21 +872,36 @@ const employeeSlice = createSlice({
       state.currentEmployee = null;
     },
     
-    // Quick actions
+    // Quick actions - Enhanced
     setQuickFilter: (state, action) => {
       const { type, value } = action.payload;
       const quickFilters = {
-        active: { status: ['ACTIVE'] },
+        active: { status: ['ACTIVE'], is_active: true },
         onboarding: { status: ['ONBOARDING'] },
         onLeave: { status: ['ON_LEAVE'] },
         probation: { status: ['PROBATION'] },
         noManager: { line_manager: null },
-        needsGrading: { grading_level: '' }
+        needsGrading: { grading_level: [] },
+        newHires: { years_of_service_range: { min: 0, max: 0.25 } },
+        contractEnding: { contract_expiring_days: 30 },
+        orgChartVisible: { is_visible_in_org_chart: true },
+        orgChartHidden: { is_visible_in_org_chart: false }
       };
       
       if (quickFilters[type]) {
         state.currentFilters = { ...state.currentFilters, ...quickFilters[type] };
       }
+    },
+    
+    // Search management
+    setLastSearchParams: (state, action) => {
+      state.lastSearchParams = action.payload;
+    },
+    
+    clearSearchResults: (state) => {
+      state.searchResults = [];
+      state.searchPagination = {};
+      state.lastSearchParams = null;
     },
     
     // Optimistic updates
@@ -766,6 +944,30 @@ const employeeSlice = createSlice({
         gradingEmployee.grading_display = grading_level || 'No Grade';
         gradingEmployee._isOptimistic = true;
       }
+    },
+    
+    // ========================================
+    // ORG CHART VISIBILITY - YENİ REDUCER-LƏR
+    // ========================================
+    
+    optimisticToggleOrgChartVisibility: (state, action) => {
+      const { employeeId, setVisible } = action.payload;
+      const employee = state.employees.find(emp => emp.id === employeeId);
+      if (employee) {
+        employee.is_visible_in_org_chart = setVisible !== undefined ? setVisible : !employee.is_visible_in_org_chart;
+        employee._isOptimisticOrgChart = true;
+      }
+    },
+    
+    optimisticBulkToggleOrgChartVisibility: (state, action) => {
+      const { employeeIds, setVisible } = action.payload;
+      employeeIds.forEach(employeeId => {
+        const employee = state.employees.find(emp => emp.id === employeeId);
+        if (employee) {
+          employee.is_visible_in_org_chart = setVisible;
+          employee._isOptimisticOrgChart = true;
+        }
+      });
     }
   },
   
@@ -789,6 +991,30 @@ const employeeSlice = createSlice({
       .addCase(fetchEmployees.rejected, (state, action) => {
         state.loading.employees = false;
         state.error.employees = action.payload;
+      });
+
+    // Advanced search
+    builder
+      .addCase(searchEmployeesAdvanced.pending, (state) => {
+        state.loading.advancedSearch = true;
+        state.error.advancedSearch = null;
+      })
+      .addCase(searchEmployeesAdvanced.fulfilled, (state, action) => {
+        state.loading.advancedSearch = false;
+        state.employees = action.payload.data;
+        state.searchResults = action.payload.data;
+        state.searchPagination = action.payload.pagination;
+        state.lastSearchParams = action.payload.searchParams;
+        state.pagination = {
+          ...state.pagination,
+          ...action.payload.pagination,
+          hasNext: !!action.payload.pagination.next,
+          hasPrevious: !!action.payload.pagination.previous
+        };
+      })
+      .addCase(searchEmployeesAdvanced.rejected, (state, action) => {
+        state.loading.advancedSearch = false;
+        state.error.advancedSearch = action.payload;
       });
 
     // Fetch single employee
@@ -913,6 +1139,78 @@ const employeeSlice = createSlice({
           if (employee) {
             employee.is_deleted = false;
             employee.deleted_at = null;
+          }
+        });
+      });
+
+    // ========================================
+    // ORG CHART VISIBILITY - YENİ REDUCER-LƏR
+    // ========================================
+    
+    builder
+      .addCase(toggleOrgChartVisibility.pending, (state) => {
+        state.loading.orgChart = true;
+        state.error.orgChart = null;
+      })
+      .addCase(toggleOrgChartVisibility.fulfilled, (state, action) => {
+        state.loading.orgChart = false;
+        const { employeeId, result } = action.payload;
+        const employee = state.employees.find(emp => emp.id === employeeId);
+        if (employee && result.employee) {
+          employee.is_visible_in_org_chart = result.employee.is_visible_in_org_chart;
+          employee._isOptimisticOrgChart = false;
+        }
+      })
+      .addCase(toggleOrgChartVisibility.rejected, (state, action) => {
+        state.loading.orgChart = false;
+        state.error.orgChart = action.payload;
+        // Revert optimistic update on error
+        state.employees.forEach(emp => {
+          if (emp._isOptimisticOrgChart) {
+            emp.is_visible_in_org_chart = !emp.is_visible_in_org_chart;
+            emp._isOptimisticOrgChart = false;
+          }
+        });
+      });
+
+    builder
+      .addCase(bulkToggleOrgChartVisibility.pending, (state) => {
+        state.loading.bulkOperations = true;
+        state.error.bulkOperations = null;
+      })
+      .addCase(bulkToggleOrgChartVisibility.fulfilled, (state, action) => {
+        state.loading.bulkOperations = false;
+        const { employeeIds, setVisible, result } = action.payload;
+        
+        if (result.updated_employees) {
+          result.updated_employees.forEach(updatedEmployee => {
+            const employee = state.employees.find(emp => emp.id === updatedEmployee.id);
+            if (employee) {
+              employee.is_visible_in_org_chart = updatedEmployee.is_visible_in_org_chart;
+              employee._isOptimisticOrgChart = false;
+            }
+          });
+        } else {
+          // Fallback if backend doesn't return updated employees
+          employeeIds.forEach(employeeId => {
+            const employee = state.employees.find(emp => emp.id === employeeId);
+            if (employee) {
+              employee.is_visible_in_org_chart = setVisible;
+              employee._isOptimisticOrgChart = false;
+            }
+          });
+        }
+        
+        state.selectedEmployees = [];
+      })
+      .addCase(bulkToggleOrgChartVisibility.rejected, (state, action) => {
+        state.loading.bulkOperations = false;
+        state.error.bulkOperations = action.payload;
+        // Revert optimistic updates on error
+        state.employees.forEach(emp => {
+          if (emp._isOptimisticOrgChart) {
+            emp.is_visible_in_org_chart = !emp.is_visible_in_org_chart;
+            emp._isOptimisticOrgChart = false;
           }
         });
       });
@@ -1243,7 +1541,7 @@ const employeeSlice = createSlice({
   },
 });
 
-// Actions export
+// Actions export - Enhanced
 export const {
   setSelectedEmployees,
   toggleEmployeeSelection,
@@ -1255,11 +1553,17 @@ export const {
   removeFilter,
   clearFilters,
   updateFilter,
+  setAdvancedFilters,
+  updateAdvancedFilter,
+  clearAdvancedFilters,
+  setFilterMode,
   setSorting,
   addSort,
   removeSort,
   clearSorting,
   toggleSort,
+  reorderSorts,
+  setSortingMode,
   setCurrentPage,
   setPageSize,
   goToNextPage,
@@ -1275,12 +1579,16 @@ export const {
   setError,
   clearCurrentEmployee,
   setQuickFilter,
+  setLastSearchParams,
+  clearSearchResults,
   optimisticUpdateEmployee,
   optimisticDeleteEmployee,
   optimisticUpdateEmployeeGrade,
+  optimisticToggleOrgChartVisibility,
+  optimisticBulkToggleOrgChartVisibility,
 } = employeeSlice.actions;
 
-// Basic selectors
+// Basic selectors - Enhanced
 export const selectEmployees = (state) => state.employees.employees;
 export const selectCurrentEmployee = (state) => state.employees.currentEmployee;
 export const selectEmployeeLoading = (state) => state.employees.loading;
@@ -1288,9 +1596,12 @@ export const selectEmployeeError = (state) => state.employees.error;
 export const selectSelectedEmployees = (state) => state.employees.selectedEmployees;
 export const selectCurrentFilters = (state) => state.employees.currentFilters;
 export const selectAppliedFilters = (state) => state.employees.appliedFilters;
+export const selectAdvancedFilters = (state) => state.employees.advancedFilters;
+export const selectFilterMode = (state) => state.employees.filterMode;
 export const selectStatistics = (state) => state.employees.statistics;
 export const selectPagination = (state) => state.employees.pagination;
 export const selectSorting = (state) => state.employees.sorting;
+export const selectSortingMode = (state) => state.employees.sortingMode;
 export const selectGradingData = (state) => state.employees.gradingData;
 export const selectGradingStatistics = (state) => state.employees.gradingStatistics;
 export const selectAllGradingLevels = (state) => state.employees.allGradingLevels;
@@ -1303,8 +1614,11 @@ export const selectShowGradingPanel = (state) => state.employees.showGradingPane
 export const selectGradingMode = (state) => state.employees.gradingMode;
 export const selectContractExpiryAlerts = (state) => state.employees.contractExpiryAlerts;
 export const selectContractsExpiringSoon = (state) => state.employees.contractsExpiringSoon;
+export const selectSearchResults = (state) => state.employees.searchResults;
+export const selectLastSearchParams = (state) => state.employees.lastSearchParams;
+export const selectSearchPagination = (state) => state.employees.searchPagination;
 
-// Memoized selectors
+// Enhanced memoized selectors
 export const selectFormattedEmployees = createSelector(
   [selectEmployees],
   (employees) => employees.map(employee => ({
@@ -1322,23 +1636,32 @@ export const selectFormattedEmployees = createSelector(
       duration: employee.contract_duration_display || employee.contract_duration,
       startDate: employee.contract_start_date || employee.start_date,
       endDate: employee.contract_end_date || employee.end_date,
-      isTemporary: employee.contract_duration !== 'PERMANENT'
+      isTemporary: employee.contract_duration !== 'PERMANENT',
+      extensions: employee.contract_extensions || 0,
+      lastExtension: employee.last_extension_date
     },
     serviceInfo: {
       yearsOfService: employee.years_of_service || 0,
       startDate: employee.start_date,
-      isNewHire: (employee.years_of_service || 0) < 0.25
+      isNewHire: (employee.years_of_service || 0) < 0.25,
+      isVeteran: (employee.years_of_service || 0) >= 5
     },
     managementInfo: {
       hasLineManager: !!employee.line_manager,
       lineManagerName: employee.line_manager_name,
+      lineManagerEmployeeId: employee.line_manager_hc_number,
       directReportsCount: employee.direct_reports_count || 0,
       isLineManager: (employee.direct_reports_count || 0) > 0
     },
     gradingInfo: {
       level: employee.grading_level,
       display: employee.grading_display || (employee.grading_level ? employee.grading_level : 'No Grade'),
-      hasGrade: !!employee.grading_level
+      hasGrade: !!employee.grading_level,
+      isOptimistic: employee._isOptimistic === true
+    },
+    orgChartInfo: {
+      isVisible: employee.is_visible_in_org_chart,
+      isOptimistic: employee._isOptimisticOrgChart === true
     },
     tagInfo: {
       tags: employee.tags || [],
@@ -1347,6 +1670,14 @@ export const selectFormattedEmployees = createSelector(
         typeof tag === 'object' ? tag.type === 'LEAVE' : tag.toLowerCase().includes('leave')
       ),
       tagCount: (employee.tags || []).length
+    },
+    statusInfo: {
+      needsUpdate: employee.status_needs_update === true,
+      isActive: employee.status_name === 'ACTIVE' || employee.status_name === 'Active',
+      isOnLeave: employee.status_name === 'ON_LEAVE',
+      isOnboarding: employee.status_name === 'ONBOARDING',
+      isProbation: employee.status_name === 'PROBATION',
+      isInactive: employee.status_name === 'INACTIVE'
     }
   }))
 );
@@ -1381,6 +1712,20 @@ export const selectFilteredEmployeesCount = createSelector(
               employee.employee_id?.toLowerCase().includes(searchTerm) ||
               employee.job_title?.toLowerCase().includes(searchTerm)
             );
+          case 'employee_search':
+            const empSearchTerm = value.toLowerCase();
+            return (
+              employee.name?.toLowerCase().includes(empSearchTerm) ||
+              employee.employee_id?.toLowerCase().includes(empSearchTerm) ||
+              employee.first_name?.toLowerCase().includes(empSearchTerm) ||
+              employee.last_name?.toLowerCase().includes(empSearchTerm)
+            );
+          case 'line_manager_search':
+            const managerSearchTerm = value.toLowerCase();
+            return employee.line_manager_name?.toLowerCase().includes(managerSearchTerm);
+          case 'job_title_search':
+            const jobSearchTerm = value.toLowerCase();
+            return employee.job_title?.toLowerCase().includes(jobSearchTerm);
           case 'status':
             return Array.isArray(value) 
               ? value.includes(employee.status_name || employee.status)
@@ -1402,6 +1747,10 @@ export const selectFilteredEmployeesCount = createSelector(
             return Array.isArray(value)
               ? value.some(tagId => employee.tags.some(tag => tag.id === tagId))
               : employee.tags.some(tag => tag.id === value);
+          case 'is_visible_in_org_chart':
+            return employee.is_visible_in_org_chart === value;
+          case 'is_active':
+            return value ? employee.status_name === 'ACTIVE' : employee.status_name !== 'ACTIVE';
           default:
             return true;
         }
@@ -1410,7 +1759,7 @@ export const selectFilteredEmployeesCount = createSelector(
   }
 );
 
-// Helper selectors for sorting
+// Helper selectors for sorting - Enhanced
 export const selectGetSortDirection = createSelector(
   [selectSorting],
   (sorting) => (field) => {
@@ -1434,18 +1783,79 @@ export const selectGetSortIndex = createSelector(
   }
 );
 
-// Helper selector for API params
+// Helper selector for API params - Enhanced
 export const selectApiParams = createSelector(
-  [selectCurrentFilters, selectSortingForBackend, selectPagination],
-  (filters, ordering, pagination) => ({
-    ...filters,
-    ordering,
-    page: pagination.page,
-    page_size: pagination.pageSize
-  })
+  [selectCurrentFilters, selectAdvancedFilters, selectSortingForBackend, selectPagination],
+  (filters, advancedFilters, ordering, pagination) => {
+    // Combine current filters with advanced filters
+    const combinedFilters = { ...filters };
+    
+    // Add advanced search filters
+    if (advancedFilters.searchFilters) {
+      Object.entries(advancedFilters.searchFilters).forEach(([key, value]) => {
+        if (value) {
+          combinedFilters[key] = value;
+        }
+      });
+    }
+    
+    // Add multi-select filters
+    if (advancedFilters.multiSelectFilters) {
+      Object.entries(advancedFilters.multiSelectFilters).forEach(([key, value]) => {
+        if (Array.isArray(value) && value.length > 0) {
+          combinedFilters[key] = value;
+        }
+      });
+    }
+    
+    // Add date range filters
+    if (advancedFilters.dateRangeFilters) {
+      Object.entries(advancedFilters.dateRangeFilters).forEach(([key, value]) => {
+        if (value && (value.from || value.to)) {
+          if (value.from) combinedFilters[`${key}_from`] = value.from;
+          if (value.to) combinedFilters[`${key}_to`] = value.to;
+        }
+      });
+    }
+    
+    // Add numeric range filters
+    if (advancedFilters.numericRangeFilters) {
+      Object.entries(advancedFilters.numericRangeFilters).forEach(([key, value]) => {
+        if (value && (value.min !== null || value.max !== null)) {
+          if (value.min !== null) combinedFilters[`${key}_min`] = value.min;
+          if (value.max !== null) combinedFilters[`${key}_max`] = value.max;
+        }
+      });
+    }
+    
+    // Add boolean filters
+    if (advancedFilters.booleanFilters) {
+      Object.entries(advancedFilters.booleanFilters).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          combinedFilters[key] = value;
+        }
+      });
+    }
+    
+    // Add special filters
+    if (advancedFilters.specialFilters) {
+      Object.entries(advancedFilters.specialFilters).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          combinedFilters[key] = value;
+        }
+      });
+    }
+    
+    return {
+      ...combinedFilters,
+      ordering,
+      page: pagination.page,
+      page_size: pagination.pageSize
+    };
+  }
 );
 
-// Selection helpers
+// Selection helpers - Enhanced
 export const selectSelectionInfo = createSelector(
   [selectSelectedEmployees, selectEmployees],
   (selectedEmployees, employees) => ({
@@ -1453,11 +1863,12 @@ export const selectSelectionInfo = createSelector(
     totalCount: employees.length,
     hasSelection: selectedEmployees.length > 0,
     isAllSelected: selectedEmployees.length === employees.length && employees.length > 0,
-    isPartialSelection: selectedEmployees.length > 0 && selectedEmployees.length < employees.length
+    isPartialSelection: selectedEmployees.length > 0 && selectedEmployees.length < employees.length,
+    selectionPercentage: employees.length > 0 ? (selectedEmployees.length / employees.length) * 100 : 0
   })
 );
 
-// Grading selectors
+// Grading selectors - Enhanced
 export const selectEmployeesNeedingGrades = createSelector(
   [selectGradingData],
   (gradingData) => {
@@ -1534,7 +1945,7 @@ export const selectGradingDistribution = createSelector(
   }
 );
 
-// Statistics selectors
+// Statistics selectors - Enhanced
 export const selectEmployeesByStatus = createSelector(
   [selectEmployees],
   (employees) => {
@@ -1577,11 +1988,14 @@ export const selectEmployeesNeedingAttention = createSelector(
       return endDate <= thirtyDaysFromNow;
     }),
     onLeave: employees.filter(emp => (emp.status_name || emp.status) === 'ON_LEAVE'),
-    statusUpdate: employees.filter(emp => emp.status_needs_update === true)
+    statusUpdate: employees.filter(emp => emp.status_needs_update === true),
+    orgChartHidden: employees.filter(emp => !emp.is_visible_in_org_chart),
+    onboarding: employees.filter(emp => (emp.status_name || emp.status) === 'ONBOARDING'),
+    probation: employees.filter(emp => (emp.status_name || emp.status) === 'PROBATION')
   })
 );
 
-// Loading & error state selectors
+// Loading & error state selectors - Enhanced
 export const selectIsAnyLoading = createSelector(
   [selectEmployeeLoading],
   (loading) => Object.values(loading).some(Boolean)
@@ -1592,7 +2006,7 @@ export const selectHasAnyError = createSelector(
   (errors) => Object.values(errors).some(error => error !== null)
 );
 
-// Dashboard summary selectors
+// Dashboard summary selectors - Enhanced
 export const selectDashboardSummary = createSelector(
   [selectStatistics, selectEmployeesNeedingAttention, selectGradingProgress, selectContractExpiryAlerts],
   (statistics, needingAttention, gradingProgress, contractAlerts) => ({
@@ -1605,12 +2019,19 @@ export const selectDashboardSummary = createSelector(
       noGrading: needingAttention.noGrading.length,
       onLeave: needingAttention.onLeave.length,
       contractEnding: needingAttention.contractEnding.length,
-      statusUpdate: needingAttention.statusUpdate.length
+      statusUpdate: needingAttention.statusUpdate.length,
+      orgChartHidden: needingAttention.orgChartHidden.length,
+      onboarding: needingAttention.onboarding.length,
+      probation: needingAttention.probation.length
     },
     gradingProgress,
     contractAlerts: {
       totalExpiring: contractAlerts.total_expiring,
       urgentContracts: contractAlerts.urgent_employees?.length || 0
+    },
+    trends: {
+      newHiresTrend: statistics.recent_hires_30_days > statistics.recent_hires_30_days * 0.8 ? 'up' : 'down',
+      contractRiskTrend: contractAlerts.total_expiring > 0 ? 'up' : 'stable'
     }
   })
 );
@@ -1622,7 +2043,9 @@ export const selectEmployeeMetrics = createSelector(
       total: employees.length,
       active: employees.filter(emp => emp.status_name === 'ACTIVE').length,
       onLeave: employees.filter(emp => emp.status_name === 'ON_LEAVE').length,
-      onboarding: employees.filter(emp => emp.status_name === 'ONBOARDING').length
+      onboarding: employees.filter(emp => emp.status_name === 'ONBOARDING').length,
+      probation: employees.filter(emp => emp.status_name === 'PROBATION').length,
+      inactive: employees.filter(emp => emp.status_name === 'INACTIVE').length
     },
     diversity: {
       genderDistribution: employees.reduce((acc, emp) => {
@@ -1641,7 +2064,16 @@ export const selectEmployeeMetrics = createSelector(
     performance: {
       gradingProgress: gradingData.employees?.length > 0 ? 
         (gradingData.employees.filter(emp => emp.grading_level).length / gradingData.employees.length) * 100 : 0,
-      averageServiceYears: employees.reduce((sum, emp) => sum + (emp.years_of_service || 0), 0) / employees.length || 0
+      averageServiceYears: employees.reduce((sum, emp) => sum + (emp.years_of_service || 0), 0) / employees.length || 0,
+      managementCoverage: employees.length > 0 ? 
+        (employees.filter(emp => emp.line_manager).length / employees.length) * 100 : 0
+    },
+    orgChart: {
+      visibleEmployees: employees.filter(emp => emp.is_visible_in_org_chart).length,
+      hiddenEmployees: employees.filter(emp => !emp.is_visible_in_org_chart).length,
+      managers: employees.filter(emp => (emp.direct_reports_count || 0) > 0).length,
+      participation: employees.length > 0 ? 
+        (employees.filter(emp => emp.is_visible_in_org_chart).length / employees.length) * 100 : 0
     },
     retention: {
       newHiresThisMonth: employees.filter(emp => {
@@ -1656,8 +2088,80 @@ export const selectEmployeeMetrics = createSelector(
         const endDate = new Date(emp.contract_end_date);
         const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         return endDate <= thirtyDaysFromNow;
-      }).length
+      }).length,
+      veteranEmployees: employees.filter(emp => (emp.years_of_service || 0) >= 5).length
+    },
+    risks: {
+      contractRisk: employees.length > 0 ? 
+        (employees.filter(emp => {
+          if (!emp.contract_end_date) return false;
+          const endDate = new Date(emp.contract_end_date);
+          const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+          return endDate <= thirtyDaysFromNow;
+        }).length / employees.length) * 100 : 0,
+      statusRisk: employees.length > 0 ? 
+        (employees.filter(emp => emp.status_needs_update).length / employees.length) * 100 : 0,
+      managementGap: employees.length > 0 ? 
+        (employees.filter(emp => !emp.line_manager).length / employees.length) * 100 : 0
     }
+  })
+);
+
+// Advanced filter selectors
+export const selectHasActiveAdvancedFilters = createSelector(
+  [selectAdvancedFilters],
+  (advancedFilters) => {
+    const hasSearchFilters = Object.values(advancedFilters.searchFilters || {}).some(value => 
+      value && value.trim() !== ''
+    );
+    
+    const hasMultiSelectFilters = Object.values(advancedFilters.multiSelectFilters || {}).some(value => 
+      Array.isArray(value) && value.length > 0
+    );
+    
+    const hasDateRangeFilters = Object.values(advancedFilters.dateRangeFilters || {}).some(value => 
+      value && (value.from || value.to)
+    );
+    
+    const hasNumericRangeFilters = Object.values(advancedFilters.numericRangeFilters || {}).some(value => 
+      value && (value.min !== null || value.max !== null)
+    );
+    
+    const hasBooleanFilters = Object.values(advancedFilters.booleanFilters || {}).some(value => 
+      value !== null && value !== undefined
+    );
+    
+    const hasSpecialFilters = Object.values(advancedFilters.specialFilters || {}).some(value => 
+      value !== null && value !== undefined
+    );
+    
+    return hasSearchFilters || hasMultiSelectFilters || hasDateRangeFilters || 
+           hasNumericRangeFilters || hasBooleanFilters || hasSpecialFilters;
+  }
+);
+
+// Sorting selectors - Enhanced
+export const selectSortingConfig = createSelector(
+  [selectSorting, selectSortingMode],
+  (sorting, sortingMode) => ({
+    sorts: sorting,
+    mode: sortingMode,
+    count: sorting.length,
+    hasMultipleSorts: sorting.length > 1,
+    primarySort: sorting.length > 0 ? sorting[0] : null,
+    canAddMore: sortingMode === 'multiple'
+  })
+);
+
+// Search selectors
+export const selectSearchConfig = createSelector(
+  [selectSearchResults, selectLastSearchParams, selectSearchPagination],
+  (searchResults, lastSearchParams, searchPagination) => ({
+    results: searchResults,
+    lastParams: lastSearchParams,
+    pagination: searchPagination,
+    hasResults: searchResults.length > 0,
+    hasSearched: lastSearchParams !== null
   })
 );
 

@@ -1,17 +1,18 @@
-// src/components/headcount/MultiSelectDropdown.jsx - Reusable Multi-Select Component
+// src/components/headcount/MultiSelectDropdown.jsx - COMPLETELY FIXED: Uncheck support and search clear
 import { useState, useRef, useEffect } from "react";
 import { ChevronDown, X, Check, Search } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
 /**
- * Reusable Multi-Select Dropdown Component
- * Features:
+ * FIXED MultiSelectDropdown - Düzəldilmiş uncheck funksiyası və search clear
+ * Özəlliklər:
+ * - FIXED: Seçilmiş option-ları uncheck etmək (toggle)
+ * - FIXED: Search-i clear etmək düyməsi
+ * - FIXED: Clear all funksiyası
  * - Search functionality
- * - Color indicators for statuses
- * - Code display for business functions
- * - Description tooltips
+ * - Color indicators
+ * - Code display
  * - Keyboard navigation
- * - Accessibility support
  */
 const MultiSelectDropdown = ({
   options = [],
@@ -25,7 +26,12 @@ const MultiSelectDropdown = ({
   showSubtitles = false, // For line managers
   maxSelections = null,
   className = "",
-  searchable = true
+  searchable = true,
+  groupBy = null,
+  maxHeight = "300px",
+  clearable = true,
+  singleSelect = false,
+  showSearch = false
 }) => {
   const { darkMode } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
@@ -59,10 +65,10 @@ const MultiSelectDropdown = ({
 
   // Focus search input when dropdown opens
   useEffect(() => {
-    if (isOpen && searchable && searchInputRef.current) {
+    if (isOpen && (searchable || showSearch) && searchInputRef.current) {
       searchInputRef.current.focus();
     }
-  }, [isOpen, searchable]);
+  }, [isOpen, searchable, showSearch]);
 
   // Filter options based on search term
   const filteredOptions = options.filter(option => {
@@ -70,7 +76,7 @@ const MultiSelectDropdown = ({
     const searchLower = searchTerm.toLowerCase();
     
     // Search in label
-    if (option.label.toLowerCase().includes(searchLower)) return true;
+    if (option.label && option.label.toLowerCase().includes(searchLower)) return true;
     
     // Search in code if available
     if (option.code && option.code.toLowerCase().includes(searchLower)) return true;
@@ -81,6 +87,9 @@ const MultiSelectDropdown = ({
     // Search in subtitle/job title if available
     if (option.jobTitle && option.jobTitle.toLowerCase().includes(searchLower)) return true;
     
+    // Search in searchText if available (for advanced search)
+    if (option.searchText && option.searchText.toLowerCase().includes(searchLower)) return true;
+    
     return false;
   });
 
@@ -89,41 +98,86 @@ const MultiSelectDropdown = ({
     selectedValues.includes(option.value)
   );
 
-  // Handle option toggle
+  // FIXED: Handle option toggle with proper uncheck support
   const handleOptionToggle = (optionValue) => {
     if (disabled) return;
 
+    console.log('🔄 MultiSelectDropdown: Option toggle clicked', {
+      optionValue,
+      currentlySelected: selectedValues.includes(optionValue),
+      selectedValues
+    });
+
     let newSelectedValues;
     
+    // FIXED: Düzgün toggle logic - həm seçmək həm də uncheck etmək
     if (selectedValues.includes(optionValue)) {
-      // Remove from selection
+      // UNCHECK: Remove from selection
       newSelectedValues = selectedValues.filter(value => value !== optionValue);
+      console.log('🔄 UNCHECK: Removing from selection', { optionValue, newSelectedValues });
     } else {
-      // Add to selection (check max limit)
+      // CHECK: Add to selection (check max limit)
       if (maxSelections && selectedValues.length >= maxSelections) {
+        console.warn('⚠️ Max selections reached:', maxSelections);
         return; // Don't add more if limit reached
       }
-      newSelectedValues = [...selectedValues, optionValue];
+      
+      if (singleSelect) {
+        // Single select - replace current selection
+        newSelectedValues = [optionValue];
+        console.log('🔄 SINGLE SELECT: Replacing selection', { optionValue, newSelectedValues });
+      } else {
+        // Multi select - add to selection
+        newSelectedValues = [...selectedValues, optionValue];
+        console.log('🔄 CHECK: Adding to selection', { optionValue, newSelectedValues });
+      }
     }
     
     onChange(newSelectedValues);
+    
+    // Close dropdown for single select when selecting (not unselecting)
+    if (singleSelect && !selectedValues.includes(optionValue)) {
+      setIsOpen(false);
+    }
   };
 
-  // Handle remove selected option
+  // FIXED: Handle remove selected option
   const handleRemoveOption = (optionValue, event) => {
     event.stopPropagation();
     if (disabled) return;
     
+    console.log('🗑️ Removing option:', optionValue);
     const newSelectedValues = selectedValues.filter(value => value !== optionValue);
     onChange(newSelectedValues);
   };
 
-  // Clear all selections
+  // FIXED: Clear all selections
   const handleClearAll = (event) => {
-    event.stopPropagation();
+    if (event) event.stopPropagation();
     if (disabled) return;
+    
+    console.log('🧹 MultiSelectDropdown: Clearing all selections');
     onChange([]);
   };
+
+  // FIXED: Clear search function
+  const handleClearSearch = () => {
+    console.log('🔍 MultiSelectDropdown: Clearing search');
+    setSearchTerm("");
+  };
+
+  // FIXED: Select all function
+  const handleSelectAll = () => {
+    if (disabled || singleSelect) return;
+    
+    console.log('✅ MultiSelectDropdown: Selecting all options');
+    const allValues = filteredOptions.map(opt => opt.value);
+    onChange(allValues);
+  };
+
+  // Check if all options are selected
+  const isAllSelected = filteredOptions.length > 0 && 
+    filteredOptions.every(option => selectedValues.includes(option.value));
 
   // Render option with appropriate styling
   const renderOption = (option) => {
@@ -139,11 +193,11 @@ const MultiSelectDropdown = ({
             : bgHover
         }`}
       >
-        {/* Checkbox */}
-        <div className={`w-4 h-4 border rounded mr-3 flex items-center justify-center ${
+        {/* FIXED: Checkbox with proper state indication */}
+        <div className={`w-4 h-4 border rounded mr-3 flex items-center justify-center transition-colors ${
           isSelected 
             ? 'border-almet-sapphire bg-almet-sapphire' 
-            : `border-gray-300 dark:border-gray-600`
+            : `border-gray-300 dark:border-gray-600 hover:border-almet-sapphire`
         }`}>
           {isSelected && <Check size={12} className="text-white" />}
         </div>
@@ -159,7 +213,7 @@ const MultiSelectDropdown = ({
         {/* Main content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center">
-            <span className={`${textPrimary} text-sm truncate`}>
+            <span className={`${textPrimary} text-sm truncate font-medium`}>
               {option.label}
             </span>
             {showCodes && option.code && (
@@ -170,19 +224,26 @@ const MultiSelectDropdown = ({
           </div>
           
           {/* Subtitle for line managers */}
-          {showSubtitles && (option.jobTitle || option.department) && (
-            <div className={`text-xs ${textMuted} truncate`}>
-              {option.jobTitle}{option.jobTitle && option.department ? ' • ' : ''}{option.department}
+          {showSubtitles && (option.subtitle || option.jobTitle || option.department) && (
+            <div className={`text-xs ${textMuted} truncate mt-0.5`}>
+              {option.subtitle || `${option.jobTitle || ''}${option.jobTitle && option.department ? ' • ' : ''}${option.department || ''}`}
             </div>
           )}
           
           {/* Description for tags/grades */}
           {showDescriptions && option.description && (
-            <div className={`text-xs ${textMuted} truncate`}>
+            <div className={`text-xs ${textMuted} truncate mt-0.5`}>
               {option.description}
             </div>
           )}
         </div>
+
+        {/* Employee count or additional info */}
+        {option.employee_count !== undefined && (
+          <span className={`text-xs ${textMuted} ml-2`}>
+            {option.employee_count}
+          </span>
+        )}
       </div>
     );
   };
@@ -227,12 +288,14 @@ const MultiSelectDropdown = ({
         <span className={`${textSecondary} text-sm`}>
           {selectedOptions.length} selected
         </span>
-        <button
-          onClick={handleClearAll}
-          className={`ml-2 text-xs ${textMuted} hover:text-red-500 transition-colors`}
-        >
-          Clear all
-        </button>
+        {clearable && (
+          <button
+            onClick={handleClearAll}
+            className={`ml-2 text-xs ${textMuted} hover:text-red-500 transition-colors`}
+          >
+            Clear all
+          </button>
+        )}
       </div>
     );
   };
@@ -255,7 +318,7 @@ const MultiSelectDropdown = ({
             {renderSelectedTags()}
           </div>
           <div className="flex items-center ml-2">
-            {selectedOptions.length > 0 && !disabled && (
+            {selectedOptions.length > 0 && !disabled && clearable && (
               <button
                 onClick={handleClearAll}
                 className={`mr-2 ${textMuted} hover:text-red-500 transition-colors`}
@@ -273,9 +336,12 @@ const MultiSelectDropdown = ({
 
       {/* Dropdown */}
       {isOpen && !disabled && (
-        <div className={`absolute z-50 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-64 overflow-hidden`}>
-          {/* Search input */}
-          {searchable && (
+        <div 
+          className={`absolute z-50 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg overflow-hidden`}
+          style={{ maxHeight }}
+        >
+          {/* FIXED: Search input with clear button */}
+          {(searchable || showSearch) && (
             <div className="p-3 border-b border-gray-200 dark:border-gray-700">
               <div className="relative">
                 <input
@@ -284,13 +350,42 @@ const MultiSelectDropdown = ({
                   placeholder="Search options..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full p-2 pl-8 text-sm border ${borderColor} rounded ${bgInput} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  className={`w-full p-2 pl-8 pr-8 text-sm border ${borderColor} rounded ${bgInput} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                 />
                 <Search 
                   size={14} 
                   className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${textMuted}`} 
                 />
+                {/* FIXED: Clear search button */}
+                {searchTerm && (
+                  <button
+                    onClick={handleClearSearch}
+                    className={`absolute right-2 top-1/2 transform -translate-y-1/2 ${textMuted} hover:text-red-500 transition-colors`}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* FIXED: Action buttons for select all / clear all */}
+          {clearable && filteredOptions.length > 1 && !singleSelect && (
+            <div className={`px-3 py-2 border-b ${borderColor} flex justify-between`}>
+              <button
+                onClick={handleSelectAll}
+                className="text-xs text-almet-sapphire hover:text-almet-astral font-medium"
+              >
+                {isAllSelected ? 'Deselect All' : 'Select All'}
+              </button>
+              {selectedValues.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="text-xs text-red-500 hover:text-red-600 font-medium"
+                >
+                  Clear All
+                </button>
+              )}
             </div>
           )}
 
@@ -317,15 +412,17 @@ const MultiSelectDropdown = ({
             <div className={`p-2 border-t ${borderColor} bg-gray-50 dark:bg-gray-800/50`}>
               <div className="flex items-center justify-between">
                 <span className={`text-xs ${textMuted}`}>
-                  {selectedOptions.length} of {options.length} selected
+                  {selectedOptions.length} of {filteredOptions.length} selected
                   {maxSelections && ` (max ${maxSelections})`}
                 </span>
-                <button
-                  onClick={handleClearAll}
-                  className="text-xs text-red-500 hover:text-red-600 transition-colors"
-                >
-                  Clear all
-                </button>
+                {clearable && (
+                  <button
+                    onClick={handleClearAll}
+                    className="text-xs text-red-500 hover:text-red-600 transition-colors"
+                  >
+                    Clear all
+                  </button>
+                )}
               </div>
             </div>
           )}

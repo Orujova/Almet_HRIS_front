@@ -1,26 +1,30 @@
-// src/components/headcount/SearchBar.jsx - FIXED: Instant Search with Debounce
+// src/components/headcount/SearchBar.jsx - ENHANCED: Proper API Integration & Debounce
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, X, Filter, Clock, User, Mail } from "lucide-react";
+import { Search, X, Filter, Clock, User, Mail, Hash, Briefcase } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
 /**
- * FIXED SearchBar with proper debounced search and instant application
+ * Enhanced SearchBar with proper API integration and advanced search types
+ * Supports backend filtering for: name, email, employee_id, job_title
  */
 const SearchBar = ({ 
-  searchTerm, 
+  searchTerm = "", 
   onSearchChange, 
-  placeholder = "Search by name, email, employee ID, job title...",
+  placeholder = "Search employees by name, email, ID, or job title...",
   suggestions = [],
   showAdvancedSearch = false,
   onAdvancedSearch,
-  recentSearches = []
+  recentSearches = [],
+  employeeData = [], // For generating smart suggestions
+  isLoading = false
 }) => {
   const { darkMode } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestion, setActiveSuggestion] = useState(-1);
-  const [localValue, setLocalValue] = useState(searchTerm || ""); // Local state for instant typing
+  const [localValue, setLocalValue] = useState(searchTerm || "");
   const [localRecentSearches, setLocalRecentSearches] = useState(recentSearches);
+  const [searchType, setSearchType] = useState('general'); // general, employee_id, email, job_title
   const inputRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
@@ -39,105 +43,180 @@ const SearchBar = ({
   const bgSuggestion = darkMode ? "bg-gray-800" : "bg-white";
   const bgSuggestionHover = darkMode ? "bg-gray-700" : "bg-gray-50";
 
-  // Debounced search function
-  const debouncedSearch = useCallback((value) => {
+  // Detect search type from input value
+  const detectSearchType = useCallback((value) => {
+    if (!value.trim()) return 'general';
+    
+    // Email pattern
+    if (value.includes('@') && value.includes('.')) {
+      return 'email';
+    }
+    
+    // Employee ID pattern (letters followed by numbers)
+    if (/^[A-Z]{2,4}\d+$/i.test(value.trim())) {
+      return 'employee_id';
+    }
+    
+    // Check if it matches job titles
+    const lowerValue = value.toLowerCase();
+    const jobTitleMatches = employeeData.some(emp => 
+      emp.jobTitle?.toLowerCase().includes(lowerValue) ||
+      emp.job_title?.toLowerCase().includes(lowerValue)
+    );
+    
+    if (jobTitleMatches && value.length > 3) {
+      return 'job_title';
+    }
+    
+    return 'general';
+  }, [employeeData]);
+
+ // Enhanced debounced search with search type detection
+  const debouncedSearch = useCallback((value, immediate = false) => {
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
+    const delay = immediate ? 0 : 300;
+    
     debounceTimeoutRef.current = setTimeout(() => {
-      console.log('🔍 Debounced search executing:', value);
-      onSearchChange(value);
+      console.log('🔍 Enhanced search executing:', { value, searchType });
+      
+      // FIXED: Send only the primary search value, not all parameters
+      const searchValue = value.trim();
+      
+      // Detect search type but send simple string value to parent
+      const detectedType = detectSearchType(value);
+      setSearchType(detectedType);
+      
+      // Send simple search string - parent will handle the mapping
+      onSearchChange(searchValue);
       
       // Add to recent searches if not empty
-      if (value.trim()) {
-        addToRecentSearches(value.trim());
+      if (searchValue) {
+        addToRecentSearches(searchValue, detectedType);
       }
-    }, 300); // 300ms debounce
-  }, [onSearchChange]);
-
-  // Handle input change - INSTANT local update, debounced API call
+    }, delay);
+  }, [onSearchChange, detectSearchType]);
+  // Handle input change with enhanced detection
   const handleInputChange = (e) => {
     const value = e.target.value;
     console.log('🔍 Search input change:', value);
     
-    // Update local state immediately for responsive UI
     setLocalValue(value);
     setShowSuggestions(value.length > 0 || localRecentSearches.length > 0);
     setActiveSuggestion(-1);
     
-    // Debounced API call
+    // Debounced search with type detection
     debouncedSearch(value);
   };
 
-  // Handle input focus
-  const handleFocus = () => {
-    setIsFocused(true);
-    setShowSuggestions(localValue.length > 0 || localRecentSearches.length > 0);
-  };
-
-  // Handle input blur
-  const handleBlur = () => {
-    setIsFocused(false);
-    // Delay hiding suggestions to allow clicking
-    setTimeout(() => setShowSuggestions(false), 200);
-  };
-
-  // Generate search suggestions based on search term
-  const generateSuggestions = () => {
+  // Enhanced suggestions generation
+  const generateSuggestions = useCallback(() => {
     if (!localValue.trim()) {
       return localRecentSearches.slice(0, 5).map(search => ({
         type: 'recent',
-        text: search,
-        icon: Clock
+        text: search.query,
+        searchType: search.type,
+        icon: Clock,
+        description: `Recent ${search.type} search`
       }));
     }
 
-    // Filter existing suggestions
-    const filtered = suggestions.filter(suggestion =>
-      suggestion.toLowerCase().includes(localValue.toLowerCase())
-    ).slice(0, 3);
+    const suggestions = [];
+    const lowerValue = localValue.toLowerCase();
+    const detectedType = detectSearchType(localValue);
 
-    // Add search type suggestions
-    const searchSuggestions = [];
-    
-    if (localValue.includes('@')) {
-      searchSuggestions.push({
-        type: 'email',
-        text: `Email: ${localValue}`,
-        icon: Mail
-      });
-    } else {
-      searchSuggestions.push({
-        type: 'name',
-        text: `Name: ${localValue}`,
-        icon: User
+    // Employee name/ID suggestions
+    if (employeeData.length > 0) {
+      const employeeMatches = employeeData
+        .filter(emp => {
+          const fullName = emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
+          const employeeId = emp.employee_id || emp.employeeId || '';
+          const email = emp.email || '';
+          
+          return fullName.toLowerCase().includes(lowerValue) ||
+                 employeeId.toLowerCase().includes(lowerValue) ||
+                 email.toLowerCase().includes(lowerValue);
+        })
+        .slice(0, 3);
+
+      employeeMatches.forEach(emp => {
+        const fullName = emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim();
+        suggestions.push({
+          type: 'employee',
+          text: fullName,
+          subtitle: emp.employee_id || emp.employeeId,
+          description: emp.jobTitle || emp.job_title,
+          icon: User,
+          searchType: 'employee_search'
+        });
       });
     }
 
-    return [
-      ...filtered.map(text => ({ type: 'suggestion', text, icon: Search })),
-      ...searchSuggestions
-    ].slice(0, 5);
-  };
+    // Job title suggestions
+    if (detectedType === 'job_title' || detectedType === 'general') {
+      const jobTitles = [...new Set(
+        employeeData
+          .map(emp => emp.jobTitle || emp.job_title)
+          .filter(title => title && title.toLowerCase().includes(lowerValue))
+      )].slice(0, 2);
+
+      jobTitles.forEach(title => {
+        suggestions.push({
+          type: 'job_title',
+          text: title,
+          icon: Briefcase,
+          searchType: 'job_title_search',
+          description: 'Job Title'
+        });
+      });
+    }
+
+    // Email suggestions
+    if (detectedType === 'email') {
+      suggestions.push({
+        type: 'email',
+        text: localValue,
+        icon: Mail,
+        searchType: 'employee_search',
+        description: 'Search by email'
+      });
+    }
+
+    // Employee ID suggestions
+    if (detectedType === 'employee_id') {
+      suggestions.push({
+        type: 'employee_id',
+        text: localValue.toUpperCase(),
+        icon: Hash,
+        searchType: 'employee_search',
+        description: 'Employee ID'
+      });
+    }
+
+    // General search suggestion
+    if (suggestions.length < 5) {
+      suggestions.push({
+        type: 'general',
+        text: localValue,
+        icon: Search,
+        searchType: 'search',
+        description: 'General search'
+      });
+    }
+
+    return suggestions.slice(0, 5);
+  }, [localValue, localRecentSearches, employeeData, detectSearchType]);
 
   const currentSuggestions = generateSuggestions();
 
-  // Handle keyboard navigation
+  // Enhanced keyboard navigation
   const handleKeyDown = (e) => {
     if (!showSuggestions || currentSuggestions.length === 0) {
-      // Handle Enter key for immediate search
       if (e.key === 'Enter') {
         e.preventDefault();
-        // Clear debounce and search immediately
-        if (debounceTimeoutRef.current) {
-          clearTimeout(debounceTimeoutRef.current);
-        }
-        console.log('🔍 Immediate search on Enter:', localValue);
-        onSearchChange(localValue);
-        if (localValue.trim()) {
-          addToRecentSearches(localValue.trim());
-        }
+        handleImmediateSearch();
       }
       return;
     }
@@ -157,14 +236,8 @@ const SearchBar = ({
         e.preventDefault();
         if (activeSuggestion >= 0) {
           handleSuggestionClick(currentSuggestions[activeSuggestion]);
-        } else if (localValue.trim()) {
-          // Clear debounce and search immediately
-          if (debounceTimeoutRef.current) {
-            clearTimeout(debounceTimeoutRef.current);
-          }
-          console.log('🔍 Immediate search on Enter:', localValue);
-          onSearchChange(localValue);
-          addToRecentSearches(localValue.trim());
+        } else {
+          handleImmediateSearch();
         }
         break;
       case 'Escape':
@@ -172,54 +245,112 @@ const SearchBar = ({
         setActiveSuggestion(-1);
         inputRef.current?.blur();
         break;
+      case 'Tab':
+        if (activeSuggestion >= 0) {
+          e.preventDefault();
+          handleSuggestionClick(currentSuggestions[activeSuggestion]);
+        }
+        break;
     }
   };
 
-  // Handle suggestion click
+  // Handle immediate search
+  const handleImmediateSearch = () => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    console.log('🔍 Immediate search triggered:', localValue);
+    debouncedSearch(localValue, true);
+    
+    if (localValue.trim()) {
+      addToRecentSearches(localValue.trim(), detectSearchType(localValue));
+    }
+  };
+
+  // Enhanced suggestion click handler
   const handleSuggestionClick = (suggestion) => {
-    const searchText = suggestion.text.includes(':') 
-      ? suggestion.text.split(':')[1].trim() 
-      : suggestion.text;
+    const searchText = suggestion.text;
     
-    console.log('🔍 Suggestion clicked - immediate search:', searchText);
+    console.log('🔍 Suggestion clicked - immediate search:', {
+      text: searchText,
+      type: suggestion.searchType,
+      suggestion
+    });
     
-    // Clear debounce and apply immediately
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
     
     setLocalValue(searchText);
-    onSearchChange(searchText);
-    addToRecentSearches(searchText);
+    
+    // Build search parameters based on suggestion type
+    const searchParams = {
+      search: '',
+      employee_search: '',
+      line_manager_search: '',
+      job_title_search: ''
+    };
+    
+    if (suggestion.searchType && searchText.trim()) {
+      searchParams[suggestion.searchType] = searchText.trim();
+    } else {
+      searchParams.search = searchText.trim();
+    }
+    
+    onSearchChange(searchParams);
+    addToRecentSearches(searchText, suggestion.searchType || 'general');
     setShowSuggestions(false);
     setActiveSuggestion(-1);
     inputRef.current?.focus();
   };
 
-  // Add to recent searches
-  const addToRecentSearches = (searchText) => {
+  // Enhanced recent searches management
+  const addToRecentSearches = (searchText, type = 'general') => {
     if (!searchText.trim()) return;
     
     setLocalRecentSearches(prev => {
-      const filtered = prev.filter(search => search !== searchText);
-      return [searchText, ...filtered].slice(0, 10);
+      const filtered = prev.filter(search => 
+        search.query !== searchText || search.type !== type
+      );
+      return [{ query: searchText, type, timestamp: Date.now() }, ...filtered].slice(0, 10);
     });
   };
 
-  // Clear search
+  // Clear search with proper reset
   const handleClear = () => {
     console.log('🔍 Search cleared - immediate application');
     
-    // Clear debounce
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
     
     setLocalValue("");
-    onSearchChange("");
+    setSearchType('general');
+    
+    // Clear all search parameters
+    onSearchChange({
+      search: '',
+      employee_search: '',
+      line_manager_search: '',
+      job_title_search: ''
+    });
+    
     setShowSuggestions(false);
     setActiveSuggestion(-1);
     inputRef.current?.focus();
+  };
+
+  // Handle focus
+  const handleFocus = () => {
+    setIsFocused(true);
+    setShowSuggestions(localValue.length > 0 || localRecentSearches.length > 0);
+  };
+
+  // Handle blur with delay
+  const handleBlur = () => {
+    setIsFocused(false);
+    setTimeout(() => setShowSuggestions(false), 200);
   };
 
   // Clear recent searches
@@ -227,6 +358,22 @@ const SearchBar = ({
     setLocalRecentSearches([]);
     setShowSuggestions(false);
   };
+
+  // Search type indicator
+  const getSearchTypeInfo = () => {
+    switch (searchType) {
+      case 'email':
+        return { icon: Mail, label: 'Email Search', color: 'text-blue-500' };
+      case 'employee_id':
+        return { icon: Hash, label: 'Employee ID', color: 'text-green-500' };
+      case 'job_title':
+        return { icon: Briefcase, label: 'Job Title', color: 'text-purple-500' };
+      default:
+        return { icon: Search, label: 'General Search', color: 'text-gray-500' };
+    }
+  };
+
+  const searchTypeInfo = getSearchTypeInfo();
 
   // Click outside to close suggestions
   useEffect(() => {
@@ -252,12 +399,22 @@ const SearchBar = ({
   }, []);
 
   return (
-    <div className="relative flex-1 max-w-md">
+    <div className="relative flex-1 max-w-lg">
       {/* Search Input */}
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        {/* Search Type Indicator */}
+        {localValue && searchType !== 'general' && (
+          <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none z-10">
+            <div className={`flex items-center px-2 py-1 rounded text-xs font-medium ${searchTypeInfo.color} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600`}>
+              <searchTypeInfo.icon size={12} className="mr-1" />
+              {searchTypeInfo.label}
+            </div>
+          </div>
+        )}
+        
+        <div className={`absolute inset-y-0 ${localValue && searchType !== 'general' ? 'left-24' : 'left-0'} pl-3 flex items-center pointer-events-none transition-all duration-200`}>
           <Search 
-            className={`h-4 w-4 ${isFocused ? 'text-almet-sapphire' : textMuted}`} 
+            className={`h-4 w-4 ${isFocused ? 'text-almet-sapphire' : textMuted} ${isLoading ? 'animate-pulse' : ''}`} 
             aria-hidden="true" 
           />
         </div>
@@ -271,7 +428,7 @@ const SearchBar = ({
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={`
-            block w-full pl-10 pr-12 py-2.5 text-sm
+            block w-full ${localValue && searchType !== 'general' ? 'pl-28' : 'pl-10'} pr-12 py-3 text-sm
             ${bgInput} ${textPrimary}
             border ${isFocused ? borderFocus : borderColor}
             rounded-lg
@@ -279,10 +436,12 @@ const SearchBar = ({
             placeholder:${textMuted}
             transition-all duration-200
             outline-none
+            ${isLoading ? 'opacity-75' : ''}
           `}
           placeholder={placeholder}
           autoComplete="off"
           spellCheck="false"
+          disabled={isLoading}
         />
 
         {/* Action buttons */}
@@ -293,6 +452,7 @@ const SearchBar = ({
               onClick={onAdvancedSearch}
               className={`p-1 mr-1 ${textMuted} hover:text-almet-sapphire transition-colors rounded`}
               title="Advanced search"
+              disabled={isLoading}
             >
               <Filter size={16} />
             </button>
@@ -303,21 +463,27 @@ const SearchBar = ({
               onClick={handleClear}
               className={`p-1 mr-2 ${textMuted} hover:text-red-500 transition-colors rounded`}
               title="Clear search"
+              disabled={isLoading}
             >
               <X size={16} />
             </button>
           )}
+          {isLoading && (
+            <div className="p-1 mr-2">
+              <div className="w-4 h-4 border border-almet-sapphire border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Search Suggestions */}
+      {/* Enhanced Search Suggestions */}
       {showSuggestions && currentSuggestions.length > 0 && (
         <div className={`
           absolute z-50 w-full mt-1 
           ${bgSuggestion} 
           border ${borderColor} 
           rounded-lg shadow-lg 
-          max-h-60 overflow-y-auto
+          max-h-80 overflow-y-auto
         `}>
           <div className="py-1">
             {/* Recent searches header */}
@@ -342,11 +508,11 @@ const SearchBar = ({
               const Icon = suggestion.icon;
               return (
                 <button
-                  key={index}
+                  key={`${suggestion.type}-${suggestion.text}-${index}`}
                   type="button"
                   onClick={() => handleSuggestionClick(suggestion)}
                   className={`
-                    w-full px-4 py-2 text-left text-sm
+                    w-full px-4 py-3 text-left text-sm
                     ${activeSuggestion === index 
                       ? 'bg-almet-sapphire text-white' 
                       : `${textPrimary} hover:${bgSuggestionHover}`
@@ -356,17 +522,38 @@ const SearchBar = ({
                   `}
                 >
                   <Icon 
-                    size={14} 
-                    className={`mr-3 ${
+                    size={16} 
+                    className={`mr-3 flex-shrink-0 ${
                       activeSuggestion === index ? 'text-white' : 
                       suggestion.type === 'recent' ? 'text-gray-400' :
                       suggestion.type === 'email' ? 'text-blue-500' :
+                      suggestion.type === 'employee_id' ? 'text-green-500' :
+                      suggestion.type === 'job_title' ? 'text-purple-500' :
+                      suggestion.type === 'employee' ? 'text-indigo-500' :
                       'text-gray-500'
                     }`} 
                   />
-                  <span className="truncate flex-1">
-                    {suggestion.text}
-                  </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center">
+                      <span className="truncate font-medium">
+                        {suggestion.text}
+                      </span>
+                      {suggestion.subtitle && (
+                        <span className={`ml-2 text-xs ${
+                          activeSuggestion === index ? 'text-white/70' : textMuted
+                        }`}>
+                          ({suggestion.subtitle})
+                        </span>
+                      )}
+                    </div>
+                    {suggestion.description && (
+                      <div className={`text-xs mt-0.5 ${
+                        activeSuggestion === index ? 'text-white/70' : textMuted
+                      }`}>
+                        {suggestion.description}
+                      </div>
+                    )}
+                  </div>
                   {suggestion.type === 'recent' && (
                     <span className={`text-xs ml-2 ${
                       activeSuggestion === index ? 'text-white/70' : textMuted
@@ -379,21 +566,30 @@ const SearchBar = ({
             })}
           </div>
           
-          {/* Search tips */}
+          {/* Enhanced search tips */}
           {localValue && (
-            <div className={`border-t ${borderColor} px-4 py-2`}>
-              <p className={`text-xs ${textMuted}`}>
-                <strong>Tip:</strong> Press Enter to search immediately or use quotes for exact matches
-              </p>
+            <div className={`border-t ${borderColor} px-4 py-3`}>
+              <div className={`text-xs ${textMuted}`}>
+                <div className="flex items-center mb-1">
+                  <strong>Search Tips:</strong>
+                </div>
+                <ul className="space-y-1 ml-2">
+                  <li>• Use @ for email search (e.g., john@company.com)</li>
+                  <li>• Use ID format for employee search (e.g., HLD123)</li>
+                  <li>• Type job titles for position-based search</li>
+                  <li>• Press Tab or Enter to select highlighted option</li>
+                </ul>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Search Status */}
-      {localValue && !showSuggestions && (
+      {/* Loading State */}
+      {isLoading && localValue && !showSuggestions && (
         <div className="absolute z-40 w-full mt-1">
-          <div className={`text-xs ${textMuted} px-2 py-1 ${bgSuggestion} border ${borderColor} rounded-lg`}>
+          <div className={`text-xs ${textMuted} px-3 py-2 ${bgSuggestion} border ${borderColor} rounded-lg flex items-center`}>
+            <div className="w-3 h-3 border border-almet-sapphire border-t-transparent rounded-full animate-spin mr-2"></div>
             Searching for "{localValue}"...
           </div>
         </div>

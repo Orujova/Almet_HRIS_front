@@ -1,13 +1,13 @@
-// src/components/headcount/AdvancedFilterPanel.jsx - FIXED: Backend API Integration
-import { useState, useEffect, useMemo } from "react";
-import { X, Search, AlertCircle, Filter, Check, ChevronDown } from "lucide-react";
+// src/components/headcount/AdvancedFilterPanel.jsx - COMPLETELY FIXED: Uncheck support and clear functionality
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { X, Search, AlertCircle, Filter, Check, ChevronDown, RefreshCw } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import MultiSelectDropdown from "./MultiSelectDropdown";
 import { useReferenceData } from "../../hooks/useReferenceData";
 import { useEmployees } from "../../hooks/useEmployees";
 
 /**
- * FIXED Advanced Filter Panel with proper backend API integration
+ * Advanced Filter Panel with COMPLETELY FIXED multi-select handling and clear functionality
  */
 const AdvancedFilterPanel = ({ 
   onApply, 
@@ -17,44 +17,19 @@ const AdvancedFilterPanel = ({
   const { darkMode } = useTheme();
 
   // ========================================
-  // HOOKS FOR DATA - FIXED API Integration
+  // HOOKS FOR DATA
   // ========================================
   const {
-    // Raw reference data
-    businessFunctions = [],
-    departments = [],
-    units = [],
-    jobFunctions = [],
-    positionGroups = [],
-    employeeStatuses = [],
-    employeeTags = [],
-    contractConfigs = [],
-    
-    // Formatted data helpers
-    getFormattedBusinessFunctions,
-    getFormattedDepartments,
-    getFormattedUnits,
-    getFormattedJobFunctions,
-    getFormattedPositionGroups,
-    getFormattedEmployeeStatuses,
-    getFormattedEmployeeTags,
-    getFormattedContractConfigs,
-    
-    // Loading and error states
+    businessFunctionsDropdown = [],
+    departmentsDropdown = [],
+    unitsDropdown = [],
+    jobFunctionsDropdown = [],
+    positionGroupsDropdown = [],
+    employeeStatusesDropdown = [],
+    employeeTagsDropdown = [],
+    contractConfigsDropdown = [],
     loading = {},
     error = {},
-    
-    // Data availability checks
-    hasBusinessFunctions,
-    hasDepartments,
-    hasUnits,
-    hasJobFunctions,
-    hasPositionGroups,
-    hasEmployeeStatuses,
-    hasEmployeeTags,
-    hasContractConfigs,
-    
-    // Fetch actions
     fetchBusinessFunctions,
     fetchDepartments,
     fetchUnits,
@@ -62,455 +37,545 @@ const AdvancedFilterPanel = ({
     fetchPositionGroups,
     fetchEmployeeStatuses,
     fetchEmployeeTags,
-    fetchContractConfigs
+    fetchContractConfigs,
+    loadDepartmentsForBusinessFunction,
+    loadUnitsForDepartment
   } = useReferenceData();
 
-  // Get employees for line manager and employee filtering
   const {
     formattedEmployees = [],
-    loading: employeesLoading = {}
+    loading: employeesLoading = {},
+    fetchEmployees,
+    statistics = {}
   } = useEmployees();
 
   // ========================================
-  // LOCAL FILTER STATE - BACKEND COMPATIBLE
+  // SAFE STRING UTILITY FUNCTIONS
+  // ========================================
+  
+  const safeString = (value) => {
+    if (value === null || value === undefined) return '';
+    return String(value).trim();
+  };
+
+  const safeLocaleCompare = (a, b, field = 'label') => {
+    const aValue = safeString(a[field]);
+    const bValue = safeString(b[field]);
+    return aValue.localeCompare(bValue);
+  };
+
+  // ========================================
+  // LOCAL FILTER STATE - BACKEND COMPATIBLE (COMPLETELY FIXED)
   // ========================================
   const [filters, setFilters] = useState({
-    // Search filters
-    search: "",
-    employee_search: "",
-    line_manager_search: "",
-    job_title_search: "",
+    // Search fields
+    search: initialFilters.search || "",
+    employee_search: initialFilters.employee_search || "",
+    line_manager_search: initialFilters.line_manager_search || "",
+    job_title_search: initialFilters.job_title_search || "",
     
-    // Multi-select organizational filters
-    business_function: [],
-    department: [],
-    unit: [],
-    job_function: [],
-    position_group: [],
+    // Multi-select arrays
+    business_function: Array.isArray(initialFilters.business_function) ? initialFilters.business_function : [],
+    department: Array.isArray(initialFilters.department) ? initialFilters.department : [],
+    unit: Array.isArray(initialFilters.unit) ? initialFilters.unit : [],
+    job_function: Array.isArray(initialFilters.job_function) ? initialFilters.job_function : [],
+    position_group: Array.isArray(initialFilters.position_group) ? initialFilters.position_group : [],
+    status: Array.isArray(initialFilters.status) ? initialFilters.status : [],
+    grading_level: Array.isArray(initialFilters.grading_level) ? initialFilters.grading_level : [],
+    contract_duration: Array.isArray(initialFilters.contract_duration) ? initialFilters.contract_duration : [],
+    line_manager: Array.isArray(initialFilters.line_manager) ? initialFilters.line_manager : [],
+    tags: Array.isArray(initialFilters.tags) ? initialFilters.tags : [],
+    gender: Array.isArray(initialFilters.gender) ? initialFilters.gender : [],
     
-    // Employment details
-    status: [],
-    grading_level: [],
-    contract_duration: [],
+    // Date fields
+    start_date_from: initialFilters.start_date_from || "",
+    start_date_to: initialFilters.start_date_to || "",
+    contract_end_date_from: initialFilters.contract_end_date_from || "",
+    contract_end_date_to: initialFilters.contract_end_date_to || "",
     
-    // Management
-    line_manager: [],
-
+    // Numeric fields
+    years_of_service_min: initialFilters.years_of_service_min || "",
+    years_of_service_max: initialFilters.years_of_service_max || "",
+    contract_expiring_days: initialFilters.contract_expiring_days || "",
     
-    // Tags
-    tags: [],
-    tag_types: [],
-    
-    // Date ranges
-    start_date_from: "",
-    start_date_to: "",
-    contract_end_date_from: "",
-    contract_end_date_to: "",
-    
-    // Personal information
-    gender: [],
-    
-    // Additional filters
-    years_of_service_min: "",
-    years_of_service_max: "",
-  
-    is_active: "",
-    
-    ...initialFilters
+    // Boolean fields
+    is_active: initialFilters.is_active || "",
+    is_visible_in_org_chart: initialFilters.is_visible_in_org_chart || "",
+    status_needs_update: initialFilters.status_needs_update || ""
   });
 
-  // Theme classes
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
+  // ========================================
+  // THEME CLASSES
+  // ========================================
+  const bgPanel = darkMode ? "bg-gray-800" : "bg-white";
+  const bgInput = darkMode ? "bg-gray-700" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
   const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const inputBg = darkMode ? "bg-gray-700" : "bg-gray-50";
+  const borderColor = darkMode ? "border-gray-600" : "border-gray-300";
+  const inputBg = darkMode ? "bg-gray-700" : "bg-white";
 
   // ========================================
-  // INITIALIZATION - FETCH REFERENCE DATA
+  // INITIALIZE REFERENCE DATA
   // ========================================
-  
-  useEffect(() => {
-    const initializeData = async () => {
-      console.log('🔄 AdvancedFilterPanel: Initializing reference data...');
-      
-      const fetchPromises = [];
-      
-      // Fetch business functions if not loaded
-      if (!hasBusinessFunctions() && !loading.businessFunctions && fetchBusinessFunctions) {
-        console.log('🏭 Fetching business functions...');
-        fetchPromises.push(fetchBusinessFunctions());
-      }
-      
-      // Fetch departments if not loaded
-      if (!hasDepartments() && !loading.departments && fetchDepartments) {
-        console.log('🏢 Fetching departments...');
-        fetchPromises.push(fetchDepartments());
-      }
-      
-      // Fetch units if not loaded
-      if (!hasUnits() && !loading.units && fetchUnits) {
-        console.log('🏠 Fetching units...');
-        fetchPromises.push(fetchUnits());
-      }
-      
-      // Fetch job functions if not loaded
-      if (!hasJobFunctions() && !loading.jobFunctions && fetchJobFunctions) {
-        console.log('💼 Fetching job functions...');
-        fetchPromises.push(fetchJobFunctions());
-      }
-      
-      // Fetch position groups if not loaded
-      if (!hasPositionGroups() && !loading.positionGroups && fetchPositionGroups) {
-        console.log('📊 Fetching position groups...');
-        fetchPromises.push(fetchPositionGroups());
-      }
-      
-      // Fetch employee statuses if not loaded
-      if (!hasEmployeeStatuses() && !loading.employeeStatuses && fetchEmployeeStatuses) {
-        console.log('🎯 Fetching employee statuses...');
-        fetchPromises.push(fetchEmployeeStatuses());
-      }
-      
-      // Fetch employee tags if not loaded
-      if (!hasEmployeeTags() && !loading.employeeTags && fetchEmployeeTags) {
-        console.log('🏷️ Fetching employee tags...');
-        fetchPromises.push(fetchEmployeeTags());
-      }
-      
-      // Fetch contract configs if not loaded
-      if (!hasContractConfigs() && !loading.contractConfigs && fetchContractConfigs) {
-        console.log('📋 Fetching contract configs...');
-        fetchPromises.push(fetchContractConfigs());
-      }
-      
-      if (fetchPromises.length > 0) {
-        try {
-          await Promise.all(fetchPromises);
-          console.log('✅ Reference data initialization completed');
-        } catch (error) {
-          console.error('❌ Failed to initialize reference data:', error);
-        }
-      }
-    };
-
-    initializeData();
+  const initializeReferenceData = useCallback(async () => {
+    console.log('🔄 ADVANCED FILTER: Initializing all reference data...');
+    
+    const promises = [
+      fetchBusinessFunctions?.(),
+      fetchDepartments?.(),
+      fetchUnits?.(),
+      fetchJobFunctions?.(),
+      fetchPositionGroups?.(),
+      fetchEmployeeStatuses?.(),
+      fetchEmployeeTags?.(),
+      fetchContractConfigs?.(),
+      fetchEmployees?.({ limit: 5000 }) // Get all employees for dropdowns
+    ].filter(Boolean);
+    
+    try {
+      await Promise.allSettled(promises);
+      console.log('✅ ADVANCED FILTER: Reference data initialization completed');
+    } catch (error) {
+      console.error('❌ ADVANCED FILTER: Reference data initialization failed:', error);
+    }
   }, [
-    hasBusinessFunctions,
-    hasDepartments,
-    hasUnits,
-    hasJobFunctions,
-    hasPositionGroups,
-    hasEmployeeStatuses,
-    hasEmployeeTags,
-    hasContractConfigs,
-    loading,
-    fetchBusinessFunctions,
-    fetchDepartments,
-    fetchUnits,
-    fetchJobFunctions,
-    fetchPositionGroups,
-    fetchEmployeeStatuses,
-    fetchEmployeeTags,
-    fetchContractConfigs
+    fetchBusinessFunctions, fetchDepartments, fetchUnits, fetchJobFunctions,
+    fetchPositionGroups, fetchEmployeeStatuses, fetchEmployeeTags, 
+    fetchContractConfigs, fetchEmployees
   ]);
 
+  useEffect(() => {
+    initializeReferenceData();
+  }, [initializeReferenceData]);
+
   // ========================================
-  // DATA PREPARATION - BACKEND COMPATIBLE
+  // PREPARE OPTIONS WITH ERROR HANDLING
   // ========================================
 
-  // Employee options for search and line manager selection
+  // Employee options for dropdown
   const employeeOptions = useMemo(() => {
-    if (!formattedEmployees || formattedEmployees.length === 0) {
+    console.log('👥 Preparing employee options for dropdown...');
+    
+    if (!Array.isArray(formattedEmployees)) {
+      console.warn('⚠️ formattedEmployees is not an array:', formattedEmployees);
       return [];
     }
 
-    return formattedEmployees.map(emp => ({
-      id: emp.id,
-      value: emp.id,
-      label: emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-      name: emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-      employee_id: emp.employee_id,
-      email: emp.email,
-      jobTitle: emp.jobTitle || emp.job_title,
-      departmentName: emp.departmentInfo || emp.department_name,
-      isLineManager: emp.managementInfo?.isLineManager || emp.direct_reports_count > 0,
-      directReportsCount: emp.managementInfo?.directReportsCount || emp.direct_reports_count || 0
-    }));
+    const options = formattedEmployees
+      .filter(emp => {
+        if (!emp || typeof emp !== 'object') {
+          console.warn('⚠️ Invalid employee object:', emp);
+          return false;
+        }
+        return emp.is_active !== false;
+      })
+      .map(emp => ({
+        value: emp.id || emp.employee_id || '',
+        label: safeString(emp.fullName || emp.displayName || emp.name) || 'Unknown Employee',
+        subtitle: `${safeString(emp.jobTitle)} - ${safeString(emp.departmentName)}`,
+        searchText: `${safeString(emp.fullName)} ${safeString(emp.email)} ${safeString(emp.employeeId)} ${safeString(emp.jobTitle)} ${safeString(emp.departmentName)}`,
+        email: safeString(emp.email),
+        employee_id: safeString(emp.employeeId),
+        job_title: safeString(emp.jobTitle),
+        department_name: safeString(emp.departmentName),
+        business_function_name: safeString(emp.businessFunctionName)
+      }))
+      .filter(emp => emp.label !== 'Unknown Employee')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed employee options:', options.length, 'employees');
+    return options;
   }, [formattedEmployees]);
 
-  // Line manager options (only employees who are or can be managers)
-  const lineManagerOptions = useMemo(() => {
-    return employeeOptions
-      .filter(emp => emp.isLineManager || emp.directReportsCount > 0)
-      .sort((a, b) => b.directReportsCount - a.directReportsCount);
-  }, [employeeOptions]);
-
-  // Job titles from employees
-  const jobTitleOptions = useMemo(() => {
-    if (!formattedEmployees || formattedEmployees.length === 0) {
-      return [];
-    }
-
-    const jobTitles = [...new Set(
-      formattedEmployees
-        .map(emp => emp.jobTitle || emp.job_title)
-        .filter(Boolean)
-    )].sort();
-
-    return jobTitles.map(title => ({
-      value: title,
-      label: title,
-      name: title
-    }));
-  }, [formattedEmployees]);
-
-  // Business Functions with safe formatting
+  // Business Function options
   const businessFunctionOptions = useMemo(() => {
-    let bfs = [];
+    console.log('🏭 Raw businessFunctionsDropdown:', businessFunctionsDropdown);
     
-    try {
-      if (getFormattedBusinessFunctions && typeof getFormattedBusinessFunctions === 'function') {
-        bfs = getFormattedBusinessFunctions() || [];
-      }
-      
-      if (bfs.length === 0 && Array.isArray(businessFunctions)) {
-        bfs = businessFunctions.map(bf => ({
-          value: bf.id || bf.value,
-          label: bf.name || bf.label,
-          code: bf.code,
-          employee_count: bf.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting business functions:', error);
-      bfs = [];
+    if (!Array.isArray(businessFunctionsDropdown)) {
+      console.warn('⚠️ businessFunctionsDropdown is not an array:', businessFunctionsDropdown);
+      return [];
     }
-    
-    return bfs;
-  }, [businessFunctions, getFormattedBusinessFunctions]);
 
-  // Departments with safe formatting
+    const options = businessFunctionsDropdown
+      .filter(bf => {
+        if (!bf || typeof bf !== 'object') {
+          console.warn('⚠️ Invalid business function object:', bf);
+          return false;
+        }
+        return bf.is_active !== false;
+      })
+      .map(bf => ({
+        value: bf.value || bf.id || '',
+        label: safeString(bf.label || bf.name || bf.display_name) || 'Unknown Business Function',
+        code: safeString(bf.code),
+        employee_count: bf.employee_count || 0
+      }))
+      .filter(bf => bf.label !== 'Unknown Business Function')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed business function options:', options.length, 'business functions');
+    return options;
+  }, [businessFunctionsDropdown]);
+
+  // Department options - filtered by selected business function
   const departmentOptions = useMemo(() => {
-    let depts = [];
+    console.log('🏢 Raw departmentsDropdown:', departmentsDropdown);
+    console.log('🏢 Selected business functions:', filters.business_function);
     
-    try {
-      if (getFormattedDepartments && typeof getFormattedDepartments === 'function') {
-        depts = getFormattedDepartments() || [];
+    if (!Array.isArray(departmentsDropdown)) {
+      console.warn('⚠️ departmentsDropdown is not an array:', departmentsDropdown);
+      return [];
+    }
+
+    let filteredDepartments = departmentsDropdown.filter(dept => {
+      if (!dept || typeof dept !== 'object') {
+        console.warn('⚠️ Invalid department object:', dept);
+        return false;
       }
-      
-      if (depts.length === 0 && Array.isArray(departments)) {
-        depts = departments.map(dept => ({
-          value: dept.id || dept.value,
-          label: dept.name || dept.label,
-          business_function: dept.business_function || dept.businessFunction,
-          business_function_name: dept.business_function_name || dept.businessFunctionName,
-          employee_count: dept.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting departments:', error);
-      depts = [];
+      return dept.is_active !== false;
+    });
+    
+    // ONLY filter by business function if business function is selected
+    // Otherwise show ALL departments
+    if (filters.business_function.length > 0) {
+      console.log('🏢 Filtering departments by business function:', filters.business_function);
+      filteredDepartments = filteredDepartments.filter(dept => 
+        filters.business_function.includes(dept.business_function?.toString())
+      );
     }
     
-    return depts;
-  }, [departments, getFormattedDepartments]);
+    const options = filteredDepartments.map(dept => ({
+      value: dept.value || dept.id || '',
+      label: safeString(dept.label || dept.name || dept.display_name) || 'Unknown Department',
+      business_function: dept.business_function || '',
+      business_function_name: safeString(dept.business_function_name || dept.business_function_code),
+      employee_count: dept.employee_count || 0
+    }))
+    .filter(dept => dept.label !== 'Unknown Department')
+    .sort((a, b) => {
+      const bfCompare = safeLocaleCompare(a, b, 'business_function_name');
+      return bfCompare === 0 ? safeLocaleCompare(a, b, 'label') : bfCompare;
+    });
 
-  // Units with safe formatting
+    console.log('✅ Processed department options:', options.length, 'departments');
+    return options;
+  }, [departmentsDropdown, filters.business_function]);
+
+  // Units options - filtered by selected department
   const unitOptions = useMemo(() => {
-    let units_list = [];
+    console.log('🏢 Raw unitsDropdown:', unitsDropdown);
     
-    try {
-      if (getFormattedUnits && typeof getFormattedUnits === 'function') {
-        units_list = getFormattedUnits() || [];
+    if (!Array.isArray(unitsDropdown)) {
+      console.warn('⚠️ unitsDropdown is not an array:', unitsDropdown);
+      return [];
+    }
+
+    let filteredUnits = unitsDropdown.filter(unit => {
+      if (!unit || typeof unit !== 'object') {
+        console.warn('⚠️ Invalid unit object:', unit);
+        return false;
       }
-      
-      if (units_list.length === 0 && Array.isArray(units)) {
-        units_list = units.map(unit => ({
-          value: unit.id || unit.value,
-          label: unit.name || unit.label,
-          department: unit.department,
-          department_name: unit.department_name || unit.departmentName,
-          business_function_name: unit.business_function_name || unit.businessFunctionName,
-          employee_count: unit.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting units:', error);
-      units_list = [];
+      return unit.is_active !== false;
+    });
+    
+    // Filter by selected department if any
+    if (filters.department.length > 0) {
+      filteredUnits = filteredUnits.filter(unit => 
+        filters.department.includes(unit.department?.toString())
+      );
     }
     
-    return units_list;
-  }, [units, getFormattedUnits]);
+    const options = filteredUnits.map(unit => ({
+      value: unit.value || unit.id || '',
+      label: safeString(unit.label || unit.name || unit.display_name) || 'Unknown Unit',
+      department: unit.department || '',
+      department_name: safeString(unit.department_name),
+      business_function_name: safeString(unit.business_function_name),
+      employee_count: unit.employee_count || 0
+    }))
+    .filter(unit => unit.label !== 'Unknown Unit')
+    .sort((a, b) => safeLocaleCompare(a, b, 'label'));
 
-  // Job Functions with safe formatting
+    console.log('✅ Processed unit options:', options);
+    return options;
+  }, [unitsDropdown, filters.department]);
+
+  // Job Functions options
   const jobFunctionOptions = useMemo(() => {
-    let jfs = [];
+    console.log('💼 Raw jobFunctionsDropdown:', jobFunctionsDropdown);
     
-    try {
-      if (getFormattedJobFunctions && typeof getFormattedJobFunctions === 'function') {
-        jfs = getFormattedJobFunctions() || [];
-      }
-      
-      if (jfs.length === 0 && Array.isArray(jobFunctions)) {
-        jfs = jobFunctions.map(jf => ({
-          value: jf.id || jf.value,
-          label: jf.name || jf.label,
-          description: jf.description,
-          employee_count: jf.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting job functions:', error);
-      jfs = [];
+    if (!Array.isArray(jobFunctionsDropdown)) {
+      console.warn('⚠️ jobFunctionsDropdown is not an array:', jobFunctionsDropdown);
+      return [];
     }
-    
-    return jfs;
-  }, [jobFunctions, getFormattedJobFunctions]);
 
-  // Position Groups with safe formatting
+    const options = jobFunctionsDropdown
+      .filter(jf => {
+        if (!jf || typeof jf !== 'object') {
+          console.warn('⚠️ Invalid job function object:', jf);
+          return false;
+        }
+        return jf.is_active !== false;
+      })
+      .map(jf => ({
+        value: jf.value || jf.id || '',
+        label: safeString(jf.label || jf.name || jf.display_name) || 'Unknown Job Function',
+        employee_count: jf.employee_count || 0
+      }))
+      .filter(jf => jf.label !== 'Unknown Job Function')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed job function options:', options.length, 'job functions');
+    return options;
+  }, [jobFunctionsDropdown]);
+
+  // Position Group options
   const positionGroupOptions = useMemo(() => {
-    let pgs = [];
+    console.log('📊 Raw positionGroupsDropdown:', positionGroupsDropdown);
     
-    try {
-      if (getFormattedPositionGroups && typeof getFormattedPositionGroups === 'function') {
-        pgs = getFormattedPositionGroups() || [];
-      }
-      
-      if (pgs.length === 0 && Array.isArray(positionGroups)) {
-        pgs = positionGroups.map(pg => ({
-          value: pg.id || pg.value,
-          label: pg.display_name || pg.label || pg.name,
-          hierarchy_level: pg.hierarchy_level,
-          employee_count: pg.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting position groups:', error);
-      pgs = [];
+    if (!Array.isArray(positionGroupsDropdown)) {
+      console.warn('⚠️ positionGroupsDropdown is not an array:', positionGroupsDropdown);
+      return [];
     }
-    
-    return pgs.sort((a, b) => (a.hierarchy_level || 0) - (b.hierarchy_level || 0));
-  }, [positionGroups, getFormattedPositionGroups]);
 
-  // Employee Statuses with safe formatting
+    const options = positionGroupsDropdown
+      .filter(pg => {
+        if (!pg || typeof pg !== 'object') {
+          console.warn('⚠️ Invalid position group object:', pg);
+          return false;
+        }
+        return pg.is_active !== false;
+      })
+      .map(pg => ({
+        value: pg.value || pg.id || '',
+        label: safeString(pg.label || pg.name || pg.display_name) || 'Unknown Position Group',
+        hierarchy_level: pg.hierarchy_level || 0,
+        grading_shorthand: safeString(pg.grading_shorthand),
+        employee_count: pg.employee_count || 0
+      }))
+      .filter(pg => pg.label !== 'Unknown Position Group')
+      .sort((a, b) => (a.hierarchy_level || 0) - (b.hierarchy_level || 0));
+
+    console.log('✅ Processed position group options:', options.length, 'position groups');
+    return options;
+  }, [positionGroupsDropdown]);
+
+  // Status options
   const statusOptions = useMemo(() => {
-    let statuses = [];
+    console.log('📊 Raw employeeStatusesDropdown:', employeeStatusesDropdown);
     
-    try {
-      if (getFormattedEmployeeStatuses && typeof getFormattedEmployeeStatuses === 'function') {
-        statuses = getFormattedEmployeeStatuses() || [];
-      }
-      
-      if (statuses.length === 0 && Array.isArray(employeeStatuses)) {
-        statuses = employeeStatuses.map(status => ({
-          value: status.id || status.value,
-          label: status.name || status.label,
-          color: status.color,
-          affects_headcount: status.affects_headcount,
-          employee_count: status.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting employee statuses:', error);
-      statuses = [];
+    if (!Array.isArray(employeeStatusesDropdown)) {
+      console.warn('⚠️ employeeStatusesDropdown is not an array:', employeeStatusesDropdown);
+      return [];
     }
-    
-    return statuses.sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [employeeStatuses, getFormattedEmployeeStatuses]);
 
-  // Employee Tags with safe formatting
+    const options = employeeStatusesDropdown
+      .filter(status => {
+        if (!status || typeof status !== 'object') {
+          console.warn('⚠️ Invalid status object:', status);
+          return false;
+        }
+        return status.is_active !== false;
+      })
+      .map(status => ({
+        value: status.value || status.id || '',
+        label: safeString(status.label || status.name || status.display_name) || 'Unknown Status',
+        color: status.color,
+        employee_count: status.employee_count || 0
+      }))
+      .filter(status => status.label !== 'Unknown Status')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed status options:', options.length, 'statuses');
+    return options;
+  }, [employeeStatusesDropdown]);
+
+  // Tags options
   const tagOptions = useMemo(() => {
-    let tags = [];
+    console.log('🏷️ Raw employeeTagsDropdown:', employeeTagsDropdown);
     
-    try {
-      if (getFormattedEmployeeTags && typeof getFormattedEmployeeTags === 'function') {
-        tags = getFormattedEmployeeTags() || [];
-      }
-      
-      if (tags.length === 0 && Array.isArray(employeeTags)) {
-        tags = employeeTags.map(tag => ({
-          value: tag.id || tag.value,
-          label: tag.name || tag.label,
-          tag_type: tag.tag_type,
-          color: tag.color,
-          employee_count: tag.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting employee tags:', error);
-      tags = [];
+    if (!Array.isArray(employeeTagsDropdown)) {
+      console.warn('⚠️ employeeTagsDropdown is not an array:', employeeTagsDropdown);
+      return [];
     }
-    
-    return tags;
-  }, [employeeTags, getFormattedEmployeeTags]);
 
-  // Contract Durations with safe formatting
+    const options = employeeTagsDropdown
+      .filter(tag => {
+        if (!tag || typeof tag !== 'object') {
+          console.warn('⚠️ Invalid tag object:', tag);
+          return false;
+        }
+        return tag.is_active !== false;
+      })
+      .map(tag => ({
+        value: tag.value || tag.id || '',
+        label: safeString(tag.label || tag.name || tag.display_name) || 'Unknown Tag',
+        color: tag.color,
+        employee_count: tag.employee_count || 0
+      }))
+      .filter(tag => tag.label !== 'Unknown Tag')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed tag options:', options.length, 'tags');
+    return options;
+  }, [employeeTagsDropdown]);
+
+  // Contract Duration options
   const contractDurationOptions = useMemo(() => {
-    let configs = [];
+    console.log('📋 Raw contractConfigsDropdown:', contractConfigsDropdown);
     
-    try {
-      if (getFormattedContractConfigs && typeof getFormattedContractConfigs === 'function') {
-        configs = getFormattedContractConfigs() || [];
-      }
-      
-      if (configs.length === 0 && Array.isArray(contractConfigs)) {
-        configs = contractConfigs.map(config => ({
-          value: config.contract_type || config.value,
-          label: config.display_name || config.label,
-          onboarding_days: config.onboarding_days,
-          probation_days: config.probation_days,
-          employee_count: config.employee_count
-        }));
-      }
-    } catch (error) {
-      console.error('❌ Error formatting contract configs:', error);
-      configs = [];
+    if (!Array.isArray(contractConfigsDropdown)) {
+      console.warn('⚠️ contractConfigsDropdown is not an array:', contractConfigsDropdown);
+      return [];
     }
+
+    const options = contractConfigsDropdown
+      .filter(contract => {
+        if (!contract || typeof contract !== 'object') {
+          console.warn('⚠️ Invalid contract object:', contract);
+          return false;
+        }
+        return contract.is_active !== false;
+      })
+      .map(contract => ({
+        value: contract.value || contract.id || '',
+        label: safeString(contract.label || contract.name || contract.display_name) || 'Unknown Contract',
+        employee_count: contract.employee_count || 0
+      }))
+      .filter(contract => contract.label !== 'Unknown Contract')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed contract duration options:', options.length, 'contracts');
+    return options;
+  }, [contractConfigsDropdown]);
+
+  // Line Manager options - from employees
+  const lineManagerOptions = useMemo(() => {
+    console.log('👨‍💼 Preparing line manager options...');
     
-    return configs;
-  }, [contractConfigs, getFormattedContractConfigs]);
+    const managers = formattedEmployees
+      .filter(emp => {
+        if (!emp || typeof emp !== 'object') return false;
+        return emp.is_active !== false && emp.direct_reports_count > 0;
+      })
+      .map(mgr => ({
+        value: mgr.id || mgr.employee_id || '',
+        label: safeString(mgr.fullName || mgr.displayName || mgr.name) || 'Unknown Manager',
+        name: safeString(mgr.fullName || mgr.displayName || mgr.name),
+        job_title: safeString(mgr.jobTitle),
+        department_name: safeString(mgr.departmentName),
+        business_function_name: safeString(mgr.businessFunctionName),
+        direct_reports_count: mgr.direct_reports_count || 0
+      }))
+      .filter(mgr => mgr.label !== 'Unknown Manager')
+      .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed line manager options:', managers.length, 'managers');
+    return managers;
+  }, [formattedEmployees]);
 
   // Static options
-  const gradeOptions = [
-    { value: "_LD", label: "-LD", description: "Lower Decile" },
-    { value: "_LQ", label: "-LQ", description: "Lower Quartile" },
-    { value: "_M", label: "-M", description: "Median" },
-    { value: "_UQ", label: "-UQ", description: "Upper Quartile" },
-    { value: "_UD", label: "-UD", description: "Upper Decile" }
-  ];
-
   const genderOptions = [
-    { value: "MALE", label: "Male" },
-    { value: "FEMALE", label: "Female" }
+    { value: 'MALE', label: 'Male' },
+    { value: 'FEMALE', label: 'Female' }
   ];
 
   const booleanOptions = [
-    { value: "", label: "All" },
-    { value: "true", label: "Yes" },
-    { value: "false", label: "No" }
+    { value: '', label: 'All' },
+    { value: 'true', label: 'Yes' },
+    { value: 'false', label: 'No' }
+  ];
+
+  const gradeOptions = [
+    { value: 'A', label: 'Grade A', description: 'Senior Level' },
+    { value: 'B', label: 'Grade B', description: 'Mid Level' },
+    { value: 'C', label: 'Grade C', description: 'Junior Level' },
+    { value: 'D', label: 'Grade D', description: 'Entry Level' }
   ];
 
   // ========================================
-  // EVENT HANDLERS
+  // FILTER CHANGE HANDLERS - FIXED
   // ========================================
+  
+  const handleInputChange = useCallback((name, value) => {
+    console.log(`🔧 Filter change: ${name} = `, value);
+    
+    const newFilters = {
+      ...filters,
+      [name]: value
+    };
+    
+    setFilters(newFilters);
+    
+    // For hierarchical filters, load dependent data but DON'T clear existing selections
+    if (name === 'business_function' && Array.isArray(value)) {
+      if (value.length > 0) {
+        value.forEach(bfId => {
+          if (bfId && loadDepartmentsForBusinessFunction) {
+            loadDepartmentsForBusinessFunction(bfId);
+          }
+        });
+      }
+    }
+    
+    if (name === 'department' && Array.isArray(value)) {
+      if (value.length > 0) {
+        value.forEach(deptId => {
+          if (deptId && loadUnitsForDepartment) {
+            loadUnitsForDepartment(deptId);
+          }
+        });
+      }
+    }
+    
+    // Apply filters AUTOMATICALLY but DON'T close panel
+    applyFilters(newFilters);
+  }, [filters, loadDepartmentsForBusinessFunction, loadUnitsForDepartment]);
 
-  const handleInputChange = (name, value) => {
-    handleInstantFilterChange(name, value);
-  };
+  const handleMultiSelectChange = useCallback((name, values) => {
+    console.log(`🔧 Multi-select change: ${name} = `, values);
+    handleInputChange(name, Array.isArray(values) ? values : []);
+  }, [handleInputChange]);
 
-  const handleMultiSelectChange = (name, values) => {
-    handleInstantFilterChange(name, Array.isArray(values) ? values : []);
-  };
+  // FIXED: Apply filters - backend compatible format with proper array handling
+  const applyFilters = useCallback((filtersToApply = filters) => {
+    console.log('🔧 Applying advanced filters:', filtersToApply);
+    
+    // Convert to backend-compatible format with PROPER ARRAY HANDLING
+    const cleanedFilters = {};
+    
+    Object.entries(filtersToApply).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // For arrays, only include if they have values
+        if (value.length > 0) {
+          // Make sure all values are clean strings/numbers
+          const cleanValues = value.filter(v => v !== null && v !== undefined && v !== '');
+          if (cleanValues.length > 0) {
+            cleanedFilters[key] = cleanValues;
+          }
+        }
+      } else if (value && value.toString().trim() !== "") {
+        cleanedFilters[key] = value.toString().trim();
+      }
+    });
 
-  // Clear all filters
-  const handleClearAll = () => {
-    setFilters({
+    console.log('✅ Cleaned filters for backend:', cleanedFilters);
+    onApply(cleanedFilters);
+  }, [filters, onApply]);
+
+  // FIXED: Clear all filters
+  const handleClearAll = useCallback(() => {
+    console.log('🧹 Clearing ALL advanced filters');
+    
+    const clearedFilters = {
+      // Search fields
       search: "",
       employee_search: "",
       line_manager_search: "",
       job_title_search: "",
+      
+      // Multi-select arrays - completely clear
       business_function: [],
       department: [],
       unit: [],
@@ -520,610 +585,609 @@ const AdvancedFilterPanel = ({
       grading_level: [],
       contract_duration: [],
       line_manager: [],
-    
       tags: [],
-      tag_types: [],
+      gender: [],
+      
+      // Date fields
       start_date_from: "",
       start_date_to: "",
       contract_end_date_from: "",
       contract_end_date_to: "",
-      gender: [],
+      
+      // Numeric fields
       years_of_service_min: "",
       years_of_service_max: "",
-   
-      is_active: ""
-    });
-  };
-
-  // Apply filters - backend compatible format - INSTANT APPLICATION
-  const handleApply = () => {
-    console.log('🔧 Applying advanced filters INSTANTLY:', filters);
-    
-    // Convert to backend-compatible format
-    const cleanedFilters = {};
-    
-    Object.entries(filters).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        if (value.length > 0) {
-          // Keep arrays as arrays for consistency with main component
-          cleanedFilters[key] = value;
-        }
-      } else if (value && value.trim && value.trim() !== "") {
-        cleanedFilters[key] = value.trim();
-      } else if (value && !value.trim) {
-        cleanedFilters[key] = value;
-      }
-    });
-
-    console.log('✅ Cleaned filters for backend - APPLYING INSTANTLY:', cleanedFilters);
-    onApply(cleanedFilters);
-  };
-
-  // INSTANT FILTER APPLICATION - No need for Apply button for most filters
-  const handleInstantFilterChange = (name, value) => {
-    console.log(`🔧 Instant filter change: ${name} = `, value);
-    
-    const newFilters = {
-      ...filters,
-      [name]: value
+      contract_expiring_days: "",
+      
+      // Boolean fields
+      is_active: "",
+      is_visible_in_org_chart: "",
+      status_needs_update: ""
     };
+    
+    setFilters(clearedFilters);
+    
+    // Apply cleared filters immediately
+    onApply(clearedFilters);
+  }, [onApply]);
+
+  // FIXED: Clear individual filter
+  const handleClearFilter = useCallback((filterKey) => {
+    console.log('🧹 Clearing individual filter:', filterKey);
+    
+    const newFilters = { ...filters };
+    
+    // Clear based on filter type
+    if (Array.isArray(filters[filterKey])) {
+      newFilters[filterKey] = [];
+    } else {
+      newFilters[filterKey] = "";
+    }
     
     setFilters(newFilters);
     
-    // For non-search filters, apply instantly
-    if (name !== 'search' && name !== 'employee_search' && name !== 'line_manager_search' && name !== 'job_title_search') {
-      const cleanedFilters = {};
-      
-      Object.entries(newFilters).forEach(([key, val]) => {
-        if (Array.isArray(val)) {
-          if (val.length > 0) {
-            cleanedFilters[key] = val;
-          }
-        } else if (val && val.trim && val.trim() !== "") {
-          cleanedFilters[key] = val.trim();
-        } else if (val && !val.trim) {
-          cleanedFilters[key] = val;
-        }
-      });
+    // Apply immediately
+    onApply(newFilters);
+  }, [filters, onApply]);
 
-      console.log('✅ Auto-applying filter change:', cleanedFilters);
-      onApply(cleanedFilters);
-    }
-  };
-
-  // Count active filters
-  const getActiveFilterCount = () => {
-    return Object.entries(filters).filter(([_, value]) => {
-      if (Array.isArray(value)) return value.length > 0;
-      return value !== "" && value !== null && value !== undefined;
-    }).length;
-  };
-
-  const activeFilterCount = getActiveFilterCount();
-
-  // Check if any data is loading
-  const isAnyDataLoading = Object.values(loading).some(Boolean) || employeesLoading.employees;
-
+  // ========================================
+  // RENDER
+  // ========================================
+  
   return (
-    <div className={`${bgCard} p-6 rounded-lg border ${borderColor} mb-6 relative`}>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center">
-          <Filter className="w-5 h-5 text-almet-sapphire mr-2" />
-          <h3 className={`text-lg font-semibold ${textPrimary}`}>
-            Advanced Filters
-          </h3>
-          {activeFilterCount > 0 && (
-            <span className="ml-3 px-2 py-1 bg-almet-sapphire text-white text-xs rounded-full">
-              {activeFilterCount} active
-            </span>
+    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50`}>
+      <div className={`${bgPanel} rounded-lg shadow-xl w-full max-w-6xl max-h-[90vh] flex flex-col`}>
+        {/* Header */}
+        <div className={`flex items-center justify-between p-6 border-b ${borderColor}`}>
+          <div>
+            <h2 className={`text-xl font-semibold ${textPrimary}`}>Advanced Filters</h2>
+            <p className={`text-sm ${textMuted} mt-1`}>
+              Apply detailed filters to refine your employee search
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Error State */}
+          {Object.values(error).some(err => err) && (
+            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-center">
+                <AlertCircle className="w-5 h-5 text-red-500 mr-2" />
+                <span className="text-sm text-red-700 dark:text-red-300">
+                  Some data failed to load. Please try refreshing.
+                </span>
+                <button
+                  onClick={initializeReferenceData}
+                  className="ml-4 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200 flex items-center"
+                >
+                  <RefreshCw size={12} className="mr-1" />
+                  Retry
+                </button>
+              </div>
+            </div>
           )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleClearAll}
-            className={`text-sm px-3 py-1 rounded ${textMuted} hover:text-red-500 transition-colors`}
-            disabled={activeFilterCount === 0}
-          >
-            Clear All
-          </button>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-          >
-            <X size={18} className={textSecondary} />
-          </button>
-        </div>
-      </div>
 
-      {/* Loading indicator */}
-      {isAnyDataLoading && (
-        <div className="mb-6 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-center">
-            <div className="w-4 h-4 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-            <span className="text-sm text-blue-800 dark:text-blue-300">
-              Loading filter options...
-            </span>
-          </div>
-        </div>
-      )}
+          {/* Filter Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left Column - Search & Organizational */}
+            <div className="space-y-4">
+              <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
+                Search & Organizational
+              </h4>
 
-      {/* Error indicator */}
-      {Object.values(error).some(Boolean) && (
-        <div className="mb-6 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <div className="flex items-center">
-            <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2" />
-            <span className="text-sm text-red-800 dark:text-red-300">
-              Some filter options may be unavailable due to loading errors.
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Filter Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Search & Basic Information */}
-        <div className="space-y-4">
-          <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
-            Search & Basic Information
-          </h4>
-
-          
-
-          {/* Specific Employee Search */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Specific Employee
-              {employeeOptions.length > 0 && (
-                <span className={`ml-2 text-xs ${textMuted}`}>
-                  ({employeeOptions.length} employees)
-                </span>
-              )}
-            </label>
-            <MultiSelectDropdown
-              options={employeeOptions.map(emp => ({
-                value: emp.id,
-                label: `${emp.name} (${emp.employee_id})`,
-                subtitle: emp.jobTitle,
-                department: emp.departmentName,
-                email: emp.email
-              }))}
-              placeholder={employeeOptions.length > 0 ? "Search by name or employee ID..." : "Loading employees..."}
-              selectedValues={filters.employee_search ? [filters.employee_search] : []}
-              onChange={(values) => handleInputChange('employee_search', values[0] || '')}
-              showSubtitles={true}
-              disabled={employeesLoading.employees || employeeOptions.length === 0}
-              searchable={true}
-              maxSelections={1}
-            />
-          </div>
-
-          {/* Job Title Search */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Job Title
-              {jobTitleOptions.length > 0 && (
-                <span className={`ml-2 text-xs ${textMuted}`}>
-                  ({jobTitleOptions.length} unique titles)
-                </span>
-              )}
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search job titles..."
-                value={filters.job_title_search}
-                onChange={(e) => handleInputChange('job_title_search', e.target.value)}
-                className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                list="job-titles-list"
-              />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <datalist id="job-titles-list">
-                {jobTitleOptions.map(option => (
-                  <option key={option.value} value={option.value} />
-                ))}
-              </datalist>
-            </div>
-          </div>
-
-          {/* Employment Status */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Employment Status
-            </label>
-            <MultiSelectDropdown
-              options={statusOptions}
-              placeholder="Select statuses..."
-              selectedValues={filters.status}
-              onChange={(values) => handleMultiSelectChange("status", values)}
-              showColors={true}
-              disabled={loading.employeeStatuses}
-              searchable={true}
-            />
-          </div>
-
-          {/* Contract Duration */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Contract Duration
-            </label>
-            <MultiSelectDropdown
-              options={contractDurationOptions}
-              placeholder="Select contract types..."
-              selectedValues={filters.contract_duration}
-              onChange={(values) => handleMultiSelectChange("contract_duration", values)}
-              disabled={loading.contractConfigs}
-              searchable={true}
-            />
-          </div>
-
-          {/* Gender */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Gender
-            </label>
-            <MultiSelectDropdown
-              options={genderOptions}
-              placeholder="Select genders..."
-              selectedValues={filters.gender}
-              onChange={(values) => handleMultiSelectChange("gender", values)}
-            />
-          </div>
-        </div>
-
-        {/* Middle Column - Organizational Structure */}
-        <div className="space-y-4">
-          <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
-            Organizational Structure
-          </h4>
-
-          {/* Business Functions */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Business Functions
-              {businessFunctionOptions.length > 0 && (
-                <span className={`ml-2 text-xs ${textMuted}`}>
-                  ({businessFunctionOptions.length} available)
-                </span>
-              )}
-            </label>
-            <MultiSelectDropdown
-              options={businessFunctionOptions}
-              placeholder={businessFunctionOptions.length > 0 ? "Select business functions..." : "Loading..."}
-              selectedValues={filters.business_function}
-              onChange={(values) => handleMultiSelectChange("business_function", values)}
-              showCodes={true}
-              disabled={loading.businessFunctions || businessFunctionOptions.length === 0}
-              searchable={true}
-            />
-          </div>
-
-          {/* Departments */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Departments
-              {departmentOptions.length > 0 && (
-                <span className={`ml-2 text-xs ${textMuted}`}>
-                  ({departmentOptions.length} available)
-                </span>
-              )}
-            </label>
-            <MultiSelectDropdown
-              options={departmentOptions}
-              placeholder={departmentOptions.length > 0 ? "Select departments..." : "Loading..."}
-              selectedValues={filters.department}
-              onChange={(values) => handleMultiSelectChange("department", values)}
-              disabled={loading.departments || departmentOptions.length === 0}
-              searchable={true}
-            />
-          </div>
-
-          {/* Units */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Units
-              {unitOptions.length > 0 && (
-                <span className={`ml-2 text-xs ${textMuted}`}>
-                  ({unitOptions.length} available)
-                </span>
-              )}
-            </label>
-            <MultiSelectDropdown
-              options={unitOptions}
-              placeholder={unitOptions.length > 0 ? "Select units..." : "Loading..."}
-              selectedValues={filters.unit}
-              onChange={(values) => handleMultiSelectChange("unit", values)}
-              disabled={loading.units || unitOptions.length === 0}
-              searchable={true}
-            />
-          </div>
-
-          {/* Job Functions */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Job Functions
-            </label>
-            <MultiSelectDropdown
-              options={jobFunctionOptions}
-              placeholder="Select job functions..."
-              selectedValues={filters.job_function}
-              onChange={(values) => handleMultiSelectChange("job_function", values)}
-              disabled={loading.jobFunctions}
-              searchable={true}
-            />
-          </div>
-
-          {/* Position Groups */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Position Groups
-            </label>
-            <MultiSelectDropdown
-              options={positionGroupOptions}
-              placeholder="Select position groups..."
-              selectedValues={filters.position_group}
-              onChange={(values) => handleMultiSelectChange("position_group", values)}
-              disabled={loading.positionGroups}
-              searchable={true}
-            />
-          </div>
-
-          {/* Grading Levels */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Grading Levels
-            </label>
-            <MultiSelectDropdown
-              options={gradeOptions}
-              placeholder="Select grades..."
-              selectedValues={filters.grading_level}
-              onChange={(values) => handleMultiSelectChange("grading_level", values)}
-              showDescriptions={true}
-            />
-          </div>
-        </div>
-
-        {/* Right Column - Management & Additional */}
-        <div className="space-y-4">
-          <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
-            Management & Additional
-          </h4>
-
-          {/* Line Manager */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Line Manager
-              {lineManagerOptions.length > 0 && (
-                <span className={`ml-2 text-xs ${textMuted}`}>
-                  ({lineManagerOptions.length} managers)
-                </span>
-              )}
-            </label>
-            <MultiSelectDropdown
-              options={lineManagerOptions.map(mgr => ({
-                value: mgr.id,
-                label: `${mgr.name} (${mgr.employee_id})`,
-                subtitle: mgr.jobTitle,
-                department: mgr.departmentName,
-                description: `${mgr.directReportsCount} reports`
-              }))}
-              placeholder={lineManagerOptions.length > 0 ? "Select line managers..." : "Loading managers..."}
-              selectedValues={filters.line_manager}
-              onChange={(values) => handleMultiSelectChange("line_manager", values)}
-              showSubtitles={true}
-              showDescriptions={true}
-              disabled={employeesLoading.employees || lineManagerOptions.length === 0}
-              searchable={true}
-            />
-          </div>
-
-       
-
-          {/* Tags */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Tags
-            </label>
-            <MultiSelectDropdown
-              options={tagOptions}
-              placeholder="Select tags..."
-              selectedValues={filters.tags}
-              onChange={(values) => handleMultiSelectChange("tags", values)}
-              showColors={true}
-              disabled={loading.employeeTags}
-              searchable={true}
-            />
-          </div>
-
-          {/* Has Documents */}
-       
-
-          {/* Is Active */}
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Is Active
-            </label>
-            <select
-              value={filters.is_active}
-              onChange={(e) => handleInputChange('is_active', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            >
-              {booleanOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Date Filters Section */}
-      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-        <h4 className={`font-medium ${textPrimary} mb-4 text-sm`}>
-          Date Ranges
-        </h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Start Date From
-            </label>
-            <input
-              type="date"
-              value={filters.start_date_from}
-              onChange={(e) => handleInputChange('start_date_from', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            />
-          </div>
-
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Start Date To
-            </label>
-            <input
-              type="date"
-              value={filters.start_date_to}
-              onChange={(e) => handleInputChange('start_date_to', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            />
-          </div>
-
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Contract End From
-            </label>
-            <input
-              type="date"
-              value={filters.contract_end_date_from}
-              onChange={(e) => handleInputChange('contract_end_date_from', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            />
-          </div>
-
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Contract End To
-            </label>
-            <input
-              type="date"
-              value={filters.contract_end_date_to}
-              onChange={(e) => handleInputChange('contract_end_date_to', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Years of Service Filter */}
-      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-        <h4 className={`font-medium ${textPrimary} mb-4 text-sm`}>
-          Years of Service
-        </h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Minimum Years
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.1"
-              placeholder="0"
-              value={filters.years_of_service_min}
-              onChange={(e) => handleInputChange('years_of_service_min', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            />
-          </div>
-
-          <div>
-            <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-              Maximum Years
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.1"
-              placeholder="No limit"
-              value={filters.years_of_service_max}
-              onChange={(e) => handleInputChange('years_of_service_max', e.target.value)}
-              className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Debug Info - Development Only */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <details className="mb-4">
-            <summary className={`cursor-pointer text-sm ${textMuted} mb-2`}>
-              Debug Information
-            </summary>
-            <div className={`text-xs ${textMuted} bg-gray-100 dark:bg-gray-800 p-3 rounded`}>
-              <div className="mb-2">
-                <strong>Data Loading Status:</strong>
-                <ul className="ml-4">
-                  <li>Business Functions: {loading.businessFunctions ? 'Loading...' : `${businessFunctionOptions.length} loaded`}</li>
-                  <li>Departments: {loading.departments ? 'Loading...' : `${departmentOptions.length} loaded`}</li>
-                  <li>Units: {loading.units ? 'Loading...' : `${unitOptions.length} loaded`}</li>
-                  <li>Job Functions: {loading.jobFunctions ? 'Loading...' : `${jobFunctionOptions.length} loaded`}</li>
-                  <li>Position Groups: {loading.positionGroups ? 'Loading...' : `${positionGroupOptions.length} loaded`}</li>
-                  <li>Employee Statuses: {loading.employeeStatuses ? 'Loading...' : `${statusOptions.length} loaded`}</li>
-                  <li>Employee Tags: {loading.employeeTags ? 'Loading...' : `${tagOptions.length} loaded`}</li>
-                  <li>Contract Configs: {loading.contractConfigs ? 'Loading...' : `${contractDurationOptions.length} loaded`}</li>
-                  <li>Employees: {employeesLoading.employees ? 'Loading...' : `${employeeOptions.length} loaded`}</li>
-                </ul>
-              </div>
-              <div className="mb-2">
-                <strong>Current Filters:</strong>
-                <pre className="whitespace-pre-wrap">
-                  {JSON.stringify(filters, null, 2)}
-                </pre>
-              </div>
+              {/* General Search */}
               <div>
-                <strong>Active Filter Count:</strong> {activeFilterCount}
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  General Search
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by name, email, employee ID..."
+                    value={filters.search}
+                    onChange={(e) => handleInputChange('search', e.target.value)}
+                    className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  {/* FIXED: Clear button for search */}
+                  {filters.search && (
+                    <button
+                      onClick={() => handleInputChange('search', '')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Employee Search Dropdown */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Select Specific Employee
+                  {employeeOptions.length > 0 && (
+                    <span className={`ml-2 text-xs ${textMuted}`}>
+                      ({employeeOptions.length} employees)
+                    </span>
+                  )}
+                </label>
+                <MultiSelectDropdown
+                  options={employeeOptions}
+                  placeholder={employeeOptions.length > 0 ? "Search and select employees..." : "Loading employees..."}
+                  selectedValues={Array.isArray(filters.employee_search) ? filters.employee_search : 
+                    filters.employee_search ? [filters.employee_search] : []}
+                  onChange={(values) => {
+                    console.log('🔧 Employee search dropdown change:', values);
+                    handleMultiSelectChange('employee_search', values);
+                  }}
+                  disabled={employeesLoading.employees}
+                  searchable={true}
+                  maxHeight="300px"
+                  showSearch={true}
+                  singleSelect={false}
+                />
+              </div>
+
+              {/* Business Function */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Business Function
+                  {businessFunctionOptions.length > 0 && (
+                    <span className={`ml-2 text-xs ${textMuted}`}>
+                      ({businessFunctionOptions.length} available)
+                    </span>
+                  )}
+                </label>
+                <MultiSelectDropdown
+                  options={businessFunctionOptions}
+                  placeholder={businessFunctionOptions.length > 0 ? "Select business functions..." : "Loading..."}
+                  selectedValues={filters.business_function}
+                  onChange={(values) => handleMultiSelectChange("business_function", values)}
+                  disabled={loading.businessFunctions}
+                  searchable={true}
+                />
+              </div>
+
+              {/* Department - SHOWS ALL or filtered by business function */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Department
+                  {departmentOptions.length > 0 && (
+                    <span className={`ml-2 text-xs ${textMuted}`}>
+                      ({departmentOptions.length} available{filters.business_function.length > 0 ? ' (filtered)' : ' (all)'})
+                    </span>
+                  )}
+                </label>
+                <MultiSelectDropdown
+                  options={departmentOptions}
+                  placeholder={
+                    departmentOptions.length > 0 
+                      ? filters.business_function.length > 0 
+                        ? "Select departments (filtered by business function)..." 
+                        : "Select departments (showing all)..."
+                      : "Loading departments..."
+                  }
+                  selectedValues={filters.department}
+                  onChange={(values) => handleMultiSelectChange("department", values)}
+                  disabled={loading.departments}
+                  searchable={true}
+                  groupBy="business_function_name"
+                />
+              </div>
+
+              {/* Unit */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Unit
+                  {unitOptions.length > 0 && (
+                    <span className={`ml-2 text-xs ${textMuted}`}>
+                      ({unitOptions.length} available)
+                    </span>
+                  )}
+                </label>
+                <MultiSelectDropdown
+                  options={unitOptions}
+                  placeholder={unitOptions.length > 0 ? "Select units..." : "Select department first..."}
+                  selectedValues={filters.unit}
+                  onChange={(values) => handleMultiSelectChange("unit", values)}
+                  disabled={loading.units}
+                  searchable={true}
+                />
+              </div>
+
+              {/* Job Function */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Job Function
+                </label>
+                <MultiSelectDropdown
+                  options={jobFunctionOptions}
+                  placeholder="Select job functions..."
+                  selectedValues={filters.job_function}
+                  onChange={(values) => handleMultiSelectChange("job_function", values)}
+                  disabled={loading.jobFunctions}
+                  searchable={true}
+                />
+              </div>
+
+              {/* Position Group */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Position Group
+                </label>
+                <MultiSelectDropdown
+                  options={positionGroupOptions}
+                  placeholder="Select position groups..."
+                  selectedValues={filters.position_group}
+                  onChange={(values) => handleMultiSelectChange("position_group", values)}
+                  disabled={loading.positionGroups}
+                  searchable={true}
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Employment Status
+                </label>
+                <MultiSelectDropdown
+                  options={statusOptions}
+                  placeholder="Select statuses..."
+                  selectedValues={filters.status}
+                  onChange={(values) => handleMultiSelectChange("status", values)}
+                  showColors={true}
+                  disabled={loading.employeeStatuses}
+                  searchable={true}
+                />
               </div>
             </div>
-          </details>
-        </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
-          <AlertCircle size={16} className="mr-2" />
-          Filters are applied instantly as you select options. Use search fields for text-based filtering.
+            {/* Middle Column - Employment Details */}
+            <div className="space-y-4">
+              <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
+                Employment Details
+              </h4>
+
+              {/* Grading Level */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Grading Level
+                </label>
+                <MultiSelectDropdown
+                  options={gradeOptions}
+                  placeholder="Select grading levels..."
+                  selectedValues={filters.grading_level}
+                  onChange={(values) => handleMultiSelectChange("grading_level", values)}
+                  showDescriptions={true}
+                />
+              </div>
+
+              {/* Contract Duration */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Contract Duration
+                </label>
+                <MultiSelectDropdown
+                  options={contractDurationOptions}
+                  placeholder="Select contract types..."
+                  selectedValues={filters.contract_duration}
+                  onChange={(values) => handleMultiSelectChange("contract_duration", values)}
+                  disabled={loading.contractConfigs}
+                  searchable={true}
+                />
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Gender
+                </label>
+                <MultiSelectDropdown
+                  options={genderOptions}
+                  placeholder="Select gender..."
+                  selectedValues={filters.gender}
+                  onChange={(values) => handleMultiSelectChange("gender", values)}
+                />
+              </div>
+
+              {/* Job Title Search */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Job Title Search
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by job title..."
+                    value={filters.job_title_search}
+                    onChange={(e) => handleInputChange('job_title_search', e.target.value)}
+                    className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  {filters.job_title_search && (
+                    <button
+                      onClick={() => handleInputChange('job_title_search', '')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Line Manager Search */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Line Manager Search
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search by line manager name..."
+                    value={filters.line_manager_search}
+                    onChange={(e) => handleInputChange('line_manager_search', e.target.value)}
+                    className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+                  {filters.line_manager_search && (
+                    <button
+                      onClick={() => handleInputChange('line_manager_search', '')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Management & Additional */}
+            <div className="space-y-4">
+              <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
+                Management & Additional
+              </h4>
+
+              {/* Line Manager */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Line Manager
+                  {lineManagerOptions.length > 0 && (
+                    <span className={`ml-2 text-xs ${textMuted}`}>
+                      ({lineManagerOptions.length} managers)
+                    </span>
+                  )}
+                </label>
+                <MultiSelectDropdown
+                  options={lineManagerOptions.map(mgr => ({
+                    value: mgr.value,
+                    label: mgr.label,
+                    subtitle: `${mgr.job_title} - ${mgr.department_name}`,
+                    description: `${mgr.direct_reports_count} direct reports`,
+                    searchText: `${mgr.name} ${mgr.job_title} ${mgr.department_name} ${mgr.business_function_name}`
+                  }))}
+                  placeholder={lineManagerOptions.length > 0 ? 
+                    "Search and select line managers..." : "Loading managers..."}
+                  selectedValues={filters.line_manager}
+                  onChange={(values) => handleMultiSelectChange("line_manager", values)}
+                  showSubtitles={true}
+                  showDescriptions={true}
+                  disabled={employeesLoading.employees || lineManagerOptions.length === 0}
+                  searchable={true}
+                  maxHeight="300px"
+                />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Tags
+                </label>
+                <MultiSelectDropdown
+                  options={tagOptions}
+                  placeholder="Select tags..."
+                  selectedValues={filters.tags}
+                  onChange={(values) => handleMultiSelectChange("tags", values)}
+                  showColors={true}
+                  disabled={loading.employeeTags}
+                  searchable={true}
+                />
+              </div>
+
+              {/* Is Active */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Is Active
+                </label>
+                <select
+                  value={filters.is_active}
+                  onChange={(e) => handleInputChange('is_active', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                >
+                  {booleanOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Is Visible in Org Chart */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Visible in Org Chart
+                </label>
+                <select
+                  value={filters.is_visible_in_org_chart}
+                  onChange={(e) => handleInputChange('is_visible_in_org_chart', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                >
+                  {booleanOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Status Needs Update */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Status Needs Update
+                </label>
+                <select
+                  value={filters.status_needs_update}
+                  onChange={(e) => handleInputChange('status_needs_update', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                >
+                  {booleanOptions.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Contract Expiring Days */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Contract Expiring Within (Days)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="365"
+                  placeholder="e.g., 30"
+                  value={filters.contract_expiring_days}
+                  onChange={(e) => handleInputChange('contract_expiring_days', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Date Filters Section */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h4 className={`font-medium ${textPrimary} mb-4 text-sm`}>
+              Date Ranges
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Start Date Range */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Start Date From
+                </label>
+                <input
+                  type="date"
+                  value={filters.start_date_from}
+                  onChange={(e) => handleInputChange('start_date_from', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+              
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Start Date To
+                </label>
+                <input
+                  type="date"
+                  value={filters.start_date_to}
+                  onChange={(e) => handleInputChange('start_date_to', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+
+              {/* Contract End Date Range */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Contract End From
+                </label>
+                <input
+                  type="date"
+                  value={filters.contract_end_date_from}
+                  onChange={(e) => handleInputChange('contract_end_date_from', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+              
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Contract End To
+                </label>
+                <input
+                  type="date"
+                  value={filters.contract_end_date_to}
+                  onChange={(e) => handleInputChange('contract_end_date_to', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+            </div>
+
+            {/* Years of Service Range */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Years of Service (Min)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  placeholder="e.g., 1"
+                  value={filters.years_of_service_min}
+                  onChange={(e) => handleInputChange('years_of_service_min', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+              
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Years of Service (Max)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="50"
+                  placeholder="e.g., 10"
+                  value={filters.years_of_service_max}
+                  onChange={(e) => handleInputChange('years_of_service_max', e.target.value)}
+                  className={`w-full p-3 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div className="flex gap-3">
+
+        {/* Footer */}
+        <div className={`flex items-center justify-between p-6 border-t ${borderColor} bg-gray-50 dark:bg-gray-900`}>
           <button
             onClick={handleClearAll}
-            disabled={activeFilterCount === 0}
-            className={`px-4 py-2 rounded-lg border ${borderColor} ${textSecondary} hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed`}
+            className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
           >
-            Clear All
+            Clear All Filters
           </button>
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center"
-          >
-            Close Panel
-          </button>
-          <button
-            onClick={handleApply}
-            className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors flex items-center"
-            disabled={isAnyDataLoading}
-          >
-            <Filter size={16} className="mr-2" />
-            {isAnyDataLoading ? 'Loading...' : 'Apply Search Filters'}
-            {activeFilterCount > 0 && (
-              <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => applyFilters()}
+              className="px-4 py-2 text-sm font-medium text-white bg-almet-sapphire hover:bg-almet-astral rounded-lg transition-colors"
+            >
+              Apply Filters
+            </button>
+          </div>
         </div>
       </div>
     </div>
