@@ -468,15 +468,43 @@ const MultiSelectDropdown = ({
 
   // FIXED: Handle option toggle with proper uncheck support
   const handleOptionToggle = (value) => {
-    console.log('🔄 QuickFilter option toggle:', { value, currentlySelected: selectedValues.includes(value) });
+    console.log('🔄 QuickFilter option toggle:', { 
+      value, 
+      currentlySelected: selectedValues.includes(value),
+      selectedValues,
+      stringValue: String(value),
+      stringSelected: selectedValues.map(v => String(v))
+    });
+    
+    // FIXED: Comprehensive value matching - check both original and string versions
+    const isCurrentlySelected = (() => {
+      // Direct match
+      if (selectedValues.includes(value)) return true;
+      
+      // String comparison
+      const stringValue = String(value);
+      const stringSelectedValues = selectedValues.map(v => String(v));
+      if (stringSelectedValues.includes(stringValue)) return true;
+      
+      // Number comparison if applicable
+      const numValue = Number(value);
+      const numSelectedValues = selectedValues.map(v => Number(v)).filter(v => !isNaN(v));
+      if (!isNaN(numValue) && numSelectedValues.includes(numValue)) return true;
+      
+      return false;
+    })();
     
     let newSelection;
-    if (selectedValues.includes(value)) {
-      // UNCHECK: Remove from selection
-      newSelection = selectedValues.filter(v => v !== value);
+    if (isCurrentlySelected) {
+      // UNCHECK: Remove from selection (handle all possible formats)
+      newSelection = selectedValues.filter(v => {
+        return String(v) !== String(value) && Number(v) !== Number(value) && v !== value;
+      });
+      console.log('🔄 UNCHECK: Removing from selection', { value, newSelection });
     } else {
       // CHECK: Add to selection
       newSelection = [...selectedValues, value];
+      console.log('🔄 CHECK: Adding to selection', { value, newSelection });
     }
     
     onChange(newSelection);
@@ -601,12 +629,22 @@ const MultiSelectDropdown = ({
                   const value = option.value;
                   const label = option.label || option.name;
                   
-                  // FIXED: Düzgün selection check
+                  // FIXED: Comprehensive selection check - handles different value types
                   const isSelected = (() => {
+                    // Direct match
                     if (selectedValues.includes(value)) return true;
+                    
+                    // String comparison
                     const stringValue = String(value);
                     const stringSelectedValues = selectedValues.map(v => String(v));
-                    return stringSelectedValues.includes(stringValue);
+                    if (stringSelectedValues.includes(stringValue)) return true;
+                    
+                    // Number comparison if applicable
+                    const numValue = Number(value);
+                    const numSelectedValues = selectedValues.map(v => Number(v)).filter(v => !isNaN(v));
+                    if (!isNaN(numValue) && numSelectedValues.includes(numValue)) return true;
+                    
+                    return false;
                   })();
                   
                   const uniqueKey = `${dropdownKey}-${value}-${index}`;

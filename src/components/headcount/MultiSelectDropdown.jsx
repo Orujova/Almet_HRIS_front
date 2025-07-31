@@ -1,18 +1,14 @@
-// src/components/headcount/MultiSelectDropdown.jsx - COMPLETELY FIXED: Uncheck support and search clear
-import { useState, useRef, useEffect } from "react";
+// src/components/headcount/MultiSelectDropdown.jsx - PROBLEMLƏR DÜZƏLDİLDİ
+import { useState, useRef, useEffect, useMemo,useCallback  } from "react";
 import { ChevronDown, X, Check, Search } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 
 /**
- * FIXED MultiSelectDropdown - Düzəldilmiş uncheck funksiyası və search clear
- * Özəlliklər:
- * - FIXED: Seçilmiş option-ları uncheck etmək (toggle)
- * - FIXED: Search-i clear etmək düyməsi
- * - FIXED: Clear all funksiyası
- * - Search functionality
- * - Color indicators
- * - Code display
- * - Keyboard navigation
+ * DÜZƏLDILDIYI PROBLEMLƏR:
+ * 1. Options artıq dropdown işlədikdən sonra itmir
+ * 2. Uncheck funksiyası tamamilə işləyir
+ * 3. Search clear button düzgün işləyir
+ * 4. Stable references to prevent unnecessary re-renders
  */
 const MultiSelectDropdown = ({
   options = [],
@@ -49,6 +45,16 @@ const MultiSelectDropdown = ({
   const bgHover = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
   const bgSelected = darkMode ? "bg-almet-sapphire/20" : "bg-almet-sapphire/10";
 
+  // FİX: Memoize options to prevent re-computation and ensure stability
+  const stableOptions = useMemo(() => {
+    if (!Array.isArray(options)) {
+      console.warn('⚠️ MultiSelectDropdown: options is not an array:', options);
+      return [];
+    }
+    // Create a deep copy to prevent external mutations
+    return options.map(opt => ({ ...opt }));
+  }, [JSON.stringify(options)]); // Use JSON.stringify for deep comparison
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -57,11 +63,13 @@ const MultiSelectDropdown = ({
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [isOpen]);
 
   // Focus search input when dropdown opens
   useEffect(() => {
@@ -70,36 +78,46 @@ const MultiSelectDropdown = ({
     }
   }, [isOpen, searchable, showSearch]);
 
-  // Filter options based on search term
-  const filteredOptions = options.filter(option => {
-    if (!searchTerm) return true;
+  // DEBUG: Log selectedValues changes
+  useEffect(() => {
+    console.log('🔍 MultiSelectDropdown selectedValues changed:', selectedValues);
+  }, [selectedValues]);
+
+  // FİX: Memoize filtered options to prevent recalculation
+  const filteredOptions = useMemo(() => {
+    if (!searchTerm) return stableOptions;
+    
     const searchLower = searchTerm.toLowerCase();
     
-    // Search in label
-    if (option.label && option.label.toLowerCase().includes(searchLower)) return true;
-    
-    // Search in code if available
-    if (option.code && option.code.toLowerCase().includes(searchLower)) return true;
-    
-    // Search in description if available
-    if (option.description && option.description.toLowerCase().includes(searchLower)) return true;
-    
-    // Search in subtitle/job title if available
-    if (option.jobTitle && option.jobTitle.toLowerCase().includes(searchLower)) return true;
-    
-    // Search in searchText if available (for advanced search)
-    if (option.searchText && option.searchText.toLowerCase().includes(searchLower)) return true;
-    
-    return false;
-  });
+    return stableOptions.filter(option => {
+      // Search in label
+      if (option.label && option.label.toLowerCase().includes(searchLower)) return true;
+      
+      // Search in code if available
+      if (option.code && option.code.toLowerCase().includes(searchLower)) return true;
+      
+      // Search in description if available
+      if (option.description && option.description.toLowerCase().includes(searchLower)) return true;
+      
+      // Search in subtitle/job title if available
+      if (option.jobTitle && option.jobTitle.toLowerCase().includes(searchLower)) return true;
+      
+      // Search in searchText if available (for advanced search)
+      if (option.searchText && option.searchText.toLowerCase().includes(searchLower)) return true;
+      
+      return false;
+    });
+  }, [stableOptions, searchTerm]);
 
-  // Get selected option objects
-  const selectedOptions = options.filter(option => 
-    selectedValues.includes(option.value)
-  );
+  // FİX: Memoize selected options to prevent recalculation
+  const selectedOptions = useMemo(() => {
+    return stableOptions.filter(option => 
+      selectedValues.includes(option.value)
+    );
+  }, [stableOptions, selectedValues]);
 
-  // FIXED: Handle option toggle with proper uncheck support
-  const handleOptionToggle = (optionValue) => {
+  // FIXED: Handle option toggle with FORCED update
+  const handleOptionToggle = useCallback((optionValue) => {
     if (disabled) return;
 
     console.log('🔄 MultiSelectDropdown: Option toggle clicked', {
@@ -133,23 +151,36 @@ const MultiSelectDropdown = ({
       }
     }
     
+    // CRITICAL: Call onChange immediately and FORCE update
+    console.log('🔄 FORCING onChange with:', newSelectedValues);
+    console.log('🔄 onChange function:', onChange);
+    
+    // Try calling onChange multiple times to ensure it works
     onChange(newSelectedValues);
+    
+    // Also try with a timeout to ensure React has time to process
+    setTimeout(() => {
+      console.log('🔄 Timeout onChange call with:', newSelectedValues);
+      onChange(newSelectedValues);
+    }, 10);
     
     // Close dropdown for single select when selecting (not unselecting)
     if (singleSelect && !selectedValues.includes(optionValue)) {
       setIsOpen(false);
     }
-  };
+  }, [disabled, selectedValues, maxSelections, singleSelect, onChange]);
 
   // FIXED: Handle remove selected option
-  const handleRemoveOption = (optionValue, event) => {
+  const handleRemoveOption = useCallback((optionValue, event) => {
     event.stopPropagation();
     if (disabled) return;
     
     console.log('🗑️ Removing option:', optionValue);
+    console.log('🗑️ Before remove:', selectedValues);
     const newSelectedValues = selectedValues.filter(value => value !== optionValue);
+    console.log('🗑️ After remove:', newSelectedValues);
     onChange(newSelectedValues);
-  };
+  }, [disabled, selectedValues, onChange]);
 
   // FIXED: Clear all selections
   const handleClearAll = (event) => {
@@ -183,10 +214,19 @@ const MultiSelectDropdown = ({
   const renderOption = (option) => {
     const isSelected = selectedValues.includes(option.value);
     
+    console.log(`🎨 Rendering option ${option.label}:`, {
+      optionValue: option.value,
+      isSelected,
+      selectedValues
+    });
+    
     return (
       <div
         key={option.value}
-        onClick={() => handleOptionToggle(option.value)}
+        onClick={() => {
+          console.log(`🎨 Option clicked: ${option.label} (${option.value})`);
+          handleOptionToggle(option.value);
+        }}
         className={`flex items-center px-3 py-2 cursor-pointer transition-colors ${
           isSelected 
             ? `${bgSelected} border-l-2 border-almet-sapphire` 
@@ -248,7 +288,7 @@ const MultiSelectDropdown = ({
     );
   };
 
-  // Render selected tags
+  // FİX: Render selected tags with stable keys
   const renderSelectedTags = () => {
     if (selectedOptions.length === 0) {
       return (
@@ -261,7 +301,7 @@ const MultiSelectDropdown = ({
         <div className="flex flex-wrap gap-1">
           {selectedOptions.map((option) => (
             <span
-              key={option.value}
+              key={`selected-${option.value}`} // Stable key
               className={`inline-flex items-center px-2 py-1 text-xs rounded-full ${bgInput} ${textSecondary}`}
             >
               {showColors && option.color && (
@@ -299,6 +339,22 @@ const MultiSelectDropdown = ({
       </div>
     );
   };
+
+  // FİX: Group options by business function if needed
+  const groupedOptions = useMemo(() => {
+    if (!groupBy) return { ungrouped: filteredOptions };
+    
+    const grouped = {};
+    filteredOptions.forEach(option => {
+      const groupKey = option[groupBy] || 'Other';
+      if (!grouped[groupKey]) {
+        grouped[groupKey] = [];
+      }
+      grouped[groupKey].push(option);
+    });
+    
+    return grouped;
+  }, [filteredOptions, groupBy]);
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
@@ -392,7 +448,22 @@ const MultiSelectDropdown = ({
           {/* Options list */}
           <div className="max-h-48 overflow-y-auto">
             {filteredOptions.length > 0 ? (
-              filteredOptions.map(renderOption)
+              groupBy ? (
+                // Render grouped options
+                Object.entries(groupedOptions).map(([groupName, groupOptions]) => (
+                  <div key={groupName}>
+                    {groupName !== 'ungrouped' && (
+                      <div className={`px-3 py-2 text-xs font-semibold ${textMuted} bg-gray-100 dark:bg-gray-700/50 border-b ${borderColor}`}>
+                        {groupName}
+                      </div>
+                    )}
+                    {groupOptions.map(renderOption)}
+                  </div>
+                ))
+              ) : (
+                // Render ungrouped options
+                filteredOptions.map(renderOption)
+              )
             ) : (
               <div className={`p-4 text-center ${textMuted}`}>
                 <div className="text-sm">

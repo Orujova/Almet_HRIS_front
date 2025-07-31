@@ -1,5 +1,5 @@
-// src/components/headcount/AdvancedFilterPanel.jsx - COMPLETELY FIXED: Uncheck support and clear functionality
-import { useState, useEffect, useMemo, useCallback } from "react";
+// src/components/headcount/AdvancedFilterPanel.jsx - FULL PAGE WITH UNCHECK FIX
+import { useState, useEffect, useMemo, useCallback  } from "react";
 import { X, Search, AlertCircle, Filter, Check, ChevronDown, RefreshCw } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import MultiSelectDropdown from "./MultiSelectDropdown";
@@ -7,7 +7,11 @@ import { useReferenceData } from "../../hooks/useReferenceData";
 import { useEmployees } from "../../hooks/useEmployees";
 
 /**
- * Advanced Filter Panel with COMPLETELY FIXED multi-select handling and clear functionality
+ * FULL PAGE WITH FINAL UNCHECK FIX:
+ * 1. handleMultiSelectChange dependency array düzəldildi - applyFilters əlavə edildi
+ * 2. applyFilters funksiyası stable referans ilə - yalnız onApply dependency
+ * 3. handleInputChange da applyFilters dependency əlavə edildi
+ * 4. Bütün filterlər tam şəkildə render edilir
  */
 const AdvancedFilterPanel = ({ 
   onApply, 
@@ -65,7 +69,7 @@ const AdvancedFilterPanel = ({
   };
 
   // ========================================
-  // LOCAL FILTER STATE - BACKEND COMPATIBLE (COMPLETELY FIXED)
+  // LOCAL FILTER STATE - STABLE STATE MANAGEMENT
   // ========================================
   const [filters, setFilters] = useState({
     // Search fields
@@ -150,10 +154,58 @@ const AdvancedFilterPanel = ({
   }, [initializeReferenceData]);
 
   // ========================================
+  // STABLE APPLY FILTERS FUNCTION - CRITICAL FIX
+  // ========================================
+  const applyFilters = useCallback((filtersToApply) => {
+    const targetFilters = filtersToApply || filters;
+    console.log('🔧 FINAL: Applying advanced filters:', targetFilters);
+    
+    // Convert to backend-compatible format with PROPER ARRAY HANDLING
+    const cleanedFilters = {};
+    
+    Object.entries(targetFilters).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        // CRITICAL: UNCHECK problemi - boş array-lar üçün filter əlavə etmə
+        if (value.length > 0) {
+          // Special handling for department - expand combined values
+          if (key === 'department') {
+            const expandedValues = [];
+            value.forEach(dept => {
+              if (dept.includes(',')) {
+                expandedValues.push(...dept.split(','));
+              } else {
+                expandedValues.push(dept);
+              }
+            });
+            const cleanValues = expandedValues.filter(v => v !== null && v !== undefined && v !== '');
+            if (cleanValues.length > 0) {
+              cleanedFilters[key] = cleanValues;
+            }
+          } else {
+            // Regular array handling
+            const cleanValues = value.filter(v => v !== null && v !== undefined && v !== '');
+            if (cleanValues.length > 0) {
+              cleanedFilters[key] = cleanValues;
+            }
+          }
+        }
+        // CRITICAL: ƏGƏR value.length === 0, filter backend-ə göndərilmir (UNCHECK olmuş say)
+      } else if (value && value.toString().trim() !== "") {
+        cleanedFilters[key] = value.toString().trim();
+      }
+    });
+
+    console.log('✅ FINAL: Cleaned filters for backend (empty arrays REMOVED):', cleanedFilters);
+    
+    // CRITICAL: Bu ən vacib hissədir - təmizlənmiş filteri backend-ə göndər
+    onApply(cleanedFilters);
+  }, [onApply]); // YALNIZ onApply dependency
+
+  // ========================================
   // PREPARE OPTIONS WITH ERROR HANDLING
   // ========================================
 
-  // Employee options for dropdown
+  // Employee options - TAMAMILƏ STABIL, options itmir
   const employeeOptions = useMemo(() => {
     console.log('👥 Preparing employee options for dropdown...');
     
@@ -218,49 +270,75 @@ const AdvancedFilterPanel = ({
     return options;
   }, [businessFunctionsDropdown]);
 
-  // Department options - filtered by selected business function
+  // Department options - UNIQUE departments, amma bütün business function data-ları gəlir
   const departmentOptions = useMemo(() => {
     console.log('🏢 Raw departmentsDropdown:', departmentsDropdown);
-    console.log('🏢 Selected business functions:', filters.business_function);
     
     if (!Array.isArray(departmentsDropdown)) {
       console.warn('⚠️ departmentsDropdown is not an array:', departmentsDropdown);
       return [];
     }
 
-    let filteredDepartments = departmentsDropdown.filter(dept => {
-      if (!dept || typeof dept !== 'object') {
-        console.warn('⚠️ Invalid department object:', dept);
-        return false;
-      }
-      return dept.is_active !== false;
-    });
+    // Group departments by name to get unique departments with all business functions
+    const departmentGroups = {};
     
-    // ONLY filter by business function if business function is selected
-    // Otherwise show ALL departments
-    if (filters.business_function.length > 0) {
-      console.log('🏢 Filtering departments by business function:', filters.business_function);
-      filteredDepartments = filteredDepartments.filter(dept => 
-        filters.business_function.includes(dept.business_function?.toString())
-      );
-    }
-    
-    const options = filteredDepartments.map(dept => ({
-      value: dept.value || dept.id || '',
-      label: safeString(dept.label || dept.name || dept.display_name) || 'Unknown Department',
-      business_function: dept.business_function || '',
-      business_function_name: safeString(dept.business_function_name || dept.business_function_code),
-      employee_count: dept.employee_count || 0
-    }))
-    .filter(dept => dept.label !== 'Unknown Department')
-    .sort((a, b) => {
-      const bfCompare = safeLocaleCompare(a, b, 'business_function_name');
-      return bfCompare === 0 ? safeLocaleCompare(a, b, 'label') : bfCompare;
-    });
+    departmentsDropdown
+      .filter(dept => {
+        if (!dept || typeof dept !== 'object') {
+          console.warn('⚠️ Invalid department object:', dept);
+          return false;
+        }
+        return dept.is_active !== false;
+      })
+      .forEach(dept => {
+        const deptName = safeString(dept.label || dept.name || dept.display_name);
+        if (!deptName || deptName === 'Unknown Department') return;
+        
+        if (!departmentGroups[deptName]) {
+          departmentGroups[deptName] = {
+            name: deptName,
+            values: [],
+            business_functions: [],
+            business_function_names: [],
+            total_employee_count: 0
+          };
+        }
+        
+        // Collect all values and business functions for this department
+        const deptValue = dept.value || dept.id || '';
+        if (deptValue && !departmentGroups[deptName].values.includes(deptValue)) {
+          departmentGroups[deptName].values.push(deptValue);
+        }
+        
+        const bfId = dept.business_function;
+        if (bfId && !departmentGroups[deptName].business_functions.includes(bfId)) {
+          departmentGroups[deptName].business_functions.push(bfId);
+        }
+        
+        const bfName = safeString(dept.business_function_name || dept.business_function_code);
+        if (bfName && !departmentGroups[deptName].business_function_names.includes(bfName)) {
+          departmentGroups[deptName].business_function_names.push(bfName);
+        }
+        
+        departmentGroups[deptName].total_employee_count += (dept.employee_count || 0);
+      });
 
-    console.log('✅ Processed department options:', options.length, 'departments');
+    // Convert to options array - HƏR DEPARTMENT BİR DƏFƏ
+    const options = Object.values(departmentGroups).map(group => ({
+      value: group.values.join(','), // Multiple values combined
+      label: group.name,
+      business_functions: group.business_functions,
+      business_function_names: group.business_function_names.join(', '),
+      employee_count: group.total_employee_count,
+      // Store individual values for backend compatibility
+      individual_values: group.values
+    }))
+    .sort((a, b) => safeLocaleCompare(a, b, 'label'));
+
+    console.log('✅ Processed UNIQUE department options:', options.length, 'unique departments');
+    console.log('🏢 Department groups:', options);
     return options;
-  }, [departmentsDropdown, filters.business_function]);
+  }, [departmentsDropdown]);
 
   // Units options - filtered by selected department
   const unitOptions = useMemo(() => {
@@ -281,8 +359,19 @@ const AdvancedFilterPanel = ({
     
     // Filter by selected department if any
     if (filters.department.length > 0) {
+      // Get all individual department values from selected departments
+      const allDeptValues = [];
+      filters.department.forEach(selectedDept => {
+        // Check if this is a combined value (contains comma)
+        if (selectedDept.includes(',')) {
+          allDeptValues.push(...selectedDept.split(','));
+        } else {
+          allDeptValues.push(selectedDept);
+        }
+      });
+      
       filteredUnits = filteredUnits.filter(unit => 
-        filters.department.includes(unit.department?.toString())
+        allDeptValues.includes(unit.department?.toString())
       );
     }
     
@@ -495,18 +584,28 @@ const AdvancedFilterPanel = ({
   ];
 
   // ========================================
-  // FILTER CHANGE HANDLERS - FIXED
+  // FILTER CHANGE HANDLERS - FINAL FIX WITH PROPER DEPENDENCIES
   // ========================================
   
   const handleInputChange = useCallback((name, value) => {
     console.log(`🔧 Filter change: ${name} = `, value);
     
-    const newFilters = {
-      ...filters,
-      [name]: value
-    };
-    
-    setFilters(newFilters);
+    setFilters(prevFilters => {
+      const newFilters = {
+        ...prevFilters,
+        [name]: value
+      };
+      
+      // Employee seçimi zamanı AVTO-APPLY ETMƏ!
+      if (name !== 'employee_search') {
+        // Apply filters AUTOMATICALLY but DON'T close panel
+        setTimeout(() => {
+          applyFilters(newFilters);
+        }, 0);
+      }
+      
+      return newFilters;
+    });
     
     // For hierarchical filters, load dependent data but DON'T clear existing selections
     if (name === 'business_function' && Array.isArray(value)) {
@@ -521,50 +620,61 @@ const AdvancedFilterPanel = ({
     
     if (name === 'department' && Array.isArray(value)) {
       if (value.length > 0) {
-        value.forEach(deptId => {
+        // Extract individual department values for loading units
+        const allDeptValues = [];
+        value.forEach(selectedDept => {
+          if (selectedDept.includes(',')) {
+            allDeptValues.push(...selectedDept.split(','));
+          } else {
+            allDeptValues.push(selectedDept);
+          }
+        });
+        
+        allDeptValues.forEach(deptId => {
           if (deptId && loadUnitsForDepartment) {
             loadUnitsForDepartment(deptId);
           }
         });
       }
     }
-    
-    // Apply filters AUTOMATICALLY but DON'T close panel
-    applyFilters(newFilters);
-  }, [filters, loadDepartmentsForBusinessFunction, loadUnitsForDepartment]);
+  }, [applyFilters, loadDepartmentsForBusinessFunction, loadUnitsForDepartment]); // CRITICAL: applyFilters dependency əlavə edildi
 
+  // CRITICAL FIX: handleMultiSelectChange düzgün dependency array ilə
   const handleMultiSelectChange = useCallback((name, values) => {
-    console.log(`🔧 Multi-select change: ${name} = `, values);
-    handleInputChange(name, Array.isArray(values) ? values : []);
-  }, [handleInputChange]);
-
-  // FIXED: Apply filters - backend compatible format with proper array handling
-  const applyFilters = useCallback((filtersToApply = filters) => {
-    console.log('🔧 Applying advanced filters:', filtersToApply);
+    console.log('🔧 FINAL: handleMultiSelectChange CALLED:', { name, values });
+    console.log('🔧 FINAL: Previous filters state:', filters);
     
-    // Convert to backend-compatible format with PROPER ARRAY HANDLING
-    const cleanedFilters = {};
-    
-    Object.entries(filtersToApply).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        // For arrays, only include if they have values
-        if (value.length > 0) {
-          // Make sure all values are clean strings/numbers
-          const cleanValues = value.filter(v => v !== null && v !== undefined && v !== '');
-          if (cleanValues.length > 0) {
-            cleanedFilters[key] = cleanValues;
-          }
-        }
-      } else if (value && value.toString().trim() !== "") {
-        cleanedFilters[key] = value.toString().trim();
-      }
-    });
+    // Employee search üçün fərqli davranış
+    if (name === 'employee_search') {
+      console.log('🔧 Employee search - just updating state, NO auto-apply');
+      setFilters(prevFilters => ({
+        ...prevFilters,
+        [name]: Array.isArray(values) ? values : []
+      }));
+    } else {
+      console.log('🔧 Other filter - updating state AND applying immediately');
+      const newValues = Array.isArray(values) ? values : [];
+      
+      setFilters(prevFilters => {
+        const newFilters = {
+          ...prevFilters,
+          [name]: newValues
+        };
+        
+        console.log('🔧 FINAL: New filters state:', newFilters);
+        
+        // CRITICAL FIX: UNCHECK problemi burada həll edilir - newFilters istifadə et
+        setTimeout(() => {
+          console.log('🔧 FINAL: Applying filters with new values:', newFilters);
+          applyFilters(newFilters);
+        }, 50); // Timeout azaldıldı
+        
+        return newFilters;
+      });
+    }
+  }, [applyFilters]); // CRITICAL: applyFilters dependency əlavə edildi
 
-    console.log('✅ Cleaned filters for backend:', cleanedFilters);
-    onApply(cleanedFilters);
-  }, [filters, onApply]);
-
-  // FIXED: Clear all filters
+  // Clear all filters
   const handleClearAll = useCallback(() => {
     console.log('🧹 Clearing ALL advanced filters');
     
@@ -607,31 +717,35 @@ const AdvancedFilterPanel = ({
     
     setFilters(clearedFilters);
     
-    // Apply cleared filters immediately
-    onApply(clearedFilters);
+    // Apply cleared filters immediately - BOŞALT backend-dən
+    onApply({});
   }, [onApply]);
 
-  // FIXED: Clear individual filter
+  // Clear individual filter
   const handleClearFilter = useCallback((filterKey) => {
     console.log('🧹 Clearing individual filter:', filterKey);
     
-    const newFilters = { ...filters };
-    
-    // Clear based on filter type
-    if (Array.isArray(filters[filterKey])) {
-      newFilters[filterKey] = [];
-    } else {
-      newFilters[filterKey] = "";
-    }
-    
-    setFilters(newFilters);
-    
-    // Apply immediately
-    onApply(newFilters);
-  }, [filters, onApply]);
+    setFilters(prevFilters => {
+      const newFilters = { ...prevFilters };
+      
+      // Clear based on filter type
+      if (Array.isArray(prevFilters[filterKey])) {
+        newFilters[filterKey] = [];
+      } else {
+        newFilters[filterKey] = "";
+      }
+      
+      // Apply immediately
+      setTimeout(() => {
+        applyFilters(newFilters);
+      }, 0);
+      
+      return newFilters;
+    });
+  }, [applyFilters]);
 
   // ========================================
-  // RENDER
+  // RENDER - FULL PAGE
   // ========================================
   
   return (
@@ -696,7 +810,6 @@ const AdvancedFilterPanel = ({
                     className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                   />
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                  {/* FIXED: Clear button for search */}
                   {filters.search && (
                     <button
                       onClick={() => handleInputChange('search', '')}
@@ -719,20 +832,31 @@ const AdvancedFilterPanel = ({
                   )}
                 </label>
                 <MultiSelectDropdown
+                  key="employee-search-stable"
                   options={employeeOptions}
                   placeholder={employeeOptions.length > 0 ? "Search and select employees..." : "Loading employees..."}
                   selectedValues={Array.isArray(filters.employee_search) ? filters.employee_search : 
                     filters.employee_search ? [filters.employee_search] : []}
                   onChange={(values) => {
-                    console.log('🔧 Employee search dropdown change:', values);
-                    handleMultiSelectChange('employee_search', values);
+                    console.log('🔧 Employee search dropdown change (NO AUTO-APPLY):', values);
+                    setFilters(prevFilters => ({
+                      ...prevFilters,
+                      employee_search: values
+                    }));
                   }}
                   disabled={employeesLoading.employees}
                   searchable={true}
                   maxHeight="300px"
                   showSearch={true}
                   singleSelect={false}
+                  showSubtitles={true}
+                  clearable={true}
                 />
+                {filters.employee_search && filters.employee_search.length > 0 && (
+                  <div className={`mt-2 text-xs ${textMuted}`}>
+                    ⚠️ {filters.employee_search.length} employee(s) selected. Click "Apply Filters" to search.
+                  </div>
+                )}
               </div>
 
               {/* Business Function */}
@@ -749,37 +873,56 @@ const AdvancedFilterPanel = ({
                   options={businessFunctionOptions}
                   placeholder={businessFunctionOptions.length > 0 ? "Select business functions..." : "Loading..."}
                   selectedValues={filters.business_function}
-                  onChange={(values) => handleMultiSelectChange("business_function", values)}
+                  onChange={(values) => {
+                    console.log('🚨 Business Function onChange TRIGGERED:', values);
+                    handleMultiSelectChange("business_function", values);
+                  }}
                   disabled={loading.businessFunctions}
                   searchable={true}
                 />
+                {filters.business_function.length > 0 && (
+                  <div className={`mt-1 text-xs ${textMuted}`}>
+                    Selected: {filters.business_function.join(', ')}
+                  </div>
+                )}
               </div>
 
-              {/* Department - SHOWS ALL or filtered by business function */}
+              {/* Department */}
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Department
                   {departmentOptions.length > 0 && (
                     <span className={`ml-2 text-xs ${textMuted}`}>
-                      ({departmentOptions.length} available{filters.business_function.length > 0 ? ' (filtered)' : ' (all)'})
+                      ({departmentOptions.length} unique departments)
                     </span>
                   )}
                 </label>
                 <MultiSelectDropdown
-                  options={departmentOptions}
+                  options={departmentOptions.map(dept => ({
+                    ...dept,
+                    subtitle: `Business Functions: ${dept.business_function_names}`,
+                    description: `${dept.employee_count} employees total`
+                  }))}
                   placeholder={
                     departmentOptions.length > 0 
-                      ? filters.business_function.length > 0 
-                        ? "Select departments (filtered by business function)..." 
-                        : "Select departments (showing all)..."
+                      ? "Select departments (unique names, all business functions included)..."
                       : "Loading departments..."
                   }
                   selectedValues={filters.department}
-                  onChange={(values) => handleMultiSelectChange("department", values)}
+                  onChange={(values) => {
+                    console.log('🚨 Department onChange TRIGGERED:', values);
+                    handleMultiSelectChange("department", values);
+                  }}
                   disabled={loading.departments}
                   searchable={true}
-                  groupBy="business_function_name"
+                  showSubtitles={true}
+                  showDescriptions={true}
                 />
+                {filters.department.length > 0 && (
+                  <div className={`mt-1 text-xs ${textMuted}`}>
+                    Selected: {filters.department.join(', ')}
+                  </div>
+                )}
               </div>
 
               {/* Unit */}
@@ -925,7 +1068,7 @@ const AdvancedFilterPanel = ({
               {/* Line Manager Search */}
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  Line Manager Search
+                  Line Manager Search  
                 </label>
                 <div className="relative">
                   <input
@@ -1174,7 +1317,14 @@ const AdvancedFilterPanel = ({
             Clear All Filters
           </button>
           
-          <div className="flex space-x-3">
+          <div className="flex items-center space-x-3">
+            {/* Show apply needed indicator */}
+            {filters.employee_search && filters.employee_search.length > 0 && (
+              <span className={`text-xs ${textMuted} italic`}>
+                Employee selection pending...
+              </span>
+            )}
+            
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -1183,9 +1333,16 @@ const AdvancedFilterPanel = ({
             </button>
             <button
               onClick={() => applyFilters()}
-              className="px-4 py-2 text-sm font-medium text-white bg-almet-sapphire hover:bg-almet-astral rounded-lg transition-colors"
+              className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                filters.employee_search && filters.employee_search.length > 0
+                  ? 'bg-orange-500 hover:bg-orange-600 animate-pulse'
+                  : 'bg-almet-sapphire hover:bg-almet-astral'
+              }`}
             >
               Apply Filters
+              {filters.employee_search && filters.employee_search.length > 0 && (
+                <span className="ml-1">({filters.employee_search.length})</span>
+              )}
             </button>
           </div>
         </div>

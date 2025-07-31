@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountTable.jsx - COMPLETELY FIXED: Employee search and multi-select filters
+// src/components/headcount/HeadcountTable.jsx - Enhanced with Advanced Multiple Sorting System
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
@@ -16,6 +16,9 @@ import HierarchyLegend from "./HierarchyLegend";
 import ColorSelector from "./ColorModeSelector";
 import ExportModal from "./ExportModal";
 import BulkUploadForm from "./BulkUploadForm";
+
+// Import our Advanced Multiple Sorting System
+import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
@@ -112,10 +115,14 @@ const HeadcountTable = () => {
   const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const [employeeVisibility, setEmployeeVisibility] = useState({});
   
-  // COMPLETELY FIXED: Local filter state to manage UI
+  // NEW: Advanced Sorting State
+  const [isAdvancedSortingOpen, setIsAdvancedSortingOpen] = useState(false);
+
+  
+  // Local filter state
   const [localFilters, setLocalFilters] = useState({
     search: "",
-    employee_search: [], // FIXED: Array for multiple employee selection
+    employee_search: [],
     line_manager_search: "",
     job_title_search: "",
     status: [],
@@ -143,10 +150,72 @@ const HeadcountTable = () => {
   const initialized = useRef(false);
   const lastFetchTime = useRef(0);
   const debounceRef = useRef(null);
-  const lastApiParamsRef = useRef(null); // Track last API params
+  const lastApiParamsRef = useRef(null);
 
   // ========================================
-  // COMPLETELY FIXED: buildApiParams with proper array handling
+  // NEW: AVAILABLE FIELDS FOR SORTING
+  // ========================================
+  
+  const availableFieldsForSorting = useMemo(() => [
+    // Basic Information
+    { value: 'name', label: 'Full Name', description: 'Employee full name' },
+    { value: 'employee_name', label: 'Employee Name', description: 'Employee display name' },
+    { value: 'employee_id', label: 'Employee ID', description: 'Unique employee identifier' },
+    { value: 'email', label: 'Email Address', description: 'Work email address' },
+    { value: 'phone', label: 'Phone Number', description: 'Contact phone number' },
+    { value: 'father_name', label: 'Father Name', description: 'Father\'s name' },
+    
+    // Job Information
+    { value: 'job_title', label: 'Job Title', description: 'Current position title' },
+    
+    // Organizational Structure
+    { value: 'business_function_name', label: 'Business Function', description: 'Main business area' },
+    { value: 'business_function_code', label: 'Function Code', description: 'Business function code' },
+    { value: 'department_name', label: 'Department', description: 'Department name' },
+    { value: 'unit_name', label: 'Unit', description: 'Organizational unit' },
+    { value: 'job_function_name', label: 'Job Function', description: 'Specific job function' },
+    
+    // Position & Grading
+    { value: 'position_group_name', label: 'Position Group', description: 'Position group category' },
+    { value: 'position_group_level', label: 'Position Level', description: 'Hierarchy level in position group' },
+    { value: 'grading_level', label: 'Grade Level', description: 'Employee grade level' },
+    
+    // Management
+    { value: 'line_manager_name', label: 'Line Manager', description: 'Direct supervisor' },
+    { value: 'line_manager_hc_number', label: 'Manager ID', description: 'Manager employee ID' },
+    
+    // Employment Dates
+    { value: 'start_date', label: 'Start Date', description: 'Employment start date' },
+    { value: 'end_date', label: 'End Date', description: 'Employment end date' },
+    { value: 'contract_start_date', label: 'Contract Start', description: 'Current contract start date' },
+    { value: 'contract_end_date', label: 'Contract End', description: 'Current contract end date' },
+    
+    // Contract Information
+    { value: 'contract_duration', label: 'Contract Duration', description: 'Contract length in months' },
+    { value: 'contract_duration_display', label: 'Contract Display', description: 'Formatted contract duration' },
+    
+    // Status
+    { value: 'status_name', label: 'Employment Status', description: 'Current employment status' },
+    { value: 'status_color', label: 'Status Color', description: 'Status indicator color' },
+    { value: 'current_status_display', label: 'Status Display', description: 'Formatted status display' },
+    
+    // Personal Information
+    { value: 'date_of_birth', label: 'Date of Birth', description: 'Employee birth date' },
+    { value: 'gender', label: 'Gender', description: 'Employee gender' },
+    
+    // Calculated Fields
+    { value: 'years_of_service', label: 'Years of Service', description: 'Total years with company' },
+    { value: 'direct_reports_count', label: 'Direct Reports', description: 'Number of direct subordinates' },
+    
+    // Metadata
+    { value: 'created_at', label: 'Created Date', description: 'Record creation date' },
+    { value: 'updated_at', label: 'Last Updated', description: 'Last modification date' },
+    { value: 'is_visible_in_org_chart', label: 'Visible in Org Chart', description: 'Show in organizational chart' },
+    { value: 'is_deleted', label: 'Deleted Status', description: 'Soft deletion status' }
+  ], []);
+
+  // ========================================
+  // API PARAMS BUILDER
   // ========================================
   
   const buildApiParams = useMemo(() => {
@@ -162,15 +231,16 @@ const HeadcountTable = () => {
       params.search = localFilters.search.trim();
     }
 
-    // Multiple Sorting - Enhanced support
+    // NEW: Multiple Sorting - Enhanced support
     if (sorting && sorting.length > 0) {
       const orderingFields = sorting.map(sort => 
         sort.direction === 'desc' ? `-${sort.field}` : sort.field
       );
       params.ordering = orderingFields.join(',');
+      console.log('✅ HEADCOUNT: Multiple sorting applied:', params.ordering);
     }
 
-    // COMPLETELY FIXED: Multi-select Filters - Send as arrays, backend will handle parsing
+    // Multi-select Filters - Send as arrays, backend will handle parsing
     const multiSelectFilters = [
       'business_function', 'department', 'unit', 'job_function', 'position_group',
       'status', 'grading_level', 'contract_duration', 'line_manager', 'tags', 'gender', 'employee_search'
@@ -179,17 +249,14 @@ const HeadcountTable = () => {
     multiSelectFilters.forEach(filterKey => {
       if (localFilters[filterKey]) {
         if (Array.isArray(localFilters[filterKey])) {
-          // Send as array if it has values
           const cleanValues = localFilters[filterKey].filter(val => 
             val !== null && val !== undefined && val !== ''
           );
           if (cleanValues.length > 0) {
-            // IMPORTANT: Send as comma-separated string for Django backend
             params[filterKey] = cleanValues.join(',');
             console.log(`✅ HEADCOUNT: ${filterKey} = "${params[filterKey]}" (from array of ${cleanValues.length} items)`);
           }
         } else if (typeof localFilters[filterKey] === 'string') {
-          // Single string value
           const trimmed = localFilters[filterKey].trim();
           if (trimmed) {
             params[filterKey] = trimmed;
@@ -263,11 +330,10 @@ const HeadcountTable = () => {
   }, [buildApiParams]);
 
   // ========================================
-  // DEBOUNCED DATA FETCHING (IMPROVED)
+  // DEBOUNCED DATA FETCHING
   // ========================================
   
   const debouncedFetchEmployees = useCallback((params, immediate = false) => {
-    // Prevent duplicate calls with same params
     const paramsString = JSON.stringify(params);
     const lastParamsString = JSON.stringify(lastApiParamsRef.current);
     
@@ -284,17 +350,17 @@ const HeadcountTable = () => {
 
     debounceRef.current = setTimeout(() => {
       const now = Date.now();
-      if (now - lastFetchTime.current > 100) { // Prevent duplicate calls
+      if (now - lastFetchTime.current > 100) {
         console.log('🚀 Fetching employees with params:', params);
         lastFetchTime.current = now;
-        lastApiParamsRef.current = { ...params }; // Store last params
+        lastApiParamsRef.current = { ...params };
         fetchEmployees(params);
       }
     }, delay);
   }, [fetchEmployees]);
 
   // ========================================
-  // INITIALIZATION (IMPROVED)
+  // INITIALIZATION
   // ========================================
   
   useEffect(() => {
@@ -305,13 +371,9 @@ const HeadcountTable = () => {
         initialized.current = true;
         console.log('🚀 Initializing HeadcountTable...');
         
-        // Clear any existing errors
         clearErrors();
-        
-        // Store initial params
         lastApiParamsRef.current = { ...buildApiParams };
         
-        // Fetch initial data
         await Promise.all([
           fetchStatistics(),
           fetchEmployees(buildApiParams)
@@ -325,10 +387,10 @@ const HeadcountTable = () => {
     };
 
     initializeData();
-  }, []); // Remove buildApiParams from dependency array
+  }, []);
 
   // ========================================
-  // DATA FETCHING ON PARAM CHANGES (IMPROVED)
+  // DATA FETCHING ON PARAM CHANGES
   // ========================================
   
   useEffect(() => {
@@ -342,14 +404,14 @@ const HeadcountTable = () => {
   }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
 
   // ========================================
-  // DATA REFRESH HELPER (IMPROVED)
+  // DATA REFRESH HELPER
   // ========================================
   
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     console.log('🔄 Refreshing all data...', { forceRefresh });
     try {
       if (forceRefresh) {
-        lastApiParamsRef.current = null; // Force params change
+        lastApiParamsRef.current = null;
       }
       
       await Promise.all([
@@ -365,17 +427,49 @@ const HeadcountTable = () => {
   }, [fetchStatistics, fetchEmployees, buildApiParams]);
 
   // ========================================
-  // FILTER HANDLERS (COMPLETELY FIXED)
+  // NEW: ADVANCED SORTING HANDLERS
   // ========================================
 
-  // Search handler with debounced application
+  const handleToggleAdvancedSorting = useCallback(() => {
+    setIsAdvancedSortingOpen(prev => !prev);
+  }, []);
+
+  const handleSortingChange = useCallback((newSorting) => {
+    console.log('🔢 Advanced sorting changed:', newSorting);
+    
+    // Update the sorting state through useEmployees hook
+    if (newSorting.length === 0) {
+      clearSorting();
+    } else if (newSorting.length === 1) {
+      // Single sort
+      setSorting({ field: newSorting[0].field, direction: newSorting[0].direction });
+    } else {
+      // Multiple sorts - use the multiple parameter
+      setSorting({ multiple: newSorting });
+    }
+    
+    // Reset to first page when sorting changes
+    setCurrentPage(1);
+  }, [setSorting, clearSorting, setCurrentPage]);
+
+  const handleClearAllSorting = useCallback(() => {
+    console.log('❌ Clearing all sorting');
+    clearSorting();
+    setCurrentPage(1);
+  }, [clearSorting, setCurrentPage]);
+
+
+
+  // ========================================
+  // FILTER HANDLERS
+  // ========================================
+
   const handleSearchChange = useCallback((value) => {
     console.log('🔍 HEADCOUNT: Search changed:', value);
     setLocalFilters(prev => ({ ...prev, search: value }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
-  // COMPLETELY FIXED: Quick filter handlers with proper array handling
   const handleStatusChange = useCallback((selectedStatuses) => {
     console.log('📊 HEADCOUNT: Status filter changed:', selectedStatuses);
     setLocalFilters(prev => ({ ...prev, status: Array.isArray(selectedStatuses) ? selectedStatuses : [] }));
@@ -403,13 +497,11 @@ const HeadcountTable = () => {
   const handleApplyAdvancedFilters = useCallback((filters) => {
     console.log('🔧 HEADCOUNT: Advanced filters applied:', filters);
     
-    // Process and ensure arrays are properly handled
     const processedFilters = {};
     Object.entries(filters).forEach(([key, value]) => {
       if (Array.isArray(value)) {
         processedFilters[key] = value;
       } else if (typeof value === 'string' && value.includes(',')) {
-        // Handle comma-separated strings by converting to arrays
         processedFilters[key] = value.split(',').map(v => v.trim()).filter(v => v);
       } else {
         processedFilters[key] = value;
@@ -417,14 +509,10 @@ const HeadcountTable = () => {
     });
     
     console.log('✅ HEADCOUNT: Processed advanced filters:', processedFilters);
-    
-    // Update local filters
     setLocalFilters(prev => ({ ...prev, ...processedFilters }));
-    // DON'T close panel automatically - user controls when to close
     setCurrentPage(1);
   }, [setCurrentPage]);
 
-  // Clear individual filter
   const handleClearFilter = useCallback((key) => {
     console.log('❌ HEADCOUNT: Clearing filter:', key);
     
@@ -443,7 +531,6 @@ const HeadcountTable = () => {
     setCurrentPage(1);
   }, [setCurrentPage]);
 
-  // Clear all filters
   const handleClearAllFilters = useCallback(() => {
     console.log('❌ HEADCOUNT: Clearing all filters');
     
@@ -496,7 +583,7 @@ const HeadcountTable = () => {
   }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
 
   // ========================================
-  // SORTING HANDLERS
+  // SORTING HANDLERS (Table Column Sorting)
   // ========================================
   
   const handleSort = useCallback((field, ctrlKey = false) => {
@@ -574,7 +661,7 @@ const HeadcountTable = () => {
               }
               
               clearSelection();
-              await refreshAllData(true); // Force refresh
+              await refreshAllData(true);
               alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} ${action === 'softDelete' ? 'soft deleted' : 'deleted'} successfully!`);
             } catch (error) {
               console.error(`❌ ${action} failed:`, error);
@@ -587,7 +674,7 @@ const HeadcountTable = () => {
           try {
             result = await restoreEmployees(selectedEmployees);
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} restored successfully!`);
           } catch (error) {
             console.error('❌ Restore failed:', error);
@@ -599,7 +686,7 @@ const HeadcountTable = () => {
           try {
             result = await showInOrgChart(selectedEmployees);
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
           } catch (error) {
             console.error('❌ Show in org chart failed:', error);
@@ -611,7 +698,7 @@ const HeadcountTable = () => {
           try {
             result = await hideFromOrgChart(selectedEmployees);
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
           } catch (error) {
             console.error('❌ Hide from org chart failed:', error);
@@ -628,7 +715,7 @@ const HeadcountTable = () => {
             
             result = await bulkAddTags(payload.employee_ids, payload.tag_id);
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             
             const tagName = result?.tag_info?.name || 'Tag';
             alert(`✅ "${tagName}" tag added to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
@@ -647,7 +734,7 @@ const HeadcountTable = () => {
             
             result = await bulkRemoveTags(payload.employee_ids, payload.tag_id);
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             alert(`✅ Tag removed from ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
           } catch (error) {
             console.error('❌ Tag removal failed:', error);
@@ -664,7 +751,7 @@ const HeadcountTable = () => {
             
             result = await bulkAssignLineManager(payload.employee_ids, payload.line_manager_id);
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             
             const managerName = result?.line_manager_info?.name || 'Line Manager';
             alert(`✅ ${managerName} assigned as line manager to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
@@ -684,7 +771,7 @@ const HeadcountTable = () => {
             });
             
             clearSelection();
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             alert(`✅ Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
           } catch (error) {
             console.error('❌ Contract extension failed:', error);
@@ -742,7 +829,6 @@ const HeadcountTable = () => {
       if (exportOptions.type === 'selected' && selectedEmployees.length > 0) {
         exportParams.employee_ids = selectedEmployees;
       } else if (exportOptions.type === 'filtered') {
-        // Include current filter parameters
         Object.keys(buildApiParams).forEach(key => {
           if (key !== 'page' && key !== 'page_size') {
             exportParams[key] = buildApiParams[key];
@@ -769,7 +855,7 @@ const HeadcountTable = () => {
   
   const handleBulkImportComplete = useCallback(async (result) => {
     try {
-      await refreshAllData(true); // Force refresh
+      await refreshAllData(true);
       setIsBulkUploadOpen(false);
       
       if (result?.imported_count) {
@@ -796,21 +882,17 @@ const HeadcountTable = () => {
         case "delete":
           if (confirm("Are you sure you want to delete this employee?")) {
             await deleteEmployee(employeeId);
-            await refreshAllData(true); // Force refresh
+            await refreshAllData(true);
             alert('✅ Employee deleted successfully');
           }
           break;
 
         case "edit":
-          // Navigate to edit page or open edit modal
           console.log(`Edit employee: ${employeeId}`);
-          // You can implement navigation logic here
           break;
 
         case "view":
-          // Navigate to employee detail page
           console.log(`View employee: ${employeeId}`);
-          // You can implement navigation logic here
           break;
 
         default:
@@ -824,7 +906,7 @@ const HeadcountTable = () => {
   }, [deleteEmployee, refreshAllData]);
 
   // ========================================
-  // ACTIVE FILTERS CALCULATION (MEMOIZED)
+  // ACTIVE FILTERS CALCULATION
   // ========================================
   
   const activeFilters = useMemo(() => {
@@ -846,7 +928,7 @@ const HeadcountTable = () => {
         key: "status", 
         label: localFilters.status.length === 1 
           ? `Status: ${localFilters.status[0]}` 
-          : `Department: ${localFilters.status.length} selected`
+          : `Status: ${localFilters.status.length} selected`
       });
     }
     if (localFilters.department?.length > 0) {
@@ -1015,6 +1097,18 @@ const HeadcountTable = () => {
           onBulkImport={() => setIsBulkUploadOpen(true)}
           statistics={statistics}
           darkMode={darkMode}
+          
+          // NEW: Advanced Sorting Props
+          onToggleAdvancedSorting={handleToggleAdvancedSorting}
+          isAdvancedSortingOpen={isAdvancedSortingOpen}
+          currentSorting={sorting || []}
+          onClearAllSorting={handleClearAllSorting}
+
+
+
+          
+       
+         
         />
 
         {/* Action Menu */}
@@ -1032,6 +1126,35 @@ const HeadcountTable = () => {
           </div>
         )}
       </div>
+
+      {/* NEW: Advanced Multiple Sorting Panel */}
+      {isAdvancedSortingOpen && (
+        <div className="mb-4 relative z-40">
+          <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-6">
+            <AdvancedMultipleSortingSystem
+              currentSorting={sorting || []}
+              onSortingChange={handleSortingChange}
+              availableFields={availableFieldsForSorting}
+              darkMode={darkMode}
+              maxSortLevels={10}
+
+
+           
+          
+            />
+ 
+            {/* Close button */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setIsAdvancedSortingOpen(false)}
+                className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Close Advanced Sorting
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Advanced Filters Panel */}
       {isAdvancedFilterOpen && (
@@ -1080,42 +1203,6 @@ const HeadcountTable = () => {
         <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center flex-wrap gap-2">
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                Active Filters ({activeFilters.length}):
-              </span>
-              {activeFilters.map((filter) => (
-                <span 
-                  key={filter.key}
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
-                >
-                  {filter.label}
-                  <button
-                    onClick={() => handleClearFilter(filter.key)}
-                    className="ml-1 text-blue-600 dark:text-blue-300 hover:text-red-500"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-            <button
-              onClick={handleClearAllFilters}
-              className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-200"
-            >
-              Clear All Filters
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Multi-level Sorting Info */}
-      {sorting.length > 1 && (
-        <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <svg className="w-4 h-4 text-blue-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 8a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 12a1 1 0 011-1h4a1 1 0 110 2H4a1 1 0 01-1-1z" />
-              </svg>
               <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
                 Multi-level sorting active:
               </span>
@@ -1130,12 +1217,20 @@ const HeadcountTable = () => {
                 ))}
               </div>
             </div>
-            <button
-              onClick={clearSorting}
-              className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-            >
-              Clear All
-            </button>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleToggleAdvancedSorting}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+              >
+                Configure
+              </button>
+              <button
+                onClick={handleClearAllSorting}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1149,58 +1244,6 @@ const HeadcountTable = () => {
               Loading employees...
             </span>
           </div>
-        </div>
-      )}
-
-      {/* Debug Info (Remove in production) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
-          <details>
-            <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
-              🔧 Debug Info (Development Only)
-            </summary>
-            <div className="mt-2 space-y-2 text-xs">
-              <div>
-                <strong>Local Filters:</strong>
-                <pre className="mt-1 text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-auto">
-                  {JSON.stringify(localFilters, null, 2)}
-                </pre>
-              </div>
-              <div>
-                <strong>API Params:</strong>
-                <pre className="mt-1 text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-auto">
-                  {JSON.stringify(buildApiParams, null, 2)}
-                </pre>
-              </div>
-              <div>
-                <strong>Active Filters Count:</strong> {activeFilters.length}
-              </div>
-              <div>
-                <strong>Employees Count:</strong> {formattedEmployees?.length || 0}
-              </div>
-              <div>
-                <strong>Selected Employees:</strong> {selectedEmployees?.length || 0}
-              </div>
-              <div>
-                <strong>Loading States:</strong>
-                <ul className="ml-4 mt-1">
-                  <li>Employees: {loading?.employees ? 'Loading...' : 'Ready'}</li>
-                  <li>Statistics: {loading?.statistics ? 'Loading...' : 'Ready'}</li>
-                  <li>Reference Data: {refLoading ? 'Loading...' : 'Ready'}</li>
-                </ul>
-              </div>
-              <div>
-                <strong>Error States:</strong>
-                {error && Object.keys(error).length > 0 ? (
-                  <pre className="mt-1 text-xs bg-red-100 dark:bg-red-900 p-2 rounded overflow-auto">
-                    {JSON.stringify(error, null, 2)}
-                  </pre>
-                ) : (
-                  <span className="text-green-600 dark:text-green-400 ml-2">No errors</span>
-                )}
-              </div>
-            </div>
-          </details>
         </div>
       )}
 
@@ -1259,6 +1302,7 @@ const HeadcountTable = () => {
           darkMode={darkMode}
         />
       )}
+
     </div>
   );
 };

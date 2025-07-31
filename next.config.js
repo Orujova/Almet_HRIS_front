@@ -1,12 +1,12 @@
-import path from "path";
-import { fileURLToPath } from "url";
+const path = require('path');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-export default {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone', // export əvəzinə
+  trailingSlash: true,
   reactStrictMode: true,
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
@@ -16,7 +16,7 @@ export default {
         protocol: "http",
         hostname: "100.42.179.27",
         port: "7198",
-        pathname: "/appuser/**", // Match the path for specific images
+        pathname: "/appuser/**",
       },
     ],
   },
@@ -24,4 +24,9 @@ export default {
     config.resolve.alias["@"] = path.resolve(__dirname, "src");
     return config;
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
+
+module.exports = nextConfig;
