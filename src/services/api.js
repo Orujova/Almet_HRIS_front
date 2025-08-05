@@ -2,7 +2,7 @@
 import axios from "axios";
 
 // Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 // Axios instance
 const api = axios.create({
@@ -491,13 +491,7 @@ export const apiService = {
   getEmployeeGrading: () => api.get("/employee-grading/"),
   bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
 
-  // ========================================
-  // ORGANIZATIONAL HIERARCHY
-  // ========================================
-  getOrganizationalHierarchy: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employees/organizational_hierarchy/?${queryString}`);
-  },
+ 
 
   // ========================================
   // PROFILE IMAGES

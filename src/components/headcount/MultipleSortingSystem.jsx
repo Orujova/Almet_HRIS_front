@@ -400,11 +400,7 @@ const AddSortField = ({ availableFields, onAdd, darkMode }) => {
                 {field.label}
               </button>
             ))}
-            {availableFields.length > 8 && (
-              <span className={`px-3 py-1 text-xs ${textSecondary}`}>
-                +{availableFields.length - 8} more...
-              </span>
-            )}
+           
           </div>
         </div>
       )}

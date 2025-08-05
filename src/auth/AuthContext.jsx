@@ -19,7 +19,7 @@ import { msalConfig, loginRequest } from "./authConfig";
 const AuthContext = createContext();
 
 // Backend URL
-const BACKEND_URL = "http://localhost:8000/api";
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ;
 
 export function AuthProvider({ children }) {
   const [msalInstance, setMsalInstance] = useState(null);

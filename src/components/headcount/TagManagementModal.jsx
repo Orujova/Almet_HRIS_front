@@ -1,8 +1,7 @@
-// src/components/headcount/TagManagementModal.jsx - FIXED API Integration
+// src/components/headcount/TagManagementModal.jsx - FIXED Tag Management (Single Tag Logic)
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Search, Tag, Plus, Minus, Check, AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
+import { X, Search, Tag, Plus, Minus, Check, AlertCircle, ChevronDown, RefreshCw, User } from 'lucide-react';
 import { useReferenceData } from '../../hooks/useReferenceData';
-import { useEmployees } from '../../hooks/useEmployees';
 
 const TagManagementModal = ({
   isOpen,
@@ -12,15 +11,14 @@ const TagManagementModal = ({
   selectedEmployeeData = [],
   darkMode = false
 }) => {
-  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedTagId, setSelectedTagId] = useState('');
+  const [operationType, setOperationType] = useState('replace'); // 'replace', 'remove'
   const [isProcessing, setIsProcessing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // ========================================
-  // API DATA - Fixed
-  // ========================================
+  // API data from hooks
   const {
     employeeTags = [],
     loading = {},
@@ -30,24 +28,21 @@ const TagManagementModal = ({
     hasEmployeeTags
   } = useReferenceData();
 
-  const {
-    formattedEmployees = []
-  } = useEmployees();
-
-  // Format tags for backend API compatibility
-  const formattedTags = useMemo(() => {
+  // Format tags for use
+  const availableTags = useMemo(() => {
     const formatted = getFormattedEmployeeTags?.() || employeeTags;
     
-    return formatted.map(tag => ({
-      id: tag.id || tag.value,
-      value: tag.id || tag.value, 
-      label: tag.name || tag.label,
-      name: tag.name || tag.label,
-      tag_type: tag.tag_type,
-      color: tag.color || '#6B7280',
-      employee_count: tag.employee_count || 0,
-      is_active: tag.is_active !== false
-    }));
+    return formatted
+      .filter(tag => tag.is_active !== false)
+      .map(tag => ({
+        id: tag.id || tag.value,
+        value: tag.id || tag.value,
+        name: tag.name || tag.label,
+        tag_type: tag.tag_type || 'general',
+        color: tag.color || '#6B7280',
+        employee_count: tag.employee_count || 0
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [employeeTags, getFormattedEmployeeTags]);
 
   const isLoading = loading?.employeeTags || false;
@@ -63,83 +58,110 @@ const TagManagementModal = ({
   const bgInput = darkMode ? "bg-gray-700" : "bg-white";
   const bgDropdown = darkMode ? "bg-gray-700" : "bg-white";
 
-  // ========================================
-  // DATA PROCESSING - Fixed for Employee Tag Data
-  // ========================================
-
   // Filter tags based on search
   const filteredTags = useMemo(() => {
-    let filtered = formattedTags.filter(tag => tag.is_active);
+    if (!searchTerm.trim()) return availableTags;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return availableTags.filter(tag => 
+      tag.name.toLowerCase().includes(searchLower) ||
+      tag.tag_type.toLowerCase().includes(searchLower)
+    );
+  }, [availableTags, searchTerm]);
 
-    if (searchTerm.trim()) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(tag => 
-        tag.name.toLowerCase().includes(searchLower) ||
-        tag.tag_type.toLowerCase().includes(searchLower)
-      );
-    }
-
-    return filtered;
-  }, [formattedTags, searchTerm]);
-
-  // Get selected tag objects
-  const selectedTagObjects = useMemo(() => {
-    return selectedTags.map(tagId => 
-      formattedTags.find(tag => tag.id === tagId)
-    ).filter(Boolean);
-  }, [selectedTags, formattedTags]);
-
-  // ========================================
-  // SMART TOGGLE LOGIC - Fixed with actual employee data
-  // ========================================
-
-  // Check if selected employees have a specific tag
-  const getTagStatusForEmployees = (tagId) => {
+  // FIXED: Analyze current tags for selected employees - Better tag detection
+  const employeeTagAnalysis = useMemo(() => {
     if (!selectedEmployeeData || selectedEmployeeData.length === 0) {
-      return { hasTag: 0, total: selectedEmployees.length };
+      return {
+        employeesWithTags: 0,
+        employeesWithoutTags: 0,
+        currentTags: {},
+        employeeTagMap: {}
+      };
     }
 
-    const employeesWithTag = selectedEmployeeData.filter(emp => {
-      // Check different tag data structures from API
-      const empTags = emp.tagInfo?.tags || emp.tags || emp.tag_names || [];
+    const employeeTagMap = {};
+    const currentTags = {};
+    let employeesWithTags = 0;
+
+    selectedEmployeeData.forEach(emp => {
+      // Try multiple ways to get current tag - IMPROVED
+      let currentTag = null;
       
-      return empTags.some(tag => {
-        // Handle different tag formats
-        if (typeof tag === 'object') {
-          return tag.id === tagId || tag.value === tagId;
+      // Method 1: Check tagInfo.tags array
+      if (emp.tagInfo?.tags && Array.isArray(emp.tagInfo.tags) && emp.tagInfo.tags.length > 0) {
+        currentTag = emp.tagInfo.tags[0];
+      }
+      // Method 2: Check direct tags array
+      else if (emp.tags && Array.isArray(emp.tags) && emp.tags.length > 0) {
+        currentTag = emp.tags[0];
+      }
+      // Method 3: Check tag_names array
+      else if (emp.tag_names && Array.isArray(emp.tag_names) && emp.tag_names.length > 0) {
+        currentTag = emp.tag_names[0];
+      }
+      // Method 4: Check single tag properties
+      else if (emp.tag_id || emp.tag_name) {
+        currentTag = {
+          id: emp.tag_id,
+          name: emp.tag_name
+        };
+      }
+      
+      if (currentTag) {
+        employeesWithTags++;
+        
+        // Normalize tag data
+        const tagId = typeof currentTag === 'object' ? 
+          (currentTag.id || currentTag.value) : currentTag;
+        const tagName = typeof currentTag === 'object' ? 
+          (currentTag.name || currentTag.label || currentTag) : currentTag;
+        
+        employeeTagMap[emp.id] = { 
+          id: tagId, 
+          name: tagName.toString() // Ensure string
+        };
+        
+        if (!currentTags[tagId]) {
+          currentTags[tagId] = { count: 0, name: tagName.toString() };
         }
-        return tag === tagId;
-      });
+        currentTags[tagId].count++;
+      } else {
+        employeeTagMap[emp.id] = null;
+      }
+    });
+
+    console.log('🏷️ Tag Analysis Result:', {
+      employeesWithTags,
+      total: selectedEmployeeData.length,
+      currentTags,
+      employeeTagMap
     });
 
     return {
-      hasTag: employeesWithTag.length,
-      total: selectedEmployeeData.length,
-      employeesWithTag: employeesWithTag,
-      employeesWithoutTag: selectedEmployeeData.filter(emp => !employeesWithTag.includes(emp))
+      employeesWithTags,
+      employeesWithoutTags: selectedEmployeeData.length - employeesWithTags,
+      currentTags,
+      employeeTagMap
     };
-  };
+  }, [selectedEmployeeData]);
 
-  // Get action for tag (add/remove based on majority)
-  const getTagAction = (tagId) => {
-    const status = getTagStatusForEmployees(tagId);
-    const percentage = status.total > 0 ? (status.hasTag / status.total) * 100 : 0;
-    
-    // If more than 50% of employees have this tag, remove it
-    // Otherwise add it
-    return percentage > 50 ? 'remove' : 'add';
-  };
+  // Get selected tag object
+  const selectedTag = useMemo(() => {
+    return availableTags.find(tag => tag.id === selectedTagId);
+  }, [availableTags, selectedTagId]);
 
   // ========================================
   // INITIALIZATION
   // ========================================
   useEffect(() => {
     if (isOpen) {
-      setSelectedTags([]);
+      setSelectedTagId('');
+      setOperationType('replace');
       setSearchTerm('');
       setDropdownOpen(false);
       
-      // Fetch employee tags if not available
+      // Fetch tags if not available
       if (!hasEmployeeTags() && fetchEmployeeTags) {
         console.log('🏷️ Fetching employee tags...');
         fetchEmployeeTags();
@@ -147,7 +169,7 @@ const TagManagementModal = ({
     }
   }, [isOpen, hasEmployeeTags, fetchEmployeeTags]);
 
-  // Close dropdown when clicking outside
+  // Click outside handler
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -160,37 +182,26 @@ const TagManagementModal = ({
   }, []);
 
   // ========================================
-  // EVENT HANDLERS - Fixed for Backend API
+  // EVENT HANDLERS
   // ========================================
 
-  // Handle tag selection/deselection
   const handleTagSelect = (tag) => {
-    setSelectedTags(prev => {
-      if (prev.includes(tag.id)) {
-        return prev.filter(id => id !== tag.id);
-      } else {
-        return [...prev, tag.id];
-      }
-    });
+    setSelectedTagId(tag.id);
+    setDropdownOpen(false);
+    setSearchTerm('');
   };
 
-  // Remove selected tag
-  const handleRemoveTag = (tagId) => {
-    setSelectedTags(prev => prev.filter(id => id !== tagId));
-  };
-
-  // Manual refresh tags
   const handleRefreshTags = () => {
-    console.log('🔄 Manually refreshing tags...');
+    console.log('🔄 Refreshing tags...');
     if (fetchEmployeeTags) {
       fetchEmployeeTags();
     }
   };
 
-  // SMART TOGGLE ACTION - Fixed for Backend API
-  const handleSmartToggle = async () => {
-    if (selectedTags.length === 0) {
-      alert('Please select at least one tag');
+  // FIXED: Execute tag operations with proper sequential logic
+  const handleExecuteTagOperation = async () => {
+    if (operationType === 'replace' && !selectedTagId) {
+      alert('Please select a tag to assign');
       return;
     }
 
@@ -202,34 +213,89 @@ const TagManagementModal = ({
     setIsProcessing(true);
     
     try {
-      // Smart action for each tag using proper backend API endpoints
-      for (const tagId of selectedTags) {
-        const action = getTagAction(tagId);
-        const status = getTagStatusForEmployees(tagId);
-        const tagName = formattedTags.find(t => t.id === tagId)?.name || tagId;
+      if (operationType === 'remove') {
+        // Remove current tags from all selected employees
+        console.log('🗑️ Removing tags from employees...');
         
-        console.log(`🏷️ Smart Toggle: ${action} tag "${tagName}" (${status.hasTag}/${status.total} employees have it)`);
+        // Group employees by their current tags and remove each tag
+        const removalPromises = [];
         
-        // Backend API endpoints:
-        // POST /employees/bulk-add-tag/ for adding
-        // POST /employees/bulk-remove-tag/ for removing
-        const payload = {
-          employee_ids: selectedEmployees,
-          tag_id: tagId
-        };
+        Object.entries(employeeTagAnalysis.employeeTagMap).forEach(([empId, tagInfo]) => {
+          if (tagInfo && selectedEmployees.includes(parseInt(empId))) {
+            // Only add this employee to removal if not already in a batch for this tag
+            const existingPromise = removalPromises.find(p => p.tagId === tagInfo.id);
+            if (existingPromise) {
+              existingPromise.employeeIds.push(parseInt(empId));
+            } else {
+              removalPromises.push({
+                tagId: tagInfo.id,
+                employeeIds: [parseInt(empId)]
+              });
+            }
+          }
+        });
 
-        if (action === 'add') {
-          await onAction('bulkAddTags', payload);
-        } else {
-          await onAction('bulkRemoveTags', payload);
+        // Execute all removals
+        for (const removal of removalPromises) {
+          if (removal.employeeIds.length > 0) {
+            console.log(`🗑️ Removing tag ${removal.tagId} from ${removal.employeeIds.length} employees`);
+            await onAction('bulkRemoveTags', {
+              employee_ids: removal.employeeIds,
+              tag_id: removal.tagId
+            });
+          }
         }
+
+      } else if (operationType === 'replace') {
+        // FIXED: Replace tags properly - Remove old tags first, then add new tag
+        console.log('🔄 Replacing tags for employees...');
+        
+        // Step 1: Remove existing tags ONLY from employees that have tags
+        const employeesWithCurrentTags = selectedEmployees.filter(empId => 
+          employeeTagAnalysis.employeeTagMap[empId] !== null
+        );
+
+        if (employeesWithCurrentTags.length > 0) {
+          console.log(`🗑️ First removing existing tags from ${employeesWithCurrentTags.length} employees`);
+          
+          // Group by current tags and remove them
+          const tagGroups = {};
+          employeesWithCurrentTags.forEach(empId => {
+            const tagInfo = employeeTagAnalysis.employeeTagMap[empId];
+            if (tagInfo) {
+              if (!tagGroups[tagInfo.id]) {
+                tagGroups[tagInfo.id] = [];
+              }
+              tagGroups[tagInfo.id].push(empId);
+            }
+          });
+
+          // Remove each tag group
+          for (const [tagId, employeeIds] of Object.entries(tagGroups)) {
+            console.log(`🗑️ Removing tag ${tagId} from employees: ${employeeIds.join(', ')}`);
+            await onAction('bulkRemoveTags', {
+              employee_ids: employeeIds,
+              tag_id: parseInt(tagId)
+            });
+          }
+          
+          // Wait a bit for backend to process
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        // Step 2: Add new tag to ALL selected employees
+        console.log(`➕ Adding new tag ${selectedTagId} to all ${selectedEmployees.length} employees`);
+        await onAction('bulkAddTags', {
+          employee_ids: selectedEmployees,
+          tag_id: selectedTagId
+        });
       }
       
-      console.log('✅ Smart toggle completed successfully');
+      console.log('✅ Tag operations completed successfully');
       onClose();
     } catch (error) {
-      console.error('❌ Smart toggle failed:', error);
-      alert(`Smart toggle failed: ${error.message}`);
+      console.error('❌ Tag operations failed:', error);
+      alert(`Tag operations failed: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -246,7 +312,7 @@ const TagManagementModal = ({
       />
       
       {/* Modal */}
-      <div className={`relative ${bgModal} rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-hidden`}>
+      <div className={`relative ${bgModal} rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden`}>
         {/* Header */}
         <div className={`px-6 py-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center">
@@ -258,7 +324,7 @@ const TagManagementModal = ({
                 Tag Management
               </h2>
               <p className={`text-sm ${textMuted}`}>
-                {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} selected
+                {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} selected • Single tag per employee
               </p>
             </div>
           </div>
@@ -283,71 +349,41 @@ const TagManagementModal = ({
           </div>
         </div>
 
-        {/* Smart Toggle Info */}
+        {/* Operation Mode Selection */}
         <div className="px-6 pt-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-            <div className="flex items-start">
-              <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center mr-3 mt-0.5">
-                <Check className="w-3 h-3 text-white" />
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">Smart Toggle</h4>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                  Tags will be automatically added or removed. If an employee has the tag, it will be removed; if not, it will be added.
-                </p>
-              </div>
+          <div className="flex items-center gap-2 mb-4">
+            <label className={`text-sm font-medium ${textPrimary}`}>Operation:</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setOperationType('replace')}
+                disabled={isProcessing}
+                className={`px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-50 ${
+                  operationType === 'replace'
+                    ? 'bg-blue-100 dark:bg-blue-900 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-300'
+                    : `border-gray-300 dark:border-gray-600 ${textSecondary} ${bgHover}`
+                }`}
+              >
+                Replace Tag
+              </button>
+              <button
+                onClick={() => setOperationType('remove')}
+                disabled={isProcessing}
+                className={`px-3 py-1 text-xs rounded-lg border transition-colors disabled:opacity-50 ${
+                  operationType === 'remove'
+                    ? 'bg-red-100 dark:bg-red-900 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300'
+                    : `border-gray-300 dark:border-gray-600 ${textSecondary} ${bgHover}`
+                }`}
+              >
+                Remove Tags
+              </button>
             </div>
           </div>
+
+         
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
-          {/* Selected Employees Display */}
-          {selectedEmployeeData.length > 0 && (
-            <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
-                Selected Employees ({selectedEmployeeData.length})
-              </label>
-              <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
-                {selectedEmployeeData.map((emp) => {
-                  const empTags = emp.tagInfo?.tags || emp.tags || emp.tag_names || [];
-                  return (
-                    <div key={emp.id} className="flex items-center justify-between text-sm">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mr-3">
-                          <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
-                            {(emp.first_name || emp.fullName || '').charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <div className={`font-medium ${textPrimary}`}>
-                            {emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()}
-                          </div>
-                          <div className={`text-xs ${textMuted}`}>
-                            {emp.employee_id} • {empTags.length} tag{empTags.length !== 1 ? 's' : ''}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {empTags.slice(0, 3).map((tag, index) => {
-                          const tagName = typeof tag === 'object' ? tag.name || tag.label : tag;
-                          return (
-                            <span key={index} className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-600 rounded text-gray-700 dark:text-gray-300">
-                              {tagName}
-                            </span>
-                          );
-                        })}
-                        {empTags.length > 3 && (
-                          <span className={`text-xs ${textMuted}`}>+{empTags.length - 3}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
+        <div className="px-6 pb-4 space-y-4 max-h-96 overflow-y-auto">
           {/* Loading State */}
           {isLoading && (
             <div className="flex items-center justify-center py-4">
@@ -376,51 +412,42 @@ const TagManagementModal = ({
             </div>
           )}
 
-          {/* Selected Tags Display */}
-          {selectedTags.length > 0 && (
+       
+          {/* Selected Employees Display - IMPROVED */}
+          {selectedEmployeeData.length > 0 && (
             <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Selected Tags ({selectedTags.length})
+              <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
+                Selected Employees ({selectedEmployeeData.length})
               </label>
-              <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
-                {selectedTagObjects.map((tag) => {
-                  const status = getTagStatusForEmployees(tag.id);
-                  const action = getTagAction(tag.id);
-                  const percentage = status.total > 0 ? Math.round((status.hasTag / status.total) * 100) : 0;
-                  
+              <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+                {selectedEmployeeData.map((emp) => {
+                  const currentTag = employeeTagAnalysis.employeeTagMap[emp.id];
                   return (
-                    <div
-                      key={`selected-${tag.id}`}
-                      className={`flex items-center px-3 py-2 rounded-lg text-sm border ${
-                        action === 'add' 
-                          ? 'bg-green-100 dark:bg-green-900/20 border-green-300 dark:border-green-700 text-green-800 dark:text-green-300'
-                          : 'bg-red-100 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300'
-                      }`}
-                    >
-                      <div 
-                        className="w-2 h-2 rounded-full mr-2"
-                        style={{ backgroundColor: tag.color }}
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{tag.name}</span>
-                          {action === 'add' ? (
-                            <Plus className="w-3 h-3" />
-                          ) : (
-                            <Minus className="w-3 h-3" />
-                          )}
+                    <div key={emp.id} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center">
+                        <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                            {(emp.first_name || emp.fullName || '').charAt(0)}
+                          </span>
                         </div>
-                        <div className="text-xs opacity-75">
-                          {action === 'add' ? 'Will be added' : 'Will be removed'} • {status.hasTag}/{status.total} ({percentage}%)
+                        <div>
+                          <div className={`font-medium ${textPrimary}`}>
+                            {emp.fullName || emp.displayName || `${emp.first_name || ''} ${emp.last_name || ''}`.trim()}
+                          </div>
+                          <div className={`text-xs ${textMuted}`}>
+                            {emp.employee_id} • {emp.jobTitle || emp.job_title}
+                          </div>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleRemoveTag(tag.id)}
-                        disabled={isProcessing}
-                        className="ml-2 hover:text-red-600 disabled:opacity-50"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
+                      <div className="text-xs">
+                        {currentTag ? (
+                          <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900 rounded text-blue-700 dark:text-blue-300">
+                            {currentTag.name}
+                          </span>
+                        ) : (
+                          <span className={`${textMuted}`}>No tag</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -428,11 +455,11 @@ const TagManagementModal = ({
             </div>
           )}
 
-          {/* Tag Selection */}
-          {!isLoading && !hasError && formattedTags.length > 0 && (
+          {/* Tag Selection (only for replace mode) */}
+          {operationType === 'replace' && !isLoading && !hasError && availableTags.length > 0 && (
             <div ref={dropdownRef}>
               <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Search and Select Tags
+                Select Tag to Assign
               </label>
               <div className="relative">
                 <div
@@ -441,22 +468,60 @@ const TagManagementModal = ({
                 >
                   <div className="flex items-center flex-1">
                     <Search className={`w-4 h-4 mr-3 ${textMuted}`} />
-                    <input
-                      type="text"
-                      placeholder="Search tags by name..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDropdownOpen(true);
-                      }}
-                      disabled={isProcessing}
-                      className={`bg-transparent outline-none flex-1 ${textPrimary} disabled:opacity-50 placeholder:${textMuted}`}
+                    {selectedTag ? (
+                      <div className="flex items-center flex-1">
+                        <div 
+                          className="w-3 h-3 rounded-full mr-3"
+                          style={{ backgroundColor: selectedTag.color }}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-medium ${textPrimary}`}>
+                              {selectedTag.name}
+                            </span>
+                            {selectedTag.tag_type && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
+                                {selectedTag.tag_type}
+                              </span>
+                            )}
+                          </div>
+                          <div className={`text-xs ${textMuted}`}>
+                            {selectedTag.employee_count} employees currently have this tag
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="Search tags by name or type..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDropdownOpen(true);
+                        }}
+                        disabled={isProcessing}
+                        className={`bg-transparent outline-none flex-1 ${textPrimary} disabled:opacity-50 placeholder:${textMuted}`}
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center ml-2">
+                    {selectedTag && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTagId('');
+                          setSearchTerm('');
+                        }}
+                        className={`mr-2 ${textMuted} hover:text-red-500 transition-colors`}
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                    <ChevronDown 
+                      className={`w-4 h-4 ${textMuted} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
                     />
                   </div>
-                  <ChevronDown 
-                    className={`w-4 h-4 ${textMuted} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
-                  />
                 </div>
 
                 {/* Dropdown Menu */}
@@ -479,10 +544,7 @@ const TagManagementModal = ({
                       </div>
                     ) : (
                       filteredTags.map((tag) => {
-                        const isSelected = selectedTags.includes(tag.id);
-                        const status = getTagStatusForEmployees(tag.id);
-                        const action = getTagAction(tag.id);
-                        const percentage = status.total > 0 ? Math.round((status.hasTag / status.total) * 100) : 0;
+                        const isSelected = selectedTagId === tag.id;
                         
                         return (
                           <div
@@ -490,51 +552,32 @@ const TagManagementModal = ({
                             onClick={() => handleTagSelect(tag)}
                             className={`px-4 py-3 cursor-pointer transition-colors border-l-4 ${
                               isSelected 
-                                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-500' 
+                                ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500' 
                                 : `${bgHover} border-transparent`
                             }`}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center flex-1">
-                                <div 
-                                  className="w-3 h-3 rounded-full mr-3"
-                                  style={{ backgroundColor: tag.color }}
-                                />
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className={`font-medium ${textPrimary}`}>
-                                      {tag.name}
+                            <div className="flex items-center">
+                              <div 
+                                className="w-3 h-3 rounded-full mr-3"
+                                style={{ backgroundColor: tag.color }}
+                              />
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-medium ${textPrimary}`}>
+                                    {tag.name}
+                                  </span>
+                                  {tag.tag_type && (
+                                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
+                                      {tag.tag_type}
                                     </span>
-                                    {tag.tag_type && (
-                                      <span className={`text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
-                                        {tag.tag_type}
-                                      </span>
-                                    )}
-                                    {status.total > 0 && (
-                                      <div className={`flex items-center gap-1 text-xs ${
-                                        action === 'add' 
-                                          ? 'text-green-600 dark:text-green-400'
-                                          : 'text-red-600 dark:text-red-400'
-                                      }`}>
-                                        {action === 'add' ? (
-                                          <Plus className="w-3 h-3" />
-                                        ) : (
-                                          <Minus className="w-3 h-3" />
-                                        )}
-                                        <span>{action === 'add' ? 'Add' : 'Remove'}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <div className={`text-xs ${textMuted} mt-0.5 flex items-center gap-2`}>
-                                    <span>{tag.employee_count || 0} employees</span>
-                                    {status.total > 0 && (
-                                      <span>• {status.hasTag}/{status.total} selected ({percentage}%)</span>
-                                    )}
-                                  </div>
+                                  )}
+                                </div>
+                                <div className={`text-xs ${textMuted} mt-0.5`}>
+                                  {tag.employee_count || 0} employees currently have this tag
                                 </div>
                               </div>
                               {isSelected && (
-                                <Check className="w-4 h-4 text-blue-500" />
+                                <Check className="w-4 h-4 text-purple-500" />
                               )}
                             </div>
                           </div>
@@ -548,7 +591,7 @@ const TagManagementModal = ({
           )}
 
           {/* No Data State */}
-          {!isLoading && !hasError && formattedTags.length === 0 && (
+          {!isLoading && !hasError && availableTags.length === 0 && (
             <div className="text-center py-8">
               <Tag className={`w-12 h-12 mx-auto mb-4 ${textMuted}`} />
               <h3 className={`text-lg font-medium ${textPrimary} mb-2`}>No tags available</h3>
@@ -564,17 +607,21 @@ const TagManagementModal = ({
             </div>
           )}
 
-          {/* Stats */}
-          {formattedTags.length > 0 && (
+          {/* Statistics */}
+          {availableTags.length > 0 && (
             <div className={`text-xs ${textMuted} text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg`}>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <div className="font-medium">Available Tags</div>
-                  <div>{filteredTags.length} / {formattedTags.length}</div>
+                  <div>{filteredTags.length} / {availableTags.length}</div>
                 </div>
                 <div>
-                  <div className="font-medium">Selected Tags</div>
-                  <div>{selectedTags.length}</div>
+                  <div className="font-medium">Employees with Tags</div>
+                  <div>{employeeTagAnalysis.employeesWithTags} / {selectedEmployeeData.length}</div>
+                </div>
+                <div>
+                  <div className="font-medium">Operation</div>
+                  <div className="capitalize">{operationType}</div>
                 </div>
               </div>
               {searchTerm && (
@@ -589,13 +636,17 @@ const TagManagementModal = ({
         {/* Footer */}
         <div className={`px-6 py-4 border-t ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center">
-            {selectedTags.length > 0 ? (
+            {operationType === 'replace' && selectedTagId ? (
               <span className={`text-sm ${textMuted}`}>
-                {selectedTags.length} tag{selectedTags.length !== 1 ? 's' : ''} selected • {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''}
+                Replace tags for {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''}
+              </span>
+            ) : operationType === 'remove' ? (
+              <span className={`text-sm ${textMuted}`}>
+                Remove tags from {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''}
               </span>
             ) : (
               <span className={`text-sm ${textMuted}`}>
-                Select tags and smart toggle them
+                Select operation and tag
               </span>
             )}
           </div>
@@ -608,20 +659,22 @@ const TagManagementModal = ({
               Cancel
             </button>
             <button
-              onClick={handleSmartToggle}
+              onClick={handleExecuteTagOperation}
               disabled={
                 isProcessing || 
-                selectedTags.length === 0 || 
                 selectedEmployees.length === 0 || 
+                (operationType === 'replace' && !selectedTagId) ||
                 isLoading
               }
               className={`px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 isProcessing || 
-                selectedTags.length === 0 || 
                 selectedEmployees.length === 0 || 
+                (operationType === 'replace' && !selectedTagId) ||
                 isLoading
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : operationType === 'replace'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-red-600 hover:bg-red-700 text-white'
               }`}
             >
               {isProcessing ? (
@@ -630,7 +683,9 @@ const TagManagementModal = ({
                   Processing...
                 </div>
               ) : (
-                `Smart Toggle (${selectedTags.length})`
+                operationType === 'replace' 
+                  ? `Replace Tags (${selectedEmployees.length})` 
+                  : `Remove Tags (${selectedEmployees.length})`
               )}
             </button>
           </div>

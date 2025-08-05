@@ -5,9 +5,9 @@ export const msalConfig = {
     authority:
       "https://login.microsoftonline.com/b3222ef7-242d-4724-a665-97b0a764f2d0",
     redirectUri:
-      process.env.NEXT_PUBLIC_REDIRECT_URI || "http://localhost:3000",
+      process.env.NEXT_PUBLIC_REDIRECT_URI ,
     postLogoutRedirectUri:
-      process.env.NEXT_PUBLIC_REDIRECT_URI || "http://localhost:3000",
+      process.env.NEXT_PUBLIC_REDIRECT_URI ,
   },
   cache: {
     // localStorage istəyinə görə dəyişir

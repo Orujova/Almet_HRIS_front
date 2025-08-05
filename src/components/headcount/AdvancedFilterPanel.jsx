@@ -75,7 +75,7 @@ const AdvancedFilterPanel = ({
     // Search fields
     search: initialFilters.search || "",
     employee_search: initialFilters.employee_search || "",
-    line_manager_search: initialFilters.line_manager_search || "",
+ 
     job_title_search: initialFilters.job_title_search || "",
     
     // Multi-select arrays
@@ -564,6 +564,97 @@ const AdvancedFilterPanel = ({
     return managers;
   }, [formattedEmployees]);
 
+ // All grading levels from database - fetched globally 
+  const allGradingLevelsOptions = useMemo(() => {
+    console.log('🏆 Raw formattedEmployees for grading levels:', formattedEmployees);
+    
+    if (!Array.isArray(formattedEmployees)) {
+      console.warn('⚠️ formattedEmployees is not an array for grading levels');
+      return [];
+    }
+
+    // Extract all unique grading levels from employees
+    const uniqueGradingLevels = new Set();
+    
+    formattedEmployees.forEach(emp => {
+      if (emp && emp.grading_level) {
+        const grade = safeString(emp.grading_level).trim();
+        if (grade && grade !== '' && grade !== 'null' && grade !== 'undefined') {
+          uniqueGradingLevels.add(grade);
+        }
+      }
+    });
+    
+    // Convert to options array and add display names
+    const gradingOptions = Array.from(uniqueGradingLevels).map(code => {
+      let display = code;
+      let full_name = code;
+      
+      // Map database codes to proper display names
+      switch(code) {
+        case '_LD':
+          display = '-LD';
+          full_name = 'Lower Decile';
+          break;
+        case '_LQ':
+          display = '-LQ';
+          full_name = 'Lower Quartile';
+          break;
+        case '_M':
+        case 'M':
+          display = code === '_M' ? '-M' : 'M';
+          full_name = 'Median';
+          break;
+        case '_UQ':
+          display = '-UQ';
+          full_name = 'Upper Quartile';
+          break;
+        case '_UD':
+          display = '-UD';
+          full_name = 'Upper Decile';
+          break;
+        default:
+          // Keep original for any other grades
+          display = code;
+          full_name = `Grade ${code}`;
+      }
+      
+      // Count employees with this grade
+      const employeeCount = formattedEmployees.filter(emp => 
+        emp && emp.grading_level === code
+      ).length;
+      
+      return {
+        value: code,
+        label: `${display} - ${full_name}`,
+        code: code,
+        display: display,
+        full_name: full_name,
+        employee_count: employeeCount,
+        // CRITICAL: Special handling for _M and M - they should both match M in filtering
+        searchValues: code === '_M' ? ['_M', 'M'] : [code]
+      };
+    }).sort((a, b) => {
+      // Custom sort order for grading levels
+      const order = ['_LD', '_LQ', '_M', 'M', '_UQ', '_UD'];
+      const aIndex = order.indexOf(a.code);
+      const bIndex = order.indexOf(b.code);
+      
+      if (aIndex !== -1 && bIndex !== -1) {
+        return aIndex - bIndex;
+      } else if (aIndex !== -1) {
+        return -1;
+      } else if (bIndex !== -1) {
+        return 1;
+      } else {
+        return a.label.localeCompare(b.label);
+      }
+    });
+    
+    console.log('✅ Processed grading level options from database:', gradingOptions);
+    return gradingOptions;
+  }, [formattedEmployees]);
+
   // Static options
   const genderOptions = [
     { value: 'MALE', label: 'Male' },
@@ -574,13 +665,6 @@ const AdvancedFilterPanel = ({
     { value: '', label: 'All' },
     { value: 'true', label: 'Yes' },
     { value: 'false', label: 'No' }
-  ];
-
-  const gradeOptions = [
-    { value: 'A', label: 'Grade A', description: 'Senior Level' },
-    { value: 'B', label: 'Grade B', description: 'Mid Level' },
-    { value: 'C', label: 'Grade C', description: 'Junior Level' },
-    { value: 'D', label: 'Grade D', description: 'Entry Level' }
   ];
 
   // ========================================
@@ -682,7 +766,7 @@ const AdvancedFilterPanel = ({
       // Search fields
       search: "",
       employee_search: "",
-      line_manager_search: "",
+   
       job_title_search: "",
       
       // Multi-select arrays - completely clear
@@ -793,33 +877,9 @@ const AdvancedFilterPanel = ({
             {/* Left Column - Search & Organizational */}
             <div className="space-y-4">
               <h4 className={`font-medium ${textPrimary} border-b ${borderColor} pb-2 text-sm`}>
-                Search & Organizational
+                 Organizational
               </h4>
 
-              {/* General Search */}
-              <div>
-                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  General Search
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search by name, email, employee ID..."
-                    value={filters.search}
-                    onChange={(e) => handleInputChange('search', e.target.value)}
-                    className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                  />
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                  {filters.search && (
-                    <button
-                      onClick={() => handleInputChange('search', '')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
 
               {/* Employee Search Dropdown */}
               <div>
@@ -905,7 +965,7 @@ const AdvancedFilterPanel = ({
                   }))}
                   placeholder={
                     departmentOptions.length > 0 
-                      ? "Select departments (unique names, all business functions included)..."
+                      ? "Select departments..."
                       : "Loading departments..."
                   }
                   selectedValues={filters.department}
@@ -975,21 +1035,7 @@ const AdvancedFilterPanel = ({
                 />
               </div>
 
-              {/* Status */}
-              <div>
-                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  Employment Status
-                </label>
-                <MultiSelectDropdown
-                  options={statusOptions}
-                  placeholder="Select statuses..."
-                  selectedValues={filters.status}
-                  onChange={(values) => handleMultiSelectChange("status", values)}
-                  showColors={true}
-                  disabled={loading.employeeStatuses}
-                  searchable={true}
-                />
-              </div>
+             
             </div>
 
             {/* Middle Column - Employment Details */}
@@ -998,13 +1044,13 @@ const AdvancedFilterPanel = ({
                 Employment Details
               </h4>
 
-              {/* Grading Level */}
+          
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Grading Level
                 </label>
                 <MultiSelectDropdown
-                  options={gradeOptions}
+                  options={allGradingLevelsOptions}
                   placeholder="Select grading levels..."
                   selectedValues={filters.grading_level}
                   onChange={(values) => handleMultiSelectChange("grading_level", values)}
@@ -1012,7 +1058,7 @@ const AdvancedFilterPanel = ({
                 />
               </div>
 
-              {/* Contract Duration */}
+            
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Contract Duration
@@ -1027,7 +1073,7 @@ const AdvancedFilterPanel = ({
                 />
               </div>
 
-              {/* Gender */}
+          
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Gender
@@ -1040,7 +1086,21 @@ const AdvancedFilterPanel = ({
                 />
               </div>
 
-              {/* Job Title Search */}
+              <div>
+                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
+                  Employment Status
+                </label>
+                <MultiSelectDropdown
+                  options={statusOptions}
+                  placeholder="Select statuses..."
+                  selectedValues={filters.status}
+                  onChange={(values) => handleMultiSelectChange("status", values)}
+                  showColors={true}
+                  disabled={loading.employeeStatuses}
+                  searchable={true}
+                />
+              </div>
+          
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Job Title Search
@@ -1065,30 +1125,7 @@ const AdvancedFilterPanel = ({
                 </div>
               </div>
 
-              {/* Line Manager Search */}
-              <div>
-                <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  Line Manager Search  
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search by line manager name..."
-                    value={filters.line_manager_search}
-                    onChange={(e) => handleInputChange('line_manager_search', e.target.value)}
-                    className={`w-full p-3 pl-10 pr-4 rounded-lg border ${borderColor} ${inputBg} ${textPrimary} text-sm focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                  />
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-                  {filters.line_manager_search && (
-                    <button
-                      onClick={() => handleInputChange('line_manager_search', '')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-500"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-              </div>
+              
             </div>
 
             {/* Right Column - Management & Additional */}
@@ -1097,7 +1134,7 @@ const AdvancedFilterPanel = ({
                 Management & Additional
               </h4>
 
-              {/* Line Manager */}
+     
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Line Manager
@@ -1127,7 +1164,7 @@ const AdvancedFilterPanel = ({
                 />
               </div>
 
-              {/* Tags */}
+  
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Tags
@@ -1143,7 +1180,7 @@ const AdvancedFilterPanel = ({
                 />
               </div>
 
-              {/* Is Active */}
+         
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Is Active
@@ -1161,7 +1198,7 @@ const AdvancedFilterPanel = ({
                 </select>
               </div>
 
-              {/* Is Visible in Org Chart */}
+           
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Visible in Org Chart
@@ -1179,7 +1216,7 @@ const AdvancedFilterPanel = ({
                 </select>
               </div>
 
-              {/* Status Needs Update */}
+          
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Status Needs Update
@@ -1197,7 +1234,6 @@ const AdvancedFilterPanel = ({
                 </select>
               </div>
 
-              {/* Contract Expiring Days */}
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
                   Contract Expiring Within (Days)

@@ -400,21 +400,7 @@ export const fetchEmployeeStatusPreview = createAsyncThunk(
   }
 );
 
-// ========================================
-// ORGANIZATIONAL HIERARCHY
-// ========================================
 
-export const fetchOrganizationalHierarchy = createAsyncThunk(
-  'employees/fetchOrganizationalHierarchy',
-  async (params, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.getOrganizationalHierarchy(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
 
 // ========================================
 // ADVANCED SEARCH - YENİ ASYNC THUNKS
@@ -1487,11 +1473,7 @@ const employeeSlice = createSlice({
         state.error.upload = action.payload;
       });
 
-    // Organizational hierarchy
-    builder
-      .addCase(fetchOrganizationalHierarchy.fulfilled, (state, action) => {
-        state.orgChart = action.payload;
-      });
+    
 
     // Activities
     builder

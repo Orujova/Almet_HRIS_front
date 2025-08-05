@@ -526,10 +526,7 @@ export const employeeAPI = {
     return apiService.bulkUpdateEmployeeGrades(updates);
   },
   
-  // ========================================
-  // ORGANIZATIONAL HIERARCHY
-  // ========================================
-  getOrganizationalHierarchy: (params) => apiService.getOrganizationalHierarchy(params),
+  
   
   // ========================================
   // PROFILE IMAGES

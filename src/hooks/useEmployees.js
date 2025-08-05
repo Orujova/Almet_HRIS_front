@@ -29,7 +29,7 @@ import {
   fetchEmployeeActivities,
   fetchEmployeeDirectReports,
   fetchEmployeeStatusPreview,
-  fetchOrganizationalHierarchy,
+ 
   // New actions for org chart visibility
   toggleOrgChartVisibility,
   bulkToggleOrgChartVisibility,
@@ -246,7 +246,7 @@ export const useEmployees = () => {
   const fetchEmployeeActivitiesAction = useCallback((employeeId) => dispatch(fetchEmployeeActivities(employeeId)), [dispatch]);
   const fetchEmployeeDirectReportsAction = useCallback((employeeId) => dispatch(fetchEmployeeDirectReports(employeeId)), [dispatch]);
   const fetchEmployeeStatusPreviewAction = useCallback((employeeId) => dispatch(fetchEmployeeStatusPreview(employeeId)), [dispatch]);
-  const fetchOrganizationalHierarchyAction = useCallback((params) => dispatch(fetchOrganizationalHierarchy(params)), [dispatch]);
+
   
   // Selection management
   const setSelectedEmployeesAction = useCallback((employees) => dispatch(setSelectedEmployees(employees)), [dispatch]);
@@ -499,7 +499,7 @@ export const useEmployees = () => {
     fetchEmployeeActivities: fetchEmployeeActivitiesAction,
     fetchEmployeeDirectReports: fetchEmployeeDirectReportsAction,
     fetchEmployeeStatusPreview: fetchEmployeeStatusPreviewAction,
-    fetchOrganizationalHierarchy: fetchOrganizationalHierarchyAction,
+  
     
     // Selection management
     setSelectedEmployees: setSelectedEmployeesAction,
