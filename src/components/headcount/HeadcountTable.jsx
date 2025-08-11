@@ -819,35 +819,120 @@ const HeadcountTable = () => {
   // EXPORT FUNCTIONALITY
   // ========================================
   
-  const handleExport = useCallback(async (exportOptions) => {
-    try {
-      const exportParams = {
-        format: exportOptions.format || 'excel',
-        includeFields: exportOptions.includeFields
+// FIXED: Export functionality in HeadcountTable.jsx
+// Add this to replace the existing handleExport function
+
+const handleExport = useCallback(async (exportOptions) => {
+  console.log('📤 FIXED: Export handler called with options:', exportOptions);
+  
+  try {
+    let exportParams = {};
+
+    // Set format
+    exportParams.format = exportOptions.format || 'excel';
+    
+    // Set field inclusions
+    if (exportOptions.includeFields && Array.isArray(exportOptions.includeFields)) {
+      exportParams.fields = exportOptions.includeFields.join(',');
+    } else if (exportOptions.fields) {
+      // Handle field mapping from modal
+      const fieldMappings = {
+        basic_info: 'employee_id,first_name,last_name,email,gender,father_name',
+        job_info: 'job_title,department_name,business_function_name,position_group_name',
+        contact_info: 'phone,address,emergency_contact',
+        contract_info: 'contract_duration,contract_start_date,contract_end_date,contract_extensions',
+        management_info: 'line_manager_name,line_manager_hc_number,direct_reports_count',
+        tags: 'tag_names',
+        grading: 'grading_level,grading_display,position_group_level',
+        status: 'status_name,status_color,is_visible_in_org_chart,status_needs_update',
+        dates: 'start_date,end_date,date_of_birth,years_of_service',
+        documents_count: 'documents_count',
+        activities_count: 'activities_count'
       };
 
-      if (exportOptions.type === 'selected' && selectedEmployees.length > 0) {
-        exportParams.employee_ids = selectedEmployees;
-      } else if (exportOptions.type === 'filtered') {
-        Object.keys(buildApiParams).forEach(key => {
-          if (key !== 'page' && key !== 'page_size') {
-            exportParams[key] = buildApiParams[key];
-          }
-        });
-      }
-
-      console.log('📤 Export params:', exportParams);
-      const result = await exportEmployees(exportParams);
+      const selectedFields = Object.keys(exportOptions.fields)
+        .filter(field => exportOptions.fields[field])
+        .map(field => fieldMappings[field] || field)
+        .join(',');
       
-      console.log('✅ Export completed successfully:', result);
-      alert('✅ Export completed successfully!');
-    } catch (error) {
-      console.error('❌ Export failed:', error);
-      alert(`❌ Export failed: ${error.message}`);
-    } finally {
-      setIsExportModalOpen(false);
+      if (selectedFields) {
+        exportParams.fields = selectedFields;
+      }
     }
-  }, [buildApiParams, selectedEmployees, exportEmployees]);
+
+    // Determine export scope based on type
+    switch (exportOptions.type) {
+      case "selected":
+        if (!selectedEmployees || selectedEmployees.length === 0) {
+          throw new Error("No employees selected for export");
+        }
+        exportParams.employee_ids = selectedEmployees;
+        console.log('📊 Exporting selected employees:', selectedEmployees);
+        break;
+
+      case "filtered":
+        // Add current filters to export only filtered employees
+        const filterParams = { ...buildApiParams };
+        // Remove pagination params for export
+        delete filterParams.page;
+        delete filterParams.page_size;
+        
+        Object.assign(exportParams, filterParams);
+        console.log('🔍 Exporting filtered employees with params:', filterParams);
+        break;
+
+      case "all":
+        // Export all employees - no additional parameters needed
+        exportParams.all = true;
+        console.log('🌍 Exporting all employees');
+        break;
+
+      default:
+        throw new Error(`Unknown export type: ${exportOptions.type}`);
+    }
+
+    // Add metadata
+    exportParams.include_headers = true;
+    exportParams.include_metadata = true;
+
+    console.log('🚀 FIXED: Final export params being sent to API:', exportParams);
+
+    // Call the export API
+    const result = await exportEmployees(exportParams.format, exportParams);
+    
+    console.log('✅ Export completed successfully:', result);
+    
+    // Show success message
+    const exportTypeLabel = exportOptions.type === "selected" 
+      ? `${selectedEmployees.length} selected` 
+      : exportOptions.type === "filtered" 
+      ? "filtered"
+      : "all";
+    
+    alert(`✅ Export completed successfully! ${exportTypeLabel} employees exported in ${exportParams.format.toUpperCase()} format.`);
+    
+    return result;
+
+  } catch (error) {
+    console.error('❌ Export failed:', error);
+    
+    // Show user-friendly error message
+    let errorMessage = "Export failed. Please try again.";
+    
+    if (error.message) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    } else if (error.data && error.data.message) {
+      errorMessage = error.data.message;
+    } else if (error.data && error.data.detail) {
+      errorMessage = error.data.detail;
+    }
+    
+    alert(`❌ Export failed: ${errorMessage}`);
+    throw error; // Re-throw so the modal can handle it
+  }
+}, [selectedEmployees, buildApiParams, exportEmployees]);
 
   // ========================================
   // BULK UPLOAD FUNCTIONALITY

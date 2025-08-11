@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountHeader.jsx - Simple Advanced Sorting Integration
+// src/components/headcount/HeadcountHeader.jsx - UPDATED: Added Export button to header
 import { useState } from "react";
 import { 
   Plus, 
@@ -6,6 +6,7 @@ import {
   MoreVertical, 
   Users,
   Upload,
+  Download,
   RefreshCw,
   ChevronDown,
   ArrowUpDown,
@@ -14,8 +15,7 @@ import {
 import { useRouter } from "next/navigation";
 
 /**
- * Simple Headcount Header with Advanced Multiple Sorting
- * No save/load - just immediate sorting when user makes changes
+ * UPDATED Headcount Header with Export Button and Advanced Sorting
  */
 const HeadcountHeader = ({ 
   onToggleAdvancedFilter,
@@ -31,7 +31,11 @@ const HeadcountHeader = ({
   onToggleAdvancedSorting,
   isAdvancedSortingOpen,
   currentSorting = [],
-  onClearAllSorting
+  onClearAllSorting,
+  
+  // NEW: Export Props
+  onToggleExport,
+  isExporting = false
 }) => {
   const [refreshing, setRefreshing] = useState(false);
 
@@ -99,6 +103,30 @@ const HeadcountHeader = ({
           {/* Right side - Action buttons */}
           <div className="flex items-center space-x-3">
             
+            {/* NEW: Export Button - Prominent placement */}
+            <button
+              onClick={onToggleExport}
+              disabled={isExporting}
+              className={`flex items-center px-4 py-2 text-sm font-medium border ${borderColor} rounded-lg transition-colors ${
+                isExporting 
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 cursor-not-allowed'
+                  : `${textSecondary} ${hoverBg} hover:border-green-300 dark:hover:border-green-600 hover:text-green-700 dark:hover:text-green-300`
+              }`}
+              title="Export employee data to Excel or CSV"
+            >
+              {isExporting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-500 border-t-transparent mr-2"></div>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download size={16} className="mr-2" />
+                  Export
+                </>
+              )}
+            </button>
+
             {/* Import Button */}
             <button
               onClick={onBulkImport}

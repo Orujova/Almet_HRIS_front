@@ -1,0 +1,414 @@
+// src/hooks/useOrgChart.js
+import { useDispatch, useSelector } from 'react-redux';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useReferenceData } from './useReferenceData';
+import {
+  fetchOrgChart,
+  fetchOrgChartEmployee,
+  fetchFullTreeWithVacancies,
+  fetchOrgChartStatistics,
+  searchOrgChart,
+  fetchManagerTeam,
+  setFilters,
+  clearFilters,
+  resetAllFilters,
+  updateFilter,
+  setViewMode,
+  setShowFilters,
+  setShowLegend,
+  setIsFullscreen,
+  setLayoutDirection,
+  toggleExpandedNode,
+  setExpandedNodes,
+  setSelectedEmployee,
+  clearSelectedEmployee,
+  setPagination,
+  setPage,
+  setPageSize,
+  clearErrors,
+  clearError,
+  invalidateCache,
+  expandAllNodes,
+  collapseAllNodes,
+  refreshData,
+  selectOrgChart,
+  selectFullTree,
+  selectStatistics,
+  selectSelectedEmployee,
+  selectHierarchy,
+  selectFilters,
+  selectActiveFilters,
+  selectUIState,
+  selectViewMode,
+  selectShowFilters,
+  selectShowLegend,
+  selectIsFullscreen,
+  selectExpandedNodes,
+  selectLayoutDirection,
+  selectOrgChartLoading,
+  selectIsLoading,
+  selectOrgChartErrors,
+  selectHasErrors,
+  selectPagination,
+  selectFilteredOrgChart,
+  selectOrgChartForReactFlow,
+  selectManagerTeam,
+  selectEmployeeById,
+  selectEmployeeChildren,
+  selectEmployeeAncestors,
+  selectRootEmployees,
+  selectManagersOnly,
+  selectOrgChartSummary
+} from '../store/slices/orgChartSlice';
+
+export const useOrgChart = () => {
+  const dispatch = useDispatch();
+
+  const {
+    businessFunctionsDropdown,
+    departmentsDropdown,
+    unitsDropdown,
+    jobFunctionsDropdown,
+    positionGroupsDropdown,
+    employeeStatusesDropdown,
+    loading: refDataLoading,
+    error: refDataError
+  } = useReferenceData();
+
+  const orgChart = useSelector(selectOrgChart);
+  const fullTree = useSelector(selectFullTree);
+  const statistics = useSelector(selectStatistics);
+  const selectedEmployee = useSelector(selectSelectedEmployee);
+  const hierarchy = useSelector(selectHierarchy);
+  const filters = useSelector(selectFilters);
+  const activeFilters = useSelector(selectActiveFilters);
+
+  const viewMode = useSelector(selectViewMode);
+  const showFilters = useSelector(selectShowFilters);
+  const showLegend = useSelector(selectShowLegend);
+  const isFullscreen = useSelector(selectIsFullscreen);
+  const expandedNodes = useSelector(selectExpandedNodes);
+  const layoutDirection = useSelector(selectLayoutDirection);
+
+  const loading = useSelector(selectOrgChartLoading);
+  const isLoading = useSelector(selectIsLoading);
+  const errors = useSelector(selectOrgChartErrors);
+  const hasErrors = useSelector(selectHasErrors);
+
+  const pagination = useSelector(selectPagination);
+  const filteredOrgChart = useSelector(selectFilteredOrgChart);
+  const reactFlowData = useSelector(selectOrgChartForReactFlow);
+  const summary = useSelector(selectOrgChartSummary);
+
+  const actions = useMemo(() => ({
+    fetchOrgChart: (params = {}) => dispatch(fetchOrgChart(params)),
+    fetchEmployee: (employeeId) => dispatch(fetchOrgChartEmployee(employeeId)),
+    fetchFullTree: (params = {}) => dispatch(fetchFullTreeWithVacancies(params)),
+    fetchStatistics: (params = {}) => dispatch(fetchOrgChartStatistics(params)),
+    searchOrgChart: (searchParams) => dispatch(searchOrgChart(searchParams)),
+    fetchManagerTeam: (managerId, params = {}) => dispatch(fetchManagerTeam({ managerId, params })),
+    setFilters: (newFilters) => dispatch(setFilters(newFilters)),
+    clearFilters: () => dispatch(clearFilters()),
+    resetAllFilters: () => dispatch(resetAllFilters()),
+    updateFilter: (key, value) => dispatch(updateFilter({ key, value })),
+    setViewMode: (mode) => dispatch(setViewMode(mode)),
+    setShowFilters: (show) => dispatch(setShowFilters(show)),
+    setShowLegend: (show) => dispatch(setShowLegend(show)),
+    setIsFullscreen: (fullscreen) => dispatch(setIsFullscreen(fullscreen)),
+    setLayoutDirection: (direction) => dispatch(setLayoutDirection(direction)),
+    toggleExpandedNode: (nodeId) => dispatch(toggleExpandedNode(nodeId)),
+    setExpandedNodes: (nodeIds) => dispatch(setExpandedNodes(nodeIds)),
+    expandAllNodes: () => dispatch(expandAllNodes()),
+    collapseAllNodes: () => dispatch(collapseAllNodes()),
+    setSelectedEmployee: (employee) => dispatch(setSelectedEmployee(employee)),
+    clearSelectedEmployee: () => dispatch(clearSelectedEmployee()),
+    setPagination: (paginationData) => dispatch(setPagination(paginationData)),
+    setPage: (page) => dispatch(setPage(page)),
+    setPageSize: (pageSize) => dispatch(setPageSize(pageSize)),
+    clearErrors: () => dispatch(clearErrors()),
+    clearError: (errorKey) => dispatch(clearError(errorKey)),
+    invalidateCache: () => dispatch(invalidateCache()),
+    refreshData: () => dispatch(refreshData())
+  }), [dispatch]);
+
+  const getEmployeeById = useCallback((employeeId) => {
+    return orgChart.find(emp => emp.employee_id === employeeId) || null;
+  }, [orgChart]);
+
+  const applyPresetFilter = useCallback((presetName) => {
+    const presets = {
+      'all': {},
+      'managers_only': { managers_only: true },
+      'top_level_only': { show_top_level_only: true },
+      'executives': { position_group: ['VC', 'DIRECTOR', 'Vice Chairman'] },
+      'department_heads': { position_group: ['HEAD_OF_DEPARTMENT'] },
+      'specialists': { position_group: ['SENIOR_SPECIALIST', 'SPECIALIST', 'JUNIOR_SPECIALIST'] }
+    };
+
+    const presetFilters = presets[presetName] || {};
+    actions.setFilters(presetFilters);
+  }, [actions]);
+
+  const debouncedSearch = useCallback((searchTerm, delay = 300) => {
+    const timeoutId = setTimeout(() => {
+      actions.updateFilter('search', searchTerm);
+    }, delay);
+
+    return () => clearTimeout(timeoutId);
+  }, [actions]);
+
+  const hasActiveFilters = useCallback(() => {
+    return Object.keys(activeFilters).length > 0;
+  }, [activeFilters]);
+
+  const filterOptions = useMemo(() => {
+    const businessFunctionCounts = {};
+    const departmentCounts = {};
+    const unitCounts = {};
+    const jobFunctionCounts = {};
+    const positionGroupCounts = {};
+    const statusCounts = {};
+
+    if (Array.isArray(orgChart)) {
+      orgChart.forEach(emp => {
+        if (emp.business_function) businessFunctionCounts[emp.business_function] = (businessFunctionCounts[emp.business_function] || 0) + 1;
+        if (emp.department) departmentCounts[emp.department] = (departmentCounts[emp.department] || 0) + 1;
+        if (emp.unit) unitCounts[emp.unit] = (unitCounts[emp.unit] || 0) + 1;
+        if (emp.job_function) jobFunctionCounts[emp.job_function] = (jobFunctionCounts[emp.job_function] || 0) + 1;
+        if (emp.position_group) positionGroupCounts[emp.position_group] = (positionGroupCounts[emp.position_group] || 0) + 1;
+        if (emp.status) statusCounts[emp.status] = (statusCounts[emp.status] || 0) + 1;
+      });
+    }
+
+    return {
+      businessFunctions: (businessFunctionsDropdown || []).map(bf => ({
+        value: bf.value,
+        label: bf.label,
+        count: businessFunctionCounts[bf.value] || 0
+      })),
+      departments: (departmentsDropdown || []).map(dept => ({
+        value: dept.value,
+        label: dept.label,
+        count: departmentCounts[dept.value] || 0
+      })),
+      units: (unitsDropdown || []).map(unit => ({
+        value: unit.value,
+        label: unit.label,
+        count: unitCounts[unit.value] || 0
+      })),
+      jobFunctions: (jobFunctionsDropdown || []).map(jf => ({
+        value: jf.value,
+        label: jf.label,
+        count: jobFunctionCounts[jf.value] || 0
+      })),
+      positionGroups: (positionGroupsDropdown || []).map(pg => ({
+        value: pg.value,
+        label: pg.label,
+        count: positionGroupCounts[pg.value] || 0
+      })),
+      statuses: (employeeStatusesDropdown || []).map(status => ({
+        value: status.value,
+        label: status.label,
+        count: statusCounts[status.value] || 0
+      })),
+      managers: Array.isArray(orgChart)
+        ? orgChart
+          .filter(emp => emp.direct_reports && emp.direct_reports > 0)
+          .map(manager => ({
+            value: manager.employee_id,
+            label: manager.name,
+            count: manager.direct_reports
+          }))
+        : []
+    };
+  }, [
+    businessFunctionsDropdown,
+    departmentsDropdown,
+    unitsDropdown,
+    jobFunctionsDropdown,
+    positionGroupsDropdown,
+    employeeStatusesDropdown,
+    orgChart
+  ]);
+
+  const exportToPNG = useCallback(async () => {
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const element = document.querySelector('.react-flow');
+      if (!element) throw new Error('Chart not found');
+
+      const canvas = await html2canvas(element, {
+        backgroundColor: 'white',
+        scale: 2,
+        useCORS: true
+      });
+
+      const link = document.createElement('a');
+      link.download = `org-chart-${new Date().toISOString().split('T')[0]}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    try {
+      if (!document.fullscreenElement) {
+        const element = document.querySelector('.org-chart-container');
+        if (element) {
+          await element.requestFullscreen();
+          actions.setIsFullscreen(true);
+        }
+      } else {
+        await document.exitFullscreen();
+        actions.setIsFullscreen(false);
+      }
+    } catch (error) {
+      console.error('Fullscreen toggle failed:', error);
+      actions.setIsFullscreen(!isFullscreen);
+    }
+  }, [actions, isFullscreen]);
+
+  useEffect(() => {
+    if (Array.isArray(orgChart) && orgChart.length === 0 && !loading.orgChart && !errors.orgChart) {
+      actions.fetchOrgChart();
+      actions.fetchStatistics();
+    }
+  }, [orgChart, loading.orgChart, errors.orgChart, actions]);
+
+  useEffect(() => {
+    if (Array.isArray(orgChart) && orgChart.length > 0 && expandedNodes.length === 0) {
+      let rootEmployees = orgChart.filter(emp => !emp.line_manager_id);
+      if (rootEmployees.length === 0) {
+        rootEmployees = orgChart.filter(emp => !emp.line_manager);
+      }
+      if (rootEmployees.length === 0) {
+        rootEmployees = orgChart.filter(emp => !emp.manager_id);
+      }
+      if (rootEmployees.length === 0) {
+        rootEmployees = orgChart.filter(emp => emp.level_to_ceo === 0 || emp.level_to_ceo === 1);
+      }
+      if (rootEmployees.length === 0) {
+        const minLevel = Math.min(...orgChart.map(emp => emp.level_to_ceo || 999));
+        rootEmployees = orgChart.filter(emp => emp.level_to_ceo === minLevel);
+      }
+      if (rootEmployees.length === 0) {
+        const maxReports = Math.max(...orgChart.map(emp => emp.direct_reports || 0));
+        if (maxReports > 0) {
+          rootEmployees = orgChart.filter(emp => emp.direct_reports === maxReports);
+        }
+      }
+      if (rootEmployees.length === 0) {
+        rootEmployees = orgChart.slice(0, Math.min(3, orgChart.length));
+      }
+
+      const initialExpanded = rootEmployees.map(emp => emp.employee_id);
+      actions.setExpandedNodes(initialExpanded);
+    }
+  }, [orgChart, expandedNodes, actions]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!isLoading) {
+        actions.fetchStatistics();
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [isLoading, actions]);
+
+  return {
+    orgChart,
+    fullTree,
+    statistics,
+    selectedEmployee,
+    hierarchy,
+    filteredOrgChart,
+    reactFlowData,
+    summary,
+    filters,
+    activeFilters,
+    viewMode,
+    showFilters,
+    showLegend,
+    isFullscreen,
+    expandedNodes,
+    layoutDirection,
+    loading,
+    isLoading,
+    refDataLoading,
+    errors,
+    hasErrors,
+    refDataError,
+    pagination,
+    filterOptions,
+    ...actions,
+    getEmployeeById,
+    applyPresetFilter,
+    debouncedSearch,
+    hasActiveFilters,
+    exportToPNG,
+    toggleFullscreen
+  };
+};
+
+export const useOrgChartFilters = () => {
+  const {
+    filters,
+    activeFilters,
+    filterOptions,
+    setFilters,
+    clearFilters,
+    updateFilter,
+    hasActiveFilters
+  } = useOrgChart();
+
+  return {
+    filters,
+    activeFilters,
+    filterOptions,
+    setFilters,
+    clearFilters,
+    updateFilter,
+    hasActiveFilters
+  };
+};
+
+export const useOrgChartUI = () => {
+  const {
+    viewMode,
+    showFilters,
+    showLegend,
+    isFullscreen,
+    layoutDirection,
+    expandedNodes,
+    setViewMode,
+    setShowFilters,
+    setShowLegend,
+    setIsFullscreen,
+    setLayoutDirection,
+    toggleExpandedNode,
+    expandAllNodes,
+    collapseAllNodes
+  } = useOrgChart();
+
+  return {
+    viewMode,
+    showFilters,
+    showLegend,
+    isFullscreen,
+    layoutDirection,
+    expandedNodes,
+    setViewMode,
+    setShowFilters,
+    setShowLegend,
+    setIsFullscreen,
+    setLayoutDirection,
+    toggleExpandedNode,
+    expandAllNodes,
+    collapseAllNodes
+  };
+};
+
+export default useOrgChart;
