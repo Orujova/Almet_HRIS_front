@@ -19,7 +19,8 @@ import BulkUploadForm from "./BulkUploadForm";
 
 // Import our Advanced Multiple Sorting System
 import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
-
+import LineManagerModal from "./LineManagerAssignModal";
+import TagManagementModal from "./TagManagementModalsingle";
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
   
@@ -92,7 +93,7 @@ const HeadcountTable = () => {
     clearErrors,
     apiParams
   } = useEmployees();
-
+ 
   // Reference data for filters
   const {
     employeeStatuses,
@@ -118,7 +119,12 @@ const HeadcountTable = () => {
   // NEW: Advanced Sorting State
   const [isAdvancedSortingOpen, setIsAdvancedSortingOpen] = useState(false);
 const [isExporting, setIsExporting] = useState(false);
-
+  const [showLineManagerModal, setShowLineManagerModal] = useState(false);
+  const [showTagModal, setShowTagModal] = useState(false);
+  const [currentModalEmployee, setCurrentModalEmployee] = useState(null);
+ const [allEmployeesForModal, setAllEmployeesForModal] = useState(null);
+  const [fetchingAllEmployees, setFetchingAllEmployees] = useState(false);
+  
 // Update loading state based on API loading
 useEffect(() => {
   if (loading.exporting !== undefined) {
@@ -1091,42 +1097,339 @@ const handleQuickExport = useCallback(async (exportOptions) => {
     }
   }, [refreshAllData]);
 
+
+
+  const handleToggleExportModal = useCallback(() => {
+  setIsExportModalOpen(prev => !prev);
+}, []);
+
+
+
   // ========================================
-  // EMPLOYEE ACTION HANDLERS
+  // ENHANCED: FETCH ALL EMPLOYEES FOR MODALS
   // ========================================
+
+
+// Fixed fetchAllEmployeesForModal function
+const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
+  const shouldSkipCache = options?.skipCache;
   
+  // Use cached data if available and not skipping cache
+  if (allEmployeesForModal && !shouldSkipCache && Array.isArray(allEmployeesForModal) && allEmployeesForModal.length > 0) {
+    console.log('✅ CACHE: Using cached employees:', allEmployeesForModal.length);
+    return Promise.resolve(allEmployeesForModal);
+  }
+  
+  try {
+    setFetchingAllEmployees(true);
+    console.log('🚀 FETCH: Starting to fetch all employees...');
+    
+    // Clear cache if requested
+    if (shouldSkipCache) {
+      setAllEmployeesForModal(null);
+    }
+    
+    // CRITICAL: Fetch ALL employees without any filters
+    const params = {
+      page: 1,
+      page_size: 10000, // Increased to ensure we get ALL employees
+      // Remove any filtering that might limit results
+      // status: 'active' // Remove this if it exists
+    };
+    
+    console.log('📤 FETCH: Using params:', params);
+    const response = await fetchEmployees(params);
+    
+    console.log('📡 FETCH: Raw response received:', {
+      type: typeof response,
+      isArray: Array.isArray(response),
+      keys: response && typeof response === 'object' ? Object.keys(response) : 'N/A'
+    });
+    
+    // IMPROVED: Extract employees from response
+    let employees = [];
+    
+    if (response) {
+      // Log the full structure for debugging
+      console.log('🔍 FETCH: Response structure:', response);
+      
+      // Try different extraction methods
+      if (Array.isArray(response)) {
+        employees = response;
+        console.log('✅ EXTRACT: Method 1 - Direct array:', employees.length);
+      }
+      else if (response.data && Array.isArray(response.data)) {
+        employees = response.data;
+        console.log('✅ EXTRACT: Method 2 - response.data:', employees.length);
+      }
+      else if (response.results && Array.isArray(response.results)) {
+        employees = response.results;
+        console.log('✅ EXTRACT: Method 3 - response.results:', employees.length);
+      }
+      else if (response.data && response.data.results && Array.isArray(response.data.results)) {
+        employees = response.data.results;
+        console.log('✅ EXTRACT: Method 4 - response.data.results:', employees.length);
+      }
+      else if (response.payload && Array.isArray(response.payload)) {
+        employees = response.payload;
+        console.log('✅ EXTRACT: Method 5 - response.payload:', employees.length);
+      }
+      else if (response.payload && response.payload.data && Array.isArray(response.payload.data)) {
+        employees = response.payload.data;
+        console.log('✅ EXTRACT: Method 6 - response.payload.data:', employees.length);
+      }
+    }
+    
+    // Log extraction results
+    console.log('🎯 EXTRACT: Final extracted count:', employees.length);
+    console.log('🎯 EXTRACT: Sample employee:', employees[0]);
+    
+    if (employees.length === 0) {
+      console.warn('⚠️ EXTRACT: No employees extracted from response');
+      // Don't fallback to formattedEmployees here as it might be filtered
+      return [];
+    }
+    
+    // MINIMAL filtering - only remove invalid entries, don't filter by status/etc
+    const validEmployees = employees.filter(emp => {
+      if (!emp) return false;
+      
+      // Must have an ID
+      const hasId = emp.id || emp.employee_id;
+      if (!hasId) return false;
+      
+      // Must have some form of name
+      const hasName = emp.name || emp.employee_name || emp.first_name || emp.last_name;
+      if (!hasName) return false;
+      
+      return true;
+    });
+    
+    console.log('✅ FILTER: Valid employees after filtering:', validEmployees.length);
+    
+    // Cache the result
+    setAllEmployeesForModal(validEmployees);
+    return validEmployees;
+    
+  } catch (error) {
+    console.error('❌ FETCH: Error occurred:', error);
+    
+    // Only fallback if no cached data exists
+    if (!allEmployeesForModal && formattedEmployees && formattedEmployees.length > 0) {
+      console.log('🔄 FALLBACK: Using formattedEmployees as fallback:', formattedEmployees.length);
+      setAllEmployeesForModal(formattedEmployees);
+      return formattedEmployees;
+    }
+    
+    // If everything fails, return empty array
+    setAllEmployeesForModal([]);
+    throw error; // Re-throw to let the modal handle the error
+    
+  } finally {
+    setFetchingAllEmployees(false);
+  }
+}, [allEmployeesForModal, fetchEmployees, formattedEmployees]);
+
+
+
+  // ========================================
+  // ENHANCED: EMPLOYEE ACTION HANDLERS
+  // ========================================
   const handleEmployeeAction = useCallback(async (employeeId, action) => {
+    const employee = formattedEmployees.find(emp => emp.id === employeeId);
+    
+    console.log('🔧 ENHANCED: Employee action triggered:', {
+      employeeId,
+      action,
+      employeeName: employee?.name || employee?.employee_name
+    });
+    
     try {
       switch (action) {
+        case "changeManager":
+          console.log('👔 ENHANCED: Opening line manager modal...');
+          setCurrentModalEmployee(employee);
+          setShowLineManagerModal(true);
+          
+          // ENHANCED: Pre-fetch employees for better UX
+          if (!allEmployeesForModal) {
+            console.log('🔄 ENHANCED: Pre-fetching employees for line manager modal...');
+            fetchAllEmployeesForModal().catch(error => {
+              console.warn('⚠️ ENHANCED: Pre-fetch failed, will try again when modal opens:', error);
+            });
+          }
+          break;
+
+        case "manageTag":
+          console.log('🏷️ ENHANCED: Opening tag management modal...');
+          setCurrentModalEmployee(employee);
+          setShowTagModal(true);
+          break;
+
+        case "toggleVisibility":
+          console.log('👁️ ENHANCED: Toggling org chart visibility...');
+          const currentVisibility = employee?.is_visible_in_org_chart !== false;
+          const newVisibility = !currentVisibility;
+          
+          await handleVisibilityChange(employeeId, newVisibility);
+          break;
+
         case "delete":
-          if (confirm("Are you sure you want to delete this employee?")) {
+          console.log('🗑️ ENHANCED: Deleting employee...');
+          if (confirm(`Are you sure you want to delete ${employee?.name || 'this employee'}?`)) {
             await deleteEmployee(employeeId);
             await refreshAllData(true);
             alert('✅ Employee deleted successfully');
           }
           break;
 
-        case "edit":
-          console.log(`Edit employee: ${employeeId}`);
+        case "viewTeam":
+          console.log('👥 ENHANCED: Viewing team...');
+          // Navigate to team view or open team modal
+          alert(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
-        case "view":
-          console.log(`View employee: ${employeeId}`);
+        case "edit":
+          console.log('✏️ ENHANCED: Edit action - handled by navigation');
+          // Navigation handled by Link in ActionsDropdown
+          break;
+
+        case "viewJobDescription":
+          console.log('📋 ENHANCED: Job description view...');
+          alert(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
+          break;
+
+        case "competencyMatrix":
+          console.log('📊 ENHANCED: Competency matrix...');
+          alert(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
+          break;
+
+        case "performanceManagement":
+          console.log('📈 ENHANCED: Performance management...');
+          alert(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
         default:
-          console.log(`Employee action: ${action} for employee: ${employeeId}`);
-          alert(`Action "${action}" clicked for employee ${employeeId}`);
+          console.warn('❓ ENHANCED: Unknown action:', action);
+          alert(`Action "${action}" is not implemented yet`);
       }
     } catch (error) {
-      console.error(`Failed to perform action ${action}:`, error);
+      console.error(`❌ ENHANCED: Failed to perform action ${action}:`, error);
       alert(`❌ Failed to ${action}: ${error.message}`);
     }
-  }, [deleteEmployee, refreshAllData]);
+  }, [
+    formattedEmployees, 
+    deleteEmployee, 
+    refreshAllData, 
+    handleVisibilityChange,
+    allEmployeesForModal, 
+    fetchAllEmployeesForModal
+  ]);
+const debugEmployeeData = (data) => {
+  console.log('🐛 DEBUG: Employee data being passed to modal:', {
+    type: typeof data,
+    isArray: Array.isArray(data),
+    length: data ? data.length : 0,
+    sample: data && data.length > 0 ? data[0] : null,
+    structure: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : 'N/A'
+  });
+  return data;
+};
+  // ========================================
+  // ENHANCED: MODAL HANDLERS
+  // ========================================
 
-  const handleToggleExportModal = useCallback(() => {
-  setIsExportModalOpen(prev => !prev);
-}, []);
+  const handleLineManagerAssign = useCallback(async (managerId) => {
+    try {
+      if (!currentModalEmployee) {
+        throw new Error('No employee selected for line manager assignment');
+      }
+      
+      console.log('👔 ENHANCED: Assigning line manager:', {
+        employeeId: currentModalEmployee.id,
+        managerId,
+        employeeName: currentModalEmployee.name || currentModalEmployee.employee_name
+      });
+      
+      await bulkAssignLineManager([currentModalEmployee.id], managerId);
+      
+      // Close modal
+      setShowLineManagerModal(false);
+      setCurrentModalEmployee(null);
+      
+      // Refresh data
+      await refreshAllData();
+      
+      // Get manager name for success message
+      const manager = allEmployeesForModal?.find(emp => emp.id === managerId);
+      const managerName = manager?.name || manager?.employee_name || 'Selected manager';
+      
+      alert(`✅ ${managerName} assigned as line manager successfully!`);
+      
+    } catch (error) {
+      console.error('❌ ENHANCED: Line manager assignment failed:', error);
+      alert(`❌ Failed to assign line manager: ${error.message}`);
+    }
+  }, [currentModalEmployee, bulkAssignLineManager, refreshAllData, allEmployeesForModal]);
+
+  const handleTagOperation = useCallback(async (operation, tagId) => {
+    try {
+      if (!currentModalEmployee) {
+        throw new Error('No employee selected for tag operation');
+      }
+      
+      console.log('🏷️ ENHANCED: Tag operation:', {
+        operation,
+        tagId,
+        employeeId: currentModalEmployee.id,
+        employeeName: currentModalEmployee.name || currentModalEmployee.employee_name
+      });
+      
+      if (operation === 'add') {
+        await bulkAddTags([currentModalEmployee.id], tagId);
+      } else if (operation === 'remove') {
+        await bulkRemoveTags([currentModalEmployee.id], tagId);
+      } else {
+        throw new Error(`Unknown tag operation: ${operation}`);
+      }
+      
+      // Close modal
+      setShowTagModal(false);
+      setCurrentModalEmployee(null);
+      
+      // Refresh data
+      await refreshAllData();
+      
+      // Get tag name for success message
+      const tag = employeeTags?.find(tag => tag.id === tagId);
+      const tagName = tag?.name || 'Tag';
+      const actionText = operation === 'add' ? 'added to' : 'removed from';
+      
+      alert(`✅ "${tagName}" tag ${actionText} employee successfully!`);
+      
+    } catch (error) {
+      console.error(`❌ ENHANCED: Tag ${operation} failed:`, error);
+      alert(`❌ Failed to ${operation} tag: ${error.message}`);
+    }
+  }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, employeeTags]);
+
+  // ========================================
+  // ENHANCED: MODAL CLOSE HANDLERS
+  // ========================================
+
+  const handleLineManagerModalClose = useCallback(() => {
+    console.log('🔒 ENHANCED: Closing line manager modal');
+    setShowLineManagerModal(false);
+    setCurrentModalEmployee(null);
+  }, []);
+
+  const handleTagModalClose = useCallback(() => {
+    console.log('🔒 ENHANCED: Closing tag modal');
+    setShowTagModal(false);
+    setCurrentModalEmployee(null);
+  }, []);
+
+
 
   // ========================================
   // ACTIVE FILTERS CALCULATION
@@ -1515,24 +1818,26 @@ const headerProps = useMemo(() => ({
 
       
 
+      {/* Employee Table */}
       <EmployeeTable
-  employees={formattedEmployees}
-  loading={loading.employees}
-  selectedEmployees={selectedEmployees}
-  selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
-  onToggleSelectAll={handleSelectAll}
-  onToggleEmployeeSelection={handleEmployeeToggle}
-  onSort={(field, event) => handleSort(field, event?.ctrlKey)}
-  getSortDirection={getSortDirection}
-  isSorted={isSorted}
-  getSortIndex={getSortIndex}
-  hasFilters={activeFilters.length > 0}
-  onClearFilters={handleClearAllFilters}
-  employeeVisibility={employeeVisibility}
-  onVisibilityChange={handleVisibilityChange}  // YENİ
-  onEmployeeAction={handleEmployeeAction}
-  darkMode={darkMode}
-/>
+        employees={formattedEmployees}
+        loading={loading.employees}
+        selectedEmployees={selectedEmployees}
+        selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
+        onToggleSelectAll={handleSelectAll}
+        onToggleEmployeeSelection={handleEmployeeToggle}
+        onSort={handleSort}
+        getSortDirection={getSortDirection}
+        isSorted={isSorted}
+        getSortIndex={getSortIndex}
+        hasFilters={activeFilters.length > 0}
+        onClearFilters={handleClearAllFilters}
+        employeeVisibility={employeeVisibility}
+        onVisibilityChange={handleVisibilityChange}
+        onEmployeeAction={handleEmployeeAction}
+        darkMode={darkMode}
+      />
+
 
       {/* Pagination */}
       <div className="mt-6">
@@ -1577,6 +1882,43 @@ const headerProps = useMemo(() => ({
           onClose={() => setIsBulkUploadOpen(false)}
           onImportComplete={handleBulkImportComplete}
           darkMode={darkMode}
+        />
+      )}
+
+      {showLineManagerModal && currentModalEmployee && (
+  <LineManagerModal
+    isOpen={showLineManagerModal}
+    onClose={handleLineManagerModalClose}
+    employee={currentModalEmployee}
+    onAssign={handleLineManagerAssign}
+    loading={loading.bulkAssignLineManager}
+    darkMode={darkMode}
+    
+    // Enhanced data passing with debugging
+    onFetchAllEmployees={fetchAllEmployeesForModal}
+    allEmployeesData={debugEmployeeData(allEmployeesForModal)} // Debug wrapper
+    fetchingEmployees={fetchingAllEmployees}
+  />
+)}
+
+      {/* ENHANCED: Tag Management Modal */}
+      {showTagModal && currentModalEmployee && (
+        <TagManagementModal
+          isOpen={showTagModal}
+    onClose={handleTagModalClose}
+    employee={currentModalEmployee}
+    
+    // FIXED: Ensure employeeTags is properly passed
+    availableTags={employeeTags || []}  // Make sure this is not empty
+    
+    onTagOperation={handleTagOperation}
+    loading={{
+      add: loading.bulkAddTags,
+      remove: loading.bulkRemoveTags
+    }}
+    darkMode={darkMode}
+          
+          
         />
       )}
 

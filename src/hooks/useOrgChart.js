@@ -1,4 +1,4 @@
-// src/hooks/useOrgChart.js
+// src/hooks/useOrgChart.js - FIXED version with proper memory management
 import { useDispatch, useSelector } from 'react-redux';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useReferenceData } from './useReferenceData';
@@ -55,11 +55,37 @@ import {
   selectManagerTeam,
   selectEmployeeById,
   selectEmployeeChildren,
-  selectEmployeeAncestors,
   selectRootEmployees,
   selectManagersOnly,
   selectOrgChartSummary
 } from '../store/slices/orgChartSlice';
+
+// FIXED: Clean employee data utility
+const cleanEmployeeData = (employee) => {
+  if (!employee) return null;
+  
+  return {
+    employee_id: employee.employee_id,
+    name: employee.name,
+    title: employee.title,
+    department: employee.department,
+    unit: employee.unit,
+    business_function: employee.business_function,
+    position_group: employee.position_group,
+    direct_reports: employee.direct_reports || 0,
+    line_manager_id: employee.line_manager_id,
+    level_to_ceo: employee.level_to_ceo,
+    email: employee.email,
+    phone: employee.phone,
+    profile_image_url: employee.profile_image_url,
+    avatar: employee.avatar,
+    status_color: employee.status_color,
+    employee_details: employee.employee_details ? {
+      grading_display: employee.employee_details.grading_display,
+      tags: employee.employee_details.tags
+    } : null
+  };
+};
 
 export const useOrgChart = () => {
   const dispatch = useDispatch();
@@ -100,6 +126,7 @@ export const useOrgChart = () => {
   const reactFlowData = useSelector(selectOrgChartForReactFlow);
   const summary = useSelector(selectOrgChartSummary);
 
+  // FIXED: Memoized actions to prevent unnecessary re-renders
   const actions = useMemo(() => ({
     fetchOrgChart: (params = {}) => dispatch(fetchOrgChart(params)),
     fetchEmployee: (employeeId) => dispatch(fetchOrgChartEmployee(employeeId)),
@@ -120,7 +147,7 @@ export const useOrgChart = () => {
     setExpandedNodes: (nodeIds) => dispatch(setExpandedNodes(nodeIds)),
     expandAllNodes: () => dispatch(expandAllNodes()),
     collapseAllNodes: () => dispatch(collapseAllNodes()),
-    setSelectedEmployee: (employee) => dispatch(setSelectedEmployee(employee)),
+    setSelectedEmployee: (employee) => dispatch(setSelectedEmployee(cleanEmployeeData(employee))),
     clearSelectedEmployee: () => dispatch(clearSelectedEmployee()),
     setPagination: (paginationData) => dispatch(setPagination(paginationData)),
     setPage: (page) => dispatch(setPage(page)),
@@ -131,10 +158,14 @@ export const useOrgChart = () => {
     refreshData: () => dispatch(refreshData())
   }), [dispatch]);
 
+  // FIXED: Safe employee lookup
   const getEmployeeById = useCallback((employeeId) => {
-    return orgChart.find(emp => emp.employee_id === employeeId) || null;
+    if (!Array.isArray(orgChart)) return null;
+    const employee = orgChart.find(emp => emp.employee_id === employeeId);
+    return employee ? cleanEmployeeData(employee) : null;
   }, [orgChart]);
 
+  // FIXED: Safe preset filter application
   const applyPresetFilter = useCallback((presetName) => {
     const presets = {
       'all': {},
@@ -149,6 +180,7 @@ export const useOrgChart = () => {
     actions.setFilters(presetFilters);
   }, [actions]);
 
+  // FIXED: Debounced search with cleanup
   const debouncedSearch = useCallback((searchTerm, delay = 300) => {
     const timeoutId = setTimeout(() => {
       actions.updateFilter('search', searchTerm);
@@ -157,10 +189,12 @@ export const useOrgChart = () => {
     return () => clearTimeout(timeoutId);
   }, [actions]);
 
+  // FIXED: Safe active filters check
   const hasActiveFilters = useCallback(() => {
-    return Object.keys(activeFilters).length > 0;
+    return Object.keys(activeFilters || {}).length > 0;
   }, [activeFilters]);
 
+  // FIXED: Memoized filter options with safe data handling
   const filterOptions = useMemo(() => {
     const businessFunctionCounts = {};
     const departmentCounts = {};
@@ -171,12 +205,14 @@ export const useOrgChart = () => {
 
     if (Array.isArray(orgChart)) {
       orgChart.forEach(emp => {
-        if (emp.business_function) businessFunctionCounts[emp.business_function] = (businessFunctionCounts[emp.business_function] || 0) + 1;
-        if (emp.department) departmentCounts[emp.department] = (departmentCounts[emp.department] || 0) + 1;
-        if (emp.unit) unitCounts[emp.unit] = (unitCounts[emp.unit] || 0) + 1;
-        if (emp.job_function) jobFunctionCounts[emp.job_function] = (jobFunctionCounts[emp.job_function] || 0) + 1;
-        if (emp.position_group) positionGroupCounts[emp.position_group] = (positionGroupCounts[emp.position_group] || 0) + 1;
-        if (emp.status) statusCounts[emp.status] = (statusCounts[emp.status] || 0) + 1;
+        if (emp && typeof emp === 'object') {
+          if (emp.business_function) businessFunctionCounts[emp.business_function] = (businessFunctionCounts[emp.business_function] || 0) + 1;
+          if (emp.department) departmentCounts[emp.department] = (departmentCounts[emp.department] || 0) + 1;
+          if (emp.unit) unitCounts[emp.unit] = (unitCounts[emp.unit] || 0) + 1;
+          if (emp.job_function) jobFunctionCounts[emp.job_function] = (jobFunctionCounts[emp.job_function] || 0) + 1;
+          if (emp.position_group) positionGroupCounts[emp.position_group] = (positionGroupCounts[emp.position_group] || 0) + 1;
+          if (emp.status) statusCounts[emp.status] = (statusCounts[emp.status] || 0) + 1;
+        }
       });
     }
 
@@ -213,7 +249,7 @@ export const useOrgChart = () => {
       })),
       managers: Array.isArray(orgChart)
         ? orgChart
-          .filter(emp => emp.direct_reports && emp.direct_reports > 0)
+          .filter(emp => emp && emp.direct_reports && emp.direct_reports > 0)
           .map(manager => ({
             value: manager.employee_id,
             label: manager.name,
@@ -231,6 +267,7 @@ export const useOrgChart = () => {
     orgChart
   ]);
 
+  // FIXED: Safe export to PNG with error handling
   const exportToPNG = useCallback(async () => {
     try {
       const html2canvas = (await import('html2canvas')).default;
@@ -240,85 +277,142 @@ export const useOrgChart = () => {
       const canvas = await html2canvas(element, {
         backgroundColor: 'white',
         scale: 2,
-        useCORS: true
+        useCORS: true,
+        allowTaint: true,
+        foreignObjectRendering: true
       });
 
       const link = document.createElement('a');
       link.download = `org-chart-${new Date().toISOString().split('T')[0]}.png`;
-      link.href = canvas.toDataURL();
+      link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (error) {
       console.error('Export failed:', error);
+      // Optionally show user-friendly error message
     }
   }, []);
 
+  // FIXED: Safe fullscreen toggle with error handling
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
         const element = document.querySelector('.org-chart-container');
-        if (element) {
+        if (element && element.requestFullscreen) {
           await element.requestFullscreen();
           actions.setIsFullscreen(true);
         }
       } else {
-        await document.exitFullscreen();
-        actions.setIsFullscreen(false);
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+          actions.setIsFullscreen(false);
+        }
       }
     } catch (error) {
       console.error('Fullscreen toggle failed:', error);
+      // Fallback to UI state toggle
       actions.setIsFullscreen(!isFullscreen);
     }
   }, [actions, isFullscreen]);
 
+  // FIXED: Safe data loading with error handling
   useEffect(() => {
     if (Array.isArray(orgChart) && orgChart.length === 0 && !loading.orgChart && !errors.orgChart) {
+      console.log('Initializing org chart data...');
       actions.fetchOrgChart();
       actions.fetchStatistics();
     }
   }, [orgChart, loading.orgChart, errors.orgChart, actions]);
 
+  // FIXED: Safe auto-expansion with better fallback strategies
   useEffect(() => {
-    if (Array.isArray(orgChart) && orgChart.length > 0 && expandedNodes.length === 0) {
-      let rootEmployees = orgChart.filter(emp => !emp.line_manager_id);
+    if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
+      console.log('Auto-expanding initial nodes for', orgChart.length, 'employees');
+      
+      let rootEmployees = [];
+      
+      // Strategy 1: Find employees without line_manager_id
+      rootEmployees = orgChart.filter(emp => 
+        emp && !emp.line_manager_id && !emp.manager_id && !emp.parent_id
+      );
+      
+      // Strategy 2: Find by minimum level_to_ceo
       if (rootEmployees.length === 0) {
-        rootEmployees = orgChart.filter(emp => !emp.line_manager);
-      }
-      if (rootEmployees.length === 0) {
-        rootEmployees = orgChart.filter(emp => !emp.manager_id);
-      }
-      if (rootEmployees.length === 0) {
-        rootEmployees = orgChart.filter(emp => emp.level_to_ceo === 0 || emp.level_to_ceo === 1);
-      }
-      if (rootEmployees.length === 0) {
-        const minLevel = Math.min(...orgChart.map(emp => emp.level_to_ceo || 999));
-        rootEmployees = orgChart.filter(emp => emp.level_to_ceo === minLevel);
-      }
-      if (rootEmployees.length === 0) {
-        const maxReports = Math.max(...orgChart.map(emp => emp.direct_reports || 0));
-        if (maxReports > 0) {
-          rootEmployees = orgChart.filter(emp => emp.direct_reports === maxReports);
+        const levels = orgChart
+          .map(emp => emp && emp.level_to_ceo)
+          .filter(level => typeof level === 'number');
+        
+        if (levels.length > 0) {
+          const minLevel = Math.min(...levels);
+          rootEmployees = orgChart.filter(emp => emp && emp.level_to_ceo === minLevel);
         }
       }
+      
+      // Strategy 3: Find by maximum direct_reports
       if (rootEmployees.length === 0) {
-        rootEmployees = orgChart.slice(0, Math.min(3, orgChart.length));
+        const reports = orgChart
+          .map(emp => emp && emp.direct_reports)
+          .filter(reports => typeof reports === 'number');
+        
+        if (reports.length > 0) {
+          const maxReports = Math.max(...reports);
+          if (maxReports > 0) {
+            rootEmployees = orgChart.filter(emp => emp && emp.direct_reports === maxReports);
+          }
+        }
       }
-
-      const initialExpanded = rootEmployees.map(emp => emp.employee_id);
-      actions.setExpandedNodes(initialExpanded);
+      
+      // Strategy 4: Find by position hierarchy
+      if (rootEmployees.length === 0) {
+        const topPositions = ['VC', 'CEO', 'CHAIRMAN', 'PRESIDENT', 'DIRECTOR'];
+        for (const position of topPositions) {
+          rootEmployees = orgChart.filter(emp => 
+            emp && (
+              emp.position_group?.toUpperCase().includes(position) || 
+              emp.title?.toUpperCase().includes(position)
+            )
+          );
+          if (rootEmployees.length > 0) break;
+        }
+      }
+      
+      // Strategy 5: Fallback to first few employees
+      if (rootEmployees.length === 0) {
+        rootEmployees = orgChart.slice(0, Math.min(3, orgChart.length)).filter(Boolean);
+      }
+      
+      // Set initial expanded nodes
+      const initialExpanded = rootEmployees
+        .map(emp => emp.employee_id)
+        .filter(id => typeof id === 'string' || typeof id === 'number');
+      
+      if (initialExpanded.length > 0) {
+        console.log('Setting initial expanded nodes:', initialExpanded);
+        actions.setExpandedNodes(initialExpanded);
+      }
     }
   }, [orgChart, expandedNodes, actions]);
 
+  // FIXED: Safe periodic statistics refresh
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isLoading) {
         actions.fetchStatistics();
       }
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5 minutes
 
     return () => clearInterval(interval);
   }, [isLoading, actions]);
 
+  // FIXED: Memory cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clear any pending timeouts or intervals
+      console.log('Cleaning up useOrgChart hook');
+    };
+  }, []);
+
   return {
+    // Data
     orgChart,
     fullTree,
     statistics,
@@ -327,14 +421,21 @@ export const useOrgChart = () => {
     filteredOrgChart,
     reactFlowData,
     summary,
+    
+    // Filters
     filters,
     activeFilters,
+    filterOptions,
+    
+    // UI State
     viewMode,
     showFilters,
     showLegend,
     isFullscreen,
     expandedNodes,
     layoutDirection,
+    
+    // Loading & Errors
     loading,
     isLoading,
     refDataLoading,
@@ -342,8 +443,11 @@ export const useOrgChart = () => {
     hasErrors,
     refDataError,
     pagination,
-    filterOptions,
+    
+    // Actions
     ...actions,
+    
+    // Utility functions
     getEmployeeById,
     applyPresetFilter,
     debouncedSearch,
@@ -353,6 +457,7 @@ export const useOrgChart = () => {
   };
 };
 
+// FIXED: Simplified hooks for specific use cases
 export const useOrgChartFilters = () => {
   const {
     filters,

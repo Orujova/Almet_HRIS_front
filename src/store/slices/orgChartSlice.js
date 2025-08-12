@@ -1,9 +1,74 @@
-// src/store/slices/orgChartSlice.js - FIXED version with proper selectors
+// src/store/slices/orgChartSlice.js - FIXED version to prevent circular references
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { orgChartAPI } from '../../services/orgChartAPI';
 
+// FIXED: Clean employee data utility to prevent circular references in Redux
+const cleanEmployeeForRedux = (employee) => {
+    if (!employee) return null;
+    
+    // Create a clean copy with only serializable data
+    const cleanEmployee = {
+        employee_id: employee.employee_id,
+        name: employee.name,
+        title: employee.title,
+        department: employee.department,
+        unit: employee.unit,
+        business_function: employee.business_function,
+        position_group: employee.position_group,
+        direct_reports: employee.direct_reports || 0,
+        line_manager_id: employee.line_manager_id,
+        manager_id: employee.manager_id,
+        parent_id: employee.parent_id,
+        level_to_ceo: employee.level_to_ceo,
+        email: employee.email,
+        phone: employee.phone,
+        profile_image_url: employee.profile_image_url,
+        avatar: employee.avatar,
+        status: employee.status,
+        status_color: employee.status_color,
+        grading_level: employee.grading_level,
+        job_function: employee.job_function,
+        gender: employee.gender,
+        colleagues_in_unit: employee.colleagues_in_unit,
+        colleagues_in_business_function: employee.colleagues_in_business_function,
+        total_subordinates: employee.total_subordinates,
+        
+        // Clean nested objects
+        employee_details: employee.employee_details ? {
+            grading_display: employee.employee_details.grading_display,
+            tags: Array.isArray(employee.employee_details.tags) 
+                ? employee.employee_details.tags.map(tag => ({
+                    name: tag.name,
+                    color: tag.color
+                }))
+                : []
+        } : null,
+        
+        // Manager info as simple reference (no circular refs)
+        manager_info: employee.manager_info ? {
+            employee_id: employee.manager_info.employee_id,
+            name: employee.manager_info.name,
+            title: employee.manager_info.title,
+            department: employee.manager_info.department
+        } : null,
+        
+        // Direct reports as simple array of IDs (no circular refs)
+        direct_reports_ids: Array.isArray(employee.direct_reports_details) 
+            ? employee.direct_reports_details.map(report => report.employee_id || report.id)
+            : []
+    };
+    
+    return cleanEmployee;
+};
+
+// FIXED: Clean array of employees
+const cleanEmployeeArray = (employees) => {
+    if (!Array.isArray(employees)) return [];
+    return employees.map(cleanEmployeeForRedux).filter(Boolean);
+};
+
 // ========================================
-// ASYNC THUNKS (unchanged)
+// ASYNC THUNKS (updated with data cleaning)
 // ========================================
 
 export const fetchOrgChart = createAsyncThunk(
@@ -11,7 +76,21 @@ export const fetchOrgChart = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const response = await orgChartAPI.getOrgChart(params);
-      return response.data;
+      
+      // FIXED: Clean the data before storing in Redux
+      let orgChartData = [];
+      if (response.data?.org_chart && Array.isArray(response.data.org_chart)) {
+        orgChartData = cleanEmployeeArray(response.data.org_chart);
+      } else if (Array.isArray(response.data)) {
+        orgChartData = cleanEmployeeArray(response.data);
+      } else if (response.data?.results && Array.isArray(response.data.results)) {
+        orgChartData = cleanEmployeeArray(response.data.results);
+      }
+      
+      return {
+        ...response.data,
+        org_chart: orgChartData
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -23,7 +102,8 @@ export const fetchOrgChartEmployee = createAsyncThunk(
   async (employeeId, { rejectWithValue }) => {
     try {
       const response = await orgChartAPI.getOrgChartEmployee(employeeId);
-      return response.data;
+      // FIXED: Clean employee data
+      return cleanEmployeeForRedux(response.data);
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -35,7 +115,19 @@ export const fetchFullTreeWithVacancies = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const response = await orgChartAPI.getFullTreeWithVacancies(params);
-      return response.data;
+      
+      // FIXED: Clean the data
+      let treeData = [];
+      if (response.data?.org_chart && Array.isArray(response.data.org_chart)) {
+        treeData = cleanEmployeeArray(response.data.org_chart);
+      } else if (Array.isArray(response.data)) {
+        treeData = cleanEmployeeArray(response.data);
+      }
+      
+      return {
+        ...response.data,
+        org_chart: treeData
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -59,7 +151,21 @@ export const searchOrgChart = createAsyncThunk(
   async (searchParams, { rejectWithValue }) => {
     try {
       const response = await orgChartAPI.searchOrgChart(searchParams);
-      return response.data;
+      
+      // FIXED: Clean search results
+      let searchData = [];
+      if (response.data?.org_chart && Array.isArray(response.data.org_chart)) {
+        searchData = cleanEmployeeArray(response.data.org_chart);
+      } else if (Array.isArray(response.data)) {
+        searchData = cleanEmployeeArray(response.data);
+      } else if (response.data?.results && Array.isArray(response.data.results)) {
+        searchData = cleanEmployeeArray(response.data.results);
+      }
+      
+      return {
+        ...response.data,
+        org_chart: searchData
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -71,7 +177,22 @@ export const fetchManagerTeam = createAsyncThunk(
   async ({ managerId, params = {} }, { rejectWithValue }) => {
     try {
       const response = await orgChartAPI.getManagerTeam(managerId, params);
-      return { managerId, data: response.data };
+      
+      // FIXED: Clean manager team data
+      let teamData = [];
+      if (response.data?.org_chart && Array.isArray(response.data.org_chart)) {
+        teamData = cleanEmployeeArray(response.data.org_chart);
+      } else if (Array.isArray(response.data)) {
+        teamData = cleanEmployeeArray(response.data);
+      }
+      
+      return { 
+        managerId, 
+        data: {
+          ...response.data,
+          org_chart: teamData
+        }
+      };
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -83,17 +204,17 @@ export const fetchManagerTeam = createAsyncThunk(
 // ========================================
 
 const initialState = {
-  // Main org chart data
+  // Main org chart data - FIXED: No circular references
   orgChart: [],
   fullTree: [],
   statistics: null,
   selectedEmployee: null,
   managerTeams: {},
   
-  // Hierarchy data
+  // FIXED: Simple hierarchy structure without circular refs
   hierarchy: {
     roots: [],
-    map: {}
+    employeeMap: {} // Simple key-value mapping
   },
   
   // Loading states
@@ -136,13 +257,13 @@ const initialState = {
     manager_team: null
   },
   
-  // UI state - FIXED: Use array instead of Set
+  // UI state - FIXED: Simple serializable structure
   ui: {
     viewMode: 'tree',
     showFilters: false,
     showLegend: false,
     isFullscreen: false,
-    expandedNodes: [], // ✅ Array instead of Set
+    expandedNodes: [], // Array of employee IDs
     selectedEmployeeModal: false,
     layoutDirection: 'TB'
   },
@@ -212,11 +333,11 @@ const orgChartSlice = createSlice({
       state.ui.layoutDirection = action.payload;
     },
     
-    // FIXED: Handle expanded nodes as array
+    // FIXED: Safe expanded nodes management
     toggleExpandedNode: (state, action) => {
       const nodeId = action.payload;
       const expandedNodes = [...state.ui.expandedNodes];
-      const index = expandedNodes.indexOf(nodeId);
+      const index = expandedNodes.findIndex(id => id === nodeId);
       
       if (index !== -1) {
         expandedNodes.splice(index, 1);
@@ -228,12 +349,17 @@ const orgChartSlice = createSlice({
     },
     
     setExpandedNodes: (state, action) => {
-      state.ui.expandedNodes = Array.isArray(action.payload) ? action.payload : [];
+      // FIXED: Ensure it's always an array of primitive values
+      const nodes = Array.isArray(action.payload) ? action.payload : [];
+      state.ui.expandedNodes = nodes.filter(id => 
+        typeof id === 'string' || typeof id === 'number'
+      );
     },
     
-    // Selected employee management
+    // FIXED: Safe selected employee management
     setSelectedEmployee: (state, action) => {
-      state.selectedEmployee = action.payload;
+      // Clean the employee data before storing
+      state.selectedEmployee = cleanEmployeeForRedux(action.payload);
       state.ui.selectedEmployeeModal = !!action.payload;
     },
     
@@ -275,12 +401,14 @@ const orgChartSlice = createSlice({
       state.lastUpdated = null;
     },
     
-    // FIXED: Bulk operations for expanded nodes
+    // FIXED: Safe bulk operations for expanded nodes
     expandAllNodes: (state) => {
-      const allNodeIds = state.orgChart
+      const allManagerIds = state.orgChart
         .filter(emp => emp.direct_reports && emp.direct_reports > 0)
-        .map(emp => emp.employee_id);
-      state.ui.expandedNodes = allNodeIds;
+        .map(emp => emp.employee_id)
+        .filter(id => typeof id === 'string' || typeof id === 'number');
+      
+      state.ui.expandedNodes = allManagerIds;
     },
     
     collapseAllNodes: (state) => {
@@ -300,9 +428,13 @@ const orgChartSlice = createSlice({
       }
     },
     
-    // Hierarchy management
+    // FIXED: Safe hierarchy management
     updateHierarchy: (state, action) => {
-      state.hierarchy = action.payload;
+      const { roots, employeeMap } = action.payload;
+      state.hierarchy = {
+        roots: Array.isArray(roots) ? roots : [],
+        employeeMap: employeeMap && typeof employeeMap === 'object' ? employeeMap : {}
+      };
     },
     
     // Data refresh
@@ -312,6 +444,8 @@ const orgChartSlice = createSlice({
       state.fullTree = [];
       state.statistics = null;
       state.managerTeams = {};
+      state.selectedEmployee = null;
+      state.ui.expandedNodes = [];
     }
   },
   
@@ -325,17 +459,9 @@ const orgChartSlice = createSlice({
       .addCase(fetchOrgChart.fulfilled, (state, action) => {
         state.loading.orgChart = false;
         
-        // Handle different response structures
-        let orgChartData = [];
-        if (action.payload?.org_chart && Array.isArray(action.payload.org_chart)) {
-          orgChartData = action.payload.org_chart;
-        } else if (Array.isArray(action.payload)) {
-          orgChartData = action.payload;
-        } else if (action.payload?.results && Array.isArray(action.payload.results)) {
-          orgChartData = action.payload.results;
-        }
-        
-        console.log('Org chart data loaded:', orgChartData.length, 'employees');
+        // FIXED: Use cleaned data from thunk
+        const orgChartData = action.payload.org_chart || [];
+        console.log('Cleaned org chart data loaded:', orgChartData.length, 'employees');
         state.orgChart = orgChartData;
         
         // Update pagination if present
@@ -345,49 +471,50 @@ const orgChartSlice = createSlice({
           state.pagination.hasPrev = !!action.payload.previous;
         }
         
-        // Build hierarchy
-        const hierarchyMap = {};
+        // FIXED: Build simple hierarchy without circular references
+        const employeeMap = {};
         const roots = [];
         
         orgChartData.forEach(emp => {
-          hierarchyMap[emp.employee_id] = { 
-            ...emp, 
-            children: [] 
+          employeeMap[emp.employee_id] = {
+            ...emp,
+            childrenIds: [] // Store only IDs, not full objects
           };
         });
         
         orgChartData.forEach(emp => {
-          if (emp.line_manager_id && hierarchyMap[emp.line_manager_id]) {
-            hierarchyMap[emp.line_manager_id].children.push(emp.employee_id);
+          if (emp.line_manager_id && employeeMap[emp.line_manager_id]) {
+            employeeMap[emp.line_manager_id].childrenIds.push(emp.employee_id);
           } else {
             roots.push(emp.employee_id);
           }
         });
         
-        console.log('Hierarchy built - roots:', roots, 'total employees:', Object.keys(hierarchyMap).length);
+        console.log('Simple hierarchy built - roots:', roots.length, 'total employees:', Object.keys(employeeMap).length);
         
         state.hierarchy = { 
           roots: roots, 
-          map: hierarchyMap 
+          employeeMap: employeeMap 
         };
         state.lastUpdated = Date.now();
         
-        // FIXED: Initialize expanded nodes more intelligently
-        if (roots.length > 0) {
-          // Only set initial expanded nodes if none exist
-          if (state.ui.expandedNodes.length === 0) {
-            // Find top-level managers (those with the most reports at highest levels)
-            const topManagers = orgChartData
-              .filter(emp => emp.direct_reports > 0)
-              .filter(emp => emp.level_to_ceo <= 2) // Top 2-3 levels
-              .sort((a, b) => (b.direct_reports || 0) - (a.direct_reports || 0))
-              .slice(0, 10); // Limit to avoid performance issues
-            
-            const initialExpanded = [...roots, ...topManagers.map(emp => emp.employee_id)];
-            
-            state.ui.expandedNodes = [...new Set(initialExpanded)]; // Remove duplicates
-            console.log('Initial expanded nodes set:', state.ui.expandedNodes.length);
-          }
+        // FIXED: Set initial expanded nodes more safely
+        if (roots.length > 0 && state.ui.expandedNodes.length === 0) {
+          // Find top-level managers with most reports
+          const topManagers = orgChartData
+            .filter(emp => emp.direct_reports > 0)
+            .filter(emp => (emp.level_to_ceo || 999) <= 2) // Top 2-3 levels
+            .sort((a, b) => (b.direct_reports || 0) - (a.direct_reports || 0))
+            .slice(0, 5) // Limit to avoid performance issues
+            .map(emp => emp.employee_id);
+          
+          const initialExpanded = [...roots, ...topManagers].filter(id => 
+            typeof id === 'string' || typeof id === 'number'
+          );
+          
+          // Remove duplicates
+          state.ui.expandedNodes = [...new Set(initialExpanded)];
+          console.log('Initial expanded nodes set:', state.ui.expandedNodes.length);
         }
       })
       .addCase(fetchOrgChart.rejected, (state, action) => {
@@ -403,6 +530,7 @@ const orgChartSlice = createSlice({
       })
       .addCase(fetchOrgChartEmployee.fulfilled, (state, action) => {
         state.loading.employee = false;
+        // FIXED: Already cleaned data from thunk
         state.selectedEmployee = action.payload;
         state.ui.selectedEmployeeModal = true;
       })
@@ -420,18 +548,33 @@ const orgChartSlice = createSlice({
       .addCase(fetchFullTreeWithVacancies.fulfilled, (state, action) => {
         state.loading.fullTree = false;
         
-        if (action.payload.org_chart) {
-          state.fullTree = action.payload.org_chart;
-        } else if (Array.isArray(action.payload)) {
-          state.fullTree = action.payload;
-        } else {
-          state.fullTree = [];
-        }
+        // FIXED: Use cleaned data from thunk
+        const treeData = action.payload.org_chart || [];
+        state.fullTree = treeData;
         
         if (state.orgChart.length === 0) {
-          state.orgChart = state.fullTree;
-          const hierarchy = orgChartAPI.buildHierarchy(state.orgChart);
-          state.hierarchy = hierarchy;
+          state.orgChart = treeData;
+          
+          // Build simple hierarchy
+          const employeeMap = {};
+          const roots = [];
+          
+          treeData.forEach(emp => {
+            employeeMap[emp.employee_id] = {
+              ...emp,
+              childrenIds: []
+            };
+          });
+          
+          treeData.forEach(emp => {
+            if (emp.line_manager_id && employeeMap[emp.line_manager_id]) {
+              employeeMap[emp.line_manager_id].childrenIds.push(emp.employee_id);
+            } else {
+              roots.push(emp.employee_id);
+            }
+          });
+          
+          state.hierarchy = { roots, employeeMap };
         }
       })
       .addCase(fetchFullTreeWithVacancies.rejected, (state, action) => {
@@ -463,13 +606,9 @@ const orgChartSlice = createSlice({
       .addCase(searchOrgChart.fulfilled, (state, action) => {
         state.loading.search = false;
         
-        if (action.payload.org_chart) {
-          state.orgChart = action.payload.org_chart;
-        } else if (Array.isArray(action.payload)) {
-          state.orgChart = action.payload;
-        } else {
-          state.orgChart = [];
-        }
+        // FIXED: Use cleaned data from thunk
+        const searchData = action.payload.org_chart || [];
+        state.orgChart = searchData;
         
         if (action.payload.count !== undefined) {
           state.pagination.totalCount = action.payload.count;
@@ -477,8 +616,26 @@ const orgChartSlice = createSlice({
           state.pagination.hasPrev = !!action.payload.previous;
         }
         
-        const hierarchy = orgChartAPI.buildHierarchy(state.orgChart);
-        state.hierarchy = hierarchy;
+        // Build simple hierarchy for search results
+        const employeeMap = {};
+        const roots = [];
+        
+        searchData.forEach(emp => {
+          employeeMap[emp.employee_id] = {
+            ...emp,
+            childrenIds: []
+          };
+        });
+        
+        searchData.forEach(emp => {
+          if (emp.line_manager_id && employeeMap[emp.line_manager_id]) {
+            employeeMap[emp.line_manager_id].childrenIds.push(emp.employee_id);
+          } else {
+            roots.push(emp.employee_id);
+          }
+        });
+        
+        state.hierarchy = { roots, employeeMap };
       })
       .addCase(searchOrgChart.rejected, (state, action) => {
         state.loading.search = false;
@@ -495,13 +652,9 @@ const orgChartSlice = createSlice({
         state.loading.managerTeam = false;
         const { managerId, data } = action.payload;
         
-        if (data.org_chart) {
-          state.managerTeams[managerId] = data.org_chart;
-        } else if (Array.isArray(data)) {
-          state.managerTeams[managerId] = data;
-        } else {
-          state.managerTeams[managerId] = [];
-        }
+        // FIXED: Use cleaned data from thunk
+        const teamData = data.org_chart || [];
+        state.managerTeams[managerId] = teamData;
       })
       .addCase(fetchManagerTeam.rejected, (state, action) => {
         state.loading.managerTeam = false;
@@ -542,21 +695,28 @@ export const {
 export default orgChartSlice.reducer;
 
 // ========================================
-// SELECTORS - FIXED to avoid identity function warnings
+// SELECTORS - FIXED to prevent circular references
 // ========================================
 
-// Base selectors with transformation
+// Base selectors
 const selectOrgChartState = (state) => state.orgChart || {};
 
-// FIXED: Proper selectors with transformation
+// FIXED: Main data selectors with safe transformations
 export const selectOrgChart = createSelector(
   [selectOrgChartState],
-  (orgChartState) => orgChartState.orgChart || []
+  (orgChartState) => {
+    const orgChart = orgChartState.orgChart || [];
+    // Ensure we return clean data
+    return Array.isArray(orgChart) ? orgChart : [];
+  }
 );
 
 export const selectFullTree = createSelector(
   [selectOrgChartState],
-  (orgChartState) => orgChartState.fullTree || []
+  (orgChartState) => {
+    const fullTree = orgChartState.fullTree || [];
+    return Array.isArray(fullTree) ? fullTree : [];
+  }
 );
 
 export const selectStatistics = createSelector(
@@ -571,7 +731,7 @@ export const selectSelectedEmployee = createSelector(
 
 export const selectHierarchy = createSelector(
   [selectOrgChartState],
-  (orgChartState) => orgChartState.hierarchy || { roots: [], map: {} }
+  (orgChartState) => orgChartState.hierarchy || { roots: [], employeeMap: {} }
 );
 
 export const selectManagerTeams = createSelector(
@@ -628,16 +788,16 @@ export const selectIsFullscreen = createSelector(
   (uiState) => Boolean(uiState.isFullscreen)
 );
 
-// FIXED: Expanded nodes selector with proper transformation
+// FIXED: Safe expanded nodes selector
 export const selectExpandedNodes = createSelector(
   [selectUIState],
   (uiState) => {
     const expandedNodes = uiState.expandedNodes;
     if (Array.isArray(expandedNodes)) {
-      return expandedNodes;
-    }
-    if (expandedNodes instanceof Set) {
-      return Array.from(expandedNodes);
+      // Ensure all values are primitive (string/number)
+      return expandedNodes.filter(id => 
+        typeof id === 'string' || typeof id === 'number'
+      );
     }
     return [];
   }
@@ -675,7 +835,7 @@ export const selectPagination = createSelector(
   (orgChartState) => orgChartState.pagination || initialState.pagination
 );
 
-// Complex computed selectors
+// FIXED: Safe filtered org chart selector
 export const selectFilteredOrgChart = createSelector(
   [selectOrgChart, selectActiveFilters],
   (orgChart, activeFilters) => {
@@ -686,6 +846,8 @@ export const selectFilteredOrgChart = createSelector(
     }
     
     const filtered = orgChart.filter(employee => {
+      if (!employee || typeof employee !== 'object') return false;
+      
       // Text search filters
       if (activeFilters.search) {
         const searchTerm = activeFilters.search.toLowerCase();
@@ -795,15 +957,14 @@ export const selectFilteredOrgChart = createSelector(
   }
 );
 
-// FIXED: React Flow selector with proper data transformation
+// FIXED: Safe React Flow selector without circular references
 export const selectOrgChartForReactFlow = createSelector(
   [selectFilteredOrgChart, selectExpandedNodes],
   (filteredChart, expandedNodes) => {
     console.log('selectOrgChartForReactFlow input:', {
       filteredChartLength: filteredChart?.length || 0,
       expandedNodesLength: expandedNodes?.length || 0,
-      expandedNodes: expandedNodes,
-      firstEmployee: filteredChart?.[0]
+      expandedNodes: expandedNodes
     });
     
     if (!Array.isArray(filteredChart) || filteredChart.length === 0) {
@@ -811,130 +972,60 @@ export const selectOrgChartForReactFlow = createSelector(
       return { nodes: [], edges: [] };
     }
     
-    // If no nodes are expanded, expand root nodes by default
-    const expandedSet = new Set(expandedNodes?.length > 0 ? expandedNodes : []);
+    // Create a Set for faster lookup
+    const expandedSet = new Set(expandedNodes || []);
     
-    // Find root employees (those without line_manager_id)
+    // Find root employees
     const rootEmployees = filteredChart.filter(emp => !emp.line_manager_id);
-    console.log('Root employees found:', rootEmployees.length, 'out of', filteredChart.length, 'total employees');
+    console.log('Root employees found:', rootEmployees.length);
     
-    // Check if we should treat this as a flat structure or if we have any hierarchy relationships
-    const hasHierarchyRelationships = filteredChart.some(emp => emp.line_manager_id);
-    console.log('Has hierarchy relationships:', hasHierarchyRelationships);
-    
-    // For flat structure or when all employees have managers (circular/complex hierarchy)
-    if (rootEmployees.length === 0 || rootEmployees.length === filteredChart.length || !hasHierarchyRelationships) {
-      console.log('Using flat/simple structure approach - showing all employees');
-      
-      const nodes = filteredChart.map(emp => ({
-        id: emp.employee_id,
-        type: 'employee',
-        position: { x: 0, y: 0 },
-        data: {
-          employee: emp,
-          directReports: emp.direct_reports || 0
-        }
-      }));
-      
-      // Create edges based on line_manager_id relationships
-      const edges = filteredChart
-        .filter(emp => emp.line_manager_id)
-        .filter(emp => filteredChart.some(manager => manager.employee_id === emp.line_manager_id)) // Only if manager exists in data
-        .map(emp => ({
-          id: `${emp.line_manager_id}-${emp.employee_id}`,
-          source: emp.line_manager_id,
-          target: emp.employee_id,
-          type: 'smoothstep',
-          animated: false,
-          style: { 
-            stroke: '#64748b', 
-            strokeWidth: 2,
-            opacity: 0.8 
-          }
-        }));
-      
-      const result = { nodes, edges };
-      console.log('Simple structure result:', {
-        nodes: result.nodes.length,
-        edges: result.edges.length,
-        sampleNode: result.nodes[0]?.id,
-        sampleEdge: result.edges[0]?.id
-      });
-      
-      return result;
-    }
-    
-    // If no expanded nodes and we have roots, expand the first few levels
+    // If no expanded nodes and we have roots, expand them
     if (expandedNodes?.length === 0 && rootEmployees.length > 0) {
       rootEmployees.forEach(root => expandedSet.add(root.employee_id));
-      
-      // Also expand their direct reports for better initial view
-      rootEmployees.forEach(root => {
-        const directReports = filteredChart.filter(emp => emp.line_manager_id === root.employee_id);
-        directReports.forEach(report => expandedSet.add(report.employee_id));
-      });
     }
     
-    const getVisibleEmployees = (employees) => {
-      const hierarchyMap = {};
-      
-      // Build hierarchy map
-      employees.forEach(emp => {
-        hierarchyMap[emp.employee_id] = { ...emp, children: [] };
-      });
-      
-      // Establish parent-child relationships
-      employees.forEach(emp => {
-        if (emp.line_manager_id && hierarchyMap[emp.line_manager_id]) {
-          hierarchyMap[emp.line_manager_id].children.push(hierarchyMap[emp.employee_id]);
+    // Simple visibility calculation without circular references
+    const visibleEmployees = [];
+    const employeeMap = new Map();
+    
+    // Build employee map
+    filteredChart.forEach(emp => {
+      employeeMap.set(emp.employee_id, emp);
+    });
+    
+    // Add root employees
+    rootEmployees.forEach(root => {
+      if (!visibleEmployees.find(emp => emp.employee_id === root.employee_id)) {
+        visibleEmployees.push(root);
+      }
+    });
+    
+    // Add children of expanded nodes
+    expandedSet.forEach(nodeId => {
+      const children = filteredChart.filter(emp => emp.line_manager_id === nodeId);
+      children.forEach(child => {
+        if (!visibleEmployees.find(emp => emp.employee_id === child.employee_id)) {
+          visibleEmployees.push(child);
         }
       });
-      
-      console.log('Hierarchy map built:', Object.keys(hierarchyMap).length, 'employees');
-      
-      // Get visible nodes based on expansion state
-      const getVisibleNodes = (nodeId, parentExpanded = true) => {
-        const node = hierarchyMap[nodeId];
-        if (!node) return [];
-        
-        // Always show the node if its parent is expanded
-        const visibleNodes = parentExpanded ? [node] : [];
-        const isExpanded = expandedSet.has(nodeId);
-        
-        // If this node is expanded, show its children
-        if (isExpanded && node.children && node.children.length > 0) {
-          node.children.forEach(child => {
-            visibleNodes.push(...getVisibleNodes(child.employee_id, parentExpanded));
-          });
-        }
-        
-        return visibleNodes;
-      };
-      
-      // Start with root nodes
-      const visibleEmployees = [];
-      rootEmployees.forEach(root => {
-        visibleEmployees.push(...getVisibleNodes(root.employee_id, true));
-      });
-      
-      console.log('Visible employees:', visibleEmployees.length);
-      return visibleEmployees;
-    };
+    });
     
-    const visibleEmployees = getVisibleEmployees(filteredChart);
+    console.log('Visible employees:', visibleEmployees.length);
     
-    // Create nodes for React Flow
+    // Create React Flow nodes
     const nodes = visibleEmployees.map(emp => ({
-      id: emp.employee_id,
+      id: emp.employee_id.toString(),
       type: 'employee',
       position: { x: 0, y: 0 },
       data: {
-        employee: emp,
-        directReports: emp.direct_reports || 0
+        employee: emp, // Already cleaned data
+        isExpanded: expandedSet.has(emp.employee_id),
+        onToggleExpanded: (nodeId) => ({ type: 'orgChart/toggleExpandedNode', payload: nodeId }),
+        onSelectEmployee: (employee) => ({ type: 'orgChart/setSelectedEmployee', payload: employee })
       }
     }));
     
-    // Create edges for React Flow - only between visible employees
+    // Create React Flow edges - only between visible employees
     const visibleEmployeeIds = new Set(visibleEmployees.map(emp => emp.employee_id));
     const edges = visibleEmployees
       .filter(emp => 
@@ -942,9 +1033,9 @@ export const selectOrgChartForReactFlow = createSelector(
         visibleEmployeeIds.has(emp.line_manager_id)
       )
       .map(emp => ({
-        id: `${emp.line_manager_id}-${emp.employee_id}`,
-        source: emp.line_manager_id,
-        target: emp.employee_id,
+        id: `edge-${emp.line_manager_id}-${emp.employee_id}`,
+        source: emp.line_manager_id.toString(),
+        target: emp.employee_id.toString(),
         type: 'smoothstep',
         animated: false,
         style: { 
@@ -957,8 +1048,7 @@ export const selectOrgChartForReactFlow = createSelector(
     const result = { nodes, edges };
     console.log('ReactFlow data generated:', {
       nodes: result.nodes.length,
-      edges: result.edges.length,
-      expandedSet: Array.from(expandedSet)
+      edges: result.edges.length
     });
     
     return result;
@@ -1010,26 +1100,6 @@ export const selectEmployeeChildren = createSelector(
   (orgChart, employeeId) => orgChart.filter(emp => emp.line_manager_id === employeeId)
 );
 
-export const selectEmployeeAncestors = createSelector(
-  [selectOrgChart, (state, employeeId) => employeeId],
-  (orgChart, employeeId) => {
-    const ancestors = [];
-    let current = orgChart.find(emp => emp.employee_id === employeeId);
-    
-    while (current && current.line_manager_id) {
-      const manager = orgChart.find(emp => emp.employee_id === current.line_manager_id);
-      if (manager) {
-        ancestors.unshift(manager);
-        current = manager;
-      } else {
-        break;
-      }
-    }
-    
-    return ancestors;
-  }
-);
-
 export const selectRootEmployees = createSelector(
   [selectOrgChart],
   (orgChart) => orgChart.filter(emp => !emp.line_manager_id)
@@ -1038,14 +1108,4 @@ export const selectRootEmployees = createSelector(
 export const selectManagersOnly = createSelector(
   [selectOrgChart],
   (orgChart) => orgChart.filter(emp => emp.direct_reports && emp.direct_reports > 0)
-);
-
-export const selectEmployeesByDepartment = createSelector(
-  [selectOrgChart, (state, department) => department],
-  (orgChart, department) => orgChart.filter(emp => emp.department === department)
-);
-
-export const selectEmployeesByBusinessFunction = createSelector(
-  [selectOrgChart, (state, businessFunction) => businessFunction],
-  (orgChart, businessFunction) => orgChart.filter(emp => emp.business_function === businessFunction)
 );

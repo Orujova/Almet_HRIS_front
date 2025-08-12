@@ -1,4 +1,4 @@
-// src/components/headcount/BulkEditModal.jsx - Line Manager Assignment (Complete Rewrite)
+// src/components/headcount/BulkEditModal.jsx - Enhanced Design with Project Colors
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { X, Edit3, Users, User, Search, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { useEmployees } from '../../hooks/useEmployees';
@@ -26,15 +26,18 @@ const BulkEditModal = ({
     refreshAll
   } = useEmployees();
 
-  // Theme classes
-  const bgModal = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-600";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const bgHover = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
-  const bgInput = darkMode ? "bg-gray-700" : "bg-white";
-  const bgDropdown = darkMode ? "bg-gray-700" : "bg-white";
+  // Enhanced theme classes with project colors
+  const bgModal = darkMode ? "bg-gray-900" : "bg-white";
+  const textPrimary = darkMode ? "text-gray-100" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
+  const textMuted = darkMode ? "text-gray-400" : "text-almet-bali-hai";
+  const borderColor = darkMode ? "border-gray-700" : "border-almet-mystic";
+  const bgHover = darkMode ? "hover:bg-gray-800" : "hover:bg-almet-mystic/50";
+  const bgInput = darkMode ? "bg-gray-800" : "bg-white";
+  const bgDropdown = darkMode ? "bg-gray-800" : "bg-white";
+  const accentBlue = darkMode ? "text-blue-400" : "text-almet-sapphire";
+  const accentOrange = darkMode ? "text-orange-400" : "text-orange-600";
+  const accentGreen = darkMode ? "text-green-400" : "text-emerald-600";
 
   // Fetch ALL employees without pagination or filters - TRULY ALL EMPLOYEES
   const fetchAllEmployees = async () => {
@@ -334,79 +337,77 @@ const BulkEditModal = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black bg-opacity-50"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className={`relative ${bgModal} rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden`}>
+      <div className={`relative ${bgModal} rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden border ${borderColor}`}>
         {/* Header */}
-        <div className={`px-6 py-4 border-b ${borderColor} flex items-center justify-between`}>
+        <div className={`px-5 py-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center mr-3">
-              <Edit3 className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+            <div className="w-7 h-7 bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-lg flex items-center justify-center mr-3">
+              <Edit3 className="w-3.5 h-3.5 text-white" />
             </div>
             <div>
-              <h2 className={`text-lg font-semibold ${textPrimary}`}>
+              <h2 className={`text-base font-semibold ${textPrimary}`}>
                 Assign Line Manager
               </h2>
-              <p className={`text-sm ${textMuted}`}>
+              <p className={`text-xs ${textMuted}`}>
                 {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} selected
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleRefreshData}
               disabled={isProcessing || isLoadingAllEmployees}
-              className={`p-2 rounded-lg ${bgHover} transition-colors disabled:opacity-50`}
+              className={`p-1.5 rounded-lg ${bgHover} transition-all duration-200 disabled:opacity-50`}
               title="Refresh employee data"
             >
               <RefreshCw 
-                className={`w-4 h-4 ${textSecondary} ${isLoadingAllEmployees ? 'animate-spin' : ''}`} 
+                className={`w-3.5 h-3.5 ${textSecondary} ${isLoadingAllEmployees ? 'animate-spin' : ''}`} 
               />
             </button>
             <button
               onClick={onClose}
               disabled={isProcessing}
-              className={`p-2 rounded-lg ${bgHover} transition-colors disabled:opacity-50`}
+              className={`p-1.5 rounded-lg ${bgHover} transition-all duration-200 disabled:opacity-50`}
             >
-              <X className={`w-5 h-5 ${textSecondary}`} />
+              <X className={`w-4 h-4 ${textSecondary}`} />
             </button>
           </div>
         </div>
 
-        {/* Loading State - IMPROVED */}
+        {/* Loading State - Enhanced */}
         {isLoadingAllEmployees && (
-          <div className="px-6 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+          <div className="px-5 py-2.5 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900">
             <div className="flex items-center">
-              <div className="w-4 h-4 border border-blue-500 border-t-transparent rounded-full animate-spin mr-2"></div>
-              <span className="text-sm text-blue-800 dark:text-blue-300">
-                Loading ALL employees from system (no filters, no pagination)...
+              <div className="w-3 h-3 border border-almet-sapphire border-t-transparent rounded-full animate-spin mr-2.5"></div>
+              <span className="text-xs text-almet-sapphire dark:text-blue-300 font-medium">
+                Loading all employees from system...
               </span>
             </div>
-            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 ml-6">
-              This may take a moment to fetch all active employees
+            <div className="text-xs text-almet-waterloo dark:text-blue-400 mt-1 ml-5">
+              Fetching complete employee directory
             </div>
           </div>
         )}
 
         {/* Content */}
-        <div className="p-6 space-y-6 max-h-96 overflow-y-auto">
-         
-
+        <div className="p-5 space-y-5 max-h-96 overflow-y-auto">
           {/* Selected Employees Display */}
           {selectedEmployeeData.length > 0 && (
             <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
+              <label className={`block text-sm font-medium ${textPrimary} mb-2.5`}>
                 Selected Employees ({selectedEmployeeData.length})
               </label>
-              <div className="max-h-32 overflow-y-auto bg-gray-50 dark:bg-gray-800 rounded-lg p-3 space-y-2">
+              <div className="max-h-28 overflow-y-auto bg-gray-50 dark:bg-gray-800/50 rounded-lg p-2.5 space-y-1.5">
                 {selectedEmployeeData.map((emp) => (
-                  <div key={emp.id} className="flex items-center justify-between text-sm">
+                  <div key={emp.id} className="flex items-center justify-between text-xs">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                      <div className="w-6 h-6 bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 rounded-lg flex items-center justify-center mr-2.5">
+                        <span className="text-xs font-medium text-almet-sapphire">
                           {(emp.first_name || emp.fullName || '').charAt(0)}
                         </span>
                       </div>
@@ -424,13 +425,13 @@ const BulkEditModal = ({
                         )}
                       </div>
                     </div>
-                    <div className={`text-xs ${textMuted}`}>
+                    <div className={`text-xs`}>
                       {emp.line_manager_id ? (
-                        <span className="text-green-600 dark:text-green-400">
+                        <span className="text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded-full font-medium">
                           Has Manager
                         </span>
                       ) : (
-                        <span className="text-orange-600 dark:text-orange-400">
+                        <span className="text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-1.5 py-0.5 rounded-full font-medium">
                           No Manager
                         </span>
                       )}
@@ -443,20 +444,20 @@ const BulkEditModal = ({
 
           {/* Line Manager Selection */}
           <div>
-            <label className={`block text-sm font-medium ${textPrimary} mb-3`}>
+            <label className={`block text-sm font-medium ${textPrimary} mb-2.5`}>
               Select New Line Manager
             </label>
             
             {isLoadingAllEmployees ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="w-6 h-6 border border-blue-500 border-t-transparent rounded-full animate-spin mr-3"></div>
-                <span className={textMuted}>Loading all employees...</span>
+              <div className="flex items-center justify-center py-6">
+                <div className="w-5 h-5 border border-almet-sapphire border-t-transparent rounded-full animate-spin mr-2.5"></div>
+                <span className={`text-sm ${textMuted}`}>Loading all employees...</span>
               </div>
             ) : potentialLineManagers.length === 0 ? (
-              <div className={`p-4 border ${borderColor} rounded-lg text-center`}>
-                <Users className={`w-8 h-8 mx-auto mb-2 ${textMuted}`} />
-                <p className={textMuted}>No available employees to assign as line manager</p>
-                <p className={`text-xs ${textMuted} mt-1`}>
+              <div className={`p-4 border ${borderColor} rounded-lg text-center bg-gray-50 dark:bg-gray-800/30`}>
+                <Users className={`w-6 h-6 mx-auto mb-2 ${textMuted}`} />
+                <p className={`text-sm ${textMuted} mb-1`}>No available employees to assign as line manager</p>
+                <p className={`text-xs ${textMuted}`}>
                   {allEmployees.length > 0 
                     ? `All ${allEmployees.length} active employees are either selected or unavailable.`
                     : 'No active employees found in the system.'
@@ -464,9 +465,9 @@ const BulkEditModal = ({
                 </p>
                 <button
                   onClick={handleRefreshData}
-                  className="mt-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+                  className="mt-2.5 px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors"
                 >
-                  Refresh All Data
+                  Refresh Data
                 </button>
               </div>
             ) : (
@@ -474,32 +475,32 @@ const BulkEditModal = ({
                 {/* Searchable Dropdown */}
                 <div
                   onClick={() => !isProcessing && setDropdownOpen(!dropdownOpen)}
-                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} cursor-pointer flex items-center justify-between ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full px-3.5 py-2.5 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} cursor-pointer flex items-center justify-between transition-all duration-200 ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:border-almet-sapphire/30'}`}
                 >
                   <div className="flex items-center flex-1">
-                    <Search className={`w-4 h-4 mr-3 ${textMuted}`} />
+                    <Search className={`w-3.5 h-3.5 mr-2.5 ${textMuted}`} />
                     {selectedManager ? (
                       <div className="flex-1">
-                        <div className="flex items-center flex-wrap gap-2">
-                          <span className={`font-medium ${textPrimary}`}>
+                        <div className="flex items-center flex-wrap gap-1.5">
+                          <span className={`font-medium text-sm ${textPrimary}`}>
                             {selectedManager.name}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600 ${textMuted}`}>
+                          <span className={`text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
                             {selectedManager.employee_id}
                           </span>
                           {selectedManager.isCurrentLineManager && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
-                              Current Manager
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-medium">
+                              Manager
                             </span>
                           )}
                         </div>
-                        <div className={`text-xs ${textMuted} mt-0.5 flex flex-wrap gap-2`}>
+                        <div className={`text-xs ${textMuted} mt-0.5 flex flex-wrap gap-1.5`}>
                           <span>{selectedManager.jobTitle}</span>
                           {selectedManager.departmentName && (
                             <span>• {selectedManager.departmentName}</span>
                           )}
                           {selectedManager.directReportsCount > 0 && (
-                            <span>• {selectedManager.directReportsCount} direct reports</span>
+                            <span>• {selectedManager.directReportsCount} reports</span>
                           )}
                         </div>
                       </div>
@@ -514,7 +515,7 @@ const BulkEditModal = ({
                           setDropdownOpen(true);
                         }}
                         disabled={isProcessing}
-                        className={`bg-transparent outline-none flex-1 ${textPrimary} disabled:opacity-50 placeholder:${textMuted}`}
+                        className={`bg-transparent outline-none flex-1 text-sm ${textPrimary} disabled:opacity-50 placeholder:${textMuted}`}
                       />
                     )}
                   </div>
@@ -527,30 +528,30 @@ const BulkEditModal = ({
                           setSearchTerm('');
                         }}
                         disabled={isProcessing}
-                        className={`mr-2 ${textMuted} hover:text-red-500 transition-colors disabled:opacity-50`}
+                        className={`mr-1.5 ${textMuted} hover:text-red-500 transition-colors disabled:opacity-50`}
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3 h-3" />
                       </button>
                     )}
                     <ChevronDown 
-                      className={`w-4 h-4 ${textMuted} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
+                      className={`w-3.5 h-3.5 ${textMuted} transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} 
                     />
                   </div>
                 </div>
 
                 {/* Dropdown Menu */}
                 {dropdownOpen && !isProcessing && (
-                  <div className={`absolute z-20 w-full mt-1 ${bgDropdown} border ${borderColor} rounded-lg shadow-lg max-h-64 overflow-y-auto`}>
+                  <div className={`absolute z-20 w-full mt-1 ${bgDropdown} border ${borderColor} rounded-lg shadow-xl max-h-64 overflow-y-auto`}>
                     {filteredManagers.length === 0 ? (
-                      <div className="px-4 py-8 text-center">
-                        <Users className={`w-8 h-8 mx-auto mb-2 ${textMuted}`} />
-                        <p className={textMuted}>
+                      <div className="px-4 py-6 text-center">
+                        <Users className={`w-6 h-6 mx-auto mb-2 ${textMuted}`} />
+                        <p className={`text-sm ${textMuted} mb-1`}>
                           {searchTerm ? 'No employees found matching search' : 'No employees available'}
                         </p>
                         {searchTerm && (
                           <button
                             onClick={() => setSearchTerm('')}
-                            className="mt-2 text-sm text-blue-500 hover:text-blue-600"
+                            className="mt-1.5 text-xs text-almet-sapphire hover:text-almet-astral"
                           >
                             Clear search
                           </button>
@@ -562,20 +563,20 @@ const BulkEditModal = ({
                           <div
                             key={manager.id}
                             onClick={() => handleManagerSelect(manager.id)}
-                            className={`px-4 py-3 cursor-pointer transition-colors ${bgHover} border-l-4 border-transparent hover:border-orange-500`}
+                            className={`px-3.5 py-2.5 cursor-pointer transition-all duration-200 ${bgHover} border-l-3 border-transparent hover:border-almet-sapphire hover:bg-almet-mystic/30`}
                           >
                             <div className="flex items-center">
-                              <User className={`w-4 h-4 mr-3 ${textMuted} flex-shrink-0`} />
+                              <User className={`w-3.5 h-3.5 mr-2.5 ${textMuted} flex-shrink-0`} />
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center flex-wrap gap-2 mb-1">
-                                  <span className={`font-medium ${textPrimary}`}>
+                                <div className="flex items-center flex-wrap gap-1.5 mb-1">
+                                  <span className={`font-medium text-sm ${textPrimary}`}>
                                     {manager.name}
                                   </span>
-                                  <span className={`text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-600 ${textMuted}`}>
+                                  <span className={`text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
                                     {manager.employee_id}
                                   </span>
                                   {manager.isCurrentLineManager && (
-                                    <span className="text-xs px-2 py-0.5 rounded bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300">
+                                    <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 font-medium">
                                       Manager
                                     </span>
                                   )}
@@ -594,7 +595,7 @@ const BulkEditModal = ({
                                     )}
                                   </div>
                                   {manager.directReportsCount > 0 && (
-                                    <div className="text-green-600 dark:text-green-400">
+                                    <div className={`${accentGreen} font-medium`}>
                                       Managing {manager.directReportsCount} employee{manager.directReportsCount !== 1 ? 's' : ''}
                                     </div>
                                   )}
@@ -613,54 +614,54 @@ const BulkEditModal = ({
 
           {/* Assignment Preview */}
           {selectedManager && (
-            <div className={`p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg`}>
-              <h4 className={`font-medium ${textPrimary} mb-2`}>Assignment Preview</h4>
-              <p className={`text-sm ${textSecondary}`}>
+            <div className={`p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/20 border border-orange-200 dark:border-orange-800 rounded-lg`}>
+              <h4 className={`font-medium text-sm ${textPrimary} mb-1.5`}>Assignment Preview</h4>
+              <p className={`text-xs ${textSecondary}`}>
                 <strong>{selectedManager.name}</strong> ({selectedManager.employee_id}) 
                 will be assigned as line manager for <strong>{selectedEmployees.length}</strong> employee{selectedEmployees.length !== 1 ? 's' : ''}.
               </p>
               {selectedManager.isCurrentLineManager ? (
-                <p className={`text-xs ${textMuted} mt-2 flex items-center`}>
-                  <span className="text-green-500 mr-1">✓</span>
-                  This employee already manages {selectedManager.directReportsCount} other employee{selectedManager.directReportsCount !== 1 ? 's' : ''}.
+                <p className={`text-xs ${textMuted} mt-1.5 flex items-center`}>
+                  <span className="text-emerald-500 mr-1.5">✓</span>
+                  Currently manages {selectedManager.directReportsCount} other employee{selectedManager.directReportsCount !== 1 ? 's' : ''}.
                 </p>
               ) : (
-                <p className={`text-xs ${textMuted} mt-2 flex items-center`}>
-                  <span className="text-blue-500 mr-1">ℹ</span>
-                  This will be their first time as a line manager.
+                <p className={`text-xs ${textMuted} mt-1.5 flex items-center`}>
+                  <span className="text-blue-500 mr-1.5">ℹ</span>
+                  This will be their first management role.
                 </p>
               )}
               {currentLineManagerAnalysis.hasLineManager > 0 && (
                 <p className={`text-xs ${textMuted} mt-1 flex items-center`}>
-                  <span className="text-orange-500 mr-1">⚠</span>
-                  {currentLineManagerAnalysis.hasLineManager} employee{currentLineManagerAnalysis.hasLineManager !== 1 ? 's' : ''} currently have different line managers that will be replaced.
+                  <span className="text-amber-500 mr-1.5">⚠</span>
+                  {currentLineManagerAnalysis.hasLineManager} employee{currentLineManagerAnalysis.hasLineManager !== 1 ? 's' : ''} will have their current manager replaced.
                 </p>
               )}
             </div>
           )}
 
-          {/* Statistics - IMPROVED */}
+          {/* Statistics - Enhanced */}
           {allEmployees.length > 0 && (
-            <div className={`text-xs ${textMuted} text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg`}>
-              <div className="grid grid-cols-4 gap-4">
+            <div className={`text-xs ${textMuted} text-center p-3 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-lg`}>
+              <div className="grid grid-cols-4 gap-3">
                 <div>
-                  <div className="font-medium">Total Active</div>
-                  <div className="text-blue-600 dark:text-blue-400">{allEmployees.length}</div>
+                  <div className="font-medium text-xs">Total Active</div>
+                  <div className={`text-sm font-semibold ${accentBlue}`}>{allEmployees.length}</div>
                   <div className="text-xs opacity-75">in system</div>
                 </div>
                 <div>
-                  <div className="font-medium">Available</div>
-                  <div className="text-green-600 dark:text-green-400">{potentialLineManagers.length}</div>
+                  <div className="font-medium text-xs">Available</div>
+                  <div className={`text-sm font-semibold ${accentGreen}`}>{potentialLineManagers.length}</div>
                   <div className="text-xs opacity-75">for selection</div>
                 </div>
                 <div>
-                  <div className="font-medium">Current Managers</div>
-                  <div className="text-orange-600 dark:text-orange-400">{potentialLineManagers.filter(m => m.isCurrentLineManager).length}</div>
+                  <div className="font-medium text-xs">Current Managers</div>
+                  <div className={`text-sm font-semibold ${accentOrange}`}>{potentialLineManagers.filter(m => m.isCurrentLineManager).length}</div>
                   <div className="text-xs opacity-75">with reports</div>
                 </div>
                 <div>
-                  <div className="font-medium">Selected</div>
-                  <div className="text-purple-600 dark:text-purple-400">{selectedLineManagerId ? 1 : 0}</div>
+                  <div className="font-medium text-xs">Selected</div>
+                  <div className="text-sm font-semibold text-purple-600 dark:text-purple-400">{selectedLineManagerId ? 1 : 0}</div>
                   <div className="text-xs opacity-75">manager</div>
                 </div>
               </div>
@@ -677,38 +678,38 @@ const BulkEditModal = ({
         </div>
 
         {/* Footer */}
-        <div className={`px-6 py-4 border-t ${borderColor} flex items-center justify-between`}>
+        <div className={`px-5 py-3.5 border-t ${borderColor} flex items-center justify-between bg-gray-50/50 dark:bg-gray-800/30`}>
           <div className="flex items-center">
             {selectedEmployees.length > 0 && (
-              <span className={`text-sm ${textMuted}`}>
+              <span className={`text-xs ${textMuted} font-medium`}>
                 {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} will be updated
               </span>
             )}
           </div>
-          <div className="flex space-x-3">
+          <div className="flex space-x-2.5">
             <button
               onClick={onClose}
               disabled={isProcessing}
-              className={`px-4 py-2 text-sm border ${borderColor} rounded-lg ${textSecondary} ${bgHover} transition-colors disabled:opacity-50`}
+              className={`px-3.5 py-1.5 text-xs font-medium border ${borderColor} rounded-lg ${textSecondary} ${bgHover} transition-all duration-200 disabled:opacity-50`}
             >
               Cancel
             </button>
             <button
               onClick={handleAssignLineManager}
               disabled={isProcessing || !selectedLineManagerId || selectedEmployees.length === 0 || isLoadingAllEmployees}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isProcessing || !selectedLineManagerId || selectedEmployees.length === 0 || isLoadingAllEmployees
                   ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                  : 'bg-orange-600 hover:bg-orange-700 text-white'
+                  : 'bg-gradient-to-r from-almet-sapphire to-almet-astral hover:from-almet-astral hover:to-almet-steel-blue text-white shadow-md hover:shadow-lg'
               }`}
             >
               {isProcessing ? (
                 <div className="flex items-center">
-                  <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin mr-1.5"></div>
                   Assigning...
                 </div>
               ) : (
-                `Assign Line Manager (${selectedEmployees.length})`
+                `Assign Manager (${selectedEmployees.length})`
               )}
             </button>
           </div>

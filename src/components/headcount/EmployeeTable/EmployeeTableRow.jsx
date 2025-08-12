@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - ENHANCED with Better Visibility Toggle
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Final Updated Version
 "use client";
 import { useState } from "react";
 import Link from "next/link";
@@ -6,8 +6,8 @@ import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles, getEmployeeColors } from "../utils/themeStyles";
 import EmployeeStatusBadge from "../EmployeeStatusBadge";
 import EmployeeTag from "../EmployeeTag";
-import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle"; // Enhanced version
-import ActionsDropdown from "../ActionsDropdown";
+import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
+import ActionsDropdown from "../ActionsDropdown"; // Simple version without hooks
 
 const EmployeeTableRow = ({
   employee,
@@ -15,8 +15,8 @@ const EmployeeTableRow = ({
   onToggleSelection,
   isVisible,
   onVisibilityChange,
-  onAction,
-  // New props for enhanced functionality
+  onAction, // ← YENİ: Parent-dən gələn action handler
+  // Enhanced functionality props
   isUpdatingVisibility = false,
   showVisibilityConfirmation = false
 }) => {
@@ -75,17 +75,25 @@ const EmployeeTableRow = ({
       // Call the parent handler which should handle API call
       await onVisibilityChange(employeeId, newVisibility);
       
-      // Show success feedback (could be a toast notification)
       console.log(`✅ Employee ${employeeId} visibility updated to ${newVisibility ? 'visible' : 'hidden'}`);
       
     } catch (error) {
       console.error('❌ Failed to update visibility:', error);
-      
-      // Show error feedback
-      // In a real app, you might want to show a toast notification here
       alert(`Failed to update visibility: ${error.message}`);
     } finally {
       setVisibilityLoading(false);
+    }
+  };
+
+  // ENHANCED: Action handler - pass to parent
+  const handleEmployeeAction = (employeeId, action) => {
+    console.log('🔧 ROW: Employee action triggered:', { employeeId, action });
+    
+    // Call parent action handler
+    if (onAction) {
+      onAction(employeeId, action);
+    } else {
+      console.warn('⚠️ ROW: No onAction handler provided');
     }
   };
 
@@ -100,14 +108,14 @@ const EmployeeTableRow = ({
           tags.push({
             id: `tag_name_${idx}`,
             name: tagItem,
-            tag_type: 'other',
+            tag_type: 'OTHER',
             color: '#gray'
           });
         } else if (typeof tagItem === 'object' && tagItem.name) {
           tags.push({
             id: tagItem.id || `tag_obj_${idx}`,
             name: tagItem.name,
-            tag_type: tagItem.tag_type || tagItem.type || 'other',
+            tag_type: tagItem.tag_type || tagItem.type || 'OTHER',
             color: tagItem.color || '#gray'
           });
         }
@@ -121,7 +129,7 @@ const EmployeeTableRow = ({
           tags.push({
             id: tag.id || `tag_full_${idx}`,
             name: tag.name,
-            tag_type: tag.tag_type || tag.type || 'other',
+            tag_type: tag.tag_type || tag.type || 'OTHER',
             color: tag.color || '#gray'
           });
         }
@@ -333,12 +341,14 @@ const EmployeeTableRow = ({
         />
       </td>
 
-      {/* Actions */}
+      {/* ENHANCED Actions - Pass Full Employee Data */}
       <td className="px-2 py-2 whitespace-nowrap text-center">
         <div className="flex items-center justify-center gap-1">
           <ActionsDropdown
             employeeId={employee.id}
-            onAction={(action) => onAction(employee.id, action)}
+            employee={employee} // ← YENİ: Tam employee obyekti (modal üçün lazım)
+            onAction={handleEmployeeAction} // ← YENİ: Row-level handler
+            disabled={visibilityLoading} // ← YENİ: Disable during operations
           />
         </div>
       </td>
