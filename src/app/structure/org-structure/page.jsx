@@ -32,60 +32,27 @@ import 'reactflow/dist/style.css';
 // Dagre for automatic layout
 import dagre from 'dagre';
 
-// FIXED: Define EmployeeNode component outside with proper memoization
-const EmployeeNode = React.memo(({ data }) => {
+// Enhanced EmployeeNode component with proper visibility handling
+const EmployeeNode = React.memo(({ data, id }) => {
     const employee = data.employee;
     const directReports = employee.direct_reports || 0;
     const hasChildren = directReports > 0;
-    const isExpanded = data.isExpanded || false;
+    const isExpanded = data.isExpanded;
     const onToggleExpanded = data.onToggleExpanded;
     const onSelectEmployee = data.onSelectEmployee;
 
     // Position hierarchy colors
     const hierarchyColors = {
-        'VC': { 
-            primary: '#4e7db5', 
-            bg: 'rgba(78, 125, 181, 0.1)',
-            badge: '#30539b'
-        },
-        'DIRECTOR': { 
-            primary: '#336fa5', 
-            bg: 'rgba(51, 111, 165, 0.1)',
-            badge: '#2d5a91'
-        },
-        'HEAD OF DEPARTMENT': { 
-            primary: '#38587d', 
-            bg: 'rgba(56, 88, 125, 0.1)',
-            badge: '#324c6b'
-        },
-        'SENIOR SPECIALIST': { 
-            primary: '#7a829a', 
-            bg: 'rgba(122, 130, 154, 0.1)',
-            badge: '#6b7280'
-        },
-        'SPECIALIST': { 
-            primary: '#90a0b9', 
-            bg: 'rgba(144, 160, 185, 0.1)',
-            badge: '#74839c'
-        },
-        'JUNIOR SPECIALIST': { 
-            primary: '#9c9cb5', 
-            bg: 'rgba(156, 156, 181, 0.1)',
-            badge: '#8b8ca3'
-        },
-        'Vice Chairman': { 
-            primary: '#4e7db5', 
-            bg: 'rgba(78, 125, 181, 0.1)',
-            badge: '#30539b'
-        }
+        'VC': { primary: '#4e7db5', bg: 'rgba(78, 125, 181, 0.1)', badge: '#30539b' },
+        'DIRECTOR': { primary: '#336fa5', bg: 'rgba(51, 111, 165, 0.1)', badge: '#2d5a91' },
+        'HEAD OF DEPARTMENT': { primary: '#38587d', bg: 'rgba(56, 88, 125, 0.1)', badge: '#324c6b' },
+        'SENIOR SPECIALIST': { primary: '#7a829a', bg: 'rgba(122, 130, 154, 0.1)', badge: '#6b7280' },
+        'SPECIALIST': { primary: '#90a0b9', bg: 'rgba(144, 160, 185, 0.1)', badge: '#74839c' },
+        'JUNIOR SPECIALIST': { primary: '#9c9cb5', bg: 'rgba(156, 156, 181, 0.1)', badge: '#8b8ca3' },
+        'Vice Chairman': { primary: '#4e7db5', bg: 'rgba(78, 125, 181, 0.1)', badge: '#30539b' }
     };
 
-    const getEmployeeColor = (employee) => {
-        if (!employee || !employee.position_group) return hierarchyColors['SPECIALIST'];
-        return hierarchyColors[employee.position_group] || hierarchyColors['SPECIALIST'];
-    };
-
-    const colors = getEmployeeColor(employee);
+    const colors = hierarchyColors[employee.position_group] || hierarchyColors['SPECIALIST'];
     
     const Avatar = ({ employee, size = 'sm' }) => {
         const sizes = {
@@ -96,7 +63,6 @@ const EmployeeNode = React.memo(({ data }) => {
 
         if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
         
-        // Check for profile image first
         if (employee.profile_image_url) {
             return (
                 <img
@@ -123,7 +89,13 @@ const EmployeeNode = React.memo(({ data }) => {
 
     return (
         <div className="relative">
-            <Handle type="target" position={Position.Top} className="opacity-0" />
+            {/* Input handle for parent connections */}
+            <Handle 
+                type="target" 
+                position={Position.Top} 
+                className="!bg-blue-500 !border-2 !border-white !w-3 !h-3 !opacity-100"
+                style={{ top: -6 }}
+            />
             
             <div 
                 className="bg-white dark:bg-slate-800 border-2 rounded-xl shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-105 w-[280px] min-h-[140px]"
@@ -184,35 +156,41 @@ const EmployeeNode = React.memo(({ data }) => {
                     )}
                 </div>
                 
-                {/* Expand/Collapse Button */}
+                {/* Expand/Collapse Button - FIXED: Better positioning and styling */}
                 {hasChildren && (
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            onToggleExpanded?.(employee.employee_id);
+                            console.log('Toggle clicked for:', employee.employee_id, 'Current expanded:', isExpanded);
+                            onToggleExpanded(employee.employee_id);
                         }}
-                        className="absolute -bottom-2.5 left-1/2 transform -translate-x-1/2 z-30 w-6 h-6 rounded-full text-white flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-lg hover:shadow-xl ring-2 ring-white"
+                        className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-40 w-7 h-7 rounded-full text-white flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-lg hover:shadow-xl ring-3 ring-white"
                         style={{ 
-                            background: `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
+                            background: isExpanded 
+                                ? `linear-gradient(135deg, #ef4444 0%, #dc2626 100%)` 
+                                : `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
                         }}
                         aria-label={isExpanded ? "Collapse node" : "Expand node"}
                     >
-                        {isExpanded ? <Minus className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                        {isExpanded ? <Minus className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                     </button>
                 )}
             </div>
             
-            {hasChildren && isExpanded && <Handle type="source" position={Position.Bottom} className="opacity-0" />}
+            {/* Output handle for child connections - only show if has children */}
+            {hasChildren && (
+                <Handle 
+                    type="source" 
+                    position={Position.Bottom} 
+                    className="!bg-blue-500 !border-2 !border-white !w-3 !h-3 !opacity-100"
+                    style={{ bottom: -6 }}
+                />
+            )}
         </div>
     );
 });
 
 EmployeeNode.displayName = 'EmployeeNode';
-
-// FIXED: Define nodeTypes outside component to prevent recreation
-const nodeTypes = {
-    employee: EmployeeNode,
-};
 
 const OrgChart = () => {
     const { darkMode } = useTheme();
@@ -348,7 +326,6 @@ const OrgChart = () => {
 
         if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
         
-        // Check for profile image first
         if (employee.profile_image_url) {
             return (
                 <img
@@ -398,7 +375,7 @@ const OrgChart = () => {
             dagreGraph.setGraph({ 
                 rankdir: direction, 
                 ranksep: 200,
-                nodesep: 60,
+                nodesep: 80,
                 edgesep: 20,
                 marginx: 40,
                 marginy: 40
@@ -406,8 +383,8 @@ const OrgChart = () => {
         } else {
             dagreGraph.setGraph({ 
                 rankdir: direction, 
-                ranksep: 120,
-                nodesep: 80,
+                ranksep: 150,
+                nodesep: 100,
                 edgesep: 20,
                 marginx: 40,
                 marginy: 40
@@ -443,68 +420,175 @@ const OrgChart = () => {
         return { nodes: layoutedNodes, edges };
     }, []);
 
-    // FIXED: Memoized FlowComponent with proper nodeTypes handling
+    // Build hierarchy and calculate visible nodes based on expanded state
+    const buildOrgHierarchy = useCallback((employees, expandedNodeIds) => {
+        console.log('Building hierarchy from', employees?.length, 'employees');
+        
+        if (!Array.isArray(employees) || employees.length === 0) {
+            return { visibleNodes: [], edges: [] };
+        }
+
+        // Create employee map for quick lookup
+        const employeeMap = new Map();
+        employees.forEach(emp => {
+            employeeMap.set(emp.employee_id, { ...emp, children: [], isVisible: false });
+        });
+
+        // Build parent-child relationships
+        const rootEmployees = [];
+        employees.forEach(emp => {
+            const managerId = emp.line_manager_id || emp.manager_id || emp.parent_id;
+            
+            if (managerId && employeeMap.has(managerId)) {
+                const manager = employeeMap.get(managerId);
+                const employee = employeeMap.get(emp.employee_id);
+                manager.children.push(employee);
+                employee.parent = manager;
+            } else {
+                const employee = employeeMap.get(emp.employee_id);
+                rootEmployees.push(employee);
+            }
+        });
+
+        console.log('Root employees found:', rootEmployees.length);
+
+        // If no roots found, use fallback strategies
+        if (rootEmployees.length === 0) {
+            // Strategy 1: Find by minimum level_to_ceo
+            const levels = employees.map(emp => emp.level_to_ceo).filter(level => level !== undefined && level !== null);
+            if (levels.length > 0) {
+                const minLevel = Math.min(...levels);
+                const candidates = employees.filter(emp => emp.level_to_ceo === minLevel);
+                candidates.forEach(emp => rootEmployees.push(employeeMap.get(emp.employee_id)));
+                console.log('Fallback: Found roots by level_to_ceo:', rootEmployees.length);
+            }
+
+            // Strategy 2: Find by maximum direct_reports
+            if (rootEmployees.length === 0) {
+                const maxReports = Math.max(...employees.map(emp => emp.direct_reports || 0));
+                if (maxReports > 0) {
+                    const candidates = employees.filter(emp => (emp.direct_reports || 0) === maxReports);
+                    candidates.forEach(emp => rootEmployees.push(employeeMap.get(emp.employee_id)));
+                    console.log('Fallback: Found roots by direct_reports:', rootEmployees.length);
+                }
+            }
+
+            // Strategy 3: Use first few employees
+            if (rootEmployees.length === 0) {
+                employees.slice(0, 3).forEach(emp => rootEmployees.push(employeeMap.get(emp.employee_id)));
+                console.log('Fallback: Using first 3 employees as roots');
+            }
+        }
+
+        // Mark visible nodes based on expansion state
+        const expandedSet = new Set(expandedNodeIds || []);
+        const visibleEmployees = [];
+
+        // Auto-expand roots if no nodes are expanded
+        if (expandedNodeIds.length === 0) {
+            rootEmployees.forEach(root => expandedSet.add(root.employee_id));
+        }
+
+        const markVisible = (employee, shouldShow = true) => {
+            if (!employee) return;
+            
+            if (shouldShow) {
+                employee.isVisible = true;
+                visibleEmployees.push(employee);
+                
+                // If this node is expanded, show its children
+                if (expandedSet.has(employee.employee_id) && employee.children.length > 0) {
+                    employee.children.forEach(child => markVisible(child, true));
+                }
+            }
+        };
+
+        // Start with root employees
+        rootEmployees.forEach(root => markVisible(root, true));
+
+        console.log('Visible employees calculated:', visibleEmployees.length);
+
+        // Create React Flow nodes
+        const nodes = visibleEmployees.map(emp => ({
+            id: emp.employee_id.toString(),
+            type: 'employee',
+            position: { x: 0, y: 0 },
+            data: {
+                employee: emp,
+                isExpanded: expandedSet.has(emp.employee_id),
+                onToggleExpanded: toggleExpandedNode,
+                onSelectEmployee: setSelectedEmployee
+            }
+        }));
+
+        // Create React Flow edges
+        const edges = visibleEmployees
+            .filter(emp => emp.parent && emp.parent.isVisible)
+            .map(emp => ({
+                id: `edge-${emp.parent.employee_id}-${emp.employee_id}`,
+                source: emp.parent.employee_id.toString(),
+                target: emp.employee_id.toString(),
+                type: 'smoothstep',
+                animated: false,
+                style: { 
+                    stroke: '#64748b', 
+                    strokeWidth: 2,
+                    opacity: 0.8
+                },
+                markerEnd: {
+                    type: 'arrowclosed',
+                    color: '#64748b',
+                    width: 20,
+                    height: 20
+                }
+            }));
+
+        console.log('Hierarchy complete:', { nodes: nodes.length, edges: edges.length });
+        return { visibleNodes: nodes, edges };
+    }, [toggleExpandedNode, setSelectedEmployee]);
+
+    // Main FlowComponent with proper hierarchy management
     const FlowComponent = useCallback(() => {
         const [nodes, setNodes, onNodesChange] = useNodesState([]);
         const [edges, setEdges, onEdgesChange] = useEdgesState([]);
         const { fitView } = useReactFlow();
 
-        // FIXED: Create memoized nodeTypes with current data
-        const memoizedNodeTypes = useMemo(() => ({
-            employee: (props) => (
-                <EmployeeNode 
-                    {...props} 
-                    data={{
-                        ...props.data,
-                        isExpanded: Array.isArray(expandedNodes) ? expandedNodes.includes(props.data.employee.employee_id) : false,
-                        onToggleExpanded: (nodeId) => {
-                            console.log('Toggling node:', nodeId, 'Current expanded:', expandedNodes);
-                            toggleExpandedNode(nodeId);
-                        },
-                        onSelectEmployee: setSelectedEmployee
-                    }}
-                />
-            ),
-        }), [expandedNodes, toggleExpandedNode, setSelectedEmployee]);
-
-        // Update nodes when data changes
+        // Process data when filteredOrgChart or expandedNodes change
         useEffect(() => {
-            console.log('ReactFlow data update:', {
-                hasReactFlowData: !!reactFlowData,
-                nodes: reactFlowData?.nodes?.length || 0,
-                edges: reactFlowData?.edges?.length || 0
+            console.log('FlowComponent effect triggered:', {
+                hasData: !!filteredOrgChart,
+                dataLength: filteredOrgChart?.length || 0,
+                expandedCount: expandedNodes?.length || 0
             });
-            console.log('Current expanded nodes:', expandedNodes);
-            console.log('Filtered org chart length:', filteredOrgChart?.length);
-            
-            if (reactFlowData && reactFlowData.nodes && reactFlowData.nodes.length > 0) {
-                console.log('Processing ReactFlow data with', reactFlowData.nodes.length, 'nodes');
-                const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-                    reactFlowData.nodes,
-                    reactFlowData.edges,
-                    layoutDirection
-                );
-                console.log('Setting layouted nodes:', layoutedNodes.length);
-                setNodes(layoutedNodes);
-                setEdges(layoutedEdges);
-                setTimeout(() => fitView({ padding: 0.2 }), 100);
-            } else {
-                console.log('No ReactFlow data available - nodes:', reactFlowData?.nodes?.length, 'data exists:', !!reactFlowData);
+
+            if (Array.isArray(filteredOrgChart) && filteredOrgChart.length > 0) {
+                const hierarchy = buildOrgHierarchy(filteredOrgChart, expandedNodes || []);
                 
-                // If we have filtered data but no ReactFlow nodes, there might be an expansion issue
-                if (filteredOrgChart && filteredOrgChart.length > 0 && (!reactFlowData || !reactFlowData.nodes || reactFlowData.nodes.length === 0)) {
-                    console.log('Debug: ReactFlow data issue detected');
-                    console.log('- Filtered chart has data:', filteredOrgChart.length);
-                    console.log('- Expanded nodes:', expandedNodes?.length);
-                    console.log('- ReactFlow data:', reactFlowData);
+                if (hierarchy.visibleNodes.length > 0) {
+                    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                        hierarchy.visibleNodes,
+                        hierarchy.edges,
+                        layoutDirection
+                    );
+                    
+                    setNodes(layoutedNodes);
+                    setEdges(layoutedEdges);
+                    
+                    // Fit view after layout
+                    setTimeout(() => fitView({ padding: 0.2 }), 100);
+                } else {
+                    console.log('No visible nodes to display');
+                    setNodes([]);
+                    setEdges([]);
                 }
-                
+            } else {
                 setNodes([]);
                 setEdges([]);
             }
-        }, [reactFlowData, layoutDirection, setNodes, setEdges, fitView, getLayoutedElements, filteredOrgChart, expandedNodes]);
+        }, [filteredOrgChart, expandedNodes, layoutDirection, buildOrgHierarchy, getLayoutedElements, setNodes, setEdges, fitView]);
 
         const onLayout = useCallback((direction) => {
+            console.log('Layout change requested:', direction);
             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
                 nodes,
                 edges,
@@ -516,6 +600,11 @@ const OrgChart = () => {
             setTimeout(() => fitView({ padding: 0.2 }), 0);
         }, [nodes, edges, setNodes, setEdges, fitView, getLayoutedElements, setLayoutDirection]);
 
+        // Node types
+        const nodeTypes = useMemo(() => ({
+            employee: EmployeeNode,
+        }), []);
+
         if (!nodes || nodes.length === 0) {
             return (
                 <div className="flex items-center justify-center h-full">
@@ -524,6 +613,11 @@ const OrgChart = () => {
                         <p className={`${textSecondary}`}>
                             {isLoading ? 'Loading organizational chart...' : 'No data available'}
                         </p>
+                        {filteredOrgChart?.length > 0 && expandedNodes?.length === 0 && (
+                            <p className={`${textMuted} text-sm mt-2`}>
+                                Click "Expand All" or the + buttons to see the organization structure
+                            </p>
+                        )}
                     </div>
                 </div>
             );
@@ -535,12 +629,27 @@ const OrgChart = () => {
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                nodeTypes={memoizedNodeTypes}
+                nodeTypes={nodeTypes}
                 connectionMode={ConnectionMode.Strict}
                 fitView
                 className={darkMode ? 'dark' : ''}
                 style={{ backgroundColor: darkMode ? '#0f172a' : '#f8fafc' }}
                 fitViewOptions={{ padding: 0.2 }}
+                defaultEdgeOptions={{
+                    type: 'smoothstep',
+                    animated: false,
+                    style: { 
+                        stroke: '#3b82f6', 
+                        strokeWidth: 2,
+                        opacity: 0.8
+                    },
+                    markerEnd: {
+                        type: 'arrowclosed',
+                        color: '#3b82f6',
+                        width: 16,
+                        height: 16
+                    }
+                }}
             >
                 <Background color={darkMode ? '#334155' : '#e2e8f0'} gap={20} />
                 <Controls className={darkMode ? 'react-flow__controls-dark' : ''} />
@@ -548,24 +657,30 @@ const OrgChart = () => {
                 <Panel position="top-right" className="space-x-2">
                     <button 
                         onClick={() => onLayout('TB')}
-                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium`}
+                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'TB' ? 'bg-blue-600 text-white' : ''}`}
                     >
                         Vertical
                     </button>
                     <button 
                         onClick={() => onLayout('LR')}
-                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium`}
+                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'LR' ? 'bg-blue-600 text-white' : ''}`}
                     >
                         Horizontal
                     </button>
                     <button 
-                        onClick={expandAllNodes}
+                        onClick={() => {
+                            console.log('Expand All clicked');
+                            expandAllNodes();
+                        }}
                         className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium`}
                     >
                         Expand All
                     </button>
                     <button 
-                        onClick={collapseAllNodes}
+                        onClick={() => {
+                            console.log('Collapse All clicked');
+                            collapseAllNodes();
+                        }}
                         className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium`}
                     >
                         Collapse All
@@ -574,11 +689,10 @@ const OrgChart = () => {
             </ReactFlow>
         );
     }, [
+        filteredOrgChart,
         expandedNodes, 
-        toggleExpandedNode, 
-        setSelectedEmployee, 
-        reactFlowData, 
         layoutDirection, 
+        buildOrgHierarchy,
         getLayoutedElements, 
         setLayoutDirection,
         darkMode, 
@@ -631,17 +745,84 @@ const OrgChart = () => {
         </div>
     ), [filteredOrgChart, bgCard, borderColor, textHeader, textSecondary, setSelectedEmployee]);
 
+    // Auto-expand initial nodes when org chart loads
+    useEffect(() => {
+        if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
+            console.log('Auto-expanding initial nodes for', orgChart.length, 'employees');
+            
+            // Find root employees using multiple strategies
+            let rootEmployees = [];
+            
+            // Strategy 1: Find employees without any manager
+            rootEmployees = orgChart.filter(emp => 
+                !emp.line_manager_id && !emp.manager_id && !emp.parent_id
+            );
+            console.log('Strategy 1 - No manager ID:', rootEmployees.length);
+            
+            // Strategy 2: Find by minimum level_to_ceo
+            if (rootEmployees.length === 0) {
+                const levels = orgChart.map(emp => emp.level_to_ceo).filter(level => level !== undefined && level !== null);
+                if (levels.length > 0) {
+                    const minLevel = Math.min(...levels);
+                    rootEmployees = orgChart.filter(emp => emp.level_to_ceo === minLevel);
+                    console.log(`Strategy 2 - Min level ${minLevel}:`, rootEmployees.length);
+                }
+            }
+            
+            // Strategy 3: Find by maximum direct_reports
+            if (rootEmployees.length === 0) {
+                const maxReports = Math.max(...orgChart.map(emp => emp.direct_reports || 0));
+                if (maxReports > 0) {
+                    rootEmployees = orgChart.filter(emp => (emp.direct_reports || 0) === maxReports);
+                    console.log(`Strategy 3 - Max reports ${maxReports}:`, rootEmployees.length);
+                }
+            }
+            
+            // Strategy 4: Find by position hierarchy
+            if (rootEmployees.length === 0) {
+                const topPositions = ['VC', 'CEO', 'CHAIRMAN', 'PRESIDENT', 'DIRECTOR'];
+                for (const position of topPositions) {
+                    rootEmployees = orgChart.filter(emp => 
+                        emp.position_group?.toUpperCase().includes(position) || 
+                        emp.title?.toUpperCase().includes(position)
+                    );
+                    if (rootEmployees.length > 0) {
+                        console.log(`Strategy 4 - Position ${position}:`, rootEmployees.length);
+                        break;
+                    }
+                }
+            }
+            
+            // Strategy 5: Use first few employees as fallback
+            if (rootEmployees.length === 0) {
+                rootEmployees = orgChart.slice(0, Math.min(3, orgChart.length));
+                console.log('Strategy 5 - Fallback to first 3:', rootEmployees.length);
+            }
+            
+            console.log('Final root employees:', rootEmployees.map(emp => ({
+                id: emp.employee_id,
+                name: emp.name,
+                reports: emp.direct_reports || 0
+            })));
+            
+            // Set initial expanded nodes (just the roots for now)
+            const initialExpanded = rootEmployees.map(emp => emp.employee_id);
+            console.log('Setting initial expanded nodes:', initialExpanded);
+            setExpandedNodes(initialExpanded);
+        }
+    }, [orgChart, expandedNodes, setExpandedNodes]);
+
     // Debug logging
     useEffect(() => {
-        console.log('Org Chart Debug:', {
+        console.log('Org Chart State:', {
             orgChartLength: orgChart?.length || 0,
             filteredOrgChartLength: filteredOrgChart?.length || 0,
-            reactFlowDataNodes: reactFlowData?.nodes?.length || 0,
+            expandedNodesLength: expandedNodes?.length || 0,
             expandedNodes: expandedNodes,
             loading,
             errors
         });
-    }, [orgChart, filteredOrgChart, reactFlowData, expandedNodes, loading, errors]);
+    }, [orgChart, filteredOrgChart, expandedNodes, loading, errors]);
 
     // Loading overlay
     if (loading.orgChart && (!orgChart || orgChart.length === 0)) {
@@ -680,6 +861,11 @@ const OrgChart = () => {
                                         {filteredOrgChart.length !== orgChart?.length && (
                                             <p className={`${textSecondary}`}>
                                                 Filtered: {filteredOrgChart.length}
+                                            </p>
+                                        )}
+                                        {expandedNodes?.length > 0 && (
+                                            <p className={`${textSecondary}`}>
+                                                Expanded: {expandedNodes.length}
                                             </p>
                                         )}
                                         {isLoading && (
@@ -785,31 +971,39 @@ const OrgChart = () => {
                                     <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                                 </button>
 
-                                {/* Debug button - remove in production */}
+                                {/* Enhanced Debug button */}
                                 <button 
                                     onClick={() => {
-                                        console.log('=== ORGCHART DEBUG ===');
+                                        console.log('=== ENHANCED ORGCHART DEBUG ===');
                                         console.log('OrgChart length:', orgChart?.length);
-                                        console.log('Sample employee:', JSON.stringify(orgChart?.[0], null, 2));
+                                        console.log('Filtered length:', filteredOrgChart?.length);
                                         console.log('Expanded nodes:', expandedNodes);
-                                        console.log('ReactFlow data:', JSON.stringify(reactFlowData, null, 2));
-                                        console.log('Manager relationships:');
-                                        orgChart?.slice(0, 5).forEach(emp => {
-                                            console.log(`${emp.name} (${emp.employee_id}) -> Manager: ${emp.line_manager_id}`);
-                                        });
                                         
-                                        // Force expand all managers
                                         if (orgChart?.length > 0) {
+                                            console.log('Sample employees structure:');
+                                            orgChart.slice(0, 3).forEach((emp, index) => {
+                                                console.log(`Employee ${index + 1}:`, {
+                                                    id: emp.employee_id,
+                                                    name: emp.name,
+                                                    line_manager_id: emp.line_manager_id,
+                                                    manager_id: emp.manager_id,
+                                                    direct_reports: emp.direct_reports,
+                                                    level_to_ceo: emp.level_to_ceo,
+                                                    position_group: emp.position_group
+                                                });
+                                            });
+                                            
+                                            // Force expand all managers
                                             const managers = orgChart.filter(emp => emp.direct_reports && emp.direct_reports > 0);
                                             const managerIds = managers.map(emp => emp.employee_id);
-                                            console.log('All managers:', managers.length, managerIds);
+                                            console.log('Expanding all', managers.length, 'managers');
                                             setExpandedNodes(managerIds);
                                         }
                                     }}
-                                    title="Debug & Force Expand"
+                                    title="Enhanced Debug & Force Expand All Managers"
                                     className={`p-2 border border-orange-300 rounded-lg hover:bg-orange-50 transition-all duration-200 ${bgCard} text-orange-600 hover:text-orange-800 shadow-sm text-xs`}
                                 >
-                                    🐛
+                                    🔍🐛
                                 </button>
                             </div>
                         </div>
@@ -1262,6 +1456,49 @@ const OrgChart = () => {
                     select:focus-visible {
                         outline: 2px solid #3b82f6;
                         outline-offset: 2px;
+                    }
+
+                    /* Enhanced edge styling for better visibility */
+                    .react-flow__edge-path {
+                        stroke-width: 2;
+                        stroke: #3b82f6;
+                        opacity: 0.8;
+                        filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+                    }
+
+                    .react-flow__edge-path:hover {
+                        stroke-width: 3;
+                        opacity: 1;
+                        stroke: #2563eb;
+                    }
+
+                    .org-chart-edge {
+                        transition: all 0.2s ease-in-out;
+                    }
+
+                    .org-chart-edge:hover {
+                        filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
+                    }
+
+                    /* Handle styling for better connection points */
+                    .react-flow__handle {
+                        width: 12px !important;
+                        height: 12px !important;
+                        background: #3b82f6 !important;
+                        border: 2px solid white !important;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+                        opacity: 0.8 !important;
+                    }
+
+                    .react-flow__handle:hover {
+                        background: #2563eb !important;
+                        transform: scale(1.1);
+                        opacity: 1 !important;
+                    }
+
+                    /* Node hover effects */
+                    .react-flow__node:hover .react-flow__handle {
+                        opacity: 1 !important;
                     }
                 `}</style>
             </div>

@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Fixed for Edit Mode
+// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Added Father Name Field
 import { useState, useEffect } from "react";
 import { User, Mail, Hash, Phone, Calendar, MapPin, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
@@ -6,7 +6,7 @@ import FormField from "../FormComponents/FormField";
 import { apiService } from "../../../services/api";
 
 /**
- * Enhanced Basic Information step with edit mode support
+ * Enhanced Basic Information step with edit mode support and father name field
  */
 const FormStep1BasicInfo = ({ 
   formData, 
@@ -226,12 +226,10 @@ const FormStep1BasicInfo = ({
     return "Business email address for system access";
   };
 
-  // Gender options
+  // Gender options - only MALE and FEMALE as per API
   const genderOptions = [
     { value: "MALE", label: "Male" },
-    { value: "FEMALE", label: "Female" },
-    { value: "OTHER", label: "Other" },
-    { value: "PREFER_NOT_TO_SAY", label: "Prefer not to say" }
+    { value: "FEMALE", label: "Female" }
   ];
 
   return (
@@ -351,6 +349,18 @@ const FormStep1BasicInfo = ({
           />
         </div>
 
+        {/* Father Name - Add this field */}
+        <FormField
+          label="Father Name"
+          name="father_name"
+          value={formData.father_name || ""}
+          onChange={handleInputChange}
+          placeholder="Father's name"
+          icon={<User size={14} className={textMuted} />}
+          validationError={validationErrors.father_name}
+          helpText="Employee's father name (optional)"
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <FormField
             label="Phone Number"
@@ -384,7 +394,7 @@ const FormStep1BasicInfo = ({
             options={genderOptions}
             icon={<User size={14} className={textMuted} />}
             validationError={validationErrors.gender}
-            helpText="For diversity reporting"
+            helpText="Required for reporting"
             placeholder="Select gender"
           />
         </div>

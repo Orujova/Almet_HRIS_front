@@ -370,8 +370,6 @@ const FormStep2JobInfo = ({
         )}
       </div>
 
-   
-
       {/* Loading States Info */}
       {Object.values(loading || {}).some(Boolean) && (
         <div className="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
@@ -381,8 +379,6 @@ const FormStep2JobInfo = ({
           </span>
         </div>
       )}
-
-    
     </div>
   );
 };

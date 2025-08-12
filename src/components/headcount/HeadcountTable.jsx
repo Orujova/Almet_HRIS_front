@@ -117,6 +117,14 @@ const HeadcountTable = () => {
   
   // NEW: Advanced Sorting State
   const [isAdvancedSortingOpen, setIsAdvancedSortingOpen] = useState(false);
+const [isExporting, setIsExporting] = useState(false);
+
+// Update loading state based on API loading
+useEffect(() => {
+  if (loading.exporting !== undefined) {
+    setIsExporting(loading.exporting);
+  }
+}, [loading.exporting]);
 
   
   // Local filter state
@@ -217,7 +225,7 @@ const HeadcountTable = () => {
   // ========================================
   // API PARAMS BUILDER
   // ========================================
-  
+ 
   const buildApiParams = useMemo(() => {
     const params = {
       page: pagination.page || 1,
@@ -582,6 +590,35 @@ const HeadcountTable = () => {
     }
   }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
 
+
+   const handleVisibilityChange = useCallback(async (employeeId, newVisibility) => {
+  try {
+    // Optimistic update - dərhal UI-da göstər
+    setEmployeeVisibility(prev => ({
+      ...prev,
+      [employeeId]: newVisibility
+    }));
+
+    // Backend API çağırışı
+    if (newVisibility) {
+      await showInOrgChart([employeeId]);
+    } else {
+      await hideFromOrgChart([employeeId]);
+    }
+
+    console.log(`✅ Employee ${employeeId} visibility updated to ${newVisibility ? 'visible' : 'hidden'}`);
+    
+  } catch (error) {
+    // Error olduqda əvvəlki vəziyyətə qaytar
+    setEmployeeVisibility(prev => ({
+      ...prev,
+      [employeeId]: !newVisibility
+    }));
+    
+    console.error('❌ Failed to update visibility:', error);
+    alert(`❌ Failed to update visibility: ${error.message}`);
+  }
+}, [showInOrgChart, hideFromOrgChart]);
   // ========================================
   // SORTING HANDLERS (Table Column Sorting)
   // ========================================
@@ -683,28 +720,28 @@ const HeadcountTable = () => {
           break;
 
         case "showInOrgChart":
-          try {
-            result = await showInOrgChart(selectedEmployees);
-            clearSelection();
-            await refreshAllData(true);
-            alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
-          } catch (error) {
-            console.error('❌ Show in org chart failed:', error);
-            alert('❌ Show in org chart failed: ' + error.message);
-          }
-          break;
+  try {
+    await showInOrgChart(selectedEmployees);
+    clearSelection();
+    await refreshAllData(true);
+    alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
+  } catch (error) {
+    console.error('❌ Show in org chart failed:', error);
+    alert('❌ Show in org chart failed: ' + error.message);
+  }
+  break;
 
-        case "hideFromOrgChart":
-          try {
-            result = await hideFromOrgChart(selectedEmployees);
-            clearSelection();
-            await refreshAllData(true);
-            alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
-          } catch (error) {
-            console.error('❌ Hide from org chart failed:', error);
-            alert('❌ Hide from org chart failed: ' + error.message);
-          }
-          break;
+case "hideFromOrgChart":
+  try {
+    await hideFromOrgChart(selectedEmployees);
+    clearSelection();
+    await refreshAllData(true);
+    alert(`✅ ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
+  } catch (error) {
+    console.error('❌ Hide from org chart failed:', error);
+    alert('❌ Hide from org chart failed: ' + error.message);
+  }
+  break;
 
         case "bulkAddTags":
           try {
@@ -819,120 +856,217 @@ const HeadcountTable = () => {
   // EXPORT FUNCTIONALITY
   // ========================================
   
-// FIXED: Export functionality in HeadcountTable.jsx
-// Add this to replace the existing handleExport function
+  // HeadcountTable.jsx içindəki REAL FIXED handleExport function
 
 const handleExport = useCallback(async (exportOptions) => {
-  console.log('📤 FIXED: Export handler called with options:', exportOptions);
+  console.log('📤 REAL FIXED: Export handler called with options:', exportOptions);
   
   try {
-    let exportParams = {};
-
-    // Set format
-    exportParams.format = exportOptions.format || 'excel';
+    // ============================================
+    // REAL FIXED: Backend API format-ına tam uyğun payload
+    // ============================================
     
-    // Set field inclusions
-    if (exportOptions.includeFields && Array.isArray(exportOptions.includeFields)) {
-      exportParams.fields = exportOptions.includeFields.join(',');
-    } else if (exportOptions.fields) {
-      // Handle field mapping from modal
+    const apiPayload = {};
+    
+    // Export format - backend export_format field-ini gözləyir
+    apiPayload.export_format = exportOptions.format || 'excel';
+    
+    // ============================================
+    // FIELDS MAPPING - Backend field names ilə exact match
+    // ============================================
+    
+    if (exportOptions.fields && typeof exportOptions.fields === 'object') {
       const fieldMappings = {
-        basic_info: 'employee_id,first_name,last_name,email,gender,father_name',
-        job_info: 'job_title,department_name,business_function_name,position_group_name',
-        contact_info: 'phone,address,emergency_contact',
-        contract_info: 'contract_duration,contract_start_date,contract_end_date,contract_extensions',
-        management_info: 'line_manager_name,line_manager_hc_number,direct_reports_count',
-        tags: 'tag_names',
-        grading: 'grading_level,grading_display,position_group_level',
-        status: 'status_name,status_color,is_visible_in_org_chart,status_needs_update',
-        dates: 'start_date,end_date,date_of_birth,years_of_service',
-        documents_count: 'documents_count',
-        activities_count: 'activities_count'
+        // Backend API-də mövcud olan exact field names
+        basic_info: [
+          'employee_id', 'name', 'email', 'gender', 'father_name', 
+          'first_name', 'last_name', 'phone'
+        ],
+        job_info: [
+          'job_title', 'department_name', 'business_function_name', 
+          'business_function_code', 'position_group_name', 'job_function_name'
+        ],
+        contact_info: [
+          'phone', 'address', 'emergency_contact'
+        ],
+        contract_info: [
+          'contract_duration', 'contract_start_date', 'contract_end_date', 
+          'contract_extensions', 'last_extension_date', 'contract_duration_display'
+        ],
+        management_info: [
+          'line_manager_name', 'line_manager_hc_number', 
+          'direct_reports_count'
+        ],
+        tags: [
+          'tag_names'
+        ],
+        grading: [
+          'grading_level', 'grading_display', 'position_group_level'
+        ],
+        status: [
+          'status_name', 'status_color', 'is_visible_in_org_chart', 
+          'status_needs_update', 'current_status_display'
+        ],
+        dates: [
+          'start_date', 'end_date', 'date_of_birth', 'years_of_service',
+          'created_at', 'updated_at'
+        ],
+        documents_count: ['documents_count'],
+        activities_count: ['activities_count']
       };
 
-      const selectedFields = Object.keys(exportOptions.fields)
-        .filter(field => exportOptions.fields[field])
-        .map(field => fieldMappings[field] || field)
-        .join(',');
-      
-      if (selectedFields) {
-        exportParams.fields = selectedFields;
+      const selectedFields = [];
+      Object.keys(exportOptions.fields).forEach(fieldGroup => {
+        if (exportOptions.fields[fieldGroup] && fieldMappings[fieldGroup]) {
+          selectedFields.push(...fieldMappings[fieldGroup]);
+        }
+      });
+
+      if (selectedFields.length > 0) {
+        // Remove duplicates
+        apiPayload.include_fields = [...new Set(selectedFields)];
+        console.log('📊 REAL FIXED: Selected fields:', apiPayload.include_fields);
       }
     }
-
-    // Determine export scope based on type
+    
+    // ============================================
+    // EXPORT TYPE HANDLING
+    // ============================================
+    
     switch (exportOptions.type) {
       case "selected":
         if (!selectedEmployees || selectedEmployees.length === 0) {
           throw new Error("No employees selected for export");
         }
-        exportParams.employee_ids = selectedEmployees;
-        console.log('📊 Exporting selected employees:', selectedEmployees);
+        
+        // Backend employee_ids field-ini gözləyir
+        apiPayload.employee_ids = selectedEmployees;
+        console.log('📋 REAL FIXED: Exporting selected employees count:', selectedEmployees.length);
         break;
 
       case "filtered":
-        // Add current filters to export only filtered employees
+        // REAL FIXED: Filtered export üçün current filter parameters
         const filterParams = { ...buildApiParams };
-        // Remove pagination params for export
+        
+        // Remove pagination
         delete filterParams.page;
         delete filterParams.page_size;
         
-        Object.assign(exportParams, filterParams);
-        console.log('🔍 Exporting filtered employees with params:', filterParams);
+        // Set filter params for query string
+        apiPayload._filterParams = filterParams;
+        console.log('🔍 REAL FIXED: Exporting filtered employees with params:', filterParams);
         break;
 
       case "all":
-        // Export all employees - no additional parameters needed
-        exportParams.all = true;
-        console.log('🌍 Exporting all employees');
+        // No additional parameters needed for all employees
+        console.log('🌍 REAL FIXED: Exporting all employees');
         break;
 
       default:
         throw new Error(`Unknown export type: ${exportOptions.type}`);
     }
 
-    // Add metadata
-    exportParams.include_headers = true;
-    exportParams.include_metadata = true;
+    console.log('🚀 REAL FIXED: Final API payload:', apiPayload);
 
-    console.log('🚀 FIXED: Final export params being sent to API:', exportParams);
-
-    // Call the export API
-    const result = await exportEmployees(exportParams.format, exportParams);
+    // ============================================
+    // API CALL - enhanced with better error handling
+    // ============================================
     
-    console.log('✅ Export completed successfully:', result);
+    const result = await exportEmployees(exportOptions.format || 'excel', apiPayload);
     
-    // Show success message
+    console.log('✅ REAL FIXED: Export completed successfully:', result);
+    
+    // ============================================
+    // SUCCESS MESSAGE
+    // ============================================
+    
     const exportTypeLabel = exportOptions.type === "selected" 
-      ? `${selectedEmployees.length} selected` 
+      ? `${selectedEmployees?.length || 0} selected` 
       : exportOptions.type === "filtered" 
       ? "filtered"
       : "all";
     
-    alert(`✅ Export completed successfully! ${exportTypeLabel} employees exported in ${exportParams.format.toUpperCase()} format.`);
+    const successMessage = `✅ Export completed! ${exportTypeLabel} employees exported in ${(exportOptions.format || 'excel').toUpperCase()} format.`;
+    
+    // Show success message
+    if (typeof alert === 'function') {
+      alert(successMessage);
+    } else {
+      console.log(successMessage);
+    }
     
     return result;
 
   } catch (error) {
-    console.error('❌ Export failed:', error);
+    console.error('❌ REAL FIXED: Export failed in handler:', error);
     
-    // Show user-friendly error message
-    let errorMessage = "Export failed. Please try again.";
+    // ============================================
+    // ENHANCED ERROR HANDLING
+    // ============================================
+    
+    let userFriendlyMessage = "Export failed. Please try again.";
     
     if (error.message) {
-      errorMessage = error.message;
+      userFriendlyMessage = error.message;
     } else if (typeof error === 'string') {
-      errorMessage = error;
-    } else if (error.data && error.data.message) {
-      errorMessage = error.data.message;
-    } else if (error.data && error.data.detail) {
-      errorMessage = error.data.detail;
+      userFriendlyMessage = error;
+    } else if (error.response?.data?.message) {
+      userFriendlyMessage = error.response.data.message;
+    } else if (error.response?.data?.detail) {
+      userFriendlyMessage = error.response.data.detail;
+    } else if (error.data?.message) {
+      userFriendlyMessage = error.data.message;
+    } else if (error.data?.detail) {
+      userFriendlyMessage = error.data.detail;
     }
     
-    alert(`❌ Export failed: ${errorMessage}`);
-    throw error; // Re-throw so the modal can handle it
+    // Additional context for common issues
+    if (error.message?.includes('406') || error.message?.includes('Not Acceptable')) {
+      userFriendlyMessage = "Export format not supported by server. Please try a different format or contact support.";
+    } else if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
+      userFriendlyMessage = "Invalid export parameters. Please check your selection and try again.";
+    } else if (error.message?.includes('timeout')) {
+      userFriendlyMessage = "Export timeout. The export is taking too long. Please try with fewer employees.";
+    } else if (error.message?.includes('Network Error')) {
+      userFriendlyMessage = "Network error. Please check your connection and try again.";
+    }
+    
+    console.error('💥 REAL FIXED: Final error message:', userFriendlyMessage);
+    
+    // Show error message
+    if (typeof alert === 'function') {
+      alert(`❌ ${userFriendlyMessage}`);
+    } else {
+      console.error(`❌ ${userFriendlyMessage}`);
+    }
+    
+    throw error; // Re-throw for modal handling
   }
 }, [selectedEmployees, buildApiParams, exportEmployees]);
+
+
+const handleQuickExport = useCallback(async (exportOptions) => {
+  console.log('⚡ QUICK EXPORT: Starting quick export:', exportOptions);
+  
+  try {
+    // Set exporting state
+    setIsExporting(true);
+    
+    // Use the existing handleExport with enhanced options
+    await handleExport(exportOptions);
+    
+    console.log('✅ QUICK EXPORT: Completed successfully');
+    
+  } catch (error) {
+    console.error('❌ QUICK EXPORT: Failed:', error);
+    
+    // Show user-friendly error
+    const errorMessage = error.message || 'Quick export failed. Please try again.';
+    alert(`❌ Export failed: ${errorMessage}`);
+  } finally {
+    setIsExporting(false);
+  }
+}, [handleExport]);
 
   // ========================================
   // BULK UPLOAD FUNCTIONALITY
@@ -989,6 +1123,10 @@ const handleExport = useCallback(async (exportOptions) => {
       alert(`❌ Failed to ${action}: ${error.message}`);
     }
   }, [deleteEmployee, refreshAllData]);
+
+  const handleToggleExportModal = useCallback(() => {
+  setIsExportModalOpen(prev => !prev);
+}, []);
 
   // ========================================
   // ACTIVE FILTERS CALCULATION
@@ -1139,7 +1277,50 @@ const handleExport = useCallback(async (exportOptions) => {
   // ========================================
   // ERROR HANDLING
   // ========================================
+
+const headerProps = useMemo(() => ({
+  // Existing props
+  onToggleAdvancedFilter: () => setIsAdvancedFilterOpen(!isAdvancedFilterOpen),
+  onToggleActionMenu: handleToggleActionMenu,
+  isActionMenuOpen,
+  selectedEmployees,
+  onBulkImportComplete: handleBulkImportComplete,
+  statistics,
+  onBulkImport: () => setIsBulkUploadOpen(true),
+  darkMode,
   
+  // Advanced Sorting props
+  onToggleAdvancedSorting: handleToggleAdvancedSorting,
+  isAdvancedSortingOpen,
+  currentSorting: sorting || [],
+  onClearAllSorting: handleClearAllSorting,
+  
+  // ENHANCED: Export props
+  onQuickExport: handleQuickExport,
+  onToggleExportModal: handleToggleExportModal,
+  isExporting: loading.exporting || false,
+  hasActiveFilters: activeFilters.length > 0,
+  filteredCount: formattedEmployees.length,
+  totalEmployees: statistics.total_employees || 0
+}), [
+  isAdvancedFilterOpen,
+  handleToggleActionMenu,
+  isActionMenuOpen,
+  selectedEmployees,
+  handleBulkImportComplete,
+  statistics,
+  darkMode,
+  handleToggleAdvancedSorting,
+  isAdvancedSortingOpen,
+  sorting,
+  handleClearAllSorting,
+  handleQuickExport,
+  handleToggleExportModal,
+  loading.exporting,
+  activeFilters.length,
+  formattedEmployees.length
+]);
+
   if (error?.employees) {
     return (
       <div className="container mx-auto pt-3 max-w-full">
@@ -1191,7 +1372,7 @@ const handleExport = useCallback(async (exportOptions) => {
 
 
 
-          
+          {...headerProps}
        
          
         />
@@ -1332,41 +1513,51 @@ const handleExport = useCallback(async (exportOptions) => {
         </div>
       )}
 
-      {/* Employee Table */}
+      
+
       <EmployeeTable
-        employees={formattedEmployees}
-        loading={loading.employees}
-        selectedEmployees={selectedEmployees}
-        selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
-        onToggleSelectAll={handleSelectAll}
-        onToggleEmployeeSelection={handleEmployeeToggle}
-        onSort={(field, event) => handleSort(field, event?.ctrlKey)}
-        getSortDirection={getSortDirection}
-        isSorted={isSorted}
-        getSortIndex={getSortIndex}
-        hasFilters={activeFilters.length > 0}
-        onClearFilters={handleClearAllFilters}
-        employeeVisibility={employeeVisibility}
-        onVisibilityChange={(id, visible) => 
-          setEmployeeVisibility(prev => ({ ...prev, [id]: visible }))
-        }
-        onEmployeeAction={handleEmployeeAction}
-        darkMode={darkMode}
-      />
+  employees={formattedEmployees}
+  loading={loading.employees}
+  selectedEmployees={selectedEmployees}
+  selectAll={selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0}
+  onToggleSelectAll={handleSelectAll}
+  onToggleEmployeeSelection={handleEmployeeToggle}
+  onSort={(field, event) => handleSort(field, event?.ctrlKey)}
+  getSortDirection={getSortDirection}
+  isSorted={isSorted}
+  getSortIndex={getSortIndex}
+  hasFilters={activeFilters.length > 0}
+  onClearFilters={handleClearAllFilters}
+  employeeVisibility={employeeVisibility}
+  onVisibilityChange={handleVisibilityChange}  // YENİ
+  onEmployeeAction={handleEmployeeAction}
+  darkMode={darkMode}
+/>
 
       {/* Pagination */}
       <div className="mt-6">
-        <Pagination
-          currentPage={pagination.page || pagination.currentPage}
-          totalPages={pagination.totalPages}
-          totalItems={pagination.count || pagination.totalItems}
-          pageSize={pagination.pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-          loading={loading.employees}
-          darkMode={darkMode}
-        />
-      </div>
+  <Pagination
+    currentPage={pagination.page || pagination.currentPage}
+    totalPages={pagination.totalPages}
+    totalItems={pagination.count || pagination.totalItems}
+    pageSize={pagination.pageSize}
+    onPageChange={setCurrentPage}
+    onPageSizeChange={setPageSize}
+    loading={loading.employees}
+    darkMode={darkMode}
+    
+    // YENİ: Enhanced features
+    showQuickJump={true}
+    showPageSizeSelector={true}
+    showItemsInfo={true}
+    showFirstLast={true}
+    compactMode={false}
+    allowCustomPageSize={true}
+    maxDisplayPages={7}
+    pageSizeOptions={[10, 25, 50, 100, 250, 500]}
+  />
+</div>
+
 
       {/* Export Modal */}
       <ExportModal
@@ -1378,6 +1569,7 @@ const handleExport = useCallback(async (exportOptions) => {
         selectedEmployees={selectedEmployees}
         darkMode={darkMode}
       />
+
 
       {/* Bulk Upload Modal */}
       {isBulkUploadOpen && (

@@ -1,11 +1,12 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED Tag Display Issue
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - ENHANCED with Better Visibility Toggle
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles, getEmployeeColors } from "../utils/themeStyles";
 import EmployeeStatusBadge from "../EmployeeStatusBadge";
 import EmployeeTag from "../EmployeeTag";
-import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
+import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle"; // Enhanced version
 import ActionsDropdown from "../ActionsDropdown";
 
 const EmployeeTableRow = ({
@@ -15,9 +16,15 @@ const EmployeeTableRow = ({
   isVisible,
   onVisibilityChange,
   onAction,
+  // New props for enhanced functionality
+  isUpdatingVisibility = false,
+  showVisibilityConfirmation = false
 }) => {
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
+  
+  // Local state for visibility operations
+  const [visibilityLoading, setVisibilityLoading] = useState(false);
   
   // Get employee colors for border
   const employeeColors = getEmployeeColors(employee, darkMode);
@@ -51,15 +58,38 @@ const EmployeeTableRow = ({
   // Format phone number
   const formatPhone = (phone) => {
     if (!phone) return "N/A";
-    // Simple formatting for international numbers
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length >= 10) {
-      return phone; // Return as-is if it looks like a proper phone number
+      return phone;
     }
     return phone;
   };
 
-  // FIXED: Tag processing with safe handling
+  // ENHANCED: Visibility change handler with proper state management
+  const handleVisibilityChange = async (employeeId, newVisibility) => {
+    if (visibilityLoading) return;
+    
+    setVisibilityLoading(true);
+    
+    try {
+      // Call the parent handler which should handle API call
+      await onVisibilityChange(employeeId, newVisibility);
+      
+      // Show success feedback (could be a toast notification)
+      console.log(`✅ Employee ${employeeId} visibility updated to ${newVisibility ? 'visible' : 'hidden'}`);
+      
+    } catch (error) {
+      console.error('❌ Failed to update visibility:', error);
+      
+      // Show error feedback
+      // In a real app, you might want to show a toast notification here
+      alert(`Failed to update visibility: ${error.message}`);
+    } finally {
+      setVisibilityLoading(false);
+    }
+  };
+
+  // ENHANCED: Tag processing with safe handling
   const getTagsToDisplay = () => {
     const tags = [];
     
@@ -67,7 +97,6 @@ const EmployeeTableRow = ({
     if (employee.tag_names && Array.isArray(employee.tag_names)) {
       employee.tag_names.forEach((tagItem, idx) => {
         if (typeof tagItem === 'string') {
-          // If it's a string, create a simple tag object
           tags.push({
             id: `tag_name_${idx}`,
             name: tagItem,
@@ -75,7 +104,6 @@ const EmployeeTableRow = ({
             color: '#gray'
           });
         } else if (typeof tagItem === 'object' && tagItem.name) {
-          // If it's already an object with name property
           tags.push({
             id: tagItem.id || `tag_obj_${idx}`,
             name: tagItem.name,
@@ -121,7 +149,9 @@ const EmployeeTableRow = ({
 
   return (
     <tr
-      className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150`}
+      className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 ${
+        visibilityLoading ? 'opacity-75' : ''
+      }`}
       style={rowStyle}
     >
       {/* Employee Info - Name & Employee ID */}
@@ -145,7 +175,6 @@ const EmployeeTableRow = ({
                   alt={employeeName}
                   className="h-full w-full object-cover rounded-full"
                   onError={(e) => {
-                    // Fallback to initials if image fails to load
                     e.target.style.display = 'none';
                     e.target.nextSibling.style.display = 'flex';
                   }}
@@ -196,7 +225,6 @@ const EmployeeTableRow = ({
           <div className={`text-[10px] ${styles.textMuted} truncate max-w-[100px]`}>
             {employee.department_name || 'No Department'}
           </div>
-         
         </div>
       </td>
 
@@ -223,7 +251,6 @@ const EmployeeTableRow = ({
           <div className={`text-[10px] ${styles.textMuted} text-center mt-1`}>
             {employee.grading_display || employee.grading_level || 'No Grade'}
           </div>
-         
         </div>
       </td>
 
@@ -267,7 +294,7 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Status & Tags - FIXED */}
+      {/* Status & Tags */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col justify-center space-y-1">
           <EmployeeStatusBadge 
@@ -276,7 +303,6 @@ const EmployeeTableRow = ({
             size="sm"
           />
           <div className="flex flex-wrap justify-center gap-1">
-            {/* FIXED: Display processed tags safely */}
             {tagsToDisplay.slice(0, 3).map((tag, idx) => (
               <EmployeeTag 
                 key={`tag-${tag.id || idx}`}
@@ -293,12 +319,17 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Visibility Toggle */}
+      {/* ENHANCED Visibility Toggle */}
       <td className="px-2 py-2 whitespace-nowrap">
         <EmployeeVisibilityToggle
           employeeId={employee.id}
           initialVisibility={employee.is_visible_in_org_chart !== false}
-          onVisibilityChange={(newVisibility) => onVisibilityChange(employee.id, newVisibility)}
+          onVisibilityChange={handleVisibilityChange}
+          isLoading={visibilityLoading || isUpdatingVisibility}
+          size="sm"
+          showTooltip={true}
+          confirmToggle={showVisibilityConfirmation}
+          disabled={false}
         />
       </td>
 

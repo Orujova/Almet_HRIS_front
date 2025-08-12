@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeForm.jsx - Fixed Edit Mode with Proper Data Loading
+// src/components/headcount/EmployeeForm.jsx - Fixed API Format with Document & Profile Upload
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Save, X, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
@@ -36,6 +36,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         first_name: employee.first_name || "",
         last_name: employee.last_name || "",
         email: employee.email || employee.user?.email || "",
+        father_name: employee.father_name || "", // Add father_name
         
         // Personal Information
         phone: employee.phone || "",
@@ -71,7 +72,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         // Tags and Documents
         tag_ids: employee.tags ? employee.tags.map(tag => tag.id?.toString()) : [],
         documents: employee.documents || [],
-        profile_image: employee.profile_image || null
+        profile_image: employee.profile_image || null,
+        
+        // New fields based on API format
+        vacancy_id: employee.vacancy_id || null
       };
     }
     
@@ -81,6 +85,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       first_name: "",
       last_name: "",
       email: "",
+      father_name: "",
       phone: "",
       date_of_birth: "",
       gender: "",
@@ -104,7 +109,8 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       is_visible_in_org_chart: true,
       tag_ids: [],
       documents: [],
-      profile_image: null
+      profile_image: null,
+      vacancy_id: null
     };
   });
 
@@ -134,6 +140,18 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     gradingLevels: false,
     initialLoad: true
   });
+
+  // Document type options for API
+  const documentTypes = [
+    { value: "CONTRACT", label: "Contract" },
+    { value: "ID", label: "ID Document" },
+    { value: "CERTIFICATE", label: "Certificate" },
+    { value: "CV", label: "CV/Resume" },
+    { value: "PERFORMANCE", label: "Performance Document" },
+    { value: "MEDICAL", label: "Medical Document" },
+    { value: "TRAINING", label: "Training Document" },
+    { value: "OTHER", label: "Other" }
+  ];
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState({});
@@ -352,21 +370,39 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   const loadLineManagers = useCallback(async (searchTerm = "") => {
     setLoading(prev => ({ ...prev, lineManagers: true }));
     try {
-      const response = await apiService.get('/employees/line_managers/', { 
+      // Use general employees API for line manager selection
+      const response = await apiService.get('/employees/', { 
         search: searchTerm,
-        page_size: 50
+        page_size: 100, // Get more results for better selection
+        ordering: 'name' // Order by name for better UX
       });
       
-      const managers = (response.data || []).map(manager => ({
-        id: manager.id,
-        employee_id: manager.employee_id,
-        name: manager.name,
-        job_title: manager.job_title,
-        position_group: manager.position_group,
-        department: manager.department,
-        direct_reports_count: manager.direct_reports_count || 0,
-        email: manager.email
-      }));
+      const results = response.data.results || response.data || [];
+      
+      // Filter and map employee data for line manager selection
+      // Exclude the current employee being edited if in edit mode
+      const managers = results
+        .filter(emp => {
+          // In edit mode, exclude the current employee from line manager options
+          if (isEditMode && employee && emp.id === employee.id) {
+            return false;
+          }
+          return true;
+        })
+        .map(manager => ({
+          id: manager.id,
+          employee_id: manager.employee_id,
+          name: manager.name,
+          job_title: manager.job_title,
+          position_group_name: manager.position_group_name,
+          department: manager.department_name,
+          business_function: manager.business_function_name,
+          direct_reports_count: manager.direct_reports_count || 0,
+          email: manager.email,
+          phone: manager.phone,
+          grading_level: manager.grading_level,
+          start_date: manager.start_date
+        }));
       
       setReferenceData(prev => ({ ...prev, lineManagers: managers }));
     } catch (error) {
@@ -375,7 +411,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     } finally {
       setLoading(prev => ({ ...prev, lineManagers: false }));
     }
-  }, []);
+  }, [isEditMode, employee]);
 
   // ========================================
   // INITIALIZATION AND EFFECTS
@@ -658,11 +694,15 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }));
   }, []);
 
-  // Handle document upload
-  const handleDocumentUpload = useCallback((document) => {
+  // Handle document upload - enhanced with type selection
+  const handleDocumentUpload = useCallback((documentData) => {
     setFormData(prev => ({
       ...prev,
-      documents: [...(prev.documents || []), document]
+      documents: [...(prev.documents || []), {
+        ...documentData,
+        document_type: documentData.document_type || 'OTHER',
+        document_name: documentData.document_name || documentData.name
+      }]
     }));
   }, []);
 
@@ -703,7 +743,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   }, []);
 
   // ========================================
-  // FORM SUBMISSION
+  // FORM SUBMISSION - FIXED FOR PROPER API FORMAT
   // ========================================
 
   const handleSubmit = async () => {
@@ -728,67 +768,184 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     setSubmitting(true);
     
     try {
-      // Prepare API data
-      const apiData = {
-        // Required fields
-        employee_id: formData.employee_id,
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        email: formData.email,
-        business_function: parseInt(formData.business_function),
-        department: parseInt(formData.department),
-        job_function: parseInt(formData.job_function),
-        job_title: formData.job_title,
-        position_group: parseInt(formData.position_group),
-        grading_level: formData.grading_level,
-        start_date: formData.start_date,
-        contract_duration: formData.contract_duration,
+      // Prepare FormData for API - according to API format
+      const formDataForAPI = new FormData();
 
-        // Optional fields
-        ...(formData.unit && { unit: parseInt(formData.unit) }),
-        ...(formData.phone && { phone: formData.phone }),
-        ...(formData.date_of_birth && { date_of_birth: formData.date_of_birth }),
-        ...(formData.gender && { gender: formData.gender }),
-        ...(formData.address && { address: formData.address }),
-        ...(formData.emergency_contact && { emergency_contact: formData.emergency_contact }),
-        ...(formData.line_manager && { line_manager: parseInt(formData.line_manager) }),
-        ...(formData.contract_start_date && { contract_start_date: formData.contract_start_date }),
-        ...(formData.contract_end_date && { contract_end_date: formData.contract_end_date }),
-        ...(formData.end_date && { end_date: formData.end_date }),
-        ...(formData.notes && { notes: formData.notes }),
-        
-        // Boolean fields
-        is_visible_in_org_chart: formData.is_visible_in_org_chart,
+      // Required fields
+      formDataForAPI.append('employee_id', formData.employee_id);
+      formDataForAPI.append('first_name', formData.first_name);
+      formDataForAPI.append('last_name', formData.last_name);
+      formDataForAPI.append('email', formData.email);
+      formDataForAPI.append('job_title', formData.job_title);
+      formDataForAPI.append('start_date', formData.start_date);
+      formDataForAPI.append('business_function', formData.business_function);
+      formDataForAPI.append('department', formData.department);
+      formDataForAPI.append('job_function', formData.job_function);
+      formDataForAPI.append('position_group', formData.position_group);
 
-        // Tags
-        tag_ids: formData.tag_ids || []
-      };
+      // Optional basic fields
+      if (formData.father_name) {
+        formDataForAPI.append('father_name', formData.father_name);
+      }
+      if (formData.unit) {
+        formDataForAPI.append('unit', formData.unit);
+      }
+      if (formData.phone) {
+        formDataForAPI.append('phone', formData.phone);
+      }
+      if (formData.date_of_birth) {
+        formDataForAPI.append('date_of_birth', formData.date_of_birth);
+      }
+      if (formData.gender) {
+        formDataForAPI.append('gender', formData.gender);
+      }
+      if (formData.address) {
+        formDataForAPI.append('address', formData.address);
+      }
+      if (formData.emergency_contact) {
+        formDataForAPI.append('emergency_contact', formData.emergency_contact);
+      }
+      if (formData.grading_level) {
+        formDataForAPI.append('grading_level', formData.grading_level);
+      }
+      if (formData.line_manager) {
+        formDataForAPI.append('line_manager', formData.line_manager);
+      }
+      if (formData.contract_duration) {
+        formDataForAPI.append('contract_duration', formData.contract_duration);
+      }
+      if (formData.contract_start_date) {
+        formDataForAPI.append('contract_start_date', formData.contract_start_date);
+      }
+      if (formData.end_date) {
+        formDataForAPI.append('end_date', formData.end_date);
+      }
+      if (formData.notes) {
+        formDataForAPI.append('notes', formData.notes);
+      }
+      if (formData.vacancy_id) {
+        formDataForAPI.append('vacancy_id', formData.vacancy_id);
+      }
+
+      // Boolean field
+      formDataForAPI.append('is_visible_in_org_chart', formData.is_visible_in_org_chart);
+
+      // Tags - append each tag ID separately
+      if (formData.tag_ids && formData.tag_ids.length > 0) {
+        formData.tag_ids.forEach(tagId => {
+          formDataForAPI.append('tag_ids', tagId);
+        });
+      }
+
+      // Profile image
+      if (formData.profile_image && typeof formData.profile_image === 'object') {
+        formDataForAPI.append('profile_photo', formData.profile_image);
+      }
+
+      // Document handling - only add first document with type
+      if (formData.documents && formData.documents.length > 0) {
+        const firstDoc = formData.documents[0];
+        if (firstDoc.file) {
+          formDataForAPI.append('document', firstDoc.file);
+          formDataForAPI.append('document_type', firstDoc.document_type || 'OTHER');
+          if (firstDoc.document_name || firstDoc.name) {
+            formDataForAPI.append('document_name', firstDoc.document_name || firstDoc.name);
+          }
+        }
+      }
 
       // Submit to API
       let result;
       if (isEditMode) {
-        result = await updateEmployee({ id: employee.id, data: apiData });
+        // For updates, use PUT with employee ID in URL
+        result = await apiService.put(`/employees/${employee.id}/`, formDataForAPI, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
       } else {
-        result = await createEmployee(apiData);
+        // For creation, use POST
+        result = await apiService.post('/employees/', formDataForAPI, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      }
+
+      // Handle additional documents (after first one is uploaded during creation)
+      if (!isEditMode && result.data && result.data.id && formData.documents && formData.documents.length > 1) {
+        // Upload remaining documents one by one
+        for (let i = 1; i < formData.documents.length; i++) {
+          const doc = formData.documents[i];
+          if (doc.file) {
+            try {
+              const docFormData = new FormData();
+              docFormData.append('employee_id', result.data.id);
+              docFormData.append('document', doc.file);
+              docFormData.append('document_type', doc.document_type || 'OTHER');
+              if (doc.document_name || doc.name) {
+                docFormData.append('document_name', doc.document_name || doc.name);
+              }
+              
+              await apiService.post('/employee-documents/', docFormData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data'
+                }
+              });
+            } catch (docError) {
+              console.warn(`Failed to upload document ${i + 1}:`, docError);
+            }
+          }
+        }
       }
 
       // Handle success
-      if (result.type.endsWith('/fulfilled')) {
+      if (result.status >= 200 && result.status < 300) {
         if (onSuccess) {
-          onSuccess(result.payload);
+          onSuccess(result.data);
         } else {
           router.push("/structure/headcount-table");
         }
       } else {
         // Handle API errors
-        const errorMessage = result.payload?.detail || result.payload?.message || 'Failed to save employee';
+        const errorMessage = result.data?.detail || result.data?.message || 'Failed to save employee';
         setValidationErrors({ submit: errorMessage });
       }
     } catch (error) {
       console.error('Submit error:', error);
-      setValidationErrors({ 
-        submit: error.response?.data?.detail || error.message || 'Failed to save employee' 
-      });
+      
+      // Parse API validation errors
+      if (error.response?.data) {
+        const apiErrors = {};
+        const errorData = error.response.data;
+        
+        // Handle field-specific validation errors
+        if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
+          Object.keys(errorData).forEach(field => {
+            if (Array.isArray(errorData[field])) {
+              apiErrors[field] = errorData[field][0];
+            } else if (typeof errorData[field] === 'string') {
+              apiErrors[field] = errorData[field];
+            }
+          });
+        }
+        
+        // Handle general error messages
+        if (errorData.detail || errorData.message) {
+          apiErrors.submit = errorData.detail || errorData.message;
+        }
+        
+        // If no specific field errors, show general error
+        if (Object.keys(apiErrors).length === 0) {
+          apiErrors.submit = 'Failed to save employee. Please check your data and try again.';
+        }
+        
+        setValidationErrors(apiErrors);
+      } else {
+        setValidationErrors({ 
+          submit: error.message || 'Failed to save employee. Please try again.' 
+        });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -832,9 +989,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     onAddTag: handleAddTag,
     onRemoveTag: handleRemoveTag,
     
-    // Document handling
+    // Document handling - enhanced with type options
     handleDocumentUpload,
     removeDocument: handleRemoveDocument,
+    documentTypes,
     
     // Loading states
     loading,

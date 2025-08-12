@@ -1,6 +1,5 @@
-// src/components/headcount/ExportModal.jsx - Enhanced with Excel export and filtering
+// src/components/headcount/ExportModal.jsx - FIXED: API endpoint uyğunluğu
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import { 
   Download, 
   FileSpreadsheet, 
@@ -11,32 +10,27 @@ import {
   AlertCircle,
   FileText
 } from "lucide-react";
-import { useTheme } from "../common/ThemeProvider";
-import { 
-  exportEmployees,
-  selectSelectedEmployees,
-  selectCurrentFilters,
-  selectEmployeeLoading,
-  selectEmployeeError
-} from "../../store/slices/employeeSlice";
 
 /**
- * Enhanced Export Modal with Excel support and filtering options
- * Supports exporting selected employees or filtered data
+ * FIXED Export Modal - API endpoint ilə uyğun format
+ * Backend export_selected endpoint-i üçün düzəldildi
  */
-const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
-  const { darkMode } = useTheme();
-  const dispatch = useDispatch();
-  
-  // Redux state
-  const selectedEmployees = useSelector(selectSelectedEmployees);
-  const currentFilters = useSelector(selectCurrentFilters);
-  const { exporting } = useSelector(selectEmployeeLoading);
-  const { export: exportError } = useSelector(selectEmployeeError);
-
+const ExportModal = ({ 
+  isOpen, 
+  onClose, 
+  onExport, // Bu artıq HeadcountTable-dan gələn düzəldilmiş handler-dir
+  totalEmployees, 
+  filteredCount, 
+  selectedEmployees, 
+  darkMode 
+}) => {
   // Local state
   const [exportType, setExportType] = useState("selected"); // "selected", "filtered", "all"
   const [exportFormat, setExportFormat] = useState("excel"); // "excel", "csv"
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState(null);
+  
+  // FIXED: Backend API ilə uyğun field selection
   const [includeFields, setIncludeFields] = useState({
     basic_info: true,
     job_info: true,
@@ -65,11 +59,11 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
   const getExportCount = () => {
     switch (exportType) {
       case "selected":
-        return selectedEmployees.length;
+        return selectedEmployees?.length || 0;
       case "filtered":
-        return filteredCount;
+        return filteredCount || 0;
       case "all":
-        return totalEmployees;
+        return totalEmployees || 0;
       default:
         return 0;
     }
@@ -83,36 +77,121 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
     }));
   };
 
-  // Handle export
+  // FIXED: Export handler - API format ilə uyğun
   const handleExport = async () => {
     try {
-      const exportData = {
-        selectedEmployees: exportType === "selected" ? selectedEmployees : null,
-        filters: exportType === "filtered" ? currentFilters : {},
+      setIsExporting(true);
+      setExportError(null);
+
+      // FIXED: Backend API format-ına uyğun export options hazırlanması
+      const exportOptions = {
+        type: exportType,
         format: exportFormat,
-        includeFields
+        fields: includeFields,
+        
+        // Additional metadata for better error handling
+        selectedCount: selectedEmployees?.length || 0,
+        filteredCount: filteredCount || 0,
+        totalCount: totalEmployees || 0
       };
 
-      await dispatch(exportEmployees(exportData));
+      console.log('🔧 FIXED: Sending export options to handler:', exportOptions);
+
+      // Call the export handler from HeadcountTable
+      await onExport(exportOptions);
+      
+      // If successful, close modal
       onClose();
+      
     } catch (error) {
-      console.error("Export failed:", error);
+      console.error('❌ Export failed in modal:', error);
+      setExportError(error.message || 'Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
     }
   };
 
+  // FIXED: Field options uyğun backend field mappings ilə
   const fieldOptions = [
-    { key: "basic_info", label: "Basic Information", description: "Name, email, employee ID" },
-    { key: "job_info", label: "Job Information", description: "Title, department, business function" },
-    { key: "contact_info", label: "Contact Information", description: "Phone, address, emergency contact" },
-    { key: "contract_info", label: "Contract Information", description: "Contract type, duration, dates" },
-    { key: "management_info", label: "Management", description: "Line manager, reports" },
-    { key: "tags", label: "Employee Tags", description: "All assigned tags" },
-    { key: "grading", label: "Grading Information", description: "Position group, grading level" },
-    { key: "status", label: "Status Information", description: "Current status, transitions" },
-    { key: "dates", label: "Important Dates", description: "Start date, end date, anniversaries" },
-    { key: "documents_count", label: "Documents Count", description: "Number of uploaded documents" },
-    { key: "activities_count", label: "Activities Count", description: "Number of recorded activities" }
+    { 
+      key: "basic_info", 
+      label: "Basic Information", 
+      description: "Employee ID, name, email, gender, father name",
+      fields: "employee_id,name,email,gender,father_name"
+    },
+    { 
+      key: "job_info", 
+      label: "Job Information", 
+      description: "Job title, department, business function, position group",
+      fields: "job_title,department_name,business_function_name,position_group_name"
+    },
+    { 
+      key: "contact_info", 
+      label: "Contact Information", 
+      description: "Phone number, address, emergency contact",
+      fields: "phone,address,emergency_contact"
+    },
+    { 
+      key: "contract_info", 
+      label: "Contract Information", 
+      description: "Contract duration, start/end dates, extensions",
+      fields: "contract_duration,contract_start_date,contract_end_date,contract_extensions"
+    },
+    { 
+      key: "management_info", 
+      label: "Management", 
+      description: "Line manager, direct reports count",
+      fields: "line_manager_name,line_manager_hc_number,direct_reports_count"
+    },
+    { 
+      key: "tags", 
+      label: "Employee Tags", 
+      description: "All assigned tags and categories",
+      fields: "tag_names"
+    },
+    { 
+      key: "grading", 
+      label: "Grading Information", 
+      description: "Grade level, position group level",
+      fields: "grading_level,grading_display,position_group_level"
+    },
+    { 
+      key: "status", 
+      label: "Status Information", 
+      description: "Current status, org chart visibility, status updates",
+      fields: "status_name,status_color,is_visible_in_org_chart,status_needs_update"
+    },
+    { 
+      key: "dates", 
+      label: "Important Dates", 
+      description: "Start date, birth date, years of service",
+      fields: "start_date,end_date,date_of_birth,years_of_service"
+    },
+    { 
+      key: "documents_count", 
+      label: "Documents Count", 
+      description: "Number of uploaded documents",
+      fields: "documents_count"
+    },
+    { 
+      key: "activities_count", 
+      label: "Activities Count", 
+      description: "Number of recorded activities",
+      fields: "activities_count"
+    }
   ];
+
+  // Validation - at least one field must be selected
+  const hasSelectedFields = Object.values(includeFields).some(Boolean);
+  const canExport = getExportCount() > 0 && hasSelectedFields && !isExporting;
+
+  // Format validation for selected type
+  const isValidSelection = () => {
+    if (exportType === "selected" && (!selectedEmployees || selectedEmployees.length === 0)) {
+      return false;
+    }
+    return true;
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -165,11 +244,11 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
                       Selected Employees
                     </span>
                     <span className={`text-xs px-2 py-1 rounded-full ${
-                      selectedEmployees.length > 0 
+                      (selectedEmployees?.length || 0) > 0 
                         ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300"
                         : "bg-gray-100 dark:bg-gray-700 text-gray-500"
                     }`}>
-                      {selectedEmployees.length} selected
+                      {selectedEmployees?.length || 0} selected
                     </span>
                   </div>
                   <p className={`text-xs ${textMuted} mt-1`}>
@@ -206,12 +285,8 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
                     <span className={`text-sm font-medium ${textPrimary}`}>
                       Filtered Results
                     </span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      Object.keys(currentFilters).length > 0 
-                        ? "bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-500"
-                    }`}>
-                      {filteredCount} employees
+                    <span className={`text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300`}>
+                      {filteredCount || 0} employees
                     </span>
                   </div>
                   <p className={`text-xs ${textMuted} mt-1`}>
@@ -249,7 +324,7 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
                       All Employees
                     </span>
                     <span className="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500">
-                      {totalEmployees} employees
+                      {totalEmployees || 0} employees
                     </span>
                   </div>
                   <p className={`text-xs ${textMuted} mt-1`}>
@@ -366,6 +441,12 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
                   <p>• {getExportCount()} employees will be exported</p>
                   <p>• Format: {exportFormat.toUpperCase()}</p>
                   <p>• {Object.values(includeFields).filter(Boolean).length} field groups included</p>
+                  {!isValidSelection() && exportType === "selected" && (
+                    <p className="text-red-600 dark:text-red-400">⚠️ No employees selected</p>
+                  )}
+                  {!hasSelectedFields && (
+                    <p className="text-red-600 dark:text-red-400">⚠️ No fields selected</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -379,7 +460,7 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
                 <div>
                   <h4 className="text-sm font-medium text-red-800 dark:text-red-300">Export Failed</h4>
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                    {exportError.message || "An error occurred during export. Please try again."}
+                    {exportError}
                   </p>
                 </div>
               </div>
@@ -397,10 +478,10 @@ const ExportModal = ({ isOpen, onClose, totalEmployees, filteredCount }) => {
           </button>
           <button
             onClick={handleExport}
-            disabled={exporting || getExportCount() === 0 || Object.values(includeFields).every(v => !v)}
+            disabled={!canExport || !isValidSelection()}
             className="px-6 py-2 bg-almet-sapphire hover:bg-almet-astral text-white text-sm font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
-            {exporting ? (
+            {isExporting ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
                 Exporting...

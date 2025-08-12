@@ -20,7 +20,9 @@ import {
   Camera,
   Upload,
   Image as ImageIcon,
-  Trash2
+  Trash2,
+  Calendar,
+  Award
 } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
@@ -222,14 +224,13 @@ const FormStep3AdditionalInfo = ({
   return (
     <div className="space-y-6">
       {/* Section Header */}
-      <div className="flex items-center space-x-2 pb-4 border-b border-gray-200 dark:border-gray-700">
-        <Users className="text-purple-500" size={20} />
-        <h3 className={`text-lg font-semibold ${textPrimary}`}>
-          Management & Additional Information
-        </h3>
-        <span className={`text-xs ${textMuted} bg-purple-100 dark:bg-purple-900/20 px-2 py-1 rounded-full`}>
-          Optional
-        </span>
+      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-6">
+        <h2 className={`text-lg font-bold ${textPrimary}`}>
+          Additional Information
+        </h2>
+        <div className="text-xs px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded font-medium">
+          Step 3 of 4 (Optional)
+        </div>
       </div>
 
       {/* Profile Image Section */}
@@ -303,7 +304,7 @@ const FormStep3AdditionalInfo = ({
               
               <div className={`text-xs ${textMuted} space-y-1`}>
                 <p>• Recommended size: 400x400 pixels</p>
-                <p>• Supported formats: JPG, PNG, GIF</p>
+                <p>• Supported formats: JPG, PNG, GIF, BMP</p>
                 <p>• Maximum file size: 5MB</p>
               </div>
             </div>
@@ -335,7 +336,7 @@ const FormStep3AdditionalInfo = ({
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Search for line manager by name, employee ID, or department..."
+              placeholder="Search employees by name, ID, job title, department, or email..."
               value={lineManagerSearch || ""}
               onChange={handleLineManagerSearchChange}
               className={`w-full pl-10 pr-10 py-3 rounded-lg border transition-colors duration-200 ${bgInput} ${focusRing} ${textPrimary} text-sm`}
@@ -362,22 +363,50 @@ const FormStep3AdditionalInfo = ({
                       <Users size={16} className="text-almet-sapphire" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`font-medium ${textPrimary} text-sm`}>{manager.name || 'Unknown'}</p>
-                      <p className={`text-xs ${textMuted} mt-1`}>
-                        {manager.employee_id || 'N/A'} • {manager.job_title || 'No Title'}
-                      </p>
-                      <div className="flex items-center space-x-3 mt-1">
-                        <span className={`text-xs ${textMuted}`}>
-                          <Building size={12} className="inline mr-1" />
-                          {manager.department || 'N/A'}
-                        </span>
-                        {manager.direct_reports_count > 0 && (
-                          <span className={`text-xs ${textMuted}`}>
-                            <UserCheck size={12} className="inline mr-1" />
-                            {manager.direct_reports_count} reports
+                      <div className="flex items-center space-x-2 mb-1">
+                        <p className={`font-medium ${textPrimary} text-sm`}>{manager.name || 'Unknown'}</p>
+                        {manager.grading_level && (
+                          <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                            {manager.grading_level}
                           </span>
                         )}
                       </div>
+                      <p className={`text-xs ${textMuted} mb-1`}>
+                        <span className="font-medium">ID:</span> {manager.employee_id || 'N/A'} • 
+                        <span className="font-medium"> Title:</span> {manager.job_title || 'No Title'}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <span className={`text-xs ${textMuted} flex items-center`}>
+                          <Building size={10} className="inline mr-1" />
+                          {manager.business_function || 'N/A'} / {manager.department || 'N/A'}
+                        </span>
+                        {manager.position_group_name && (
+                          <span className={`text-xs ${textMuted}`}>
+                            <Award size={10} className="inline mr-1" />
+                            {manager.position_group_name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-3 mt-1">
+                        {manager.email && (
+                          <span className={`text-xs ${textMuted}`}>
+                            <Mail size={10} className="inline mr-1" />
+                            {manager.email}
+                          </span>
+                        )}
+                        {manager.phone && (
+                          <span className={`text-xs ${textMuted}`}>
+                            <Phone size={10} className="inline mr-1" />
+                            {manager.phone}
+                          </span>
+                        )}
+                      </div>
+                      {manager.start_date && (
+                        <div className={`text-xs ${textMuted} mt-1`}>
+                          <Calendar size={10} className="inline mr-1" />
+                          Started: {new Date(manager.start_date).toLocaleDateString()}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -404,19 +433,41 @@ const FormStep3AdditionalInfo = ({
                   <Users size={18} className="text-green-600 dark:text-green-400" />
                 </div>
                 <div>
-                  <p className={`font-medium ${textPrimary}`}>{selectedLineManager.name || 'Unknown'}</p>
-                  <p className={`text-sm ${textMuted}`}>
-                    {selectedLineManager.employee_id || 'N/A'} • {selectedLineManager.job_title || 'No Title'}
+                  <div className="flex items-center space-x-2 mb-1">
+                    <p className={`font-medium ${textPrimary}`}>{selectedLineManager.name || 'Unknown'}</p>
+                    {selectedLineManager.grading_level && (
+                      <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                        {selectedLineManager.grading_level}
+                      </span>
+                    )}
+                  </div>
+                  <p className={`text-sm ${textMuted} mb-1`}>
+                    <span className="font-medium">ID:</span> {selectedLineManager.employee_id || 'N/A'} • 
+                    <span className="font-medium"> Title:</span> {selectedLineManager.job_title || 'No Title'}
                   </p>
-                  <div className="flex items-center space-x-3 mt-1">
+                  <div className="flex flex-wrap items-center gap-3 mt-1">
                     <span className={`text-xs ${textMuted}`}>
                       <Building size={10} className="inline mr-1" />
-                      {selectedLineManager.department || 'N/A'}
+                      {selectedLineManager.business_function || 'N/A'} / {selectedLineManager.department || 'N/A'}
                     </span>
+                    {selectedLineManager.position_group_name && (
+                      <span className={`text-xs ${textMuted}`}>
+                        <Award size={10} className="inline mr-1" />
+                        {selectedLineManager.position_group_name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-3 mt-1">
                     {selectedLineManager.email && (
                       <span className={`text-xs ${textMuted}`}>
                         <Mail size={10} className="inline mr-1" />
                         {selectedLineManager.email}
+                      </span>
+                    )}
+                    {selectedLineManager.phone && (
+                      <span className={`text-xs ${textMuted}`}>
+                        <Phone size={10} className="inline mr-1" />
+                        {selectedLineManager.phone}
                       </span>
                     )}
                   </div>
@@ -442,10 +493,7 @@ const FormStep3AdditionalInfo = ({
             <Tag className="text-green-500" size={16} />
             <h4 className={`text-sm font-medium ${textPrimary}`}>Employee Tags</h4>
           </div>
-        
         </div>
-
-     
 
         {/* Multi-Select Tags Dropdown */}
         <div>
@@ -475,7 +523,7 @@ const FormStep3AdditionalInfo = ({
           <div className={`text-center py-6 ${bgAccent} rounded-lg border ${borderColor}`}>
             <Tag size={32} className={`mx-auto mb-3 ${textMuted} opacity-50`} />
             <p className={`text-sm ${textMuted}`}>
-              No tags available. Create a new tag to get started.
+              No tags available. Contact administrator to create tags.
             </p>
           </div>
         )}
@@ -551,8 +599,6 @@ const FormStep3AdditionalInfo = ({
           helpText="These notes are visible to HR administrators and can include onboarding instructions, special accommodations, or other relevant information."
         />
       </div>
-
-    
 
       {/* Click outside handler for line manager dropdown */}
       {showLineManagerDropdown && (

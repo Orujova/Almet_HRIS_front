@@ -433,24 +433,256 @@ export const apiService = {
   // ========================================
   // EXPORT & TEMPLATE
   // ========================================
-  exportEmployees: async (params = {}) => {
-    try {
-      const response = await api.post("/employees/export_selected/", params, {
-        responseType: 'blob',
-        headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        }
+// src/services/api.js - REAL FIXED - Backend API structure-ına tam uyğun
+
+// FIXED: Export employees method - backend export_selected endpoint-i üçün
+exportEmployees: async (format = 'excel', params = {}) => {
+  try {
+    console.log('🚀 REAL FIXED API: Starting export with format:', format, 'params:', params);
+    
+    // FIXED: Backend API-nin gözlədiyi exact format
+    const payload = {};
+    
+    // ============================================
+    // CRITICAL FIX: Backend API gözlədiyi format
+    // ============================================
+    
+    // Export format setting
+    if (format === 'excel') {
+      payload.export_format = 'excel';
+    } else if (format === 'csv') {
+      payload.export_format = 'csv';
+    } else {
+      payload.export_format = 'excel'; // default
+    }
+    
+    // Employee IDs for selected export
+    if (params.employee_ids && Array.isArray(params.employee_ids) && params.employee_ids.length > 0) {
+      payload.employee_ids = params.employee_ids;
+      console.log('📋 REAL FIXED: Selected employees:', params.employee_ids.length);
+    }
+    
+    // Include fields for field selection
+    if (params.include_fields && Array.isArray(params.include_fields) && params.include_fields.length > 0) {
+      payload.include_fields = params.include_fields;
+      console.log('📊 REAL FIXED: Selected fields:', params.include_fields);
+    }
+    
+    // ============================================
+    // QUERY PARAMETERS for filtered export
+    // ============================================
+    
+    let queryParams = {};
+    
+    if (params._filterParams && typeof params._filterParams === 'object') {
+      // Use filter params for filtered export
+      queryParams = { ...params._filterParams };
+      delete queryParams.page;
+      delete queryParams.page_size;
+      console.log('🔍 REAL FIXED: Using filter params:', queryParams);
+    }
+    
+    // Build query string
+    const queryString = buildQueryParams(queryParams);
+    const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
+    
+    console.log('📡 REAL FIXED: API endpoint:', endpoint);
+    console.log('📦 REAL FIXED: POST payload:', payload);
+    
+    // ============================================
+    // CRITICAL FIX: Headers və request configuration  
+    // ============================================
+    
+    const requestConfig = {
+      responseType: 'blob',
+      timeout: 90000, // 90 seconds for large exports
+      headers: {
+        // FIXED: Backend gözlədiyi headers
+        'Content-Type': 'application/json',
+        'Accept': '*/*', // CRITICAL: Backend 406 verirdi çünki specific MIME type gözləmirdi
+      }
+    };
+    
+    console.log('🔧 REAL FIXED: Request config:', requestConfig);
+    
+    // ============================================
+    // API CALL
+    // ============================================
+    
+    const response = await api.post(endpoint, payload, requestConfig);
+    
+    console.log('📨 REAL FIXED: Response received:', {
+      status: response.status,
+      statusText: response.statusText,
+      contentType: response.headers['content-type'],
+      contentLength: response.headers['content-length']
+    });
+    
+    // ============================================
+    // RESPONSE VALIDATION
+    // ============================================
+    
+    if (response.status !== 200) {
+      throw new Error(`Export failed with status: ${response.status} - ${response.statusText}`);
+    }
+    
+    if (!response.data || response.data.size === 0) {
+      throw new Error('Export failed: No data received from server');
+    }
+    
+    // ============================================
+    // FILE DOWNLOAD HANDLING
+    // ============================================
+    
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `employees_export_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+    
+    // Extract filename from response headers if available
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1].replace(/['"]/g, '');
+      }
+    }
+    
+    console.log('💾 REAL FIXED: Downloading file:', filename);
+    
+    // Create blob with correct MIME type
+    const mimeType = format === 'excel' 
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      : 'text/csv';
+      
+    const blob = new Blob([response.data], { type: mimeType });
+    
+    // Create download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    // Trigger download
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Cleanup
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+    }, 100);
+    
+    console.log('✅ REAL FIXED: Export completed successfully');
+    
+    return { 
+      success: true, 
+      filename,
+      format: format,
+      size: response.data.size,
+      downloadUrl: url
+    };
+    
+  } catch (error) {
+    console.error('❌ REAL FIXED API: Export failed:', error);
+    
+    // ============================================
+    // ENHANCED ERROR HANDLING
+    // ============================================
+    
+    let errorMessage = 'Export failed';
+    let errorCode = null;
+    
+    if (error.response) {
+      errorCode = error.response.status;
+      console.error('❌ REAL FIXED: Response error:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        headers: error.response.headers,
+        config: error.response.config
       });
       
-      const filename = `employees_export_${new Date().toISOString().split('T')[0]}.xlsx`;
-      await handleFileDownload(response, filename);
+      // Handle different response types
+      if (error.response.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text();
+          console.error('❌ REAL FIXED: Blob error content:', text);
+          
+          try {
+            const errorData = JSON.parse(text);
+            errorMessage = errorData.message || errorData.detail || errorData.error || errorMessage;
+          } catch (parseError) {
+            // If not JSON, use the text as is
+            errorMessage = text || errorMessage;
+          }
+        } catch (blobError) {
+          console.warn('❌ REAL FIXED: Could not parse blob error response');
+        }
+      } else if (typeof error.response.data === 'object') {
+        errorMessage = error.response.data.message || 
+                     error.response.data.detail || 
+                     error.response.data.error ||
+                     errorMessage;
+      } else if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      }
       
-      return { success: true, filename };
-    } catch (error) {
-      console.error('Export failed:', error);
-      throw error;
+      // Status-specific error handling
+      switch (errorCode) {
+        case 400:
+          errorMessage = 'Bad Request: Invalid export parameters. Please check your selection and try again.';
+          break;
+        case 401:
+          errorMessage = 'Unauthorized: Please log in again to continue.';
+          break;
+        case 403:
+          errorMessage = 'Forbidden: You do not have permission to export employee data.';
+          break;
+        case 404:
+          errorMessage = 'Not Found: Export service is not available.';
+          break;
+        case 406:
+          errorMessage = 'Not Acceptable: The server cannot provide the requested export format. Please try a different format or contact support.';
+          break;
+        case 413:
+          errorMessage = 'Payload Too Large: The export contains too much data. Please reduce your selection or apply filters.';
+          break;
+        case 429:
+          errorMessage = 'Too Many Requests: Please wait a moment before trying to export again.';
+          break;
+        case 500:
+          errorMessage = 'Internal Server Error: A server error occurred during export. Please try again later.';
+          break;
+        case 502:
+        case 503:
+        case 504:
+          errorMessage = 'Service Unavailable: The export service is temporarily down. Please try again later.';
+          break;
+      }
+    } else if (error.request) {
+      console.error('❌ REAL FIXED: Network error:', error.request);
+      errorMessage = 'Network Error: Please check your internet connection and try again.';
+    } else if (error.code === 'ECONNABORTED') {
+      console.error('❌ REAL FIXED: Timeout error');
+      errorMessage = 'Export Timeout: The export is taking too long. Please try with fewer employees or contact support.';
+    } else if (error.message) {
+      errorMessage = error.message;
     }
-  },
+    
+    console.error('💥 REAL FIXED: Final error details:', {
+      message: errorMessage,
+      code: errorCode,
+      originalError: error.message,
+      stack: error.stack
+    });
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// ============================================
+// HELPER: buildQueryParams function
+// ============================================
+
+
 
   downloadEmployeeTemplate: async () => {
     try {
