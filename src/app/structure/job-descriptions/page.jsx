@@ -80,9 +80,6 @@ const JobDescriptionPage = () => {
     gradingLevels: []
   });
 
-  // NEW: Department-specific units state
-  const [departmentUnits, setDepartmentUnits] = useState([]);
-
   // Enhanced competency selection state
   const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
   const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
@@ -118,17 +115,6 @@ const JobDescriptionPage = () => {
     fetchInitialData();
   }, []);
 
-  // NEW: Load department-specific units when department changes
-  useEffect(() => {
-    if (formData.department) {
-      fetchUnitsForDepartment(formData.department);
-    } else {
-      setDepartmentUnits([]);
-      // Clear unit selection when department changes
-      setFormData(prev => ({ ...prev, unit: '' }));
-    }
-  }, [formData.department]);
-
   // Load grading levels when position group changes
   useEffect(() => {
     if (selectedPositionGroup) {
@@ -156,20 +142,43 @@ const JobDescriptionPage = () => {
     }
   }, [selectedBehavioralGroup]);
 
-  // NEW: Fetch units for specific department
-  const fetchUnitsForDepartment = async (departmentId) => {
-    try {
-      const response = await jobDescriptionService.getUnitsForDepartment(departmentId);
-      setDepartmentUnits(response.results || []);
-    } catch (error) {
-      console.error('Error fetching units for department:', error);
-      setDepartmentUnits([]);
+  // FIXED: Get department-specific units using client-side filtering
+  const departmentUnits = useMemo(() => {
+    if (!formData.department || !dropdownData.units) {
+      return [];
     }
-  };
+    
+    console.log('🔍 Filtering units for department:', formData.department);
+    console.log('📦 All available units:', dropdownData.units);
+    
+    const filteredUnits = dropdownData.units.filter(unit => 
+      unit.department === parseInt(formData.department)
+    );
+    
+    console.log('✅ Filtered units:', filteredUnits);
+    return filteredUnits;
+  }, [formData.department, dropdownData.units]);
+
+  // Clear unit when department changes
+  useEffect(() => {
+    if (formData.department) {
+      // Check if current unit is still valid for the new department
+      if (formData.unit) {
+        const isValidUnit = departmentUnits.some(unit => unit.id === parseInt(formData.unit));
+        if (!isValidUnit) {
+          console.log('🧹 Clearing unit because it does not belong to new department');
+          setFormData(prev => ({ ...prev, unit: '' }));
+        }
+      }
+    } else {
+      // Clear unit selection when no department is selected
+      setFormData(prev => ({ ...prev, unit: '' }));
+    }
+  }, [formData.department, departmentUnits]);
 
   // FIXED: Prepare data for API submission
   const prepareJobDescriptionData = (formData) => {
-    console.log('Preparing data for API:', formData);
+    console.log('🔄 Preparing data for API:', formData);
     
     const apiData = {
       job_title: formData.job_title,
@@ -190,11 +199,17 @@ const JobDescriptionPage = () => {
       company_benefits_ids: formData.company_benefits_ids || []
     };
 
-    // CRITICAL FIX: Only include unit if it has a valid value
+    // CRITICAL FIX: Only include unit if it has a valid value AND belongs to the department
     if (formData.unit && parseInt(formData.unit)) {
-      apiData.unit = parseInt(formData.unit);
+      const isValidUnit = departmentUnits.some(unit => unit.id === parseInt(formData.unit));
+      if (isValidUnit) {
+        apiData.unit = parseInt(formData.unit);
+        console.log('✅ Including valid unit:', apiData.unit);
+      } else {
+        console.log('❌ Skipping invalid unit:', formData.unit);
+      }
     }
-    // Don't include unit field at all if it's empty
+    // Don't include unit field at all if it's empty or invalid
 
     // Process sections
     const sectionTypes = [
@@ -236,7 +251,7 @@ const JobDescriptionPage = () => {
       }));
     }
 
-    console.log('Prepared API data:', apiData);
+    console.log('✅ Prepared API data:', apiData);
     return apiData;
   };
 
@@ -286,6 +301,8 @@ const JobDescriptionPage = () => {
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
+      console.log('🔄 Fetching dropdown data...');
+
       const [
         businessFunctionsRes,
         departmentsRes, 
@@ -301,7 +318,7 @@ const JobDescriptionPage = () => {
       ] = await Promise.all([
         fetch(`${baseUrl}/business-functions/`, fetchOptions()),
         fetch(`${baseUrl}/departments/`, fetchOptions()),
-        fetch(`${baseUrl}/units/`, fetchOptions()),
+        fetch(`${baseUrl}/units/`, fetchOptions()), // Fetch ALL units
         fetch(`${baseUrl}/job-functions/`, fetchOptions()),
         fetch(`${baseUrl}/position-groups/`, fetchOptions()),
         fetch(`${baseUrl}/employees/?page_size=1000`, fetchOptions()), // Get all employees without pagination
@@ -320,6 +337,8 @@ const JobDescriptionPage = () => {
       const positionGroups = positionGroupsRes.ok ? await positionGroupsRes.json() : { results: [] };
       const employees = employeesRes.ok ? await employeesRes.json() : { results: [] };
 
+      console.log('📦 Fetched units:', units.results || []);
+
       // Extract unique job titles from employees
       const uniqueJobTitles = [...new Set(
         (employees.results || [])
@@ -334,7 +353,7 @@ const JobDescriptionPage = () => {
       setDropdownData({
         businessFunctions: businessFunctions.results || [],
         departments: departments.results || [],
-        units: units.results || [],
+        units: units.results || [], // Store ALL units for client-side filtering
         jobFunctions: jobFunctions.results || [],
         positionGroups: positionGroups.results || [],
         employees: employees.results || [],
@@ -346,8 +365,10 @@ const JobDescriptionPage = () => {
         companyBenefits: companyBenefitsRes.results || [],
         gradingLevels: []
       });
+
+      console.log('✅ Dropdown data loaded successfully');
     } catch (error) {
-      console.error('Error fetching dropdown data:', error);
+      console.error('❌ Error fetching dropdown data:', error);
       // Set empty arrays to prevent crashes
       setDropdownData({
         businessFunctions: [],
@@ -456,7 +477,7 @@ const JobDescriptionPage = () => {
       errors.push('Position Group is required');
     }
     
-    // NEW: Validate unit-department relationship if unit is selected
+    // FIXED: Validate unit-department relationship if unit is selected
     if (formData.unit && formData.department) {
       const isValidUnit = departmentUnits.some(unit => unit.id === parseInt(formData.unit));
       if (!isValidUnit) {
@@ -497,12 +518,12 @@ const JobDescriptionPage = () => {
     try {
       setActionLoading(true);
       
-      console.log('Form data before processing:', formData); // Debug log
+      console.log('📋 Form data before processing:', formData); // Debug log
       
       // Use the updated prepareJobDescriptionData function
       const apiData = prepareJobDescriptionData(formData);
       
-      console.log('API data being sent:', apiData); // Debug log
+      console.log('📤 API data being sent:', apiData); // Debug log
       
       if (editingJob) {
         await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
@@ -519,7 +540,7 @@ const JobDescriptionPage = () => {
         setShowSubmissionModal(true);
       }
     } catch (error) {
-      console.error('Error saving job description:', error);
+      console.error('❌ Error saving job description:', error);
       
       // Enhanced error handling with specific messages
       let errorMessage = 'Error saving job description: ';
@@ -619,7 +640,6 @@ const JobDescriptionPage = () => {
     setSelectedPositionGroup('');
     setAvailableSkills([]);
     setAvailableCompetencies([]);
-    setDepartmentUnits([]); // Clear department units
     setDropdownData(prev => ({ ...prev, gradingLevels: [] }));
   };
 
@@ -1206,7 +1226,7 @@ const JobDescriptionPage = () => {
                       />
                     </div>
                     
-                    {/* UPDATED: Department field with unit clearing */}
+                    {/* FIXED: Department field with unit clearing */}
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                         Department <span className="text-red-500">*</span>
@@ -1215,19 +1235,19 @@ const JobDescriptionPage = () => {
                         options={dropdownData.departments}
                         value={formData.department}
                         onChange={(value) => {
-                          setFormData({...formData, department: value, unit: ''}); // Clear unit when department changes
+                          setFormData({...formData, department: value}); // Unit clearing handled by useEffect
                         }}
                         placeholder="Select Department"
                       />
                     </div>
                     
-                    {/* UPDATED: Unit field with department dependency */}
+                    {/* FIXED: Unit field with department dependency */}
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                         Unit
                       </label>
                       <SearchableSelect
-                        options={departmentUnits} // Use department-specific units instead of all units
+                        options={departmentUnits} // Use computed department-specific units
                         value={formData.unit}
                         onChange={(value) => setFormData({...formData, unit: value})}
                         placeholder={formData.department ? "Select Unit" : "Select Department First"}
@@ -1236,6 +1256,11 @@ const JobDescriptionPage = () => {
                       {formData.department && departmentUnits.length === 0 && (
                         <p className={`text-xs ${textMuted} mt-1`}>
                           No units available for selected department
+                        </p>
+                      )}
+                      {formData.department && departmentUnits.length > 0 && (
+                        <p className={`text-xs ${textMuted} mt-1`}>
+                          {departmentUnits.length} units available for this department
                         </p>
                       )}
                     </div>
