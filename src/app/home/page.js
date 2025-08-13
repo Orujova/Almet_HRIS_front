@@ -6,7 +6,7 @@ import { useAuth } from "@/auth/AuthContext";
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
   return (
-    <div className={`${isHighlight ? 'bg-blue-700/60' : 'bg-white/10'} backdrop-blur-sm rounded-xl p-4 text-white`}>
+    <div className={`${isHighlight ? 'bg-[#29339b]' : 'bg-white/10'} backdrop-blur-sm rounded-xl p-4 text-white`}>
       <div className="flex items-center justify-between mb-2">
         <div className={`p-1 ${isHighlight ? 'bg-white/30' : 'bg-white/20'} rounded-lg`}>
           {icon}

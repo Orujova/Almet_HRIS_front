@@ -1,7 +1,9 @@
 "use client";
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
+import { referenceDataAPI } from '@/store/api/referenceDataAPI';
+import { employeeAPI } from '@/store/api/employeeAPI';
 import { 
   Search, 
   Filter, 
@@ -19,190 +21,20 @@ import {
   Edit,
   X,
   MapPin,
-  ChevronDown,
-  Settings,
   Layers,
-  FileText,
-  Save,
+  Loader2,
+  AlertCircle,
   RefreshCw
 } from 'lucide-react';
-
-// Mock data based on your Excel analysis
-const jobCatalogData = [
-  {
-    id: 1,
-    unit: "BUSINESS DEVELOPMENT",
-    department: "BOARD",
-    jobFunction: "STRATEGY EXECUTION",
-    hierarchy: "VC",
-    title: "DEPUTY CHAIRMAN ON FINANCE & BUSINESS DEVELOPMENT",
-    currentEmployees: 1,
-    description: "Senior executive responsible for finance and business development strategy",
-    requirements: ["MBA or equivalent", "10+ years experience", "Strategic planning"],
-    location: "Baku HQ",
-    status: "Active"
-  },
-  {
-    id: 2,
-    unit: "COMMERCE",
-    department: "BOARD",
-    jobFunction: "STRATEGY EXECUTION",
-    hierarchy: "VC",
-    title: "DEPUTY CHAIRMAN ON COMMERCIAL ACTIVITIES EUROPE REGION",
-    currentEmployees: 1,
-    description: "Lead commercial operations across European markets",
-    requirements: ["International business experience", "European market knowledge"],
-    location: "London Office",
-    status: "Active"
-  },
-  {
-    id: 3,
-    unit: "BUSINESS DEVELOPMENT",
-    department: "PROJECTS MANAGEMENT",
-    jobFunction: "PROJECTS MANAGEMENT",
-    hierarchy: "DIRECTOR",
-    title: "BUSINESS DEVELOPMENT DIRECTOR",
-    currentEmployees: 2,
-    description: "Strategic business development and project oversight",
-    requirements: ["Project management certification", "Business development experience"],
-    location: "Baku HQ",
-    status: "Active"
-  },
-  {
-    id: 4,
-    unit: "SUPPLY CHAIN",
-    department: "OPERATIONS",
-    jobFunction: "OPERATIONS",
-    hierarchy: "MANAGER",
-    title: "OPERATIONS MANAGER",
-    currentEmployees: 3,
-    description: "Manage day-to-day operational activities",
-    requirements: ["Operations experience", "Team leadership"],
-    location: "Multiple",
-    status: "Active"
-  },
-  {
-    id: 5,
-    unit: "BUSINESS SUPPORT",
-    department: "FINANCE",
-    jobFunction: "FINANCE OPERATIONS",
-    hierarchy: "SENIOR SPECIALIST",
-    title: "SENIOR ACCOUNTANT",
-    currentEmployees: 4,
-    description: "Senior level accounting and financial reporting",
-    requirements: ["CPA or equivalent", "5+ years accounting experience"],
-    location: "Baku HQ",
-    status: "Active"
-  },
-  {
-    id: 6,
-    unit: "BUSINESS SUPPORT",
-    department: "HR",
-    jobFunction: "HR OPERATIONS",
-    hierarchy: "SPECIALIST",
-    title: "HR SPECIALIST",
-    currentEmployees: 2,
-    description: "Human resources support and employee relations",
-    requirements: ["HR degree", "2+ years HR experience"],
-    location: "Baku HQ",
-    status: "Active"
-  },
-  {
-    id: 7,
-    unit: "BUSINESS SUPPORT",
-    department: "IT",
-    jobFunction: "SOFTWARE DEVELOPMENT",
-    hierarchy: "JUNIOR SPECIALIST",
-    title: "JUNIOR DEVELOPER",
-    currentEmployees: 3,
-    description: "Entry-level software development position",
-    requirements: ["Computer Science degree", "Programming skills"],
-    location: "Baku HQ",
-    status: "Active"
-  },
-  {
-    id: 8,
-    unit: "SUPPLY CHAIN",
-    department: "WAREHOUSE",
-    jobFunction: "INVENTORY",
-    hierarchy: "BLUE COLLAR",
-    title: "WAREHOUSE WORKER",
-    currentEmployees: 8,
-    description: "Warehouse operations and inventory management",
-    requirements: ["Physical fitness", "Basic education"],
-    location: "Warehouse",
-    status: "Active"
-  }
-];
-
-// Business Functions Structure data
-const businessFunctions = [
-  {
-    unit: "BUSINESS DEVELOPMENT",
-    department: "BOARD",
-    jobFunction: "STRATEGY EXECUTION"
-  },
-  {
-    unit: "BUSINESS DEVELOPMENT", 
-    department: "PROJECTS MANAGEMENT",
-    jobFunction: "PROJECTS MANAGEMENT"
-  },
-  {
-    unit: "BUSINESS DEVELOPMENT",
-    department: "PRODUCTION",
-    jobFunction: "CONSTRUCTION"
-  },
-  {
-    unit: "BUSINESS SUPPORT",
-    department: "FINANCE",
-    jobFunction: "FINANCE OPERATIONS"
-  },
-  {
-    unit: "BUSINESS SUPPORT",
-    department: "HR",
-    jobFunction: "HR OPERATIONS"
-  },
-  {
-    unit: "BUSINESS SUPPORT",
-    department: "IT",
-    jobFunction: "SOFTWARE DEVELOPMENT"
-  },
-  {
-    unit: "COMMERCE",
-    department: "STOCK SALES",
-    jobFunction: "SALES"
-  },
-  {
-    unit: "SUPPLY CHAIN",
-    department: "WAREHOUSE",
-    jobFunction: "INVENTORY"
-  }
-];
-
-// Hierarchy structure
-const hierarchyStructure = [
-  { level: "VC", name: "VC" },
-  { level: "DIRECTOR", name: "DIRECTOR" },
-  { level: "HEAD OF DEPARTMENT", name: "HEAD OF DEPARTMENT" },
-  { level: "MANAGER", name: "MANAGER" },
-  { level: "SENIOR SPECIALIST", name: "SENIOR SPECIALIST" },
-  { level: "SPECIALIST", name: "SPECIALIST" },
-  { level: "JUNIOR SPECIALIST", name: "JUNIOR SPECIALIST" },
-  { level: "BLUE COLLAR", name: "BLUE COLLAR" }
-];
-
-// Filter options
-const filterOptions = {
-  units: ["BUSINESS DEVELOPMENT", "COMMERCE", "BUSINESS SUPPORT", "SUPPLY CHAIN"],
-  departments: ["BOARD", "PROJECTS MANAGEMENT", "FINANCE", "HR", "IT", "OPERATIONS", "WAREHOUSE", "STOCK SALES", "PRODUCTION"],
-  hierarchies: ["VC", "DIRECTOR", "HEAD OF DEPARTMENT", "MANAGER", "SENIOR SPECIALIST", "SPECIALIST", "JUNIOR SPECIALIST", "BLUE COLLAR"],
-  jobFunctions: ["STRATEGY EXECUTION", "PROJECTS MANAGEMENT", "FINANCE OPERATIONS", "HR OPERATIONS", "SOFTWARE DEVELOPMENT", "OPERATIONS", "INVENTORY", "SALES", "CONSTRUCTION"],
-  locations: ["Baku HQ", "London Office", "Multiple", "Warehouse"]
-};
 
 // Hierarchy colors using Almet color palette
 const hierarchyColors = {
   'VC': { 
+    bg: 'bg-almet-sapphire/10 dark:bg-almet-sapphire/20', 
+    text: 'text-almet-sapphire dark:text-almet-steel-blue', 
+    border: 'border-almet-sapphire' 
+  },
+  'Vice Chairman': { 
     bg: 'bg-almet-sapphire/10 dark:bg-almet-sapphire/20', 
     text: 'text-almet-sapphire dark:text-almet-steel-blue', 
     border: 'border-almet-sapphire' 
@@ -246,84 +78,244 @@ const hierarchyColors = {
 
 export default function JobCatalogPage() {
   const { darkMode } = useTheme();
-  const [activeView, setActiveView] = useState('overview'); // overview, structure, matrix
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState({
-    unit: '',
-    department: '',
-    hierarchy: '',
-    jobFunction: '',
-    location: ''
-  });
+  
+  // View states
+  const [activeView, setActiveView] = useState('overview');
   const [viewMode, setViewMode] = useState('grid');
+  const [matrixView, setMatrixView] = useState('department');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [matrixView, setMatrixView] = useState('department'); // department, function, unit
+  
+  // Data states
+  const [employees, setEmployees] = useState([]);
+  const [statistics, setStatistics] = useState(null);
+  const [businessFunctions, setBusinessFunctions] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [units, setUnits] = useState([]);
+  const [jobFunctions, setJobFunctions] = useState([]);
+  const [positionGroups, setPositionGroups] = useState([]);
+  const [hierarchyData, setHierarchyData] = useState(null);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilters, setSelectedFilters] = useState({
+    business_function: '',
+    department: '',
+    unit: '',
+    job_function: '',
+    position_group: ''
+  });
+  
+  // Loading states
+  const [loading, setLoading] = useState({
+    employees: false,
+    statistics: false,
+    referenceData: false,
+    hierarchy: false
+  });
+  
+  // Error states
+  const [errors, setErrors] = useState({});
 
-  // Filter and search logic
+  // Load initial data
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    setLoading(prev => ({ ...prev, referenceData: true, statistics: true }));
+    
+    try {
+      const [
+        businessFunctionsRes,
+        departmentsRes,
+        unitsRes,
+        jobFunctionsRes,
+        positionGroupsRes,
+        statisticsRes
+      ] = await Promise.all([
+        referenceDataAPI.getBusinessFunctionDropdown(),
+        referenceDataAPI.getDepartmentDropdown(),
+        referenceDataAPI.getUnitDropdown(),
+        referenceDataAPI.getJobFunctionDropdown(),
+        referenceDataAPI.getPositionGroupDropdown(),
+        employeeAPI.getStatistics()
+      ]);
+
+      setBusinessFunctions(businessFunctionsRes.data || []);
+      setDepartments(departmentsRes.data?.results || departmentsRes.data || []);
+      setUnits(unitsRes.data || []);
+      setJobFunctions(jobFunctionsRes.data || []);
+      setPositionGroups(positionGroupsRes.data || []);
+      setStatistics(statisticsRes.data || statisticsRes);
+
+      await loadEmployees();
+      
+    } catch (error) {
+      setErrors(prev => ({ ...prev, initial: 'Failed to load initial data' }));
+      console.error('Error loading initial data:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, referenceData: false, statistics: false }));
+    }
+  };
+
+  const loadEmployees = async (additionalParams = {}) => {
+    setLoading(prev => ({ ...prev, employees: true }));
+    
+    try {
+      const params = {
+        search: searchTerm,
+        ...selectedFilters,
+        ...additionalParams
+      };
+      
+      Object.keys(params).forEach(key => {
+        if (!params[key]) delete params[key];
+      });
+
+      const response = await employeeAPI.getAll(params);
+      setEmployees(response.data?.results || response.results || []);
+      
+    } catch (error) {
+      setErrors(prev => ({ ...prev, employees: 'Failed to load employees' }));
+      console.error('Error loading employees:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, employees: false }));
+    }
+  };
+
+  const loadHierarchyData = async () => {
+    setLoading(prev => ({ ...prev, hierarchy: true }));
+    
+    try {
+      // Use getAll to get employee data for hierarchy
+      const response = await employeeAPI.getAll({ page_size: 1000 });
+      setHierarchyData(response.data || response);
+    } catch (error) {
+      setErrors(prev => ({ ...prev, hierarchy: 'Failed to load hierarchy data' }));
+      console.error('Error loading hierarchy data:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, hierarchy: false }));
+    }
+  };
+
+  // Load hierarchy data when matrix view is selected
+  useEffect(() => {
+    if (activeView === 'matrix' && !hierarchyData) {
+      loadHierarchyData();
+    }
+  }, [activeView, hierarchyData]);
+
+  // Reload employees when filters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadEmployees();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm, selectedFilters]);
+
+  // Process employees into job catalog format
+  const jobCatalogData = useMemo(() => {
+    const jobMap = new Map();
+    
+    employees.forEach(employee => {
+      const key = `${employee.business_function_name}-${employee.department_name}-${employee.job_function_name}-${employee.position_group_name}-${employee.job_title}`;
+      
+      if (jobMap.has(key)) {
+        jobMap.get(key).currentEmployees += 1;
+        jobMap.get(key).employees.push(employee);
+      } else {
+        jobMap.set(key, {
+          id: key,
+          unit: employee.business_function_name || 'N/A',
+          department: employee.department_name || 'N/A',
+          jobFunction: employee.job_function_name || 'N/A',
+          hierarchy: employee.position_group_name || 'N/A',
+          title: employee.job_title || 'N/A',
+          currentEmployees: 1,
+          employees: [employee],
+          description: `${employee.position_group_name} position in ${employee.department_name}`,
+          requirements: ['Relevant experience required', 'Team collaboration skills'],
+          location: 'Baku HQ',
+          status: 'Active'
+        });
+      }
+    });
+    
+    return Array.from(jobMap.values());
+  }, [employees]);
+
+  // Filter options
+  const filterOptions = useMemo(() => {
+    return {
+      businessFunctions: businessFunctions || [],
+      departments: departments || [],
+      units: units || [],
+      jobFunctions: jobFunctions || [],
+      positionGroups: positionGroups || []
+    };
+  }, [businessFunctions, departments, units, jobFunctions, positionGroups]);
+
+  // Filtered jobs
   const filteredJobs = useMemo(() => {
     return jobCatalogData.filter(job => {
       const matchesSearch = !searchTerm || 
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.unit.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesFilters = Object.entries(selectedFilters).every(([key, value]) => {
-        if (!value) return true;
-        return job[key] === value;
-      });
-
-      return matchesSearch && matchesFilters;
+      return matchesSearch;
     });
-  }, [searchTerm, selectedFilters]);
+  }, [jobCatalogData, searchTerm]);
 
   // Statistics
   const stats = useMemo(() => {
-    const totalJobs = jobCatalogData.length;
-    const totalEmployees = jobCatalogData.reduce((sum, job) => sum + job.currentEmployees, 0);
-    const avgEmployeesPerJob = Math.round(totalEmployees / totalJobs * 10) / 10;
+    if (!statistics) return { totalJobs: 0, totalEmployees: 0, avgEmployeesPerJob: 0, activeJobs: 0 };
     
     return {
-      totalJobs,
-      totalEmployees,
-      avgEmployeesPerJob,
+      totalJobs: jobCatalogData.length,
+      totalEmployees: statistics.total_employees || 0,
+      avgEmployeesPerJob: jobCatalogData.length > 0 ? Math.round((statistics.total_employees || 0) / jobCatalogData.length * 10) / 10 : 0,
       activeJobs: jobCatalogData.filter(j => j.status === 'Active').length
     };
-  }, []);
+  }, [statistics, jobCatalogData]);
 
-  // Matrix data preparation
+  // Matrix data
   const matrixData = useMemo(() => {
-    const matrix = {};
-    const columns = matrixView === 'department' ? filterOptions.departments : 
-                   matrixView === 'function' ? filterOptions.jobFunctions : 
-                   filterOptions.units;
+    if (!hierarchyData) return {};
     
-    hierarchyStructure.forEach(hierarchy => {
-      matrix[hierarchy.level] = {};
+    const matrix = {};
+    const columns = matrixView === 'department' ? departments.map(d => d.label || d.name) : 
+                   matrixView === 'function' ? jobFunctions.map(jf => jf.label || jf.name) : 
+                   businessFunctions.map(bf => bf.label || bf.name);
+    
+    positionGroups.forEach(pg => {
+      const hierarchyName = pg.label || pg.name;
+      matrix[hierarchyName] = {};
       columns.forEach(col => {
         const jobs = jobCatalogData.filter(job => {
-          if (matrixView === 'department') return job.hierarchy === hierarchy.level && job.department === col;
-          if (matrixView === 'function') return job.hierarchy === hierarchy.level && job.jobFunction === col;
-          return job.hierarchy === hierarchy.level && job.unit === col;
+          if (matrixView === 'department') return job.hierarchy === hierarchyName && job.department === col;
+          if (matrixView === 'function') return job.hierarchy === hierarchyName && job.jobFunction === col;
+          return job.hierarchy === hierarchyName && job.unit === col;
         });
-        matrix[hierarchy.level][col] = jobs;
+        matrix[hierarchyName][col] = jobs;
       });
     });
+    
     return matrix;
-  }, [matrixView]);
+  }, [hierarchyData, matrixView, jobCatalogData, departments, jobFunctions, businessFunctions, positionGroups]);
 
   const clearFilters = () => {
     setSelectedFilters({
-      unit: '',
+      business_function: '',
       department: '',
-      hierarchy: '',
-      jobFunction: '',
-      location: ''
+      unit: '',
+      job_function: '',
+      position_group: ''
     });
     setSearchTerm('');
   };
 
-  // Navigation buttons
+  // Navigation Tabs Component
   const NavigationTabs = () => (
     <div className="flex space-x-1 bg-white dark:bg-almet-cloud-burst rounded-lg p-1 shadow-sm mb-6">
       <button
@@ -362,6 +354,7 @@ export default function JobCatalogPage() {
     </div>
   );
 
+  // Job Card Component
   const JobCard = ({ job }) => {
     const colors = hierarchyColors[job.hierarchy] || hierarchyColors['SPECIALIST'];
     
@@ -416,6 +409,7 @@ export default function JobCatalogPage() {
     );
   };
 
+  // Job List Item Component
   const JobListItem = ({ job }) => {
     const colors = hierarchyColors[job.hierarchy] || hierarchyColors['SPECIALIST'];
     
@@ -464,7 +458,7 @@ export default function JobCatalogPage() {
     );
   };
 
-  // Overview View
+  // Overview View Component
   const OverviewView = () => (
     <div>
       {/* Statistics Cards */}
@@ -476,7 +470,9 @@ export default function JobCatalogPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Jobs</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.totalJobs}</p>
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.totalJobs}
+              </p>
             </div>
           </div>
         </div>
@@ -488,7 +484,9 @@ export default function JobCatalogPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Employees</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.totalEmployees}</p>
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.totalEmployees}
+              </p>
             </div>
           </div>
         </div>
@@ -500,7 +498,9 @@ export default function JobCatalogPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Average</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.avgEmployeesPerJob}</p>
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.avgEmployeesPerJob}
+              </p>
             </div>
           </div>
         </div>
@@ -512,7 +512,9 @@ export default function JobCatalogPage() {
             </div>
             <div>
               <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Active Jobs</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">{stats.activeJobs}</p>
+              <p className="text-xl font-semibold text-gray-900 dark:text-white">
+                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.activeJobs}
+              </p>
             </div>
           </div>
         </div>
@@ -569,10 +571,9 @@ export default function JobCatalogPage() {
               Add
             </button>
 
-            <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
-              <Download size={16} />
-              Export
-            </button>
+            
+
+          
           </div>
         </div>
 
@@ -580,27 +581,85 @@ export default function JobCatalogPage() {
         {showFilters && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-almet-comet">
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Object.entries(filterOptions).map(([key, options]) => (
-                <div key={key}>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1 capitalize">
-                    {key === 'units' ? 'Unit' : 
-                     key === 'departments' ? 'Department' :
-                     key === 'hierarchies' ? 'Hierarchy' :
-                     key === 'jobFunctions' ? 'Job Function' :
-                     'Location'}
-                  </label>
-                  <select
-                    value={selectedFilters[key]}
-                    onChange={(e) => setSelectedFilters(prev => ({ ...prev, [key]: e.target.value }))}
-                    className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="">All</option>
-                    {options.map(option => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
+                  Business Function
+                </label>
+                <select
+                  value={selectedFilters.business_function}
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, business_function: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">All</option>
+                  {filterOptions.businessFunctions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
+                  Department
+                </label>
+                <select
+                  value={selectedFilters.department}
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, department: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">All</option>
+                  {filterOptions.departments.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
+                  Unit
+                </label>
+                <select
+                  value={selectedFilters.unit}
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, unit: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">All</option>
+                  {filterOptions.units.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
+                  Job Function
+                </label>
+                <select
+                  value={selectedFilters.job_function}
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, job_function: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">All</option>
+                  {filterOptions.jobFunctions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
+                  Position Group
+                </label>
+                <select
+                  value={selectedFilters.position_group}
+                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, position_group: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="">All</option>
+                  {filterOptions.positionGroups.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             
             {Object.values(selectedFilters).some(v => v) && (
@@ -620,89 +679,161 @@ export default function JobCatalogPage() {
         )}
       </div>
 
-      {/* Job Listings */}
-      <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
-        {filteredJobs.map(job => (
-          viewMode === 'grid' ? (
-            <JobCard key={job.id} job={job} />
-          ) : (
-            <JobListItem key={job.id} job={job} />
-          )
-        ))}
-      </div>
-
-      {filteredJobs.length === 0 && (
-        <div className="text-center py-12">
-          <Briefcase className="mx-auto h-12 w-12 text-gray-400 dark:text-almet-bali-hai mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Jobs Found</h3>
-          <p className="text-gray-500 dark:text-almet-bali-hai">
-            Adjust your search criteria or filters.
-          </p>
+      {/* Error Display */}
+      {errors.employees && (
+        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
+            <span className="text-red-800 dark:text-red-200">{errors.employees}</span>
+          </div>
         </div>
+      )}
+
+      {/* Job Listings */}
+      {loading.employees ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
+          <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading jobs...</span>
+        </div>
+      ) : (
+        <>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
+            {filteredJobs.map(job => (
+              viewMode === 'grid' ? (
+                <JobCard key={job.id} job={job} />
+              ) : (
+                <JobListItem key={job.id} job={job} />
+              )
+            ))}
+          </div>
+
+          {filteredJobs.length === 0 && (
+            <div className="text-center py-12">
+              <Briefcase className="mx-auto h-12 w-12 text-gray-400 dark:text-almet-bali-hai mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Jobs Found</h3>
+              <p className="text-gray-500 dark:text-almet-bali-hai">
+                Adjust your search criteria or filters.
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 
-  // Business Functions Structure View
-  const StructureView = () => (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm">
-      <div className="mb-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Business Functions Structure</h2>
-        <p className="text-gray-600 dark:text-almet-bali-hai">
-          Structure of the organization's business functions
-        </p>
-      </div>
+  // Business Functions Structure View Component
+  const StructureView = () => {
+    const businessFunctionStructure = useMemo(() => {
+      const structure = [];
       
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200 dark:border-almet-comet">
-              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Unit</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Department</th>
-              <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Job Function</th>
-              <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {businessFunctions.map((item, index) => (
-              <tr key={index} className="border-b border-gray-100 dark:border-almet-comet hover:bg-gray-50 dark:hover:bg-almet-san-juan">
-                <td className="py-3 px-4 text-gray-900 dark:text-white">{item.unit}</td>
-                <td className="py-3 px-4 text-gray-900 dark:text-white">{item.department}</td>
-                <td className="py-3 px-4 text-gray-900 dark:text-white">{item.jobFunction}</td>
-                <td className="py-3 px-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-                      <Eye size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-                    </button>
-                    <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-                      <Edit size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      businessFunctions.forEach(bf => {
+        const bfDepartments = departments.filter(dept => dept.business_function === bf.value);
+        
+        if (bfDepartments.length === 0) {
+          jobFunctions.forEach(jf => {
+            structure.push({
+              id: `${bf.value}-${jf.value}`,
+              unit: bf.label,
+              department: 'N/A',
+              jobFunction: jf.label,
+              businessFunction: bf,
+              departmentData: null,
+              jobFunctionData: jf
+            });
+          });
+        } else {
+          bfDepartments.forEach(dept => {
+            jobFunctions.forEach(jf => {
+              structure.push({
+                id: `${bf.value}-${dept.value}-${jf.value}`,
+                unit: bf.label,
+                department: dept.label,
+                jobFunction: jf.label,
+                businessFunction: bf,
+                departmentData: dept,
+                jobFunctionData: jf
+              });
+            });
+          });
+        }
+      });
       
-      <div className="mt-6 flex justify-end gap-3">
-        <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-          <Plus size={16} />
-          Add New
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
-          <Download size={16} />
-          Export
-        </button>
-      </div>
-    </div>
-  );
+      return structure;
+    }, [businessFunctions, departments, units, jobFunctions]);
 
-  // Matrix View
+    return (
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Business Functions Structure</h2>
+          <p className="text-gray-600 dark:text-almet-bali-hai">
+            Organizational structure based on real data from your system
+          </p>
+        </div>
+        
+        {loading.referenceData ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
+            <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading structure...</span>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200 dark:border-almet-comet">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Business Function</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Department</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Job Function</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Employee Count</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {businessFunctionStructure.map((item, index) => (
+                    <tr key={item.id} className="border-b border-gray-100 dark:border-almet-comet hover:bg-gray-50 dark:hover:bg-almet-san-juan">
+                      <td className="py-3 px-4 text-gray-900 dark:text-white">{item.unit}</td>
+                      <td className="py-3 px-4 text-gray-900 dark:text-white">{item.department}</td>
+                      <td className="py-3 px-4 text-gray-900 dark:text-white">{item.jobFunction}</td>
+                      <td className="py-3 px-4 text-right text-gray-900 dark:text-white">
+                        {item.departmentData?.employee_count || 0}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
+                            <Eye size={14} className="text-gray-400 dark:text-almet-bali-hai" />
+                          </button>
+                          <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
+                            <Edit size={14} className="text-gray-400 dark:text-almet-bali-hai" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                <Plus size={16} />
+                Add New
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
+                <Download size={16} />
+                Export
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Matrix View Component
   const MatrixView = () => {
-    const columns = matrixView === 'department' ? filterOptions.departments : 
-                   matrixView === 'function' ? filterOptions.jobFunctions : 
-                   filterOptions.units;
+    const columns = matrixView === 'department' ? departments.map(d => d.label || d.name) : 
+                   matrixView === 'function' ? jobFunctions.map(jf => jf.label || jf.name) : 
+                   businessFunctions.map(bf => bf.label || bf.name);
 
     return (
       <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm">
@@ -711,7 +842,7 @@ export default function JobCatalogPage() {
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Hierarchy Matrix</h2>
               <p className="text-gray-600 dark:text-almet-bali-hai">
-                Distribution of jobs by hierarchy levels
+                Distribution of jobs by hierarchy levels based on real employee data
               </p>
             </div>
             
@@ -726,83 +857,93 @@ export default function JobCatalogPage() {
               >
                 <option value="department">By Department</option>
                 <option value="function">By Job Function</option>
-                <option value="unit">By Unit</option>
+                <option value="unit">By Business Function</option>
               </select>
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr>
-                <th className="sticky left-0 bg-gray-100 dark:bg-almet-san-juan border border-gray-300 dark:border-almet-comet p-3 text-left font-semibold text-gray-900 dark:text-white min-w-[150px]">
-                  Hierarchy
-                </th>
-                {columns.map(col => (
-                  <th key={col} className="border border-gray-300 dark:border-almet-comet p-2 text-center font-medium text-gray-900 dark:text-white text-xs min-w-[120px]">
-                    {col}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {hierarchyStructure.map(hierarchy => {
-                const colors = hierarchyColors[hierarchy.level] || hierarchyColors['SPECIALIST'];
-                return (
-                  <tr key={hierarchy.level}>
-                    <td className={`sticky left-0 border border-gray-300 dark:border-almet-comet p-3 font-medium ${colors.bg} ${colors.text} min-w-[150px]`}>
-                      {hierarchy.name}
-                    </td>
-                    {columns.map(col => {
-                      const jobs = matrixData[hierarchy.level]?.[col] || [];
-                      return (
-                        <td key={col} className="border border-gray-300 dark:border-almet-comet p-2 text-center">
-                          {jobs.length > 0 ? (
-                            <div className="space-y-1">
-                              {jobs.map(job => (
-                                <div 
-                                  key={job.id}
-                                  className="bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue text-xs p-1 rounded cursor-pointer hover:bg-almet-sapphire/20 dark:hover:bg-almet-sapphire/30 transition-colors"
-                                  onClick={() => setSelectedJob(job)}
-                                  title={job.title}
-                                >
-                                  <div className="font-medium truncate">{job.title}</div>
-                                  <div className="flex items-center justify-center gap-1 text-xs">
-                                    <Users size={10} />
-                                    {job.currentEmployees}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400 dark:text-almet-bali-hai text-xs">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
+        {loading.hierarchy ? (
+          <div className="flex justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
+            <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading hierarchy matrix...</span>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 bg-gray-100 dark:bg-almet-san-juan border border-gray-300 dark:border-almet-comet p-3 text-left font-semibold text-gray-900 dark:text-white min-w-[150px]">
+                      Hierarchy
+                    </th>
+                    {columns.map((col, colIndex) => (
+                      <th key={`col-${colIndex}-${col}`} className="border border-gray-300 dark:border-almet-comet p-2 text-center font-medium text-gray-900 dark:text-white text-xs min-w-[120px]">
+                        {col}
+                      </th>
+                    ))}
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="mt-6 flex justify-between items-center">
-          <div className="text-sm text-gray-600 dark:text-almet-bali-hai">
-            Total {jobCatalogData.length} jobs, {stats.totalEmployees} employees
-          </div>
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              <Plus size={16} />
-              New Job
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
-              <Download size={16} />
-              Export Matrix
-            </button>
-          </div>
-        </div>
+                </thead>
+                <tbody>
+                  {positionGroups.map(pg => {
+                    const hierarchyName = pg.label || pg.name;
+                    const colors = hierarchyColors[hierarchyName] || hierarchyColors['SPECIALIST'];
+                    return (
+                      <tr key={pg.value || pg.id}>
+                        <td className={`sticky left-0 border border-gray-300 dark:border-almet-comet p-3 font-medium ${colors.bg} ${colors.text} min-w-[150px]`}>
+                          {hierarchyName}
+                        </td>
+                        {columns.map((col, colIndex) => {
+                          const jobs = matrixData[hierarchyName]?.[col] || [];
+                          return (
+                            <td key={`${pg.value || pg.id}-${colIndex}-${col}`} className="border border-gray-300 dark:border-almet-comet p-2 text-center">
+                              {jobs.length > 0 ? (
+                                <div className="space-y-1">
+                                  {jobs.map((job, jobIndex) => (
+                                    <div 
+                                      key={`${job.id}-${jobIndex}`}
+                                      className="bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue text-xs p-1 rounded cursor-pointer hover:bg-almet-sapphire/20 dark:hover:bg-almet-sapphire/30 transition-colors"
+                                      onClick={() => setSelectedJob(job)}
+                                      title={job.title}
+                                    >
+                                      <div className="font-medium truncate">{job.title}</div>
+                                      <div className="flex items-center justify-center gap-1 text-xs">
+                                        <Users size={10} />
+                                        {job.currentEmployees}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 dark:text-almet-bali-hai text-xs">-</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            <div className="mt-6 flex justify-between items-center">
+              <div className="text-sm text-gray-600 dark:text-almet-bali-hai">
+                Total {jobCatalogData.length} jobs, {stats.totalEmployees} employees
+              </div>
+              <div className="flex gap-3">
+                <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                  <Plus size={16} />
+                  New Job
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
+                  <Download size={16} />
+                  Export Matrix
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -814,9 +955,19 @@ export default function JobCatalogPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Job Catalog</h1>
           <p className="text-gray-600 dark:text-almet-bali-hai">
-            A detailed overview of all jobs within the organization
+            A comprehensive overview of all jobs within the organization based on real employee data
           </p>
         </div>
+
+        {/* Error Display for Initial Load */}
+        {errors.initial && (
+          <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
+              <span className="text-red-800 dark:text-red-200">{errors.initial}</span>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <NavigationTabs />
@@ -918,18 +1069,27 @@ export default function JobCatalogPage() {
                   </ul>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-almet-comet">
-                  <button className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors">
-                    Edit
-                  </button>
-                  <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    View Employees
-                  </button>
-                  <button className="px-4 py-2 bg-almet-waterloo dark:bg-almet-comet text-white rounded-lg hover:bg-almet-san-juan dark:hover:bg-almet-waterloo transition-colors">
-                    Download Description
-                  </button>
-                </div>
+                {/* Employee List */}
+                {selectedJob.employees && selectedJob.employees.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Current Employees</h3>
+                    <div className="max-h-32 overflow-y-auto space-y-2">
+                      {selectedJob.employees.slice(0, 5).map((employee, index) => (
+                        <div key={index} className="flex items-center p-2 bg-gray-50 dark:bg-almet-san-juan rounded">
+                          <span className="text-sm text-gray-900 dark:text-white">{employee.name}</span>
+                          <span className="text-xs text-gray-500 dark:text-almet-bali-hai ml-2">({employee.employee_id})</span>
+                        </div>
+                      ))}
+                      {selectedJob.employees.length > 5 && (
+                        <div className="text-xs text-gray-500 dark:text-almet-bali-hai">
+                          +{selectedJob.employees.length - 5} more employees
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                
               </div>
             </div>
           </div>

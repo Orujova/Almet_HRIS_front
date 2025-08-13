@@ -1,4 +1,4 @@
-// services/jobDescriptionService.js
+// services/jobDescriptionService.js - Fixed version with proper unit filtering
 import axios from 'axios';
 
 // Base URL
@@ -65,9 +65,154 @@ api.interceptors.response.use(
 );
 
 /**
- * Job Description Service - CRUD operations without Redux
+ * Job Description Service - CRUD operations with enhanced validation and debugging
  */
 class JobDescriptionService {
+  
+  // ========================================
+  // VALIDATION METHODS
+  // ========================================
+  
+  validateJobDescriptionData(data) {
+    const errors = [];
+    
+    // Required string fields
+    if (!data.job_title?.trim()) {
+      errors.push('job_title is required');
+    }
+    if (!data.job_purpose?.trim()) {
+      errors.push('job_purpose is required');
+    }
+    
+    // Required ID fields
+    if (!data.business_function) {
+      errors.push('business_function is required');
+    }
+    if (!data.department) {
+      errors.push('department is required');
+    }
+    if (!data.position_group) {
+      errors.push('position_group is required');
+    }
+    
+    // Unit validation - only if unit is provided, it should be valid
+    if (data.unit && !data.department) {
+      errors.push('department is required when unit is specified');
+    }
+    
+    // Sections validation
+    if (!data.sections || !Array.isArray(data.sections) || data.sections.length === 0) {
+      errors.push('At least one section is required');
+    } else {
+      data.sections.forEach((section, index) => {
+        if (!section.section_type) {
+          errors.push(`Section ${index + 1}: section_type is required`);
+        }
+        if (!section.title) {
+          errors.push(`Section ${index + 1}: title is required`);
+        }
+        if (!section.content?.trim()) {
+          errors.push(`Section ${index + 1}: content is required`);
+        }
+        if (typeof section.order !== 'number') {
+          errors.push(`Section ${index + 1}: order must be a number`);
+        }
+      });
+    }
+    
+    // Skills validation
+    if (data.required_skills_data && Array.isArray(data.required_skills_data)) {
+      data.required_skills_data.forEach((skill, index) => {
+        if (!skill.skill_id) {
+          errors.push(`Required skill ${index + 1}: skill_id is required`);
+        }
+        if (!skill.proficiency_level) {
+          errors.push(`Required skill ${index + 1}: proficiency_level is required`);
+        }
+        if (typeof skill.is_mandatory !== 'boolean') {
+          errors.push(`Required skill ${index + 1}: is_mandatory must be boolean`);
+        }
+      });
+    }
+    
+    // Competencies validation
+    if (data.behavioral_competencies_data && Array.isArray(data.behavioral_competencies_data)) {
+      data.behavioral_competencies_data.forEach((comp, index) => {
+        if (!comp.competency_id) {
+          errors.push(`Behavioral competency ${index + 1}: competency_id is required`);
+        }
+        if (!comp.proficiency_level) {
+          errors.push(`Behavioral competency ${index + 1}: proficiency_level is required`);
+        }
+        if (typeof comp.is_mandatory !== 'boolean') {
+          errors.push(`Behavioral competency ${index + 1}: is_mandatory must be boolean`);
+        }
+      });
+    }
+    
+    return errors;
+  }
+  
+  cleanJobDescriptionData(data) {
+    const cleaned = {
+      // Required string fields
+      job_title: data.job_title?.trim() || '',
+      job_purpose: data.job_purpose?.trim() || '',
+      
+      // Required ID fields
+      business_function: parseInt(data.business_function) || null,
+      department: parseInt(data.department) || null,
+      position_group: parseInt(data.position_group) || null,
+      
+      // Optional ID fields - IMPORTANT: Only include unit if it has a value
+      grading_level: data.grading_level?.trim() || null,
+      reports_to: data.reports_to ? parseInt(data.reports_to) : null,
+      assigned_employee: data.assigned_employee ? parseInt(data.assigned_employee) : null,
+      
+      // Manual employee fields
+      manual_employee_name: data.manual_employee_name?.trim() || '',
+      manual_employee_phone: data.manual_employee_phone?.trim() || '',
+      
+      // Arrays - ensure they're arrays
+      sections: Array.isArray(data.sections) ? data.sections : [],
+      required_skills_data: Array.isArray(data.required_skills_data) ? data.required_skills_data : [],
+      behavioral_competencies_data: Array.isArray(data.behavioral_competencies_data) ? data.behavioral_competencies_data : [],
+      business_resources_ids: Array.isArray(data.business_resources_ids) ? data.business_resources_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
+      access_rights_ids: Array.isArray(data.access_rights_ids) ? data.access_rights_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
+      company_benefits_ids: Array.isArray(data.company_benefits_ids) ? data.company_benefits_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : []
+    };
+    
+    // CRITICAL FIX: Only include unit if it has a valid value
+    if (data.unit && parseInt(data.unit)) {
+      cleaned.unit = parseInt(data.unit);
+    }
+    // Don't include unit field at all if it's empty - this prevents the validation error
+    
+    // Clean sections
+    cleaned.sections = cleaned.sections.map((section, index) => ({
+      section_type: section.section_type?.trim() || '',
+      title: section.title?.trim() || '',
+      content: section.content?.trim() || '',
+      order: typeof section.order === 'number' ? section.order : index + 1
+    })).filter(section => section.section_type && section.title && section.content);
+    
+    // Clean skills data
+    cleaned.required_skills_data = cleaned.required_skills_data.map(skill => ({
+      skill_id: parseInt(skill.skill_id),
+      proficiency_level: skill.proficiency_level?.trim() || 'INTERMEDIATE',
+      is_mandatory: Boolean(skill.is_mandatory)
+    })).filter(skill => skill.skill_id && !isNaN(skill.skill_id));
+    
+    // Clean competencies data
+    cleaned.behavioral_competencies_data = cleaned.behavioral_competencies_data.map(comp => ({
+      competency_id: parseInt(comp.competency_id),
+      proficiency_level: comp.proficiency_level?.trim() || 'INTERMEDIATE',
+      is_mandatory: Boolean(comp.is_mandatory)
+    })).filter(comp => comp.competency_id && !isNaN(comp.competency_id));
+    
+    return cleaned;
+  }
+
   // ========================================
   // JOB DESCRIPTIONS MAIN ENDPOINTS
   // ========================================
@@ -100,20 +245,85 @@ class JobDescriptionService {
 
   async createJobDescription(data) {
     try {
-      const response = await api.post('/job-descriptions/', data);
+      console.log('=== CREATE JOB DESCRIPTION DEBUG ===');
+      console.log('1. Raw input data:', JSON.stringify(data, null, 2));
+      
+      // Validate data
+      const validationErrors = this.validateJobDescriptionData(data);
+      if (validationErrors.length > 0) {
+        console.error('❌ Validation errors:', validationErrors);
+        throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      console.log('✅ Data validation passed');
+      
+      // Clean data
+      const cleanedData = this.cleanJobDescriptionData(data);
+      console.log('2. Cleaned data for API:', JSON.stringify(cleanedData, null, 2));
+      
+      // Log the request details
+      console.log('3. Making API request to:', `${API_BASE_URL}/job-descriptions/`);
+      
+      const response = await api.post('/job-descriptions/', cleanedData);
+      
+      console.log('✅ API Response success:', response.status);
+      console.log('4. Response data:', JSON.stringify(response.data, null, 2));
+      console.log('=== END DEBUG ===');
+      
       return response.data;
     } catch (error) {
-      console.error('Error creating job description:', error);
+      console.log('=== ERROR DEBUG ===');
+      console.error('❌ Full error object:', error);
+      
+      if (error.response) {
+        console.error('❌ Response status:', error.response.status);
+        console.error('❌ Response headers:', error.response.headers);
+        console.error('❌ Response data:', JSON.stringify(error.response.data, null, 2));
+        
+        // Log specific validation errors from API
+        if (error.response.data && typeof error.response.data === 'object') {
+          console.error('❌ API validation errors:');
+          Object.keys(error.response.data).forEach(field => {
+            console.error(`  - ${field}: ${error.response.data[field]}`);
+          });
+        }
+      } else if (error.request) {
+        console.error('❌ No response received:', error.request);
+      } else {
+        console.error('❌ Error setting up request:', error.message);
+      }
+      console.log('=== END ERROR DEBUG ===');
+      
       throw error;
     }
   }
 
   async updateJobDescription(id, data) {
     try {
-      const response = await api.put(`/job-descriptions/${id}/`, data);
+      console.log('=== UPDATE JOB DESCRIPTION DEBUG ===');
+      console.log('1. Job ID:', id);
+      console.log('2. Raw input data:', JSON.stringify(data, null, 2));
+      
+      // Validate data
+      const validationErrors = this.validateJobDescriptionData(data);
+      if (validationErrors.length > 0) {
+        console.error('❌ Validation errors:', validationErrors);
+        throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
+      }
+      
+      // Clean data
+      const cleanedData = this.cleanJobDescriptionData(data);
+      console.log('3. Cleaned data for API:', JSON.stringify(cleanedData, null, 2));
+      
+      const response = await api.put(`/job-descriptions/${id}/`, cleanedData);
+      console.log('✅ Update successful');
+      console.log('=== END UPDATE DEBUG ===');
+      
       return response.data;
     } catch (error) {
       console.error('Error updating job description:', error);
+      if (error.response) {
+        console.error('API Error Details:', error.response.data);
+      }
       throw error;
     }
   }
@@ -134,10 +344,18 @@ class JobDescriptionService {
 
   async submitForApproval(id, data) {
     try {
+      console.log('=== SUBMIT FOR APPROVAL DEBUG ===');
+      console.log('Job ID:', id);
+      console.log('Submission data:', JSON.stringify(data, null, 2));
+      
       const response = await api.post(`/job-descriptions/${id}/submit_for_approval/`, data);
+      console.log('✅ Submission successful');
       return response.data;
     } catch (error) {
       console.error('Error submitting for approval:', error);
+      if (error.response) {
+        console.error('API Error Details:', error.response.data);
+      }
       throw error;
     }
   }
@@ -311,16 +529,79 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // HELPER METHODS
+  // DEPARTMENT-UNIT VALIDATION HELPERS (COMPLETELY FIXED)
+  // ========================================
+
+  /**
+   * Get units that belong to a specific department
+   * FIXED: Use client-side filtering with all units data
+   */
+  getUnitsForDepartment(departmentId, allUnits) {
+    try {
+      console.log('🔍 Filtering units for department:', departmentId);
+      console.log('📦 All available units:', allUnits);
+      
+      if (!departmentId || !allUnits || !Array.isArray(allUnits)) {
+        console.log('❌ Invalid inputs for unit filtering');
+        return { results: [], count: 0 };
+      }
+
+      // Filter units by department ID from already loaded data
+      const departmentUnits = allUnits.filter(unit => 
+        unit.department === parseInt(departmentId)
+      );
+      
+      console.log(`✅ Found ${departmentUnits.length} units for department ${departmentId}:`, departmentUnits);
+      
+      return {
+        results: departmentUnits,
+        count: departmentUnits.length
+      };
+    } catch (error) {
+      console.error('❌ Error filtering units for department:', error);
+      return { results: [], count: 0 };
+    }
+  }
+
+  /**
+   * Validate if a unit belongs to a department
+   * FIXED: Use client-side validation with already loaded data
+   */
+  validateUnitDepartment(unitId, departmentId, allUnits) {
+    try {
+      console.log('🔍 Validating unit-department relationship:', { unitId, departmentId });
+      
+      if (!unitId || !departmentId || !allUnits) {
+        console.log('❌ Missing parameters for unit validation');
+        return true; // Allow if no unit selected
+      }
+
+      const unitsForDept = this.getUnitsForDepartment(departmentId, allUnits);
+      const departmentUnits = unitsForDept.results || [];
+      
+      const isValid = departmentUnits.some(unit => unit.id === parseInt(unitId));
+      
+      console.log(`${isValid ? '✅' : '❌'} Unit ${unitId} ${isValid ? 'belongs to' : 'does not belong to'} department ${departmentId}`);
+      
+      return isValid;
+    } catch (error) {
+      console.error('❌ Error validating unit-department relationship:', error);
+      return false;
+    }
+  }
+
+  // ========================================
+  // LEGACY HELPER METHODS (kept for backward compatibility)
   // ========================================
 
   prepareJobDescriptionData(formData) {
+    console.log('⚠️  Using legacy prepareJobDescriptionData method. Consider using the new cleanJobDescriptionData method.');
+    
     const apiData = {
       job_title: formData.job_title,
       job_purpose: formData.job_purpose,
       business_function: formData.business_function,
       department: formData.department,
-      unit: formData.unit || null,
       position_group: formData.position_group,
       grading_level: formData.grading_level,
       reports_to: formData.reports_to || null,
@@ -335,22 +616,30 @@ class JobDescriptionService {
       company_benefits_ids: formData.company_benefits_ids || []
     };
 
+    // CRITICAL FIX: Only include unit if it has a value
+    if (formData.unit && parseInt(formData.unit)) {
+      apiData.unit = formData.unit;
+    }
+
     // Process sections
     const sectionTypes = [
       { type: 'CRITICAL_DUTIES', title: 'Critical Duties', content: formData.criticalDuties },
-      { type: 'MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis },
+      { type: 'POSITION_MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis },
       { type: 'JOB_DUTIES', title: 'Job Duties', content: formData.jobDuties },
       { type: 'REQUIREMENTS', title: 'Requirements', content: formData.requirements }
     ];
 
     sectionTypes.forEach((section, index) => {
       if (section.content && Array.isArray(section.content) && section.content.length > 0) {
-        apiData.sections.push({
-          section_type: section.type,
-          title: section.title,
-          content: section.content.filter(item => item.trim()).join('\n• '),
-          order: index + 1
-        });
+        const validContent = section.content.filter(item => item && item.trim() !== '');
+        if (validContent.length > 0) {
+          apiData.sections.push({
+            section_type: section.type,
+            title: section.title,
+            content: validContent.map(item => `• ${item.trim()}`).join('\n'),
+            order: index + 1
+          });
+        }
       }
     });
 
@@ -374,7 +663,7 @@ class JobDescriptionService {
           case 'CRITICAL_DUTIES':
             sections.criticalDuties = content;
             break;
-          case 'MAIN_KPIS':
+          case 'POSITION_MAIN_KPIS':
             sections.positionMainKpis = content;
             break;
           case 'JOB_DUTIES':
@@ -412,11 +701,11 @@ class JobDescriptionService {
       created_at: apiData.created_at,
       updated_at: apiData.updated_at,
       ...sections,
-      required_skills: apiData.required_skills || [],
-      behavioral_competencies: apiData.behavioral_competencies || [],
-      business_resources: apiData.business_resources || [],
-      access_rights: apiData.access_rights || [],
-      company_benefits: apiData.company_benefits || [],
+      required_skills_data: (apiData.required_skills || []).map(skill => skill.skill?.id || skill.id),
+      behavioral_competencies_data: (apiData.behavioral_competencies || []).map(comp => comp.competency?.id || comp.id),
+      business_resources_ids: (apiData.business_resources || []).map(res => res.id),
+      access_rights_ids: (apiData.access_rights || []).map(access => access.id),
+      company_benefits_ids: (apiData.company_benefits || []).map(benefit => benefit.id),
       line_manager_approved: !!apiData.line_manager_approved_at,
       employee_approved: !!apiData.employee_approved_at,
       line_manager_comments: apiData.line_manager_comments,

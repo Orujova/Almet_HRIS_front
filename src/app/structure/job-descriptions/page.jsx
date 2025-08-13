@@ -1,4 +1,4 @@
-// pages/job-descriptions/JobDescriptionPage.jsx - Updated with Enhanced Competency Selection
+// pages/job-descriptions/JobDescriptionPage.jsx - Complete Fixed Version
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
@@ -31,7 +31,6 @@ import { useTheme } from '@/components/common/ThemeProvider';
 import jobDescriptionService from '@/services/jobDescriptionService';
 import competencyApi from '@/services/competencyApi';
 
-
 const JobDescriptionPage = () => {
   const { darkMode } = useTheme();
   
@@ -53,6 +52,7 @@ const JobDescriptionPage = () => {
   const [editingJob, setEditingJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  
   // State for submission workflow
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionComments, setSubmissionComments] = useState('');
@@ -79,6 +79,9 @@ const JobDescriptionPage = () => {
     companyBenefits: [],
     gradingLevels: []
   });
+
+  // NEW: Department-specific units state
+  const [departmentUnits, setDepartmentUnits] = useState([]);
 
   // Enhanced competency selection state
   const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
@@ -115,6 +118,17 @@ const JobDescriptionPage = () => {
     fetchInitialData();
   }, []);
 
+  // NEW: Load department-specific units when department changes
+  useEffect(() => {
+    if (formData.department) {
+      fetchUnitsForDepartment(formData.department);
+    } else {
+      setDepartmentUnits([]);
+      // Clear unit selection when department changes
+      setFormData(prev => ({ ...prev, unit: '' }));
+    }
+  }, [formData.department]);
+
   // Load grading levels when position group changes
   useEffect(() => {
     if (selectedPositionGroup) {
@@ -142,7 +156,18 @@ const JobDescriptionPage = () => {
     }
   }, [selectedBehavioralGroup]);
 
-  // Prepare data for API submission
+  // NEW: Fetch units for specific department
+  const fetchUnitsForDepartment = async (departmentId) => {
+    try {
+      const response = await jobDescriptionService.getUnitsForDepartment(departmentId);
+      setDepartmentUnits(response.results || []);
+    } catch (error) {
+      console.error('Error fetching units for department:', error);
+      setDepartmentUnits([]);
+    }
+  };
+
+  // FIXED: Prepare data for API submission
   const prepareJobDescriptionData = (formData) => {
     console.log('Preparing data for API:', formData);
     
@@ -151,13 +176,11 @@ const JobDescriptionPage = () => {
       job_purpose: formData.job_purpose,
       business_function: formData.business_function,
       department: formData.department,
-      unit: formData.unit || null,
       position_group: formData.position_group,
       grading_level: formData.grading_level || null,
       reports_to: formData.reports_to || null,
       assigned_employee: formData.assigned_employee || null,
       manual_employee_name: formData.manual_employee_name || '',
-     
       manual_employee_phone: formData.manual_employee_phone || '',
       sections: [],
       required_skills_data: [],
@@ -166,6 +189,12 @@ const JobDescriptionPage = () => {
       access_rights_ids: formData.access_rights_ids || [],
       company_benefits_ids: formData.company_benefits_ids || []
     };
+
+    // CRITICAL FIX: Only include unit if it has a valid value
+    if (formData.unit && parseInt(formData.unit)) {
+      apiData.unit = parseInt(formData.unit);
+    }
+    // Don't include unit field at all if it's empty
 
     // Process sections
     const sectionTypes = [
@@ -189,21 +218,21 @@ const JobDescriptionPage = () => {
       }
     });
 
-    // Process required skills
+    // Process required skills - FIXED: Handle both array formats
     if (formData.required_skills_data && formData.required_skills_data.length > 0) {
       apiData.required_skills_data = formData.required_skills_data.map(skillId => ({
-        skill_id: skillId,
-        proficiency_level: "INTERMEDIATE", // Default proficiency
-        is_mandatory: true // Default to mandatory
+        skill_id: parseInt(skillId),
+        proficiency_level: "INTERMEDIATE",
+        is_mandatory: true
       }));
     }
 
-    // Process behavioral competencies
+    // Process behavioral competencies - FIXED: Handle both array formats  
     if (formData.behavioral_competencies_data && formData.behavioral_competencies_data.length > 0) {
       apiData.behavioral_competencies_data = formData.behavioral_competencies_data.map(competencyId => ({
-        competency_id: competencyId,
-        proficiency_level: "INTERMEDIATE", // Default proficiency
-        is_mandatory: true // Default to mandatory
+        competency_id: parseInt(competencyId),
+        proficiency_level: "INTERMEDIATE",
+        is_mandatory: true
       }));
     }
 
@@ -404,90 +433,119 @@ const JobDescriptionPage = () => {
     });
   }, [jobDescriptions, searchTerm, selectedDepartment]);
 
-  // Handle form submission
+  // ENHANCED: Handle form submission with better validation
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // Enhanced validation with detailed error messages
-  const errors = [];
-  
-  if (!formData.job_title?.trim()) {
-    errors.push('Job Title is required');
-  }
-  if (!formData.job_purpose?.trim()) {
-    errors.push('Job Purpose is required');
-  }
-  if (!formData.business_function) {
-    errors.push('Business Function is required');
-  }
-  if (!formData.department) {
-    errors.push('Department is required');
-  }
-  if (!formData.position_group) {
-    errors.push('Position Group is required');
-  }
-  
-  // Check if at least one item exists in required arrays and has content
-  const criticalDutiesValid = formData.criticalDuties && 
-    formData.criticalDuties.some(duty => duty.trim() !== '');
-  if (!criticalDutiesValid) {
-    errors.push('At least one Critical Duty is required');
-  }
-  
-  const positionMainKpisValid = formData.positionMainKpis && 
-    formData.positionMainKpis.some(kpi => kpi.trim() !== '');
-  if (!positionMainKpisValid) {
-    errors.push('At least one Position Main KPI is required');
-  }
-  
-  const jobDutiesValid = formData.jobDuties && 
-    formData.jobDuties.some(duty => duty.trim() !== '');
-  if (!jobDutiesValid) {
-    errors.push('At least one Job Duty is required');
-  }
-  
-  const requirementsValid = formData.requirements && 
-    formData.requirements.some(req => req.trim() !== '');
-  if (!requirementsValid) {
-    errors.push('At least one Requirement is required');
-  }
-
-  if (errors.length > 0) {
-    alert('Please fix the following errors:\n\n' + errors.join('\n'));
-    return;
-  }
-
-  try {
-    setActionLoading(true);
+    e.preventDefault();
     
-    console.log('Form data before processing:', formData); // Debug log
+    // Enhanced validation with detailed error messages
+    const errors = [];
     
-    // Call the prepareJobDescriptionData function and assign the result to apiData
-    const apiData = prepareJobDescriptionData(formData);
-    
-    console.log('API data being sent:', apiData); // Debug log
-    
-    if (editingJob) {
-      await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
-      alert('Job description updated successfully!');
-      await fetchJobDescriptions();
-      await fetchStats();
-      resetForm();
-    } else {
-      // Create job description (will be in DRAFT status)
-      const createdJob = await jobDescriptionService.createJobDescription(apiData);
-      setCreatedJobId(createdJob.id);
-      
-      // Show submission modal to ask if they want to submit for approval
-      setShowSubmissionModal(true);
+    if (!formData.job_title?.trim()) {
+      errors.push('Job Title is required');
     }
-  } catch (error) {
-    console.error('Error saving job description:', error);
-    alert('Error saving job description: ' + (error.response?.data?.message || error.message || 'Please try again.'));
-  } finally {
-    setActionLoading(false);
-  }
-};
+    if (!formData.job_purpose?.trim()) {
+      errors.push('Job Purpose is required');
+    }
+    if (!formData.business_function) {
+      errors.push('Business Function is required');
+    }
+    if (!formData.department) {
+      errors.push('Department is required');
+    }
+    if (!formData.position_group) {
+      errors.push('Position Group is required');
+    }
+    
+    // NEW: Validate unit-department relationship if unit is selected
+    if (formData.unit && formData.department) {
+      const isValidUnit = departmentUnits.some(unit => unit.id === parseInt(formData.unit));
+      if (!isValidUnit) {
+        errors.push('Selected unit does not belong to the selected department');
+      }
+    }
+    
+    // Check if at least one item exists in required arrays and has content
+    const criticalDutiesValid = formData.criticalDuties && 
+      formData.criticalDuties.some(duty => duty.trim() !== '');
+    if (!criticalDutiesValid) {
+      errors.push('At least one Critical Duty is required');
+    }
+    
+    const positionMainKpisValid = formData.positionMainKpis && 
+      formData.positionMainKpis.some(kpi => kpi.trim() !== '');
+    if (!positionMainKpisValid) {
+      errors.push('At least one Position Main KPI is required');
+    }
+    
+    const jobDutiesValid = formData.jobDuties && 
+      formData.jobDuties.some(duty => duty.trim() !== '');
+    if (!jobDutiesValid) {
+      errors.push('At least one Job Duty is required');
+    }
+    
+    const requirementsValid = formData.requirements && 
+      formData.requirements.some(req => req.trim() !== '');
+    if (!requirementsValid) {
+      errors.push('At least one Requirement is required');
+    }
+
+    if (errors.length > 0) {
+      alert('Please fix the following errors:\n\n' + errors.join('\n'));
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      
+      console.log('Form data before processing:', formData); // Debug log
+      
+      // Use the updated prepareJobDescriptionData function
+      const apiData = prepareJobDescriptionData(formData);
+      
+      console.log('API data being sent:', apiData); // Debug log
+      
+      if (editingJob) {
+        await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
+        alert('Job description updated successfully!');
+        await fetchJobDescriptions();
+        await fetchStats();
+        resetForm();
+      } else {
+        // Create job description (will be in DRAFT status)
+        const createdJob = await jobDescriptionService.createJobDescription(apiData);
+        setCreatedJobId(createdJob.id);
+        
+        // Show submission modal to ask if they want to submit for approval
+        setShowSubmissionModal(true);
+      }
+    } catch (error) {
+      console.error('Error saving job description:', error);
+      
+      // Enhanced error handling with specific messages
+      let errorMessage = 'Error saving job description: ';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage += error.response.data;
+        } else if (typeof error.response.data === 'object') {
+          const errorDetails = [];
+          Object.keys(error.response.data).forEach(field => {
+            const fieldErrors = Array.isArray(error.response.data[field]) 
+              ? error.response.data[field].join(', ')
+              : error.response.data[field];
+            errorDetails.push(`${field}: ${fieldErrors}`);
+          });
+          errorMessage += errorDetails.join('\n');
+        }
+      } else {
+        errorMessage += error.message || 'Please try again.';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   // Handle submission for approval
   const handleSubmitForApproval = async () => {
@@ -530,7 +588,7 @@ const JobDescriptionPage = () => {
     resetForm();
   };
 
-  // Reset form
+  // ENHANCED: Reset form with department units clearing
   const resetForm = () => {
     setFormData({
       job_title: '',
@@ -561,6 +619,7 @@ const JobDescriptionPage = () => {
     setSelectedPositionGroup('');
     setAvailableSkills([]);
     setAvailableCompetencies([]);
+    setDepartmentUnits([]); // Clear department units
     setDropdownData(prev => ({ ...prev, gradingLevels: [] }));
   };
 
@@ -790,6 +849,7 @@ const JobDescriptionPage = () => {
       </div>
     );
   };
+
   const MultiSelect = ({ options, selected, onChange, placeholder, fieldName }) => {
     const [isOpen, setIsOpen] = useState(false);
     
@@ -1146,6 +1206,7 @@ const JobDescriptionPage = () => {
                       />
                     </div>
                     
+                    {/* UPDATED: Department field with unit clearing */}
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                         Department <span className="text-red-500">*</span>
@@ -1153,21 +1214,30 @@ const JobDescriptionPage = () => {
                       <SearchableSelect
                         options={dropdownData.departments}
                         value={formData.department}
-                        onChange={(value) => setFormData({...formData, department: value})}
+                        onChange={(value) => {
+                          setFormData({...formData, department: value, unit: ''}); // Clear unit when department changes
+                        }}
                         placeholder="Select Department"
                       />
                     </div>
                     
+                    {/* UPDATED: Unit field with department dependency */}
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                         Unit
                       </label>
                       <SearchableSelect
-                        options={dropdownData.units}
+                        options={departmentUnits} // Use department-specific units instead of all units
                         value={formData.unit}
                         onChange={(value) => setFormData({...formData, unit: value})}
-                        placeholder="Select Unit"
+                        placeholder={formData.department ? "Select Unit" : "Select Department First"}
+                        disabled={!formData.department} // Disable if no department selected
                       />
+                      {formData.department && departmentUnits.length === 0 && (
+                        <p className={`text-xs ${textMuted} mt-1`}>
+                          No units available for selected department
+                        </p>
+                      )}
                     </div>
                     
                     <div>
@@ -1501,6 +1571,7 @@ const JobDescriptionPage = () => {
               </div>
             </div>
           )}
+
           {/* Submission Modal */}
           {showSubmissionModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
