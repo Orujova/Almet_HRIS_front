@@ -1,8 +1,28 @@
 "use client";
-import { Calendar, Users, LineChart, Plane } from "lucide-react";
+import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
+
+const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
+  return (
+    <div className={`${isHighlight ? 'bg-blue-700/60' : 'bg-white/10'} backdrop-blur-sm rounded-xl p-4 text-white`}>
+      <div className="flex items-center justify-between mb-2">
+        <div className={`p-1 ${isHighlight ? 'bg-white/30' : 'bg-white/20'} rounded-lg`}>
+          {icon}
+        </div>
+      </div>
+      <h3 className="text-white/80 text-sm font-medium mb-1">{title}</h3>
+      <div className="text-xl font-bold mb-1">{value}</div>
+      <p className="text-white/70 text-sm mb-4">{subtitle}</p>
+      {actionText && (
+        <button className={`${isHighlight ? 'bg-white/30 hover:bg-white/40' : 'bg-white/20 hover:bg-white/30'} text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors`}>
+          {actionText}
+        </button>
+      )}
+    </div>
+  );
+};
 
 const ActionCard = ({ icon, title, description, href }) => {
   return (
@@ -69,22 +89,59 @@ export default function Home() {
   
   return (
     <DashboardLayout>
-      {/* Welcome Banner */}
+      {/* Enhanced Welcome Banner */}
       <div className="bg-almet-sapphire rounded-lg overflow-hidden mb-6 shadow-md">
-        <div className="flex flex-col md:flex-row">
-          <div className="p-5 md:w-2/3">
-            <h1 className="text-xl md:text-2xl font-bold text-white mb-2">
-              {account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!"}
-            </h1>
-            <p className="text-blue-100 text-sm">
-              Your comprehensive HR management platform
-            </p>
+        <div className="p-4">
+          {/* Header Section */}
+          <div className="flex flex-col md:flex-row justify-between items-start mb-4">
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
+                {account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!"}
+              </h1>
+              <p className="text-blue-100 text-xs md:text-sm">
+                Your key stats and quick actions for the day.
+              </p>
+            </div>
+            <div className="flex gap-2 mt-4 md:mt-0">
+              <button className="bg-white text-almet-sapphire px-4 py-2 rounded-lg font-medium text-sm">
+                Employee
+              </button>
+              <button className="bg-white/20 border border-white/30 text-white px-4 py-2 rounded-lg font-medium text-sm">
+                Manager
+              </button>
+            </div>
           </div>
-          <div className="md:w-1/3">
-            <img
-              src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2970&q=80"
-              alt="Office meeting"
-              className="h-full w-full object-cover"
+          
+          {/* Key Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatsCard
+              icon={<Clock className="h-5 w-5" />}
+              title="My Leave Balance"
+              value="12"
+              subtitle="days available"
+              actionText="Request Leave"
+              isHighlight={true}
+            />
+            <StatsCard
+              icon={<CheckCircle className="h-5 w-5" />}
+              title="My Requests"
+              value="1"
+              subtitle="pending approval"
+              actionText="View All Requests"
+            />
+            <StatsCard
+              icon={<TrendingUp className="h-5 w-5" />}
+              title="Performance"
+              value="Nov 30"
+              subtitle="Next review on:"
+              actionText="View History"
+            />
+            <StatsCard
+              icon={<Bell className="h-5 w-5" />}
+              title="Info Center"
+              value="2"
+              subtitle="Latest company updates."
+              actionText="Read Company News"
             />
           </div>
         </div>

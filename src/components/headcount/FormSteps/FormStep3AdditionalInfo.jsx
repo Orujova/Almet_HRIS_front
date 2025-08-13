@@ -622,36 +622,7 @@ const FormStep3AdditionalInfo = ({
         />
       )}
 
-      {/* Progress Indicator */}
-      <div className="bg-almet-mystic dark:bg-gray-700 rounded-md p-3 border border-almet-bali-hai dark:border-gray-600">
-        <div className="flex items-center justify-between mb-1">
-          <span className={`text-xs font-medium ${textSecondary}`}>Optional Info Completion</span>
-          <span className={`text-xs font-medium ${textPrimary}`}>
-            {Math.round(([
-              formData.profile_image,
-              formData.line_manager,
-              formData.tag_ids?.length > 0 ? formData.tag_ids : null,
-              formData.notes
-            ].filter(Boolean).length / 4) * 100)}%
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
-          <div 
-            className="bg-almet-sapphire h-1.5 rounded-full transition-all duration-300"
-            style={{ 
-              width: `${([
-                formData.profile_image,
-                formData.line_manager,
-                formData.tag_ids?.length > 0 ? formData.tag_ids : null,
-                formData.notes
-              ].filter(Boolean).length / 4) * 100}%` 
-            }}
-          />
-        </div>
-        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-          All fields in this step are optional
-        </div>
-      </div>
+      
     </div>
   );
 };

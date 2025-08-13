@@ -76,10 +76,9 @@ export default function Login() {
               </div>
               
               {/* Title */}
-              <h1 className="text-3xl font-bold text-almet-cloud-burst dark:text-white mb-4 leading-tight">
-                Human Resources
-                <br />
-                <span className="text-almet-sapphire">Management System</span>
+              <h1 className="text-3xl font-bold text-almet-sapphire dark:text-white mb-4 leading-tight">
+             
+                   My Almet
               </h1>
               
               {/* Description */}

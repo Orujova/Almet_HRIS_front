@@ -85,21 +85,7 @@ const EmployeeTable = ({
         </table>
       </div>
       
-      {/* YENİ: Table Footer Summary (optional) */}
-      {employees.length > 0 && (
-        <div className={`px-6 py-3 border-t ${styles.borderColor} bg-gray-50 dark:bg-gray-800`}>
-          <div className="flex justify-between items-center text-sm">
-            <span className={styles.textMuted}>
-              {employees.length} employee{employees.length !== 1 ? 's' : ''} displayed
-            </span>
-            {selectedEmployees.length > 0 && (
-              <span className={`${styles.textPrimary} font-medium`}>
-                {selectedEmployees.length} selected
-              </span>
-            )}
-          </div>
-        </div>
-      )}
+   
     </div>
   );
 };
