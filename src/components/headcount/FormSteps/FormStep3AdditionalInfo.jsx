@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Enhanced with Multi-Select Tags and Image Upload
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Compact & User-Friendly Design
 import { useState, useEffect, useCallback } from "react";
 import { 
   Users, 
@@ -52,14 +52,14 @@ const FormStep3AdditionalInfo = ({
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Theme classes
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const bgInput = darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-gray-300";
+  // Theme classes with Almet colors
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
+  const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
+  const bgInput = darkMode ? "bg-gray-700 border-gray-600" : "bg-white border-almet-bali-hai";
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const bgAccent = darkMode ? "bg-gray-700" : "bg-gray-50";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  const bgAccent = darkMode ? "bg-gray-700" : "bg-almet-mystic";
+  const borderColor = darkMode ? "border-gray-700" : "border-almet-bali-hai";
   const focusRing = "focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire";
 
   // Initialize image preview if editing
@@ -222,45 +222,56 @@ const FormStep3AdditionalInfo = ({
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 relative">
       {/* Section Header */}
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-6">
-        <h2 className={`text-lg font-bold ${textPrimary}`}>
+      <div className="flex justify-between items-center border-b border-almet-bali-hai dark:border-gray-700 pb-2 mb-4">
+        <h2 className={`text-base font-bold ${textPrimary}`}>
           Additional Information
         </h2>
-        <div className="text-xs px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded font-medium">
+        <div className="text-[10px] px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded font-medium">
           Step 3 of 4 (Optional)
         </div>
       </div>
 
       {/* Profile Image Section */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center space-x-2">
-          <Camera className="text-blue-500" size={16} />
-          <h4 className={`text-sm font-medium ${textPrimary}`}>Profile Image</h4>
+          <Camera className="text-almet-sapphire" size={12} />
+          <h4 className={`text-xs font-medium ${textPrimary}`}>Profile Image</h4>
+          <span className={`text-[10px] ${textMuted} ml-auto`}>Optional</span>
         </div>
 
-        <div className="flex items-start space-x-6">
+        <div className="flex items-center space-x-4">
           {/* Image Preview */}
-          <div className="relative">
-            <div className={`w-24 h-24 rounded-lg border-2 border-dashed ${borderColor} flex items-center justify-center overflow-hidden`}>
+          <div className="relative flex-shrink-0">
+            <div className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
+              imagePreview 
+                ? 'border-almet-sapphire/30 shadow-md' 
+                : `border-dashed ${borderColor} bg-almet-mystic/50 dark:bg-gray-800`
+            }`}>
               {imagePreview ? (
-                <img 
-                  src={imagePreview} 
-                  alt="Profile preview" 
-                  className="w-full h-full object-cover rounded-lg"
-                />
+                <div className="relative w-full h-full group">
+                  <img 
+                    src={imagePreview} 
+                    alt="Profile preview" 
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300 flex items-center justify-center">
+                    <Camera size={12} className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
               ) : (
-                <div className="text-center">
-                  <ImageIcon size={24} className={textMuted} />
-                  <p className={`text-xs ${textMuted} mt-1`}>No Image</p>
+                <div className="w-full h-full flex flex-col items-center justify-center">
+                  <ImageIcon size={14} className={`${textMuted} mb-1`} />
+                  <p className={`text-[9px] ${textMuted} font-medium`}>No Image</p>
                 </div>
               )}
               
               {/* Loading overlay */}
               {uploadingImage && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
-                  <Loader size={16} className="text-white animate-spin" />
+                <div className="absolute inset-0 bg-almet-sapphire/90 flex items-center justify-center">
+                  <Loader size={12} className="text-white animate-spin" />
                 </div>
               )}
             </div>
@@ -270,15 +281,15 @@ const FormStep3AdditionalInfo = ({
               <button
                 type="button"
                 onClick={handleRemoveImage}
-                className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                className="absolute -top-1 -right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-sm"
                 title="Remove image"
               >
-                <X size={12} />
+                <X size={8} />
               </button>
             )}
           </div>
 
-          {/* Upload controls */}
+          {/* Upload Controls */}
           <div className="flex-1">
             <input
               type="file"
@@ -289,43 +300,60 @@ const FormStep3AdditionalInfo = ({
               disabled={uploadingImage}
             />
             
-            <div className="space-y-3">
+            <div className="space-y-2">
+              {/* Upload Button */}
               <label
                 htmlFor="profile-image-upload"
-                className={`inline-flex items-center px-4 py-2 rounded-lg border transition-colors cursor-pointer ${
+                className={`inline-flex items-center px-3 py-1.5 rounded-md transition-all duration-200 cursor-pointer text-xs font-medium ${
                   uploadingImage 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : `${bgInput} ${textSecondary} hover:bg-gray-100 dark:hover:bg-gray-600`
+                    ? 'opacity-50 cursor-not-allowed bg-gray-300 text-gray-500' 
+                    : 'bg-almet-sapphire hover:bg-almet-astral text-white shadow-sm hover:shadow-md'
                 }`}
               >
-                <Upload size={16} className="mr-2" />
-                {imagePreview ? 'Change Image' : 'Upload Image'}
+                <Upload size={10} className="mr-1.5" />
+                {uploadingImage ? 'Uploading...' : imagePreview ? 'Change Image' : 'Upload Image'}
               </label>
               
-              <div className={`text-xs ${textMuted} space-y-1`}>
-                <p>• Recommended size: 400x400 pixels</p>
-                <p>• Supported formats: JPG, PNG, GIF, BMP</p>
-                <p>• Maximum file size: 5MB</p>
+              {/* File Info */}
+              <div className={`text-[10px] ${textMuted} leading-relaxed`}>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  <span>• Max: 5MB</span>
+                  <span>• Recommended: 400×400px</span>
+                  <span>• Formats: JPG, PNG, GIF</span>
+                </div>
               </div>
+
+              {/* Success Message */}
+              {imagePreview && formData.profile_image && !uploadingImage && (
+                <div className="flex items-center space-x-1">
+                  <Check size={10} className="text-green-600 dark:text-green-400" />
+                  <span className="text-[10px] text-green-700 dark:text-green-400 font-medium">
+                    {formData.profile_image instanceof File 
+                      ? `${formData.profile_image.name.length > 20 ? formData.profile_image.name.substring(0, 20) + '...' : formData.profile_image.name}`
+                      : 'Image uploaded'
+                    }
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
       {/* Line Manager Section */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Users className="text-blue-500" size={16} />
-            <h4 className={`text-sm font-medium ${textPrimary}`}>Line Manager Assignment</h4>
+            <Users className="text-almet-steel-blue" size={12} />
+            <h4 className={`text-xs font-medium ${textPrimary}`}>Line Manager</h4>
           </div>
           {selectedLineManager && (
             <button
               type="button"
               onClick={clearLineManager}
-              className="text-xs text-red-500 hover:text-red-600 transition-colors"
+              className="text-[10px] text-red-500 hover:text-red-600 transition-colors"
             >
-              Clear Selection
+              Clear
             </button>
           )}
         </div>
@@ -333,77 +361,77 @@ const FormStep3AdditionalInfo = ({
         {/* Line Manager Search */}
         <div className="relative">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={12} />
             <input
               type="text"
-              placeholder="Search employees by name, ID, job title, department, or email..."
+              placeholder="Search employees by name, ID, or department..."
               value={lineManagerSearch || ""}
               onChange={handleLineManagerSearchChange}
-              className={`w-full pl-10 pr-10 py-3 rounded-lg border transition-colors duration-200 ${bgInput} ${focusRing} ${textPrimary} text-sm`}
+              className={`w-full pl-8 pr-8 py-2 rounded-md border transition-colors duration-200 ${bgInput} ${focusRing} ${textPrimary} text-xs`}
             />
             {loadingLineManagers && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <Loader size={16} className="animate-spin text-gray-400" />
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <Loader size={12} className="animate-spin text-gray-400" />
               </div>
             )}
           </div>
 
           {/* Line Manager Dropdown */}
           {showLineManagerDropdown && Array.isArray(lineManagerOptions) && lineManagerOptions.length > 0 && (
-            <div className={`absolute z-20 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-64 overflow-y-auto`}>
+            <div className={`absolute z-30 w-full mt-1 ${bgCard} border ${borderColor} rounded-md shadow-lg max-h-48 overflow-y-auto`}>
               {lineManagerOptions.map((manager) => (
                 <button
                   key={manager.id}
                   type="button"
                   onClick={() => handleLineManagerSelect(manager)}
-                  className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors`}
+                  className={`w-full p-3 text-left hover:bg-almet-mystic dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors`}
                 >
-                  <div className="flex items-start space-x-3">
-                    <div className="w-10 h-10 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Users size={16} className="text-almet-sapphire" />
+                  <div className="flex items-start space-x-2">
+                    <div className="w-8 h-8 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Users size={12} className="text-almet-sapphire" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
-                        <p className={`font-medium ${textPrimary} text-sm`}>{manager.name || 'Unknown'}</p>
+                        <p className={`font-medium ${textPrimary} text-xs`}>{manager.name || 'Unknown'}</p>
                         {manager.grading_level && (
-                          <span className="px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+                          <span className="px-1 py-0.5 text-[9px] bg-almet-sapphire/10 text-almet-sapphire rounded">
                             {manager.grading_level}
                           </span>
                         )}
                       </div>
-                      <p className={`text-xs ${textMuted} mb-1`}>
+                      <p className={`text-[10px] ${textMuted} mb-1`}>
                         <span className="font-medium">ID:</span> {manager.employee_id || 'N/A'} • 
                         <span className="font-medium"> Title:</span> {manager.job_title || 'No Title'}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className={`text-xs ${textMuted} flex items-center`}>
-                          <Building size={10} className="inline mr-1" />
+                        <span className={`text-[10px] ${textMuted} flex items-center`}>
+                          <Building size={8} className="inline mr-1" />
                           {manager.business_function || 'N/A'} / {manager.department || 'N/A'}
                         </span>
                         {manager.position_group_name && (
-                          <span className={`text-xs ${textMuted}`}>
-                            <Award size={10} className="inline mr-1" />
+                          <span className={`text-[10px] ${textMuted}`}>
+                            <Award size={8} className="inline mr-1" />
                             {manager.position_group_name}
                           </span>
                         )}
                       </div>
                       <div className="flex items-center space-x-3 mt-1">
                         {manager.email && (
-                          <span className={`text-xs ${textMuted}`}>
-                            <Mail size={10} className="inline mr-1" />
+                          <span className={`text-[10px] ${textMuted}`}>
+                            <Mail size={8} className="inline mr-1" />
                             {manager.email}
                           </span>
                         )}
                         {manager.phone && (
-                          <span className={`text-xs ${textMuted}`}>
-                            <Phone size={10} className="inline mr-1" />
+                          <span className={`text-[10px] ${textMuted}`}>
+                            <Phone size={8} className="inline mr-1" />
                             {manager.phone}
                           </span>
                         )}
                       </div>
                       {manager.start_date && (
-                        <div className={`text-xs ${textMuted} mt-1`}>
-                          <Calendar size={10} className="inline mr-1" />
+                        <div className={`text-[10px] ${textMuted} mt-1`}>
+                          <Calendar size={8} className="inline mr-1" />
                           Started: {new Date(manager.start_date).toLocaleDateString()}
                         </div>
                       )}
@@ -416,9 +444,9 @@ const FormStep3AdditionalInfo = ({
 
           {/* No results message */}
           {showLineManagerDropdown && lineManagerSearch && Array.isArray(lineManagerOptions) && lineManagerOptions.length === 0 && !loadingLineManagers && (
-            <div className={`absolute z-20 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg p-4 text-center`}>
-              <p className={`text-sm ${textMuted}`}>
-                No line managers found. Try a different search term.
+            <div className={`absolute z-30 w-full mt-1 ${bgCard} border ${borderColor} rounded-md p-3 text-center`}>
+              <p className={`text-xs ${textMuted}`}>
+                No managers found. Try different search terms.
               </p>
             </div>
           )}
@@ -426,48 +454,34 @@ const FormStep3AdditionalInfo = ({
 
         {/* Selected Line Manager Display */}
         {selectedLineManager && (
-          <div className={`p-4 rounded-lg border border-green-200 dark:border-green-800 ${bgAccent}`}>
+          <div className={`p-3 rounded-md border border-green-200 dark:border-green-800 ${bgAccent}`}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <Users size={18} className="text-green-600 dark:text-green-400" />
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                  <Users size={12} className="text-green-600 dark:text-green-400" />
                 </div>
                 <div>
                   <div className="flex items-center space-x-2 mb-1">
-                    <p className={`font-medium ${textPrimary}`}>{selectedLineManager.name || 'Unknown'}</p>
+                    <p className={`font-medium ${textPrimary} text-xs`}>{selectedLineManager.name || 'Unknown'}</p>
                     {selectedLineManager.grading_level && (
-                      <span className="px-2 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
+                      <span className="px-1 py-0.5 text-[9px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded">
                         {selectedLineManager.grading_level}
                       </span>
                     )}
                   </div>
-                  <p className={`text-sm ${textMuted} mb-1`}>
+                  <p className={`text-[10px] ${textMuted} mb-1`}>
                     <span className="font-medium">ID:</span> {selectedLineManager.employee_id || 'N/A'} • 
                     <span className="font-medium"> Title:</span> {selectedLineManager.job_title || 'No Title'}
                   </p>
                   <div className="flex flex-wrap items-center gap-3 mt-1">
-                    <span className={`text-xs ${textMuted}`}>
-                      <Building size={10} className="inline mr-1" />
+                    <span className={`text-[10px] ${textMuted}`}>
+                      <Building size={8} className="inline mr-1" />
                       {selectedLineManager.business_function || 'N/A'} / {selectedLineManager.department || 'N/A'}
                     </span>
                     {selectedLineManager.position_group_name && (
-                      <span className={`text-xs ${textMuted}`}>
-                        <Award size={10} className="inline mr-1" />
+                      <span className={`text-[10px] ${textMuted}`}>
+                        <Award size={8} className="inline mr-1" />
                         {selectedLineManager.position_group_name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-3 mt-1">
-                    {selectedLineManager.email && (
-                      <span className={`text-xs ${textMuted}`}>
-                        <Mail size={10} className="inline mr-1" />
-                        {selectedLineManager.email}
-                      </span>
-                    )}
-                    {selectedLineManager.phone && (
-                      <span className={`text-xs ${textMuted}`}>
-                        <Phone size={10} className="inline mr-1" />
-                        {selectedLineManager.phone}
                       </span>
                     )}
                   </div>
@@ -476,10 +490,10 @@ const FormStep3AdditionalInfo = ({
               <button
                 type="button"
                 onClick={clearLineManager}
-                className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 transition-colors"
+                className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 transition-colors"
                 title="Remove line manager"
               >
-                <X size={16} />
+                <X size={12} />
               </button>
             </div>
           </div>
@@ -487,17 +501,17 @@ const FormStep3AdditionalInfo = ({
       </div>
 
       {/* Employee Tags Section */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Tag className="text-green-500" size={16} />
-            <h4 className={`text-sm font-medium ${textPrimary}`}>Employee Tags</h4>
+            <Tag className="text-almet-san-juan" size={12} />
+            <h4 className={`text-xs font-medium ${textPrimary}`}>Employee Tags</h4>
           </div>
         </div>
 
         {/* Multi-Select Tags Dropdown */}
         <div>
-          <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+          <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
             Select Tags
           </label>
           <MultiSelectDropdown
@@ -509,10 +523,11 @@ const FormStep3AdditionalInfo = ({
             showDescriptions={true}
             searchable={true}
             className="w-full"
+            size="sm"
           />
           
           {formData.tag_ids && formData.tag_ids.length > 0 && (
-            <div className={`text-xs ${textMuted} mt-2`}>
+            <div className={`text-[10px] ${textMuted} mt-1`}>
               {formData.tag_ids.length} tag{formData.tag_ids.length !== 1 ? 's' : ''} selected
             </div>
           )}
@@ -520,23 +535,23 @@ const FormStep3AdditionalInfo = ({
 
         {/* No tags message */}
         {(!formattedTagOptions || formattedTagOptions.length === 0) && (
-          <div className={`text-center py-6 ${bgAccent} rounded-lg border ${borderColor}`}>
-            <Tag size={32} className={`mx-auto mb-3 ${textMuted} opacity-50`} />
-            <p className={`text-sm ${textMuted}`}>
-              No tags available. Contact administrator to create tags.
+          <div className={`text-center py-4 ${bgAccent} rounded-md border ${borderColor}`}>
+            <Tag size={24} className={`mx-auto mb-2 ${textMuted} opacity-50`} />
+            <p className={`text-xs ${textMuted}`}>
+              No tags available. Contact administrator.
             </p>
           </div>
         )}
       </div>
 
       {/* Organizational Chart Visibility */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center space-x-2">
-          <Eye className="text-indigo-500" size={16} />
-          <h4 className={`text-sm font-medium ${textPrimary}`}>Organization Chart Visibility</h4>
+          <Eye className="text-indigo-500" size={12} />
+          <h4 className={`text-xs font-medium ${textPrimary}`}>Org Chart Visibility</h4>
         </div>
 
-        <div className={`p-4 rounded-lg border ${borderColor} ${bgAccent}`}>
+        <div className={`p-3 rounded-md border ${borderColor} ${bgAccent}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <button
@@ -544,47 +559,46 @@ const FormStep3AdditionalInfo = ({
                 onClick={() => handleInputChange({
                   target: { name: 'is_visible_in_org_chart', value: !formData.is_visible_in_org_chart }
                 })}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:ring-offset-2 ${
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:ring-offset-2 ${
                   formData.is_visible_in_org_chart ? 'bg-almet-sapphire' : 'bg-gray-200 dark:bg-gray-600'
                 }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    formData.is_visible_in_org_chart ? 'translate-x-6' : 'translate-x-1'
+                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    formData.is_visible_in_org_chart ? 'translate-x-5' : 'translate-x-1'
                   }`}
                 />
               </button>
               <div className="flex items-center space-x-2">
                 {formData.is_visible_in_org_chart ? (
-                  <Eye className="text-green-500" size={16} />
+                  <Eye className="text-green-500" size={12} />
                 ) : (
-                  <EyeOff className="text-gray-400" size={16} />
+                  <EyeOff className="text-gray-400" size={12} />
                 )}
-                <span className={`text-sm ${textSecondary}`}>
+                <span className={`text-xs ${textSecondary}`}>
                   {formData.is_visible_in_org_chart 
-                    ? 'Employee will appear in organization chart' 
-                    : 'Employee will be hidden from organization chart'
+                    ? 'Visible in org chart' 
+                    : 'Hidden from org chart'
                   }
                 </span>
               </div>
             </div>
           </div>
           
-          <div className={`mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded text-xs ${textMuted}`}>
+          <div className={`mt-2 p-2 bg-almet-sapphire/5 dark:bg-blue-900/20 rounded text-[10px] ${textMuted}`}>
             <p>
-              <strong>Note:</strong> Hiding an employee from the org chart will not affect their 
-              reporting relationships or access to systems. This setting only controls visibility 
-              in organizational hierarchy displays.
+              <strong>Note:</strong> This only affects visibility in org chart displays. 
+              Reporting relationships and system access remain unchanged.
             </p>
           </div>
         </div>
       </div>
 
       {/* Additional Notes */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <div className="flex items-center space-x-2">
-          <AlertCircle className="text-orange-500" size={16} />
-          <h4 className={`text-sm font-medium ${textPrimary}`}>Additional Notes</h4>
+          <AlertCircle className="text-orange-500" size={12} />
+          <h4 className={`text-xs font-medium ${textPrimary}`}>Additional Notes</h4>
         </div>
 
         <FormField
@@ -593,20 +607,51 @@ const FormStep3AdditionalInfo = ({
           type="textarea"
           value={formData.notes || ""}
           onChange={handleInputChange}
-          placeholder="Enter any additional notes, special instructions, or relevant information about the employee..."
-          rows={4}
+          placeholder="Enter additional notes, special instructions, or relevant information..."
+          rows={3}
           validationError={validationErrors.notes}
-          helpText="These notes are visible to HR administrators and can include onboarding instructions, special accommodations, or other relevant information."
+          helpText="Notes for HR administrators (onboarding instructions, accommodations, etc.)"
         />
       </div>
 
       {/* Click outside handler for line manager dropdown */}
       {showLineManagerDropdown && (
         <div
-          className="fixed inset-0 z-10"
+          className="fixed inset-0 z-20"
           onClick={() => setShowLineManagerDropdown(false)}
         />
       )}
+
+      {/* Progress Indicator */}
+      <div className="bg-almet-mystic dark:bg-gray-700 rounded-md p-3 border border-almet-bali-hai dark:border-gray-600">
+        <div className="flex items-center justify-between mb-1">
+          <span className={`text-xs font-medium ${textSecondary}`}>Optional Info Completion</span>
+          <span className={`text-xs font-medium ${textPrimary}`}>
+            {Math.round(([
+              formData.profile_image,
+              formData.line_manager,
+              formData.tag_ids?.length > 0 ? formData.tag_ids : null,
+              formData.notes
+            ].filter(Boolean).length / 4) * 100)}%
+          </span>
+        </div>
+        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-1.5">
+          <div 
+            className="bg-almet-sapphire h-1.5 rounded-full transition-all duration-300"
+            style={{ 
+              width: `${([
+                formData.profile_image,
+                formData.line_manager,
+                formData.tag_ids?.length > 0 ? formData.tag_ids : null,
+                formData.notes
+              ].filter(Boolean).length / 4) * 100}%` 
+            }}
+          />
+        </div>
+        <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+          All fields in this step are optional
+        </div>
+      </div>
     </div>
   );
 };

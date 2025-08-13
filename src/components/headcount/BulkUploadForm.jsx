@@ -1,4 +1,4 @@
-// src/components/headcount/BulkUploadForm.jsx - FIXED with downloadTemplate function
+// src/components/headcount/BulkUploadForm.jsx - FIXED with downloadTemplate function and smaller fonts
 import { useState, useCallback } from "react";
 import { 
   Upload, 
@@ -15,7 +15,7 @@ import { useTheme } from "../common/ThemeProvider";
 import { useEmployees } from "../../hooks/useEmployees";
 
 /**
- * Bulk Employee Upload Form Component - Fixed with template download
+ * Bulk Employee Upload Form Component - Fixed with template download and smaller fonts
  * Handles Excel file import/export for employee data
  * Prevents multiple uploads and provides better UX
  */
@@ -271,12 +271,12 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className={`${bgCard} rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center">
-            <Upload className="w-6 h-6 text-almet-sapphire mr-3" />
+            <Upload className="w-5 h-5 text-almet-sapphire mr-2" />
             <div>
-              <h2 className={`text-xl font-bold ${textPrimary}`}>Bulk Import Employees</h2>
-              <p className={`text-sm ${textMuted}`}>
+              <h2 className={`text-lg font-bold ${textPrimary}`}>Bulk Import Employees</h2>
+              <p className={`text-xs ${textMuted}`}>
                 Upload an Excel or CSV file to import multiple employees
               </p>
             </div>
@@ -285,22 +285,22 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
             onClick={onClose}
             className={`p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
           >
-            <X size={20} className={textSecondary} />
+            <X size={18} className={textSecondary} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+        <div className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
           {!uploadedFile ? (
             // Upload Section
             <>
               {/* Instructions */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-3 mb-4">
                 <div className="flex items-start">
-                  <FileSpreadsheet className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+                  <FileSpreadsheet className="h-4 w-4 text-blue-500 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
                   <div>
-                    <h3 className={`font-medium text-blue-800 dark:text-blue-300 mb-2`}>How to use Bulk Import</h3>
-                    <ol className={`text-sm text-blue-600 dark:text-blue-400 space-y-1 list-decimal list-inside`}>
+                    <h3 className={`font-medium text-blue-800 dark:text-blue-300 mb-1 text-sm`}>How to use Bulk Import</h3>
+                    <ol className={`text-xs text-blue-600 dark:text-blue-400 space-y-0.5 list-decimal list-inside`}>
                       <li>Download the Excel template below</li>
                       <li>Fill in your employee data in the template</li>
                       <li>Save and upload the completed file</li>
@@ -311,25 +311,25 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
               </div>
 
               {/* Download Template */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <button
                   onClick={downloadTemplate}
                   disabled={isProcessing || loading.template}
-                  className={`${btnSecondary} px-6 py-3 rounded-lg flex items-center font-medium transition-colors w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`${btnSecondary} px-4 py-2 rounded-lg flex items-center text-sm transition-colors w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isProcessing || loading.template ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mr-2"></div>
+                      <div className="animate-spin rounded-full h-3 w-3 border-2 border-current border-t-transparent mr-2"></div>
                       Downloading...
                     </>
                   ) : (
                     <>
-                      <Download size={20} className="mr-2" />
+                      <Download size={16} className="mr-2" />
                       Download Excel Template
                     </>
                   )}
                 </button>
-                <p className={`text-xs ${textMuted} mt-2`}>
+                <p className={`text-[10px] ${textMuted} mt-1`}>
                   Contains sample data and all required fields
                 </p>
               </div>
@@ -340,23 +340,23 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                   dragActive 
                     ? 'border-almet-sapphire bg-blue-50 dark:bg-blue-900/20' 
                     : borderColor
-                } rounded-xl p-8 transition-colors`}
+                } rounded-xl p-6 transition-colors`}
                 onDragEnter={handleDrag}
                 onDragLeave={handleDrag}
                 onDragOver={handleDrag}
                 onDrop={handleDrop}
               >
                 <div className="text-center">
-                  <Upload className={`w-16 h-16 ${textMuted} mx-auto mb-4`} />
-                  <h3 className={`${textPrimary} text-lg font-medium mb-2`}>
+                  <Upload className={`w-12 h-12 ${textMuted} mx-auto mb-3`} />
+                  <h3 className={`${textPrimary} text-base font-medium mb-2`}>
                     Drop your Excel file here
                   </h3>
-                  <p className={`${textMuted} mb-4`}>
+                  <p className={`${textMuted} mb-3 text-sm`}>
                     or click to browse and select a file
                   </p>
                   <label className="cursor-pointer">
-                    <span className={`${btnPrimary} px-6 py-3 rounded-lg font-medium transition-colors inline-flex items-center`}>
-                      <FileSpreadsheet size={16} className="mr-2" />
+                    <span className={`${btnPrimary} px-4 py-2 rounded-lg text-sm transition-colors inline-flex items-center`}>
+                      <FileSpreadsheet size={14} className="mr-2" />
                       Choose File
                     </span>
                     <input 
@@ -366,7 +366,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                       onChange={handleFileSelect}
                     />
                   </label>
-                  <p className={`${textMuted} text-xs mt-3`}>
+                  <p className={`${textMuted} text-[10px] mt-2`}>
                     Supported formats: Excel (.xlsx, .xls), CSV (.csv) | Max size: 10MB
                   </p>
                 </div>
@@ -374,15 +374,15 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
             </>
           ) : (
             // File Processing Section
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* File Info */}
-              <div className={`${bgCard} border ${borderColor} rounded-lg p-4`}>
+              <div className={`${bgCard} border ${borderColor} rounded-lg p-3`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
-                    <FileCheck className="mr-3 text-green-500" size={20} />
+                    <FileCheck className="mr-2 text-green-500" size={18} />
                     <div>
-                      <p className={`${textPrimary} font-medium`}>{uploadedFile.name}</p>
-                      <p className={`${textMuted} text-sm`}>
+                      <p className={`${textPrimary} font-medium text-sm`}>{uploadedFile.name}</p>
+                      <p className={`${textMuted} text-xs`}>
                         {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB
                       </p>
                     </div>
@@ -392,7 +392,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                     className={`text-red-500 hover:text-red-600 p-1`}
                     disabled={isProcessing}
                   >
-                    <X size={16} />
+                    <X size={14} />
                   </button>
                 </div>
               </div>
@@ -402,16 +402,16 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                 <button
                   onClick={processUpload}
                   disabled={isProcessing || loading.upload}
-                  className={`${btnPrimary} px-6 py-3 rounded-lg font-medium w-full sm:w-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`${btnPrimary} px-4 py-2 rounded-lg text-sm w-full sm:w-auto flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {isProcessing || loading.upload ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                      <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-2"></div>
                       Processing File...
                     </>
                   ) : (
                     <>
-                      <FileCheck size={16} className="mr-2" />
+                      <FileCheck size={14} className="mr-2" />
                       Validate & Process
                     </>
                   )}
@@ -420,57 +420,57 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
 
               {/* Results */}
               {uploadResults && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Summary */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
                         {uploadResults.totalRows}
                       </div>
-                      <div className={`text-sm ${textMuted}`}>Total Rows</div>
+                      <div className={`text-xs ${textMuted}`}>Total Rows</div>
                     </div>
-                    <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-green-600 dark:text-green-400">
                         {uploadResults.validRows}
                       </div>
-                      <div className={`text-sm ${textMuted}`}>Valid</div>
+                      <div className={`text-xs ${textMuted}`}>Valid</div>
                     </div>
-                    <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                    <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-red-600 dark:text-red-400">
                         {uploadResults.invalidRows}
                       </div>
-                      <div className={`text-sm ${textMuted}`}>Invalid</div>
+                      <div className={`text-xs ${textMuted}`}>Invalid</div>
                     </div>
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg text-center">
+                      <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
                         {validationErrors.length}
                       </div>
-                      <div className={`text-sm ${textMuted}`}>Errors</div>
+                      <div className={`text-xs ${textMuted}`}>Errors</div>
                     </div>
                   </div>
 
                   {/* Validation Errors */}
                   {validationErrors.length > 0 && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                      <div className="flex items-center mb-3">
-                        <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-                        <h3 className={`font-medium text-red-800 dark:text-red-300`}>
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                      <div className="flex items-center mb-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mr-2" />
+                        <h3 className={`font-medium text-red-800 dark:text-red-300 text-sm`}>
                           Validation Errors ({validationErrors.length})
                         </h3>
                       </div>
-                      <div className="max-h-40 overflow-y-auto space-y-2">
+                      <div className="max-h-32 overflow-y-auto space-y-1">
                         {validationErrors.slice(0, 10).map((error, index) => (
-                          <div key={index} className="text-sm text-red-700 dark:text-red-400">
+                          <div key={index} className="text-xs text-red-700 dark:text-red-400">
                             <span className="font-medium">Row {error.row || index + 1}:</span> {error.message || error}
                             {error.value && (
-                              <span className="ml-2 px-2 py-0.5 bg-red-100 dark:bg-red-800 rounded text-xs">
+                              <span className="ml-1 px-1 py-0.5 bg-red-100 dark:bg-red-800 rounded text-[10px]">
                                 "{error.value}"
                               </span>
                             )}
                           </div>
                         ))}
                         {validationErrors.length > 10 && (
-                          <div className="text-sm text-red-600 dark:text-red-400 italic">
+                          <div className="text-xs text-red-600 dark:text-red-400 italic">
                             ... and {validationErrors.length - 10} more errors
                           </div>
                         )}
@@ -479,20 +479,20 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                   )}
 
                   {/* Import Actions */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <button
                       onClick={confirmImport}
                       disabled={uploadResults.validRows === 0 || isProcessing}
-                      className={`${btnPrimary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`${btnPrimary} px-4 py-2 rounded-lg text-sm flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {isProcessing ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                          <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent mr-2"></div>
                           Importing...
                         </>
                       ) : (
                         <>
-                          <CheckCircle size={16} className="mr-2" />
+                          <CheckCircle size={14} className="mr-2" />
                           Import {uploadResults.validRows} Valid Employees
                         </>
                       )}
@@ -500,9 +500,9 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
                     <button
                       onClick={resetForm}
                       disabled={isProcessing}
-                      className={`${btnSecondary} px-6 py-3 rounded-lg font-medium flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`${btnSecondary} px-4 py-2 rounded-lg text-sm flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      <Upload size={16} className="mr-2" />
+                      <Upload size={14} className="mr-2" />
                       Upload Different File
                     </button>
                   </div>

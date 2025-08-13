@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Final Updated Version
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Enhanced with Modern Components
 "use client";
 import { useState } from "react";
 import Link from "next/link";
@@ -7,7 +7,7 @@ import { getThemeStyles, getEmployeeColors } from "../utils/themeStyles";
 import EmployeeStatusBadge from "../EmployeeStatusBadge";
 import EmployeeTag from "../EmployeeTag";
 import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
-import ActionsDropdown from "../ActionsDropdown"; // Simple version without hooks
+import ActionsDropdown from "../ActionsDropdown";
 
 const EmployeeTableRow = ({
   employee,
@@ -15,7 +15,7 @@ const EmployeeTableRow = ({
   onToggleSelection,
   isVisible,
   onVisibilityChange,
-  onAction, // ← YENİ: Parent-dən gələn action handler
+  onAction,
   // Enhanced functionality props
   isUpdatingVisibility = false,
   showVisibilityConfirmation = false
@@ -65,7 +65,7 @@ const EmployeeTableRow = ({
     return phone;
   };
 
-  // ENHANCED: Visibility change handler with proper state management
+  // Enhanced visibility change handler with proper state management
   const handleVisibilityChange = async (employeeId, newVisibility) => {
     if (visibilityLoading) return;
     
@@ -85,7 +85,7 @@ const EmployeeTableRow = ({
     }
   };
 
-  // ENHANCED: Action handler - pass to parent
+  // Enhanced action handler - pass to parent
   const handleEmployeeAction = (employeeId, action) => {
     console.log('🔧 ROW: Employee action triggered:', { employeeId, action });
     
@@ -97,7 +97,7 @@ const EmployeeTableRow = ({
     }
   };
 
-  // ENHANCED: Tag processing with safe handling
+  // Enhanced tag processing with safe handling
   const getTagsToDisplay = () => {
     const tags = [];
     
@@ -141,25 +141,28 @@ const EmployeeTableRow = ({
 
   const tagsToDisplay = getTagsToDisplay();
 
-  // Row style with border color and selection state
+  // Modern row style with soft border and selection state
   const rowStyle = {
-    borderLeft: `4px solid ${employeeColors.borderColor}`,
+    borderLeft: `3px solid ${employeeColors.borderColor}`,
     backgroundColor: isSelected 
-      ? (darkMode ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)')
+      ? (darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)')
       : 'transparent'
   };
 
-  // Avatar style
+  // Modern avatar style with soft colors
   const avatarStyle = {
-    backgroundColor: employeeColors.borderColor,
+    background: `linear-gradient(135deg, ${employeeColors.borderColor}, ${employeeColors.borderColor}95)`,
     color: 'white'
   };
 
   return (
     <tr
-      className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-150 ${
-        visibilityLoading ? 'opacity-75' : ''
-      }`}
+      className={`
+        transition-all duration-200 ease-out
+        ${darkMode ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50/80'}
+        ${visibilityLoading ? 'opacity-75' : ''}
+        border-b border-gray-100/50 dark:border-gray-800/50
+      `}
       style={rowStyle}
     >
       {/* Employee Info - Name & Employee ID */}
@@ -167,14 +170,14 @@ const EmployeeTableRow = ({
         <div className="flex items-center">
           <input
             type="checkbox"
-            className="h-3 w-3 text-blue-600 rounded focus:ring-blue-500"
+            className="h-3 w-3 text-blue-600 rounded focus:ring-blue-500 focus:ring-1 transition-all"
             checked={isSelected}
             onChange={() => onToggleSelection(employee.id)}
           />
           <div className="flex items-center ml-2">
-            {/* Avatar/Image */}
+            {/* Compact Avatar */}
             <div 
-              className="h-7 w-7 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2"
+              className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 shadow-sm backdrop-blur-sm"
               style={avatarStyle}
             >
               {employee.profile_image ? (
@@ -193,13 +196,17 @@ const EmployeeTableRow = ({
               </span>
             </div>
             <div>
-              {/* Clickable name that navigates to detail page */}
+              {/* Smaller clickable name */}
               <Link href={`/structure/employee/${employee.id}`}>
-                <div className={`text-xs font-medium ${styles.textPrimary} truncate max-w-[120px] hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer hover:underline`}>
+                <div className={`
+                  text-xs font-medium ${styles.textPrimary} truncate max-w-[120px] 
+                  hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer 
+                  hover:underline transition-colors duration-200
+                `}>
                   {employeeName}
                 </div>
               </Link>
-              <div className={`text-[10px] ${styles.textMuted}`}>
+              <div className={`text-xs ${styles.textMuted} mt-0.5`}>
                 {employee.employee_id || 'No ID'}
               </div>
             </div>
@@ -209,15 +216,15 @@ const EmployeeTableRow = ({
 
       {/* Contact Info - Email & Phone */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-0.5">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[120px]`}>
             {employee.email || 'No email'}
           </div>
-          <div className={`text-[10px] ${styles.textMuted}`}>
+          <div className={`text-xs ${styles.textMuted}`}>
             {formatPhone(employee.phone)}
           </div>
           {employee.date_of_birth && (
-            <div className={`text-[10px] ${styles.textMuted}`}>
+            <div className={`text-xs ${styles.textMuted}`}>
               DOB: {formatDate(employee.date_of_birth)}
             </div>
           )}
@@ -226,11 +233,11 @@ const EmployeeTableRow = ({
 
       {/* Business Function & Department */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-0.5">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
             {employee.business_function_name || 'No BF'}
           </div>
-          <div className={`text-[10px] ${styles.textMuted} truncate max-w-[100px]`}>
+          <div className={`text-xs ${styles.textMuted} truncate max-w-[100px]`}>
             {employee.department_name || 'No Department'}
           </div>
         </div>
@@ -238,11 +245,11 @@ const EmployeeTableRow = ({
 
       {/* Unit & Job Function */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-0.5">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
             {employee.unit_name || 'No Unit'}
           </div>
-          <div className={`text-[10px] ${styles.textMuted} truncate max-w-[100px]`}>
+          <div className={`text-xs ${styles.textMuted} truncate max-w-[100px]`}>
             {employee.job_function_name || 'No Job Function'}
           </div>
         </div>
@@ -250,13 +257,13 @@ const EmployeeTableRow = ({
 
       {/* Position & Grade */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center space-y-0.5">
           <div className="flex items-center">
-            <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
+            <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px] text-center`}>
               {employee.position_group_name || 'No Position'}
             </div>
           </div>
-          <div className={`text-[10px] ${styles.textMuted} text-center mt-1`}>
+          <div className={`text-xs ${styles.textMuted} text-center`}>
             {employee.grading_display || employee.grading_level || 'No Grade'}
           </div>
         </div>
@@ -271,17 +278,17 @@ const EmployeeTableRow = ({
 
       {/* Line Manager */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-0.5">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[120px]`}>
             {employee.line_manager_name || 'No Manager'}
           </div>
           {employee.line_manager_hc_number && (
-            <div className={`text-[10px] ${styles.textMuted}`}>
+            <div className={`text-xs ${styles.textMuted}`}>
               HC: {employee.line_manager_hc_number}
             </div>
           )}
           {employee.direct_reports_count > 0 && (
-            <div className={`text-[10px] ${styles.textMuted}`}>
+            <div className={`text-xs ${styles.textMuted}`}>
               Reports: {employee.direct_reports_count}
             </div>
           )}
@@ -290,12 +297,12 @@ const EmployeeTableRow = ({
 
       {/* Employment Dates */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <div className="flex flex-col">
+        <div className="flex flex-col space-y-0.5">
           <div className={`text-xs ${styles.textSecondary}`}>
             Start: {formatDate(employee.start_date)}
           </div>
           {employee.end_date && (
-            <div className={`text-[10px] ${styles.textMuted}`}>
+            <div className={`text-xs ${styles.textMuted}`}>
               End: {formatDate(employee.end_date)}
             </div>
           )}
@@ -305,12 +312,14 @@ const EmployeeTableRow = ({
       {/* Status & Tags */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col justify-center space-y-1">
-          <EmployeeStatusBadge 
-            status={employee.status_name || employee.current_status_display || 'Unknown'} 
-            color={employee.status_color}
-            size="sm"
-          />
-          <div className="flex flex-wrap justify-center gap-1">
+          <div className="flex justify-center">
+            <EmployeeStatusBadge 
+              status={employee.status_name || employee.current_status_display || 'Unknown'} 
+              color={employee.status_color}
+              size="xs"
+            />
+          </div>
+          <div className="flex flex-wrap justify-center gap-0.5">
             {tagsToDisplay.slice(0, 3).map((tag, idx) => (
               <EmployeeTag 
                 key={`tag-${tag.id || idx}`}
@@ -319,7 +328,7 @@ const EmployeeTableRow = ({
               />
             ))}
             {tagsToDisplay.length > 3 && (
-              <span className={`text-xs ${styles.textMuted}`}>
+              <span className={`text-xs ${styles.textMuted} px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded-full`}>
                 +{tagsToDisplay.length - 3}
               </span>
             )}
@@ -327,28 +336,30 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* ENHANCED Visibility Toggle */}
+      {/* Compact Visibility Toggle */}
       <td className="px-2 py-2 whitespace-nowrap">
-        <EmployeeVisibilityToggle
-          employeeId={employee.id}
-          initialVisibility={employee.is_visible_in_org_chart !== false}
-          onVisibilityChange={handleVisibilityChange}
-          isLoading={visibilityLoading || isUpdatingVisibility}
-          size="sm"
-          showTooltip={true}
-          confirmToggle={showVisibilityConfirmation}
-          disabled={false}
-        />
+        <div className="flex justify-center">
+          <EmployeeVisibilityToggle
+            employeeId={employee.id}
+            initialVisibility={employee.is_visible_in_org_chart !== false}
+            onVisibilityChange={handleVisibilityChange}
+            isLoading={visibilityLoading || isUpdatingVisibility}
+            size="xs"
+            showTooltip={true}
+            confirmToggle={showVisibilityConfirmation}
+            disabled={false}
+          />
+        </div>
       </td>
 
-      {/* ENHANCED Actions - Pass Full Employee Data */}
+      {/* Compact Actions */}
       <td className="px-2 py-2 whitespace-nowrap text-center">
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center">
           <ActionsDropdown
             employeeId={employee.id}
-            employee={employee} // ← YENİ: Tam employee obyekti (modal üçün lazım)
-            onAction={handleEmployeeAction} // ← YENİ: Row-level handler
-            disabled={visibilityLoading} // ← YENİ: Disable during operations
+            employee={employee}
+            onAction={handleEmployeeAction}
+            disabled={visibilityLoading}
           />
         </div>
       </td>

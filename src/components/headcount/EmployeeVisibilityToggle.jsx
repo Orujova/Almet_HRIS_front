@@ -1,8 +1,8 @@
-// src/components/headcount/EmployeeVisibilityToggle.jsx - ENHANCED with Better UX
+// src/components/headcount/EmployeeVisibilityToggle.jsx - Modern Soft Design
 "use client";
 import { useState, useEffect } from "react";
 import { useTheme } from "../common/ThemeProvider";
-import { Eye, EyeOff, Loader } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const EmployeeVisibilityToggle = ({ 
   employeeId, 
@@ -12,7 +12,7 @@ const EmployeeVisibilityToggle = ({
   showLabel = false,
   size = "sm",
   className = "",
-  // New props for better state management
+  // Enhanced props for better state management
   isLoading = false,
   showTooltip = true,
   confirmToggle = false
@@ -27,25 +27,25 @@ const EmployeeVisibilityToggle = ({
     setIsVisible(initialVisibility);
   }, [initialVisibility]);
 
-  // Size configurations
+  // Modern size configurations with better spacing
   const sizeConfig = {
     xs: {
-      button: "px-1.5 py-0.5 text-xs",
+      button: "px-2 py-1 text-xs gap-1",
       icon: 10,
       text: "text-xs"
     },
     sm: {
-      button: "px-2 py-1 text-xs",
+      button: "px-2.5 py-1 text-xs gap-1.5",
       icon: 12,
       text: "text-xs"
     },
     md: {
-      button: "px-3 py-1.5 text-sm",
+      button: "px-3 py-1.5 text-sm gap-1.5",
       icon: 14,
       text: "text-sm"
     },
     lg: {
-      button: "px-4 py-2 text-base",
+      button: "px-4 py-2 text-base gap-2",
       icon: 16,
       text: "text-base"
     }
@@ -91,25 +91,25 @@ const EmployeeVisibilityToggle = ({
     toggleVisibility();
   };
 
-  // Theme classes
+  // Modern theme classes with soft colors
   const getButtonClasses = () => {
     const baseClasses = `
-      flex items-center rounded transition-all duration-200 
+      flex items-center rounded-full border backdrop-blur-sm transition-all duration-200 ease-out
       ${config.button} ${className}
-      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'}
     `;
 
     if (isVisible) {
       return `${baseClasses} ${
         darkMode 
-          ? 'bg-emerald-800/30 text-emerald-200 border border-emerald-700/50 hover:bg-emerald-700/40' 
-          : 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
+          ? 'bg-emerald-900/20 text-emerald-300 border-emerald-700/30 hover:bg-emerald-800/30 hover:shadow-sm' 
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200/60 hover:bg-emerald-100 hover:shadow-sm'
       }`;
     } else {
       return `${baseClasses} ${
         darkMode 
-          ? 'bg-gray-600/30 text-gray-300 border border-gray-600/50 hover:bg-gray-600/40' 
-          : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+          ? 'bg-gray-800/30 text-gray-400 border-gray-600/30 hover:bg-gray-700/40 hover:shadow-sm' 
+          : 'bg-gray-50 text-gray-600 border-gray-200/60 hover:bg-gray-100 hover:shadow-sm'
       }`;
     }
   };
@@ -126,37 +126,41 @@ const EmployeeVisibilityToggle = ({
     return isVisible ? "Visible" : "Hidden";
   };
 
-  // Confirmation dialog
+  // Modern confirmation dialog with backdrop blur
   if (showConfirmation) {
     return (
       <div className="relative">
         <div className={`
-          absolute z-50 -top-16 left-1/2 transform -translate-x-1/2
-          p-3 rounded-lg shadow-lg border
-          ${darkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}
+          absolute z-50 -top-20 left-1/2 transform -translate-x-1/2
+          p-4 rounded-xl shadow-xl border backdrop-blur-md
+          ${darkMode ? 'bg-gray-800/90 border-gray-600/50' : 'bg-white/90 border-gray-200/50'}
           min-w-max
         `}>
-          <p className={`text-xs mb-2 ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+          <p className={`text-sm mb-3 font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
             {isVisible ? 'Hide from org chart?' : 'Show in org chart?'}
           </p>
           <div className="flex gap-2">
             <button
               onClick={handleConfirm}
-              className={`px-2 py-1 text-xs rounded ${
-                darkMode 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'bg-blue-500 text-white hover:bg-blue-600'
-              }`}
+              className={`
+                px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200
+                ${darkMode 
+                  ? 'bg-blue-600/80 text-white hover:bg-blue-600 hover:scale-105' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105'
+                }
+              `}
             >
-              Yes
+              Confirm
             </button>
             <button
               onClick={handleCancel}
-              className={`px-2 py-1 text-xs rounded ${
-                darkMode 
-                  ? 'bg-gray-600 text-gray-200 hover:bg-gray-700' 
-                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
-              }`}
+              className={`
+                px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200
+                ${darkMode 
+                  ? 'bg-gray-600/50 text-gray-200 hover:bg-gray-600 hover:scale-105' 
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-105'
+                }
+              `}
             >
               Cancel
             </button>
@@ -165,7 +169,7 @@ const EmployeeVisibilityToggle = ({
         
         {/* Backdrop */}
         <div 
-          className="fixed inset-0 z-40" 
+          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" 
           onClick={handleCancel}
         />
         
@@ -176,11 +180,11 @@ const EmployeeVisibilityToggle = ({
           title={getTooltipText()}
         >
           {(isToggling || isLoading) ? (
-            <Loader size={config.icon} className="mr-1 animate-spin" />
+            <Loader2 size={config.icon} className="animate-spin" />
           ) : isVisible ? (
-            <Eye size={config.icon} className="mr-1" />
+            <Eye size={config.icon} />
           ) : (
-            <EyeOff size={config.icon} className="mr-1" />
+            <EyeOff size={config.icon} />
           )}
           {showLabel && (
             <span className={config.text}>{getStatusText()}</span>
@@ -200,11 +204,11 @@ const EmployeeVisibilityToggle = ({
         aria-label={`${isVisible ? 'Hide' : 'Show'} employee in org chart`}
       >
         {(isToggling || isLoading) ? (
-          <Loader size={config.icon} className="mr-1 animate-spin" />
+          <Loader2 size={config.icon} className="animate-spin" />
         ) : isVisible ? (
-          <Eye size={config.icon} className="mr-1" />
+          <Eye size={config.icon} />
         ) : (
-          <EyeOff size={config.icon} className="mr-1" />
+          <EyeOff size={config.icon} />
         )}
         
         {showLabel && (

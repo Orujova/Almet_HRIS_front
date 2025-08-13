@@ -1,129 +1,139 @@
-// src/components/headcount/EmployeeStatusBadge.jsx - Status Display Component
+// src/components/headcount/EmployeeStatusBadge.jsx - Modern Status Badge
+"use client";
 import { useTheme } from "../common/ThemeProvider";
+import { 
+  CheckCircle, 
+  Clock, 
+  AlertCircle, 
+  XCircle, 
+  Pause, 
+  Baby,
+  Plane,
+  UserX,
+  Calendar,
+  Coffee
+} from "lucide-react";
 
-/**
- * Employee Status Badge Component
- * Displays employee status with appropriate colors and styling
- */
 const EmployeeStatusBadge = ({ 
   status, 
   color, 
   size = "md", 
-  showIcon = false,
-  className = "" 
+  showIcon = true,
+  className = ""
 }) => {
   const { darkMode } = useTheme();
 
-  // Default status colors if not provided
-  const getStatusColor = (statusName) => {
-    const defaultColors = {
-      'ACTIVE': '#28A745',
-      'ONBOARDING': '#FFA500',
-      'PROBATION': '#FFD700',
-      'ON LEAVE': '#DC3545',
-      'TERMINATED': '#6C757D',
-      'INACTIVE': '#6C757D',
-      'PENDING': '#17A2B8'
+  // Modern status configurations with soft colors and proper icons
+  const getStatusConfig = (statusName) => {
+    const normalizedStatus = statusName.toLowerCase();
+    
+    const configs = {
+      'active': {
+        bg: darkMode ? 'bg-emerald-900/20' : 'bg-emerald-50',
+        text: darkMode ? 'text-emerald-300' : 'text-emerald-700',
+        border: darkMode ? 'border-emerald-700/30' : 'border-emerald-200/60',
+        icon: CheckCircle
+      },
+      'on leave': {
+        bg: darkMode ? 'bg-amber-900/20' : 'bg-amber-50',
+        text: darkMode ? 'text-amber-300' : 'text-amber-700',
+        border: darkMode ? 'border-amber-700/30' : 'border-amber-200/60',
+        icon: Plane
+      },
+      'leave': {
+        bg: darkMode ? 'bg-amber-900/20' : 'bg-amber-50',
+        text: darkMode ? 'text-amber-300' : 'text-amber-700',
+        border: darkMode ? 'border-amber-700/30' : 'border-amber-200/60',
+        icon: Calendar
+      },
+      'maternity': {
+        bg: darkMode ? 'bg-pink-900/20' : 'bg-pink-50',
+        text: darkMode ? 'text-pink-300' : 'text-pink-700',
+        border: darkMode ? 'border-pink-700/30' : 'border-pink-200/60',
+        icon: Baby
+      },
+      'maternity leave': {
+        bg: darkMode ? 'bg-pink-900/20' : 'bg-pink-50',
+        text: darkMode ? 'text-pink-300' : 'text-pink-700',
+        border: darkMode ? 'border-pink-700/30' : 'border-pink-200/60',
+        icon: Baby
+      },
+      'inactive': {
+        bg: darkMode ? 'bg-gray-800/30' : 'bg-gray-50',
+        text: darkMode ? 'text-gray-400' : 'text-gray-600',
+        border: darkMode ? 'border-gray-600/30' : 'border-gray-200/60',
+        icon: Pause
+      },
+      'terminated': {
+        bg: darkMode ? 'bg-red-900/20' : 'bg-red-50',
+        text: darkMode ? 'text-red-300' : 'text-red-700',
+        border: darkMode ? 'border-red-700/30' : 'border-red-200/60',
+        icon: UserX
+      },
+      'pending': {
+        bg: darkMode ? 'bg-blue-900/20' : 'bg-blue-50',
+        text: darkMode ? 'text-blue-300' : 'text-blue-700',
+        border: darkMode ? 'border-blue-700/30' : 'border-blue-200/60',
+        icon: Clock
+      },
+      'sick leave': {
+        bg: darkMode ? 'bg-orange-900/20' : 'bg-orange-50',
+        text: darkMode ? 'text-orange-300' : 'text-orange-700',
+        border: darkMode ? 'border-orange-700/30' : 'border-orange-200/60',
+        icon: AlertCircle
+      },
+      'break': {
+        bg: darkMode ? 'bg-indigo-900/20' : 'bg-indigo-50',
+        text: darkMode ? 'text-indigo-300' : 'text-indigo-700',
+        border: darkMode ? 'border-indigo-700/30' : 'border-indigo-200/60',
+        icon: Coffee
+      }
     };
-    
-    return color || defaultColors[statusName?.toUpperCase()] || '#6C757D';
+
+    return configs[normalizedStatus] || configs['inactive'];
   };
 
-  // Size variants
+  // Size variants with modern spacing
   const sizeClasses = {
-    sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-1 text-xs',
-    lg: 'px-3 py-1.5 text-sm'
+    xs: 'px-2 py-0.5 text-xs gap-1',
+    sm: 'px-2.5 py-0.5 text-xs gap-1.5',
+    md: 'px-3 py-1 text-sm gap-1.5',
+    lg: 'px-3.5 py-1.5 text-sm gap-2'
   };
 
-  // Get status display text
-  const getStatusText = (statusName) => {
-    if (!statusName) return 'Unknown';
-    
-    // Convert underscores to spaces and title case
-    return statusName
-      .replace(/_/g, ' ')
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+  const iconSizes = {
+    xs: 10,
+    sm: 12,
+    md: 14,
+    lg: 16
   };
 
-  const statusColor = getStatusColor(status);
-  const statusText = getStatusText(status);
-
-  // Generate background color with appropriate opacity
-  const getBgColor = () => {
-    if (!statusColor) return darkMode ? 'bg-gray-700' : 'bg-gray-100';
-    
-    // Convert hex to rgba for background
-    const hex = statusColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    
-    return darkMode 
-      ? `rgba(${r}, ${g}, ${b}, 0.2)` 
-      : `rgba(${r}, ${g}, ${b}, 0.1)`;
-  };
-
-  // Generate text color
-  const getTextColor = () => {
-    if (!statusColor) return darkMode ? 'text-gray-300' : 'text-gray-700';
-    
-    // Use the status color directly for text
-    return statusColor;
-  };
-
-  const bgColor = getBgColor();
-  const textColor = getTextColor();
+  const config = getStatusConfig(status);
+  const IconComponent = config.icon;
 
   return (
     <span
       className={`
-        inline-flex items-center font-medium rounded-full border
+        inline-flex items-center font-medium rounded-full border backdrop-blur-sm
+        transition-all duration-200 ease-out
         ${sizeClasses[size]}
+        ${config.bg}
+        ${config.text}
+        ${config.border}
         ${className}
       `}
-      style={{
-        backgroundColor: bgColor,
-        color: textColor,
-        borderColor: statusColor + '40' // Add transparency to border
-      }}
+      title={`Employee status: ${status}`}
+      role="status"
+      aria-label={`Status: ${status}`}
     >
-      {/* Status indicator dot */}
-      <span
-        className="w-2 h-2 rounded-full mr-1.5 flex-shrink-0"
-        style={{ backgroundColor: statusColor }}
-      />
-      
-      {/* Status text */}
-      <span className="truncate">
-        {statusText}
-      </span>
-
-      {/* Optional icon based on status */}
       {showIcon && (
-        <span className="ml-1.5">
-          {getStatusIcon(status)}
-        </span>
+        <IconComponent size={iconSizes[size]} className="flex-shrink-0" />
       )}
+      <span className="font-medium truncate">
+        {status}
+      </span>
     </span>
   );
-};
-
-// Helper function to get status icon
-const getStatusIcon = (status) => {
-  const iconMap = {
-    'ACTIVE': '✓',
-    'ONBOARDING': '👋',
-    'PROBATION': '⏳',
-    'ON LEAVE': '🏖️',
-    'TERMINATED': '❌',
-    'INACTIVE': '⏸️',
-    'PENDING': '⏳'
-  };
-  
-  return iconMap[status?.toUpperCase()] || '';
 };
 
 export default EmployeeStatusBadge;

@@ -1,18 +1,11 @@
-// src/components/headcount/FormSteps/FormStep4Documents.jsx - Enhanced with Document Types
+// src/components/headcount/FormSteps/FormStep4Documents.jsx - Compact & User-Friendly Design
 import { useState } from "react";
 import { Check, X, Upload, File, AlertCircle, Info, FileText, Award, IdCard, Heart } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 
 /**
- * Documents upload step of the employee form - Enhanced with document types
- * @param {Object} props - Component props
- * @param {Object} props.formData - Current form data
- * @param {Function} props.handleDocumentUpload - Function to handle document uploads
- * @param {Function} props.removeDocument - Function to remove a document
- * @param {Object} props.validationErrors - Validation errors object
- * @param {Array} props.documentTypes - Available document types from API
- * @returns {JSX.Element} - Form step component
+ * Documents upload step with compact design and Almet colors
  */
 const FormStep4Documents = ({ 
   formData, 
@@ -27,15 +20,16 @@ const FormStep4Documents = ({
   const [selectedDocumentType, setSelectedDocumentType] = useState("OTHER");
   const [documentName, setDocumentName] = useState("");
 
-  // Theme-dependent classes
+  // Theme-dependent classes with Almet colors
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
+  const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
+  const borderColor = darkMode ? "border-gray-700" : "border-almet-bali-hai";
+  const bgAccent = darkMode ? "bg-gray-700" : "bg-almet-mystic";
   const btnSecondary = darkMode
     ? "bg-gray-700 hover:bg-gray-600 text-gray-200 border border-gray-600"
-    : "bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200";
+    : "bg-almet-mystic hover:bg-almet-bali-hai/20 text-almet-cloud-burst border border-almet-bali-hai";
 
   // Default document types if not provided
   const defaultDocumentTypes = [
@@ -43,9 +37,9 @@ const FormStep4Documents = ({
     { value: "ID", label: "ID Document" },
     { value: "CERTIFICATE", label: "Certificate" },
     { value: "CV", label: "CV/Resume" },
-    { value: "PERFORMANCE", label: "Performance Document" },
-    { value: "MEDICAL", label: "Medical Document" },
-    { value: "TRAINING", label: "Training Document" },
+    { value: "PERFORMANCE", label: "Performance" },
+    { value: "MEDICAL", label: "Medical" },
+    { value: "TRAINING", label: "Training" },
     { value: "OTHER", label: "Other" }
   ];
 
@@ -91,7 +85,7 @@ const FormStep4Documents = ({
       return;
     }
 
-    // File type validation - match API requirements
+    // File type validation
     const allowedTypes = [
       'application/pdf',
       'application/msword',
@@ -106,7 +100,7 @@ const FormStep4Documents = ({
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      setUploadError("Only PDF, Word documents, Excel files, images, and text files are allowed");
+      setUploadError("Only PDF, Word, Excel, images, and text files are allowed");
       return;
     }
 
@@ -145,32 +139,31 @@ const FormStep4Documents = ({
 
   // Get file icon based on type and document type
   const getFileIcon = (type, documentType) => {
-    // First check document type
+    const iconProps = { className: "h-4 w-4" };
+    
     switch (documentType) {
       case 'CONTRACT':
-        return <FileText className="h-5 w-5 text-blue-500" />;
+        return <FileText {...iconProps} className="h-4 w-4 text-almet-sapphire" />;
       case 'ID':
-        return <IdCard className="h-5 w-5 text-purple-500" />;
+        return <IdCard {...iconProps} className="h-4 w-4 text-purple-500" />;
       case 'CERTIFICATE':
-        return <Award className="h-5 w-5 text-yellow-500" />;
+        return <Award {...iconProps} className="h-4 w-4 text-yellow-500" />;
       case 'CV':
-        return <FileText className="h-5 w-5 text-green-500" />;
+        return <FileText {...iconProps} className="h-4 w-4 text-green-500" />;
       case 'MEDICAL':
-        return <Heart className="h-5 w-5 text-red-500" />;
+        return <Heart {...iconProps} className="h-4 w-4 text-red-500" />;
       default:
-        // Fallback to file type
-        if (type.includes('pdf')) return <FileText className="h-5 w-5 text-red-500" />;
-        if (type.includes('word') || type.includes('document')) return <FileText className="h-5 w-5 text-blue-500" />;
-        if (type.includes('image')) return <File className="h-5 w-5 text-green-500" />;
-        if (type.includes('text')) return <FileText className="h-5 w-5 text-gray-500" />;
-        return <File className="h-5 w-5 text-gray-500" />;
+        if (type.includes('pdf')) return <FileText {...iconProps} className="h-4 w-4 text-red-500" />;
+        if (type.includes('word') || type.includes('document')) return <FileText {...iconProps} className="h-4 w-4 text-almet-steel-blue" />;
+        if (type.includes('image')) return <File {...iconProps} className="h-4 w-4 text-green-500" />;
+        return <File {...iconProps} className="h-4 w-4 text-gray-500" />;
     }
   };
 
   // Get document type badge color
   const getDocumentTypeBadge = (type) => {
     const colors = {
-      'CONTRACT': 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
+      'CONTRACT': 'bg-almet-sapphire/10 text-almet-sapphire',
       'ID': 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300',
       'CERTIFICATE': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300',
       'CV': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300',
@@ -183,26 +176,26 @@ const FormStep4Documents = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-6">
-        <h2 className={`text-lg font-bold ${textPrimary}`}>
+      <div className="flex justify-between items-center border-b border-almet-bali-hai dark:border-gray-700 pb-2 mb-4">
+        <h2 className={`text-base font-bold ${textPrimary}`}>
           Documents & Files
         </h2>
-        <div className="text-xs px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded font-medium">
+        <div className="text-[10px] px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded font-medium">
           Step 4 of 4 (Optional)
         </div>
       </div>
 
       {/* Document Upload Section */}
-      <div className={`${bgCard} rounded-lg p-6 border ${borderColor}`}>
-        <h3 className={`text-sm font-semibold ${textPrimary} mb-4 flex items-center`}>
-          <File className="mr-2 text-almet-sapphire" size={16} />
-          Upload Employee Documents
+      <div className={`${bgCard} rounded-md p-4 border ${borderColor}`}>
+        <h3 className={`text-xs font-semibold ${textPrimary} mb-3 flex items-center`}>
+          <File className="mr-1 text-almet-sapphire" size={12} />
+          Upload Documents
         </h3>
 
         {/* Document Type and Name Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <FormField
             label="Document Type"
             name="document_type"
@@ -211,7 +204,7 @@ const FormStep4Documents = ({
             type="select"
             options={availableDocumentTypes}
             required={false}
-            helpText="Select the type of document you're uploading"
+            helpText="Document category"
           />
 
           <FormField
@@ -219,29 +212,29 @@ const FormStep4Documents = ({
             name="document_name"
             value={documentName}
             onChange={(e) => setDocumentName(e.target.value)}
-            placeholder="Custom name for this document"
-            helpText="Leave blank to use the original filename"
+            placeholder="Custom name"
+            helpText="Leave blank for original filename"
           />
         </div>
 
         {/* Upload Area */}
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200 ${
+          className={`border-2 border-dashed rounded-md p-6 text-center transition-colors duration-200 ${
             dragActive
-              ? "border-almet-sapphire bg-blue-50 dark:bg-blue-900/20"
-              : `${borderColor} hover:border-almet-sapphire hover:bg-gray-50 dark:hover:bg-gray-700/50`
+              ? "border-almet-sapphire bg-almet-sapphire/5 dark:bg-blue-900/20"
+              : `${borderColor} hover:border-almet-sapphire hover:bg-almet-mystic/50 dark:hover:bg-gray-700/50`
           }`}
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
         >
-          <Upload className={`mx-auto h-12 w-12 ${textMuted} mb-4`} />
-          <p className={`text-lg font-medium ${textPrimary} mb-2`}>
+          <Upload className={`mx-auto h-8 w-8 ${textMuted} mb-3`} />
+          <p className={`text-sm font-medium ${textPrimary} mb-1`}>
             Drop files here or click to browse
           </p>
-          <p className={`text-sm ${textMuted} mb-4`}>
-            PDF, Word, Excel, Images, Text files (Max 10MB each)
+          <p className={`text-xs ${textMuted} mb-3`}>
+            PDF, Word, Excel, Images, Text (Max 10MB)
           </p>
           
           <input
@@ -254,29 +247,29 @@ const FormStep4Documents = ({
           
           <label
             htmlFor="document-upload"
-            className={`${btnSecondary} px-6 py-3 rounded-lg text-sm font-medium cursor-pointer transition-all inline-flex items-center hover:shadow-sm`}
+            className={`${btnSecondary} px-4 py-2 rounded-md text-xs font-medium cursor-pointer transition-all inline-flex items-center hover:shadow-sm`}
           >
-            <Upload size={16} className="mr-2" />
+            <Upload size={10} className="mr-1" />
             Choose Files
           </label>
         </div>
 
         {/* Upload Error */}
         {uploadError && (
-          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
             <div className="flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-              <p className="text-sm text-red-600 dark:text-red-400">{uploadError}</p>
+              <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-xs text-red-600 dark:text-red-400">{uploadError}</p>
             </div>
           </div>
         )}
 
         {/* Validation Error */}
         {validationErrors.documents && (
-          <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
             <div className="flex items-start">
-              <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
-              <p className="text-sm text-red-600 dark:text-red-400">{validationErrors.documents}</p>
+              <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 mr-2 flex-shrink-0" />
+              <p className="text-xs text-red-600 dark:text-red-400">{validationErrors.documents}</p>
             </div>
           </div>
         )}
@@ -284,31 +277,31 @@ const FormStep4Documents = ({
 
       {/* Uploaded Documents List */}
       {formData.documents && formData.documents.length > 0 && (
-        <div className={`${bgCard} rounded-lg p-6 border ${borderColor}`}>
-          <h3 className={`text-sm font-semibold ${textPrimary} mb-4`}>
+        <div className={`${bgCard} rounded-md p-4 border ${borderColor}`}>
+          <h3 className={`text-xs font-semibold ${textPrimary} mb-3`}>
             Uploaded Documents ({formData.documents.length})
           </h3>
           
-          <div className="space-y-3">
+          <div className="space-y-2">
             {formData.documents.map((doc, index) => (
               <div
                 key={index}
-                className={`flex items-center justify-between p-4 border ${borderColor} rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors`}
+                className={`flex items-center justify-between p-3 border ${borderColor} rounded-md hover:bg-almet-mystic/50 dark:hover:bg-gray-700/50 transition-colors`}
               >
                 <div className="flex items-center flex-1 min-w-0">
-                  <div className="mr-4">
+                  <div className="mr-3">
                     {getFileIcon(doc.type, doc.document_type)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className={`text-sm font-medium ${textPrimary} truncate`}>
+                      <p className={`text-xs font-medium ${textPrimary} truncate`}>
                         {doc.document_name || doc.name}
                       </p>
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${getDocumentTypeBadge(doc.document_type)}`}>
+                      <span className={`px-1.5 py-0.5 text-[9px] rounded ${getDocumentTypeBadge(doc.document_type)}`}>
                         {availableDocumentTypes.find(t => t.value === doc.document_type)?.label || doc.document_type}
                       </span>
                     </div>
-                    <p className={`text-xs ${textMuted}`}>
+                    <p className={`text-[10px] ${textMuted}`}>
                       {formatFileSize(doc.size)} • {doc.dateUploaded ? 
                         new Date(doc.dateUploaded).toLocaleDateString() : 'Just now'}
                     </p>
@@ -316,10 +309,10 @@ const FormStep4Documents = ({
                 </div>
                 <button
                   onClick={() => removeDocument(index)}
-                  className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full text-red-500 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-150"
+                  className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500 hover:text-red-600 transition-colors"
                   title="Remove document"
                 >
-                  <X size={16} />
+                  <X size={12} />
                 </button>
               </div>
             ))}
@@ -328,67 +321,67 @@ const FormStep4Documents = ({
       )}
 
       {/* Document Guidelines */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg p-4">
+      <div className="bg-almet-sapphire/5 dark:bg-blue-900/20 border border-almet-sapphire/20 dark:border-blue-800 rounded-md p-3">
         <div className="flex items-start">
-          <Info className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
+          <Info className="h-4 w-4 text-almet-sapphire mt-0.5 mr-2 flex-shrink-0" />
           <div>
-            <h3 className={`text-sm font-medium text-blue-800 dark:text-blue-300 mb-2`}>
-              Document Upload Guidelines
+            <h3 className={`text-xs font-medium text-almet-sapphire mb-2`}>
+              Document Guidelines
             </h3>
-            <div className={`text-sm text-blue-600 dark:text-blue-400 space-y-1`}>
-              <p>• Document upload is completely optional but recommended for complete records</p>
-              <p>• You can upload contracts, certifications, ID copies, CVs, or any relevant employee documents</p>
-              <p>• Files are securely stored and can be managed after employee creation</p>
-              <p>• Supported formats: PDF, Word (.doc, .docx), Excel (.xls, .xlsx), Images (JPG, PNG, GIF, BMP), Text files</p>
-              <p>• Maximum file size: 10MB per document</p>
-              <p>• Documents can be categorized by type for better organization</p>
+            <div className={`text-[10px] text-almet-sapphire space-y-1`}>
+              <p>• Document upload is optional but recommended for complete records</p>
+              <p>• Upload contracts, certificates, IDs, CVs, or relevant documents</p>
+              <p>• Supported: PDF, Word, Excel, Images, Text files (Max 10MB each)</p>
+              <p>• Files are securely stored and manageable after creation</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Document Type Descriptions */}
-      <div className={`${bgCard} rounded-lg p-4 border ${borderColor}`}>
-        <h4 className={`text-sm font-medium ${textPrimary} mb-3`}>Document Type Descriptions</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          <div className="space-y-2">
+      <div className={`${bgAccent} rounded-md p-3 border ${borderColor}`}>
+        <h4 className={`text-xs font-medium ${textPrimary} mb-2`}>Document Types</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
+          <div className="space-y-1">
             <div className="flex items-center">
-              <span className="w-20 text-blue-600 dark:text-blue-400 font-medium">CONTRACT:</span>
-              <span className={textMuted}>Employment contracts, agreements</span>
+              <span className="w-16 text-almet-sapphire font-medium">CONTRACT:</span>
+              <span className={textMuted}>Employment contracts</span>
             </div>
             <div className="flex items-center">
-              <span className="w-20 text-purple-600 dark:text-purple-400 font-medium">ID:</span>
-              <span className={textMuted}>Identity documents, passports</span>
+              <span className="w-16 text-purple-600 dark:text-purple-400 font-medium">ID:</span>
+              <span className={textMuted}>Identity documents</span>
             </div>
             <div className="flex items-center">
-              <span className="w-20 text-yellow-600 dark:text-yellow-400 font-medium">CERTIFICATE:</span>
+              <span className="w-16 text-yellow-600 dark:text-yellow-400 font-medium">CERTIFICATE:</span>
               <span className={textMuted}>Certifications, diplomas</span>
             </div>
             <div className="flex items-center">
-              <span className="w-20 text-green-600 dark:text-green-400 font-medium">CV:</span>
-              <span className={textMuted}>Resumes, curriculum vitae</span>
+              <span className="w-16 text-green-600 dark:text-green-400 font-medium">CV:</span>
+              <span className={textMuted}>Resumes, CV</span>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1">
             <div className="flex items-center">
-              <span className="w-20 text-indigo-600 dark:text-indigo-400 font-medium">PERFORMANCE:</span>
-              <span className={textMuted}>Performance reviews, evaluations</span>
+              <span className="w-16 text-indigo-600 dark:text-indigo-400 font-medium">PERFORMANCE:</span>
+              <span className={textMuted}>Reviews, evaluations</span>
             </div>
             <div className="flex items-center">
-              <span className="w-20 text-red-600 dark:text-red-400 font-medium">MEDICAL:</span>
-              <span className={textMuted}>Medical certificates, health records</span>
+              <span className="w-16 text-red-600 dark:text-red-400 font-medium">MEDICAL:</span>
+              <span className={textMuted}>Health records</span>
             </div>
             <div className="flex items-center">
-              <span className="w-20 text-teal-600 dark:text-teal-400 font-medium">TRAINING:</span>
-              <span className={textMuted}>Training certificates, course materials</span>
+              <span className="w-16 text-teal-600 dark:text-teal-400 font-medium">TRAINING:</span>
+              <span className={textMuted}>Training certificates</span>
             </div>
             <div className="flex items-center">
-              <span className="w-20 text-gray-600 dark:text-gray-400 font-medium">OTHER:</span>
-              <span className={textMuted}>Any other relevant documents</span>
+              <span className="w-16 text-gray-600 dark:text-gray-400 font-medium">OTHER:</span>
+              <span className={textMuted}>Other documents</span>
             </div>
           </div>
         </div>
       </div>
+
+     
     </div>
   );
 };

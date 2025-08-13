@@ -10,7 +10,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { useOrgChart } from '@/hooks/useOrgChart';
 import Select from 'react-select';
-
+import html2canvas from 'html2canvas';
 // React Flow imports
 import ReactFlow, {
     Controls,
@@ -19,7 +19,7 @@ import ReactFlow, {
     useEdgesState,
     ConnectionMode,
     Panel,
-    MiniMap,
+   
     Handle,
     Position,
     useReactFlow,
@@ -87,15 +87,15 @@ const EmployeeNode = React.memo(({ data, id }) => {
         }
     }, [employee.line_manager_id, data.onNavigateToEmployee]);
 
-    // Position hierarchy colors
+    // Almet color palette
     const hierarchyColors = {
-        'VC': { primary: '#4e7db5', bg: 'rgba(78, 125, 181, 0.1)', badge: '#30539b' },
-        'DIRECTOR': { primary: '#336fa5', bg: 'rgba(51, 111, 165, 0.1)', badge: '#2d5a91' },
-        'HEAD OF DEPARTMENT': { primary: '#38587d', bg: 'rgba(56, 88, 125, 0.1)', badge: '#324c6b' },
-        'SENIOR SPECIALIST': { primary: '#7a829a', bg: 'rgba(122, 130, 154, 0.1)', badge: '#6b7280' },
-        'SPECIALIST': { primary: '#90a0b9', bg: 'rgba(144, 160, 185, 0.1)', badge: '#74839c' },
-        'JUNIOR SPECIALIST': { primary: '#9c9cb5', bg: 'rgba(156, 156, 181, 0.1)', badge: '#8b8ca3' },
-        'Vice Chairman': { primary: '#4e7db5', bg: 'rgba(78, 125, 181, 0.1)', badge: '#30539b' }
+        'VC': { primary: '#30539b', bg: 'rgba(48, 83, 155, 0.1)', badge: '#253360' },
+        'DIRECTOR': { primary: '#336fa5', bg: 'rgba(51, 111, 165, 0.1)', badge: '#30539b' },
+        'HEAD OF DEPARTMENT': { primary: '#38587d', bg: 'rgba(56, 88, 125, 0.1)', badge: '#253360' },
+        'SENIOR SPECIALIST': { primary: '#7a829a', bg: 'rgba(122, 130, 154, 0.1)', badge: '#4f5772' },
+        'SPECIALIST': { primary: '#90a0b9', bg: 'rgba(144, 160, 185, 0.1)', badge: '#7a829a' },
+        'JUNIOR SPECIALIST': { primary: '#9c9cb5', bg: 'rgba(156, 156, 181, 0.1)', badge: '#7a829a' },
+        'Vice Chairman': { primary: '#2346A8', bg: 'rgba(35, 70, 168, 0.1)', badge: '#253360' }
     };
 
     const colors = hierarchyColors[employee.position_group] || hierarchyColors['SPECIALIST'];
@@ -139,7 +139,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
             <Handle 
                 type="target" 
                 position={Position.Top} 
-                className="!bg-blue-500 !border-2 !border-white !w-3 !h-3 !opacity-100"
+                className="!bg-almet-sapphire !border-2 !border-white !w-3 !h-3 !opacity-100"
                 style={{ top: -6 }}
             />
             
@@ -183,7 +183,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
                             {employee.employee_details.grading_display}
                         </span>
                     )}
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-blue-50 dark:bg-slate-700 text-gray-700 dark:text-gray-200">
+                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-almet-mystic dark:bg-slate-700 text-almet-cloud-burst dark:text-gray-200">
                         {employee.department || 'No Department'}
                     </span>
                     {employee.status_color && (
@@ -234,7 +234,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 <Handle 
                     type="source" 
                     position={Position.Bottom} 
-                    className="!bg-blue-500 !border-2 !border-white !w-3 !h-3 !opacity-100"
+                    className="!bg-almet-sapphire !border-2 !border-white !w-3 !h-3 !opacity-100"
                     style={{ bottom: -6 }}
                 />
             )}
@@ -290,16 +290,19 @@ const OrgChart = () => {
         setExpandedNodes
     } = useOrgChart();
 
-    // Enhanced theme colors
-    const bgApp = darkMode ? "bg-slate-900" : "bg-gray-50";
+    // Enhanced theme colors using Almet palette
+    const bgApp = darkMode ? "bg-slate-900" : "bg-almet-mystic";
     const bgCard = darkMode ? "bg-slate-800" : "bg-white";
     const bgCardHover = darkMode ? "bg-slate-700" : "bg-gray-50";
-    const textHeader = darkMode ? "text-gray-100" : "text-gray-900";
-    const textPrimary = darkMode ? "text-gray-200" : "text-gray-700";
-    const textSecondary = darkMode ? "text-gray-400" : "text-gray-500";
-    const textMuted = darkMode ? "text-gray-500" : "text-gray-400";
+    const textHeader = darkMode ? "text-gray-100" : "text-almet-cloud-burst";
+    const textPrimary = darkMode ? "text-gray-200" : "text-almet-comet";
+    const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
+    const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const borderColor = darkMode ? "border-slate-600" : "border-gray-200";
-    const bgAccent = darkMode ? "bg-slate-700" : "bg-blue-50";
+    const bgAccent = darkMode ? "bg-slate-700" : "bg-almet-mystic";
+
+   
+  
 
     // Custom select styles for dark mode
     const selectStyles = {
@@ -309,7 +312,7 @@ const OrgChart = () => {
             borderColor: darkMode ? '#475569' : '#d1d5db',
             color: darkMode ? '#e2e8f0' : '#374151',
             minHeight: '38px',
-            boxShadow: state.isFocused ? (darkMode ? '0 0 0 1px #3b82f6' : '0 0 0 1px #3b82f6') : 'none',
+            boxShadow: state.isFocused ? (darkMode ? '0 0 0 1px #30539b' : '0 0 0 1px #30539b') : 'none',
             '&:hover': {
                 borderColor: darkMode ? '#64748b' : '#9ca3af'
             }
@@ -323,7 +326,7 @@ const OrgChart = () => {
         option: (provided, state) => ({
             ...provided,
             backgroundColor: state.isSelected 
-                ? (darkMode ? '#3b82f6' : '#3b82f6')
+                ? (darkMode ? '#30539b' : '#30539b')
                 : state.isFocused 
                     ? (darkMode ? '#475569' : '#f3f4f6')
                     : 'transparent',
@@ -332,7 +335,7 @@ const OrgChart = () => {
                 : (darkMode ? '#e2e8f0' : '#374151'),
             '&:hover': {
                 backgroundColor: state.isSelected 
-                    ? (darkMode ? '#3b82f6' : '#3b82f6')
+                    ? (darkMode ? '#30539b' : '#30539b')
                     : (darkMode ? '#475569' : '#f3f4f6')
             }
         }),
@@ -389,13 +392,13 @@ const OrgChart = () => {
         }
         
         const hierarchyColors = {
-            'VC': { primary: darkMode ? '#4e7db5' : '#30539b', badge: darkMode ? '#30539b' : '#4e7db5' },
+            'VC': { primary: darkMode ? '#4e7db5' : '#30539b', badge: darkMode ? '#30539b' : '#253360' },
             'DIRECTOR': { primary: darkMode ? '#336fa5' : '#2d5a91', badge: darkMode ? '#2d5a91' : '#336fa5' },
-            'HEAD OF DEPARTMENT': { primary: darkMode ? '#38587d' : '#324c6b', badge: darkMode ? '#324c6b' : '#38587d' },
-            'SENIOR SPECIALIST': { primary: darkMode ? '#7a829a' : '#6b7280', badge: darkMode ? '#6b7280' : '#7a829a' },
-            'SPECIALIST': { primary: darkMode ? '#90a0b9' : '#74839c', badge: darkMode ? '#74839c' : '#90a0b9' },
-            'JUNIOR SPECIALIST': { primary: darkMode ? '#9c9cb5' : '#8b8ca3', badge: darkMode ? '#8b8ca3' : '#9c9cb5' },
-            'Vice Chairman': { primary: darkMode ? '#4e7db5' : '#30539b', badge: darkMode ? '#30539b' : '#4e7db5' }
+            'HEAD OF DEPARTMENT': { primary: darkMode ? '#38587d' : '#253360', badge: darkMode ? '#253360' : '#38587d' },
+            'SENIOR SPECIALIST': { primary: darkMode ? '#7a829a' : '#4f5772', badge: darkMode ? '#4f5772' : '#7a829a' },
+            'SPECIALIST': { primary: darkMode ? '#90a0b9' : '#7a829a', badge: darkMode ? '#7a829a' : '#90a0b9' },
+            'JUNIOR SPECIALIST': { primary: darkMode ? '#9c9cb5' : '#7a829a', badge: darkMode ? '#7a829a' : '#9c9cb5' },
+            'Vice Chairman': { primary: darkMode ? '#2346A8' : '#30539b', badge: darkMode ? '#253360' : '#2346A8' }
         };
 
         const getEmployeeColor = (employee) => {
@@ -493,9 +496,9 @@ const OrgChart = () => {
         }
     }, [orgChart, expandedNodes, setExpandedNodes, setSelectedEmployee]);
 
-    // Simplified hierarchy building
+    // Fixed hierarchy building with better expansion logic
     const buildOrgHierarchy = useCallback((employees, expandedNodeIds) => {
-        console.log('Building hierarchy from', employees?.length, 'employees');
+        console.log('Building hierarchy from', employees?.length, 'employees, expanded:', expandedNodeIds?.length);
         
         if (!Array.isArray(employees) || employees.length === 0) {
             return { visibleNodes: [], edges: [] };
@@ -550,11 +553,7 @@ const OrgChart = () => {
         const expandedSet = new Set(expandedNodeIds || []);
         const visibleEmployees = [];
 
-        // Auto-expand roots if no nodes are expanded
-        if (expandedNodeIds.length === 0) {
-            rootEmployees.forEach(root => expandedSet.add(root.employee_id));
-        }
-
+        // Always show root employees
         const markVisible = (employee, shouldShow = true) => {
             if (!employee) return;
             
@@ -562,15 +561,20 @@ const OrgChart = () => {
                 employee.isVisible = true;
                 visibleEmployees.push(employee);
                 
-                // If this node is expanded, show its children
+                // FIXED: If this node is expanded AND has children, show ALL children
                 if (expandedSet.has(employee.employee_id) && employee.children.length > 0) {
-                    employee.children.forEach(child => markVisible(child, true));
+                    console.log(`Expanding ${employee.name} (${employee.employee_id}) - showing ${employee.children.length} children`);
+                    employee.children.forEach(child => {
+                        markVisible(child, true);  // Show all direct children
+                    });
                 }
             }
         };
 
-        // Start with root employees
-        rootEmployees.forEach(root => markVisible(root, true));
+        // Start with root employees - always visible
+        rootEmployees.forEach(root => {
+            markVisible(root, true);
+        });
 
         console.log('Visible employees calculated:', visibleEmployees.length);
 
@@ -582,7 +586,10 @@ const OrgChart = () => {
             data: {
                 employee: emp,
                 isExpanded: expandedSet.has(emp.employee_id),
-                onToggleExpanded: toggleExpandedNode,
+                onToggleExpanded: (employeeId) => {
+                    console.log('Toggle requested for:', employeeId);
+                    toggleExpandedNode(employeeId);
+                },
                 onSelectEmployee: setSelectedEmployee,
                 onNavigateToEmployee: navigateToEmployee
             }
@@ -598,13 +605,13 @@ const OrgChart = () => {
                 type: 'smoothstep',
                 animated: false,
                 style: { 
-                    stroke: '#3b82f6', 
+                    stroke: '#30539b', 
                     strokeWidth: 2,
                     opacity: 0.8
                 },
                 markerEnd: {
                     type: 'arrowclosed',
-                    color: '#3b82f6',
+                    color: '#30539b',
                     width: 20,
                     height: 20
                 }
@@ -614,123 +621,186 @@ const OrgChart = () => {
         return { visibleNodes: nodes, edges };
     }, [toggleExpandedNode, setSelectedEmployee, navigateToEmployee]);
 
-    // Export to PNG function
-    const handleExportToPNG = useCallback(async () => {
-        try {
-            // Method 1: Try using React Flow's built-in export
-            const reactFlowWrapper = containerRef.current?.querySelector('.react-flow__viewport');
-            if (reactFlowWrapper) {
-                // Create a temporary canvas
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                
-                // Get the bounding rect
-                const rect = reactFlowWrapper.getBoundingClientRect();
-                canvas.width = rect.width * 2; // Higher resolution
-                canvas.height = rect.height * 2;
-                
-                // Set background color
-                ctx.fillStyle = darkMode ? '#0f172a' : '#f8fafc';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                
-                // Try to use html2canvas if available
-                try {
-                    const html2canvas = await import('html2canvas');
-                    const canvasElement = await html2canvas.default(reactFlowWrapper, {
-                        backgroundColor: darkMode ? '#0f172a' : '#f8fafc',
-                        scale: 2,
-                        useCORS: true,
-                        allowTaint: true,
-                        foreignObjectRendering: true,
-                        logging: false,
-                        width: rect.width,
-                        height: rect.height
-                    });
-                    
-                    // Download the image
-                    const link = document.createElement('a');
-                    link.download = `organizational-chart-${new Date().getTime()}.png`;
-                    link.href = canvasElement.toDataURL('image/png', 1.0);
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    console.log('✅ Export successful using html2canvas');
-                    return;
-                } catch (html2canvasError) {
-                    console.warn('html2canvas failed:', html2canvasError);
-                }
-                
-                // Method 2: Try using React Flow's getRectOfNodes and getTransformForBounds
-                const reactFlowInstance = containerRef.current?.querySelector('.react-flow');
-                if (reactFlowInstance && window.ReactFlow) {
-                    try {
-                        // This would work if we had access to the React Flow instance
-                        console.log('Trying React Flow export method...');
-                        
-                        // Create SVG export as fallback
-                        const svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                        svgElement.setAttribute('width', rect.width.toString());
-                        svgElement.setAttribute('height', rect.height.toString());
-                        svgElement.style.backgroundColor = darkMode ? '#0f172a' : '#f8fafc';
-                        
-                        // Convert to data URL and download
-                        const svgData = new XMLSerializer().serializeToString(svgElement);
-                        const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-                        const svgUrl = URL.createObjectURL(svgBlob);
-                        
-                        const img = new Image();
-                        img.onload = () => {
-                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                            const link = document.createElement('a');
-                            link.download = `organizational-chart-${new Date().getTime()}.png`;
-                            link.href = canvas.toDataURL('image/png', 1.0);
-                            document.body.appendChild(link);
-                            link.click();
-                            document.body.removeChild(link);
-                            URL.revokeObjectURL(svgUrl);
-                            console.log('✅ Export successful using SVG method');
-                        };
-                        img.src = svgUrl;
-                        return;
-                    } catch (svgError) {
-                        console.warn('SVG export failed:', svgError);
-                    }
-                }
-            }
-            
-            // Method 3: Simple screenshot notification
-            alert('Export özelliği aktifleştirilmek üçün html2canvas kitabxanası lazımdır. Hazırda ekran görüntüsü ala bilərsiniz (Ctrl/Cmd + Shift + S).');
-            
-        } catch (error) {
-            console.error('Export failed:', error);
-            
-            // Method 4: Ultimate fallback - use hook export if available
-            if (exportToPNG && typeof exportToPNG === 'function') {
-                try {
-                    await exportToPNG();
-                    console.log('✅ Export successful using hook method');
-                } catch (hookError) {
-                    console.error('Hook export also failed:', hookError);
-                    alert('Export edilə bilmədi. Zəhmət olmasa ekran görüntüsü alın (Ctrl/Cmd + Shift + S).');
-                }
-            } else {
-                // Show manual instruction
-                const instruction = darkMode ? 
-                    'Export funksiyası hazırda aktiv deyil.\n\nManual export üçün:\n1. Ekran görüntüsü alın (Ctrl/Cmd + Shift + S)\n2. Və ya brauzer Developer Tools-dan "Screenshot" seçin' :
-                    'Export funksiyası hazırda aktiv deyil.\n\nManual export üçün:\n1. Ekran görüntüsü alın (Ctrl/Cmd + Shift + S)\n2. Və ya brauzer Developer Tools-dan "Screenshot" seçin';
-                    
-                alert(instruction);
-            }
-        }
-    }, [darkMode, exportToPNG]);
 
+  const handleExportToPNG = useCallback(async () => {
+    try {
+        // Find the chart container
+        const chartContainer = containerRef.current?.querySelector('.react-flow') || 
+                              containerRef.current?.querySelector('[class*="react-flow"]') ||
+                              containerRef.current;
+        
+        if (!chartContainer) {
+            console.error('Chart container not found');
+            return;
+        }
+
+        // Take screenshot with html2canvas
+        const canvas = await html2canvas(chartContainer, {
+            allowTaint: false,
+            useCORS: true,
+            backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
+            scale: 2, // High resolution
+            scrollX: 0,
+            scrollY: 0,
+            width: chartContainer.scrollWidth,
+            height: chartContainer.scrollHeight,
+            logging: false,
+            removeContainer: true,
+            foreignObjectRendering: true,
+            imageTimeout: 10000
+        });
+
+        // Convert to blob and auto-download
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `org-chart-${new Date().toISOString().slice(0, 10)}.png`;
+                
+                // Auto-click download
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Cleanup
+                URL.revokeObjectURL(url);
+                
+                console.log('Screenshot downloaded successfully');
+            }
+        }, 'image/png', 0.9);
+
+    } catch (error) {
+        console.error('Screenshot failed:', error);
+        // Silent fallback - try with different options
+        fallbackScreenshot();
+    }
+}, [darkMode, containerRef]);
+const fallbackScreenshot = useCallback(async () => {
+    try {
+        const element = containerRef.current;
+        if (!element) return;
+
+        const canvas = await html2canvas(element, {
+            backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
+            scale: 1,
+            logging: false,
+            useCORS: true,
+            allowTaint: false
+        });
+
+        canvas.toBlob((blob) => {
+            if (blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `org-chart-fallback-${Date.now()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }, 'image/png', 0.8);
+
+    } catch (error) {
+        console.error('Fallback screenshot also failed:', error);
+    }
+}, [darkMode, containerRef]);
+
+    // Enhanced Controls Panel
+    const EnhancedControlsPanel = () => {
+        const { zoomIn, zoomOut, fitView, getViewport } = useReactFlow();
+        const [currentZoom, setCurrentZoom] = useState(1);
+        
+        useEffect(() => {
+            const updateZoom = () => {
+                const viewport = getViewport();
+                setCurrentZoom(Math.round(viewport.zoom * 100) / 100);
+            };
+            
+            updateZoom();
+            const interval = setInterval(updateZoom, 100);
+            return () => clearInterval(interval);
+        }, [getViewport]);
+        
+        const handleZoomToFit = useCallback(() => {
+            fitView({ 
+                duration: 800,
+                padding: 0.1,
+                includeHiddenNodes: false,
+                minZoom: 0.1,
+                maxZoom: 1.5
+            });
+        }, [fitView]);
+        
+        const handleSmartZoom = useCallback(() => {
+            const viewport = getViewport();
+            
+            if (viewport.zoom > 1) {
+                zoomOut({ duration: 500 });
+            } else if (viewport.zoom < 0.3) {
+                fitView({ padding: 0.2, duration: 500 });
+            } else {
+                handleZoomToFit();
+            }
+        }, [getViewport, zoomOut, fitView, handleZoomToFit]);
+        
+        const setZoomLevel = useCallback((level) => {
+            const { zoomTo } = useReactFlow();
+            zoomTo(level, { duration: 300 });
+        }, []);
+        
+        return (
+            <Panel position="top-left" className="space-y-2">
+                <div className={`${bgCard} border ${borderColor} rounded-lg shadow-lg p-2 space-y-1`}>
+                    {/* Zoom Level Display */}
+                    <div className={`text-center text-xs ${textMuted} font-mono pb-1 border-b ${borderColor}`}>
+                        {Math.round(currentZoom * 100)}%
+                    </div>
+                    
+                    
+                    
+                    {/* Traditional Controls */}
+                    <button 
+                        onClick={() => zoomIn({ duration: 300 })}
+                        className={`w-full h-8 p-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
+                        title="Zoom In"
+                    >
+                        <ZoomIn size={16} />
+                    </button>
+                    <button 
+                        onClick={() => zoomOut({ duration: 300 })}
+                        className={`w-full h-8 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
+                        title="Zoom Out"
+                    >
+                        <ZoomOut size={16} />
+                    </button>
+                    <button 
+                        onClick={handleZoomToFit}
+                        className={`w-full h-8 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
+                        title="Fit to View"
+                    >
+                        <Maximize2 size={16} />
+                    </button>
+                    <button 
+                        onClick={handleSmartZoom}
+                        className={`w-full h-8 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
+                        title="Smart Zoom"
+                    >
+                        <Target size={16} />
+                    </button>
+                </div>
+            </Panel>
+        );
+    };
+
+  
 
     // Main FlowComponent
     const FlowComponent = useCallback(() => {
         const [nodes, setNodes, onNodesChange] = useNodesState([]);
         const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-        const { fitView, zoomIn, zoomOut, zoomTo } = useReactFlow();
+        const { fitView } = useReactFlow();
 
         // Process data when filteredOrgChart or expandedNodes change
         useEffect(() => {
@@ -750,11 +820,12 @@ const OrgChart = () => {
                         layoutDirection
                     );
                     
+                    console.log('Setting nodes and edges:', layoutedNodes.length, layoutedEdges.length);
                     setNodes(layoutedNodes);
                     setEdges(layoutedEdges);
                     
                     // Fit view after layout
-                    setTimeout(() => fitView({ padding: 0.2 }), 100);
+                    setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 100);
                 } else {
                     console.log('No visible nodes to display');
                     setNodes([]);
@@ -776,31 +847,47 @@ const OrgChart = () => {
             setNodes([...layoutedNodes]);
             setEdges([...layoutedEdges]);
             setLayoutDirection(direction);
-            setTimeout(() => fitView({ padding: 0.2 }), 0);
+            setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 0);
         }, [nodes, edges, setNodes, setEdges, fitView, getLayoutedElements, setLayoutDirection]);
 
-        // Custom zoom functions
-        const handleZoomIn = useCallback(() => {
-            zoomIn({ duration: 300 });
-        }, [zoomIn]);
-
-        const handleZoomOut = useCallback(() => {
-            zoomOut({ duration: 300 });
-        }, [zoomOut]);
-
-        const handleFitView = useCallback(() => {
-            fitView({ padding: 0.2, duration: 300 });
-        }, [fitView]);
-
+        // Fixed expand/collapse handlers
         const handleExpandAll = useCallback(() => {
-            console.log('Expand All clicked');
-            expandAllNodes();
-        }, [expandAllNodes]);
+            console.log('Expand All clicked - expanding all employees');
+            if (orgChart && orgChart.length > 0) {
+                // Get all employees who have direct reports
+                const managersWithReports = orgChart
+                    .filter(emp => emp.direct_reports && emp.direct_reports > 0)
+                    .map(emp => emp.employee_id);
+                
+                console.log('Expanding managers:', managersWithReports.length);
+                setExpandedNodes(managersWithReports);
+            }
+        }, [orgChart, setExpandedNodes]);
 
         const handleCollapseAll = useCallback(() => {
-            console.log('Collapse All clicked');
-            collapseAllNodes();
-        }, [collapseAllNodes]);
+            console.log('Collapse All clicked - collapsing to roots only');
+            // Find root employees and keep only them expanded
+            if (orgChart && orgChart.length > 0) {
+                const rootEmployees = orgChart.filter(emp => 
+                    !emp.line_manager_id && !emp.manager_id && !emp.parent_id
+                );
+                
+                if (rootEmployees.length === 0) {
+                    // Fallback: find by highest level or most reports
+                    const maxReports = Math.max(...orgChart.map(emp => emp.direct_reports || 0));
+                    const fallbackRoots = orgChart
+                        .filter(emp => (emp.direct_reports || 0) === maxReports)
+                        .map(emp => emp.employee_id);
+                    
+                    console.log('Collapsing to fallback roots:', fallbackRoots);
+                    setExpandedNodes(fallbackRoots);
+                } else {
+                    const rootIds = rootEmployees.map(emp => emp.employee_id);
+                    console.log('Collapsing to root employees:', rootIds);
+                    setExpandedNodes(rootIds);
+                }
+            }
+        }, [orgChart, setExpandedNodes]);
 
         // Memoized node types to prevent recreation warning
         const nodeTypes = useMemo(() => ({
@@ -835,68 +922,46 @@ const OrgChart = () => {
                 connectionMode={ConnectionMode.Strict}
                 fitView
                 className={darkMode ? 'dark' : ''}
-                style={{ backgroundColor: darkMode ? '#0f172a' : '#f8fafc' }}
-                fitViewOptions={{ padding: 0.2 }}
+                style={{ backgroundColor: darkMode ? '#0f172a' : '#e7ebf1' }}
+                fitViewOptions={{ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }}
                 defaultEdgeOptions={{
                     type: 'smoothstep',
                     animated: false,
                     style: { 
-                        stroke: '#3b82f6', 
+                        stroke: '#30539b', 
                         strokeWidth: 2,
-                        opacity: 0.8,
-                        strokeDasharray: '5,5'
+                        opacity: 0.8
                     },
                     markerEnd: {
                         type: 'arrowclosed',
-                        color: '#3b82f6',
+                        color: '#30539b',
                         width: 16,
                         height: 16
                     }
                 }}
             >
                 <Background 
-                    color={darkMode ? '#334155' : '#e2e8f0'} 
+                    color={darkMode ? '#334155' : '#90a0b9'} 
                     gap={20} 
                     variant="dots"
                 />
                 
-                {/* Custom Controls Panel */}
-                <Panel position="top-left" className="space-y-2">
-                    <div className={`${bgCard} border ${borderColor} rounded-lg shadow-lg p-2 space-y-1`}>
-                        <button 
-                            onClick={handleZoomIn}
-                            className={`w-8 h-8 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
-                            title="Zoom In"
-                        >
-                            <ZoomIn size={16} />
-                        </button>
-                        <button 
-                            onClick={handleZoomOut}
-                            className={`w-8 h-8 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
-                            title="Zoom Out"
-                        >
-                            <ZoomOut size={16} />
-                        </button>
-                        <button 
-                            onClick={handleFitView}
-                            className={`w-8 h-8 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
-                            title="Fit View"
-                        >
-                            <Maximize2 size={16} />
-                        </button>
-                    </div>
-                </Panel>
-               
+                {/* Enhanced Controls */}
+                <EnhancedControlsPanel />
+                
+             
+                
+                {/* Layout Controls */}
                 <Panel position="top-right" className="space-x-2">
                     <button 
                         onClick={() => onLayout('TB')}
-                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'TB' ? 'bg-blue-600 text-white' : ''}`}
+                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'TB' ? 'bg-almet-sapphire text-white' : ''}`}
                     >
                         Vertical
                     </button>
                     <button 
                         onClick={() => onLayout('LR')}
-                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'LR' ? 'bg-blue-600 text-white' : ''}`}
+                        className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'LR' ? 'bg-almet-sapphire text-white' : ''}`}
                     >
                         Horizontal
                     </button>
@@ -928,11 +993,11 @@ const OrgChart = () => {
         textPrimary, 
         borderColor, 
         bgCardHover, 
-        expandAllNodes, 
-        collapseAllNodes,
         isLoading,
         textMuted,
-        textSecondary
+        textSecondary,
+        orgChart,
+        setExpandedNodes
     ]);
 
     // Grid View Component
@@ -1059,7 +1124,7 @@ const OrgChart = () => {
                     <div className="px-4 py-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg">
+                                <div className="w-8 h-8 bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst rounded-lg flex items-center justify-center shadow-lg">
                                     <Building2 className="w-4 h-4 text-white" />
                                 </div>
                                 <div>
@@ -1097,7 +1162,7 @@ const OrgChart = () => {
                                         placeholder="Search employees..." 
                                         value={filters.search || ''} 
                                         onChange={(e) => updateFilter('search', e.target.value)} 
-                                        className={`pl-8 pr-7 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-44 ${bgCard} ${textPrimary} text-sm transition-all duration-200 shadow-sm`} 
+                                        className={`pl-8 pr-7 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire w-44 ${bgCard} ${textPrimary} text-sm transition-all duration-200 shadow-sm`} 
                                     />
                                 </div>
                                
@@ -1106,13 +1171,13 @@ const OrgChart = () => {
                                 <div className={`flex rounded-lg border ${borderColor} ${bgCard} p-0.5 shadow-sm`}>
                                     <button 
                                         onClick={() => setViewMode('tree')} 
-                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'tree' ? 'bg-blue-600 text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'tree' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
                                     >
                                         <TreePine size={14} />Tree
                                     </button>
                                     <button 
                                         onClick={() => setViewMode('grid')} 
-                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
+                                        className={`px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-200 flex items-center gap-1.5 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white shadow-sm' : `${textMuted} hover:${textPrimary} hover:${bgAccent}`}`}
                                     >
                                         <Grid size={14} />Grid
                                     </button>
@@ -1126,18 +1191,17 @@ const OrgChart = () => {
                                 >
                                     <Filter size={14} />
                                     {hasActiveFilters() && (
-                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-blue-600 rounded-full border border-white"></div>
+                                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-almet-sapphire rounded-full border border-white"></div>
                                     )}
                                 </button>
                                 
-                              
-
                                 <button 
                                     onClick={handleExportToPNG} 
-                                    title="Export PNG"
-                                    className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm`}
+                                    title="Export Chart (SVG)"
+                                    className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm flex items-center gap-1`}
                                 >
                                     <Download size={14} />
+                                    <span className="text-xs hidden sm:inline">Export</span>
                                 </button>
                                 
                                 <button 
@@ -1173,7 +1237,7 @@ const OrgChart = () => {
                                 <div className="flex items-center gap-2">
                                     <button 
                                         onClick={clearFilters} 
-                                        className={`text-xs ${textMuted} hover:text-blue-600 transition-colors hover:underline font-medium`}
+                                        className={`text-xs ${textMuted} hover:text-almet-sapphire transition-colors hover:underline font-medium`}
                                     >
                                         Clear All
                                     </button>
@@ -1258,65 +1322,6 @@ const OrgChart = () => {
                                     />
                                 </div>
                             </div>
-                            
-                            {/* Additional Search Fields */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                <div>
-                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Employee Search</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Search by name, ID, email..." 
-                                        value={filters.employee_search || ''} 
-                                        onChange={(e) => updateFilter('employee_search', e.target.value)} 
-                                        className={`w-full p-2.5 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${bgCard} ${textPrimary} shadow-sm text-sm`}
-                                    />
-                                </div>
-                                
-                                <div>
-                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Job Title Search</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Search job titles..." 
-                                        value={filters.job_title_search || ''} 
-                                        onChange={(e) => updateFilter('job_title_search', e.target.value)} 
-                                        className={`w-full p-2.5 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${bgCard} ${textPrimary} shadow-sm text-sm`}
-                                    />
-                                </div>
-                                
-                                <div>
-                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Department Search</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Search departments..." 
-                                        value={filters.department_search || ''} 
-                                        onChange={(e) => updateFilter('department_search', e.target.value)} 
-                                        className={`w-full p-2.5 border ${borderColor} rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${bgCard} ${textPrimary} shadow-sm text-sm`}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Toggle Filters */}
-                            <div className="flex items-center gap-6 mt-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.show_top_level_only || false}
-                                        onChange={(e) => updateFilter('show_top_level_only', e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    />
-                                    <span className={`text-sm ${textPrimary}`}>Show top level only</span>
-                                </label>
-                                
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={filters.managers_only || false}
-                                        onChange={(e) => updateFilter('managers_only', e.target.checked)}
-                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    />
-                                    <span className={`text-sm ${textPrimary}`}>Managers only</span>
-                                </label>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -1334,52 +1339,45 @@ const OrgChart = () => {
                     )}
                 </div>
 
-                {/* Enhanced Employee Detail Modal */}
+                {/* Enhanced Employee Detail Modal - More compact */}
                 {selectedEmployee && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200 ease-in-out">
-                        <div className={`${bgCard} rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col border ${borderColor}`}>
-                            {/* Header with Employee Info */}
-                            <div className={`flex items-center justify-between p-6 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-xl z-10`}>
-                                <div className="flex items-center gap-4">
-                                    <Avatar employee={selectedEmployee} size="lg" />
+                        <div className={`${bgCard} rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border ${borderColor}`}>
+                            {/* Compact Header */}
+                            <div className={`flex items-center justify-between p-4 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-xl z-10`}>
+                                <div className="flex items-center gap-3">
+                                    <Avatar employee={selectedEmployee} size="md" />
                                     <div>
-                                        <h2 className={`text-2xl font-bold ${textHeader} mb-1`}>{selectedEmployee.name}</h2>
-                                        <p className={`${textSecondary} text-lg mb-2`}>{selectedEmployee.title}</p>
-                                        <div className="flex items-center gap-3">
+                                        <h2 className={`text-lg font-bold ${textHeader} mb-1`}>{selectedEmployee.name}</h2>
+                                        <p className={`${textSecondary} text-sm mb-1`}>{selectedEmployee.title}</p>
+                                        <div className="flex items-center gap-2">
                                             {selectedEmployee.employee_details?.grading_display && (
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold text-white bg-blue-600">
+                                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white bg-almet-sapphire">
                                                     {selectedEmployee.employee_details.grading_display}
                                                 </span>
                                             )}
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold ${bgAccent} ${textPrimary}`}>
+                                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${bgAccent} ${textPrimary}`}>
                                                 {selectedEmployee.department || 'No Department'}
                                             </span>
-                                            {selectedEmployee.status_color && (
-                                                <div 
-                                                    className="w-3 h-3 rounded-full"
-                                                    style={{ backgroundColor: selectedEmployee.status_color }}
-                                                    title="Employee Status"
-                                                />
-                                            )}
                                         </div>
                                     </div>
                                 </div>
                                 <button onClick={clearSelectedEmployee} className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-lg transition-colors`}>
-                                    <X size={24} aria-label="Close modal"/>
+                                    <X size={20} aria-label="Close modal"/>
                                 </button>
                             </div>
 
-                            <div className="p-6 overflow-y-auto flex-grow">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="p-4 overflow-y-auto flex-grow">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     {/* Left Column - Basic Details */}
-                                    <div className="lg:col-span-1 space-y-6">
+                                    <div className="space-y-4">
                                         {/* Employee Details Card */}
-                                        <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                            <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                <User size={16} />
+                                        <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                            <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                <User size={14} />
                                                 Employee Details
                                             </h4>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 <DetailRow 
                                                     icon={<Target />} 
                                                     label="Level to CEO" 
@@ -1400,21 +1398,16 @@ const OrgChart = () => {
                                                     label="Position Group" 
                                                     value={selectedEmployee.position_group || 'N/A'} 
                                                 />
-                                                <DetailRow 
-                                                    icon={<Award />} 
-                                                    label="Business Function" 
-                                                    value={selectedEmployee.business_function || 'N/A'} 
-                                                />
                                             </div>
                                         </div>
                                         
                                         {/* Contact Information Card */}
-                                        <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                            <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                <Phone size={16} />
-                                                Contact Information
+                                        <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                            <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                <Phone size={14} />
+                                                Contact
                                             </h4>
-                                            <div className="space-y-3">
+                                            <div className="space-y-2">
                                                 <DetailRow 
                                                     icon={<Phone />} 
                                                     label="Phone" 
@@ -1425,21 +1418,16 @@ const OrgChart = () => {
                                                     label="Email" 
                                                     value={selectedEmployee.email || 'Not provided'} 
                                                 />
-                                                <DetailRow 
-                                                    icon={<MapPin />} 
-                                                    label="Location" 
-                                                    value="Baku HQ" 
-                                                />
                                             </div>
                                         </div>
 
                                         {/* Team Metrics Card */}
-                                        <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                            <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                <Users size={16} />
+                                        <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                            <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                <Users size={14} />
                                                 Team Metrics
                                             </h4>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-2 gap-2">
                                                 <MetricCard 
                                                     icon={<Users />} 
                                                     label="Direct Reports" 
@@ -1467,89 +1455,38 @@ const OrgChart = () => {
                                                     })()}
                                                     color="green"
                                                 />
-                                                <MetricCard 
-                                                    icon={<Building2 />} 
-                                                    label="Unit Colleagues" 
-                                                    value={orgChart?.filter(emp => 
-                                                        emp.unit === selectedEmployee.unit && 
-                                                        emp.employee_id !== selectedEmployee.employee_id
-                                                    ).length || 0}
-                                                    color="purple"
-                                                />
-                                                <MetricCard 
-                                                    icon={<Puzzle />} 
-                                                    label="Function Colleagues" 
-                                                    value={orgChart?.filter(emp => 
-                                                        emp.business_function === selectedEmployee.business_function && 
-                                                        emp.employee_id !== selectedEmployee.employee_id
-                                                    ).length || 0}
-                                                    color="orange"
-                                                />
                                             </div>
                                         </div>
-
-                                        {/* Tags */}
-                                        {selectedEmployee.employee_details?.tags && selectedEmployee.employee_details.tags.length > 0 && (
-                                            <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                                <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                    <Archive size={16} />
-                                                    Tags
-                                                </h4>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {selectedEmployee.employee_details.tags.map((tag, index) => (
-                                                        <span
-                                                            key={index}
-                                                            className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium text-white"
-                                                            style={{ 
-                                                                backgroundColor: tag.color || '#6b7280'
-                                                            }}
-                                                        >
-                                                            {tag.name}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
                                     </div>
 
                                     {/* Right Column - Organizational Relationships */}
-                                    <div className="lg:col-span-2 space-y-6">
+                                    <div className="space-y-4">
                                         {/* Reports To (Manager) Section */}
                                         {selectedEmployee.line_manager_id && (
-                                            <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                                <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                    <Crown size={16} />
+                                            <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                                <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                    <Crown size={14} />
                                                     Reports To
                                                 </h4>
                                                 {(() => {
                                                     const manager = orgChart?.find(emp => emp.employee_id === selectedEmployee.line_manager_id);
                                                     return manager ? (
                                                         <div 
-                                                            className={`flex items-center gap-4 p-4 ${bgCard} rounded-lg cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border ${borderColor}`}
+                                                            className={`flex items-center gap-3 p-3 ${bgCard} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] border ${borderColor}`}
                                                             onClick={() => {
                                                                 const cleanManager = cleanEmployeeData(manager);
                                                                 setSelectedEmployee(cleanManager);
                                                             }}
                                                         >
-                                                            <Avatar employee={manager} size="md" />
+                                                            <Avatar employee={manager} size="sm" />
                                                             <div className="flex-1 min-w-0">
-                                                                <h5 className={`font-bold ${textHeader} text-lg mb-1`}>{manager.name}</h5>
-                                                                <p className={`${textSecondary} text-sm mb-1`}>{manager.title}</p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${bgAccent} ${textPrimary}`}>
-                                                                        {manager.department}
-                                                                    </span>
-                                                                    {manager.employee_details?.grading_display && (
-                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold text-white bg-blue-600">
-                                                                            {manager.employee_details.grading_display}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                <h5 className={`font-bold ${textHeader} text-sm mb-1`}>{manager.name}</h5>
+                                                                <p className={`${textSecondary} text-xs mb-1`}>{manager.title}</p>
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${bgAccent} ${textPrimary}`}>
+                                                                    {manager.department}
+                                                                </span>
                                                             </div>
-                                                            <div className="flex flex-col items-center gap-2">
-                                                                <ArrowUp className={`w-6 h-6 text-blue-600`} />
-                                                                <span className={`text-xs ${textMuted}`}>Click to view</span>
-                                                            </div>
+                                                            <ArrowUp className={`w-4 h-4 text-almet-sapphire`} />
                                                         </div>
                                                     ) : (
                                                         <p className={`${textMuted} text-sm italic`}>Manager information not available</p>
@@ -1560,16 +1497,16 @@ const OrgChart = () => {
 
                                         {/* Direct Reports Section */}
                                         {selectedEmployee.direct_reports > 0 && (
-                                            <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                                <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                    <Users size={16} />
+                                            <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                                <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                    <Users size={14} />
                                                     Direct Reports ({selectedEmployee.direct_reports})
                                                 </h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                                                <div className="space-y-2 max-h-64 overflow-y-auto">
                                                     {orgChart?.filter(emp => emp.line_manager_id === selectedEmployee.employee_id).map(report => (
                                                         <div 
                                                             key={report.employee_id}
-                                                            className={`flex items-center gap-3 p-3 ${bgCard} rounded-lg cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border ${borderColor}`}
+                                                            className={`flex items-center gap-2 p-2 ${bgCard} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] border ${borderColor}`}
                                                             onClick={() => {
                                                                 const cleanReport = cleanEmployeeData(report);
                                                                 setSelectedEmployee(cleanReport);
@@ -1577,38 +1514,28 @@ const OrgChart = () => {
                                                         >
                                                             <Avatar employee={report} size="sm" />
                                                             <div className="flex-1 min-w-0">
-                                                                <p className={`font-bold ${textPrimary} text-sm mb-1 truncate`}>{report.name}</p>
-                                                                <p className={`${textSecondary} text-xs mb-1 truncate`}>{report.title}</p>
-                                                                <div className="flex items-center gap-1">
-                                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${bgAccent} ${textPrimary}`}>
-                                                                        {report.department}
-                                                                    </span>
-                                                                    {report.employee_details?.grading_display && (
-                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold text-white bg-blue-600">
-                                                                            {report.employee_details.grading_display}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
+                                                                <p className={`font-bold ${textPrimary} text-xs mb-1 truncate`}>{report.name}</p>
+                                                                <p className={`${textSecondary} text-xs truncate`}>{report.title}</p>
                                                             </div>
-                                                            <ArrowDown className={`w-4 h-4 text-blue-600 flex-shrink-0`} />
+                                                            <ArrowDown className={`w-3 h-3 text-almet-sapphire flex-shrink-0`} />
                                                         </div>
                                                     ))}
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Colleagues in Same Unit */}
+                                        {/* Unit Colleagues */}
                                         {selectedEmployee.unit && (
-                                            <div className={`${bgAccent} rounded-xl p-4 border ${borderColor}`}>
-                                                <h4 className={`font-bold ${textHeader} mb-4 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                    <Building2 size={16} />
-                                                    Unit Colleagues ({selectedEmployee.unit})
+                                            <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                                <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                    <Building2 size={14} />
+                                                    Unit Colleagues
                                                 </h4>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto">
+                                                <div className="space-y-2 max-h-48 overflow-y-auto">
                                                     {orgChart?.filter(emp => 
                                                         emp.unit === selectedEmployee.unit && 
                                                         emp.employee_id !== selectedEmployee.employee_id
-                                                    ).slice(0, 8).map(colleague => (
+                                                    ).slice(0, 6).map(colleague => (
                                                         <div 
                                                             key={colleague.employee_id}
                                                             className={`flex items-center gap-2 p-2 ${bgCard} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] border ${borderColor}`}
@@ -1633,8 +1560,6 @@ const OrgChart = () => {
                         </div>
                     </div>
                 )}
-
-                
 
                 {/* Error Display */}
                 {hasErrors && (
@@ -1661,7 +1586,7 @@ const OrgChart = () => {
                     </div>
                 )}
 
-                {/* Enhanced Styles */}
+                {/* Enhanced Styles with Almet colors */}
                 <style jsx>{`
                     .line-clamp-2 { 
                         display: -webkit-box; 
@@ -1686,21 +1611,21 @@ const OrgChart = () => {
                     }
                     
                     ::-webkit-scrollbar { 
-                        width: 8px; 
-                        height: 8px; 
+                        width: 6px; 
+                        height: 6px; 
                     }
                     ::-webkit-scrollbar-track { 
-                        background: ${darkMode ? 'rgba(56, 88, 125, 0.1)' : 'rgba(156, 163, 175, 0.1)'}; 
+                        background: ${darkMode ? 'rgba(56, 88, 125, 0.1)' : 'rgba(231, 235, 241, 0.5)'}; 
                         border-radius: 6px; 
                     }
                     ::-webkit-scrollbar-thumb { 
-                        background: ${darkMode ? 'rgba(122, 130, 154, 0.4)' : 'rgba(48, 83, 155, 0.4)'}; 
+                        background: ${darkMode ? 'rgba(122, 130, 154, 0.4)' : 'rgba(48, 83, 155, 0.3)'}; 
                         border-radius: 6px; 
-                        border: 2px solid transparent;
+                        border: 1px solid transparent;
                         background-clip: content-box;
                     }
                     ::-webkit-scrollbar-thumb:hover { 
-                        background: ${darkMode ? 'rgba(122, 130, 154, 0.6)' : 'rgba(48, 83, 155, 0.6)'}; 
+                        background: ${darkMode ? 'rgba(122, 130, 154, 0.6)' : 'rgba(48, 83, 155, 0.5)'}; 
                         background-clip: content-box;
                     }
                     
@@ -1711,50 +1636,40 @@ const OrgChart = () => {
                     button:focus-visible, 
                     input:focus-visible, 
                     select:focus-visible {
-                        outline: 2px solid #3b82f6;
+                        outline: 2px solid #30539b;
                         outline-offset: 2px;
                     }
 
                     .react-flow__edge-path {
-                        stroke-width: 3;
-                        stroke: #3b82f6;
-                        opacity: 0.9;
-                        filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.2));
-                        stroke-dasharray: 8,4;
-                        animation: dash 25s linear infinite;
+                        stroke-width: 2;
+                        stroke: #30539b;
+                        opacity: 0.8;
+                        filter: drop-shadow(0 2px 4px rgba(48, 83, 155, 0.2));
                         transition: all 0.3s ease;
                     }
 
-                    @keyframes dash {
-                        to {
-                            stroke-dashoffset: -1000;
-                        }
-                    }
-
                     .react-flow__edge-path:hover {
-                        stroke-width: 4;
+                        stroke-width: 3;
                         opacity: 1;
-                        stroke: #2563eb;
-                        animation-duration: 15s;
-                        filter: drop-shadow(0 4px 8px rgba(37, 99, 235, 0.4));
-                        stroke-dasharray: 12,6;
+                        stroke: #253360;
+                        filter: drop-shadow(0 4px 8px rgba(37, 51, 96, 0.4));
                     }
 
                     .react-flow__handle {
-                        width: 14px !important;
-                        height: 14px !important;
-                        background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
-                        border: 3px solid white !important;
-                        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+                        width: 12px !important;
+                        height: 12px !important;
+                        background: linear-gradient(135deg, #30539b, #253360) !important;
+                        border: 2px solid white !important;
+                        box-shadow: 0 3px 10px rgba(48, 83, 155, 0.3) !important;
                         opacity: 0.8 !important;
                         transition: all 0.3s ease !important;
                     }
 
                     .react-flow__handle:hover {
-                        background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
-                        transform: scale(1.3);
+                        background: linear-gradient(135deg, #253360, #2346A8) !important;
+                        transform: scale(1.2);
                         opacity: 1 !important;
-                        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5) !important;
+                        box-shadow: 0 5px 15px rgba(48, 83, 155, 0.5) !important;
                     }
 
                     .react-flow__node:hover .react-flow__handle {
@@ -1762,10 +1677,8 @@ const OrgChart = () => {
                         transform: scale(1.1);
                     }
 
-                 
-
                     .react-flow__node {
-                        animation: float 6s ease-in-out infinite;
+                        animation: float 8s ease-in-out infinite;
                     }
 
                     @keyframes float {
@@ -1773,7 +1686,7 @@ const OrgChart = () => {
                             transform: translateY(0px);
                         }
                         50% {
-                            transform: translateY(-2px);
+                            transform: translateY(-1px);
                         }
                     }
                 `}</style>
@@ -1782,34 +1695,34 @@ const OrgChart = () => {
     );
 };
 
-// Enhanced Detail Row Component
+// Enhanced Detail Row Component with Almet colors
 const DetailRow = ({ icon, label, value }) => (
-    <div className="flex items-center gap-3 py-2">
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-            {React.cloneElement(icon, { className: "w-4 h-4 text-blue-600 dark:text-blue-400" })}
+    <div className="flex items-center gap-2 py-1.5">
+        <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-almet-mystic dark:bg-almet-cloud-burst flex items-center justify-center">
+            {React.cloneElement(icon, { className: "w-3 h-3 text-almet-sapphire dark:text-almet-bali-hai" })}
         </div>
         <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wider">{label}</p>
-            <p className="text-gray-800 dark:text-gray-200 font-semibold text-sm truncate" title={value}>{value}</p>
+            <p className="text-xs text-almet-waterloo dark:text-gray-400 font-medium uppercase tracking-wider">{label}</p>
+            <p className="text-almet-cloud-burst dark:text-gray-200 font-semibold text-sm truncate" title={value}>{value}</p>
         </div>
     </div>
 );
 
-// Enhanced Metric Card Component
+// Enhanced Metric Card Component with Almet colors
 const MetricCard = ({ icon, label, value, color = 'blue' }) => {
     const colorClasses = {
-        blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400',
+        blue: 'bg-almet-mystic dark:bg-almet-cloud-burst/20 border-almet-sapphire/20 dark:border-almet-sapphire/40 text-almet-sapphire dark:text-almet-bali-hai',
         green: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-600 dark:text-green-400',
         purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400',
         orange: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 text-orange-600 dark:text-orange-400'
     };
 
     return (
-        <div className={`p-3 rounded-lg border ${colorClasses[color]} text-center`}>
-            <div className="flex items-center justify-center mb-2">
-                {React.cloneElement(icon, { className: "w-5 h-5" })}
+        <div className={`p-2 rounded-lg border ${colorClasses[color]} text-center`}>
+            <div className="flex items-center justify-center mb-1">
+                {React.cloneElement(icon, { className: "w-4 h-4" })}
             </div>
-            <p className="text-xl font-bold mb-1">{value}</p>
+            <p className="text-lg font-bold mb-1">{value}</p>
             <p className="text-xs font-medium opacity-80">{label}</p>
         </div>
     );

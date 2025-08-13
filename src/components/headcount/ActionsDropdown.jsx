@@ -1,4 +1,4 @@
-// src/components/headcount/ActionsDropdown.jsx - ENHANCED VERSION
+// src/components/headcount/ActionsDropdown.jsx - ENHANCED VERSION WITH SMALLER FONTS
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { MoreVertical, Edit, Tag, Users, FileText, BarChart2, Trash2, UserPlus, TagIcon, Eye, EyeOff } from "lucide-react";
@@ -7,7 +7,7 @@ import { getThemeStyles } from "./utils/themeStyles";
 import Link from "next/link";
 
 /**
- * ENHANCED Actions Dropdown with Better Modal Integration
+ * ENHANCED Actions Dropdown with Better Modal Integration and Smaller Fonts
  * @param {Object} props - Component parameters
  * @param {string} props.employeeId - Employee ID
  * @param {Object} props.employee - Full employee data object
@@ -118,11 +118,6 @@ const ActionsDropdown = ({
     return tags;
   };
 
-  // ENHANCED: Get visibility status
-  const isVisibleInOrgChart = () => {
-    return employee?.is_visible_in_org_chart !== false;
-  };
-
   const currentManager = getCurrentManager();
   const currentTags = getCurrentTags();
   const employeeName = getEmployeeName();
@@ -136,35 +131,26 @@ const ActionsDropdown = ({
         aria-label="Employee Actions"
         title={`Actions for ${employeeName}`}
       >
-        <MoreVertical size={16} className={styles.textSecondary} />
+        <MoreVertical size={14} className={styles.textSecondary} />
       </button>
 
       {isOpen && !disabled && (
         <div
-          className={`absolute right-0 top-full mt-1 z-50 w-64 rounded-md shadow-lg ${
+          className={`absolute right-0 top-full mt-1 z-50 w-56 rounded-md shadow-lg ${
             darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
           } border ring-1 ring-black ring-opacity-5 overflow-hidden`}
           style={{ zIndex: 9999 }}
         >
           <div className="py-1" role="menu">
-            {/* ENHANCED: Employee Info Header */}
-            <div className={`px-4 py-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'} bg-gray-50 dark:bg-gray-700/50`}>
-              <div className="text-xs font-medium text-gray-600 dark:text-gray-300 truncate">
-                {employeeName}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                ID: {employee?.employee_id || employeeId}
-              </div>
-            </div>
-
+           
             {/* View Details */}
             <Link href={`/structure/employee/${employeeId}`}>
               <button
-                className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+                className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
                 onClick={() => setIsOpen(false)}
               >
                 <div className="flex items-center">
-                  <FileText size={16} className="mr-3 text-blue-500" />
+                  <FileText size={14} className="mr-2 text-blue-500" />
                   <span>View Details</span>
                 </div>
               </button>
@@ -173,11 +159,11 @@ const ActionsDropdown = ({
             {/* Edit Employee */}
             <Link href={`/structure/employee/${employeeId}/edit`}>
               <button
-                className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+                className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
                 onClick={() => setIsOpen(false)}
               >
                 <div className="flex items-center">
-                  <Edit size={16} className="mr-3 text-green-500" />
+                  <Edit size={14} className="mr-2 text-green-500" />
                   <span>Edit Employee</span>
                 </div>
               </button>
@@ -188,20 +174,20 @@ const ActionsDropdown = ({
 
             {/* ENHANCED: Change Line Manager */}
             <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+              className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
               onClick={() => handleAction("changeManager")}
               title={currentManager?.name ? `Current: ${currentManager.name}` : 'No manager assigned'}
             >
               <div className="flex items-center">
-                <UserPlus size={16} className="mr-3 text-indigo-500" />
+                <UserPlus size={14} className="mr-2 text-indigo-500" />
                 <div className="flex flex-col items-start min-w-0 flex-1">
                   <span>Change Line Manager</span>
                   {currentManager?.name ? (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-full">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-full">
                       Current: {currentManager.name}
                     </span>
                   ) : (
-                    <span className="text-xs text-orange-500 dark:text-orange-400">
+                    <span className="text-[10px] text-orange-500 dark:text-orange-400">
                       No manager assigned
                     </span>
                   )}
@@ -211,16 +197,16 @@ const ActionsDropdown = ({
 
             {/* ENHANCED: Tag Management */}
             <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+              className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
               onClick={() => handleAction("manageTag")}
               title={currentTags.length > 0 ? `${currentTags.length} tags assigned` : 'No tags assigned'}
             >
               <div className="flex items-center">
-                <TagIcon size={16} className="mr-3 text-purple-500" />
+                <TagIcon size={14} className="mr-2 text-purple-500" />
                 <div className="flex flex-col items-start min-w-0 flex-1">
                   <span>Manage Tags</span>
                   {currentTags.length > 0 ? (
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
                       <span className="font-medium">{currentTags.length} tag{currentTags.length !== 1 ? 's' : ''}</span>
                       <span className="ml-1">
                         ({currentTags.slice(0, 2).map(tag => tag.name).join(', ')}
@@ -228,7 +214,7 @@ const ActionsDropdown = ({
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-orange-500 dark:text-orange-400">
+                    <span className="text-[10px] text-orange-500 dark:text-orange-400">
                       No tags assigned
                     </span>
                   )}
@@ -236,42 +222,19 @@ const ActionsDropdown = ({
               </div>
             </button>
 
-            {/* ENHANCED: Org Chart Visibility Toggle */}
-            {showVisibilityToggle && (
-              <button
-                className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
-                onClick={() => handleAction("toggleVisibility")}
-                title={isVisibleInOrgChart() ? 'Hide from org chart' : 'Show in org chart'}
-              >
-                <div className="flex items-center">
-                  {isVisibleInOrgChart() ? (
-                    <EyeOff size={16} className="mr-3 text-gray-500" />
-                  ) : (
-                    <Eye size={16} className="mr-3 text-blue-500" />
-                  )}
-                  <div className="flex flex-col items-start">
-                    <span>{isVisibleInOrgChart() ? 'Hide from Org Chart' : 'Show in Org Chart'}</span>
-                    <span className={`text-xs ${isVisibleInOrgChart() ? 'text-green-500 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                      Currently {isVisibleInOrgChart() ? 'visible' : 'hidden'}
-                    </span>
-                  </div>
-                </div>
-              </button>
-            )}
-
             {/* Divider */}
             <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
             {/* ENHANCED: Job Description */}
             <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+              className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
               onClick={() => handleAction("viewJobDescription")}
             >
               <div className="flex items-center">
-                <FileText size={16} className="mr-3 text-amber-500" />
+                <FileText size={14} className="mr-2 text-amber-500" />
                 <div className="flex flex-col items-start">
                   <span>Job Description</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
                     View detailed job info
                   </span>
                 </div>
@@ -280,14 +243,14 @@ const ActionsDropdown = ({
 
             {/* ENHANCED: Competency Matrix */}
             <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+              className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
               onClick={() => handleAction("competencyMatrix")}
             >
               <div className="flex items-center">
-                <BarChart2 size={16} className="mr-3 text-teal-500" />
+                <BarChart2 size={14} className="mr-2 text-teal-500" />
                 <div className="flex flex-col items-start">
                   <span>Competency Matrix</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
                     Skills assessment
                   </span>
                 </div>
@@ -296,14 +259,14 @@ const ActionsDropdown = ({
 
             {/* ENHANCED: Performance Management */}
             <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+              className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
               onClick={() => handleAction("performanceManagement")}
             >
               <div className="flex items-center">
-                <BarChart2 size={16} className="mr-3 text-blue-500" />
+                <BarChart2 size={14} className="mr-2 text-blue-500" />
                 <div className="flex flex-col items-start">
                   <span>Performance Management</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400">
                     Reviews & goals
                   </span>
                 </div>
@@ -313,14 +276,14 @@ const ActionsDropdown = ({
             {/* ENHANCED: Team Overview (if manager) */}
             {employee?.direct_reports_count > 0 && (
               <button
-                className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+                className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
                 onClick={() => handleAction("viewTeam")}
               >
                 <div className="flex items-center">
-                  <Users size={16} className="mr-3 text-indigo-500" />
+                  <Users size={14} className="mr-2 text-indigo-500" />
                   <div className="flex flex-col items-start">
                     <span>View Team</span>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
                       {employee.direct_reports_count} direct report{employee.direct_reports_count !== 1 ? 's' : ''}
                     </span>
                   </div>
@@ -333,14 +296,14 @@ const ActionsDropdown = ({
 
             {/* ENHANCED: Delete Employee */}
             <button
-              className={`${styles.textPrimary} ${styles.hoverBg} block px-4 py-3 text-sm w-full text-left transition-colors`}
+              className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
               onClick={() => handleAction("delete")}
             >
               <div className="flex items-center">
-                <Trash2 size={16} className="mr-3 text-red-500" />
+                <Trash2 size={14} className="mr-2 text-red-500" />
                 <div className="flex flex-col items-start">
                   <span className="text-red-500 dark:text-red-400">Delete Employee</span>
-                  <span className="text-xs text-red-400 dark:text-red-500">
+                  <span className="text-[10px] text-red-400 dark:text-red-500">
                     Permanent action
                   </span>
                 </div>

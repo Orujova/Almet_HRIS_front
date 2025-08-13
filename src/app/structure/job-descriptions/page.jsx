@@ -1,8 +1,36 @@
+// pages/job-descriptions/JobDescriptionPage.jsx - Updated with Real API Integration
 'use client'
-import React, { useState, useMemo } from 'react';
-import { Plus, Edit, Eye, Trash2, Save, X, Search, Filter, FileText, Users, Target, Download, Upload, ChevronDown, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  Plus, 
+  Edit, 
+  Eye, 
+  Trash2, 
+  Search, 
+  FileText, 
+  Users, 
+  Target, 
+  Download, 
+  Upload, 
+  ChevronDown, 
+  AlertCircle,
+  Clock,
+  CheckCircle,
+  XCircle,
+  RotateCcw,
+  CheckSquare,
+  User,
+  Building,
+  Briefcase,
+  Filter,
+  Save,
+  X
+} from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
+import jobDescriptionService from '@/services/jobDescriptionService';
+import competencyApi from '@/services/competencyApi';
+import { employeeAPI } from '@/services/api';
 
 const JobDescriptionPage = () => {
   const { darkMode } = useTheme();
@@ -23,252 +51,237 @@ const JobDescriptionPage = () => {
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedJob, setSelectedJob] = useState(null);
   const [editingJob, setEditingJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  // Mock data for dropdowns (normally from headcount/competencies)
-  const mockHeadcountData = {
-    jobTitles: ['Sales Manager', 'Marketing Specialist', 'HR Manager', 'Finance Analyst', 'Operations Manager'],
-    hierarchyGrades: ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
-    departments: ['Commercial', 'Marketing', 'Finance', 'Operations', 'HR', 'IT', 'Procurement', 'HSE General', 'Security'],
-    positions: ['CEO', 'Regional Director', 'Department Manager', 'Team Lead', 'Senior Specialist', 'Specialist'],
-    employees: ['John Smith', 'Jane Doe', 'Ali Mammadov', 'Aysel Aliyeva', 'Rashad Hasanov', 'Sabina Ismayilova']
-  };
-
-  const mockCompetenciesData = {
-    generalProfessional: [
-      'Strategy Setting', 'Strategy delegation & execution', 'Global Steel Market and factors impacting demand and price',
-      'Local Steel Market and factors impacting demand and price', 'Steel Products Portfolio Markets & Application',
-      'Price Management', 'P&L', 'Project Management', 'Sales Management & Techniques', 'Supply Chain Management',
-      'Investment Projects Feasibility Study', 'Data Analysis', 'Marketing Communications', 'Management KPIs & Reports',
-      'Financial Statements', 'Policies & procedures design', 'Process Flow Chart Design', 'Professional correspondence & e-mailing',
-      'Languages (eg English)', 'MS Office', 'ERPs (NETSUITE eq)', 'Reporting', 'Presentation', 'QMS standards and processes',
-      'Occupational Health & Safety', 'Documents Administration & Control', 'Office & Space Management'
-    ],
-    technical: [
-      'Consumer & Supplier market data', 'Computer Data', 'Sales performance KPIs management', 'Sales Cost & Price Calculation',
-      'Quotation Procedure', 'Sales Skills (Negotiations and Communications)', 'Accounts Receivable Management / Credit Control',
-      'Trading software and platforms, including Bloomberg', 'Contract Management', 'Sales Order Creation and administration',
-      'Credit Insurance Terms and Agreement', 'Cargo Insurance Terms and Agreement', 'Netsuite report creation and analysing',
-      'Netsuite dashboards usage for Sales & Targets'
-    ],
-    behavioral: [
-      'Sets goals and focuses on accomplishment', 'Focuses on high-priority actions and does not become distracted by lower-priority activities',
-      'Takes appropriate risks to reach tough goals', 'Overcomes setbacks and adjusts the plan of action to realize goals',
-      'Develops a sense of urgency in others to complete tasks', 'Corrects actions if the result is below the expectation',
-      'Clearly knows own strengths & weaknesses', 'Explores maximum information about the client strengths & weaknesses prior to starting negotiations',
-      'Creates a Win Win picture at the time', 'Build Personal relations if has positive impact on negotiation outcome',
-      'Keeps goals in mind at stages of negotiation'
-    ]
-  };
-
-  const mockResourcesData = [
-    'CRM System Access', 'Marketing Tools', 'Sales Analytics Platform', 'Financial Software', 'Project Management Tools',
-    'Communication Platforms', 'Training Resources', 'Budget Management System', 'Reporting Tools', 'Database Access'
-  ];
-
-  const mockAccessRightsData = [
-    'Sales Database', 'Client Information System', 'Financial Reports', 'Marketing Platforms', 'HR Systems',
-    'Operations Dashboard', 'Analytics Tools', 'Content Management System', 'Budget Planning', 'Performance Metrics'
-  ];
-
-  const mockCompanyBenefitsData = [
-    'Health Insurance', 'Life Insurance', 'Dental Coverage', 'Vision Coverage', 'Retirement Plan',
-    'Performance Bonuses', 'Stock Options', 'Flexible Work Hours', 'Remote Work Options', 'Professional Development Budget',
-    'Training Programs', 'Conference Attendance', 'Gym Membership', 'Meal Allowance', 'Transportation Allowance',
-    'Annual Leave', 'Sick Leave', 'Maternity/Paternity Leave', 'Personal Days', 'Sabbatical Leave'
-  ];
-
-  // Sample job descriptions data
-  const [jobDescriptions, setJobDescriptions] = useState([
-    {
-      id: 1,
-      jobTitle: 'Sales Manager',
-      hierarchyGrade: 'Grade 12',
-      department: 'Commercial',
-      reportsTo: 'Regional Director',
-      employee: 'John Smith',
-      jobPurpose: 'To lead the sales team and drive revenue growth in the assigned territory while maintaining strong client relationships and achieving sales targets.',
-      criticalDuties: [
-        'Develop and implement sales strategies to achieve quarterly and annual targets',
-        'Manage and mentor junior sales staff',
-        'Build and maintain relationships with key clients'
-      ],
-      positionMainKpis: [
-        'Quarterly sales revenue target achievement',
-        'Client retention rate above 95%',
-        'Team performance metrics'
-      ],
-      jobDuties: [
-        'Conduct regular sales meetings and reviews',
-        'Prepare sales forecasts and reports',
-        'Participate in strategic planning sessions'
-      ],
-      requirements: [
-        'Bachelor degree in Business Administration or related field',
-        'Minimum 5 years of sales experience',
-        'Strong leadership and communication skills'
-      ],
-      generalProfessionalCompetencies: ['Sales Management & Techniques', 'Project Management', 'Data Analysis'],
-      technicalCompetencies: ['Sales performance KPIs management', 'CRM Systems', 'Contract Management'],
-      behavioralCompetencies: ['Sets goals and focuses on accomplishment', 'Takes appropriate risks to reach tough goals'],
-      resourcesForJobBusiness: ['CRM System Access', 'Sales Analytics Platform', 'Marketing Tools'],
-      accessRights: ['Sales Database', 'Client Information System', 'Reporting Tools'],
-      companyBenefits: ['Health Insurance', 'Performance Bonuses', 'Professional Development Budget'],
-      signedByLineManager: 'Signed digitally',
-      signedByEmployee: 'Not signed yet',
-      createdAt: '2024-01-15',
-      updatedAt: '2024-01-15'
-    },
-    {
-      id: 2,
-      jobTitle: 'Marketing Specialist',
-      hierarchyGrade: 'Grade 8',
-      department: 'Marketing',
-      reportsTo: 'Department Manager',
-      employee: 'Jane Doe',
-      jobPurpose: 'To develop and execute marketing campaigns that drive brand awareness and lead generation.',
-      criticalDuties: [
-        'Create and manage digital marketing campaigns',
-        'Develop marketing content and materials'
-      ],
-      positionMainKpis: [
-        'Campaign ROI above 15%',
-        'Lead generation targets'
-      ],
-      jobDuties: [
-        'Manage social media presence',
-        'Create marketing reports'
-      ],
-      requirements: [
-        'Bachelor degree in Marketing',
-        'Experience with digital marketing tools'
-      ],
-      generalProfessionalCompetencies: ['Marketing Communications', 'Data Analysis'],
-      technicalCompetencies: ['Sales performance KPIs management', 'Computer Data'],
-      behavioralCompetencies: ['Focuses on high-priority actions and does not become distracted by lower-priority activities'],
-      resourcesForJobBusiness: ['Marketing Tools', 'Communication Platforms'],
-      accessRights: ['Marketing Platforms', 'Analytics Tools'],
-      companyBenefits: ['Health Insurance', 'Flexible Work Hours', 'Training Programs'],
-      signedByLineManager: 'Signed digitally',
-      signedByEmployee: 'Signed digitally',
-      createdAt: '2024-01-10',
-      updatedAt: '2024-01-12'
-    }
-  ]);
+  // Data states
+  const [jobDescriptions, setJobDescriptions] = useState([]);
+  const [stats, setStats] = useState({});
+  const [dropdownData, setDropdownData] = useState({
+    businessFunctions: [],
+    departments: [],
+    units: [],
+    jobFunctions: [],
+    positionGroups: [],
+    employees: [],
+    skills: [],
+    competencies: [],
+    businessResources: [],
+    accessMatrix: [],
+    companyBenefits: []
+  });
 
   // Form state
   const [formData, setFormData] = useState({
-    jobTitle: '',
-    hierarchyGrade: '',
+    job_title: '',
+    job_purpose: '',
+    business_function: '',
     department: '',
-    reportsTo: '',
-    employee: '',
-    jobPurpose: '',
-    criticalDuties: [''],
-    positionMainKpis: [''],
-    jobDuties: [''],
-    requirements: [''],
-    generalProfessionalCompetencies: [],
-    technicalCompetencies: [],
-    behavioralCompetencies: [],
-    resourcesForJobBusiness: [],
-    accessRights: [],
-    companyBenefits: [],
-    signedByLineManager: 'Not signed yet',
-    signedByEmployee: 'Not signed yet'
+    unit: '',
+    position_group: '',
+    grading_level: '',
+    reports_to: '',
+    assigned_employee: '',
+    manual_employee_name: '',
+    manual_employee_phone: '',
+    sections: [],
+    required_skills_data: [],
+    behavioral_competencies_data: [],
+    business_resources_ids: [],
+    access_rights_ids: [],
+    company_benefits_ids: []
   });
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchJobDescriptions(),
+        fetchStats(),
+        fetchDropdownData()
+      ]);
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchJobDescriptions = async () => {
+    try {
+      const response = await jobDescriptionService.getJobDescriptions();
+      setJobDescriptions(response.results || []);
+    } catch (error) {
+      console.error('Error fetching job descriptions:', error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await jobDescriptionService.getJobDescriptionStats();
+      setStats(response);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  const fetchDropdownData = async () => {
+    try {
+      const [
+        businessFunctions,
+        departments, 
+        units,
+        jobFunctions,
+        positionGroups,
+        employees,
+        skills,
+        competencies,
+        businessResources,
+        accessMatrix,
+        companyBenefits
+      ] = await Promise.all([
+        employeeAPI.getBusinessFunctions(),
+        employeeAPI.getDepartments(),
+        employeeAPI.getUnits(),
+        employeeAPI.getJobFunctions(),
+        employeeAPI.getPositionGroups(),
+        employeeAPI.getEmployees(),
+        competencyApi.skills.getAll(),
+        competencyApi.behavioralCompetencies.getAll(),
+        jobDescriptionService.getBusinessResources(),
+        jobDescriptionService.getAccessMatrix(),
+        jobDescriptionService.getCompanyBenefits()
+      ]);
+
+      setDropdownData({
+        businessFunctions: businessFunctions.data?.results || [],
+        departments: departments.data?.results || [],
+        units: units.data?.results || [],
+        jobFunctions: jobFunctions.data?.results || [],
+        positionGroups: positionGroups.data?.results || [],
+        employees: employees.data?.results || [],
+        skills: skills.results || [],
+        competencies: competencies.results || [],
+        businessResources: businessResources.results || [],
+        accessMatrix: accessMatrix.results || [],
+        companyBenefits: companyBenefits.results || []
+      });
+    } catch (error) {
+      console.error('Error fetching dropdown data:', error);
+    }
+  };
 
   // Filter jobs based on search and department
   const filteredJobs = useMemo(() => {
     return jobDescriptions.filter(job => {
       const matchesSearch = !searchTerm || 
-        job.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (job.employee && job.employee.toLowerCase().includes(searchTerm.toLowerCase()));
+        job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.department_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.employee_info?.name?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesDepartment = !selectedDepartment || job.department === selectedDepartment;
+      const matchesDepartment = !selectedDepartment || job.department_name === selectedDepartment;
       
       return matchesSearch && matchesDepartment;
     });
   }, [jobDescriptions, searchTerm, selectedDepartment]);
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validate required fields
-    if (!formData.jobTitle || !formData.department || !formData.hierarchyGrade || !formData.jobPurpose) {
+    if (!formData.job_title || !formData.department || !formData.position_group || !formData.job_purpose) {
       alert('Please fill in all required fields');
       return;
     }
 
-    // Filter out empty strings from array fields
-    const cleanedFormData = {
-      ...formData,
-      criticalDuties: formData.criticalDuties.filter(duty => duty.trim() !== ''),
-      positionMainKpis: formData.positionMainKpis.filter(kpi => kpi.trim() !== ''),
-      jobDuties: formData.jobDuties.filter(duty => duty.trim() !== ''),
-      requirements: formData.requirements.filter(req => req.trim() !== ''),
-    };
-    
-    if (editingJob) {
-      // Update existing job
-      setJobDescriptions(prev => prev.map(job => 
-        job.id === editingJob.id 
-          ? { ...job, ...cleanedFormData, updatedAt: new Date().toISOString().split('T')[0] }
-          : job
-      ));
-    } else {
-      // Create new job
-      const newJob = {
-        id: Date.now(),
-        ...cleanedFormData,
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0]
-      };
-      setJobDescriptions(prev => [...prev, newJob]);
+    try {
+      setActionLoading(true);
+      
+      const apiData = jobDescriptionService.prepareJobDescriptionData(formData);
+      
+      if (editingJob) {
+        await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
+        alert('Job description updated successfully!');
+      } else {
+        await jobDescriptionService.createJobDescription(apiData);
+        alert('Job description created successfully!');
+      }
+      
+      await fetchJobDescriptions();
+      await fetchStats();
+      resetForm();
+    } catch (error) {
+      console.error('Error saving job description:', error);
+      alert('Error saving job description. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
-    
-    resetForm();
-    alert(editingJob ? 'Job description updated successfully!' : 'Job description created successfully!');
   };
 
   // Reset form
   const resetForm = () => {
     setFormData({
-      jobTitle: '',
-      hierarchyGrade: '',
+      job_title: '',
+      job_purpose: '',
+      business_function: '',
       department: '',
-      reportsTo: '',
-      employee: '',
-      jobPurpose: '',
-      criticalDuties: [''],
-      positionMainKpis: [''],
-      jobDuties: [''],
-      requirements: [''],
-      generalProfessionalCompetencies: [],
-      technicalCompetencies: [],
-      behavioralCompetencies: [],
-      resourcesForJobBusiness: [],
-      accessRights: [],
-      companyBenefits: [],
-      signedByLineManager: 'Not signed yet',
-      signedByEmployee: 'Not signed yet'
+      unit: '',
+      position_group: '',
+      grading_level: '',
+      reports_to: '',
+      assigned_employee: '',
+      manual_employee_name: '',
+      manual_employee_phone: '',
+      sections: [],
+      required_skills_data: [],
+      behavioral_competencies_data: [],
+      business_resources_ids: [],
+      access_rights_ids: [],
+      company_benefits_ids: []
     });
     setEditingJob(null);
     setActiveView('list');
   };
 
   // Handle edit
-  const handleEdit = (job) => {
-    setFormData(job);
-    setEditingJob(job);
-    setActiveView('create');
+  const handleEdit = async (job) => {
+    try {
+      setActionLoading(true);
+      const fullJob = await jobDescriptionService.getJobDescription(job.id);
+      const transformedData = jobDescriptionService.transformJobDescriptionResponse(fullJob);
+      setFormData(transformedData);
+      setEditingJob(fullJob);
+      setActiveView('create');
+    } catch (error) {
+      console.error('Error loading job for edit:', error);
+      alert('Error loading job description. Please try again.');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   // Handle delete
-  const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this job description?')) {
-      setJobDescriptions(prev => prev.filter(job => job.id !== id));
+  const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this job description?')) {
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await jobDescriptionService.deleteJobDescription(id);
+      await fetchJobDescriptions();
+      await fetchStats();
+      alert('Job description deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting job description:', error);
+      alert('Error deleting job description. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -298,7 +311,7 @@ const JobDescriptionPage = () => {
     }
   };
 
-  // Handle multi-select for competencies
+  // Handle multi-select changes
   const handleMultiSelectChange = (fieldName, value) => {
     setFormData(prev => ({
       ...prev,
@@ -308,14 +321,38 @@ const JobDescriptionPage = () => {
     }));
   };
 
-  // Stats
-  const stats = useMemo(() => {
-    const totalJobs = jobDescriptions.length;
-    const assignedJobs = jobDescriptions.filter(job => job.employee).length;
-    const signedJobs = jobDescriptions.filter(job => job.signedByEmployee === 'Signed digitally').length;
-    
-    return { totalJobs, assignedJobs, signedJobs };
-  }, [jobDescriptions]);
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'PENDING_LINE_MANAGER':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'PENDING_EMPLOYEE':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'APPROVED':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      case 'REVISION_REQUIRED':
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'PENDING_LINE_MANAGER':
+      case 'PENDING_EMPLOYEE':
+        return <Clock size={16} />;
+      case 'APPROVED':
+        return <CheckCircle size={16} />;
+      case 'REJECTED':
+        return <XCircle size={16} />;
+      case 'REVISION_REQUIRED':
+        return <RotateCcw size={16} />;
+      default:
+        return <AlertCircle size={16} />;
+    }
+  };
 
   const StatCard = ({ title, value, subtitle, icon: Icon, color = "almet-sapphire" }) => (
     <div className={`${bgCard} rounded-lg p-6 border ${borderColor} shadow-sm`}>
@@ -352,14 +389,14 @@ const JobDescriptionPage = () => {
         {isOpen && (
           <div className={`absolute top-full left-0 right-0 mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-48 overflow-y-auto z-10`}>
             {options.map((option) => (
-              <label key={option} className={`flex items-center px-3 py-2 hover:${bgCardHover} cursor-pointer`}>
+              <label key={option.id || option.value} className={`flex items-center px-3 py-2 hover:${bgCardHover} cursor-pointer`}>
                 <input
                   type="checkbox"
-                  checked={selected.includes(option)}
-                  onChange={() => onChange(fieldName, option)}
+                  checked={selected.includes(option.id || option.value)}
+                  onChange={() => onChange(fieldName, option.id || option.value)}
                   className="mr-2 text-almet-sapphire focus:ring-almet-sapphire"
                 />
-                <span className={`text-sm ${textPrimary}`}>{option}</span>
+                <span className={`text-sm ${textPrimary}`}>{option.name || option.label}</span>
               </label>
             ))}
           </div>
@@ -367,6 +404,20 @@ const JobDescriptionPage = () => {
       </div>
     );
   };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className={`min-h-screen ${bgApp} p-6`}>
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-almet-sapphire"></div>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -404,24 +455,30 @@ const JobDescriptionPage = () => {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <StatCard 
                 title="Total Job Descriptions" 
-                value={stats.totalJobs} 
+                value={stats.total_job_descriptions || 0} 
                 icon={FileText}
                 color="almet-sapphire"
               />
               <StatCard 
-                title="Assigned Jobs" 
-                value={stats.assignedJobs} 
-                icon={Users}
+                title="Pending Approvals" 
+                value={stats.pending_approvals?.total || 0} 
+                icon={Clock}
+                color="yellow-600"
+              />
+              <StatCard 
+                title="Approved" 
+                value={stats.approval_workflow_summary?.approved || 0} 
+                icon={CheckCircle}
                 color="green-600"
               />
               <StatCard 
-                title="Signed Jobs" 
-                value={stats.signedJobs} 
-                icon={Target}
-                color="purple-600"
+                title="Draft" 
+                value={stats.approval_workflow_summary?.draft || 0} 
+                icon={Edit}
+                color="gray-600"
               />
             </div>
 
@@ -474,8 +531,8 @@ const JobDescriptionPage = () => {
                     className={`px-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                   >
                     <option value="">All Departments</option>
-                    {mockHeadcountData.departments.map(dept => (
-                      <option key={dept} value={dept}>{dept}</option>
+                    {dropdownData.departments.map(dept => (
+                      <option key={dept.id} value={dept.name}>{dept.name}</option>
                     ))}
                   </select>
                 </div>
@@ -493,13 +550,17 @@ const JobDescriptionPage = () => {
                               <FileText size={16} />
                             </div>
                             <div>
-                              <h3 className={`text-lg font-semibold ${textPrimary}`}>{job.jobTitle}</h3>
+                              <h3 className={`text-lg font-semibold ${textPrimary}`}>{job.job_title}</h3>
                               <p className={`text-sm ${textSecondary}`}>
-                                {job.department} • {job.hierarchyGrade}
+                                {job.business_function_name} • {job.department_name}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(job.status)}`}>
+                              {getStatusIcon(job.status)}
+                              {job.status_display?.status || job.status}
+                            </span>
                             <button
                               onClick={() => {
                                 setSelectedJob(job);
@@ -512,14 +573,16 @@ const JobDescriptionPage = () => {
                             </button>
                             <button
                               onClick={() => handleEdit(job)}
-                              className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                              disabled={actionLoading}
+                              className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors disabled:opacity-50"
                               title="Edit"
                             >
                               <Edit size={16} />
                             </button>
                             <button
                               onClick={() => handleDelete(job.id)}
-                              className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                              disabled={actionLoading}
+                              className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
                               title="Delete"
                             >
                               <Trash2 size={16} />
@@ -530,21 +593,15 @@ const JobDescriptionPage = () => {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                           <div>
                             <span className={`font-medium ${textMuted}`}>Employee: </span>
-                            <span className={textPrimary}>{job.employee || 'Unassigned'}</span>
+                            <span className={textPrimary}>{job.employee_info?.name || 'Unassigned'}</span>
                           </div>
                           <div>
                             <span className={`font-medium ${textMuted}`}>Reports to: </span>
-                            <span className={textPrimary}>{job.reportsTo}</span>
+                            <span className={textPrimary}>{job.manager_info?.name || 'N/A'}</span>
                           </div>
                           <div>
-                            <span className={`font-medium ${textMuted}`}>Status: </span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              job.signedByEmployee === 'Signed digitally' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                            }`}>
-                              {job.signedByEmployee === 'Signed digitally' ? 'Signed' : 'Pending'}
-                            </span>
+                            <span className={`font-medium ${textMuted}`}>Version: </span>
+                            <span className={textPrimary}>{job.version}</span>
                           </div>
                         </div>
                       </div>
@@ -583,32 +640,29 @@ const JobDescriptionPage = () => {
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                         Job Title <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        value={formData.jobTitle}
-                        onChange={(e) => setFormData({...formData, jobTitle: e.target.value})}
+                      <input
+                        type="text"
+                        value={formData.job_title}
+                        onChange={(e) => setFormData({...formData, job_title: e.target.value})}
                         className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                        placeholder="Enter job title"
                         required
-                      >
-                        <option value="">Select job title</option>
-                        {mockHeadcountData.jobTitles.map(title => (
-                          <option key={title} value={title}>{title}</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                     
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        Hierarchy & Grade <span className="text-red-500">*</span>
+                        Business Function <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.hierarchyGrade}
-                        onChange={(e) => setFormData({...formData, hierarchyGrade: e.target.value})}
+                        value={formData.business_function}
+                        onChange={(e) => setFormData({...formData, business_function: e.target.value})}
                         className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                         required
                       >
-                        <option value="">Select grade</option>
-                        {mockHeadcountData.hierarchyGrades.map(grade => (
-                          <option key={grade} value={grade}>{grade}</option>
+                        <option value="">Select Business Function</option>
+                        {dropdownData.businessFunctions.map(bf => (
+                          <option key={bf.id} value={bf.id}>{bf.name}</option>
                         ))}
                       </select>
                     </div>
@@ -624,8 +678,25 @@ const JobDescriptionPage = () => {
                         required
                       >
                         <option value="">Select Department</option>
-                        {mockHeadcountData.departments.map(dept => (
-                          <option key={dept} value={dept}>{dept}</option>
+                        {dropdownData.departments.map(dept => (
+                          <option key={dept.id} value={dept.id}>{dept.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                        Position Group <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={formData.position_group}
+                        onChange={(e) => setFormData({...formData, position_group: e.target.value})}
+                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                        required
+                      >
+                        <option value="">Select Position Group</option>
+                        {dropdownData.positionGroups.map(pg => (
+                          <option key={pg.id} value={pg.id}>{pg.display_name || pg.name}</option>
                         ))}
                       </select>
                     </div>
@@ -635,29 +706,13 @@ const JobDescriptionPage = () => {
                         Reports To
                       </label>
                       <select
-                        value={formData.reportsTo}
-                        onChange={(e) => setFormData({...formData, reportsTo: e.target.value})}
+                        value={formData.reports_to}
+                        onChange={(e) => setFormData({...formData, reports_to: e.target.value})}
                         className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                       >
-                        <option value="">Select Position</option>
-                        {mockHeadcountData.positions.map(position => (
-                          <option key={position} value={position}>{position}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        Employee
-                      </label>
-                      <select
-                        value={formData.employee}
-                        onChange={(e) => setFormData({...formData, employee: e.target.value})}
-                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                      >
-                        <option value="">Select Employee or Keep Blank</option>
-                        {mockHeadcountData.employees.map(employee => (
-                          <option key={employee} value={employee}>{employee}</option>
+                        <option value="">Select Manager</option>
+                        {dropdownData.employees.map(emp => (
+                          <option key={emp.id} value={emp.id}>{emp.name || emp.full_name}</option>
                         ))}
                       </select>
                     </div>
@@ -669,8 +724,8 @@ const JobDescriptionPage = () => {
                       Job Purpose <span className="text-red-500">*</span>
                     </label>
                     <textarea
-                      value={formData.jobPurpose}
-                      onChange={(e) => setFormData({...formData, jobPurpose: e.target.value})}
+                      value={formData.job_purpose}
+                      onChange={(e) => setFormData({...formData, job_purpose: e.target.value})}
                       rows="3"
                       className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
                       placeholder="Describe the main purpose of this job..."
@@ -678,74 +733,101 @@ const JobDescriptionPage = () => {
                     />
                   </div>
 
-                  {/* Dynamic Array Fields */}
+                  {/* Dynamic Sections */}
                   {[
-                    { field: 'criticalDuties', label: 'Critical Duties', required: true },
-                    { field: 'positionMainKpis', label: 'Position Main KPIs', required: true },
-                    { field: 'jobDuties', label: 'Job Duties', required: true },
-                    { field: 'requirements', label: 'Requirements', required: true }
-                  ].map(({ field, label, required }) => (
-                    <div key={field}>
-                      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        {label} {required && <span className="text-red-500">*</span>}
-                      </label>
-                      {formData[field].map((item, index) => (
-                        <div key={index} className="flex items-start gap-2 mb-2">
-                          <textarea
-                            value={item}
-                            onChange={(e) => handleArrayFieldChange(field, index, e.target.value)}
-                            className={`flex-1 px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                            rows="2"
-                            placeholder={`Enter ${label.toLowerCase()}...`}
-                            required={required}
-                          />
-                          {formData[field].length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removeArrayItem(field, index)}
-                              className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
-                            >
-                              <X size={16} />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => addArrayItem(field)}
-                        className="text-almet-sapphire hover:text-almet-astral font-medium text-sm flex items-center gap-1"
-                      >
-                        <Plus size={16} />
-                        Add {label.slice(0, -1)}
-                      </button>
-                    </div>
-                  ))}
-
-                  {/* Multi-select Competencies */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        General Professional Competencies
-                      </label>
-                      <MultiSelect
-                        options={mockCompetenciesData.generalProfessional}
-                        selected={formData.generalProfessionalCompetencies}
-                        onChange={handleMultiSelectChange}
-                        placeholder="Select competencies..."
-                        fieldName="generalProfessionalCompetencies"
-                      />
-                    </div>
+                    { type: 'CRITICAL_DUTIES', title: 'Critical Duties', required: true },
+                    { type: 'MAIN_KPIS', title: 'Position Main KPIs', required: true },
+                    { type: 'JOB_DUTIES', title: 'Job Duties', required: true },
+                    { type: 'REQUIREMENTS', title: 'Requirements', required: true }
+                  ].map(({ type, title, required }) => {
+                    const sectionData = formData.sections.find(s => s.section_type === type) || { content: '' };
+                    const contentLines = sectionData.content ? sectionData.content.split('\n• ').filter(line => line.trim()) : [''];
                     
+                    return (
+                      <div key={type}>
+                        <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                          {title} {required && <span className="text-red-500">*</span>}
+                        </label>
+                        {contentLines.map((line, index) => (
+                          <div key={index} className="flex items-start gap-2 mb-2">
+                            <textarea
+                              value={line.replace(/^• /, '')}
+                              onChange={(e) => {
+                                const newLines = [...contentLines];
+                                newLines[index] = e.target.value;
+                                const newSections = formData.sections.filter(s => s.section_type !== type);
+                                if (newLines.some(l => l.trim())) {
+                                  newSections.push({
+                                    section_type: type,
+                                    title,
+                                    content: newLines.filter(l => l.trim()).map(l => `• ${l}`).join('\n'),
+                                    order: newSections.length + 1
+                                  });
+                                }
+                                setFormData({...formData, sections: newSections});
+                              }}
+                              className={`flex-1 px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                              rows="2"
+                              placeholder={`Enter ${title.toLowerCase()}...`}
+                              required={required && index === 0}
+                            />
+                            {contentLines.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newLines = contentLines.filter((_, i) => i !== index);
+                                  const newSections = formData.sections.filter(s => s.section_type !== type);
+                                  if (newLines.some(l => l.trim())) {
+                                    newSections.push({
+                                      section_type: type,
+                                      title,
+                                      content: newLines.filter(l => l.trim()).map(l => `• ${l}`).join('\n'),
+                                      order: newSections.length + 1
+                                    });
+                                  }
+                                  setFormData({...formData, sections: newSections});
+                                }}
+                                className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                              >
+                                <X size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newLines = [...contentLines, ''];
+                            const newSections = formData.sections.filter(s => s.section_type !== type);
+                            newSections.push({
+                              section_type: type,
+                              title,
+                              content: newLines.filter(l => l.trim()).map(l => `• ${l}`).join('\n'),
+                              order: newSections.length + 1
+                            });
+                            setFormData({...formData, sections: newSections});
+                          }}
+                          className="text-almet-sapphire hover:text-almet-astral font-medium text-sm flex items-center gap-1"
+                        >
+                          <Plus size={16} />
+                          Add {title.slice(0, -1)}
+                        </button>
+                      </div>
+                    );
+                  })}
+
+                  {/* Multi-select for Skills and Competencies */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        Technical Competencies
+                        Required Skills
                       </label>
                       <MultiSelect
-                        options={mockCompetenciesData.technical}
-                        selected={formData.technicalCompetencies}
+                        options={dropdownData.skills}
+                        selected={formData.required_skills_data}
                         onChange={handleMultiSelectChange}
-                        placeholder="Select competencies..."
-                        fieldName="technicalCompetencies"
+                        placeholder="Select skills..."
+                        fieldName="required_skills_data"
                       />
                     </div>
                     
@@ -754,11 +836,11 @@ const JobDescriptionPage = () => {
                         Behavioral Competencies
                       </label>
                       <MultiSelect
-                        options={mockCompetenciesData.behavioral}
-                        selected={formData.behavioralCompetencies}
+                        options={dropdownData.competencies}
+                        selected={formData.behavioral_competencies_data}
                         onChange={handleMultiSelectChange}
                         placeholder="Select competencies..."
-                        fieldName="behavioralCompetencies"
+                        fieldName="behavioral_competencies_data"
                       />
                     </div>
                   </div>
@@ -767,14 +849,14 @@ const JobDescriptionPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        Resources for Job Business
+                        Business Resources
                       </label>
                       <MultiSelect
-                        options={mockResourcesData}
-                        selected={formData.resourcesForJobBusiness}
+                        options={dropdownData.businessResources}
+                        selected={formData.business_resources_ids}
                         onChange={handleMultiSelectChange}
                         placeholder="Select resources..."
-                        fieldName="resourcesForJobBusiness"
+                        fieldName="business_resources_ids"
                       />
                     </div>
                     
@@ -783,11 +865,11 @@ const JobDescriptionPage = () => {
                         Access Rights
                       </label>
                       <MultiSelect
-                        options={mockAccessRightsData}
-                        selected={formData.accessRights}
+                        options={dropdownData.accessMatrix}
+                        selected={formData.access_rights_ids}
                         onChange={handleMultiSelectChange}
                         placeholder="Select access rights..."
-                        fieldName="accessRights"
+                        fieldName="access_rights_ids"
                       />
                     </div>
                     
@@ -796,43 +878,12 @@ const JobDescriptionPage = () => {
                         Company Benefits
                       </label>
                       <MultiSelect
-                        options={mockCompanyBenefitsData}
-                        selected={formData.companyBenefits}
+                        options={dropdownData.companyBenefits}
+                        selected={formData.company_benefits_ids}
                         onChange={handleMultiSelectChange}
                         placeholder="Select benefits..."
-                        fieldName="companyBenefits"
+                        fieldName="company_benefits_ids"
                       />
-                    </div>
-                  </div>
-
-                  {/* Signature Status */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        Signed by Line Manager
-                      </label>
-                      <select
-                        value={formData.signedByLineManager}
-                        onChange={(e) => setFormData({...formData, signedByLineManager: e.target.value})}
-                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                      >
-                        <option value="Not signed yet">Not signed yet</option>
-                        <option value="Signed digitally">Signed digitally</option>
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                        Signed by Employee
-                      </label>
-                      <select
-                        value={formData.signedByEmployee}
-                        onChange={(e) => setFormData({...formData, signedByEmployee: e.target.value})}
-                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
-                      >
-                        <option value="Not signed yet">Not signed yet</option>
-                        <option value="Signed digitally">Signed digitally</option>
-                      </select>
                     </div>
                   </div>
 
@@ -841,15 +892,15 @@ const JobDescriptionPage = () => {
                     <div className="flex items-start gap-2">
                       <AlertCircle size={16} className="text-almet-sapphire mt-1 flex-shrink-0" />
                       <div>
-                        <h4 className={`font-medium ${textPrimary} mb-1`}>Notes:</h4>
+                        <h4 className={`font-medium ${textPrimary} mb-1`}>Important Notes:</h4>
                         <p className={`text-sm ${textSecondary} mb-2`}>
-                          The last two columns are action-oriented. Selected employees will see this in their profile and confirm it.
+                          After creating this job description, it will be submitted for approval workflow.
                         </p>
                         <p className={`text-sm ${textSecondary} mb-2`}>
-                          Managers will see each of their employees separately in their profile and confirm them.
+                          The assigned employee will be notified to review and approve their job description.
                         </p>
                         <p className={`text-sm ${textSecondary}`}>
-                          It should be possible to view and download each of these as a document.
+                          The line manager will also need to approve the job description before it becomes active.
                         </p>
                       </div>
                     </div>
@@ -860,14 +911,18 @@ const JobDescriptionPage = () => {
                     <button
                       type="button"
                       onClick={resetForm}
-                      className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors`}
+                      disabled={actionLoading}
+                      className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors disabled:opacity-50`}
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors"
+                      disabled={actionLoading}
+                      className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
+                      {actionLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                      <Save size={16} />
                       {editingJob ? 'Update' : 'Create'} Job Description
                     </button>
                   </div>
@@ -882,11 +937,11 @@ const JobDescriptionPage = () => {
               <div className={`${bgCard} rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto border ${borderColor}`}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className={`text-2xl font-bold ${textPrimary}`}>Job Description</h2>
+                    <h2 className={`text-2xl font-bold ${textPrimary}`}>Job Description Details</h2>
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => {
-                          // Download as PDF functionality would go here
+                          // Download functionality would go here
                           alert('Download functionality would be implemented here');
                         }}
                         className="flex items-center gap-2 px-3 py-1 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm"
@@ -910,17 +965,25 @@ const JobDescriptionPage = () => {
                     {/* Header Information */}
                     <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 ${bgAccent} rounded-lg`}>
                       <div>
-                        <h3 className={`text-xl font-semibold ${textPrimary} mb-2`}>{selectedJob.jobTitle}</h3>
-                        <p className={`${textSecondary}`}>{selectedJob.department} • {selectedJob.hierarchyGrade}</p>
+                        <h3 className={`text-xl font-semibold ${textPrimary} mb-2`}>{selectedJob.job_title}</h3>
+                        <p className={`${textSecondary}`}>
+                          {selectedJob.business_function_name} • {selectedJob.department_name}
+                        </p>
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between">
-                          <span className={`font-medium ${textMuted}`}>Reports to:</span>
-                          <span className={textPrimary}>{selectedJob.reportsTo}</span>
+                          <span className={`font-medium ${textMuted}`}>Status:</span>
+                          <span className={`px-2 py-1 rounded text-xs ${getStatusColor(selectedJob.status)}`}>
+                            {selectedJob.status_display?.status || selectedJob.status}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className={`font-medium ${textMuted}`}>Version:</span>
+                          <span className={textPrimary}>{selectedJob.version}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className={`font-medium ${textMuted}`}>Employee:</span>
-                          <span className={textPrimary}>{selectedJob.employee || 'Unassigned'}</span>
+                          <span className={textPrimary}>{selectedJob.employee_info?.name || 'Unassigned'}</span>
                         </div>
                       </div>
                     </div>
@@ -928,138 +991,13 @@ const JobDescriptionPage = () => {
                     {/* Job Purpose */}
                     <div>
                       <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Job Purpose</h4>
-                      <p className={`${textSecondary} leading-relaxed`}>{selectedJob.jobPurpose}</p>
+                      <p className={`${textSecondary} leading-relaxed`}>{selectedJob.job_purpose}</p>
                     </div>
 
-                    {/* Critical Duties */}
-                    <div>
-                      <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Critical Duties</h4>
-                      <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                        {selectedJob.criticalDuties.map((duty, index) => (
-                          <li key={index}>{duty}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Main KPIs */}
-                    <div>
-                      <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Main KPIs</h4>
-                      <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                        {selectedJob.positionMainKpis.map((kpi, index) => (
-                          <li key={index}>{kpi}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Job Duties */}
-                    <div>
-                      <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Job Duties</h4>
-                      <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                        {selectedJob.jobDuties.map((duty, index) => (
-                          <li key={index}>{duty}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Requirements */}
-                    <div>
-                      <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Requirements</h4>
-                      <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                        {selectedJob.requirements.map((req, index) => (
-                          <li key={index}>{req}</li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Competencies */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>General Professional</h4>
-                        <div className="space-y-2">
-                          {selectedJob.generalProfessionalCompetencies.map((comp, index) => (
-                            <span key={index} className={`inline-block px-3 py-1 ${bgAccent} ${textSecondary} text-sm rounded-full mr-2 mb-2`}>
-                              {comp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Technical</h4>
-                        <div className="space-y-2">
-                          {selectedJob.technicalCompetencies.map((comp, index) => (
-                            <span key={index} className={`inline-block px-3 py-1 ${bgAccent} ${textSecondary} text-sm rounded-full mr-2 mb-2`}>
-                              {comp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                      <div>
-                        <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Behavioral</h4>
-                        <div className="space-y-2">
-                          {selectedJob.behavioralCompetencies.map((comp, index) => (
-                            <span key={index} className={`inline-block px-3 py-1 ${bgAccent} ${textSecondary} text-sm rounded-full mr-2 mb-2`}>
-                              {comp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Resources and Access */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Resources for Job Business</h4>
-                        <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                          {selectedJob.resourcesForJobBusiness.map((resource, index) => (
-                            <li key={index}>{resource}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Access Rights</h4>
-                        <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                          {selectedJob.accessRights.map((access, index) => (
-                            <li key={index}>{access}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className={`text-lg font-semibold ${textPrimary} mb-3`}>Company Benefits</h4>
-                        <ul className={`list-disc list-inside space-y-1 ${textSecondary}`}>
-                          {selectedJob.companyBenefits.map((benefit, index) => (
-                            <li key={index}>{benefit}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    {/* Signature Status */}
-                    <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 ${bgAccent} rounded-lg`}>
-                      <div className="flex justify-between items-center">
-                        <span className={`font-medium ${textMuted}`}>Line Manager:</span>
-                        <span className={`px-3 py-1 rounded-full text-sm ${
-                          selectedJob.signedByLineManager === 'Signed digitally' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        }`}>
-                          {selectedJob.signedByLineManager}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className={`font-medium ${textMuted}`}>Employee:</span>
-                        <span className={`px-3 py-1 rounded-full text-sm ${
-                          selectedJob.signedByEmployee === 'Signed digitally' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        }`}>
-                          {selectedJob.signedByEmployee}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Timestamps */}
-                    <div className={`text-sm ${textMuted} text-center pt-4 border-t ${borderColor}`}>
-                      Created: {selectedJob.createdAt} • Last Updated: {selectedJob.updatedAt}
+                    {/* Sections would be displayed here - this would need the full job data */}
+                    <div className={`text-center py-8 ${textMuted}`}>
+                      <p className="text-sm">Full job description details would be displayed here...</p>
+                      <p className="text-xs mt-2">This requires fetching the complete job description data.</p>
                     </div>
                   </div>
                 </div>
@@ -1073,3 +1011,4 @@ const JobDescriptionPage = () => {
 };
 
 export default JobDescriptionPage;
+                       

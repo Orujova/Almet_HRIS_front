@@ -1,4 +1,4 @@
-// src/app/structure/employee/[id]/page.jsx - Complete Fixed Version
+// src/app/structure/employee/[id]/page.jsx - Fixed Version
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -29,16 +29,18 @@ import {
   Clock,
   Eye,
   EyeOff,
-  Loader
+  Loader,
+  ClipboardList
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useEmployees } from "@/hooks/useEmployees";
 import EmployeeStatusBadge from "@/components/headcount/EmployeeStatusBadge";
 import EmployeeTag from "@/components/headcount/EmployeeTag";
+import EmployeeDetailJobDescriptions from "@/components/headcount/EmployeeDetailJobDescriptions";
 
 /**
- * Employee Detail Page Content Component with Fixed Data Display
+ * Employee Detail Page Content Component with Job Descriptions Integration
  */
 const EmployeeDetailPageContent = () => {
   const { id } = useParams();
@@ -80,6 +82,9 @@ const EmployeeDetailPageContent = () => {
     timeZone: 'Asia/Baku'
   });
 
+  // Check if user is a manager (has direct reports)
+  const isManager = currentEmployee?.direct_reports && currentEmployee.direct_reports.length > 0;
+
   // Fetch employee data
   useEffect(() => {
     if (id) {
@@ -90,8 +95,6 @@ const EmployeeDetailPageContent = () => {
       clearCurrentEmployee();
     };
   }, [id, fetchEmployee, clearCurrentEmployee]);
-
- 
 
   // Enhanced field getters with proper nested data extraction
   const getFieldValue = (field, fallback = 'N/A') => {
@@ -158,8 +161,6 @@ const EmployeeDetailPageContent = () => {
       // Contract duration display
       'contract_duration_display': currentEmployee.contract_duration_display || 
         (currentEmployee.contract_duration === 'PERMANENT' ? 'Permanent' : currentEmployee.contract_duration),
-        
-   
     };
     
     const value = fieldMappings[field];
@@ -342,7 +343,6 @@ const EmployeeDetailPageContent = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-    
       {/* Back button */}
       <div className="mb-6 flex justify-between items-center">
         <Link
@@ -487,13 +487,14 @@ const EmployeeDetailPageContent = () => {
              {[
                { id: 'overview', label: 'Overview', icon: <User size={14} /> },
                { id: 'job', label: 'Job Details', icon: <Briefcase size={14} /> },
+               { id: 'job-descriptions', label: 'Job Descriptions', icon: <ClipboardList size={14} /> },
                { id: 'documents', label: 'Documents', icon: <FileText size={14} /> },
                { id: 'activity', label: 'Activity', icon: <Activity size={14} /> }
              ].map((tab) => (
                <button
                  key={tab.id}
                  onClick={() => setActiveTab(tab.id)}
-                 className={`flex-1 px-4 py-3 text-xs font-medium flex items-center justify-center transition-colors ${
+                 className={`flex-1 px-3 py-3 text-xs font-medium flex items-center justify-center transition-colors ${
                    activeTab === tab.id
                      ? 'text-almet-sapphire dark:text-almet-steel-blue border-b-2 border-almet-sapphire dark:border-almet-steel-blue bg-almet-sapphire/5 dark:bg-almet-sapphire/10'
                      : `${textMuted} hover:text-almet-sapphire dark:hover:text-almet-steel-blue hover:bg-gray-50 dark:hover:bg-gray-700/50`
@@ -575,65 +576,6 @@ const EmployeeDetailPageContent = () => {
                      <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Identification</h4>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <InfoItem 
-                         icon={<Briefcase size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="HC Number"
-                         value={getFieldValue('employee_id')}
-                       />
-                       <InfoItem 
-                         icon={<User size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Name"
-                         value={getDisplayName()}
-                       />
-                     </div>
-                   </div>
-
-                   {/* Role and Structure Section */}
-                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Role & Structure</h4>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <InfoItem 
-                         icon={<Building size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Business Function"
-                         value={getFieldValue('business_function_name')}
-                       />
-                       <InfoItem 
-                         icon={<LayoutGrid size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Department"
-                         value={getFieldValue('department_name')}
-                       />
-                       <InfoItem 
-                         icon={<LayoutGrid size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Unit"
-                         value={getFieldValue('unit_name')}
-                       />
-                       <InfoItem 
-                         icon={<Target size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Job Function"
-                         value={getFieldValue('job_function_name')}
-                       />
-                       <InfoItem 
-                         icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Job Title"
-                         value={getFieldValue('job_title')}
-                       />
-                       <InfoItem 
-                         icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Position Group"
-                         value={getFieldValue('position_group_name')}
-                       />
-                       <InfoItem 
-                         icon={<Award size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
-                         label="Grade"
-                         value={getFieldValue('grading_display') || getFieldValue('grading_level')}
-                       />
-                     </div>
-                   </div>
-
-                   {/* Management Section */}
-                   <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-                     <h4 className={`${textPrimary} font-medium mb-3 text-xs uppercase`}>Management</h4>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                       <InfoItem 
                          icon={<Users size={12} className="text-almet-sapphire dark:text-almet-steel-blue" />}
                          label="LM HC Number"
                          value={getFieldValue('line_manager_hc_number')}
@@ -711,6 +653,15 @@ const EmployeeDetailPageContent = () => {
                      </div>
                    </div>
                  </div>
+               </div>
+             )}
+
+             {activeTab === 'job-descriptions' && (
+               <div className="space-y-4">
+                 <EmployeeDetailJobDescriptions 
+                   employeeId={id} 
+                   isManager={isManager}
+                 />
                </div>
              )}
 

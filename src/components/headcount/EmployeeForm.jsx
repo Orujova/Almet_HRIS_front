@@ -1043,7 +1043,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
 
   return (
     <div className="container mx-auto py-0">
-      <div className={`${bgCard} rounded-xl shadow-lg overflow-hidden border ${borderColor}`}>
+      <div className={`${bgCard} rounded-xl shadow-lg  border ${borderColor}`}>
         {/* Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center">

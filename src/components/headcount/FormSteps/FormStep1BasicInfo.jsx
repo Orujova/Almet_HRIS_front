@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Added Father Name Field
+// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Compact Design
 import { useState, useEffect } from "react";
 import { User, Mail, Hash, Phone, Calendar, MapPin, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
@@ -6,7 +6,7 @@ import FormField from "../FormComponents/FormField";
 import { apiService } from "../../../services/api";
 
 /**
- * Enhanced Basic Information step with edit mode support and father name field
+ * Enhanced Basic Information step with compact design and Almet colors
  */
 const FormStep1BasicInfo = ({ 
   formData, 
@@ -21,12 +21,12 @@ const FormStep1BasicInfo = ({
   const [emailStatus, setEmailStatus] = useState({ checking: false, available: null });
   const [validationTimer, setValidationTimer] = useState(null);
 
-  // Theme-dependent classes
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const bgAccent = darkMode ? "bg-gray-700" : "bg-gray-50";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  // Theme-dependent classes with Almet colors
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
+  const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
+  const bgAccent = darkMode ? "bg-gray-700" : "bg-almet-mystic";
+  const borderColor = darkMode ? "border-gray-700" : "border-almet-bali-hai";
 
   // Real-time employee ID validation (only for new employees or changed IDs)
   useEffect(() => {
@@ -168,13 +168,13 @@ const FormStep1BasicInfo = ({
   // Get validation icon for employee ID
   const getEmployeeIdValidationIcon = () => {
     if (employeeIdStatus.checking) {
-      return <Loader size={14} className="text-blue-500 animate-spin" />;
+      return <Loader size={12} className="text-almet-sapphire animate-spin" />;
     }
     if (employeeIdStatus.available === true) {
-      return <CheckCircle size={14} className="text-green-500" />;
+      return <CheckCircle size={12} className="text-green-500" />;
     }
     if (employeeIdStatus.available === false) {
-      return <AlertCircle size={14} className="text-red-500" />;
+      return <AlertCircle size={12} className="text-red-500" />;
     }
     return null;
   };
@@ -182,13 +182,13 @@ const FormStep1BasicInfo = ({
   // Get validation icon for email
   const getEmailValidationIcon = () => {
     if (emailStatus.checking) {
-      return <Loader size={14} className="text-blue-500 animate-spin" />;
+      return <Loader size={12} className="text-almet-sapphire animate-spin" />;
     }
     if (emailStatus.available === true) {
-      return <CheckCircle size={14} className="text-green-500" />;
+      return <CheckCircle size={12} className="text-green-500" />;
     }
     if (emailStatus.available === false) {
-      return <AlertCircle size={14} className="text-red-500" />;
+      return <AlertCircle size={12} className="text-red-500" />;
     }
     return null;
   };
@@ -196,34 +196,34 @@ const FormStep1BasicInfo = ({
   // Get validation help text
   const getEmployeeIdHelpText = () => {
     if (isEditMode && !formData._employee_id_changed) {
-      return "Current employee ID (change to validate availability)";
+      return "Current employee ID";
     }
     if (employeeIdStatus.checking) {
-      return "Checking availability...";
+      return "Checking...";
     }
     if (employeeIdStatus.available === true) {
-      return "Employee ID is available";
+      return "Available";
     }
     if (employeeIdStatus.available === false) {
-      return "Employee ID already exists";
+      return "Already exists";
     }
-    return "Unique identifier for the employee";
+    return "Unique identifier";
   };
 
   const getEmailHelpText = () => {
     if (isEditMode && !formData._email_changed) {
-      return "Current email address (change to validate availability)";
+      return "Current email";
     }
     if (emailStatus.checking) {
-      return "Checking availability...";
+      return "Checking...";
     }
     if (emailStatus.available === true) {
-      return "Email is available";
+      return "Available";
     }
     if (emailStatus.available === false) {
-      return "Email already exists";
+      return "Already exists";
     }
-    return "Business email address for system access";
+    return "Business email";
   };
 
   // Gender options - only MALE and FEMALE as per API
@@ -233,28 +233,28 @@ const FormStep1BasicInfo = ({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-3 mb-6">
-        <h2 className={`text-lg font-bold ${textPrimary}`}>
+      <div className="flex justify-between items-center border-b border-almet-bali-hai dark:border-gray-700 pb-2 mb-4">
+        <h2 className={`text-base font-bold ${textPrimary}`}>
           Basic Information
         </h2>
-        <div className="text-xs px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded font-medium">
+        <div className="text-[10px] px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded font-medium">
           Step 1 of 4
         </div>
       </div>
 
       {/* Edit Mode Notice */}
       {isEditMode && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+        <div className="bg-almet-sapphire/5 dark:bg-blue-900/20 border border-almet-sapphire/20 dark:border-blue-800 rounded-md p-3">
           <div className="flex items-start">
-            <AlertCircle className="h-4 w-4 text-blue-500 mt-0.5 mr-2 flex-shrink-0" />
+            <AlertCircle className="h-3 w-3 text-almet-sapphire mt-0.5 mr-2 flex-shrink-0" />
             <div>
-              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-1">
+              <h4 className="text-xs font-medium text-almet-sapphire dark:text-blue-300 mb-1">
                 Editing Employee Information
               </h4>
-              <p className="text-xs text-blue-600 dark:text-blue-400">
-                You are editing existing employee data. Employee ID and email will only be validated if you change them.
+              <p className="text-[10px] text-almet-waterloo dark:text-blue-400">
+                Only changed fields will be validated
               </p>
             </div>
           </div>
@@ -262,13 +262,13 @@ const FormStep1BasicInfo = ({
       )}
 
       {/* Essential Information Section */}
-      <div className="space-y-4">
-        <h3 className={`text-sm font-semibold ${textSecondary} flex items-center`}>
-          <Hash size={16} className="mr-2" />
+      <div className="space-y-3">
+        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center`}>
+          <Hash size={12} className="mr-1" />
           Essential Information
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Employee ID with real-time validation */}
           <div className="relative">
             <FormField
@@ -277,16 +277,16 @@ const FormStep1BasicInfo = ({
               value={formData.employee_id || ""}
               onChange={handleFieldChange}
               required={true}
-              placeholder="e.g., EMP001, HLD123"
-              icon={<Hash size={14} className={textMuted} />}
+              placeholder="EMP001"
+              icon={<Hash size={12} className={textMuted} />}
               validationError={
                 validationErrors.employee_id || 
-                (employeeIdStatus.available === false ? "Employee ID already exists" : null)
+                (employeeIdStatus.available === false ? "ID already exists" : null)
               }
               helpText={getEmployeeIdHelpText()}
             />
             {/* Validation indicator */}
-            <div className="absolute top-8 right-3 flex items-center">
+            <div className="absolute top-6 right-2 flex items-center">
               {getEmployeeIdValidationIcon()}
             </div>
           </div>
@@ -300,16 +300,16 @@ const FormStep1BasicInfo = ({
               onChange={handleFieldChange}
               type="email"
               required={true}
-              placeholder="john.doe@company.com"
-              icon={<Mail size={14} className={textMuted} />}
+              placeholder="john@company.com"
+              icon={<Mail size={12} className={textMuted} />}
               validationError={
                 validationErrors.email || 
-                (emailStatus.available === false ? "Email address already exists" : null)
+                (emailStatus.available === false ? "Email already exists" : null)
               }
               helpText={getEmailHelpText()}
             />
             {/* Validation indicator */}
-            <div className="absolute top-8 right-3 flex items-center">
+            <div className="absolute top-6 right-2 flex items-center">
               {getEmailValidationIcon()}
             </div>
           </div>
@@ -317,13 +317,13 @@ const FormStep1BasicInfo = ({
       </div>
 
       {/* Personal Information Section */}
-      <div className="space-y-4">
-        <h3 className={`text-sm font-semibold ${textSecondary} flex items-center`}>
-          <User size={16} className="mr-2" />
+      <div className="space-y-3">
+        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center`}>
+          <User size={12} className="mr-1" />
           Personal Information
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField
             label="First Name"
             name="first_name"
@@ -331,9 +331,9 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             required={true}
             placeholder="John"
-            icon={<User size={14} className={textMuted} />}
+            icon={<User size={12} className={textMuted} />}
             validationError={validationErrors.first_name}
-            helpText="Employee's given name"
+            helpText="Given name"
           />
 
           <FormField
@@ -343,35 +343,35 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             required={true}
             placeholder="Doe"
-            icon={<User size={14} className={textMuted} />}
+            icon={<User size={12} className={textMuted} />}
             validationError={validationErrors.last_name}
-            helpText="Employee's family name"
+            helpText="Family name"
           />
         </div>
 
-        {/* Father Name - Add this field */}
+        {/* Father Name */}
         <FormField
           label="Father Name"
           name="father_name"
           value={formData.father_name || ""}
           onChange={handleInputChange}
           placeholder="Father's name"
-          icon={<User size={14} className={textMuted} />}
+          icon={<User size={12} className={textMuted} />}
           validationError={validationErrors.father_name}
-          helpText="Employee's father name (optional)"
+          helpText="Optional field"
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <FormField
-            label="Phone Number"
+            label="Phone"
             name="phone"
             value={formData.phone || ""}
             onChange={handleInputChange}
             type="tel"
             placeholder="+994 XX XXX XX XX"
-            icon={<Phone size={14} className={textMuted} />}
+            icon={<Phone size={12} className={textMuted} />}
             validationError={validationErrors.phone}
-            helpText="Primary contact number"
+            helpText="Contact number"
           />
 
           <FormField
@@ -380,9 +380,9 @@ const FormStep1BasicInfo = ({
             value={formData.date_of_birth || ""}
             onChange={handleInputChange}
             type="date"
-            icon={<Calendar size={14} className={textMuted} />}
+            icon={<Calendar size={12} className={textMuted} />}
             validationError={validationErrors.date_of_birth}
-            helpText="For age calculations and compliance"
+            helpText="For age calculation"
           />
 
           <FormField
@@ -392,10 +392,10 @@ const FormStep1BasicInfo = ({
             onChange={handleInputChange}
             type="select"
             options={genderOptions}
-            icon={<User size={14} className={textMuted} />}
+            icon={<User size={12} className={textMuted} />}
             validationError={validationErrors.gender}
-            helpText="Required for reporting"
-            placeholder="Select gender"
+            helpText="Required"
+            placeholder="Select"
           />
         </div>
 
@@ -405,11 +405,11 @@ const FormStep1BasicInfo = ({
           value={formData.address || ""}
           onChange={handleInputChange}
           type="textarea"
-          placeholder="Complete residential address..."
-          icon={<MapPin size={14} className={textMuted} />}
+          placeholder="Complete address..."
+          icon={<MapPin size={12} className={textMuted} />}
           validationError={validationErrors.address}
-          helpText="Full address including city and postal code"
-          rows={3}
+          helpText="Full address with city"
+          rows={2}
         />
 
         <FormField
@@ -417,51 +417,51 @@ const FormStep1BasicInfo = ({
           name="emergency_contact"
           value={formData.emergency_contact || ""}
           onChange={handleInputChange}
-          placeholder="Name: Relationship: Phone Number"
-          icon={<Phone size={14} className={textMuted} />}
+          placeholder="Name: Relationship: Phone"
+          icon={<Phone size={12} className={textMuted} />}
           validationError={validationErrors.emergency_contact}
-          helpText="Emergency contact person with relationship and phone"
+          helpText="Emergency contact info"
         />
       </div>
 
       {/* Auto-Generated Information Preview */}
       {(formData.first_name || formData.last_name) && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-          <h4 className={`text-sm font-medium text-green-800 dark:text-green-300 mb-3 flex items-center`}>
-            <CheckCircle size={16} className="mr-2" />
-            Auto-Generated Information
+        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3">
+          <h4 className={`text-xs font-medium text-green-800 dark:text-green-300 mb-2 flex items-center`}>
+            <CheckCircle size={12} className="mr-1" />
+            Auto-Generated Fields
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-green-700 dark:text-green-400">Full Name:</span>
-              <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                {`${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Not complete'}
+              <span className="text-[10px] text-green-700 dark:text-green-400">Full Name:</span>
+              <span className="text-[10px] font-medium text-green-800 dark:text-green-300">
+                {`${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Incomplete'}
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-green-700 dark:text-green-400">Display Name:</span>
-              <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                {`${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Not complete'}
+              <span className="text-[10px] text-green-700 dark:text-green-400">Display Name:</span>
+              <span className="text-[10px] font-medium text-green-800 dark:text-green-300">
+                {`${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Incomplete'}
               </span>
             </div>
           </div>
-          <div className="text-xs text-green-600 dark:text-green-400 mt-2">
-            ✓ These fields will be automatically generated and stored in the system
+          <div className="text-[10px] text-green-600 dark:text-green-400 mt-1">
+            ✓ These will be auto-generated
           </div>
         </div>
       )}
 
       {/* Validation Summary */}
       {Object.keys(validationErrors).length > 0 && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-          <h4 className={`text-sm font-medium text-red-800 dark:text-red-300 mb-2 flex items-center`}>
-            <AlertCircle size={16} className="mr-2" />
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+          <h4 className={`text-xs font-medium text-red-800 dark:text-red-300 mb-2 flex items-center`}>
+            <AlertCircle size={12} className="mr-1" />
             Please Fix These Issues:
           </h4>
-          <ul className="text-sm text-red-700 dark:text-red-400 space-y-1">
+          <ul className="text-[10px] text-red-700 dark:text-red-400 space-y-0.5">
             {Object.entries(validationErrors).map(([field, error]) => (
               <li key={field} className="flex items-center">
-                <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                <span className="w-1 h-1 bg-red-500 rounded-full mr-2"></span>
                 <strong>{field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</strong> {error}
               </li>
             ))}
@@ -469,32 +469,7 @@ const FormStep1BasicInfo = ({
         </div>
       )}
 
-      {/* Progress Indicator */}
-      <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-        <div className="flex items-center justify-between mb-2">
-          <span className={`text-sm font-medium ${textSecondary}`}>Form Completion</span>
-          <span className={`text-sm font-medium ${textPrimary}`}>
-            {Math.round(((formData.employee_id ? 1 : 0) + 
-                        (formData.first_name ? 1 : 0) + 
-                        (formData.last_name ? 1 : 0) + 
-                        (formData.email ? 1 : 0)) / 4 * 100)}%
-          </span>
-        </div>
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-          <div 
-            className="bg-almet-sapphire h-2 rounded-full transition-all duration-300"
-            style={{ 
-              width: `${((formData.employee_id ? 1 : 0) + 
-                        (formData.first_name ? 1 : 0) + 
-                        (formData.last_name ? 1 : 0) + 
-                        (formData.email ? 1 : 0)) / 4 * 100}%` 
-            }}
-          />
-        </div>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Complete all required fields to proceed to the next step
-        </div>
-      </div>
+ 
     </div>
   );
 };
