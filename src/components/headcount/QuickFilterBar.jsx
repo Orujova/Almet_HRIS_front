@@ -573,18 +573,14 @@ const MultiSelectDropdown = ({
           ${bgCard} 
           border ${borderColor} 
           rounded-lg shadow-lg 
-          min-w-[240px]
+          min-w-[200px]
         `}>
           {/* Header with controls */}
           <div className={`px-4 py-3 border-b ${borderColor}`}>
             <div className="flex items-center justify-between">
               <span className={`text-sm font-medium ${textPrimary}`}>
                 {label}
-                {options.length > 0 && (
-                  <span className={`ml-2 text-xs ${textMuted}`}>
-                    ({options.length} available)
-                  </span>
-                )}
+               
               </span>
               <div className="flex items-center space-x-2">
                 {selectedCount > 0 && (
@@ -682,7 +678,7 @@ const MultiSelectDropdown = ({
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center">
-                          <span className={`${textPrimary} truncate font-medium`}>
+                          <span className={`${textPrimary} text-xs truncate font-medium`}>
                             {label}
                           </span>
                           {/* Code display */}
@@ -700,20 +696,8 @@ const MultiSelectDropdown = ({
                             {option.business_function_code && ` (${option.business_function_code})`}
                           </span>
                         )}
-                        
-                        {/* FIXED: Show all business functions for departments */}
-                        {option.allBusinessFunctions && option.allBusinessFunctions.length > 1 && (
-                          <span className={`text-xs ${textMuted} truncate block`}>
-                            Functions: {option.allBusinessFunctions.join(', ')}
-                          </span>
-                        )}
-                        
-                        {/* Hierarchy level for position groups */}
-                        {option.hierarchy_level !== undefined && (
-                          <span className={`text-xs ${textMuted} truncate block`}>
-                            Level {option.hierarchy_level}
-                          </span>
-                        )}
+                     
+                       
                         
                         {/* Employee count */}
                         {option.employee_count !== undefined && (

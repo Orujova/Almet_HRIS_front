@@ -2,13 +2,10 @@
 import { useState } from "react";
 import { 
   Download, 
-  FileSpreadsheet, 
-  Filter, 
-  Users, 
   X, 
-  CheckCircle,
+
   AlertCircle,
-  FileText
+ 
 } from "lucide-react";
 
 /**
@@ -167,18 +164,7 @@ const ExportModal = ({
       description: "Start date, birth date, years of service",
       fields: "start_date,end_date,date_of_birth,years_of_service"
     },
-    { 
-      key: "documents_count", 
-      label: "Documents Count", 
-      description: "Number of uploaded documents",
-      fields: "documents_count"
-    },
-    { 
-      key: "activities_count", 
-      label: "Activities Count", 
-      description: "Number of recorded activities",
-      fields: "activities_count"
-    }
+  
   ];
 
   // Validation - at least one field must be selected
@@ -335,51 +321,7 @@ const ExportModal = ({
             </div>
           </div>
 
-          {/* Format Selection */}
-          <div className="space-y-3">
-            <h3 className={`text-sm font-semibold ${textPrimary}`}>Export Format</h3>
-            <div className="grid grid-cols-2 gap-3">
-              <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                exportFormat === "excel" 
-                  ? "border-almet-sapphire bg-almet-sapphire/5" 
-                  : `border-gray-200 dark:border-gray-700 ${bgHover}`
-              }`}>
-                <input
-                  type="radio"
-                  name="exportFormat"
-                  value="excel"
-                  checked={exportFormat === "excel"}
-                  onChange={(e) => setExportFormat(e.target.value)}
-                  className="sr-only"
-                />
-                <FileSpreadsheet className="h-8 w-8 text-green-600 mr-3" />
-                <div>
-                  <p className={`text-sm font-medium ${textPrimary}`}>Excel (.xlsx)</p>
-                  <p className={`text-xs ${textMuted}`}>Rich formatting, formulas</p>
-                </div>
-              </label>
-
-              <label className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
-                exportFormat === "csv" 
-                  ? "border-almet-sapphire bg-almet-sapphire/5" 
-                  : `border-gray-200 dark:border-gray-700 ${bgHover}`
-              }`}>
-                <input
-                  type="radio"
-                  name="exportFormat"
-                  value="csv"
-                  checked={exportFormat === "csv"}
-                  onChange={(e) => setExportFormat(e.target.value)}
-                  className="sr-only"
-                />
-                <FileText className="h-8 w-8 text-blue-600 mr-3" />
-                <div>
-                  <p className={`text-sm font-medium ${textPrimary}`}>CSV (.csv)</p>
-                  <p className={`text-xs ${textMuted}`}>Simple, universal format</p>
-                </div>
-              </label>
-            </div>
-          </div>
+         
 
           {/* Field Selection */}
           <div className="space-y-3">
@@ -431,26 +373,6 @@ const ExportModal = ({
             </div>
           </div>
 
-          {/* Export Summary */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-            <div className="flex items-start">
-              <CheckCircle className="h-5 w-5 text-blue-500 dark:text-blue-400 mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300">Export Summary</h4>
-                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 space-y-1">
-                  <p>• {getExportCount()} employees will be exported</p>
-                  <p>• Format: {exportFormat.toUpperCase()}</p>
-                  <p>• {Object.values(includeFields).filter(Boolean).length} field groups included</p>
-                  {!isValidSelection() && exportType === "selected" && (
-                    <p className="text-red-600 dark:text-red-400">⚠️ No employees selected</p>
-                  )}
-                  {!hasSelectedFields && (
-                    <p className="text-red-600 dark:text-red-400">⚠️ No fields selected</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Error Display */}
           {exportError && (

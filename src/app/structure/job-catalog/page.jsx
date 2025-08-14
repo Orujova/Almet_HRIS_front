@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { referenceDataAPI } from '@/store/api/referenceDataAPI';
@@ -24,7 +25,11 @@ import {
   Layers,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Trash2,
+  Save,
+  Settings,
+  ExternalLink
 } from 'lucide-react';
 
 // Hierarchy colors using Almet color palette
@@ -78,6 +83,7 @@ const hierarchyColors = {
 
 export default function JobCatalogPage() {
   const { darkMode } = useTheme();
+  const router = useRouter();
   
   // View states
   const [activeView, setActiveView] = useState('overview');
@@ -85,6 +91,10 @@ export default function JobCatalogPage() {
   const [matrixView, setMatrixView] = useState('department');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [showCrudModal, setShowCrudModal] = useState(false);
+  const [crudModalType, setCrudModalType] = useState(''); // 'business_function', 'department', etc.
+  const [crudModalMode, setCrudModalMode] = useState('create'); // 'create', 'edit'
+  const [selectedItem, setSelectedItem] = useState(null);
   
   // Data states
   const [employees, setEmployees] = useState([]);
@@ -94,6 +104,8 @@ export default function JobCatalogPage() {
   const [units, setUnits] = useState([]);
   const [jobFunctions, setJobFunctions] = useState([]);
   const [positionGroups, setPositionGroups] = useState([]);
+  const [employeeStatuses, setEmployeeStatuses] = useState([]);
+  const [employeeTags, setEmployeeTags] = useState([]);
   const [hierarchyData, setHierarchyData] = useState(null);
   
   // Filter states
@@ -111,11 +123,15 @@ export default function JobCatalogPage() {
     employees: false,
     statistics: false,
     referenceData: false,
-    hierarchy: false
+    hierarchy: false,
+    crud: false
   });
   
   // Error states
   const [errors, setErrors] = useState({});
+
+  // Form state for CRUD operations
+  const [formData, setFormData] = useState({});
 
   // Load initial data
   useEffect(() => {
@@ -132,6 +148,8 @@ export default function JobCatalogPage() {
         unitsRes,
         jobFunctionsRes,
         positionGroupsRes,
+        employeeStatusesRes,
+        employeeTagsRes,
         statisticsRes
       ] = await Promise.all([
         referenceDataAPI.getBusinessFunctionDropdown(),
@@ -139,6 +157,8 @@ export default function JobCatalogPage() {
         referenceDataAPI.getUnitDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
         referenceDataAPI.getPositionGroupDropdown(),
+        referenceDataAPI.getEmployeeStatuses(),
+        referenceDataAPI.getEmployeeTags(),
         employeeAPI.getStatistics()
       ]);
 
@@ -147,6 +167,8 @@ export default function JobCatalogPage() {
       setUnits(unitsRes.data || []);
       setJobFunctions(jobFunctionsRes.data || []);
       setPositionGroups(positionGroupsRes.data || []);
+      setEmployeeStatuses(employeeStatusesRes.data?.results || employeeStatusesRes.data || []);
+      setEmployeeTags(employeeTagsRes.data?.results || employeeTagsRes.data || []);
       setStatistics(statisticsRes.data || statisticsRes);
 
       await loadEmployees();
@@ -188,7 +210,6 @@ export default function JobCatalogPage() {
     setLoading(prev => ({ ...prev, hierarchy: true }));
     
     try {
-      // Use getAll to get employee data for hierarchy
       const response = await employeeAPI.getAll({ page_size: 1000 });
       setHierarchyData(response.data || response);
     } catch (error) {
@@ -213,6 +234,173 @@ export default function JobCatalogPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [searchTerm, selectedFilters]);
+
+  // CRUD Operations
+  const openCrudModal = (type, mode = 'create', item = null) => {
+    setCrudModalType(type);
+    setCrudModalMode(mode);
+    setSelectedItem(item);
+    
+    // Initialize form data properly for edit mode
+    if (mode === 'edit' && item) {
+      const formDataInit = {
+        name: item.name || item.label || '',
+        code: item.code || '',
+        description: item.description || '',
+        is_active: item.is_active !== false,
+        business_function: item.business_function || item.business_function_id || '',
+        department: item.department || item.department_id || '',
+        hierarchy_level: item.hierarchy_level || '',
+        status_type: item.status_type || '',
+        tag_type: item.tag_type || '',
+        color: item.color || '#3B82F6'
+      };
+      setFormData(formDataInit);
+    } else {
+      setFormData({
+        name: '',
+        code: '',
+        description: '',
+        is_active: true,
+        business_function: '',
+        department: '',
+        hierarchy_level: '',
+        status_type: '',
+        tag_type: '',
+        color: '#3B82F6'
+      });
+    }
+    setShowCrudModal(true);
+  };
+
+  const closeCrudModal = () => {
+    setShowCrudModal(false);
+    setCrudModalType('');
+    setCrudModalMode('create');
+    setSelectedItem(null);
+    setFormData({});
+    setErrors(prev => ({ ...prev, crud: null }));
+  };
+
+  const handleCrudSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(prev => ({ ...prev, crud: true }));
+    setErrors(prev => ({ ...prev, crud: null }));
+
+    try {
+      let response;
+      
+      switch (crudModalType) {
+        case 'business_functions':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createBusinessFunction(formData);
+          } else {
+            response = await referenceDataAPI.updateBusinessFunction(selectedItem.value || selectedItem.id, formData);
+          }
+          break;
+        case 'departments':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createDepartment(formData);
+          } else {
+            response = await referenceDataAPI.updateDepartment(selectedItem.value || selectedItem.id, formData);
+          }
+          break;
+        case 'units':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createUnit(formData);
+          } else {
+            response = await referenceDataAPI.updateUnit(selectedItem.value || selectedItem.id, formData);
+          }
+          break;
+        case 'job_functions':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createJobFunction(formData);
+          } else {
+            response = await referenceDataAPI.updateJobFunction(selectedItem.value || selectedItem.id, formData);
+          }
+          break;
+        case 'position_groups':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createPositionGroup(formData);
+          } else {
+            response = await referenceDataAPI.updatePositionGroup(selectedItem.value || selectedItem.id, formData);
+          }
+          break;
+        case 'employee_statuses':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createEmployeeStatus(formData);
+          } else {
+            response = await referenceDataAPI.updateEmployeeStatus(selectedItem.id, formData);
+          }
+          break;
+        case 'employee_tags':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createEmployeeTag(formData);
+          } else {
+            response = await referenceDataAPI.updateEmployeeTag(selectedItem.id, formData);
+          }
+          break;
+      }
+
+      // Refresh data after successful operation
+      await loadInitialData();
+      closeCrudModal();
+      
+    } catch (error) {
+      setErrors(prev => ({ ...prev, crud: `Failed to ${crudModalMode} ${crudModalType.replace('_', ' ')}. ${error.message || ''}` }));
+      console.error('Error in CRUD operation:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, crud: false }));
+    }
+  };
+
+  const handleDelete = async (type, item) => {
+    if (!confirm(`Are you sure you want to delete "${item.name || item.label}"?`)) return;
+
+    setLoading(prev => ({ ...prev, crud: true }));
+
+    try {
+      const id = item.id || item.value;
+      
+      switch (type) {
+        case 'business_functions':
+          await referenceDataAPI.deleteBusinessFunction(id);
+          break;
+        case 'departments':
+          await referenceDataAPI.deleteDepartment(id);
+          break;
+        case 'units':
+          await referenceDataAPI.deleteUnit(id);
+          break;
+        case 'job_functions':
+          await referenceDataAPI.deleteJobFunction(id);
+          break;
+        case 'position_groups':
+          await referenceDataAPI.deletePositionGroup(id);
+          break;
+        case 'employee_statuses':
+          await referenceDataAPI.deleteEmployeeStatus(id);
+          break;
+        case 'employee_tags':
+          await referenceDataAPI.deleteEmployeeTag(id);
+          break;
+      }
+
+      // Refresh data after successful deletion
+      await loadInitialData();
+      
+    } catch (error) {
+      setErrors(prev => ({ ...prev, crud: `Failed to delete ${type.replace('_', ' ')}. ${error.message || ''}` }));
+      console.error('Error deleting item:', error);
+    } finally {
+      setLoading(prev => ({ ...prev, crud: false }));
+    }
+  };
+
+  // Navigate to employee detail
+  const navigateToEmployee = (employeeId) => {
+    router.push(`/structure/employee/${employeeId}/`);
+  };
 
   // Process employees into job catalog format
   const jobCatalogData = useMemo(() => {
@@ -315,6 +503,398 @@ export default function JobCatalogPage() {
     setSearchTerm('');
   };
 
+  // CRUD Modal Component
+  const CrudModal = () => {
+    if (!showCrudModal) return null;
+
+    const getModalTitle = () => {
+      const typeNames = {
+        business_functions: 'Business Function',
+        departments: 'Department',
+        units: 'Unit',
+        job_functions: 'Job Function',
+        position_groups: 'Position Group',
+        employee_statuses: 'Employee Status',
+        employee_tags: 'Employee Tag'
+      };
+      const typeName = typeNames[crudModalType] || 'Item';
+      return `${crudModalMode === 'create' ? 'Create' : 'Edit'} ${typeName}`;
+    };
+
+    const renderFormFields = () => {
+      switch (crudModalType) {
+        case 'business_functions':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter business function name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.code || ''}
+                  onChange={(e) => setFormData({...formData, code: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter code (e.g., HLD, TRD)"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  rows={3}
+                  placeholder="Enter description (optional)"
+                />
+              </div>
+            </>
+          );
+
+        case 'departments':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter department name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Business Function *
+                </label>
+                <select
+                  value={formData.business_function || ''}
+                  onChange={(e) => setFormData({...formData, business_function: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  required
+                >
+                  <option value="">Select Business Function</option>
+                  {businessFunctions.map(bf => (
+                    <option key={bf.value} value={bf.value}>{bf.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          );
+
+        case 'units':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter unit name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Department *
+                </label>
+                <select
+                  value={formData.department || ''}
+                  onChange={(e) => setFormData({...formData, department: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  required
+                >
+                  <option value="">Select Department</option>
+                  {departments.map(dept => (
+                    <option key={dept.value} value={dept.value}>{dept.label}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          );
+
+        case 'job_functions':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter job function name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  rows={3}
+                  placeholder="Enter description (optional)"
+                />
+              </div>
+            </>
+          );
+
+        case 'position_groups':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter position group name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Hierarchy Level *
+                </label>
+                <input
+                  type="number"
+                  value={formData.hierarchy_level || ''}
+                  onChange={(e) => setFormData({...formData, hierarchy_level: parseInt(e.target.value)})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter hierarchy level (1-10)"
+                  min="1"
+                  max="10"
+                  required
+                />
+              </div>
+            </>
+          );
+
+        case 'employee_statuses':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter status name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Status Type *
+                </label>
+                <select
+                  value={formData.status_type || ''}
+                  onChange={(e) => setFormData({...formData, status_type: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  required
+                >
+                  <option value="">Select Status Type</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="ONBOARDING">Onboarding</option>
+                  <option value="PROBATION">Probation</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="TERMINATED">Terminated</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Color *
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.color || '#3B82F6'}
+                    onChange={(e) => setFormData({...formData, color: e.target.value})}
+                    className="w-16 h-12 border border-gray-300 dark:border-almet-comet rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.color || '#3B82F6'}
+                    onChange={(e) => setFormData({...formData, color: e.target.value})}
+                    className="flex-1 p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                    placeholder="#3B82F6"
+                  />
+                </div>
+              </div>
+            </>
+          );
+
+        case 'employee_tags':
+          return (
+            <>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={formData.name || ''}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  placeholder="Enter tag name"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Tag Type *
+                </label>
+                <select
+                  value={formData.tag_type || ''}
+                  onChange={(e) => setFormData({...formData, tag_type: e.target.value})}
+                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                  required
+                >
+                  <option value="">Select Tag Type</option>
+                  <option value="LEAVE">Leave</option>
+                  <option value="PERFORMANCE">Performance</option>
+                  <option value="TRAINING">Training</option>
+                  <option value="GENERAL">General</option>
+                </select>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                  Color *
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={formData.color || '#3B82F6'}
+                    onChange={(e) => setFormData({...formData, color: e.target.value})}
+                    className="w-16 h-12 border border-gray-300 dark:border-almet-comet rounded-lg cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.color || '#3B82F6'}
+                    onChange={(e) => setFormData({...formData, color: e.target.value})}
+                    className="flex-1 p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
+                    placeholder="#3B82F6"
+                  />
+                </div>
+              </div>
+            </>
+          );
+
+        default:
+          return null;
+      }
+    };
+
+       
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+          <div className="p-6 border-b border-gray-200 dark:border-almet-comet">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                {getModalTitle()}
+              </h2>
+              <button
+                onClick={closeCrudModal}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-almet-comet rounded-lg transition-colors"
+              >
+                <X size={20} className="text-gray-500 dark:text-almet-bali-hai" />
+              </button>
+            </div>
+          </div>
+
+          <form onSubmit={handleCrudSubmit} className="p-6">
+            {renderFormFields()}
+            
+            <div className="mb-6">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.is_active !== false}
+                  onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
+                  className="mr-3 w-4 h-4 text-almet-sapphire bg-gray-100 border-gray-300 rounded focus:ring-almet-sapphire dark:focus:ring-almet-sapphire dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-almet-bali-hai">Active</span>
+              </label>
+            </div>
+
+            {errors.crud && (
+              <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
+                <div className="flex items-center">
+                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
+                  <span className="text-red-800 dark:text-red-200 text-sm">{errors.crud}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-almet-comet">
+              <button
+                type="button"
+                onClick={closeCrudModal}
+                disabled={loading.crud}
+                className="px-6 py-2.5 border border-gray-300 dark:border-almet-comet text-gray-700 dark:text-almet-bali-hai rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading.crud}
+                className="flex items-center gap-2 px-6 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading.crud ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    {crudModalMode === 'create' ? 'Creating...' : 'Updating...'}
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    {crudModalMode === 'create' ? 'Create' : 'Update'}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   // Navigation Tabs Component
   const NavigationTabs = () => (
     <div className="flex space-x-1 bg-white dark:bg-almet-cloud-burst rounded-lg p-1 shadow-sm mb-6">
@@ -338,7 +918,7 @@ export default function JobCatalogPage() {
         }`}
       >
         <Layers size={16} />
-        Business Functions Structure
+        Reference Data Management
       </button>
       <button
         onClick={() => setActiveView('matrix')}
@@ -566,14 +1146,13 @@ export default function JobCatalogPage() {
               </button>
             </div>
 
-            <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+            <button
+              onClick={() => openCrudModal('business_functions', 'create')}
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
               <Plus size={16} />
               Add
             </button>
-
-            
-
-          
           </div>
         </div>
 
@@ -721,108 +1300,234 @@ export default function JobCatalogPage() {
     </div>
   );
 
-  // Business Functions Structure View Component
-  const StructureView = () => {
-    const businessFunctionStructure = useMemo(() => {
-      const structure = [];
-      
-      businessFunctions.forEach(bf => {
-        const bfDepartments = departments.filter(dept => dept.business_function === bf.value);
-        
-        if (bfDepartments.length === 0) {
-          jobFunctions.forEach(jf => {
-            structure.push({
-              id: `${bf.value}-${jf.value}`,
-              unit: bf.label,
-              department: 'N/A',
-              jobFunction: jf.label,
-              businessFunction: bf,
-              departmentData: null,
-              jobFunctionData: jf
-            });
-          });
-        } else {
-          bfDepartments.forEach(dept => {
-            jobFunctions.forEach(jf => {
-              structure.push({
-                id: `${bf.value}-${dept.value}-${jf.value}`,
-                unit: bf.label,
-                department: dept.label,
-                jobFunction: jf.label,
-                businessFunction: bf,
-                departmentData: dept,
-                jobFunctionData: jf
-              });
-            });
-          });
-        }
-      });
-      
-      return structure;
-    }, [businessFunctions, departments, units, jobFunctions]);
+  // Reference Data Management View Component
+  const ReferenceDataView = () => {
+    const [activeTab, setActiveTab] = useState('business_functions');
 
-    return (
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Business Functions Structure</h2>
-          <p className="text-gray-600 dark:text-almet-bali-hai">
-            Organizational structure based on real data from your system
-          </p>
+    const renderReferenceDataTable = (data, type, columns) => (
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg shadow-sm">
+        <div className="p-4 border-b border-gray-200 dark:border-almet-comet flex justify-between items-center">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            {type.replace('_', ' ').toUpperCase()}
+          </h3>
+          <button
+            onClick={() => openCrudModal(type, 'create')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Plus size={16} />
+            Add New
+          </button>
         </div>
         
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-almet-san-juan">
+              <tr>
+                {columns.map((col, index) => (
+                  <th key={index} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-almet-bali-hai uppercase tracking-wider">
+                    {col}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-almet-bali-hai uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-almet-comet">
+              {data.map((item, index) => (
+                <tr key={item.id || index} className="hover:bg-gray-50 dark:hover:bg-almet-san-juan">
+                  {type === 'business_functions' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.code || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+                  
+                  {type === 'departments' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.business_function_name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+
+                  {type === 'units' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.department_name || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+
+                  {type === 'job_functions' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-almet-bali-hai">{item.description || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+
+                  {type === 'position_groups' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.hierarchy_level || 'N/A'}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+
+                  {type === 'employee_statuses' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.status_type}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                          <span className="text-sm text-gray-900 dark:text-white">{item.color}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+
+                  {type === 'employee_tags' && (
+                    <>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.tag_type}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center">
+                          <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
+                          <span className="text-sm text-gray-900 dark:text-white">{item.color}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {item.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    </>
+                  )}
+
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => openCrudModal(type, 'edit', item)}
+                        className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
+                        title="Edit"
+                      >
+                        <Edit size={14} className="text-blue-600 dark:text-blue-400" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(type, item)}
+                        className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
+                        title="Delete"
+                        disabled={loading.crud}
+                      >
+                        <Trash2 size={14} className="text-red-600 dark:text-red-400" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+
+    const tabs = [
+      { id: 'business_functions', label: 'Business Functions', data: businessFunctions, columns: ['Name', 'Code', 'Employees', 'Status'] },
+      { id: 'departments', label: 'Departments', data: departments, columns: ['Name', 'Business Function', 'Employees', 'Status'] },
+      { id: 'units', label: 'Units', data: units, columns: ['Name', 'Department', 'Employees', 'Status'] },
+      { id: 'job_functions', label: 'Job Functions', data: jobFunctions, columns: ['Name', 'Description', 'Employees', 'Status'] },
+      { id: 'position_groups', label: 'Position Groups', data: positionGroups, columns: ['Name', 'Hierarchy Level', 'Employees', 'Status'] },
+      { id: 'employee_statuses', label: 'Employee Statuses', data: employeeStatuses, columns: ['Name', 'Type', 'Color', 'Employees', 'Status'] },
+      { id: 'employee_tags', label: 'Employee Tags', data: employeeTags, columns: ['Name', 'Type', 'Color', 'Employees', 'Status'] }
+    ];
+
+    return (
+      <div>
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200 dark:border-almet-comet">
+            <nav className="-mb-px flex space-x-8 overflow-x-auto">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? 'border-almet-sapphire text-almet-sapphire'
+                      : 'border-transparent text-gray-500 dark:text-almet-bali-hai hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-almet-comet'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
         {loading.referenceData ? (
           <div className="flex justify-center items-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
-            <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading structure...</span>
+            <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading reference data...</span>
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-almet-comet">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Business Function</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Department</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-900 dark:text-white">Job Function</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Employee Count</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-900 dark:text-white">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {businessFunctionStructure.map((item, index) => (
-                    <tr key={item.id} className="border-b border-gray-100 dark:border-almet-comet hover:bg-gray-50 dark:hover:bg-almet-san-juan">
-                      <td className="py-3 px-4 text-gray-900 dark:text-white">{item.unit}</td>
-                      <td className="py-3 px-4 text-gray-900 dark:text-white">{item.department}</td>
-                      <td className="py-3 px-4 text-gray-900 dark:text-white">{item.jobFunction}</td>
-                      <td className="py-3 px-4 text-right text-gray-900 dark:text-white">
-                        {item.departmentData?.employee_count || 0}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-                            <Eye size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-                          </button>
-                          <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-                            <Edit size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-6 flex justify-end gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                <Plus size={16} />
-                Add New
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
-                <Download size={16} />
-                Export
-              </button>
-            </div>
+            {tabs.map((tab) => (
+              activeTab === tab.id && (
+                <div key={tab.id}>
+                  {renderReferenceDataTable(tab.data, tab.id, tab.columns)}
+                </div>
+              )
+            ))}
           </>
         )}
       </div>
@@ -955,7 +1660,7 @@ export default function JobCatalogPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Job Catalog</h1>
           <p className="text-gray-600 dark:text-almet-bali-hai">
-            A comprehensive overview of all jobs within the organization based on real employee data
+            Comprehensive job catalog with reference data management and organizational insights
           </p>
         </div>
 
@@ -974,8 +1679,11 @@ export default function JobCatalogPage() {
 
         {/* Content based on active view */}
         {activeView === 'overview' && <OverviewView />}
-        {activeView === 'structure' && <StructureView />}
+        {activeView === 'structure' && <ReferenceDataView />}
         {activeView === 'matrix' && <MatrixView />}
+
+        {/* CRUD Modal */}
+        <CrudModal />
 
         {/* Job Detail Modal */}
         {selectedJob && (
@@ -1075,9 +1783,16 @@ export default function JobCatalogPage() {
                     <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Current Employees</h3>
                     <div className="max-h-32 overflow-y-auto space-y-2">
                       {selectedJob.employees.slice(0, 5).map((employee, index) => (
-                        <div key={index} className="flex items-center p-2 bg-gray-50 dark:bg-almet-san-juan rounded">
-                          <span className="text-sm text-gray-900 dark:text-white">{employee.name}</span>
-                          <span className="text-xs text-gray-500 dark:text-almet-bali-hai ml-2">({employee.employee_id})</span>
+                        <div 
+                          key={index} 
+                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-almet-san-juan rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet"
+                          onClick={() => navigateToEmployee(employee.id)}
+                        >
+                          <div className="flex items-center">
+                            <span className="text-sm text-gray-900 dark:text-white">{employee.name}</span>
+                            <span className="text-xs text-gray-500 dark:text-almet-bali-hai ml-2">({employee.employee_id})</span>
+                          </div>
+                          <ExternalLink size={14} className="text-gray-400 dark:text-almet-bali-hai" />
                         </div>
                       ))}
                       {selectedJob.employees.length > 5 && (
@@ -1088,8 +1803,6 @@ export default function JobCatalogPage() {
                     </div>
                   </div>
                 )}
-
-                
               </div>
             </div>
           </div>

@@ -624,7 +624,7 @@ class JobDescriptionService {
     // Process sections
     const sectionTypes = [
       { type: 'CRITICAL_DUTIES', title: 'Critical Duties', content: formData.criticalDuties },
-      { type: 'POSITION_MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis },
+      { type: 'MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis },
       { type: 'JOB_DUTIES', title: 'Job Duties', content: formData.jobDuties },
       { type: 'REQUIREMENTS', title: 'Requirements', content: formData.requirements }
     ];
@@ -663,7 +663,7 @@ class JobDescriptionService {
           case 'CRITICAL_DUTIES':
             sections.criticalDuties = content;
             break;
-          case 'POSITION_MAIN_KPIS':
+          case 'MAIN_KPIS':
             sections.positionMainKpis = content;
             break;
           case 'JOB_DUTIES':

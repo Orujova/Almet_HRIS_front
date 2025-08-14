@@ -1,4 +1,4 @@
-// pages/job-descriptions/JobDescriptionPage.jsx - Complete Fixed Version
+// pages/job-descriptions/JobDescriptionPage.jsx - Fixed Section Types & Department Validation
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
@@ -159,6 +159,40 @@ const JobDescriptionPage = () => {
     return filteredUnits;
   }, [formData.department, dropdownData.units]);
 
+  // FIXED: Get departments for selected business function
+  const businessFunctionDepartments = useMemo(() => {
+    if (!formData.business_function || !dropdownData.departments) {
+      return dropdownData.departments || [];
+    }
+    
+    console.log('🔍 Filtering departments for business function:', formData.business_function);
+    console.log('📦 All available departments:', dropdownData.departments);
+    
+    const filteredDepartments = dropdownData.departments.filter(dept => 
+      dept.business_function === parseInt(formData.business_function)
+    );
+    
+    console.log('✅ Filtered departments:', filteredDepartments);
+    return filteredDepartments;
+  }, [formData.business_function, dropdownData.departments]);
+
+  // Clear department and unit when business function changes
+  useEffect(() => {
+    if (formData.business_function) {
+      // Check if current department is still valid for the new business function
+      if (formData.department) {
+        const isValidDepartment = businessFunctionDepartments.some(dept => dept.id === parseInt(formData.department));
+        if (!isValidDepartment) {
+          console.log('🧹 Clearing department and unit because they do not belong to new business function');
+          setFormData(prev => ({ ...prev, department: '', unit: '' }));
+        }
+      }
+    } else {
+      // Clear department and unit selection when no business function is selected
+      setFormData(prev => ({ ...prev, department: '', unit: '' }));
+    }
+  }, [formData.business_function, businessFunctionDepartments]);
+
   // Clear unit when department changes
   useEffect(() => {
     if (formData.department) {
@@ -176,7 +210,7 @@ const JobDescriptionPage = () => {
     }
   }, [formData.department, departmentUnits]);
 
-  // FIXED: Prepare data for API submission
+  // FIXED: Prepare data for API submission with correct section types
   const prepareJobDescriptionData = (formData) => {
     console.log('🔄 Preparing data for API:', formData);
     
@@ -211,10 +245,10 @@ const JobDescriptionPage = () => {
     }
     // Don't include unit field at all if it's empty or invalid
 
-    // Process sections
+    // FIXED: Process sections with correct section types
     const sectionTypes = [
       { type: 'CRITICAL_DUTIES', title: 'Critical Duties', content: formData.criticalDuties },
-      { type: 'POSITION_MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis },
+      { type: 'MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis }, // FIXED: Changed from POSITION_MAIN_KPIS to MAIN_KPIS
       { type: 'JOB_DUTIES', title: 'Job Duties', content: formData.jobDuties },
       { type: 'REQUIREMENTS', title: 'Requirements', content: formData.requirements }
     ];
@@ -338,6 +372,8 @@ const JobDescriptionPage = () => {
       const employees = employeesRes.ok ? await employeesRes.json() : { results: [] };
 
       console.log('📦 Fetched units:', units.results || []);
+      console.log('📦 Fetched departments:', departments.results || []);
+      console.log('📦 Fetched business functions:', businessFunctions.results || []);
 
       // Extract unique job titles from employees
       const uniqueJobTitles = [...new Set(
@@ -352,7 +388,7 @@ const JobDescriptionPage = () => {
 
       setDropdownData({
         businessFunctions: businessFunctions.results || [],
-        departments: departments.results || [],
+        departments: departments.results || [], // Store ALL departments for client-side filtering
         units: units.results || [], // Store ALL units for client-side filtering
         jobFunctions: jobFunctions.results || [],
         positionGroups: positionGroups.results || [],
@@ -475,6 +511,14 @@ const JobDescriptionPage = () => {
     }
     if (!formData.position_group) {
       errors.push('Position Group is required');
+    }
+    
+    // FIXED: Validate department-business function relationship
+    if (formData.department && formData.business_function) {
+      const isValidDepartment = businessFunctionDepartments.some(dept => dept.id === parseInt(formData.department));
+      if (!isValidDepartment) {
+        errors.push('Selected department does not belong to the selected business function');
+      }
     }
     
     // FIXED: Validate unit-department relationship if unit is selected
@@ -1226,19 +1270,30 @@ const JobDescriptionPage = () => {
                       />
                     </div>
                     
-                    {/* FIXED: Department field with unit clearing */}
+                    {/* FIXED: Department field with business function dependency */}
                     <div>
                       <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
                         Department <span className="text-red-500">*</span>
                       </label>
                       <SearchableSelect
-                        options={dropdownData.departments}
+                        options={businessFunctionDepartments} // Use filtered departments
                         value={formData.department}
                         onChange={(value) => {
                           setFormData({...formData, department: value}); // Unit clearing handled by useEffect
                         }}
-                        placeholder="Select Department"
+                        placeholder={formData.business_function ? "Select Department" : "Select Business Function First"}
+                        disabled={!formData.business_function}
                       />
+                      {formData.business_function && businessFunctionDepartments.length === 0 && (
+                        <p className={`text-xs ${textMuted} mt-1`}>
+                          No departments available for selected business function
+                        </p>
+                      )}
+                      {formData.business_function && businessFunctionDepartments.length > 0 && (
+                        <p className={`text-xs ${textMuted} mt-1`}>
+                          {businessFunctionDepartments.length} departments available for this business function
+                        </p>
+                      )}
                     </div>
                     
                     {/* FIXED: Unit field with department dependency */}

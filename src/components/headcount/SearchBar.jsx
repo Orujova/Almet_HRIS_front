@@ -170,7 +170,7 @@ const SearchBar = ({
             border rounded-lg
             focus:ring-2 focus:ring-almet-sapphire focus:border-transparent
             disabled:opacity-50 disabled:cursor-not-allowed
-            transition-all duration-200
+            transition-all duration-200 outline-0
           `}
         />
         
