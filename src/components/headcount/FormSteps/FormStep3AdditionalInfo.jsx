@@ -47,7 +47,7 @@ const FormStep3AdditionalInfo = ({
   const [showLineManagerDropdown, setShowLineManagerDropdown] = useState(false);
   const [showCreateTag, setShowCreateTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
-  const [newTagType, setNewTagType] = useState("OTHER");
+
   const [creatingTag, setCreatingTag] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -74,15 +74,7 @@ const FormStep3AdditionalInfo = ({
     ? lineManagerOptions.find(manager => manager.id === parseInt(formData.line_manager))
     : null;
 
-  // Tag types for filtering and creation
-  const tagTypes = [
-    { value: "SKILL", label: "Skills" },
-    { value: "DEPARTMENT", label: "Department" },
-    { value: "PROJECT", label: "Projects" },
-    { value: "CERTIFICATION", label: "Certifications" },
-    { value: "LEAVE", label: "Leave Types" },
-    { value: "OTHER", label: "Other" }
-  ];
+ 
 
   // Handle line manager selection
   const handleLineManagerSelect = (manager) => {
@@ -125,7 +117,7 @@ const FormStep3AdditionalInfo = ({
     try {
       const newTag = {
         name: newTagName.trim(),
-        tag_type: newTagType,
+        
         color: getRandomTagColor(),
         is_active: true
       };
@@ -135,7 +127,7 @@ const FormStep3AdditionalInfo = ({
       }
       
       setNewTagName("");
-      setNewTagType("OTHER");
+    
       setShowCreateTag(false);
     } catch (error) {
       console.error('Failed to create tag:', error);
@@ -217,8 +209,7 @@ const FormStep3AdditionalInfo = ({
     value: tag.value,
     label: tag.label,
     color: tag.color,
-    description: tag.tag_type ? `Type: ${tag.tag_type}` : undefined,
-    tag_type: tag.tag_type
+  
   }));
 
   return (

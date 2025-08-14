@@ -65,12 +65,12 @@ const QuickFilterBar = ({
   // Initialize data with retry mechanism
   useEffect(() => {
     const initializeData = async () => {
-      console.log('🔄 QuickFilterBar: Initializing reference data...');
+   
       
       const initializationTasks = [];
       
       if (!hasEmployeeStatuses() && !loading.employeeStatuses && !error.employeeStatuses) {
-        console.log('📊 Fetching employee statuses...');
+
         initializationTasks.push({
           name: 'employeeStatuses',
           action: () => fetchEmployeeStatuses?.()
@@ -78,7 +78,7 @@ const QuickFilterBar = ({
       }
       
       if (!hasDepartments() && !loading.departments && !error.departments) {
-        console.log('🏢 Fetching departments...');
+       
         initializationTasks.push({
           name: 'departments',
           action: () => fetchDepartments?.()
@@ -86,7 +86,7 @@ const QuickFilterBar = ({
       }
       
       if (!hasBusinessFunctions() && !loading.businessFunctions && !error.businessFunctions) {
-        console.log('🏭 Fetching business functions...');
+  
         initializationTasks.push({
           name: 'businessFunctions',
           action: () => fetchBusinessFunctions?.()
@@ -94,7 +94,7 @@ const QuickFilterBar = ({
       }
       
       if (!hasPositionGroups() && !loading.positionGroups && !error.positionGroups) {
-        console.log('📊 Fetching position groups...');
+      
         initializationTasks.push({
           name: 'positionGroups',
           action: () => fetchPositionGroups?.()
@@ -144,13 +144,13 @@ const QuickFilterBar = ({
 
   // FIXED: Process formatted options for all filter types
   const statusOptions = useMemo(() => {
-    console.log('📊 Processing status options:', employeeStatuses);
+    
     return getFormattedEmployeeStatuses() || [];
   }, [employeeStatuses, getFormattedEmployeeStatuses]);
 
   // FIXED: Department options - Group by department name, show all business functions
   const departmentOptions = useMemo(() => {
-    console.log('🏢 Processing departments for QuickFilter...');
+  
     
     if (!Array.isArray(departments)) {
       return [];
@@ -192,23 +192,23 @@ const QuickFilterBar = ({
     .filter(dept => dept.label)
     .sort((a, b) => a.label.localeCompare(b.label));
 
-    console.log('✅ Grouped department options:', options);
+
     return options;
   }, [departments]);
 
   const businessFunctionOptions = useMemo(() => {
-    console.log('🏭 Processing business function options:', businessFunctions);
+
     return getFormattedBusinessFunctions() || [];
   }, [businessFunctions, getFormattedBusinessFunctions]);
 
   const positionGroupOptions = useMemo(() => {
-    console.log('📊 Processing position group options:', positionGroups);
+
     return getFormattedPositionGroups() || [];
   }, [positionGroups, getFormattedPositionGroups]);
 
   // FIXED: Department change handler - Handle department group selection
   const handleDepartmentChange = useCallback((selectedDepartmentNames) => {
-    console.log('🏢 Department selection changed:', selectedDepartmentNames);
+
     
     if (!Array.isArray(selectedDepartmentNames)) {
       onDepartmentChange?.([]);
@@ -231,7 +231,7 @@ const QuickFilterBar = ({
       });
     });
 
-    console.log('🏢 Selected department IDs:', allDepartmentIds);
+
     onDepartmentChange?.(allDepartmentIds);
   }, [departments, onDepartmentChange]);
 
@@ -294,7 +294,7 @@ const QuickFilterBar = ({
 
   // FIXED: Clear all filters
   const handleClearAll = useCallback(() => {
-    console.log('🧹 QUICKFILTER: Clearing all filters - INSTANT APPLICATION');
+ 
     
     // Clear individual filters
     onStatusChange?.([]);

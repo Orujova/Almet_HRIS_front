@@ -108,14 +108,14 @@ const EmployeeTableRow = ({
           tags.push({
             id: `tag_name_${idx}`,
             name: tagItem,
-            tag_type: 'OTHER',
+        
             color: '#gray'
           });
         } else if (typeof tagItem === 'object' && tagItem.name) {
           tags.push({
             id: tagItem.id || `tag_obj_${idx}`,
             name: tagItem.name,
-            tag_type: tagItem.tag_type || tagItem.type || 'OTHER',
+       
             color: tagItem.color || '#gray'
           });
         }
@@ -129,7 +129,7 @@ const EmployeeTableRow = ({
           tags.push({
             id: tag.id || `tag_full_${idx}`,
             name: tag.name,
-            tag_type: tag.tag_type || tag.type || 'OTHER',
+          
             color: tag.color || '#gray'
           });
         }

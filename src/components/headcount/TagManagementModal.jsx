@@ -38,7 +38,7 @@ const TagManagementModal = ({
         id: tag.id || tag.value,
         value: tag.id || tag.value,
         name: tag.name || tag.label,
-        tag_type: tag.tag_type || 'general',
+      
         color: tag.color || '#6B7280',
         employee_count: tag.employee_count || 0
       }))
@@ -66,8 +66,8 @@ const TagManagementModal = ({
     
     const searchLower = searchTerm.toLowerCase();
     return availableTags.filter(tag => 
-      tag.name.toLowerCase().includes(searchLower) ||
-      tag.tag_type.toLowerCase().includes(searchLower)
+      tag.name.toLowerCase().includes(searchLower) 
+      
     );
   }, [availableTags, searchTerm]);
 
@@ -478,11 +478,7 @@ const TagManagementModal = ({
                             <span className={`font-medium text-sm ${textPrimary}`}>
                               {selectedTag.name}
                             </span>
-                            {selectedTag.tag_type && (
-                              <span className={`text-xs px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
-                                {selectedTag.tag_type}
-                              </span>
-                            )}
+                           
                           </div>
                           <div className={`text-xs ${textMuted}`}>
                             {selectedTag.employee_count} employees currently have this tag
@@ -565,11 +561,7 @@ const TagManagementModal = ({
                                   <span className={`font-medium text-sm ${textPrimary}`}>
                                     {tag.name}
                                   </span>
-                                  {tag.tag_type && (
-                                    <span className={`text-xs px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 ${textMuted}`}>
-                                      {tag.tag_type}
-                                    </span>
-                                  )}
+                                
                                 </div>
                                 <div className={`text-xs ${textMuted} mt-0.5`}>
                                   {tag.employee_count || 0} employees currently have this tag

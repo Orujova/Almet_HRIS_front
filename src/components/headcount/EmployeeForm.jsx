@@ -282,7 +282,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         jobFunctions: data.map(item => ({
           value: item.id?.toString(),
           label: item.name,
-          description: item.description
+      
         }))
       }));
     } catch (error) {
@@ -329,7 +329,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         employeeTags: data.map(item => ({
           value: item.id?.toString(),
           label: item.name,
-          tag_type: item.tag_type,
+ 
           color: item.color
         }))
       }));

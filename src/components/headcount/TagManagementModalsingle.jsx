@@ -474,9 +474,7 @@ const TagManagementModal = ({
                                   <Hash size={8} className="mr-1" />
                                   {tagName}
                                 </span>
-                                <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-almet-waterloo'}`}>
-                                  {tag.tag_type || tag.type || 'OTHER'}
-                                </span>
+                             
                               </div>
                               {selectedTagId === tagId && (
                                 <Check size={14} className="text-green-500" />

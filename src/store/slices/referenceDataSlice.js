@@ -80,9 +80,9 @@ export const fetchEmployeeStatuses = createAsyncThunk(
 
 export const fetchEmployeeTags = createAsyncThunk(
   'referenceData/fetchEmployeeTags',
-  async (tagType, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
-      const response = await referenceDataAPI.getEmployeeTagDropdown(tagType);
+      const response = await referenceDataAPI.getEmployeeTagDropdown();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.data || error.message);
@@ -401,7 +401,7 @@ export const createEmployeeTag = createAsyncThunk(
   async (data, { rejectWithValue, dispatch }) => {
     try {
       const response = await referenceDataAPI.createEmployeeTag(data);
-      dispatch(fetchEmployeeTags(data.tag_type));
+      dispatch(fetchEmployeeTags());
       return response.data;
     } catch (error) {
       return rejectWithValue(error.data || error.message);
@@ -414,7 +414,7 @@ export const updateEmployeeTag = createAsyncThunk(
   async ({ id, data }, { rejectWithValue, dispatch }) => {
     try {
       const response = await referenceDataAPI.updateEmployeeTag(id, data);
-      dispatch(fetchEmployeeTags(data.tag_type));
+      dispatch(fetchEmployeeTags());
       return response.data;
     } catch (error) {
       return rejectWithValue(error.data || error.message);
@@ -427,7 +427,7 @@ export const deleteEmployeeTag = createAsyncThunk(
   async ({ id, tagType }, { rejectWithValue, dispatch }) => {
     try {
       await referenceDataAPI.deleteEmployeeTag(id);
-      dispatch(fetchEmployeeTags(tagType));
+      dispatch(fetchEmployeeTags());
       return id;
     } catch (error) {
       return rejectWithValue(error.data || error.message);
@@ -1258,8 +1258,8 @@ export const selectJobFunctionsForDropdown = createSelector(
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(jf => 
-        (jf.name || '').toLowerCase().includes(searchTerm) ||
-        (jf.description || '').toLowerCase().includes(searchTerm)
+        (jf.name || '').toLowerCase().includes(searchTerm) 
+        
       );
     }
     
@@ -1273,7 +1273,7 @@ export const selectJobFunctionsForDropdown = createSelector(
     return filtered.map(jf => ({
       value: jf.id || jf.value,
       label: jf.name || jf.label,
-      description: jf.description,
+    
       employee_count: jf.employee_count || 0,
       is_active: jf.is_active !== false,
       _isOptimistic: jf._isOptimistic || false

@@ -16,55 +16,163 @@ const EmployeeTag = ({
 }) => {
   const { darkMode } = useTheme();
 
-  // Modern soft color palette for tag types
-  const getTagTypeColor = (tagType) => {
-    const typeColors = {
-      'skill': {
-        bg: darkMode ? 'bg-slate-900/20' : 'bg-slate-50',
-        text: darkMode ? 'text-slate-300' : 'text-slate-700',
-        border: darkMode ? 'border-slate-700/30' : 'border-slate-200/60',
-        dot: darkMode ? 'text-slate-400' : 'text-slate-500'
-      },
-      'department': {
-        bg: darkMode ? 'bg-emerald-900/20' : 'bg-emerald-50',
-        text: darkMode ? 'text-emerald-300' : 'text-emerald-700',
-        border: darkMode ? 'border-emerald-700/30' : 'border-emerald-200/60',
-        dot: darkMode ? 'text-emerald-400' : 'text-emerald-500'
-      },
-      'project': {
-        bg: darkMode ? 'bg-violet-900/20' : 'bg-violet-50',
-        text: darkMode ? 'text-violet-300' : 'text-violet-700',
-        border: darkMode ? 'border-violet-700/30' : 'border-violet-200/60',
-        dot: darkMode ? 'text-violet-400' : 'text-violet-500'
-      },
-      'certification': {
-        bg: darkMode ? 'bg-amber-900/20' : 'bg-amber-50',
-        text: darkMode ? 'text-amber-300' : 'text-amber-700',
-        border: darkMode ? 'border-amber-700/30' : 'border-amber-200/60',
-        dot: darkMode ? 'text-amber-400' : 'text-amber-500'
-      },
-      'leave': {
-        bg: darkMode ? 'bg-rose-900/20' : 'bg-rose-50',
-        text: darkMode ? 'text-rose-300' : 'text-rose-700',
-        border: darkMode ? 'border-rose-700/30' : 'border-rose-200/60',
-        dot: darkMode ? 'text-rose-400' : 'text-rose-500'
-      },
-      'maternity': {
-        bg: darkMode ? 'bg-pink-900/20' : 'bg-pink-50',
-        text: darkMode ? 'text-pink-300' : 'text-pink-700',
-        border: darkMode ? 'border-pink-700/30' : 'border-pink-200/60',
-        dot: darkMode ? 'text-pink-400' : 'text-pink-500'
-      },
-      'other': {
-        bg: darkMode ? 'bg-gray-800/30' : 'bg-gray-50',
-        text: darkMode ? 'text-gray-300' : 'text-gray-600',
-        border: darkMode ? 'border-gray-600/30' : 'border-gray-200/60',
-        dot: darkMode ? 'text-gray-400' : 'text-gray-500'
-      }
-    };
-
-    return typeColors[tagType.toLowerCase()] || typeColors['other'];
+  // Beautiful soft color palette
+  const getTagColor = () => {
+    const tagData = typeof tag === 'string' ? { name: tag } : tag;
+    const tagName = tagData.name || tagData.label || 'Unknown';
+    
+    // Generate consistent color based on tag name
+    const hash = tagName.split('').reduce((acc, char) => {
+      return char.charCodeAt(0) + ((acc << 5) - acc);
+    }, 0);
+    
+    const colorIndex = Math.abs(hash) % softColors.length;
+    return softColors[colorIndex][darkMode ? 'dark' : 'light'];
   };
+
+  // Soft color schemes for light and dark modes
+  const softColors = [
+    {
+      light: {
+        bg: 'bg-rose-50/80 hover:bg-rose-100/90',
+        text: 'text-rose-700',
+        border: 'border-rose-200/60',
+        dot: 'text-rose-400'
+      },
+      dark: {
+        bg: 'bg-rose-950/40 hover:bg-rose-900/50',
+        text: 'text-rose-200',
+        border: 'border-rose-800/40',
+        dot: 'text-rose-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-sky-50/80 hover:bg-sky-100/90',
+        text: 'text-sky-700',
+        border: 'border-sky-200/60',
+        dot: 'text-sky-400'
+      },
+      dark: {
+        bg: 'bg-sky-950/40 hover:bg-sky-900/50',
+        text: 'text-sky-200',
+        border: 'border-sky-800/40',
+        dot: 'text-sky-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-emerald-50/80 hover:bg-emerald-100/90',
+        text: 'text-emerald-700',
+        border: 'border-emerald-200/60',
+        dot: 'text-emerald-400'
+      },
+      dark: {
+        bg: 'bg-emerald-950/40 hover:bg-emerald-900/50',
+        text: 'text-emerald-200',
+        border: 'border-emerald-800/40',
+        dot: 'text-emerald-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-violet-50/80 hover:bg-violet-100/90',
+        text: 'text-violet-700',
+        border: 'border-violet-200/60',
+        dot: 'text-violet-400'
+      },
+      dark: {
+        bg: 'bg-violet-950/40 hover:bg-violet-900/50',
+        text: 'text-violet-200',
+        border: 'border-violet-800/40',
+        dot: 'text-violet-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-amber-50/80 hover:bg-amber-100/90',
+        text: 'text-amber-700',
+        border: 'border-amber-200/60',
+        dot: 'text-amber-400'
+      },
+      dark: {
+        bg: 'bg-amber-950/40 hover:bg-amber-900/50',
+        text: 'text-amber-200',
+        border: 'border-amber-800/40',
+        dot: 'text-amber-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-teal-50/80 hover:bg-teal-100/90',
+        text: 'text-teal-700',
+        border: 'border-teal-200/60',
+        dot: 'text-teal-400'
+      },
+      dark: {
+        bg: 'bg-teal-950/40 hover:bg-teal-900/50',
+        text: 'text-teal-200',
+        border: 'border-teal-800/40',
+        dot: 'text-teal-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-indigo-50/80 hover:bg-indigo-100/90',
+        text: 'text-indigo-700',
+        border: 'border-indigo-200/60',
+        dot: 'text-indigo-400'
+      },
+      dark: {
+        bg: 'bg-indigo-950/40 hover:bg-indigo-900/50',
+        text: 'text-indigo-200',
+        border: 'border-indigo-800/40',
+        dot: 'text-indigo-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-pink-50/80 hover:bg-pink-100/90',
+        text: 'text-pink-700',
+        border: 'border-pink-200/60',
+        dot: 'text-pink-400'
+      },
+      dark: {
+        bg: 'bg-pink-950/40 hover:bg-pink-900/50',
+        text: 'text-pink-200',
+        border: 'border-pink-800/40',
+        dot: 'text-pink-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-cyan-50/80 hover:bg-cyan-100/90',
+        text: 'text-cyan-700',
+        border: 'border-cyan-200/60',
+        dot: 'text-cyan-400'
+      },
+      dark: {
+        bg: 'bg-cyan-950/40 hover:bg-cyan-900/50',
+        text: 'text-cyan-200',
+        border: 'border-cyan-800/40',
+        dot: 'text-cyan-400'
+      }
+    },
+    {
+      light: {
+        bg: 'bg-orange-50/80 hover:bg-orange-100/90',
+        text: 'text-orange-700',
+        border: 'border-orange-200/60',
+        dot: 'text-orange-400'
+      },
+      dark: {
+        bg: 'bg-orange-950/40 hover:bg-orange-900/50',
+        text: 'text-orange-200',
+        border: 'border-orange-800/40',
+        dot: 'text-orange-400'
+      }
+    }
+  ];
 
   // Modern size variants with better spacing
   const sizeClasses = {
@@ -82,12 +190,10 @@ const EmployeeTag = ({
   };
 
   // Handle tag data - support both object and string formats
-  const tagData = typeof tag === 'string' ? { name: tag, tag_type: 'other' } : tag;
+  const tagData = typeof tag === 'string' ? { name: tag } : tag;
   const tagName = tagData.name || tagData.label || 'Unknown';
-  const tagType = tagData.tag_type || tagData.type || 'other';
-  const tagDescription = tagData.description;
 
-  const colors = getTagTypeColor(tagType);
+  const colors = getTagColor();
 
   // Handle remove click
   const handleRemove = (e) => {
@@ -117,7 +223,7 @@ const EmployeeTag = ({
         ${className}
       `}
       onClick={handleClick}
-      title={tagDescription || `${tagType} tag: ${tagName}`}
+      title={`Tag: ${tagName}`}
     >
       {/* Modern hash icon instead of dot */}
       <Hash size={iconSizes[size]} className={`${colors.dot} flex-shrink-0`} />

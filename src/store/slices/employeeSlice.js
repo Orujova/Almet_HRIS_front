@@ -1648,9 +1648,7 @@ export const selectFormattedEmployees = createSelector(
     tagInfo: {
       tags: employee.tags || [],
       tagNames: employee.tag_names || [],
-      hasLeaveTag: (employee.tag_names || []).some(tag => 
-        typeof tag === 'object' ? tag.type === 'LEAVE' : tag.toLowerCase().includes('leave')
-      ),
+     
       tagCount: (employee.tags || []).length
     },
     statusInfo: {

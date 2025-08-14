@@ -104,7 +104,7 @@ export const referenceDataAPI = {
         data: data.map(item => ({
           value: item.id,
           label: item.name,
-          description: item.description,
+         
           employee_count: item.employee_count,
           is_active: item.is_active
         }))

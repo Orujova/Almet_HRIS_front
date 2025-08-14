@@ -1,3 +1,4 @@
+// src/components/job-catalog/JobCatalogPage.jsx
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -12,74 +13,22 @@ import {
   Briefcase, 
   Building2, 
   Target, 
-  Award, 
   BarChart3,
   Plus,
-  Download,
   Grid,
   List,
-  Eye,
-  Edit,
-  X,
-  MapPin,
-  Layers,
   Loader2,
   AlertCircle,
-  RefreshCw,
-  Trash2,
-  Save,
-  Settings,
-  ExternalLink
+  RefreshCw
 } from 'lucide-react';
 
-// Hierarchy colors using Almet color palette
-const hierarchyColors = {
-  'VC': { 
-    bg: 'bg-almet-sapphire/10 dark:bg-almet-sapphire/20', 
-    text: 'text-almet-sapphire dark:text-almet-steel-blue', 
-    border: 'border-almet-sapphire' 
-  },
-  'Vice Chairman': { 
-    bg: 'bg-almet-sapphire/10 dark:bg-almet-sapphire/20', 
-    text: 'text-almet-sapphire dark:text-almet-steel-blue', 
-    border: 'border-almet-sapphire' 
-  },
-  'DIRECTOR': { 
-    bg: 'bg-almet-astral/10 dark:bg-almet-astral/20', 
-    text: 'text-almet-astral dark:text-almet-astral', 
-    border: 'border-almet-astral' 
-  },
-  'HEAD OF DEPARTMENT': { 
-    bg: 'bg-almet-steel-blue/10 dark:bg-almet-steel-blue/20', 
-    text: 'text-almet-steel-blue dark:text-almet-steel-blue', 
-    border: 'border-almet-steel-blue' 
-  },
-  'MANAGER': { 
-    bg: 'bg-green-100 dark:bg-green-900/30', 
-    text: 'text-green-700 dark:text-green-400', 
-    border: 'border-green-500' 
-  },
-  'SENIOR SPECIALIST': { 
-    bg: 'bg-almet-bali-hai/10 dark:bg-almet-bali-hai/20', 
-    text: 'text-almet-bali-hai dark:text-almet-bali-hai', 
-    border: 'border-almet-bali-hai' 
-  },
-  'SPECIALIST': { 
-    bg: 'bg-orange-100 dark:bg-orange-900/30', 
-    text: 'text-orange-700 dark:text-orange-400', 
-    border: 'border-orange-500' 
-  },
-  'JUNIOR SPECIALIST': { 
-    bg: 'bg-red-100 dark:bg-red-900/30', 
-    text: 'text-red-700 dark:text-red-400', 
-    border: 'border-red-500' 
-  },
-  'BLUE COLLAR': { 
-    bg: 'bg-teal-100 dark:bg-teal-900/30', 
-    text: 'text-teal-700 dark:text-teal-400', 
-    border: 'border-teal-500' 
-  }
-};
+// Import components
+import NavigationTabs from '@/components/jobCatalog/NavigationTabs';
+import OverviewView from '@/components/jobCatalog/OverviewView';
+import ReferenceDataView from '@/components/jobCatalog/ReferenceDataView';
+import MatrixView from '@/components/jobCatalog/MatrixView';
+import JobDetailModal from '@/components/jobCatalog/JobDetailModal';
+import CrudModal from '@/components/jobCatalog/CrudModal';
 
 export default function JobCatalogPage() {
   const { darkMode } = useTheme();
@@ -92,8 +41,8 @@ export default function JobCatalogPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showCrudModal, setShowCrudModal] = useState(false);
-  const [crudModalType, setCrudModalType] = useState(''); // 'business_function', 'department', etc.
-  const [crudModalMode, setCrudModalMode] = useState('create'); // 'create', 'edit'
+  const [crudModalType, setCrudModalType] = useState('');
+  const [crudModalMode, setCrudModalMode] = useState('create');
   const [selectedItem, setSelectedItem] = useState(null);
   
   // Data states
@@ -104,8 +53,6 @@ export default function JobCatalogPage() {
   const [units, setUnits] = useState([]);
   const [jobFunctions, setJobFunctions] = useState([]);
   const [positionGroups, setPositionGroups] = useState([]);
-  const [employeeStatuses, setEmployeeStatuses] = useState([]);
-  const [employeeTags, setEmployeeTags] = useState([]);
   const [hierarchyData, setHierarchyData] = useState(null);
   
   // Filter states
@@ -148,8 +95,6 @@ export default function JobCatalogPage() {
         unitsRes,
         jobFunctionsRes,
         positionGroupsRes,
-        employeeStatusesRes,
-        employeeTagsRes,
         statisticsRes
       ] = await Promise.all([
         referenceDataAPI.getBusinessFunctionDropdown(),
@@ -157,8 +102,6 @@ export default function JobCatalogPage() {
         referenceDataAPI.getUnitDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
         referenceDataAPI.getPositionGroupDropdown(),
-        referenceDataAPI.getEmployeeStatuses(),
-        referenceDataAPI.getEmployeeTags(),
         employeeAPI.getStatistics()
       ]);
 
@@ -167,8 +110,6 @@ export default function JobCatalogPage() {
       setUnits(unitsRes.data || []);
       setJobFunctions(jobFunctionsRes.data || []);
       setPositionGroups(positionGroupsRes.data || []);
-      setEmployeeStatuses(employeeStatusesRes.data?.results || employeeStatusesRes.data || []);
-      setEmployeeTags(employeeTagsRes.data?.results || employeeTagsRes.data || []);
       setStatistics(statisticsRes.data || statisticsRes);
 
       await loadEmployees();
@@ -197,6 +138,7 @@ export default function JobCatalogPage() {
 
       const response = await employeeAPI.getAll(params);
       setEmployees(response.data?.results || response.results || []);
+      console.log('Loaded employees:', response.data?.results || response.results || []);
       
     } catch (error) {
       setErrors(prev => ({ ...prev, employees: 'Failed to load employees' }));
@@ -241,7 +183,6 @@ export default function JobCatalogPage() {
     setCrudModalMode(mode);
     setSelectedItem(item);
     
-    // Initialize form data properly for edit mode
     if (mode === 'edit' && item) {
       const formDataInit = {
         name: item.name || item.label || '',
@@ -250,10 +191,7 @@ export default function JobCatalogPage() {
         is_active: item.is_active !== false,
         business_function: item.business_function || item.business_function_id || '',
         department: item.department || item.department_id || '',
-        hierarchy_level: item.hierarchy_level || '',
-        status_type: item.status_type || '',
-        tag_type: item.tag_type || '',
-        color: item.color || '#3B82F6'
+        hierarchy_level: item.hierarchy_level || ''
       };
       setFormData(formDataInit);
     } else {
@@ -264,10 +202,7 @@ export default function JobCatalogPage() {
         is_active: true,
         business_function: '',
         department: '',
-        hierarchy_level: '',
-        status_type: '',
-        tag_type: '',
-        color: '#3B82F6'
+        hierarchy_level: ''
       });
     }
     setShowCrudModal(true);
@@ -326,23 +261,8 @@ export default function JobCatalogPage() {
             response = await referenceDataAPI.updatePositionGroup(selectedItem.value || selectedItem.id, formData);
           }
           break;
-        case 'employee_statuses':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createEmployeeStatus(formData);
-          } else {
-            response = await referenceDataAPI.updateEmployeeStatus(selectedItem.id, formData);
-          }
-          break;
-        case 'employee_tags':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createEmployeeTag(formData);
-          } else {
-            response = await referenceDataAPI.updateEmployeeTag(selectedItem.id, formData);
-          }
-          break;
       }
 
-      // Refresh data after successful operation
       await loadInitialData();
       closeCrudModal();
       
@@ -378,15 +298,8 @@ export default function JobCatalogPage() {
         case 'position_groups':
           await referenceDataAPI.deletePositionGroup(id);
           break;
-        case 'employee_statuses':
-          await referenceDataAPI.deleteEmployeeStatus(id);
-          break;
-        case 'employee_tags':
-          await referenceDataAPI.deleteEmployeeTag(id);
-          break;
       }
 
-      // Refresh data after successful deletion
       await loadInitialData();
       
     } catch (error) {
@@ -407,7 +320,7 @@ export default function JobCatalogPage() {
     const jobMap = new Map();
     
     employees.forEach(employee => {
-      const key = `${employee.business_function_name}-${employee.department_name}-${employee.job_function_name}-${employee.position_group_name}-${employee.job_title}`;
+      const key = `${employee.business_function_name}-${employee.department_name}-${employee.job_function_name}-${employee.position_group_name}-${employee.job_title}-${employee.unit_name}`;
       
       if (jobMap.has(key)) {
         jobMap.get(key).currentEmployees += 1;
@@ -415,7 +328,8 @@ export default function JobCatalogPage() {
       } else {
         jobMap.set(key, {
           id: key,
-          unit: employee.business_function_name || 'N/A',
+          businessFunction: employee.business_function_name || 'N/A',
+          unit: employee.unit_name || 'N/A',
           department: employee.department_name || 'N/A',
           jobFunction: employee.job_function_name || 'N/A',
           hierarchy: employee.position_group_name || 'N/A',
@@ -423,9 +337,6 @@ export default function JobCatalogPage() {
           currentEmployees: 1,
           employees: [employee],
           description: `${employee.position_group_name} position in ${employee.department_name}`,
-          requirements: ['Relevant experience required', 'Team collaboration skills'],
-          location: 'Baku HQ',
-          status: 'Active'
         });
       }
     });
@@ -457,13 +368,11 @@ export default function JobCatalogPage() {
 
   // Statistics
   const stats = useMemo(() => {
-    if (!statistics) return { totalJobs: 0, totalEmployees: 0, avgEmployeesPerJob: 0, activeJobs: 0 };
+    if (!statistics) return { totalJobs: 0, totalEmployees: 0 };
     
     return {
       totalJobs: jobCatalogData.length,
       totalEmployees: statistics.total_employees || 0,
-      avgEmployeesPerJob: jobCatalogData.length > 0 ? Math.round((statistics.total_employees || 0) / jobCatalogData.length * 10) / 10 : 0,
-      activeJobs: jobCatalogData.filter(j => j.status === 'Active').length
     };
   }, [statistics, jobCatalogData]);
 
@@ -503,1310 +412,83 @@ export default function JobCatalogPage() {
     setSearchTerm('');
   };
 
-  // CRUD Modal Component
-  const CrudModal = () => {
-    if (!showCrudModal) return null;
-
-    const getModalTitle = () => {
-      const typeNames = {
-        business_functions: 'Business Function',
-        departments: 'Department',
-        units: 'Unit',
-        job_functions: 'Job Function',
-        position_groups: 'Position Group',
-        employee_statuses: 'Employee Status',
-        employee_tags: 'Employee Tag'
-      };
-      const typeName = typeNames[crudModalType] || 'Item';
-      return `${crudModalMode === 'create' ? 'Create' : 'Edit'} ${typeName}`;
-    };
-
-    const renderFormFields = () => {
-      switch (crudModalType) {
-        case 'business_functions':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter business function name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Code
-                </label>
-                <input
-                  type="text"
-                  value={formData.code || ''}
-                  onChange={(e) => setFormData({...formData, code: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter code (e.g., HLD, TRD)"
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description || ''}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  rows={3}
-                  placeholder="Enter description (optional)"
-                />
-              </div>
-            </>
-          );
-
-        case 'departments':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter department name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Business Function *
-                </label>
-                <select
-                  value={formData.business_function || ''}
-                  onChange={(e) => setFormData({...formData, business_function: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  required
-                >
-                  <option value="">Select Business Function</option>
-                  {businessFunctions.map(bf => (
-                    <option key={bf.value} value={bf.value}>{bf.label}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          );
-
-        case 'units':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter unit name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Department *
-                </label>
-                <select
-                  value={formData.department || ''}
-                  onChange={(e) => setFormData({...formData, department: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  required
-                >
-                  <option value="">Select Department</option>
-                  {departments.map(dept => (
-                    <option key={dept.value} value={dept.value}>{dept.label}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          );
-
-        case 'job_functions':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter job function name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description || ''}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  rows={3}
-                  placeholder="Enter description (optional)"
-                />
-              </div>
-            </>
-          );
-
-        case 'position_groups':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter position group name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Hierarchy Level *
-                </label>
-                <input
-                  type="number"
-                  value={formData.hierarchy_level || ''}
-                  onChange={(e) => setFormData({...formData, hierarchy_level: parseInt(e.target.value)})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter hierarchy level (1-10)"
-                  min="1"
-                  max="10"
-                  required
-                />
-              </div>
-            </>
-          );
-
-        case 'employee_statuses':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter status name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Status Type *
-                </label>
-                <select
-                  value={formData.status_type || ''}
-                  onChange={(e) => setFormData({...formData, status_type: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  required
-                >
-                  <option value="">Select Status Type</option>
-                  <option value="ACTIVE">Active</option>
-                  <option value="ONBOARDING">Onboarding</option>
-                  <option value="PROBATION">Probation</option>
-                  <option value="INACTIVE">Inactive</option>
-                  <option value="TERMINATED">Terminated</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Color *
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={formData.color || '#3B82F6'}
-                    onChange={(e) => setFormData({...formData, color: e.target.value})}
-                    className="w-16 h-12 border border-gray-300 dark:border-almet-comet rounded-lg cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={formData.color || '#3B82F6'}
-                    onChange={(e) => setFormData({...formData, color: e.target.value})}
-                    className="flex-1 p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                    placeholder="#3B82F6"
-                  />
-                </div>
-              </div>
-            </>
-          );
-
-        case 'employee_tags':
-          return (
-            <>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  placeholder="Enter tag name"
-                  required
-                />
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Tag Type *
-                </label>
-                <select
-                  value={formData.tag_type || ''}
-                  onChange={(e) => setFormData({...formData, tag_type: e.target.value})}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                  required
-                >
-                  <option value="">Select Tag Type</option>
-                  <option value="LEAVE">Leave</option>
-                  <option value="PERFORMANCE">Performance</option>
-                  <option value="TRAINING">Training</option>
-                  <option value="GENERAL">General</option>
-                </select>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
-                  Color *
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    value={formData.color || '#3B82F6'}
-                    onChange={(e) => setFormData({...formData, color: e.target.value})}
-                    className="w-16 h-12 border border-gray-300 dark:border-almet-comet rounded-lg cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={formData.color || '#3B82F6'}
-                    onChange={(e) => setFormData({...formData, color: e.target.value})}
-                    className="flex-1 p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-                    placeholder="#3B82F6"
-                  />
-                </div>
-              </div>
-            </>
-          );
-
-        default:
-          return null;
-      }
-    };
-
-       
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-          <div className="p-6 border-b border-gray-200 dark:border-almet-comet">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                {getModalTitle()}
-              </h2>
-              <button
-                onClick={closeCrudModal}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-almet-comet rounded-lg transition-colors"
-              >
-                <X size={20} className="text-gray-500 dark:text-almet-bali-hai" />
-              </button>
-            </div>
-          </div>
-
-          <form onSubmit={handleCrudSubmit} className="p-6">
-            {renderFormFields()}
-            
-            <div className="mb-6">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.is_active !== false}
-                  onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                  className="mr-3 w-4 h-4 text-almet-sapphire bg-gray-100 border-gray-300 rounded focus:ring-almet-sapphire dark:focus:ring-almet-sapphire dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <span className="text-sm font-medium text-gray-700 dark:text-almet-bali-hai">Active</span>
-              </label>
-            </div>
-
-            {errors.crud && (
-              <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg">
-                <div className="flex items-center">
-                  <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
-                  <span className="text-red-800 dark:text-red-200 text-sm">{errors.crud}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-almet-comet">
-              <button
-                type="button"
-                onClick={closeCrudModal}
-                disabled={loading.crud}
-                className="px-6 py-2.5 border border-gray-300 dark:border-almet-comet text-gray-700 dark:text-almet-bali-hai rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet transition-colors disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading.crud}
-                className="flex items-center gap-2 px-6 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading.crud ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    {crudModalMode === 'create' ? 'Creating...' : 'Updating...'}
-                  </>
-                ) : (
-                  <>
-                    <Save size={16} />
-                    {crudModalMode === 'create' ? 'Create' : 'Update'}
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-
-  // Navigation Tabs Component
-  const NavigationTabs = () => (
-    <div className="flex space-x-1 bg-white dark:bg-almet-cloud-burst rounded-lg p-1 shadow-sm mb-6">
-      <button
-        onClick={() => setActiveView('overview')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-          activeView === 'overview' 
-            ? 'bg-almet-sapphire text-white' 
-            : 'text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet'
-        }`}
-      >
-        <BarChart3 size={16} />
-        Job Catalog Overview
-      </button>
-      <button
-        onClick={() => setActiveView('structure')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-          activeView === 'structure' 
-            ? 'bg-almet-sapphire text-white' 
-            : 'text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet'
-        }`}
-      >
-        <Layers size={16} />
-        Reference Data Management
-      </button>
-      <button
-        onClick={() => setActiveView('matrix')}
-        className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-          activeView === 'matrix' 
-            ? 'bg-almet-sapphire text-white' 
-            : 'text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet'
-        }`}
-      >
-        <Grid size={16} />
-        Hierarchy Matrix
-      </button>
-    </div>
-  );
-
-  // Job Card Component
-  const JobCard = ({ job }) => {
-    const colors = hierarchyColors[job.hierarchy] || hierarchyColors['SPECIALIST'];
+  const contextValue = {
+    // States
+    activeView, setActiveView,
+    viewMode, setViewMode,
+    matrixView, setMatrixView,
+    showFilters, setShowFilters,
+    selectedJob, setSelectedJob,
+    showCrudModal, setShowCrudModal,
+    crudModalType, setCrudModalType,
+    crudModalMode, setCrudModalMode,
+    selectedItem, setSelectedItem,
     
-    return (
-      <div className={`bg-white dark:bg-almet-cloud-burst rounded-lg border-l-4 ${colors.border} shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer`}
-           onClick={() => setSelectedJob(job)}>
-        <div className="p-4">
-          <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-                {job.hierarchy}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-almet-bali-hai flex items-center">
-                <Users size={12} className="mr-1" />
-                {job.currentEmployees}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-                <Eye size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-              </button>
-              <button className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-                <Edit size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-              </button>
-            </div>
-          </div>
-
-          <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-2 line-clamp-2">
-            {job.title}
-          </h3>
-
-          <div className="space-y-2 mb-3">
-            <div className="flex items-center text-xs text-gray-600 dark:text-almet-bali-hai">
-              <Building2 size={12} className="mr-2 text-almet-sapphire" />
-              <span className="truncate">{job.unit}</span>
-            </div>
-            <div className="flex items-center text-xs text-gray-600 dark:text-almet-bali-hai">
-              <Target size={12} className="mr-2 text-green-500" />
-              <span className="truncate">{job.department}</span>
-            </div>
-            <div className="flex items-center text-xs text-gray-600 dark:text-almet-bali-hai">
-              <MapPin size={12} className="mr-2 text-red-500" />
-              <span className="truncate">{job.location}</span>
-            </div>
-          </div>
-
-          <p className="text-xs text-gray-500 dark:text-almet-waterloo line-clamp-2">
-            {job.description}
-          </p>
-        </div>
-      </div>
-    );
-  };
-
-  // Job List Item Component
-  const JobListItem = ({ job }) => {
-    const colors = hierarchyColors[job.hierarchy] || hierarchyColors['SPECIALIST'];
+    // Data
+    employees, statistics, businessFunctions, departments, 
+    units, jobFunctions, positionGroups, hierarchyData,
     
-    return (
-      <div className={`bg-white dark:bg-almet-cloud-burst rounded-lg border-l-4 ${colors.border} p-4 hover:shadow-md transition-all duration-200 cursor-pointer`}
-           onClick={() => setSelectedJob(job)}>
-        <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-                {job.title}
-              </h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
-                {job.hierarchy}
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-almet-bali-hai">
-              <span className="flex items-center">
-                <Building2 size={12} className="mr-1" />
-                {job.unit}
-              </span>
-              <span className="flex items-center">
-                <Target size={12} className="mr-1" />
-                {job.department}
-              </span>
-              <span className="flex items-center">
-                <MapPin size={12} className="mr-1" />
-                {job.location}
-              </span>
-              <span className="flex items-center">
-                <Users size={12} className="mr-1" />
-                {job.currentEmployees} employees
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-              <Eye size={16} className="text-gray-400 dark:text-almet-bali-hai" />
-            </button>
-            <button className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet">
-              <Edit size={16} className="text-gray-400 dark:text-almet-bali-hai" />
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Overview View Component
-  const OverviewView = () => (
-    <div>
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg mr-3">
-              <Briefcase className="h-5 w-5 text-almet-sapphire" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Jobs</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.totalJobs}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
-              <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Employees</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.totalEmployees}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg mr-3">
-              <BarChart3 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Average</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.avgEmployeesPerJob}
-              </p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow-sm">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg mr-3">
-              <Award className="h-5 w-5 text-orange-600 dark:text-orange-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Active Jobs</p>
-              <p className="text-xl font-semibold text-gray-900 dark:text-white">
-                {loading.statistics ? <Loader2 className="h-5 w-5 animate-spin" /> : stats.activeJobs}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Controls */}
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 mb-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-          {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              type="text"
-              placeholder="Search jobs..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                showFilters ? 'bg-almet-sapphire text-white' : 'bg-gray-100 dark:bg-almet-comet text-gray-700 dark:text-almet-bali-hai hover:bg-gray-200 dark:hover:bg-almet-san-juan'
-              }`}
-            >
-              <Filter size={16} />
-              Filters
-              {Object.values(selectedFilters).some(v => v) && (
-                <span className="bg-red-500 text-white rounded-full w-2 h-2"></span>
-              )}
-            </button>
-
-            {/* View Mode Toggle */}
-            <div className="flex rounded-lg border border-gray-300 dark:border-almet-comet overflow-hidden">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai'}`}
-              >
-                <Grid size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`p-2 ${viewMode === 'list' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai'}`}
-              >
-                <List size={16} />
-              </button>
-            </div>
-
-            <button
-              onClick={() => openCrudModal('business_functions', 'create')}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Plus size={16} />
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* Filters Panel */}
-        {showFilters && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-almet-comet">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Business Function
-                </label>
-                <select
-                  value={selectedFilters.business_function}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, business_function: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="">All</option>
-                  {filterOptions.businessFunctions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Department
-                </label>
-                <select
-                  value={selectedFilters.department}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, department: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="">All</option>
-                  {filterOptions.departments.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Unit
-                </label>
-                <select
-                  value={selectedFilters.unit}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="">All</option>
-                  {filterOptions.units.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Job Function
-                </label>
-                <select
-                  value={selectedFilters.job_function}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, job_function: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="">All</option>
-                  {filterOptions.jobFunctions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Position Group
-                </label>
-                <select
-                  value={selectedFilters.position_group}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, position_group: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="">All</option>
-                  {filterOptions.positionGroups.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            
-            {Object.values(selectedFilters).some(v => v) && (
-              <div className="mt-4 flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-almet-bali-hai">
-                  Showing {filteredJobs.length} / {jobCatalogData.length} jobs
-                </span>
-                <button
-                  onClick={clearFilters}
-                  className="text-sm text-almet-sapphire dark:text-almet-steel-blue hover:underline"
-                >
-                  Clear Filters
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Error Display */}
-      {errors.employees && (
-        <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
-          <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
-            <span className="text-red-800 dark:text-red-200">{errors.employees}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Job Listings */}
-      {loading.employees ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
-          <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading jobs...</span>
-        </div>
-      ) : (
-        <>
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
-            {filteredJobs.map(job => (
-              viewMode === 'grid' ? (
-                <JobCard key={job.id} job={job} />
-              ) : (
-                <JobListItem key={job.id} job={job} />
-              )
-            ))}
-          </div>
-
-          {filteredJobs.length === 0 && (
-            <div className="text-center py-12">
-              <Briefcase className="mx-auto h-12 w-12 text-gray-400 dark:text-almet-bali-hai mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Jobs Found</h3>
-              <p className="text-gray-500 dark:text-almet-bali-hai">
-                Adjust your search criteria or filters.
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-
-  // Reference Data Management View Component
-  const ReferenceDataView = () => {
-    const [activeTab, setActiveTab] = useState('business_functions');
-
-    const renderReferenceDataTable = (data, type, columns) => (
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg shadow-sm">
-        <div className="p-4 border-b border-gray-200 dark:border-almet-comet flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            {type.replace('_', ' ').toUpperCase()}
-          </h3>
-          <button
-            onClick={() => openCrudModal(type, 'create')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Plus size={16} />
-            Add New
-          </button>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-almet-san-juan">
-              <tr>
-                {columns.map((col, index) => (
-                  <th key={index} className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-almet-bali-hai uppercase tracking-wider">
-                    {col}
-                  </th>
-                ))}
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-almet-bali-hai uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-almet-comet">
-              {data.map((item, index) => (
-                <tr key={item.id || index} className="hover:bg-gray-50 dark:hover:bg-almet-san-juan">
-                  {type === 'business_functions' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.code || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-                  
-                  {type === 'departments' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.business_function_name || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-
-                  {type === 'units' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.department_name || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-
-                  {type === 'job_functions' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-almet-bali-hai">{item.description || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-
-                  {type === 'position_groups' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.label || item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.hierarchy_level || 'N/A'}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-
-                  {type === 'employee_statuses' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.status_type}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                          <span className="text-sm text-gray-900 dark:text-white">{item.color}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-
-                  {type === 'employee_tags' && (
-                    <>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.tag_type}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center">
-                          <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: item.color }}></div>
-                          <span className="text-sm text-gray-900 dark:text-white">{item.color}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.employee_count || 0}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          item.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        }`}>
-                          {item.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </>
-                  )}
-
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => openCrudModal(type, 'edit', item)}
-                        className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
-                        title="Edit"
-                      >
-                        <Edit size={14} className="text-blue-600 dark:text-blue-400" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(type, item)}
-                        className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
-                        title="Delete"
-                        disabled={loading.crud}
-                      >
-                        <Trash2 size={14} className="text-red-600 dark:text-red-400" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-
-    const tabs = [
-      { id: 'business_functions', label: 'Business Functions', data: businessFunctions, columns: ['Name', 'Code', 'Employees', 'Status'] },
-      { id: 'departments', label: 'Departments', data: departments, columns: ['Name', 'Business Function', 'Employees', 'Status'] },
-      { id: 'units', label: 'Units', data: units, columns: ['Name', 'Department', 'Employees', 'Status'] },
-      { id: 'job_functions', label: 'Job Functions', data: jobFunctions, columns: ['Name', 'Description', 'Employees', 'Status'] },
-      { id: 'position_groups', label: 'Position Groups', data: positionGroups, columns: ['Name', 'Hierarchy Level', 'Employees', 'Status'] },
-      { id: 'employee_statuses', label: 'Employee Statuses', data: employeeStatuses, columns: ['Name', 'Type', 'Color', 'Employees', 'Status'] },
-      { id: 'employee_tags', label: 'Employee Tags', data: employeeTags, columns: ['Name', 'Type', 'Color', 'Employees', 'Status'] }
-    ];
-
-    return (
-      <div>
-        {/* Tab Navigation */}
-        <div className="mb-6">
-          <div className="border-b border-gray-200 dark:border-almet-comet">
-            <nav className="-mb-px flex space-x-8 overflow-x-auto">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                    activeTab === tab.id
-                      ? 'border-almet-sapphire text-almet-sapphire'
-                      : 'border-transparent text-gray-500 dark:text-almet-bali-hai hover:text-gray-700 dark:hover:text-white hover:border-gray-300 dark:hover:border-almet-comet'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </div>
-
-        {/* Tab Content */}
-        {loading.referenceData ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
-            <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading reference data...</span>
-          </div>
-        ) : (
-          <>
-            {tabs.map((tab) => (
-              activeTab === tab.id && (
-                <div key={tab.id}>
-                  {renderReferenceDataTable(tab.data, tab.id, tab.columns)}
-                </div>
-              )
-            ))}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  // Matrix View Component
-  const MatrixView = () => {
-    const columns = matrixView === 'department' ? departments.map(d => d.label || d.name) : 
-                   matrixView === 'function' ? jobFunctions.map(jf => jf.label || jf.name) : 
-                   businessFunctions.map(bf => bf.label || bf.name);
-
-    return (
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm">
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Hierarchy Matrix</h2>
-              <p className="text-gray-600 dark:text-almet-bali-hai">
-                Distribution of jobs by hierarchy levels based on real employee data
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-almet-bali-hai">
-                Matrix View:
-              </label>
-              <select
-                value={matrixView}
-                onChange={(e) => setMatrixView(e.target.value)}
-                className="p-2 border border-gray-300 dark:border-almet-comet rounded-md bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm"
-              >
-                <option value="department">By Department</option>
-                <option value="function">By Job Function</option>
-                <option value="unit">By Business Function</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {loading.hierarchy ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
-            <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading hierarchy matrix...</span>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 bg-gray-100 dark:bg-almet-san-juan border border-gray-300 dark:border-almet-comet p-3 text-left font-semibold text-gray-900 dark:text-white min-w-[150px]">
-                      Hierarchy
-                    </th>
-                    {columns.map((col, colIndex) => (
-                      <th key={`col-${colIndex}-${col}`} className="border border-gray-300 dark:border-almet-comet p-2 text-center font-medium text-gray-900 dark:text-white text-xs min-w-[120px]">
-                        {col}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {positionGroups.map(pg => {
-                    const hierarchyName = pg.label || pg.name;
-                    const colors = hierarchyColors[hierarchyName] || hierarchyColors['SPECIALIST'];
-                    return (
-                      <tr key={pg.value || pg.id}>
-                        <td className={`sticky left-0 border border-gray-300 dark:border-almet-comet p-3 font-medium ${colors.bg} ${colors.text} min-w-[150px]`}>
-                          {hierarchyName}
-                        </td>
-                        {columns.map((col, colIndex) => {
-                          const jobs = matrixData[hierarchyName]?.[col] || [];
-                          return (
-                            <td key={`${pg.value || pg.id}-${colIndex}-${col}`} className="border border-gray-300 dark:border-almet-comet p-2 text-center">
-                              {jobs.length > 0 ? (
-                                <div className="space-y-1">
-                                  {jobs.map((job, jobIndex) => (
-                                    <div 
-                                      key={`${job.id}-${jobIndex}`}
-                                      className="bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue text-xs p-1 rounded cursor-pointer hover:bg-almet-sapphire/20 dark:hover:bg-almet-sapphire/30 transition-colors"
-                                      onClick={() => setSelectedJob(job)}
-                                      title={job.title}
-                                    >
-                                      <div className="font-medium truncate">{job.title}</div>
-                                      <div className="flex items-center justify-center gap-1 text-xs">
-                                        <Users size={10} />
-                                        {job.currentEmployees}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="text-gray-400 dark:text-almet-bali-hai text-xs">-</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            
-            <div className="mt-6 flex justify-between items-center">
-              <div className="text-sm text-gray-600 dark:text-almet-bali-hai">
-                Total {jobCatalogData.length} jobs, {stats.totalEmployees} employees
-              </div>
-              <div className="flex gap-3">
-                <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                  <Plus size={16} />
-                  New Job
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-almet-astral text-white rounded-lg hover:bg-almet-sapphire transition-colors">
-                  <Download size={16} />
-                  Export Matrix
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    );
+    // Filters
+    searchTerm, setSearchTerm,
+    selectedFilters, setSelectedFilters,
+    
+    // Loading and errors
+    loading, errors,
+    
+    // Form data
+    formData, setFormData,
+    
+    // Computed data
+    jobCatalogData, filteredJobs, stats, matrixData, filterOptions,
+    
+    // Functions
+    openCrudModal, closeCrudModal, handleCrudSubmit, handleDelete,
+    navigateToEmployee, clearFilters, loadInitialData
   };
 
   return (
     <DashboardLayout>
-      <div className="p-6 bg-almet-mystic dark:bg-gray-900 min-h-screen">
+      <div className="p-4 bg-almet-mystic dark:bg-gray-900 min-h-screen text-sm">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Job Catalog</h1>
-          <p className="text-gray-600 dark:text-almet-bali-hai">
+        <div className="mb-4">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Job Catalog</h1>
+          <p className="text-gray-600 dark:text-almet-bali-hai text-sm">
             Comprehensive job catalog with reference data management and organizational insights
           </p>
         </div>
 
         {/* Error Display for Initial Load */}
         {errors.initial && (
-          <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+          <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
             <div className="flex items-center">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
-              <span className="text-red-800 dark:text-red-200">{errors.initial}</span>
+              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2" />
+              <span className="text-red-800 dark:text-red-200 text-sm">{errors.initial}</span>
             </div>
           </div>
         )}
 
         {/* Navigation Tabs */}
-        <NavigationTabs />
+        <NavigationTabs 
+          activeView={activeView} 
+          setActiveView={setActiveView} 
+        />
 
         {/* Content based on active view */}
-        {activeView === 'overview' && <OverviewView />}
-        {activeView === 'structure' && <ReferenceDataView />}
-        {activeView === 'matrix' && <MatrixView />}
+        {activeView === 'overview' && (
+          <OverviewView context={contextValue} />
+        )}
+        {activeView === 'structure' && (
+          <ReferenceDataView context={contextValue} />
+        )}
+        {activeView === 'matrix' && (
+          <MatrixView context={contextValue} />
+        )}
 
         {/* CRUD Modal */}
-        <CrudModal />
+        <CrudModal context={contextValue} />
 
         {/* Job Detail Modal */}
-        {selectedJob && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white dark:bg-almet-cloud-burst rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              {/* Modal Header */}
-              <div className="p-6 border-b border-gray-200 dark:border-almet-comet">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                      {selectedJob.title}
-                    </h2>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${hierarchyColors[selectedJob.hierarchy]?.bg} ${hierarchyColors[selectedJob.hierarchy]?.text}`}>
-                        {selectedJob.hierarchy}
-                      </span>
-                      <span className="flex items-center text-sm text-gray-600 dark:text-almet-bali-hai">
-                        <Users size={16} className="mr-1" />
-                        {selectedJob.currentEmployees} employees
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => setSelectedJob(null)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-almet-comet rounded-lg"
-                  >
-                    <X size={20} className="text-gray-500 dark:text-almet-bali-hai" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  {/* Job Information */}
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Job Information</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center">
-                        <Building2 size={16} className="mr-2 text-almet-sapphire" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Unit: {selectedJob.unit}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Target size={16} className="mr-2 text-green-500" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Department: {selectedJob.department}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Briefcase size={16} className="mr-2 text-purple-500" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Function: {selectedJob.jobFunction}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <MapPin size={16} className="mr-2 text-red-500" />
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Location: {selectedJob.location}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Statistics */}
-                  <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Current Status</h3>
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center p-3 bg-almet-mystic dark:bg-almet-san-juan rounded-lg">
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Current Employee Count</span>
-                        <span className="font-semibold text-gray-900 dark:text-white">{selectedJob.currentEmployees}</span>
-                      </div>
-                      <div className="flex justify-between items-center p-3 bg-almet-mystic dark:bg-almet-san-juan rounded-lg">
-                        <span className="text-sm text-gray-600 dark:text-almet-bali-hai">Status</span>
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded text-sm">
-                          {selectedJob.status}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Job Description</h3>
-                  <p className="text-gray-600 dark:text-almet-bali-hai text-sm leading-relaxed">
-                    {selectedJob.description}
-                  </p>
-                </div>
-
-                {/* Requirements */}
-                <div className="mb-6">
-                  <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Requirements</h3>
-                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-almet-bali-hai">
-                    {selectedJob.requirements.map((req, index) => (
-                      <li key={index}>{req}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Employee List */}
-                {selectedJob.employees && selectedJob.employees.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Current Employees</h3>
-                    <div className="max-h-32 overflow-y-auto space-y-2">
-                      {selectedJob.employees.slice(0, 5).map((employee, index) => (
-                        <div 
-                          key={index} 
-                          className="flex items-center justify-between p-2 bg-gray-50 dark:bg-almet-san-juan rounded cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet"
-                          onClick={() => navigateToEmployee(employee.id)}
-                        >
-                          <div className="flex items-center">
-                            <span className="text-sm text-gray-900 dark:text-white">{employee.name}</span>
-                            <span className="text-xs text-gray-500 dark:text-almet-bali-hai ml-2">({employee.employee_id})</span>
-                          </div>
-                          <ExternalLink size={14} className="text-gray-400 dark:text-almet-bali-hai" />
-                        </div>
-                      ))}
-                      {selectedJob.employees.length > 5 && (
-                        <div className="text-xs text-gray-500 dark:text-almet-bali-hai">
-                          +{selectedJob.employees.length - 5} more employees
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        <JobDetailModal context={contextValue} />
       </div>
     </DashboardLayout>
   );

@@ -125,7 +125,7 @@ export const useReferenceData = () => {
     fetchJobFunctions: useCallback(() => dispatch(fetchJobFunctions()), [dispatch]),
     fetchPositionGroups: useCallback(() => dispatch(fetchPositionGroups()), [dispatch]),
     fetchEmployeeStatuses: useCallback(() => dispatch(fetchEmployeeStatuses()), [dispatch]),
-    fetchEmployeeTags: useCallback((tagType) => dispatch(fetchEmployeeTags(tagType)), [dispatch]),
+    fetchEmployeeTags: useCallback(() => dispatch(fetchEmployeeTags()), [dispatch]),
     fetchContractConfigs: useCallback(() => dispatch(fetchContractConfigs()), [dispatch]),
     fetchPositionGroupGradingLevels: useCallback((positionGroupId) => 
       dispatch(fetchPositionGroupGradingLevels(positionGroupId)), [dispatch]),
@@ -163,7 +163,7 @@ export const useReferenceData = () => {
     // Employee tags CRUD
     createEmployeeTag: useCallback((data) => dispatch(createEmployeeTag(data)), [dispatch]),
     updateEmployeeTag: useCallback((id, data) => dispatch(updateEmployeeTag({ id, data })), [dispatch]),
-    deleteEmployeeTag: useCallback((id, tagType) => dispatch(deleteEmployeeTag({ id, tagType })), [dispatch]),
+    deleteEmployeeTag: useCallback((id) => dispatch(deleteEmployeeTag({ id })), [dispatch]),
     
     // Contract configs CRUD
     createContractConfig: useCallback((data) => dispatch(createContractConfig(data)), [dispatch]),
@@ -310,9 +310,10 @@ export const useReferenceData = () => {
       return units.filter(unit => unit.department === numericId);
     }, [units]),
     
-    getTagsByType: useCallback((tagType) => {
-      if (!tagType || !Array.isArray(employeeTags)) return [];
-      return employeeTags.filter(tag => tag.tag_type === tagType);
+    getTagsByType: useCallback(() => {
+      if ( !Array.isArray(employeeTags)) return [];
+      return employeeTags;
+      
     }, [employeeTags]),
     
     getGradingLevelsForPositionGroup: useCallback((positionGroupId) => {
@@ -436,7 +437,7 @@ export const useReferenceData = () => {
         .map(jf => ({
           value: (jf.id || jf.value)?.toString() || '',
           label: jf.name || jf.label || 'Unknown',
-          description: jf.description || ''
+        
         }));
     }, [jobFunctions]),
 
@@ -470,19 +471,17 @@ export const useReferenceData = () => {
         }));
     }, [employeeStatuses]),
 
-    getFormattedEmployeeTags: useCallback((tagType = null) => {
+    getFormattedEmployeeTags: useCallback(() => {
       let filteredTags = Array.isArray(employeeTags) ? employeeTags : [];
       
-      if (tagType) {
-        filteredTags = filteredTags.filter(tag => tag && tag.tag_type === tagType);
-      }
+  
       
       return filteredTags
         .filter(tag => tag && tag.is_active !== false)
         .map(tag => ({
           value: (tag.id || tag.value)?.toString() || '',
           label: tag.name || tag.label || 'Unknown',
-          tag_type: tag.tag_type || '',
+         
           color: tag.color || '#gray'
         }));
     }, [employeeTags]),
@@ -912,11 +911,7 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
           newErrors.color = 'Color is required';
         }
         break;
-      case 'employeeTags':
-        if (!formData.tag_type) {
-          newErrors.tag_type = 'Tag type is required';
-        }
-        break;
+     
       case 'contractConfigs':
         if (!formData.contract_type) {
           newErrors.contract_type = 'Contract type is required';
@@ -1050,7 +1045,7 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
           action = deleteEmployeeStatus(formData.id);
           break;
         case 'employeeTags':
-          action = deleteEmployeeTag({ id: formData.id, tagType: formData.tag_type });
+          action = deleteEmployeeTag({ id: formData.id,  });
           break;
         case 'contractConfigs':
           action = deleteContractConfig(formData.id);
