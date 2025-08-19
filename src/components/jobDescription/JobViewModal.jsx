@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Download, 
@@ -18,7 +18,8 @@ import {
   Package,
   Gift,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Bug
 } from 'lucide-react';
 
 const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
@@ -27,7 +28,8 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
     skills: false,
     competencies: false,
     resources: false,
-    benefits: false
+    benefits: false,
+    debug: false
   });
 
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
@@ -36,6 +38,14 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
   const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
+
+  // Debug: Log the job data to console
+  useEffect(() => {
+    console.log('=== JOB VIEW MODAL DEBUG ===');
+    console.log('Job object received:', job);
+    console.log('Job keys:', Object.keys(job || {}));
+    console.log('=== END DEBUG ===');
+  }, [job]);
 
   const toggleSection = (section) => {
     setExpandedSections(prev => ({
@@ -130,6 +140,81 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
     </div>
   );
 
+  // Safe data extraction with fallbacks - Updated for actual API structure
+  const safeJobData = {
+    // Basic info
+    job_title: job?.job_title || 'No Title',
+    job_purpose: job?.job_purpose || 'No purpose specified',
+    
+    // Organization info - using actual API structure
+    business_function_name: job?.business_function?.name || 'N/A',
+    department_name: job?.department?.name || 'N/A',
+    unit_name: job?.unit?.name || null,
+    job_function_name: job?.job_function?.name || null,
+    position_group_name: job?.position_group?.name || null,
+    grading_level: job?.grading_level || null,
+    
+    // Employee info - using actual API structure
+    assigned_employee_name: job?.assigned_employee?.full_name || job?.employee_info?.name || null,
+    assigned_employee_id: job?.assigned_employee?.employee_id || job?.employee_info?.employee_id || null,
+    assigned_employee_phone: job?.employee_info?.phone || null,
+    manual_employee_name: job?.manual_employee_name || null,
+    manual_employee_phone: job?.manual_employee_phone || null,
+    reports_to_name: job?.reports_to?.full_name || job?.manager_info?.name || null,
+    reports_to_title: job?.reports_to?.job_title || job?.manager_info?.job_title || null,
+    reports_to_id: job?.reports_to?.employee_id || job?.manager_info?.employee_id || null,
+    
+    // Status and version
+    status: job?.status || 'UNKNOWN',
+    status_display: job?.status_display || { status: job?.status || 'UNKNOWN' },
+    version: job?.version || 1,
+    
+    // Arrays - ensure they exist
+    sections: job?.sections || [],
+    required_skills: job?.required_skills || [],
+    behavioral_competencies: job?.behavioral_competencies || [],
+    business_resources: job?.business_resources || [],
+    access_rights: job?.access_rights || [],
+    company_benefits: job?.company_benefits || [],
+    
+    // Metadata
+    created_at: job?.created_at || null,
+    updated_at: job?.updated_at || null,
+    created_by_name: job?.created_by_detail?.first_name || job?.created_by_name || null,
+    line_manager_approved: !!job?.line_manager_approved_at,
+    employee_approved: !!job?.employee_approved_at,
+    line_manager_comments: job?.line_manager_comments || null,
+    employee_comments: job?.employee_comments || null,
+    
+    // Permissions
+    can_edit: job?.can_edit || false,
+    can_approve_as_line_manager: job?.can_approve_as_line_manager || false,
+    can_approve_as_employee: job?.can_approve_as_employee || false
+  };
+
+  // Check if we have minimal required data
+  if (!job || !job.id) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className={`${bgCard} rounded-lg w-full max-w-md p-6 border ${borderColor}`}>
+          <div className="text-center">
+            <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
+            <h3 className={`text-lg font-bold ${textPrimary} mb-2`}>Error Loading Job Description</h3>
+            <p className={`${textSecondary} mb-4`}>
+              The job description data could not be loaded. Please try again.
+            </p>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${bgCard} rounded-lg w-full max-w-5xl max-h-[90vh] overflow-y-auto border ${borderColor}`}>
@@ -158,24 +243,24 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             {/* Header Information */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-4 ${bgAccent} rounded-lg`}>
               <div>
-                <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>{job.job_title}</h3>
+                <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>{safeJobData.job_title}</h3>
                 <div className={`${textSecondary} text-sm space-y-1`}>
                   <p className="flex items-center gap-2">
                     <Building size={14} />
-                    {job.business_function_name} • {job.department_name}
-                    {job.unit_name && ` • ${job.unit_name}`}
+                    {safeJobData.business_function_name} • {safeJobData.department_name}
+                    {safeJobData.unit_name && ` • ${safeJobData.unit_name}`}
                   </p>
-                  {job.job_function_name && (
+                  {safeJobData.job_function_name && (
                     <p className="flex items-center gap-2">
                       <Target size={14} />
-                      {job.job_function_name}
+                      {safeJobData.job_function_name}
                     </p>
                   )}
-                  {job.position_group_name && (
+                  {safeJobData.position_group_name && (
                     <p className="flex items-center gap-2">
                       <User size={14} />
-                      {job.position_group_name}
-                      {job.grading_level && ` - ${job.grading_level}`}
+                      {safeJobData.position_group_name}
+                      {safeJobData.grading_level && ` - ${safeJobData.grading_level}`}
                     </p>
                   )}
                 </div>
@@ -183,23 +268,40 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className={`font-medium ${textMuted} text-sm`}>Status:</span>
-                  <span className={`px-3 py-1 rounded-full text-xs flex items-center gap-2 ${getStatusColor(job.status)}`}>
-                    {getStatusIcon(job.status)}
-                    {job.status_display?.status || job.status}
+                  <span className={`px-3 py-1 rounded-full text-xs flex items-center gap-2 ${getStatusColor(safeJobData.status)}`}>
+                    {getStatusIcon(safeJobData.status)}
+                    {safeJobData.status_display?.status || safeJobData.status}
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Version:</span>
-                  <span className={`${textPrimary} text-sm font-medium`}>v{job.version || 1}</span>
-                </div>
+               
                 <div className="flex justify-between items-center">
                   <span className={`font-medium ${textMuted} text-sm`}>Employee:</span>
-                  {job.assigned_employee_name || job.manual_employee_name ? (
-                    <div className="flex items-center gap-2">
-                      <UserCheck size={12} className="text-green-600" />
-                      <span className={`${textPrimary} text-sm`}>
-                        {job.assigned_employee_name || job.manual_employee_name}
-                      </span>
+                  {safeJobData.assigned_employee_name ? (
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-2">
+                        <UserCheck size={12} className="text-green-600" />
+                        <span className={`${textPrimary} text-sm font-medium`}>
+                          {safeJobData.assigned_employee_name}
+                        </span>
+                      </div>
+                      {/* <div className="text-xs text-gray-500 mt-0.5">
+                        ID: {safeJobData.assigned_employee_id}
+                        {safeJobData.assigned_employee_phone && ` • ${safeJobData.assigned_employee_phone}`}
+                      </div> */}
+                    </div>
+                  ) : safeJobData.manual_employee_name ? (
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-2">
+                        <UserCheck size={12} className="text-blue-600" />
+                        <span className={`${textPrimary} text-sm font-medium`}>
+                          {safeJobData.manual_employee_name}
+                        </span>
+                      </div>
+                      {safeJobData.manual_employee_phone && (
+                        <div className="text-xs text-gray-500 mt-0.5">
+                          {safeJobData.manual_employee_phone}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
@@ -210,14 +312,23 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className={`font-medium ${textMuted} text-sm`}>Reports to:</span>
-                  <span className={`${textPrimary} text-sm`}>
-                    {job.reports_to_name || 'N/A'}
-                  </span>
+                  {safeJobData.reports_to_name ? (
+                    <div className="flex flex-col items-end">
+                      <span className={`${textPrimary} text-sm font-medium`}>
+                        {safeJobData.reports_to_name}
+                      </span>
+                      {/* <div className="text-xs text-gray-500 mt-0.5">
+                        {safeJobData.reports_to_title} • ID: {safeJobData.reports_to_id}
+                      </div> */}
+                    </div>
+                  ) : (
+                    <span className={`${textPrimary} text-sm`}>N/A</span>
+                  )}
                 </div>
-                {job.manual_employee_phone && (
+                {safeJobData.manual_employee_phone && (
                   <div className="flex justify-between items-center">
                     <span className={`font-medium ${textMuted} text-sm`}>Contact:</span>
-                    <span className={`${textPrimary} text-sm`}>{job.manual_employee_phone}</span>
+                    <span className={`${textPrimary} text-sm`}>{safeJobData.manual_employee_phone}</span>
                   </div>
                 )}
               </div>
@@ -230,21 +341,23 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                 Job Purpose
               </h4>
               <div className={`p-4 ${bgAccent} rounded-lg`}>
-                <p className={`${textSecondary} leading-relaxed text-sm`}>{job.job_purpose}</p>
+                <p className={`${textSecondary} leading-relaxed  text-wrap text-sm`}>{safeJobData.job_purpose}</p>
               </div>
             </div>
 
+          
+
             {/* Job Sections */}
-            {job.sections && job.sections.length > 0 && (
+            {safeJobData.sections && safeJobData.sections.length > 0 && (
               <CollapsibleSection
                 title="Job Sections"
                 icon={BookOpen}
                 isExpanded={expandedSections.sections}
                 onToggle={() => toggleSection('sections')}
-                count={job.sections.length}
+                count={safeJobData.sections.length}
               >
                 <div className="space-y-4">
-                  {job.sections.map((section, index) => (
+                  {safeJobData.sections.map((section, index) => (
                     <div key={index} className={`p-4 border ${borderColor} rounded-lg`}>
                       <h5 className={`font-semibold ${textPrimary} mb-2 text-sm`}>
                         {section.title}
@@ -259,20 +372,20 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             )}
 
             {/* Required Skills */}
-            {job.required_skills && job.required_skills.length > 0 && (
+            {safeJobData.required_skills && safeJobData.required_skills.length > 0 && (
               <CollapsibleSection
                 title="Required Skills"
                 icon={Target}
                 isExpanded={expandedSections.skills}
                 onToggle={() => toggleSection('skills')}
-                count={job.required_skills.length}
+                count={safeJobData.required_skills.length}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {job.required_skills.map((skillItem, index) => (
-                    <div key={index} className={`p-3 ${bgAccent} rounded-lg`}>
-                      <div className="flex items-center justify-between">
+                  {safeJobData.required_skills.map((skillItem, index) => (
+                    <div key={skillItem.id || index} className={`p-3 ${bgAccent} rounded-lg`}>
+                      <div className="flex items-center justify-between mb-2">
                         <span className={`font-medium ${textPrimary} text-sm`}>
-                          {skillItem.skill?.name || skillItem.name}
+                          {skillItem.skill_detail?.name || `Skill ${index + 1}`}
                         </span>
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           skillItem.is_mandatory 
@@ -282,9 +395,10 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                           {skillItem.is_mandatory ? 'Required' : 'Optional'}
                         </span>
                       </div>
-                      <p className={`text-xs ${textMuted} mt-1`}>
-                        Level: {skillItem.proficiency_level || 'Not specified'}
-                      </p>
+                      <div className={`text-xs ${textMuted} space-y-1`}>
+                        <p>Level: <span className="font-medium">{skillItem.proficiency_level || 'Not specified'}</span></p>
+                        <p>Group: <span className="font-medium">{skillItem.skill_detail?.group_name || 'N/A'}</span></p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -292,20 +406,20 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             )}
 
             {/* Behavioral Competencies */}
-            {job.behavioral_competencies && job.behavioral_competencies.length > 0 && (
+            {safeJobData.behavioral_competencies && safeJobData.behavioral_competencies.length > 0 && (
               <CollapsibleSection
                 title="Behavioral Competencies"
                 icon={User}
                 isExpanded={expandedSections.competencies}
                 onToggle={() => toggleSection('competencies')}
-                count={job.behavioral_competencies.length}
+                count={safeJobData.behavioral_competencies.length}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {job.behavioral_competencies.map((compItem, index) => (
-                    <div key={index} className={`p-3 ${bgAccent} rounded-lg`}>
-                      <div className="flex items-center justify-between">
+                  {safeJobData.behavioral_competencies.map((compItem, index) => (
+                    <div key={compItem.id || index} className={`p-3 ${bgAccent} rounded-lg`}>
+                      <div className="flex items-center justify-between mb-2">
                         <span className={`font-medium ${textPrimary} text-sm`}>
-                          {compItem.competency?.name || compItem.name}
+                          {compItem.competency_detail?.name || `Competency ${index + 1}`}
                         </span>
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           compItem.is_mandatory 
@@ -315,14 +429,10 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                           {compItem.is_mandatory ? 'Required' : 'Optional'}
                         </span>
                       </div>
-                      <p className={`text-xs ${textMuted} mt-1`}>
-                        Level: {compItem.proficiency_level || 'Not specified'}
-                      </p>
-                      {compItem.competency?.description && (
-                        <p className={`text-xs ${textSecondary} mt-2`}>
-                          {compItem.competency.description}
-                        </p>
-                      )}
+                      <div className={`text-xs ${textMuted} space-y-1`}>
+                        <p>Level: <span className="font-medium">{compItem.proficiency_level || 'Not specified'}</span></p>
+                        <p>Group: <span className="font-medium">{compItem.competency_detail?.group_name || 'N/A'}</span></p>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -330,25 +440,33 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             )}
 
             {/* Business Resources */}
-            {job.business_resources && job.business_resources.length > 0 && (
+            {safeJobData.business_resources && safeJobData.business_resources.length > 0 && (
               <CollapsibleSection
                 title="Business Resources"
                 icon={Package}
                 isExpanded={expandedSections.resources}
                 onToggle={() => toggleSection('resources')}
-                count={job.business_resources.length}
+                count={safeJobData.business_resources.length}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {job.business_resources.map((resource, index) => (
-                    <div key={index} className={`p-3 border ${borderColor} rounded-lg`}>
-                      <h6 className={`font-medium ${textPrimary} text-sm mb-1`}>
-                        {resource.name}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {safeJobData.business_resources.map((resourceItem, index) => (
+                    <div key={resourceItem.id || index} className={`p-4 border ${borderColor} rounded-lg`}>
+                      <h6 className={`font-medium ${textPrimary} text-sm mb-2`}>
+                        {resourceItem.resource_detail?.name || `Resource ${index + 1}`}
                       </h6>
-                      {resource.description && (
-                        <p className={`text-xs ${textSecondary}`}>
-                          {resource.description}
+                      {resourceItem.resource_detail?.description && (
+                        <p className={`text-xs ${textSecondary} mb-2`}>
+                          {resourceItem.resource_detail.description}
                         </p>
                       )}
+                      <div className={`text-xs ${textMuted}`}>
+                        <p>Status: <span className={`font-medium ${resourceItem.resource_detail?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                          {resourceItem.resource_detail?.is_active ? 'Active' : 'Inactive'}
+                        </span></p>
+                        {resourceItem.resource_detail?.created_by_name && (
+                          <p>Created by: <span className="font-medium">{resourceItem.resource_detail.created_by_name}</span></p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -356,25 +474,33 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             )}
 
             {/* Access Rights */}
-            {job.access_rights && job.access_rights.length > 0 && (
+            {safeJobData.access_rights && safeJobData.access_rights.length > 0 && (
               <CollapsibleSection
                 title="Access Rights"
                 icon={Shield}
                 isExpanded={expandedSections.access}
                 onToggle={() => toggleSection('access')}
-                count={job.access_rights.length}
+                count={safeJobData.access_rights.length}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {job.access_rights.map((access, index) => (
-                    <div key={index} className={`p-3 border ${borderColor} rounded-lg`}>
-                      <h6 className={`font-medium ${textPrimary} text-sm mb-1`}>
-                        {access.name}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {safeJobData.access_rights.map((accessItem, index) => (
+                    <div key={accessItem.id || index} className={`p-4 border ${borderColor} rounded-lg`}>
+                      <h6 className={`font-medium ${textPrimary} text-sm mb-2`}>
+                        {accessItem.access_detail?.name || `Access ${index + 1}`}
                       </h6>
-                      {access.description && (
-                        <p className={`text-xs ${textSecondary}`}>
-                          {access.description}
+                      {accessItem.access_detail?.description && (
+                        <p className={`text-xs ${textSecondary} mb-2`}>
+                          {accessItem.access_detail.description}
                         </p>
                       )}
+                      <div className={`text-xs ${textMuted}`}>
+                        <p>Status: <span className={`font-medium ${accessItem.access_detail?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                          {accessItem.access_detail?.is_active ? 'Active' : 'Inactive'}
+                        </span></p>
+                        {accessItem.access_detail?.created_by_name && (
+                          <p>Created by: <span className="font-medium">{accessItem.access_detail.created_by_name}</span></p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -382,25 +508,33 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             )}
 
             {/* Company Benefits */}
-            {job.company_benefits && job.company_benefits.length > 0 && (
+            {safeJobData.company_benefits && safeJobData.company_benefits.length > 0 && (
               <CollapsibleSection
                 title="Company Benefits"
                 icon={Gift}
                 isExpanded={expandedSections.benefits}
                 onToggle={() => toggleSection('benefits')}
-                count={job.company_benefits.length}
+                count={safeJobData.company_benefits.length}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {job.company_benefits.map((benefit, index) => (
-                    <div key={index} className={`p-3 border ${borderColor} rounded-lg`}>
-                      <h6 className={`font-medium ${textPrimary} text-sm mb-1`}>
-                        {benefit.name}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {safeJobData.company_benefits.map((benefitItem, index) => (
+                    <div key={benefitItem.id || index} className={`p-4 border ${borderColor} rounded-lg`}>
+                      <h6 className={`font-medium ${textPrimary} text-sm mb-2`}>
+                        {benefitItem.benefit_detail?.name || `Benefit ${index + 1}`}
                       </h6>
-                      {benefit.description && (
-                        <p className={`text-xs ${textSecondary}`}>
-                          {benefit.description}
+                      {benefitItem.benefit_detail?.description && (
+                        <p className={`text-xs ${textSecondary} mb-2`}>
+                          {benefitItem.benefit_detail.description}
                         </p>
                       )}
+                      <div className={`text-xs ${textMuted}`}>
+                        <p>Status: <span className={`font-medium ${benefitItem.benefit_detail?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                          {benefitItem.benefit_detail?.is_active ? 'Active' : 'Inactive'}
+                        </span></p>
+                        {benefitItem.benefit_detail?.created_by_name && (
+                          <p>Created by: <span className="font-medium">{benefitItem.benefit_detail.created_by_name}</span></p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -414,28 +548,28 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                 <div>
                   <span className={`font-medium ${textMuted}`}>Created:</span>
                   <span className={`${textSecondary} ml-2`}>
-                    {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A'}
+                    {safeJobData.created_at ? new Date(safeJobData.created_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
                 <div>
                   <span className={`font-medium ${textMuted}`}>Last Updated:</span>
                   <span className={`${textSecondary} ml-2`}>
-                    {job.updated_at ? new Date(job.updated_at).toLocaleDateString() : 'N/A'}
+                    {safeJobData.updated_at ? new Date(safeJobData.updated_at).toLocaleDateString() : 'N/A'}
                   </span>
                 </div>
-                {job.created_by_name && (
+                {safeJobData.created_by_name && (
                   <div>
                     <span className={`font-medium ${textMuted}`}>Created by:</span>
-                    <span className={`${textSecondary} ml-2`}>{job.created_by_name}</span>
+                    <span className={`${textSecondary} ml-2`}>{safeJobData.created_by_name}</span>
                   </div>
                 )}
-                {job.line_manager_approved && (
+                {safeJobData.line_manager_approved && (
                   <div>
                     <span className={`font-medium ${textMuted}`}>Line Manager Approved:</span>
                     <span className={`text-green-600 ml-2`}>Yes</span>
                   </div>
                 )}
-                {job.employee_approved && (
+                {safeJobData.employee_approved && (
                   <div>
                     <span className={`font-medium ${textMuted}`}>Employee Approved:</span>
                     <span className={`text-green-600 ml-2`}>Yes</span>
@@ -445,21 +579,39 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
             </div>
 
             {/* Comments Section */}
-            {(job.line_manager_comments || job.employee_comments) && (
+            {(safeJobData.line_manager_comments || safeJobData.employee_comments) && (
               <div className="space-y-3">
                 <h5 className={`font-semibold ${textPrimary} text-sm`}>Comments</h5>
-                {job.line_manager_comments && (
+                {safeJobData.line_manager_comments && (
                   <div className={`p-3 border ${borderColor} rounded-lg`}>
                     <h6 className={`font-medium ${textSecondary} text-xs mb-1`}>Line Manager Comments:</h6>
-                    <p className={`text-xs ${textSecondary}`}>{job.line_manager_comments}</p>
+                    <p className={`text-xs ${textSecondary}`}>{safeJobData.line_manager_comments}</p>
                   </div>
                 )}
-                {job.employee_comments && (
+                {safeJobData.employee_comments && (
                   <div className={`p-3 border ${borderColor} rounded-lg`}>
                     <h6 className={`font-medium ${textSecondary} text-xs mb-1`}>Employee Comments:</h6>
-                    <p className={`text-xs ${textSecondary}`}>{job.employee_comments}</p>
+                    <p className={`text-xs ${textSecondary}`}>{safeJobData.employee_comments}</p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* No Data Warning */}
+            {!safeJobData.sections?.length && !safeJobData.required_skills?.length && 
+             !safeJobData.behavioral_competencies?.length && !safeJobData.business_resources?.length && (
+              <div className={`p-4 border border-orange-300 rounded-lg bg-orange-50 dark:bg-orange-900/20`}>
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={16} className="text-orange-600 mt-0.5" />
+                  <div>
+                    <p className={`text-sm font-medium text-orange-800 dark:text-orange-300`}>
+                      Limited Data Available
+                    </p>
+                    <p className={`text-xs text-orange-700 dark:text-orange-400 mt-1`}>
+                      This job description appears to have minimal data. It may still be in draft state or missing key information.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>

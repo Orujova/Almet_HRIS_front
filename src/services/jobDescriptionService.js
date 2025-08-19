@@ -1,4 +1,4 @@
-// services/jobDescriptionService.js - Updated version with all APIs and new logic
+// services/jobDescriptionService.js - Updated with Export All functionality
 import axios from 'axios';
 
 // Base URL
@@ -65,7 +65,7 @@ api.interceptors.response.use(
 );
 
 /**
- * Job Description Service - Enhanced with all available APIs and new logic
+ * Job Description Service - Enhanced with Export All functionality
  */
 class JobDescriptionService {
   
@@ -173,19 +173,19 @@ class JobDescriptionService {
       // Required ID fields
       business_function: parseInt(data.business_function) || null,
       department: parseInt(data.department) || null,
-      job_function: parseInt(data.job_function) || null, // NEW: Required job function
+      job_function: parseInt(data.job_function) || null,
       position_group: parseInt(data.position_group) || null,
       
       // Optional ID fields
       grading_level: data.grading_level?.trim() || null,
-      reports_to: data.reports_to ? parseInt(data.reports_to) : null, // Can be null for vacant positions
-      assigned_employee: data.assigned_employee ? parseInt(data.assigned_employee) : null, // Can be null for vacant positions
+      reports_to: data.reports_to ? parseInt(data.reports_to) : null,
+      assigned_employee: data.assigned_employee ? parseInt(data.assigned_employee) : null,
       
-      // Manual employee fields - not required, can be empty for vacant positions
+      // Manual employee fields
       manual_employee_name: data.manual_employee_name?.trim() || '',
       manual_employee_phone: data.manual_employee_phone?.trim() || '',
       
-      // Arrays - ensure they're arrays
+      // Arrays
       sections: Array.isArray(data.sections) ? data.sections : [],
       required_skills_data: Array.isArray(data.required_skills_data) ? data.required_skills_data : [],
       behavioral_competencies_data: Array.isArray(data.behavioral_competencies_data) ? data.behavioral_competencies_data : [],
@@ -439,130 +439,181 @@ class JobDescriptionService {
     }
   }
 
-// Fixed PDF Export Functionality in jobDescriptionService.js
+  // ========================================
+  // PDF EXPORT FUNCTIONALITY - ENHANCED WITH EXPORT ALL
+  // ========================================
 
-// ========================================
-// PDF EXPORT FUNCTIONALITY - CORRECTED
-// ========================================
-
-async downloadJobDescriptionPDF(id) {
-  try {
-    const response = await api.get(`/job-descriptions/${id}/download_pdf/`, {
-      responseType: 'blob'
-    });
-    
-    // Create blob link to download
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `job-description-${id}.pdf`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error downloading job description PDF:', error);
-    throw error;
-  }
-}
-
-async exportBulkJobDescriptionsPDF(jobDescriptionIds) {
-  try {
-    console.log('📤 Exporting bulk PDFs for job IDs:', jobDescriptionIds);
-    
-    // The API expects the data structure as shown in the documentation
-    const response = await api.post('/job-descriptions/export-bulk-pdf/', {
-      job_description_ids: jobDescriptionIds  // Send array of IDs
-    }, {
-      responseType: 'blob'
-    });
-    
-    // Create blob link to download
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `bulk_job_descriptions_${timestamp}.pdf`);
-    
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    
-    console.log('✅ Bulk PDF export completed successfully');
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error exporting bulk PDFs:', error);
-    
-    // Enhanced error handling
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
+  async downloadJobDescriptionPDF(id) {
+    try {
+      const response = await api.get(`/job-descriptions/${id}/download_pdf/`, {
+        responseType: 'blob'
+      });
       
-      if (error.response.status === 500) {
-        throw new Error('Server error occurred while generating PDF. Please try again or contact support.');
-      } else if (error.response.status === 400) {
-        throw new Error('Invalid job description IDs provided. Please refresh the page and try again.');
-      } else if (error.response.status === 404) {
-        throw new Error('Export service not found. Please contact support.');
-      }
-    }
-    
-    throw error;
-  }
-}
-
-async exportAllJobDescriptionsPDF() {
-  try {
-    console.log('📤 Exporting all job descriptions as PDF...');
-    
-    const response = await api.get('/job-descriptions/export-all-pdf/', {
-      responseType: 'blob',
-      timeout: 120000  // 2 minutes timeout for large exports
-    });
-    
-    // Create blob link to download
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    
-    // Generate filename with timestamp
-    const timestamp = new Date().toISOString().split('T')[0];
-    link.setAttribute('download', `all_job_descriptions_${timestamp}.pdf`);
-    
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    
-    console.log('✅ All PDFs export completed successfully');
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error exporting all PDFs:', error);
-    
-    // Enhanced error handling
-    if (error.response) {
-      console.error('Response status:', error.response.status);
-      console.error('Response data:', error.response.data);
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `job-description-${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
       
-      if (error.response.status === 500) {
-        throw new Error('Server error occurred while generating PDF. This might be due to a large number of job descriptions. Please try exporting in smaller batches or contact support.');
-      } else if (error.response.status === 404) {
-        throw new Error('Export service not found. Please contact support.');
-      } else if (error.response.status === 403) {
-        throw new Error('You do not have permission to export all job descriptions.');
-      }
-    } else if (error.code === 'ECONNABORTED') {
-      throw new Error('Export is taking too long. Please try exporting in smaller batches.');
+      return response.data;
+    } catch (error) {
+      console.error('Error downloading job description PDF:', error);
+      throw error;
     }
-    
-    throw error;
   }
-}
+
+  async exportBulkJobDescriptionsPDF(jobDescriptionIds) {
+    try {
+      console.log('📤 Exporting bulk PDFs for job IDs:', jobDescriptionIds);
+      
+      // The API expects: {"job_description_ids": ["uuid1", "uuid2", ...]}
+      const response = await api.post('/job-descriptions/export-bulk-pdf/', {
+        job_description_ids: jobDescriptionIds
+      }, {
+        responseType: 'blob'
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `bulk_job_descriptions_${timestamp}.pdf`);
+      
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      console.log('✅ Bulk PDF export completed successfully');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error exporting bulk PDFs:', error);
+      
+      // Enhanced error handling
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 500) {
+          throw new Error('Server error occurred while generating PDF. Please try again or contact support.');
+        } else if (error.response.status === 400) {
+          throw new Error('Invalid job description IDs provided. Please refresh the page and try again.');
+        } else if (error.response.status === 404) {
+          throw new Error('Export service not found. Please contact support.');
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  // ========================================
+  // NEW: EXPORT ALL JOB DESCRIPTIONS AS PDF
+  // ========================================
+  
+  async exportAllJobDescriptionsPDF() {
+    try {
+      console.log('📤 Exporting ALL job descriptions as PDF...');
+      
+      // Send empty body to export all job descriptions
+      // Based on your API example, sending an empty object or minimal data should export all
+      const exportData = {
+        job_title: "string",
+        job_purpose: "stringstringstringstringstringstringstringstringst",
+        grading_level: "string",
+        version: 2147483647,
+        is_active: true,
+        business_function: {
+          name: "string",
+          code: "string"
+        },
+        department: {
+          name: "string",
+          business_function: {
+            name: "string",
+            code: "string"
+          }
+        },
+        unit: {
+          name: "string",
+          department: {
+            name: "string",
+            business_function: {
+              name: "string",
+              code: "string"
+            }
+          }
+        },
+        job_function: {
+          name: "string"
+        },
+        position_group: {
+          name: "VC",
+          hierarchy_level: 2147483647
+        },
+        reports_to: {
+          employee_id: "string",
+          job_title: "string"
+        },
+        assigned_employee: {
+          employee_id: "string",
+          job_title: "string"
+        },
+        manual_employee_name: "string",
+        manual_employee_phone: "string",
+        status: "DRAFT"
+      };
+      
+      const response = await api.post('/job-descriptions/export-bulk-pdf/', exportData, {
+        responseType: 'blob',
+        timeout: 120000  // 2 minutes timeout for large exports
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split('T')[0];
+      link.setAttribute('download', `all_job_descriptions_${timestamp}.pdf`);
+      
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      console.log('✅ All PDFs export completed successfully');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error exporting all PDFs:', error);
+      
+      // Enhanced error handling
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+        
+        if (error.response.status === 500) {
+          throw new Error('Server error occurred while generating PDF. This might be due to a large number of job descriptions. Please try exporting in smaller batches or contact support.');
+        } else if (error.response.status === 404) {
+          throw new Error('Export service not found. Please contact support.');
+        } else if (error.response.status === 403) {
+          throw new Error('You do not have permission to export all job descriptions.');
+        }
+      } else if (error.code === 'ECONNABORTED') {
+        throw new Error('Export is taking too long. Please try exporting in smaller batches.');
+      }
+      
+      throw error;
+    }
+  }
 
   // ========================================
   // SUPPORTING DATA ENDPOINTS - ACCESS MATRIX
@@ -598,7 +649,7 @@ async exportAllJobDescriptionsPDF() {
       const cleanData = {
         name: data.name?.trim() || '',
         description: data.description?.trim() || '',
-        is_active: Boolean(data.is_active !== false) // Default to true
+        is_active: Boolean(data.is_active !== false)
       };
       
       const response = await api.post('/job-description/access-matrix/', cleanData);
@@ -669,7 +720,7 @@ async exportAllJobDescriptionsPDF() {
       const cleanData = {
         name: data.name?.trim() || '',
         description: data.description?.trim() || '',
-        is_active: Boolean(data.is_active !== false) // Default to true
+        is_active: Boolean(data.is_active !== false)
       };
       
       const response = await api.post('/job-description/business-resources/', cleanData);
@@ -740,7 +791,7 @@ async exportAllJobDescriptionsPDF() {
       const cleanData = {
         name: data.name?.trim() || '',
         description: data.description?.trim() || '',
-        is_active: Boolean(data.is_active !== false) // Default to true
+        is_active: Boolean(data.is_active !== false)
       };
       
       const response = await api.post('/job-description/company-benefits/', cleanData);
@@ -792,13 +843,9 @@ async exportAllJobDescriptionsPDF() {
   }
 
   // ========================================
-  // NEW LOGIC HELPERS
+  // EMPLOYEE HELPERS
   // ========================================
 
-  /**
-   * Get manager automatically based on selected employee
-   * NEW LOGIC: When employee is selected, reports_to is populated automatically
-   */
   async getEmployeeManager(employeeId) {
     try {
       const response = await api.get(`/employees/${employeeId}/`);
@@ -820,9 +867,6 @@ async exportAllJobDescriptionsPDF() {
     }
   }
 
-  /**
-   * Validate if selected employee belongs to selected organizational structure
-   */
   async validateEmployeeStructure(employeeId, businessFunction, department, unit = null) {
     try {
       const response = await api.get(`/employees/${employeeId}/`);
@@ -939,7 +983,7 @@ async exportAllJobDescriptionsPDF() {
       department_name: apiData.department?.name,
       unit: apiData.unit?.id,
       unit_name: apiData.unit?.name,
-      job_function: apiData.job_function?.id, // NEW: Job function support
+      job_function: apiData.job_function?.id,
       job_function_name: apiData.job_function?.name,
       position_group: apiData.position_group?.id,
       position_group_name: apiData.position_group?.name,

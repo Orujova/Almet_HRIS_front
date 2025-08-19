@@ -9,7 +9,9 @@ import {
   UserCheck,
   UserX as UserVacant,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  ArrowLeft,
+  FileText
 } from 'lucide-react';
 import PositionInformationTab from './PositionInformationTab';
 import JobResponsibilitiesTab from './JobResponsibilitiesTab';
@@ -73,6 +75,74 @@ const JobDescriptionForm = ({
     }
   ];
 
+  // Get current tab index
+  const getCurrentTabIndex = () => {
+    return tabs.findIndex(tab => tab.id === activeTab);
+  };
+
+  // Check if we can navigate to next tab
+  const canNavigateToNext = () => {
+    const currentIndex = getCurrentTabIndex();
+    if (currentIndex === -1) return false;
+    
+    switch (activeTab) {
+      case 'position':
+        return isTabCompleted('position');
+      case 'responsibilities':
+        return isTabCompleted('responsibilities');
+      case 'conditions':
+        return true; // Can always proceed from conditions tab
+      default:
+        return false;
+    }
+  };
+
+  // Navigate to next tab
+  const goToNextTab = () => {
+    const currentIndex = getCurrentTabIndex();
+    if (currentIndex < tabs.length - 1 && canNavigateToNext()) {
+      setActiveTab(tabs[currentIndex + 1].id);
+    }
+  };
+
+  // Navigate to previous tab
+  const goToPreviousTab = () => {
+    const currentIndex = getCurrentTabIndex();
+    if (currentIndex > 0) {
+      setActiveTab(tabs[currentIndex - 1].id);
+    }
+  };
+
+  // Check if current tab is the last tab
+  const isLastTab = () => {
+    return getCurrentTabIndex() === tabs.length - 1;
+  };
+
+  // Check if current tab is the first tab
+  const isFirstTab = () => {
+    return getCurrentTabIndex() === 0;
+  };
+
+  // Handle tab change with validation
+  const handleTabChange = (targetTabId) => {
+    // If trying to go forward, validate current tab
+    const currentIndex = getCurrentTabIndex();
+    const targetIndex = tabs.findIndex(tab => tab.id === targetTabId);
+    
+    if (targetIndex > currentIndex) {
+      // Going forward - validate current tab
+      if (validateCurrentTab()) {
+        setActiveTab(targetTabId);
+      } else {
+        const errorMessage = Object.values(validationErrors).join('\n');
+        alert('Please fix the following errors before proceeding:\n\n' + errorMessage);
+      }
+    } else {
+      // Going backward - allow without validation
+      setActiveTab(targetTabId);
+    }
+  };
+
   // Enhanced validation with tab-specific errors
   const validateForm = () => {
     const errors = {};
@@ -97,7 +167,7 @@ const JobDescriptionForm = ({
       errors.position_group = 'Position Group is required';
     }
     
-    // Validate position type requirements
+    // Position type validation
     if (positionType === 'assigned') {
       if (!selectedEmployee && !formData.manual_employee_name?.trim()) {
         errors.employee_assignment = 'Either select an employee or provide manual employee details for assigned positions';
@@ -134,9 +204,65 @@ const JobDescriptionForm = ({
     return Object.keys(errors).length === 0;
   };
 
-  // Handle form submission
+  // Validate current tab only
+  const validateCurrentTab = () => {
+    const errors = {};
+    
+    switch (activeTab) {
+      case 'position':
+        if (!formData.job_title?.trim()) {
+          errors.job_title = 'Job Title is required';
+        }
+        if (!formData.job_purpose?.trim()) {
+          errors.job_purpose = 'Job Purpose is required';
+        }
+        if (!formData.business_function) {
+          errors.business_function = 'Business Function is required';
+        }
+        if (!formData.department) {
+          errors.department = 'Department is required';
+        }
+        if (!formData.job_function) {
+          errors.job_function = 'Job Function is required';
+        }
+        if (!formData.position_group) {
+          errors.position_group = 'Position Group is required';
+        }
+        
+        if (positionType === 'assigned') {
+          if (!selectedEmployee && !formData.manual_employee_name?.trim()) {
+            errors.employee_assignment = 'Either select an employee or provide manual employee details for assigned positions';
+          }
+        }
+        break;
+        
+      case 'responsibilities':
+        const requiredSections = ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'];
+        requiredSections.forEach(sectionName => {
+          const sectionValid = formData[sectionName] && 
+            formData[sectionName].some(item => item && item.trim() !== '');
+          if (!sectionValid) {
+            errors[sectionName] = `At least one ${sectionName.replace(/([A-Z])/g, ' $1').toLowerCase()} is required`;
+          }
+        });
+        break;
+        
+      case 'conditions':
+        // No required validation for conditions tab
+        break;
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle form submission - ONLY WHEN USER EXPLICITLY CLICKS SAVE BUTTON
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Explicit check - only proceed if this is a manual save action
+    console.log('🔍 Form submit triggered');
     
     if (!validateForm()) {
       // Find which tab contains errors and switch to it
@@ -230,8 +356,9 @@ const JobDescriptionForm = ({
         alert('Job description updated successfully!');
         onUpdate();
       } else {
-        // Create new job
+        // Create new job - ONLY trigger modal when form is submitted
         const createdJob = await jobDescriptionService.createJobDescription(apiData);
+        console.log('✅ Job created successfully, triggering submission modal:', createdJob);
         onSubmit(createdJob);
       }
     } catch (error) {
@@ -257,6 +384,29 @@ const JobDescriptionForm = ({
       }
       
       alert(errorMessage);
+    }
+  };
+
+  // Explicit save handler - ONLY this should trigger the submit
+  const handleExplicitSave = async () => {
+    console.log('💾 Explicit save button clicked');
+    
+    // Create a synthetic form event
+    const syntheticEvent = {
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    };
+    
+    await handleSubmit(syntheticEvent);
+  };
+
+  // Handle next button click
+  const handleNext = () => {
+    if (validateCurrentTab()) {
+      goToNextTab();
+    } else {
+      const errorMessage = Object.values(validationErrors).join('\n');
+      alert('Please fix the following errors before proceeding:\n\n' + errorMessage);
     }
   };
 
@@ -309,7 +459,7 @@ const JobDescriptionForm = ({
               {editingJob ? 'Edit Job Description' : 'Create New Job Description'}
             </h2>
             <p className={`${textSecondary} text-xs`}>
-              Fill out all required information to create a complete job description
+              Step {getCurrentTabIndex() + 1} of {tabs.length}: {tabs[getCurrentTabIndex()]?.description}
             </p>
           </div>
           <button
@@ -326,18 +476,23 @@ const JobDescriptionForm = ({
         <div className="flex items-center justify-between text-xs">
           {tabs.map((tab, index) => (
             <div key={tab.id} className="flex items-center">
-              <div className={`flex items-center gap-2 px-2 py-1 rounded-lg
-                ${activeTab === tab.id ? 'bg-almet-sapphire text-white' : 
-                  isTabCompleted(tab.id) ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' :
-                  'text-gray-500'
-                }`}>
+              <button
+                onClick={() => handleTabChange(tab.id)}
+                disabled={actionLoading}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 disabled:opacity-50
+                  ${activeTab === tab.id ? 'bg-almet-sapphire text-white shadow-sm' : 
+                    isTabCompleted(tab.id) ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50' :
+                    index < getCurrentTabIndex() ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600' :
+                    'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+              >
                 {isTabCompleted(tab.id) && activeTab !== tab.id ? (
-                  <CheckCircle size={12} />
+                  <CheckCircle size={14} />
                 ) : (
-                  <tab.icon size={12} />
+                  <tab.icon size={14} />
                 )}
                 <span className="font-medium">{tab.name}</span>
-              </div>
+              </button>
               {index < tabs.length - 1 && (
                 <ArrowRight size={12} className="mx-2 text-gray-400" />
               )}
@@ -346,44 +501,9 @@ const JobDescriptionForm = ({
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        {/* Simplified Tab Navigation */}
-        <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
-          <div className="flex space-x-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const validationStatus = getTabValidationStatus(tab.id);
-              const isCompleted = isTabCompleted(tab.id);
-              
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-all text-xs ${
-                    activeTab === tab.id
-                      ? 'bg-almet-sapphire text-white shadow-sm'
-                      : `${textSecondary} hover:${textPrimary} hover:bg-gray-100 dark:hover:bg-almet-comet`
-                  }`}
-                >
-                  <div className="flex items-center gap-1">
-                    {isCompleted && activeTab !== tab.id ? (
-                      <CheckCircle size={14} className="text-green-500" />
-                    ) : validationStatus === 'error' ? (
-                      <AlertCircle size={14} className="text-red-500" />
-                    ) : (
-                      <Icon size={14} />
-                    )}
-                    <span>{tab.name}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
+      <div onSubmit={(e) => e.preventDefault()}>
         {/* Tab Content */}
-        <div className="p-4">
+        <div className="p-6">
           {activeTab === 'position' && (
             <PositionInformationTab
               formData={formData}
@@ -429,7 +549,7 @@ const JobDescriptionForm = ({
           )}
         </div>
 
-        {/* Simplified Action Buttons */}
+        {/* Step-by-Step Navigation */}
         <div className="p-4 border-t border-gray-200 dark:border-almet-comet bg-gray-50 dark:bg-almet-comet">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -437,7 +557,22 @@ const JobDescriptionForm = ({
               <span>All fields marked with * are required</span>
             </div>
             
-            <div className="flex gap-2">
+            <div className="flex gap-3">
+              {/* Previous Button */}
+              {!isFirstTab() && (
+                <button
+                  type="button"
+                  onClick={goToPreviousTab}
+                  disabled={actionLoading}
+                  className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors disabled:opacity-50 text-sm 
+                    border border-gray-300 dark:border-almet-comet rounded-lg flex items-center gap-2`}
+                >
+                  <ArrowLeft size={14} />
+                  Previous
+                </button>
+              )}
+
+              {/* Cancel Button */}
               <button
                 type="button"
                 onClick={onCancel}
@@ -447,20 +582,54 @@ const JobDescriptionForm = ({
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={actionLoading}
-                className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
-                  transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
-              >
-                {actionLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                <Save size={14} />
-                {editingJob ? 'Update Job' : 'Save as Draft'}
-              </button>
+
+              {/* Next/Submit Button */}
+              {!isLastTab() ? (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={actionLoading || !canNavigateToNext()}
+                  className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
+                    transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+                >
+                  Next
+                  <ArrowRight size={14} />
+                </button>
+              ) : (
+                // SAVE BUTTON - ONLY APPEARS ON LAST TAB - USE EXPLICIT HANDLER
+                <button
+                  type="button"
+                  onClick={handleExplicitSave}
+                  disabled={actionLoading}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
+                    transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+                >
+                  {actionLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                  <Save size={14} />
+                  {editingJob ? 'Update Job Description' : 'Save as Draft'}
+                </button>
+              )}
             </div>
           </div>
+
+          {/* Last Tab Instructions */}
+          {isLastTab() && !editingJob && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <FileText size={14} className="text-blue-600 mt-0.5" />
+                <div>
+                  <p className="text-xs font-medium text-blue-800 dark:text-blue-300">
+                    Ready to Save Job Description
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                    Click "Save as Draft" to create the job description. You can then choose to submit it for approval workflow or keep it as a draft for later.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
-      </form>
+      </div>
     </div>
   );
 };

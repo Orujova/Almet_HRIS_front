@@ -35,7 +35,7 @@ const JobDescriptionList = ({
   onToggleSelection,
   onSelectAll,
   onBulkExport,
-  onDownloadPDF, // New prop for individual PDF download
+  onDownloadPDF,
   actionLoading,
   darkMode
 }) => {
@@ -66,9 +66,9 @@ const JobDescriptionList = ({
   }, []);
 
   // Filter departments based on search term
-  const filteredDepartments = dropdownData.departments.filter(dept =>
+  const filteredDepartments = dropdownData.departments?.filter(dept =>
     dept.name?.toLowerCase().includes(departmentSearchTerm.toLowerCase())
-  );
+  ) || [];
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -228,7 +228,13 @@ const JobDescriptionList = ({
                 {selectedJobs.length} selected
               </span>
               <button
-                onClick={onBulkExport}
+                onClick={() => {
+                  if (selectedJobs.length === 0) {
+                    alert('Please select at least one job description first.');
+                    return;
+                  }
+                  onBulkExport();
+                }}
                 className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-medium 
                   hover:bg-almet-astral transition-colors duration-200"
               >
@@ -260,6 +266,11 @@ const JobDescriptionList = ({
             <span className={`text-xs font-semibold ${textSecondary}`}>
               Select All ({filteredJobs.length} jobs)
             </span>
+            {selectedJobs.length > 0 && (
+              <span className={`text-xs ${textMuted}`}>
+                {selectedJobs.length} selected for bulk export
+              </span>
+            )}
             {filteredJobs.length > 0 && (
               <span className={`text-xs ${textMuted} ml-auto`}>
                 Click on any job card to view details
@@ -409,7 +420,7 @@ const JobDescriptionList = ({
                     <span className={`font-semibold ${textMuted} min-w-[80px]`}>Reports to:</span>
                     <span className={textPrimary}>{job.manager_info?.name || 'N/A'}</span>
                   </div>
-                  
+                 
                 </div>
 
                 {/* Job Purpose Preview */}
@@ -454,6 +465,39 @@ const JobDescriptionList = ({
                   Clear Filters
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Selection Summary */}
+          {selectedJobs.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-almet-comet">
+              <div className="flex items-center justify-between">
+                <span className={`text-sm ${textSecondary}`}>
+                  {selectedJobs.length} job{selectedJobs.length !== 1 ? 's' : ''} selected for bulk operations
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      if (selectedJobs.length === 0) {
+                        alert('Please select at least one job description first.');
+                        return;
+                      }
+                      onBulkExport();
+                    }}
+                    className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-medium 
+                      hover:bg-almet-astral transition-colors duration-200"
+                  >
+                    Export Selected as PDF
+                  </button>
+                  <button
+                    onClick={onSelectAll}
+                    className="px-3 py-1.5 bg-gray-500 text-white rounded-lg text-xs font-medium 
+                      hover:bg-gray-600 transition-colors duration-200"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

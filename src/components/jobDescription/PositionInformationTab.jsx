@@ -33,7 +33,38 @@ const PositionInformationTab = ({
   // Handle employee selection
   const handleEmployeeSelection = (employeeId) => {
     onEmployeeSelect(employeeId);
-    onFormDataChange(prev => ({ ...prev, assigned_employee: employeeId }));
+    onFormDataChange(prev => ({ 
+      ...prev, 
+      assigned_employee: employeeId,
+      // Clear manual employee fields when selecting from system
+      manual_employee_name: '',
+      manual_employee_phone: ''
+    }));
+  };
+
+  // Handle manual employee name change
+  const handleManualEmployeeNameChange = (value) => {
+    onFormDataChange(prev => ({ 
+      ...prev, 
+      manual_employee_name: value
+    }));
+    
+    // If manual name is entered, clear selected employee
+    if (value && value.trim()) {
+      onEmployeeSelect('');
+      onFormDataChange(prev => ({ 
+        ...prev, 
+        assigned_employee: ''
+      }));
+    }
+  };
+
+  // Handle manual employee phone change
+  const handleManualEmployeePhoneChange = (value) => {
+    onFormDataChange(prev => ({ 
+      ...prev, 
+      manual_employee_phone: value
+    }));
   };
 
   // Handle position type change
@@ -50,6 +81,10 @@ const PositionInformationTab = ({
       }));
     }
   };
+
+  // Determine if we have employee assignment
+  const hasSystemEmployee = selectedEmployee && selectedEmployee !== '' && selectedEmployee !== null;
+  const hasManualEmployee = formData.manual_employee_name && formData.manual_employee_name.trim();
 
   return (
     <div className="space-y-6">
@@ -244,87 +279,141 @@ const PositionInformationTab = ({
             Employee Assignment
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                Select Employee
-              </label>
-              <SearchableSelect
-                options={dropdownData.employees}
-                value={selectedEmployee}
-                onChange={handleEmployeeSelection}
-                placeholder="Select Employee"
-                darkMode={darkMode}
-              />
+          <div className="space-y-4">
+            {/* Employee Selection Method Info */}
+            <div className={`p-3 border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/20`}>
+              <p className={`text-xs text-blue-800 dark:text-blue-300`}>
+                💡 <strong>Choose one method:</strong> Either select an employee from the system OR enter manual employee details (not both).
+              </p>
             </div>
 
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                Reports To {autoManager && <span className="text-green-600 text-xs">(Auto-populated)</span>}
-              </label>
-              <SearchableSelect
-                options={dropdownData.employees}
-                value={formData.reports_to}
-                onChange={(value) => onFormDataChange({...formData, reports_to: value})}
-                placeholder="Select Manager"
-                disabled={!!autoManager}
-                darkMode={darkMode}
-              />
-              {autoManager && (
-                <p className={`text-xs ${textMuted} mt-1`}>
-                  Automatically selected: {autoManager.name}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                Manual Employee Name
-              </label>
-              <input
-                type="text"
-                value={formData.manual_employee_name}
-                onChange={(e) => onFormDataChange({...formData, manual_employee_name: e.target.value})}
-                className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
-                placeholder="Enter employee name manually (if not in system)"
-              />
-            </div>
-
-            <div>
-              <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                Manual Employee Phone
-              </label>
-              <input
-                type="text"
-                value={formData.manual_employee_phone}
-                onChange={(e) => onFormDataChange({...formData, manual_employee_phone: e.target.value})}
-                className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
-                placeholder="Enter employee phone manually"
-              />
-            </div>
-          </div>
-
-          {positionType === 'assigned' && !selectedEmployee && !formData.manual_employee_name?.trim() && (
-            <div className={`mt-4 p-3 border border-orange-300 rounded-lg bg-orange-50 dark:bg-orange-900/20`}>
-              <div className="flex items-start gap-2">
-                <AlertTriangle size={14} className="text-orange-600 mt-0.5" />
-                <div>
-                  <p className={`text-xs font-medium text-orange-800 dark:text-orange-300`}>
-                    Employee Assignment Required
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* System Employee Selection */}
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                  Select Employee from System
+                  {hasSystemEmployee && <span className="text-green-600 text-xs ml-1">(Selected)</span>}
+                </label>
+                <SearchableSelect
+                  options={dropdownData.employees}
+                  value={selectedEmployee}
+                  onChange={handleEmployeeSelection}
+                  placeholder="Select Employee"
+                  disabled={hasManualEmployee}
+                  darkMode={darkMode}
+                />
+                {hasManualEmployee && (
+                  <p className={`text-xs ${textMuted} mt-1`}>
+                    Disabled because manual employee details are entered
                   </p>
-                  <p className={`text-xs text-orange-700 dark:text-orange-400 mt-1`}>
-                    For assigned positions, either select an employee from the system or provide manual employee details.
+                )}
+              </div>
+
+              {/* Reports To */}
+              <div>
+                <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                  Reports To {autoManager && <span className="text-green-600 text-xs">(Auto-populated)</span>}
+                </label>
+                <SearchableSelect
+                  options={dropdownData.employees}
+                  value={formData.reports_to}
+                  onChange={(value) => onFormDataChange({...formData, reports_to: value})}
+                  placeholder="Select Manager"
+                  disabled={!!autoManager}
+                  darkMode={darkMode}
+                />
+                {autoManager && (
+                  <p className={`text-xs ${textMuted} mt-1`}>
+                    Automatically selected: {autoManager.name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Manual Employee Details */}
+            <div className={`p-3 border ${borderColor} rounded-lg ${hasSystemEmployee ? 'opacity-50' : ''}`}>
+              <h4 className={`text-xs font-semibold ${textSecondary} mb-3 uppercase tracking-wider`}>
+                OR Manual Employee Details
+                {hasManualEmployee && <span className="text-green-600 ml-1">(In Use)</span>}
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                    Manual Employee Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.manual_employee_name}
+                    onChange={(e) => handleManualEmployeeNameChange(e.target.value)}
+                    disabled={hasSystemEmployee}
+                    className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+                    placeholder="Enter employee name manually"
+                  />
+                  {hasSystemEmployee && (
+                    <p className={`text-xs ${textMuted} mt-1`}>
+                      Disabled because system employee is selected
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+                    Manual Employee Phone
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.manual_employee_phone}
+                    onChange={(e) => handleManualEmployeePhoneChange(e.target.value)}
+                    disabled={hasSystemEmployee}
+                    className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
+                    placeholder="Enter employee phone manually"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Assignment Status Display */}
+            <div className={`p-3 rounded-lg border ${
+              hasSystemEmployee || hasManualEmployee 
+                ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' 
+                : 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20'
+            }`}>
+              <div className="flex items-start gap-2">
+                {hasSystemEmployee || hasManualEmployee ? (
+                  <UserCheck size={14} className="text-green-600 mt-0.5" />
+                ) : (
+                  <AlertTriangle size={14} className="text-orange-600 mt-0.5" />
+                )}
+                <div>
+                  <p className={`text-xs font-medium ${
+                    hasSystemEmployee || hasManualEmployee 
+                      ? 'text-green-800 dark:text-green-300' 
+                      : 'text-orange-800 dark:text-orange-300'
+                  }`}>
+                    {hasSystemEmployee ? 'System Employee Selected' :
+                     hasManualEmployee ? 'Manual Employee Details Entered' :
+                     'Employee Assignment Required'}
+                  </p>
+                  <p className={`text-xs ${
+                    hasSystemEmployee || hasManualEmployee 
+                      ? 'text-green-700 dark:text-green-400' 
+                      : 'text-orange-700 dark:text-orange-400'
+                  } mt-1`}>
+                    {hasSystemEmployee ? `Selected: ${dropdownData.employees?.find(emp => emp.id == selectedEmployee)?.name || dropdownData.employees?.find(emp => emp.id == selectedEmployee)?.full_name || 'Employee'}` :
+                     hasManualEmployee ? `Manual: ${formData.manual_employee_name}` :
+                     'For assigned positions, either select an employee from the system or provide manual employee details.'}
                   </p>
                 </div>
               </div>
             </div>
-          )}
           
           {validationErrors.employee_assignment && (
             <div className={`mt-3 p-3 border border-red-300 rounded-lg bg-red-50 dark:bg-red-900/20`}>
               <p className="text-red-800 dark:text-red-300 text-xs">{validationErrors.employee_assignment}</p>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
