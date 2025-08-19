@@ -1,4 +1,4 @@
-// components/headcount/EmployeeDetailJobDescriptions.jsx - Enhanced with Correct APIs and Optimized Team View
+// components/headcount/EmployeeDetailJobDescriptions.jsx - Fixed API Response Handling
 'use client'
 import React, { useState, useEffect } from 'react';
 import { 
@@ -73,7 +73,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
 
   // Filter team jobs when search/filter criteria change
   useEffect(() => {
-    if (teamJobDescriptions.length > 0) {
+    if (Array.isArray(teamJobDescriptions) && teamJobDescriptions.length > 0) {
       filterTeamJobs();
     }
   }, [teamJobDescriptions, teamSearchTerm, teamStatusFilter, teamDepartmentFilter]);
@@ -81,18 +81,42 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const fetchJobDescriptions = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Fetching job descriptions for employee:', employeeId);
       
       // Always fetch employee's own job descriptions
       const myJobsResponse = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
-      setMyJobDescriptions(myJobsResponse.job_descriptions || []);
+      console.log('📋 My jobs response:', myJobsResponse);
+      
+      // Handle different response structures
+      const myJobs = Array.isArray(myJobsResponse) 
+        ? myJobsResponse 
+        : (myJobsResponse?.job_descriptions || myJobsResponse?.results || []);
+      
+      setMyJobDescriptions(myJobs);
       
       // If manager, also fetch team job descriptions
       if (isManager) {
         const teamJobsResponse = await jobDescriptionService.getTeamJobDescriptions(employeeId);
-        setTeamJobDescriptions(teamJobsResponse || []); // Updated API structure
+        console.log('👥 Team jobs response:', teamJobsResponse);
+        
+        // Handle different response structures for team jobs
+        let teamJobs = [];
+        if (Array.isArray(teamJobsResponse)) {
+          teamJobs = teamJobsResponse;
+        } else if (teamJobsResponse?.job_descriptions) {
+          teamJobs = teamJobsResponse.job_descriptions;
+        } else if (teamJobsResponse?.results) {
+          teamJobs = teamJobsResponse.results;
+        } else if (typeof teamJobsResponse === 'object' && teamJobsResponse !== null) {
+          // If it's an object, try to extract data from it
+          teamJobs = Object.values(teamJobsResponse).find(value => Array.isArray(value)) || [];
+        }
+        
+        console.log('📊 Processed team jobs:', teamJobs);
+        setTeamJobDescriptions(teamJobs);
       }
     } catch (error) {
-      console.error('Error fetching job descriptions:', error);
+      console.error('❌ Error fetching job descriptions:', error);
       setMyJobDescriptions([]);
       setTeamJobDescriptions([]);
     } finally {
@@ -101,14 +125,17 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   };
 
   const filterTeamJobs = () => {
-    let filtered = [...teamJobDescriptions];
+    // Ensure teamJobDescriptions is an array
+    const jobsArray = Array.isArray(teamJobDescriptions) ? teamJobDescriptions : [];
+    let filtered = [...jobsArray];
 
     // Search filter
     if (teamSearchTerm) {
       filtered = filtered.filter(job =>
         job.job_title?.toLowerCase().includes(teamSearchTerm.toLowerCase()) ||
         job.employee_name?.toLowerCase().includes(teamSearchTerm.toLowerCase()) ||
-        job.department?.toLowerCase().includes(teamSearchTerm.toLowerCase())
+        job.department?.toLowerCase().includes(teamSearchTerm.toLowerCase()) ||
+        job.department_name?.toLowerCase().includes(teamSearchTerm.toLowerCase())
       );
     }
 
@@ -119,7 +146,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
 
     // Department filter
     if (teamDepartmentFilter) {
-      filtered = filtered.filter(job => job.department === teamDepartmentFilter);
+      filtered = filtered.filter(job => 
+        job.department === teamDepartmentFilter || 
+        job.department_name === teamDepartmentFilter
+      );
     }
 
     setFilteredTeamJobs(filtered);
@@ -228,11 +258,18 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     setComments('');
   };
 
+  // Safe array conversion and unique value extraction
+  const safeTeamJobsArray = Array.isArray(teamJobDescriptions) ? teamJobDescriptions : [];
+
   // Get unique departments for filter
-  const uniqueDepartments = [...new Set(teamJobDescriptions.map(job => job.department))].filter(Boolean);
+  const uniqueDepartments = [...new Set(
+    safeTeamJobsArray.map(job => job.department || job.department_name).filter(Boolean)
+  )];
 
   // Get unique statuses for filter
-  const uniqueStatuses = [...new Set(teamJobDescriptions.map(job => job.status))].filter(Boolean);
+  const uniqueStatuses = [...new Set(
+    safeTeamJobsArray.map(job => job.status).filter(Boolean)
+  )];
 
   // Pagination for team jobs
   const teamTotalPages = Math.ceil(filteredTeamJobs.length / teamItemsPerPage);
@@ -241,215 +278,269 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     teamCurrentPage * teamItemsPerPage
   );
 
-  const JobDescriptionCard = ({ job, showManagerActions = false, compact = false }) => (
-    <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} hover:shadow-sm transition-all ${compact ? 'min-h-[280px]' : ''}`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-start gap-3 flex-1">
-          <div className="bg-almet-sapphire text-white p-2 rounded-lg flex-shrink-0">
-            <FileText size={16} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className={`text-lg font-semibold ${textPrimary} mb-1 truncate`} title={job.job_title}>
-              {job.job_title}
-            </h3>
-            <p className={`text-sm ${textSecondary} mb-2 truncate`}>
-              {job.business_function} • {job.department}
-            </p>
-            <div className={`flex items-center gap-2 text-sm ${textMuted} mb-2`}>
-              {job.is_vacant_position ? (
-                <div className="flex items-center gap-1">
-                  <UserVacant size={14} className="text-orange-600" />
-                  <span className="text-orange-600">Vacant Position</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <UserCheck size={14} className="text-green-600" />
-                  {showManagerActions ? (
-                    <span>{job.employee_name}</span>
-                  ) : (
-                    <span>Reports to: {job.reports_to_name || 'N/A'}</span>
-                  )}
-                </div>
-              )}
+  const JobDescriptionCard = ({ job, showManagerActions = false, compact = false }) => {
+    // Debug job data only in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🃏 Job card data:', job);
+      console.log('🛠️ Show manager actions:', showManagerActions);
+    }
+    
+    // Check approval permissions
+    const canApproveManager = job.can_approve_as_line_manager || job.can_approve || false;
+    const canApproveEmployee = job.can_approve_as_employee || job.can_approve || false;
+    const showManagerApproval = showManagerActions && 
+      (job.status === 'PENDING_LINE_MANAGER' || job.status === 'PENDING_APPROVAL') && 
+      canApproveManager;
+    const showEmployeeApproval = !showManagerActions && 
+      job.status === 'PENDING_EMPLOYEE' && 
+      canApproveEmployee;
+    
+    return (
+      <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} hover:shadow-sm transition-all relative`}>
+        {/* Status Badge */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="bg-almet-sapphire text-white p-2 rounded-lg flex-shrink-0">
+              <FileText size={16} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className={`text-sm font-semibold ${textPrimary} mb-1 truncate`} title={job.job_title}>
+                {job.job_title}
+              </h3>
+              <p className={`text-xs ${textSecondary} mb-2 truncate`}>
+                {job.business_function || job.business_function_name} • {job.department || job.department_name}
+              </p>
+              <div className={`flex items-center gap-2 text-xs ${textMuted} mb-2`}>
+                {job.is_vacant_position || (!job.employee_name && !job.assigned_employee_name && !job.manual_employee_name) ? (
+                  <div className="flex items-center gap-1">
+                    <UserVacant size={12} className="text-orange-600" />
+                    <span className="text-orange-600">Vacant Position</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <UserCheck size={12} className="text-green-600" />
+                    <span className="truncate max-w-[150px]">
+                      {showManagerActions ? (
+                        job.employee_name || job.assigned_employee_name || job.manual_employee_name
+                      ) : (
+                        `Reports to: ${job.reports_to_name || job.manager_info?.name || 'N/A'}`
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div className="flex flex-col items-end gap-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(job.status)}`}>
-            {getStatusIcon(job.status)}
-            {job.status_display || job.status}
-          </span>
-          {job.urgency === 'high' && (
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-              Urgent
+          
+          <div className="flex flex-col items-end gap-2">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(job.status)}`}>
+              {getStatusIcon(job.status)}
+              <span className="text-xs">
+                {job.status_display?.status || job.status_display || job.status}
+              </span>
             </span>
-          )}
+            
+            {/* Urgent badge */}
+            {job.urgency === 'high' && (
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                Urgent
+              </span>
+            )}
+            
+            {/* Approval needed badge */}
+            {(showManagerApproval || showEmployeeApproval) && (
+              <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                Approval Needed
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
-      {!compact && (
-        <div className="space-y-3">
+        {/* Job Details */}
+        <div className="space-y-3 mb-4">
+          {/* Job Purpose */}
           <div>
-            <h4 className={`text-sm font-medium ${textSecondary} mb-1`}>Job Purpose</h4>
-            <p className={`text-sm ${textMuted} line-clamp-2`}>
+            <h4 className={`text-xs font-medium ${textSecondary} mb-1`}>Job Purpose</h4>
+            <p className={`text-xs ${textMuted} line-clamp-2`}>
               {job.job_purpose || 'No job purpose provided.'}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
+          {/* Metadata Grid */}
+          <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
               <span className={`font-medium ${textMuted}`}>Version:</span>
-              <span className={`ml-2 ${textPrimary}`}>{job.version}</span>
+              <span className={`ml-1 ${textPrimary}`}>{job.version || 1}</span>
             </div>
             <div>
               <span className={`font-medium ${textMuted}`}>Created:</span>
-              <span className={`ml-2 ${textPrimary}`}>
+              <span className={`ml-1 ${textPrimary}`}>
                 {formatDate(job.created_at)}
               </span>
             </div>
           </div>
 
-          {/* Approval Status */}
-          <div className={`grid grid-cols-2 gap-4 p-3 ${bgCard} rounded-lg text-sm`}>
+          {/* Approval Status Grid */}
+          <div className={`grid grid-cols-2 gap-3 p-2 ${bgCard} rounded-lg text-xs`}>
             <div className="flex items-center justify-between">
-              <span className={`font-medium ${textMuted}`}>Line Manager:</span>
+              <span className={`font-medium ${textMuted}`}>Manager:</span>
               <span className={`flex items-center gap-1 ${job.line_manager_approved_at ? 'text-green-600' : 'text-yellow-600'}`}>
-                {job.line_manager_approved_at ? <CheckCircle size={14} /> : <Clock size={14} />}
-                {job.line_manager_approved_at ? 'Approved' : 'Pending'}
+                {job.line_manager_approved_at ? <CheckCircle size={10} /> : <Clock size={10} />}
+                <span className="text-xs">{job.line_manager_approved_at ? 'Approved' : 'Pending'}</span>
               </span>
             </div>
             <div className="flex items-center justify-between">
               <span className={`font-medium ${textMuted}`}>Employee:</span>
               <span className={`flex items-center gap-1 ${job.employee_approved_at ? 'text-green-600' : 'text-yellow-600'}`}>
-                {job.employee_approved_at ? <CheckCircle size={14} /> : <Clock size={14} />}
-                {job.employee_approved_at ? 'Approved' : 'Pending'}
+                {job.employee_approved_at ? <CheckCircle size={10} /> : <Clock size={10} />}
+                <span className="text-xs">{job.employee_approved_at ? 'Approved' : 'Pending'}</span>
               </span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Action Buttons */}
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200 dark:border-almet-comet">
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => fetchJobDetail(job.id)}
-            disabled={detailLoading}
-            className="flex items-center gap-1 px-3 py-1 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors text-sm disabled:opacity-50"
-          >
-            <Eye size={14} />
-            {detailLoading ? 'Loading...' : 'View'}
-          </button>
-          <button 
-            onClick={() => {
-              jobDescriptionService.downloadJobDescriptionPDF(job.id);
-            }}
-            className="flex items-center gap-1 px-3 py-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors text-sm"
-          >
-            <Download size={14} />
-            PDF
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {showManagerActions && job.status === 'PENDING_LINE_MANAGER' && job.can_approve && (
-            <>
-              <button
-                onClick={() => openApprovalModal(job, 'approve_manager')}
-                className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
-              >
-                <CheckSquare size={14} />
-                Approve
-              </button>
-              <button
-                onClick={() => openApprovalModal(job, 'reject')}
-                className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
-              >
-                <XCircle size={14} />
-                Reject
-              </button>
-            </>
-          )}
-
-          {!showManagerActions && job.status === 'PENDING_EMPLOYEE' && job.can_approve && (
-            <>
-              <button
-                onClick={() => openApprovalModal(job, 'approve_employee')}
-                className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
-              >
-                <CheckSquare size={14} />
-                Approve
-              </button>
-              <button
-                onClick={() => openApprovalModal(job, 'reject')}
-                className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
-              >
-                <XCircle size={14} />
-                Reject
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Compact Team Job Card for List View
-  const CompactJobCard = ({ job }) => (
-    <div className={`p-3 ${bgAccent} rounded-lg border ${borderColor} hover:shadow-sm transition-all`}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="bg-almet-sapphire text-white p-2 rounded-lg">
-            <FileText size={14} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className={`font-semibold ${textPrimary} truncate`} title={job.job_title}>
-              {job.job_title}
-            </h4>
-            <p className={`text-sm ${textMuted} truncate`}>
-              {job.employee_name || 'Vacant'} • {job.department}
-            </p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-            {job.status_display || job.status}
-          </span>
-          
-          <div className="flex items-center gap-1">
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-almet-comet">
+          <div className="flex items-center gap-2">
             <button 
               onClick={() => fetchJobDetail(job.id)}
-              className="p-1 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors"
-              title="View Details"
+              disabled={detailLoading}
+              className="flex items-center gap-1 px-2 py-1 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors text-xs disabled:opacity-50"
             >
-              <Eye size={16} />
+              <Eye size={12} />
+              {detailLoading ? 'Loading...' : 'View'}
             </button>
-            
-            {job.status === 'PENDING_LINE_MANAGER' && job.can_approve && (
+            <button 
+              onClick={() => {
+                jobDescriptionService.downloadJobDescriptionPDF(job.id);
+              }}
+              className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded transition-colors text-xs"
+            >
+              <Download size={12} />
+              PDF
+            </button>
+          </div>
+
+          {/* Approval Action Buttons */}
+          <div className="flex items-center gap-1">
+            {/* Manager Approval Buttons */}
+            {showManagerApproval && (
               <>
                 <button
                   onClick={() => openApprovalModal(job, 'approve_manager')}
-                  className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
-                  title="Approve"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs font-medium"
+                  title="Approve as Line Manager"
                 >
-                  <CheckSquare size={16} />
+                  <CheckSquare size={12} />
+                  Approve
                 </button>
                 <button
                   onClick={() => openApprovalModal(job, 'reject')}
-                  className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                  className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs font-medium"
                   title="Reject"
                 >
-                  <XCircle size={16} />
+                  <XCircle size={12} />
+                  Reject
                 </button>
               </>
+            )}
+
+            {/* Employee Approval Buttons */}
+            {showEmployeeApproval && (
+              <>
+                <button
+                  onClick={() => openApprovalModal(job, 'approve_employee')}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs font-medium"
+                  title="Approve as Employee"
+                >
+                  <CheckSquare size={12} />
+                  Approve
+                </button>
+                <button
+                  onClick={() => openApprovalModal(job, 'reject')}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-xs font-medium"
+                  title="Reject"
+                >
+                  <XCircle size={12} />
+                  Reject
+                </button>
+              </>
+            )}
+
+            {/* No approvals needed message */}
+            {!showManagerApproval && !showEmployeeApproval && (job.status === 'APPROVED' || job.status === 'ACTIVE') && (
+              <span className="text-xs text-green-600 font-medium">
+                ✓ Fully Approved
+              </span>
             )}
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
+
+  // Compact Team Job Card for List View
+  const CompactJobCard = ({ job }) => {
+    // Check approval permissions
+    const canApproveManager = job.can_approve_as_line_manager || job.can_approve || false;
+    const showManagerApproval = (job.status === 'PENDING_LINE_MANAGER' || job.status === 'PENDING_APPROVAL') && canApproveManager;
+    
+    return (
+      <div className={`p-3 ${bgAccent} rounded-lg border ${borderColor} hover:shadow-sm transition-all`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="bg-almet-sapphire text-white p-2 rounded-lg">
+              <FileText size={14} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className={`font-semibold ${textPrimary} truncate`} title={job.job_title}>
+                {job.job_title}
+              </h4>
+              <p className={`text-sm ${textMuted} truncate`}>
+                {job.employee_name || job.assigned_employee_name || job.manual_employee_name || 'Vacant'} • {job.department || job.department_name}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+              {job.status_display?.status || job.status_display || job.status}
+            </span>
+            
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => fetchJobDetail(job.id)}
+                className="p-1 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors"
+                title="View Details"
+              >
+                <Eye size={16} />
+              </button>
+              
+              {/* Manager approval buttons for list view */}
+              {showManagerApproval && (
+                <>
+                  <button
+                    onClick={() => openApprovalModal(job, 'approve_manager')}
+                    className="p-1 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                    title="Approve as Line Manager"
+                  >
+                    <CheckSquare size={16} />
+                  </button>
+                  <button
+                    onClick={() => openApprovalModal(job, 'reject')}
+                    className="p-1 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                    title="Reject"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (loading) {
     return (
@@ -467,7 +558,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     job.status === 'PENDING_EMPLOYEE' && job.can_approve
   ).length;
 
-  const teamPendingCount = teamJobDescriptions.filter(job => 
+  const teamPendingCount = safeTeamJobsArray.filter(job => 
     job.status === 'PENDING_LINE_MANAGER' && job.can_approve
   ).length;
 
@@ -524,7 +615,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               >
                 <div className="flex items-center justify-center gap-2">
                   <Users size={14} />
-                  Team Jobs ({teamJobDescriptions.length})
+                  Team Jobs ({safeTeamJobsArray.length})
                   {teamPendingCount > 0 && (
                     <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
                       {teamPendingCount}
@@ -536,7 +627,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           )}
 
           {/* Enhanced Team Jobs Filters */}
-          {isManager && activeTab === 'team-jobs' && teamJobDescriptions.length > 5 && (
+          {isManager && activeTab === 'team-jobs' && safeTeamJobsArray.length > 5 && (
             <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} mb-6`}>
               <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center">
                 {/* Search */}
@@ -600,7 +691,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               {/* Filter Summary */}
               {(teamSearchTerm || teamStatusFilter || teamDepartmentFilter) && (
                 <div className="mt-3 flex items-center gap-2 text-sm">
-                  <span className={textMuted}>Showing {filteredTeamJobs.length} of {teamJobDescriptions.length} jobs</span>
+                  <span className={textMuted}>Showing {filteredTeamJobs.length} of {safeTeamJobsArray.length} jobs</span>
                   <button
                     onClick={() => {
                       setTeamSearchTerm('');
@@ -669,7 +760,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       <h3 className={`text-lg font-semibold ${textPrimary}`}>
                        Team Job Descriptions
                         <span className={`ml-2 text-sm ${textMuted}`}>
-                          ({filteredTeamJobs.length}{teamJobDescriptions.length !== filteredTeamJobs.length && ` of ${teamJobDescriptions.length}`})
+                          ({filteredTeamJobs.length}{safeTeamJobsArray.length !== filteredTeamJobs.length && ` of ${safeTeamJobsArray.length}`})
                         </span>
                       </h3>
                       {teamPendingCount > 0 && (
@@ -758,7 +849,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       </div>
                     )}
                   </>
-                ) : teamJobDescriptions.length > 0 ? (
+                ) : safeTeamJobsArray.length > 0 ? (
                   <div className="text-center py-12">
                     <Filter className={`mx-auto h-12 w-12 ${textMuted} mb-4`} />
                     <h3 className={`text-lg font-medium ${textPrimary} mb-2`}>
@@ -941,7 +1032,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                   )}
                 </div>
 
-                {/* Sidebar */}
+                {/* Sidebar with additional info */}
                 <div className="space-y-6">
                   {/* Approval Status */}
                   <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
@@ -965,26 +1056,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         </span>
                       </div>
                     </div>
-                    
-                    {/* Approval Dates */}
-                    {(jobDetail.line_manager_approved_at || jobDetail.employee_approved_at) && (
-                      <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-600">
-                        <div className="space-y-2 text-xs">
-                          {jobDetail.line_manager_approved_at && (
-                            <div>
-                              <span className={`${textMuted}`}>Manager approved:</span>
-                              <p className={textPrimary}>{formatDate(jobDetail.line_manager_approved_at)}</p>
-                            </div>
-                          )}
-                          {jobDetail.employee_approved_at && (
-                            <div>
-                              <span className={`${textMuted}`}>Employee approved:</span>
-                              <p className={textPrimary}>{formatDate(jobDetail.employee_approved_at)}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
                   </div>
 
                   {/* Required Skills */}
@@ -997,9 +1068,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       <div className="space-y-2">
                         {jobDetail.required_skills.map((skill, index) => (
                           <div key={index} className="flex items-center justify-between">
-                            <span
-                              className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full text-xs"
-                            >
+                            <span className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full text-xs">
                               {skill.skill_detail?.name || skill.name}
                             </span>
                             <span className={`text-xs ${textMuted}`}>
@@ -1021,9 +1090,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       <div className="space-y-2">
                         {jobDetail.behavioral_competencies.map((comp, index) => (
                           <div key={index} className="flex items-center justify-between">
-                            <span
-                              className="inline-block bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-2 py-1 rounded-full text-xs"
-                            >
+                            <span className="inline-block bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 px-2 py-1 rounded-full text-xs">
                               {comp.competency_detail?.name || comp.name}
                             </span>
                             <span className={`text-xs ${textMuted}`}>
@@ -1034,191 +1101,8 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       </div>
                     </div>
                   )}
-
-                  {/* Business Resources */}
-                  {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
-                    <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
-                      <h4 className={`font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
-                        <Settings size={18} className="text-almet-sapphire" />
-                        Business Resources
-                      </h4>
-                      <div className="space-y-1">
-                        {jobDetail.business_resources.map((resource, index) => (
-                          <div key={index} className={`text-sm ${textSecondary}`}>
-                            • {resource.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Access Rights */}
-                  {jobDetail.access_rights && jobDetail.access_rights.length > 0 && (
-                    <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
-                      <h4 className={`font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
-                        <Shield size={18} className="text-almet-sapphire" />
-                        Access Rights
-                      </h4>
-                      <div className="space-y-1">
-                        {jobDetail.access_rights.map((access, index) => (
-                          <div key={index} className={`text-sm ${textSecondary}`}>
-                            • {access.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Company Benefits */}
-                  {jobDetail.company_benefits && jobDetail.company_benefits.length > 0 && (
-                    <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
-                      <h4 className={`font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
-                        <Building size={18} className="text-almet-sapphire" />
-                        Company Benefits
-                      </h4>
-                      <div className="space-y-1">
-                        {jobDetail.company_benefits.map((benefit, index) => (
-                          <div key={index} className={`text-sm ${textSecondary}`}>
-                            • {benefit.name}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Additional Information */}
-                  {(jobDetail.manual_employee_name || jobDetail.manual_employee_phone) && (
-                    <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
-                      <h4 className={`font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
-                        <User size={18} className="text-almet-sapphire" />
-                        Manual Employee Info
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        {jobDetail.manual_employee_name && (
-                          <div>
-                            <span className={`font-medium ${textMuted}`}>Name:</span>
-                            <p className={textPrimary}>{jobDetail.manual_employee_name}</p>
-                          </div>
-                        )}
-                        {jobDetail.manual_employee_phone && (
-                          <div>
-                            <span className={`font-medium ${textMuted}`}>Phone:</span>
-                            <p className={textPrimary}>{jobDetail.manual_employee_phone}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Comments Section */}
-                  {(jobDetail.line_manager_comments || jobDetail.employee_comments) && (
-                    <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
-                      <h4 className={`font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
-                        <AlertCircle size={18} className="text-almet-sapphire" />
-                        Comments
-                      </h4>
-                      <div className="space-y-3">
-                        {jobDetail.line_manager_comments && (
-                          <div>
-                            <span className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
-                              Line Manager Comments
-                            </span>
-                            <p className={`text-sm ${textSecondary} mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded`}>
-                              {jobDetail.line_manager_comments}
-                            </p>
-                          </div>
-                        )}
-                        {jobDetail.employee_comments && (
-                          <div>
-                            <span className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
-                              Employee Comments
-                            </span>
-                            <p className={`text-sm ${textSecondary} mt-1 p-2 bg-gray-100 dark:bg-gray-800 rounded`}>
-                              {jobDetail.employee_comments}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              {/* Modal Footer with Actions */}
-              {selectedJob && (
-                <div className="border-t border-gray-200 dark:border-almet-comet pt-4 mt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm ${textMuted}`}>
-                        Last updated: {formatDate(jobDetail.updated_at)}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center gap-3">
-                      {/* Conditional action buttons based on status and permissions */}
-                      {selectedJob.status === 'PENDING_EMPLOYEE' && selectedJob.can_approve && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setShowDetailModal(false);
-                              openApprovalModal(selectedJob, 'approve_employee');
-                            }}
-                            className="flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                          >
-                            <CheckSquare size={16} />
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowDetailModal(false);
-                              openApprovalModal(selectedJob, 'reject');
-                            }}
-                            className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                          >
-                            <XCircle size={16} />
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                      
-                      {isManager && selectedJob.status === 'PENDING_LINE_MANAGER' && selectedJob.can_approve && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              setShowDetailModal(false);
-                              openApprovalModal(selectedJob, 'approve_manager');
-                            }}
-                            className="flex items-center gap-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
-                          >
-                            <CheckSquare size={16} />
-                            Approve as Manager
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowDetailModal(false);
-                              openApprovalModal(selectedJob, 'reject');
-                            }}
-                            className="flex items-center gap-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
-                          >
-                            <XCircle size={16} />
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                      
-                      <button
-                        onClick={() => {
-                          setShowDetailModal(false);
-                          setJobDetail(null);
-                        }}
-                        className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors border border-gray-300 dark:border-gray-600 rounded-lg text-sm`}
-                      >
-                        Close
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

@@ -287,7 +287,7 @@ const JobDescriptionPage = () => {
         }
       });
 
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ;
 
       console.log('📄 Fetching dropdown data...');
 
@@ -360,7 +360,7 @@ const JobDescriptionPage = () => {
 
   const fetchGradingLevels = async (positionGroupId) => {
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL ;
       const response = await fetch(`${baseUrl}/position-groups/${positionGroupId}/grading_levels/`, {
         method: 'GET',
         headers: {
