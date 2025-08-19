@@ -12,7 +12,7 @@ import {
   Plane,
   Newspaper,
   Gift,
-  Settings,
+  Package,
   KeyRound,
   UserCog,
   Building2,
@@ -127,11 +127,17 @@ const Sidebar = ({ collapsed = false }) => {
       path: "/settings/access-mng",
       id: "access-mng",
     },
+   
     {
       label: "Role Mng",
       icon: <UserCog className="w-4 h-4" />,
       path: "/settings/role-mng",
       id: "role-mng",
+    }, {
+      label: "Asset Management",
+      icon: <Package className="w-4 h-4" />,
+      path: "/settings/asset-mng",
+      id: "asset-mng",
     },
   ];
 

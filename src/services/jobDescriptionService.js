@@ -1,4 +1,4 @@
-// services/jobDescriptionService.js - Fixed version with proper unit filtering
+// services/jobDescriptionService.js - Updated version with all APIs and new logic
 import axios from 'axios';
 
 // Base URL
@@ -65,7 +65,7 @@ api.interceptors.response.use(
 );
 
 /**
- * Job Description Service - CRUD operations with enhanced validation and debugging
+ * Job Description Service - Enhanced with all available APIs and new logic
  */
 class JobDescriptionService {
   
@@ -91,8 +91,19 @@ class JobDescriptionService {
     if (!data.department) {
       errors.push('department is required');
     }
+    if (!data.job_function) {
+      errors.push('job_function is required');
+    }
     if (!data.position_group) {
       errors.push('position_group is required');
+    }
+    
+    // NEW LOGIC: Either assigned_employee OR manual employee info is required for non-vacant positions
+    const hasAssignedEmployee = data.assigned_employee;
+    const hasManualEmployee = data.manual_employee_name?.trim();
+    
+    if (!hasAssignedEmployee && !hasManualEmployee) {
+      console.log('ℹ️ No employee assigned - this will be a vacant position');
     }
     
     // Unit validation - only if unit is provided, it should be valid
@@ -162,14 +173,15 @@ class JobDescriptionService {
       // Required ID fields
       business_function: parseInt(data.business_function) || null,
       department: parseInt(data.department) || null,
+      job_function: parseInt(data.job_function) || null, // NEW: Required job function
       position_group: parseInt(data.position_group) || null,
       
-      // Optional ID fields - IMPORTANT: Only include unit if it has a value
+      // Optional ID fields
       grading_level: data.grading_level?.trim() || null,
-      reports_to: data.reports_to ? parseInt(data.reports_to) : null,
-      assigned_employee: data.assigned_employee ? parseInt(data.assigned_employee) : null,
+      reports_to: data.reports_to ? parseInt(data.reports_to) : null, // Can be null for vacant positions
+      assigned_employee: data.assigned_employee ? parseInt(data.assigned_employee) : null, // Can be null for vacant positions
       
-      // Manual employee fields
+      // Manual employee fields - not required, can be empty for vacant positions
       manual_employee_name: data.manual_employee_name?.trim() || '',
       manual_employee_phone: data.manual_employee_phone?.trim() || '',
       
@@ -182,11 +194,10 @@ class JobDescriptionService {
       company_benefits_ids: Array.isArray(data.company_benefits_ids) ? data.company_benefits_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : []
     };
     
-    // CRITICAL FIX: Only include unit if it has a valid value
+    // Only include unit if it has a valid value
     if (data.unit && parseInt(data.unit)) {
       cleaned.unit = parseInt(data.unit);
     }
-    // Don't include unit field at all if it's empty - this prevents the validation error
     
     // Clean sections
     cleaned.sections = cleaned.sections.map((section, index) => ({
@@ -224,6 +235,7 @@ class JobDescriptionService {
       if (params.search) queryParams.append('search', params.search);
       if (params.ordering) queryParams.append('ordering', params.ordering);
       if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
       
       const response = await api.get(`/job-descriptions/?${queryParams.toString()}`);
       return response.data;
@@ -260,13 +272,10 @@ class JobDescriptionService {
       const cleanedData = this.cleanJobDescriptionData(data);
       console.log('2. Cleaned data for API:', JSON.stringify(cleanedData, null, 2));
       
-      // Log the request details
-      console.log('3. Making API request to:', `${API_BASE_URL}/job-descriptions/`);
-      
       const response = await api.post('/job-descriptions/', cleanedData);
       
       console.log('✅ API Response success:', response.status);
-      console.log('4. Response data:', JSON.stringify(response.data, null, 2));
+      console.log('3. Response data:', JSON.stringify(response.data, null, 2));
       console.log('=== END DEBUG ===');
       
       return response.data;
@@ -276,20 +285,14 @@ class JobDescriptionService {
       
       if (error.response) {
         console.error('❌ Response status:', error.response.status);
-        console.error('❌ Response headers:', error.response.headers);
         console.error('❌ Response data:', JSON.stringify(error.response.data, null, 2));
         
-        // Log specific validation errors from API
         if (error.response.data && typeof error.response.data === 'object') {
           console.error('❌ API validation errors:');
           Object.keys(error.response.data).forEach(field => {
             console.error(`  - ${field}: ${error.response.data[field]}`);
           });
         }
-      } else if (error.request) {
-        console.error('❌ No response received:', error.request);
-      } else {
-        console.error('❌ Error setting up request:', error.message);
       }
       console.log('=== END ERROR DEBUG ===');
       
@@ -303,14 +306,12 @@ class JobDescriptionService {
       console.log('1. Job ID:', id);
       console.log('2. Raw input data:', JSON.stringify(data, null, 2));
       
-      // Validate data
       const validationErrors = this.validateJobDescriptionData(data);
       if (validationErrors.length > 0) {
         console.error('❌ Validation errors:', validationErrors);
         throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
       }
       
-      // Clean data
       const cleanedData = this.cleanJobDescriptionData(data);
       console.log('3. Cleaned data for API:', JSON.stringify(cleanedData, null, 2));
       
@@ -339,7 +340,7 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // JOB DESCRIPTION APPROVAL WORKFLOW
+  // JOB DESCRIPTION WORKFLOW ENDPOINTS
   // ========================================
 
   async submitForApproval(id, data) {
@@ -360,9 +361,9 @@ class JobDescriptionService {
     }
   }
 
-  async approveAsLineManager(id, data) {
+  async approveByLineManager(id, data) {
     try {
-      const response = await api.post(`/job-descriptions/${id}/approve_as_line_manager/`, data);
+      const response = await api.post(`/job-descriptions/${id}/approve_by_line_manager/`, data);
       return response.data;
     } catch (error) {
       console.error('Error approving as line manager:', error);
@@ -424,46 +425,354 @@ class JobDescriptionService {
     }
   }
 
-  async approveMyJobDescription(employeeId, data) {
+  // ========================================
+  // JOB DESCRIPTION ACTIVITY AND HISTORY
+  // ========================================
+
+  async getJobDescriptionActivities(id) {
     try {
-      const response = await api.post(`/employees/${employeeId}/approve_my_job_description/`, data);
+      const response = await api.get(`/job-descriptions/${id}/activities/`);
       return response.data;
     } catch (error) {
-      console.error('Error approving my job description:', error);
+      console.error('Error fetching job description activities:', error);
       throw error;
     }
   }
 
-  async approveTeamJobDescription(employeeId, data) {
+// Fixed PDF Export Functionality in jobDescriptionService.js
+
+// ========================================
+// PDF EXPORT FUNCTIONALITY - CORRECTED
+// ========================================
+
+async downloadJobDescriptionPDF(id) {
+  try {
+    const response = await api.get(`/job-descriptions/${id}/download_pdf/`, {
+      responseType: 'blob'
+    });
+    
+    // Create blob link to download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `job-description-${id}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error downloading job description PDF:', error);
+    throw error;
+  }
+}
+
+async exportBulkJobDescriptionsPDF(jobDescriptionIds) {
+  try {
+    console.log('📤 Exporting bulk PDFs for job IDs:', jobDescriptionIds);
+    
+    // The API expects the data structure as shown in the documentation
+    const response = await api.post('/job-descriptions/export-bulk-pdf/', {
+      job_description_ids: jobDescriptionIds  // Send array of IDs
+    }, {
+      responseType: 'blob'
+    });
+    
+    // Create blob link to download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `bulk_job_descriptions_${timestamp}.pdf`);
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    console.log('✅ Bulk PDF export completed successfully');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error exporting bulk PDFs:', error);
+    
+    // Enhanced error handling
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      
+      if (error.response.status === 500) {
+        throw new Error('Server error occurred while generating PDF. Please try again or contact support.');
+      } else if (error.response.status === 400) {
+        throw new Error('Invalid job description IDs provided. Please refresh the page and try again.');
+      } else if (error.response.status === 404) {
+        throw new Error('Export service not found. Please contact support.');
+      }
+    }
+    
+    throw error;
+  }
+}
+
+async exportAllJobDescriptionsPDF() {
+  try {
+    console.log('📤 Exporting all job descriptions as PDF...');
+    
+    const response = await api.get('/job-descriptions/export-all-pdf/', {
+      responseType: 'blob',
+      timeout: 120000  // 2 minutes timeout for large exports
+    });
+    
+    // Create blob link to download
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `all_job_descriptions_${timestamp}.pdf`);
+    
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+    console.log('✅ All PDFs export completed successfully');
+    return response.data;
+  } catch (error) {
+    console.error('❌ Error exporting all PDFs:', error);
+    
+    // Enhanced error handling
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      
+      if (error.response.status === 500) {
+        throw new Error('Server error occurred while generating PDF. This might be due to a large number of job descriptions. Please try exporting in smaller batches or contact support.');
+      } else if (error.response.status === 404) {
+        throw new Error('Export service not found. Please contact support.');
+      } else if (error.response.status === 403) {
+        throw new Error('You do not have permission to export all job descriptions.');
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      throw new Error('Export is taking too long. Please try exporting in smaller batches.');
+    }
+    
+    throw error;
+  }
+}
+
+  // ========================================
+  // SUPPORTING DATA ENDPOINTS - ACCESS MATRIX
+  // ========================================
+
+  async getAccessMatrix(params = {}) {
     try {
-      const response = await api.post(`/employees/${employeeId}/approve_team_job_description/`, data);
+      const queryParams = new URLSearchParams();
+      if (params.search) queryParams.append('search', params.search);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      
+      const response = await api.get(`/job-description/access-matrix/?${queryParams.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Error approving team job description:', error);
+      console.error('Error fetching access matrix:', error);
       throw error;
     }
   }
 
-  async rejectJobDescriptionFromEmployee(employeeId, data) {
+  async getAccessMatrixById(id) {
     try {
-      const response = await api.post(`/employees/${employeeId}/reject_job_description/`, data);
+      const response = await api.get(`/job-description/access-matrix/${id}/`);
       return response.data;
     } catch (error) {
-      console.error('Error rejecting job description from employee:', error);
+      console.error('Error fetching access matrix item:', error);
+      throw error;
+    }
+  }
+
+  async createAccessMatrix(data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false) // Default to true
+      };
+      
+      const response = await api.post('/job-description/access-matrix/', cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating access matrix:', error);
+      throw error;
+    }
+  }
+
+  async updateAccessMatrix(id, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/access-matrix/${id}/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating access matrix:', error);
+      throw error;
+    }
+  }
+
+  async deleteAccessMatrix(id) {
+    try {
+      const response = await api.delete(`/job-description/access-matrix/${id}/`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting access matrix:', error);
       throw error;
     }
   }
 
   // ========================================
-  // PENDING APPROVALS
+  // SUPPORTING DATA ENDPOINTS - BUSINESS RESOURCES
   // ========================================
 
-  async getPendingApprovals() {
+  async getBusinessResources(params = {}) {
     try {
-      const response = await api.get('/job-descriptions/pending_approvals/');
+      const queryParams = new URLSearchParams();
+      if (params.search) queryParams.append('search', params.search);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      
+      const response = await api.get(`/job-description/business-resources/?${queryParams.toString()}`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching pending approvals:', error);
+      console.error('Error fetching business resources:', error);
+      throw error;
+    }
+  }
+
+  async getBusinessResourceById(id) {
+    try {
+      const response = await api.get(`/job-description/business-resources/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching business resource:', error);
+      throw error;
+    }
+  }
+
+  async createBusinessResource(data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false) // Default to true
+      };
+      
+      const response = await api.post('/job-description/business-resources/', cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating business resource:', error);
+      throw error;
+    }
+  }
+
+  async updateBusinessResource(id, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/business-resources/${id}/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating business resource:', error);
+      throw error;
+    }
+  }
+
+  async deleteBusinessResource(id) {
+    try {
+      const response = await api.delete(`/job-description/business-resources/${id}/`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting business resource:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // SUPPORTING DATA ENDPOINTS - COMPANY BENEFITS
+  // ========================================
+
+  async getCompanyBenefits(params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.search) queryParams.append('search', params.search);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      
+      const response = await api.get(`/job-description/company-benefits/?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching company benefits:', error);
+      throw error;
+    }
+  }
+
+  async getCompanyBenefitById(id) {
+    try {
+      const response = await api.get(`/job-description/company-benefits/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching company benefit:', error);
+      throw error;
+    }
+  }
+
+  async createCompanyBenefit(data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false) // Default to true
+      };
+      
+      const response = await api.post('/job-description/company-benefits/', cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating company benefit:', error);
+      throw error;
+    }
+  }
+
+  async updateCompanyBenefit(id, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/company-benefits/${id}/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating company benefit:', error);
+      throw error;
+    }
+  }
+
+  async deleteCompanyBenefit(id) {
+    try {
+      const response = await api.delete(`/job-description/company-benefits/${id}/`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting company benefit:', error);
       throw error;
     }
   }
@@ -483,75 +792,80 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // SUPPORTING DATA (DROPDOWN OPTIONS)
-  // ========================================
-
-  async getAccessMatrix(params = {}) {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.search) queryParams.append('search', params.search);
-      if (params.page) queryParams.append('page', params.page);
-      
-      const response = await api.get(`/job-description/access-matrix/?${queryParams.toString()}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching access matrix:', error);
-      throw error;
-    }
-  }
-
-  async getBusinessResources(params = {}) {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.search) queryParams.append('search', params.search);
-      if (params.page) queryParams.append('page', params.page);
-      
-      const response = await api.get(`/job-description/business-resources/?${queryParams.toString()}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching business resources:', error);
-      throw error;
-    }
-  }
-
-  async getCompanyBenefits(params = {}) {
-    try {
-      const queryParams = new URLSearchParams();
-      if (params.search) queryParams.append('search', params.search);
-      if (params.page) queryParams.append('page', params.page);
-      
-      const response = await api.get(`/job-description/company-benefits/?${queryParams.toString()}`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching company benefits:', error);
-      throw error;
-    }
-  }
-
-  // ========================================
-  // DEPARTMENT-UNIT VALIDATION HELPERS (COMPLETELY FIXED)
+  // NEW LOGIC HELPERS
   // ========================================
 
   /**
-   * Get units that belong to a specific department
-   * FIXED: Use client-side filtering with all units data
+   * Get manager automatically based on selected employee
+   * NEW LOGIC: When employee is selected, reports_to is populated automatically
    */
+  async getEmployeeManager(employeeId) {
+    try {
+      const response = await api.get(`/employees/${employeeId}/`);
+      const employee = response.data;
+      
+      if (employee.line_manager_detail) {
+        return {
+          id: employee.line_manager_detail.id,
+          name: employee.line_manager_detail.name || employee.line_manager_detail.full_name,
+          employee_id: employee.line_manager_detail.employee_id,
+          job_title: employee.line_manager_detail.job_title
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error fetching employee manager:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Validate if selected employee belongs to selected organizational structure
+   */
+  async validateEmployeeStructure(employeeId, businessFunction, department, unit = null) {
+    try {
+      const response = await api.get(`/employees/${employeeId}/`);
+      const employee = response.data;
+      
+      const validations = {
+        business_function: employee.business_function === parseInt(businessFunction),
+        department: employee.department === parseInt(department),
+        unit: unit ? employee.unit === parseInt(unit) : true
+      };
+      
+      return {
+        isValid: Object.values(validations).every(v => v),
+        validations,
+        employee_structure: {
+          business_function: employee.business_function_detail?.name,
+          department: employee.department_detail?.name,
+          unit: employee.unit_detail?.name
+        }
+      };
+    } catch (error) {
+      console.error('Error validating employee structure:', error);
+      return { isValid: false, error: error.message };
+    }
+  }
+
+  // ========================================
+  // DEPARTMENT-UNIT VALIDATION HELPERS
+  // ========================================
+
   getUnitsForDepartment(departmentId, allUnits) {
     try {
       console.log('🔍 Filtering units for department:', departmentId);
-      console.log('📦 All available units:', allUnits);
       
       if (!departmentId || !allUnits || !Array.isArray(allUnits)) {
-        console.log('❌ Invalid inputs for unit filtering');
         return { results: [], count: 0 };
       }
 
-      // Filter units by department ID from already loaded data
       const departmentUnits = allUnits.filter(unit => 
         unit.department === parseInt(departmentId)
       );
       
-      console.log(`✅ Found ${departmentUnits.length} units for department ${departmentId}:`, departmentUnits);
+      console.log(`✅ Found ${departmentUnits.length} units for department ${departmentId}`);
       
       return {
         results: departmentUnits,
@@ -563,23 +877,14 @@ class JobDescriptionService {
     }
   }
 
-  /**
-   * Validate if a unit belongs to a department
-   * FIXED: Use client-side validation with already loaded data
-   */
   validateUnitDepartment(unitId, departmentId, allUnits) {
     try {
-      console.log('🔍 Validating unit-department relationship:', { unitId, departmentId });
-      
       if (!unitId || !departmentId || !allUnits) {
-        console.log('❌ Missing parameters for unit validation');
-        return true; // Allow if no unit selected
+        return true;
       }
 
       const unitsForDept = this.getUnitsForDepartment(departmentId, allUnits);
-      const departmentUnits = unitsForDept.results || [];
-      
-      const isValid = departmentUnits.some(unit => unit.id === parseInt(unitId));
+      const isValid = unitsForDept.results.some(unit => unit.id === parseInt(unitId));
       
       console.log(`${isValid ? '✅' : '❌'} Unit ${unitId} ${isValid ? 'belongs to' : 'does not belong to'} department ${departmentId}`);
       
@@ -591,60 +896,8 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // LEGACY HELPER METHODS (kept for backward compatibility)
+  // LEGACY SUPPORT METHODS
   // ========================================
-
-  prepareJobDescriptionData(formData) {
-    console.log('⚠️  Using legacy prepareJobDescriptionData method. Consider using the new cleanJobDescriptionData method.');
-    
-    const apiData = {
-      job_title: formData.job_title,
-      job_purpose: formData.job_purpose,
-      business_function: formData.business_function,
-      department: formData.department,
-      position_group: formData.position_group,
-      grading_level: formData.grading_level,
-      reports_to: formData.reports_to || null,
-      assigned_employee: formData.assigned_employee || null,
-      manual_employee_name: formData.manual_employee_name || '',
-      manual_employee_phone: formData.manual_employee_phone || '',
-      sections: [],
-      required_skills_data: formData.required_skills_data || [],
-      behavioral_competencies_data: formData.behavioral_competencies_data || [],
-      business_resources_ids: formData.business_resources_ids || [],
-      access_rights_ids: formData.access_rights_ids || [],
-      company_benefits_ids: formData.company_benefits_ids || []
-    };
-
-    // CRITICAL FIX: Only include unit if it has a value
-    if (formData.unit && parseInt(formData.unit)) {
-      apiData.unit = formData.unit;
-    }
-
-    // Process sections
-    const sectionTypes = [
-      { type: 'CRITICAL_DUTIES', title: 'Critical Duties', content: formData.criticalDuties },
-      { type: 'MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis },
-      { type: 'JOB_DUTIES', title: 'Job Duties', content: formData.jobDuties },
-      { type: 'REQUIREMENTS', title: 'Requirements', content: formData.requirements }
-    ];
-
-    sectionTypes.forEach((section, index) => {
-      if (section.content && Array.isArray(section.content) && section.content.length > 0) {
-        const validContent = section.content.filter(item => item && item.trim() !== '');
-        if (validContent.length > 0) {
-          apiData.sections.push({
-            section_type: section.type,
-            title: section.title,
-            content: validContent.map(item => `• ${item.trim()}`).join('\n'),
-            order: index + 1
-          });
-        }
-      }
-    });
-
-    return apiData;
-  }
 
   transformJobDescriptionResponse(apiData) {
     const sections = {
@@ -686,6 +939,8 @@ class JobDescriptionService {
       department_name: apiData.department?.name,
       unit: apiData.unit?.id,
       unit_name: apiData.unit?.name,
+      job_function: apiData.job_function?.id, // NEW: Job function support
+      job_function_name: apiData.job_function?.name,
       position_group: apiData.position_group?.id,
       position_group_name: apiData.position_group?.name,
       grading_level: apiData.grading_level,
