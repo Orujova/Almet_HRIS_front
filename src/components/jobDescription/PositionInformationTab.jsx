@@ -377,34 +377,13 @@ const PositionInformationTab = ({
             <div className={`p-3 rounded-lg border ${
               hasSystemEmployee || hasManualEmployee 
                 ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' 
-                : 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20'
+               :""
             }`}>
               <div className="flex items-start gap-2">
                 {hasSystemEmployee || hasManualEmployee ? (
                   <UserCheck size={14} className="text-green-600 mt-0.5" />
-                ) : (
-                  <AlertTriangle size={14} className="text-orange-600 mt-0.5" />
-                )}
-                <div>
-                  <p className={`text-xs font-medium ${
-                    hasSystemEmployee || hasManualEmployee 
-                      ? 'text-green-800 dark:text-green-300' 
-                      : 'text-orange-800 dark:text-orange-300'
-                  }`}>
-                    {hasSystemEmployee ? 'System Employee Selected' :
-                     hasManualEmployee ? 'Manual Employee Details Entered' :
-                     'Employee Assignment Required'}
-                  </p>
-                  <p className={`text-xs ${
-                    hasSystemEmployee || hasManualEmployee 
-                      ? 'text-green-700 dark:text-green-400' 
-                      : 'text-orange-700 dark:text-orange-400'
-                  } mt-1`}>
-                    {hasSystemEmployee ? `Selected: ${dropdownData.employees?.find(emp => emp.id == selectedEmployee)?.name || dropdownData.employees?.find(emp => emp.id == selectedEmployee)?.full_name || 'Employee'}` :
-                     hasManualEmployee ? `Manual: ${formData.manual_employee_name}` :
-                     'For assigned positions, either select an employee from the system or provide manual employee details.'}
-                  </p>
-                </div>
+                ) : ""}
+             
               </div>
             </div>
           

@@ -4,7 +4,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import ComingSoon from "@/components/common/ComingSoon";
 import { useTheme } from "@/components/common/ThemeProvider";
 
-export default function RoleManagementPage() {
+export default function AssetManagementPage() {
   const { darkMode } = useTheme();
 
   return (

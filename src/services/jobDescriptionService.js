@@ -1,8 +1,8 @@
-// services/jobDescriptionService.js - Updated with Export All functionality
+// services/jobDescriptionService.js - Complete API Integration with All Methods
 import axios from 'axios';
 
 // Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Axios instance
 const api = axios.create({
@@ -65,7 +65,7 @@ api.interceptors.response.use(
 );
 
 /**
- * Job Description Service - Enhanced with Export All functionality
+ * Job Description Service - Complete API Integration
  */
 class JobDescriptionService {
   
@@ -98,7 +98,7 @@ class JobDescriptionService {
       errors.push('position_group is required');
     }
     
-    // NEW LOGIC: Either assigned_employee OR manual employee info is required for non-vacant positions
+    // Employee validation - either assigned_employee OR manual employee info
     const hasAssignedEmployee = data.assigned_employee;
     const hasManualEmployee = data.manual_employee_name?.trim();
     
@@ -361,42 +361,102 @@ class JobDescriptionService {
     }
   }
 
-  async approveByLineManager(id, data) {
+  async approveByLineManager(id, data = {}) {
     try {
-      const response = await api.post(`/job-descriptions/${id}/approve_by_line_manager/`, data);
+      console.log('=== APPROVE BY LINE MANAGER ===');
+      console.log('Job ID:', id);
+      console.log('Input approval data:', JSON.stringify(data, null, 2));
+      
+      const approvalData = {
+        comments: data.comments?.trim() || ''
+      };
+      
+      console.log('Cleaned approval data:', JSON.stringify(approvalData, null, 2));
+      
+      const response = await api.post(`/job-descriptions/${id}/approve_by_line_manager/`, approvalData);
+      console.log('✅ Line manager approval successful:', response.status);
+      
       return response.data;
     } catch (error) {
-      console.error('Error approving as line manager:', error);
+      console.error('❌ Error approving as line manager:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
 
-  async approveAsEmployee(id, data) {
+  async approveAsEmployee(id, data = {}) {
     try {
-      const response = await api.post(`/job-descriptions/${id}/approve_as_employee/`, data);
+      console.log('=== APPROVE AS EMPLOYEE ===');
+      console.log('Job ID:', id);
+      console.log('Input approval data:', JSON.stringify(data, null, 2));
+      
+      const approvalData = {
+        comments: data.comments?.trim() || ''
+      };
+      
+      console.log('Cleaned approval data:', JSON.stringify(approvalData, null, 2));
+      
+      const response = await api.post(`/job-descriptions/${id}/approve_as_employee/`, approvalData);
+      console.log('✅ Employee approval successful:', response.status);
+      
       return response.data;
     } catch (error) {
-      console.error('Error approving as employee:', error);
+      console.error('❌ Error approving as employee:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
 
-  async rejectJobDescription(id, data) {
+  async rejectJobDescription(id, data = {}) {
     try {
-      const response = await api.post(`/job-descriptions/${id}/reject/`, data);
+      console.log('=== REJECT JOB DESCRIPTION ===');
+      console.log('Job ID:', id);
+      console.log('Input rejection data:', JSON.stringify(data, null, 2));
+      
+      const rejectionData = {
+        reason: data.reason?.trim() || data.comments?.trim() || ''
+      };
+      
+      if (!rejectionData.reason) {
+        throw new Error('Reason for rejection is required');
+      }
+      
+      console.log('Cleaned rejection data:', JSON.stringify(rejectionData, null, 2));
+      
+      const response = await api.post(`/job-descriptions/${id}/reject/`, rejectionData);
+      console.log('✅ Rejection successful:', response.status);
+      
       return response.data;
     } catch (error) {
-      console.error('Error rejecting job description:', error);
+      console.error('❌ Error rejecting job description:', error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
 
   async requestRevision(id, data) {
     try {
+      console.log('=== REQUEST REVISION ===');
+      console.log('Job ID:', id);
+      console.log('Revision data:', JSON.stringify(data, null, 2));
+      
       const response = await api.post(`/job-descriptions/${id}/request_revision/`, data);
+      console.log('✅ Revision request successful');
       return response.data;
     } catch (error) {
       console.error('Error requesting revision:', error);
+      if (error.response) {
+        console.error('API Error Details:', error.response.data);
+      }
       throw error;
     }
   }
@@ -407,8 +467,12 @@ class JobDescriptionService {
 
   async getEmployeeJobDescriptions(employeeId) {
     try {
+      console.log('📋 Fetching job descriptions for employee:', employeeId);
       const response = await api.get(`/employees/${employeeId}/job_descriptions/`);
-      return response.data;
+      console.log('📋 Employee job descriptions response:', response.data);
+      
+      // Return the job_descriptions array from the response
+      return response.data.job_descriptions || [];
     } catch (error) {
       console.error('Error fetching employee job descriptions:', error);
       throw error;
@@ -417,8 +481,22 @@ class JobDescriptionService {
 
   async getTeamJobDescriptions(managerId) {
     try {
+      console.log('👥 Fetching team job descriptions for manager:', managerId);
       const response = await api.get(`/employees/${managerId}/team_job_descriptions/`);
-      return response.data;
+      console.log('👥 Team job descriptions response:', response.data);
+      
+      // The API might return different structures, handle them all
+      if (Array.isArray(response.data)) {
+        return response.data;
+      } else if (response.data.team_job_descriptions) {
+        return response.data.team_job_descriptions;
+      } else if (response.data.results) {
+        return response.data.results;
+      } else {
+        // If it's an object, try to find an array property
+        const teamJobs = Object.values(response.data).find(value => Array.isArray(value)) || [];
+        return teamJobs;
+      }
     } catch (error) {
       console.error('Error fetching team job descriptions:', error);
       throw error;
@@ -440,11 +518,12 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // PDF EXPORT FUNCTIONALITY - ENHANCED WITH EXPORT ALL
+  // PDF EXPORT FUNCTIONALITY
   // ========================================
 
   async downloadJobDescriptionPDF(id) {
     try {
+      console.log('📄 Downloading PDF for job description:', id);
       const response = await api.get(`/job-descriptions/${id}/download_pdf/`, {
         responseType: 'blob'
       });
@@ -459,6 +538,7 @@ class JobDescriptionService {
       link.remove();
       window.URL.revokeObjectURL(url);
       
+      console.log('✅ PDF download successful');
       return response.data;
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
@@ -522,8 +602,7 @@ class JobDescriptionService {
     try {
       console.log('📤 Exporting ALL job descriptions as PDF...');
       
-      // Send empty body to export all job descriptions
-      // Based on your API example, sending an empty object or minimal data should export all
+      // Send the complex object structure as per API documentation
       const exportData = {
         job_title: "string",
         job_purpose: "stringstringstringstringstringstringstringstringst",
@@ -937,6 +1016,355 @@ class JobDescriptionService {
       console.error('❌ Error validating unit-department relationship:', error);
       return false;
     }
+  }
+
+  // ========================================
+  // PERMISSION UTILITIES - CLIENT-SIDE LOGIC
+  // ========================================
+
+canApproveAsLineManager(jobDescription) {
+    // Everyone can approve if status is correct
+    const validStatuses = ['PENDING_LINE_MANAGER', 'PENDING_APPROVAL'];
+    return validStatuses.includes(jobDescription.status);
+  }
+
+  canApproveAsEmployee(jobDescription) {
+    // Everyone can approve if status is correct
+    return jobDescription.status === 'PENDING_EMPLOYEE';
+  }
+
+  canReject(jobDescription) {
+    // Everyone can reject if status allows
+    const validStatuses = ['PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE', 'PENDING_APPROVAL'];
+    return validStatuses.includes(jobDescription.status);
+  }
+
+  // ========================================
+  // STATUS UTILITIES
+  // ========================================
+
+  getStatusInfo(status) {
+    const statusMap = {
+      'DRAFT': {
+        label: 'Draft',
+        color: '#6B7280',
+        bgColor: '#F3F4F6',
+        darkBgColor: '#374151',
+        description: 'Job description is being prepared'
+      },
+      'PENDING_LINE_MANAGER': {
+        label: 'Pending Line Manager Approval',
+        color: '#F59E0B',
+        bgColor: '#FEF3C7',
+        darkBgColor: '#92400E',
+        description: 'Waiting for line manager approval'
+      },
+      'PENDING_EMPLOYEE': {
+        label: 'Pending Employee Approval',
+        color: '#3B82F6',
+        bgColor: '#DBEAFE',
+        darkBgColor: '#1E40AF',
+        description: 'Waiting for employee approval'
+      },
+      'APPROVED': {
+        label: 'Approved',
+        color: '#10B981',
+        bgColor: '#D1FAE5',
+        darkBgColor: '#047857',
+        description: 'Job description is fully approved'
+      },
+      'ACTIVE': {
+        label: 'Active',
+        color: '#10B981',
+        bgColor: '#D1FAE5',
+        darkBgColor: '#047857',
+        description: 'Job description is active and in use'
+      },
+      'REJECTED': {
+        label: 'Rejected',
+        color: '#EF4444',
+        bgColor: '#FEE2E2',
+        darkBgColor: '#DC2626',
+        description: 'Job description has been rejected'
+      },
+      'REVISION_REQUIRED': {
+        label: 'Revision Required',
+        color: '#F97316',
+        bgColor: '#FED7AA',
+        darkBgColor: '#EA580C',
+        description: 'Job description needs revision'
+      }
+    };
+
+    return statusMap[status] || statusMap['DRAFT'];
+  }
+
+  getUrgencyInfo(jobDescription) {
+    if (!jobDescription.created_at) return { level: 'normal', label: 'Normal', color: '#6B7280' };
+    
+    const createdDate = new Date(jobDescription.created_at);
+    const now = new Date();
+    const daysDiff = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff >= 7) {
+      return { level: 'high', label: 'Urgent', color: '#EF4444' };
+    } else if (daysDiff >= 3) {
+      return { level: 'medium', label: 'Medium Priority', color: '#F59E0B' };
+    }
+    
+    return { level: 'normal', label: 'Normal', color: '#6B7280' };
+  }
+
+  // ========================================
+  // UTILITY METHODS
+  // ========================================
+
+  /**
+   * Format date for display
+   */
+  formatDate(dateString) {
+    if (!dateString) return "N/A";
+    try {
+      return new Date(dateString).toLocaleDateString("en-GB", { 
+        day: "2-digit", 
+        month: "short", 
+        year: "numeric" 
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  }
+
+  /**
+   * Calculate days since creation
+   */
+  getDaysSinceCreation(dateString) {
+    if (!dateString) return 0;
+    try {
+      const createdDate = new Date(dateString);
+      const now = new Date();
+      return Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  /**
+   * Get display name for employee info
+   */
+  getEmployeeDisplayName(jobDescription) {
+    if (jobDescription.employee_info?.name) {
+      return jobDescription.employee_info.name;
+    }
+    if (jobDescription.assigned_employee?.full_name) {
+      return jobDescription.assigned_employee.full_name;
+    }
+    if (jobDescription.manual_employee_name) {
+      return jobDescription.manual_employee_name;
+    }
+    return 'Vacant Position';
+  }
+
+  /**
+   * Check if position is vacant
+   */
+  isVacantPosition(jobDescription) {
+    return !jobDescription.employee_info?.id && 
+           !jobDescription.assigned_employee?.id && 
+           !jobDescription.manual_employee_name?.trim();
+  }
+
+  /**
+   * Get next action required for job description
+   */
+  getNextAction(jobDescription) {
+    switch (jobDescription.status) {
+      case 'DRAFT':
+        return 'Submit for approval';
+      case 'PENDING_LINE_MANAGER':
+        return 'Awaiting line manager approval';
+      case 'PENDING_EMPLOYEE':
+        return 'Awaiting employee approval';
+      case 'APPROVED':
+      case 'ACTIVE':
+        return 'No action required';
+      case 'REJECTED':
+        return 'Review and resubmit';
+      case 'REVISION_REQUIRED':
+        return 'Make required revisions';
+      default:
+        return 'Unknown status';
+    }
+  }
+
+  /**
+   * Filter and search job descriptions
+   */
+  filterJobDescriptions(jobDescriptions, filters) {
+    if (!Array.isArray(jobDescriptions)) return [];
+    
+    let filtered = [...jobDescriptions];
+
+    // Search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      filtered = filtered.filter(job =>
+        job.job_title?.toLowerCase().includes(searchTerm) ||
+        this.getEmployeeDisplayName(job).toLowerCase().includes(searchTerm) ||
+        job.business_function?.toLowerCase().includes(searchTerm) ||
+        job.department?.toLowerCase().includes(searchTerm) ||
+        job.job_function?.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Status filter
+    if (filters.status) {
+      filtered = filtered.filter(job => job.status === filters.status);
+    }
+
+    // Department filter
+    if (filters.department) {
+      filtered = filtered.filter(job => 
+        job.department === filters.department || 
+        job.department_name === filters.department
+      );
+    }
+
+    // Business function filter
+    if (filters.businessFunction) {
+      filtered = filtered.filter(job => 
+        job.business_function === filters.businessFunction || 
+        job.business_function_name === filters.businessFunction
+      );
+    }
+
+    // Urgency filter
+    if (filters.urgency) {
+      filtered = filtered.filter(job => {
+        const urgency = this.getUrgencyInfo(job);
+        return urgency.level === filters.urgency;
+      });
+    }
+
+    // Vacant positions filter
+    if (filters.vacantOnly) {
+      filtered = filtered.filter(job => this.isVacantPosition(job));
+    }
+
+    // Pending approvals filter
+    if (filters.pendingOnly) {
+      filtered = filtered.filter(job => 
+        job.status === 'PENDING_LINE_MANAGER' || 
+        job.status === 'PENDING_EMPLOYEE'
+      );
+    }
+
+    return filtered;
+  }
+
+  /**
+   * Sort job descriptions
+   */
+  sortJobDescriptions(jobDescriptions, sortBy, sortOrder = 'asc') {
+    if (!Array.isArray(jobDescriptions)) return [];
+    
+    const sorted = [...jobDescriptions].sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortBy) {
+        case 'job_title':
+          aValue = a.job_title || '';
+          bValue = b.job_title || '';
+          break;
+        case 'employee_name':
+          aValue = this.getEmployeeDisplayName(a);
+          bValue = this.getEmployeeDisplayName(b);
+          break;
+        case 'created_at':
+          aValue = new Date(a.created_at || 0);
+          bValue = new Date(b.created_at || 0);
+          break;
+        case 'status':
+          aValue = a.status || '';
+          bValue = b.status || '';
+          break;
+        case 'department':
+          aValue = a.department || a.department_name || '';
+          bValue = b.department || b.department_name || '';
+          break;
+        case 'urgency':
+          const urgencyA = this.getUrgencyInfo(a);
+          const urgencyB = this.getUrgencyInfo(b);
+          const urgencyOrder = { 'high': 3, 'medium': 2, 'normal': 1 };
+          aValue = urgencyOrder[urgencyA.level] || 0;
+          bValue = urgencyOrder[urgencyB.level] || 0;
+          break;
+        default:
+          return 0;
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }
+
+  /**
+   * Get unique values for filters
+   */
+  getUniqueFilterValues(jobDescriptions, field) {
+    if (!Array.isArray(jobDescriptions)) return [];
+    
+    const values = new Set();
+    
+    jobDescriptions.forEach(job => {
+      let value;
+      switch (field) {
+        case 'status':
+          value = job.status;
+          break;
+        case 'department':
+          value = job.department || job.department_name;
+          break;
+        case 'business_function':
+          value = job.business_function || job.business_function_name;
+          break;
+        case 'job_function':
+          value = job.job_function || job.job_function_name;
+          break;
+        default:
+          value = job[field];
+      }
+      
+      if (value) values.add(value);
+    });
+    
+    return Array.from(values).sort();
+  }
+
+  /**
+   * Paginate job descriptions
+   */
+  paginateJobDescriptions(jobDescriptions, page = 1, itemsPerPage = 10) {
+    if (!Array.isArray(jobDescriptions)) return { items: [], totalPages: 0, totalItems: 0 };
+    
+    const totalItems = jobDescriptions.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const items = jobDescriptions.slice(startIndex, endIndex);
+    
+    return {
+      items,
+      totalPages,
+      totalItems,
+      currentPage: page,
+      itemsPerPage,
+      hasNextPage: page < totalPages,
+      hasPreviousPage: page > 1
+    };
   }
 
   // ========================================

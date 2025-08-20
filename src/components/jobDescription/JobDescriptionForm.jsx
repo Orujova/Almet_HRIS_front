@@ -410,25 +410,6 @@ const JobDescriptionForm = ({
     }
   };
 
-  // Tab validation status
-  const getTabValidationStatus = (tabId) => {
-    const errorKeys = Object.keys(validationErrors);
-    
-    switch (tabId) {
-      case 'position':
-        return errorKeys.some(key => 
-          ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group', 'employee_assignment'].includes(key)
-        ) ? 'error' : 'valid';
-      case 'responsibilities':
-        return errorKeys.some(key => 
-          ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key)
-        ) ? 'error' : 'valid';
-      case 'conditions':
-        return 'valid'; // No required fields in this tab
-      default:
-        return 'valid';
-    }
-  };
 
   // Check if tab is completed
   const isTabCompleted = (tabId) => {
