@@ -353,18 +353,15 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           </div>
 
           {/* Metadata Grid */}
-          <div className={`grid grid-cols-2 gap-2 p-2.5 ${bgAccent} rounded-lg text-[10px] mb-3`}>
-            <div className="flex justify-between">
-              <span className={`font-medium ${textMuted}`}>Version:</span>
-              <span className={`${textPrimary} font-semibold`}>{job.version || 1}</span>
-            </div>
+          {/* <div className={`grid grid-cols-2 gap-2 p-2.5 ${bgAccent} rounded-lg text-[10px] mb-3`}>
+         
             <div className="flex justify-between">
               <span className={`font-medium ${textMuted}`}>Created:</span>
               <span className={`${textPrimary} font-semibold`}>
                 {jobDescriptionService.formatDate(job.created_at)}
               </span>
             </div>
-          </div>
+          </div> */}
 
           {/* Approval Status - More compact */}
           <div className={`flex items-center justify-between p-2.5 ${bgAccent} rounded-lg text-[10px] mb-3`}>
