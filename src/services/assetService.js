@@ -121,7 +121,8 @@ export const assetService = {
         employee: assignmentData.employee,
         check_out_date: assignmentData.check_out_date,
         check_out_notes: assignmentData.check_out_notes || '',
-        condition_on_checkout: assignmentData.condition_on_checkout || 'EXCELLENT'
+        condition_on_checkout: assignmentData.condition_on_checkout || 'EXCELLENT',
+        asset: id // Include asset ID in the payload
       };
       
       const response = await api.post(`/assets/assets/${id}/assign_to_employee/`, payload);

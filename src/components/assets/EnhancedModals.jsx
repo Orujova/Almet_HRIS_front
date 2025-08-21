@@ -1,4 +1,4 @@
-// src/components/assets/EnhancedModals.jsx - All missing modals including Stats and Assignment
+// src/components/assets/EnhancedModals.jsx - Fixed modals with corrected assignment API
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { 
@@ -146,15 +146,15 @@ export const AssetStatsModal = ({ onClose, darkMode, assetStats }) => {
   const StatsCard = ({ icon, title, value, subtitle, color, percentage }) => (
     <div className={`${bgAccent} rounded-lg p-6 border ${borderColor} hover:shadow-md transition-all duration-200`}>
       <div className="flex items-center justify-between mb-4">
-        <div className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center`}>
+        <div className={`w-8 h-8 ${color} rounded-lg flex items-center justify-center`}>
           {icon}
         </div>
         {percentage !== undefined && (
           <span className={`text-xs ${textMuted} font-medium`}>{percentage}%</span>
         )}
       </div>
-      <h3 className={`${textPrimary} text-2xl font-bold mb-1`}>{value}</h3>
-      <p className={`${textMuted} text-sm font-medium`}>{title}</p>
+      <h3 className={`${textPrimary} text-xl font-bold mb-1`}>{value}</h3>
+      <p className={`${textMuted} text-xs font-medium`}>{title}</p>
       {subtitle && (
         <p className={`${textMuted} text-xs mt-1`}>{subtitle}</p>
       )}
@@ -162,16 +162,16 @@ export const AssetStatsModal = ({ onClose, darkMode, assetStats }) => {
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 mt-0">
       <div className={`${bgCard} rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border ${borderColor}`}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className={`${textPrimary} text-2xl font-bold mb-2 flex items-center`}>
-                <BarChart3 size={24} className="mr-3 text-almet-sapphire" />
+              <h2 className={`${textPrimary} text-xl font-bold mb-2 flex items-center`}>
+                <BarChart3 size={22} className="mr-3 text-almet-sapphire" />
                 Asset Statistics
               </h2>
-              <p className={`${textMuted} text-sm`}>
+              <p className={`${textMuted} text-xs`}>
                 Comprehensive overview of your asset portfolio
               </p>
             </div>
@@ -217,9 +217,9 @@ export const AssetStatsModal = ({ onClose, darkMode, assetStats }) => {
           </div>
 
           {/* Status Breakdown */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1  gap-6">
             {/* Status Distribution */}
-            <div className={`${bgAccent} rounded-lg p-6 border ${borderColor}`}>
+            <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
               <h3 className={`${textPrimary} font-semibold mb-4 text-lg flex items-center`}>
                 <PieChart size={18} className="mr-2 text-almet-sapphire" />
                 Status Distribution
@@ -233,10 +233,10 @@ export const AssetStatsModal = ({ onClose, darkMode, assetStats }) => {
                   { label: 'In Repair', value: assetStats.inRepair, icon: Wrench, color: 'text-orange-500' },
                   { label: 'Archived', value: assetStats.archived, icon: Archive, color: 'text-gray-500' }
                 ].map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-white/50 dark:bg-gray-700/50 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-2 bg-white/50 dark:bg-gray-700/50 rounded-lg">
                     <div className="flex items-center">
-                      <item.icon size={16} className={`mr-3 ${item.color}`} />
-                      <span className={`${textSecondary} text-sm font-medium`}>{item.label}</span>
+                      <item.icon size={14} className={`mr-3 ${item.color}`} />
+                      <span className={`${textSecondary} text-xs font-medium`}>{item.label}</span>
                     </div>
                     <div className="flex items-center space-x-3">
                       <span className={`${textPrimary} font-semibold`}>{item.value}</span>
@@ -255,73 +255,24 @@ export const AssetStatsModal = ({ onClose, darkMode, assetStats }) => {
               </div>
             </div>
 
-            {/* Key Metrics */}
-            <div className={`${bgAccent} rounded-lg p-6 border ${borderColor}`}>
-              <h3 className={`${textPrimary} font-semibold mb-4 text-lg flex items-center`}>
-                <Activity size={18} className="mr-2 text-almet-sapphire" />
-                Key Metrics
-              </h3>
-              <div className="space-y-4">
-                <div className="p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`${textSecondary} text-sm font-medium`}>Available Assets</span>
-                    <span className={`${textPrimary} text-lg font-bold`}>{assetStats.inStock}</span>
-                  </div>
-                  <p className={`${textMuted} text-xs`}>Ready for deployment</p>
-                </div>
-                
-                <div className="p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`${textSecondary} text-sm font-medium`}>Pending Actions</span>
-                    <span className={`${textPrimary} text-lg font-bold`}>{assetStats.assigned + assetStats.needClarification}</span>
-                  </div>
-                  <p className={`${textMuted} text-xs`}>Require attention</p>
-                </div>
-                
-                <div className="p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`${textSecondary} text-sm font-medium`}>Average Asset Value</span>
-                    <span className={`${textPrimary} text-lg font-bold`}>
-                      {assetStats.total > 0 ? formatCurrency(assetStats.totalValue / assetStats.total) : formatCurrency(0)}
-                    </span>
-                  </div>
-                  <p className={`${textMuted} text-xs`}>Per asset</p>
-                </div>
-                
-                <div className="p-4 bg-white/50 dark:bg-gray-700/50 rounded-lg">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className={`${textSecondary} text-sm font-medium`}>Deployment Rate</span>
-                    <span className={`${textPrimary} text-lg font-bold`}>
-                      {getStatusPercentage(assetStats.inUse + assetStats.assigned)}%
-                    </span>
-                  </div>
-                  <p className={`${textMuted} text-xs`}>Assets in circulation</p>
-                </div>
-              </div>
-            </div>
+     
           </div>
 
-          <div className="flex justify-end mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-            <button
-              onClick={onClose}
-              className={`${btnSecondary} px-6 py-2.5 rounded-lg text-sm hover:shadow-md transition-all duration-200`}
-            >
-              Close
-            </button>
-          </div>
+        
         </div>
       </div>
     </div>
   );
 };
 
-// Assign Asset Modal
+// Enhanced Assign Asset Modal with Fixed API Call
 export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
   const [formData, setFormData] = useState({
     employee: '',
     check_out_date: new Date().toISOString().split('T')[0],
     check_out_notes: '',
-    condition_on_checkout: 'EXCELLENT'
+    condition_on_checkout: 'EXCELLENT',
+    asset:""
   });
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -330,6 +281,7 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
 
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const bgAccent = darkMode ? "bg-gray-700/50" : "bg-almet-mystic/30";
@@ -347,7 +299,7 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
-        const response = await employeeService.getEmployees();
+        const response = await employeeService.getEmployees({ page_size: 100 });
         setEmployees(response.results || []);
       } catch (error) {
         console.error('Failed to fetch employees:', error);
@@ -371,18 +323,26 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
     setError('');
 
     try {
+      // Create proper assignment payload - FIXED
       const assignmentData = {
-        asset: asset.id,
-        employee: formData.employee,
+        employee: parseInt(formData.employee), // Ensure it's an integer
         check_out_date: formData.check_out_date,
         check_out_notes: formData.check_out_notes,
-        condition_on_checkout: formData.condition_on_checkout
+        condition_on_checkout: formData.condition_on_checkout,
+        asset: asset.id // Include asset ID in the payload
       };
+      
+      console.log('Assignment payload:', assignmentData); // Debug log
       
       const result = await assetService.assignAsset(asset.id, assignmentData);
       onSuccess(result);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to assign asset');
+      console.error('Assignment error:', err);
+      const errorMessage = err.response?.data?.detail || 
+                          err.response?.data?.message || 
+                          err.response?.data?.error ||
+                          'Failed to assign asset';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -414,14 +374,20 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
           {/* Asset Info */}
           <div className={`${bgAccent} rounded-lg p-4 mb-6 border ${borderColor}`}>
             <h3 className={`${textPrimary} font-semibold mb-2`}>Asset Details</h3>
-            <p className={`${textPrimary} text-sm`}>{asset.asset_name}</p>
+            <p className={`${textPrimary} text-sm font-medium`}>{asset.asset_name}</p>
             <p className={`${textMuted} text-xs`}>Serial: {asset.serial_number}</p>
-            <p className={`${textMuted} text-xs`}>Category: {asset.category?.name}</p>
+            <p className={`${textMuted} text-xs`}>Category: {asset.category?.name || asset.category_name}</p>
           </div>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
-              {error}
+              <div className="flex items-start">
+                <AlertCircle size={16} className="mr-2 mt-0.5" />
+                <div>
+                  <p className="font-medium">Assignment Failed</p>
+                  <p>{error}</p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -500,7 +466,7 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
             </button>
             <button
               type="submit"
-              disabled={loading || !formData.employee}
+              disabled={loading || !formData.employee || employeesLoading}
               className={`${btnPrimary} px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 flex items-center hover:shadow-md transition-all duration-200`}
             >
               {loading ? (

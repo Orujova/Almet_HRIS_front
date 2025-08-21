@@ -1,9 +1,9 @@
-// src/app/asset-management/page.jsx - Enhanced asset management page with all modals
+// src/app/asset-management/page.jsx - Complete Enhanced Asset Management Page with All APIs
 "use client";
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-import { assetService, categoryService, employeeService } from "@/services/assetService";
+import { assetService, categoryService, employeeService, employeeAssetService } from "@/services/assetService";
 import {
   Plus,
   Search,
@@ -34,7 +34,14 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
-  Activity
+  Activity,
+  Bell,
+  MessageSquare,
+  Ban,
+  Reply,
+  User,
+  Calendar,
+  Settings
 } from "lucide-react";
 import {
   AddAssetModal,
@@ -55,6 +62,29 @@ import {
   AssetActivitiesModal
 } from "@/components/assets/EnhancedModals";
 import CategoryManagement from "@/components/assets/CategoryManagement";
+import EmployeeAssetActionModal from "@/components/assets/EmployeeAssetActionModal";
+// Enhanced Notification Component
+const NotificationToast = ({ message, type = 'success', onClose }) => {
+  const { darkMode } = useTheme();
+  
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const bgColor = type === 'success' ? 'bg-emerald-500' : 'bg-red-500';
+  const icon = type === 'success' ? <CheckCircle size={16} /> : <XCircle size={16} />;
+
+  return (
+    <div className={`fixed top-4 right-4 z-[60] ${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 transform transition-all duration-300 ease-in-out`}>
+      {icon}
+      <span className="text-sm font-medium">{message}</span>
+      <button onClick={onClose} className="ml-2 hover:bg-white/20 rounded p-1">
+        <XCircle size={14} />
+      </button>
+    </div>
+  );
+};
 
 // Clean Searchable Dropdown Component
 const SearchableDropdown = ({ 
@@ -156,6 +186,7 @@ const SearchableDropdown = ({
 };
 
 
+
 const AssetManagementPage = () => {
   const { darkMode } = useTheme();
   
@@ -174,6 +205,7 @@ const AssetManagementPage = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [viewMode, setViewMode] = useState("grid");
   const [activeTab, setActiveTab] = useState("assets");
+  const [notification, setNotification] = useState(null);
   const itemsPerPage = 12;
 
   // Modal states
@@ -185,7 +217,9 @@ const AssetManagementPage = () => {
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [showEmployeeActionModal, setShowEmployeeActionModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [employeeActionType, setEmployeeActionType] = useState('');
 
   // Status choices
   const statusChoices = [
@@ -233,6 +267,11 @@ const AssetManagementPage = () => {
     : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-200";
   const shadowClass = "shadow-sm";
   const bgAccent = darkMode ? "bg-gray-700/30" : "bg-gray-50";
+
+  // Utility function to show notifications
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+  };
 
   // Status color mapping
   const getStatusColor = (status) => {
@@ -359,7 +398,7 @@ const AssetManagementPage = () => {
       setShowViewModal(true);
     } catch (err) {
       console.error("Failed to fetch asset details:", err);
-      alert("Failed to load asset details");
+      showNotification("Failed to load asset details", "error");
     } finally {
       setLoading(false);
     }
@@ -372,7 +411,7 @@ const AssetManagementPage = () => {
       setShowEditModal(true);
     } catch (err) {
       console.error("Failed to fetch asset details:", err);
-      alert("Failed to load asset details");
+      showNotification("Failed to load asset details", "error");
     }
   };
 
@@ -383,7 +422,7 @@ const AssetManagementPage = () => {
       setShowAssignModal(true);
     } catch (err) {
       console.error("Failed to fetch asset details:", err);
-      alert("Failed to load asset details");
+      showNotification("Failed to load asset details", "error");
     }
   };
 
@@ -394,7 +433,7 @@ const AssetManagementPage = () => {
       setShowActivitiesModal(true);
     } catch (err) {
       console.error("Failed to fetch asset details:", err);
-      alert("Failed to load asset details");
+      showNotification("Failed to load asset details", "error");
     }
   };
 
@@ -405,7 +444,7 @@ const AssetManagementPage = () => {
       setShowCheckInModal(true);
     } catch (err) {
       console.error("Failed to fetch asset details:", err);
-      alert("Failed to load asset details");
+      showNotification("Failed to load asset details", "error");
     }
   };
 
@@ -416,7 +455,32 @@ const AssetManagementPage = () => {
       setShowStatusModal(true);
     } catch (err) {
       console.error("Failed to fetch asset details:", err);
-      alert("Failed to load asset details");
+      showNotification("Failed to load asset details", "error");
+    }
+  };
+
+  // NEW: Handle employee asset actions
+  const handleProvideClarification = async (assetId) => {
+    try {
+      const asset = await assetService.getAsset(assetId);
+      setSelectedAsset(asset);
+      setEmployeeActionType('provide_clarification');
+      setShowEmployeeActionModal(true);
+    } catch (err) {
+      console.error("Failed to fetch asset details:", err);
+      showNotification("Failed to load asset details", "error");
+    }
+  };
+
+  const handleCancelAssignment = async (assetId) => {
+    try {
+      const asset = await assetService.getAsset(assetId);
+      setSelectedAsset(asset);
+      setEmployeeActionType('cancel_assignment');
+      setShowEmployeeActionModal(true);
+    } catch (err) {
+      console.error("Failed to fetch asset details:", err);
+      showNotification("Failed to load asset details", "error");
     }
   };
 
@@ -426,10 +490,10 @@ const AssetManagementPage = () => {
     try {
       await assetService.deleteAsset(assetId);
       fetchAssets();
-      alert("Asset deleted successfully");
+      showNotification("Asset deleted successfully");
     } catch (err) {
       console.error("Failed to delete asset:", err);
-      alert("Failed to delete asset");
+      showNotification("Failed to delete asset", "error");
     }
   };
 
@@ -451,9 +515,10 @@ const AssetManagementPage = () => {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
+      showNotification("Assets exported successfully");
     } catch (err) {
       console.error("Failed to export assets:", err);
-      alert("Failed to export assets");
+      showNotification("Failed to export assets", "error");
     }
   };
 
@@ -480,14 +545,23 @@ const AssetManagementPage = () => {
   return (
     <DashboardLayout>
       <div className={`min-h-screen`}>
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+        <div className="max-w-7xl  mx-auto px-4 py-6 ">
+          {/* Notification */}
+          {notification && (
+            <NotificationToast
+              message={notification.message}
+              type={notification.type}
+              onClose={() => setNotification(null)}
+            />
+          )}
+
           {/* Clean Header Section */}
-          <div className={` rounded-lg p-6  `}>
+          <div className={` rounded-lg p-6 mb-6  `}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
               <div>
                 <h1 className={`text-xl font-bold ${textPrimary} mb-1`}>Asset Management</h1>
                 <p className={`${textMuted} text-xs`}>
-                  Manage and track your organization's assets
+                  Manage and track your organization's assets with enhanced employee interaction features
                 </p>
               </div>
               <div className="flex gap-2 mt-4 lg:mt-0">
@@ -518,7 +592,7 @@ const AssetManagementPage = () => {
           </div>
 
           {/* Clean Tab Navigation */}
-          <div className={`${bgCard} rounded-lg border ${borderColor} ${shadowClass} overflow-hidden`}>
+          <div className={`${bgCard} rounded-lg mb-6 border ${borderColor} ${shadowClass} overflow-hidden`}>
             <div className="flex">
               {[
                 { 
@@ -561,7 +635,7 @@ const AssetManagementPage = () => {
           {activeTab === 'assets' ? (
             <>
               {/* Clean Filters Section */}
-              <div className={`${bgCard} rounded-lg border ${borderColor} ${shadowClass} p-4`}>
+              <div className={`${bgCard} rounded-lg mb-6 border ${borderColor} ${shadowClass} p-4`}>
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
                   {/* Compact Search */}
                   <div className="md:col-span-2 relative">
@@ -773,7 +847,7 @@ const AssetManagementPage = () => {
                               <button className={`${btnSecondary} px-2 py-1.5 rounded text-xs`}>
                                 <MoreHorizontal size={12} />
                               </button>
-                              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 min-w-36">
+                              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 min-w-44">
                                 <div className="py-1">
                                   <button
                                     onClick={() => handleAssignAsset(asset.id)}
@@ -803,8 +877,27 @@ const AssetManagementPage = () => {
                                     className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center"
                                   >
                                     <RotateCcw size={10} className="mr-2 text-amber-500" />
-                                    Status
+                                    Change Status
                                   </button>
+                                  {/* NEW: Employee Asset Actions */}
+                                  {asset.status === 'NEED_CLARIFICATION'  && (
+                                    <button
+                                      onClick={() => handleProvideClarification(asset.id)}
+                                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center"
+                                    >
+                                      <Reply size={10} className="mr-2 text-purple-500" />
+                                      Provide Clarification
+                                    </button>
+                                  )}
+                                  {(asset.status === 'ASSIGNED' || asset.status === 'NEED_CLARIFICATION' || asset.status === 'IN_USE')  && (
+                                    <button
+                                      onClick={() => handleCancelAssignment(asset.id)}
+                                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors flex items-center"
+                                    >
+                                      <Ban size={10} className="mr-2" />
+                                      Cancel Assignment
+                                    </button>
+                                  )}
                                   <button
                                     onClick={() => handleDeleteAsset(asset.id)}
                                     className="w-full px-3 py-1.5 text-left text-xs hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors flex items-center"
@@ -957,10 +1050,29 @@ const AssetManagementPage = () => {
                                 <button
                                   onClick={() => handleChangeStatus(asset.id)}
                                   className="p-1.5 rounded hover:bg-amber-100 dark:hover:bg-amber-900/20 transition-colors"
-                                  title="Status"
+                                  title="Change Status"
                                 >
                                   <RotateCcw size={12} className="text-amber-500" />
                                 </button>
+                                {/* NEW: Employee Asset Actions in Table */}
+                                {asset.status === 'NEED_CLARIFICATION'  && (
+                                  <button
+                                    onClick={() => handleProvideClarification(asset.id)}
+                                    className="p-1.5 rounded hover:bg-purple-100 dark:hover:bg-purple-900/20 transition-colors"
+                                    title="Provide Clarification"
+                                  >
+                                    <Reply size={12} className="text-purple-500" />
+                                  </button>
+                                )}
+                                {(asset.status == 'ASSIGNED' || asset.status == 'NEED_CLARIFICATION' || asset.status == 'IN_USE' )  && (
+                                  <button
+                                    onClick={() => handleCancelAssignment(asset.id)}
+                                    className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                                    title="Cancel Assignment"
+                                  >
+                                    <Ban size={12} className="text-red-500" />
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => handleDeleteAsset(asset.id)}
                                   className="p-1.5 rounded hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
@@ -1055,10 +1167,12 @@ const AssetManagementPage = () => {
               onCheckIn={(updatedAsset) => {
                 setShowViewModal(false);
                 fetchAssets();
+                showNotification("Asset checked in successfully");
               }}
               onChangeStatus={(updatedAsset) => {
                 setShowViewModal(false);
                 fetchAssets();
+                showNotification("Asset status changed successfully");
               }}
             />
           )}
@@ -1069,6 +1183,7 @@ const AssetManagementPage = () => {
               onSuccess={() => {
                 setShowAddModal(false);
                 fetchAssets();
+                showNotification("Asset added successfully");
               }}
               categories={categories}
               darkMode={darkMode}
@@ -1082,6 +1197,7 @@ const AssetManagementPage = () => {
               onSuccess={() => {
                 setShowEditModal(false);
                 fetchAssets();
+                showNotification("Asset updated successfully");
               }}
               categories={categories}
               darkMode={darkMode}
@@ -1095,6 +1211,7 @@ const AssetManagementPage = () => {
               onSuccess={() => {
                 setShowAssignModal(false);
                 fetchAssets();
+                showNotification("Asset assigned successfully");
               }}
               darkMode={darkMode}
             />
@@ -1123,6 +1240,7 @@ const AssetManagementPage = () => {
               onSuccess={() => {
                 setShowCheckInModal(false);
                 fetchAssets();
+                showNotification("Asset checked in successfully");
               }}
               darkMode={darkMode}
             />
@@ -1135,8 +1253,28 @@ const AssetManagementPage = () => {
               onSuccess={() => {
                 setShowStatusModal(false);
                 fetchAssets();
+                showNotification("Asset status changed successfully");
               }}
               darkMode={darkMode}
+            />
+          )}
+
+          {/* NEW: Employee Asset Action Modal */}
+          {showEmployeeActionModal && selectedAsset && (
+            <EmployeeAssetActionModal
+              asset={selectedAsset}
+              employeeId={selectedAsset.assigned_to?.id}
+              onClose={() => setShowEmployeeActionModal(false)}
+              onSuccess={() => {
+                setShowEmployeeActionModal(false);
+                fetchAssets();
+                const actionMessage = employeeActionType === 'provide_clarification' 
+                  ? "Clarification provided successfully" 
+                  : "Assignment cancelled successfully";
+                showNotification(actionMessage);
+              }}
+              darkMode={darkMode}
+              actionType={employeeActionType}
             />
           )}
         </div>

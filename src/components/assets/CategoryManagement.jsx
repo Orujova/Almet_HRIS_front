@@ -149,27 +149,27 @@ const CategoryManagement = ({ darkMode }) => {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="divide-y-8 divide-gray-200 dark:divide-gray-700">
             {filteredCategories.map((category) => (
-              <div key={category.id} className={`p-6 hover:${bgAccent} transition-colors duration-200`}>
+              <div key={category.id} className={`py-3 px-6 hover:${bgAccent} transition-colors duration-200`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center mb-2">
                       <div className="w-10 h-10 bg-almet-sapphire/10 rounded-lg flex items-center justify-center mr-3">
-                        <Building size={18} className="text-almet-sapphire" />
+                        <Building size={16} className="text-almet-sapphire" />
                       </div>
                       <div>
-                        <h3 className={`${textPrimary} font-semibold text-lg`}>{category.name}</h3>
+                        <h3 className={`${textPrimary} font-semibold text-base`}>{category.name}</h3>
                         <div className="flex items-center space-x-4 mt-1">
-                          <span className={`${textMuted} text-sm flex items-center`}>
+                          <span className={`${textMuted} text-xs flex items-center`}>
                             <Package size={12} className="mr-1" />
                             {category.asset_count} assets
                           </span>
-                          <span className={`${textMuted} text-sm flex items-center`}>
+                          <span className={`${textMuted} text-xs flex items-center`}>
                             <Calendar size={12} className="mr-1" />
                             Created {formatDate(category.created_at)}
                           </span>
-                          <span className={`${textMuted} text-sm flex items-center`}>
+                          <span className={`${textMuted} text-xs flex items-center`}>
                             <User size={12} className="mr-1" />
                             By {category.created_by_name}
                           </span>
@@ -193,31 +193,27 @@ const CategoryManagement = ({ darkMode }) => {
                         </div>
                       </div>
                     </div>
-                    {category.description && (
-                      <p className={`${textSecondary} text-sm mt-2 pl-13`}>
-                        {category.description}
-                      </p>
-                    )}
+                 
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => handleEditCategory(category)}
-                      className={`${btnSecondary} px-3 py-2 rounded-lg text-sm flex items-center hover:shadow-md transition-all duration-200`}
+                      className={`${btnSecondary} px-2 py-2 rounded-lg text-xs flex items-center hover:shadow-md transition-all duration-200`}
                     >
-                      <Edit size={14} className="mr-1" />
+                      <Edit size={12} className="mr-1" />
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteCategory(category.id)}
                       disabled={actionLoading[category.id] || category.asset_count > 0}
-                      className={`${btnDanger} px-3 py-2 rounded-lg text-sm flex items-center disabled:opacity-50 hover:shadow-md transition-all duration-200`}
+                      className={`${btnDanger} px-2 py-2 rounded-lg text-xs flex items-center disabled:opacity-50 hover:shadow-md transition-all duration-200`}
                       title={category.asset_count > 0 ? "Cannot delete category with existing assets" : "Delete category"}
                     >
                       {actionLoading[category.id] ? (
-                        <Loader size={14} className="mr-1 animate-spin" />
+                        <Loader size={12} className="mr-1 animate-spin" />
                       ) : (
-                        <Trash2 size={14} className="mr-1" />
+                        <Trash2 size={12} className="mr-1" />
                       )}
                       Delete
                     </button>
