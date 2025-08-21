@@ -1,4 +1,4 @@
-// src/app/structure/employee/[id]/page.jsx - Enhanced Employee Detail Page with Full Job Descriptions Integration
+// src/app/structure/employee/[id]/page.jsx - Enhanced Employee Detail Page with Asset Management
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -38,7 +38,8 @@ import {
   CheckCircle,
   XCircle,
   UserCheck,
-  ExternalLink
+  ExternalLink,
+  Package
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
@@ -46,9 +47,10 @@ import { useEmployees } from "@/hooks/useEmployees";
 import EmployeeStatusBadge from "@/components/headcount/EmployeeStatusBadge";
 import EmployeeTag from "@/components/headcount/EmployeeTag";
 import EmployeeDetailJobDescriptions from "@/components/headcount/EmployeeDetailJobDescriptions";
+import EmployeeAssetManagement from "@/components/headcount/EmployeeAssetManagement";
 
 /**
- * Employee Detail Page Content Component with Job Descriptions Integration
+ * Employee Detail Page Content Component with Asset Management Integration
  */
 const EmployeeDetailPageContent = () => {
   const { id } = useParams();
@@ -300,6 +302,19 @@ const EmployeeDetailPageContent = () => {
     };
   };
 
+  // Get asset summary with badge count
+  const getAssetSummary = () => {
+    const assetsSummary = currentEmployee?.assets_summary || {
+      total_assigned: 0,
+      pending_approval: 0,
+      in_use: 0,
+      need_clarification: 0,
+      has_pending_approvals: false
+    };
+    
+    return assetsSummary;
+  };
+
   // Loading state
   if (loading.employee) {
     return (
@@ -363,6 +378,7 @@ const EmployeeDetailPageContent = () => {
   );
 
   const jobSummary = getJobDescriptionSummary();
+  const assetSummary = getAssetSummary();
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -439,7 +455,6 @@ const EmployeeDetailPageContent = () => {
               </div>
             </div>
 
-
             {/* Action Buttons */}
             <div className="p-4 border-b border-gray-100 dark:border-gray-700">
               <div className="grid grid-cols-2 gap-2">
@@ -514,8 +529,14 @@ const EmployeeDetailPageContent = () => {
                { 
                  id: 'job-descriptions', 
                  label: 'Job Descriptions', 
-                 icon: <ClipboardList size={14} />
-               
+                 icon: <ClipboardList size={14} />,
+                 badge: jobSummary.totalPending > 0 ? jobSummary.totalPending : null
+               },
+               { 
+                 id: 'assets', 
+                 label: 'Assets', 
+                 icon: <Package size={14} />,
+                 badge: assetSummary.pending_approval > 0 ? assetSummary.pending_approval : null
                },
                { id: 'documents', label: 'Documents', icon: <FileText size={14} /> },
                { id: 'activity', label: 'Activity', icon: <Activity size={14} /> }
@@ -747,6 +768,16 @@ const EmployeeDetailPageContent = () => {
                  <EmployeeDetailJobDescriptions 
                    employeeId={id} 
                    isManager={isManager}
+                 />
+               </div>
+             )}
+
+             {activeTab === 'assets' && (
+               <div className="space-y-4">
+                 <EmployeeAssetManagement 
+                   employeeId={id} 
+                   employeeData={currentEmployee}
+                   darkMode={darkMode}
                  />
                </div>
              )}
