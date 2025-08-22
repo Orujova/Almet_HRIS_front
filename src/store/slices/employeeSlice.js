@@ -280,6 +280,45 @@ export const getContractsExpiringSoon = createAsyncThunk(
   }
 );
 
+
+export const uploadEmployeeProfilePhoto = createAsyncThunk(
+  'employees/uploadProfilePhoto',
+  async ({ employeeId, file }, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.uploadProfileImage(employeeId, file);
+      return {
+        employeeId,
+        data: response.data
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { 
+          message: 'Failed to upload profile photo' 
+        }
+      );
+    }
+  }
+);
+
+export const deleteEmployeeProfilePhoto = createAsyncThunk(
+  'employees/deleteProfilePhoto',
+  async (employeeId, { rejectWithValue }) => {
+    try {
+      const response = await employeeAPI.deleteProfileImage(employeeId);
+      return {
+        employeeId,
+        data: response.data
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data || { 
+          message: 'Failed to delete profile photo' 
+        }
+      );
+    }
+  }
+);
+
 // ========================================
 // GRADING MANAGEMENT
 // ========================================
@@ -569,6 +608,7 @@ const initialState = {
     activities: false,
     directReports: false,
     statusPreview: false,
+    profilePhoto: false,
     exporting: false,
     statusUpdate: false,
     tagUpdate: false,
@@ -593,6 +633,7 @@ const initialState = {
     grading: null,
     activities: null,
     directReports: null,
+    profilePhoto: null,
     statusPreview: null,
     export: null,
     statusUpdate: null,
@@ -605,7 +646,10 @@ const initialState = {
     orgChart: null,
     advancedSearch: null
   },
-  
+  success: {
+  // ... mövcud states
+  profilePhoto: false, // YENİ
+},
   // Feature flags & settings - Enhanced
   showAdvancedFilters: false,
   viewMode: 'table',
@@ -638,7 +682,15 @@ const employeeSlice = createSlice({
         state.selectedEmployees.splice(index, 1);
       }
     },
-    
+    clearProfilePhotoError: (state) => {
+      state.error.profilePhoto = null;
+    },
+    clearProfilePhotoSuccess: (state) => {
+      state.success.profilePhoto = false;
+    },
+    setProfilePhotoLoading: (state, action) => {
+      state.loading.profilePhoto = action.payload;
+    },
     selectAllEmployees: (state) => {
       state.selectedEmployees = state.employees.map(emp => emp.id);
     },
@@ -979,6 +1031,69 @@ const employeeSlice = createSlice({
         state.error.employees = action.payload;
       });
 
+
+    builder
+      .addCase(uploadEmployeeProfilePhoto.pending, (state) => {
+        state.loading.profilePhoto = true;
+        state.error.profilePhoto = null;
+        state.success.profilePhoto = false;
+      })
+      .addCase(uploadEmployeeProfilePhoto.fulfilled, (state, action) => {
+        state.loading.profilePhoto = false;
+        state.success.profilePhoto = true;
+        
+        const { employeeId, data } = action.payload;
+        
+        // Update current employee if it matches
+        if (state.currentEmployee && state.currentEmployee.id == employeeId) {
+          state.currentEmployee.profile_image = data.profile_image_url || data.profile_image;
+          state.currentEmployee.profile_image_url = data.profile_image_url || data.profile_image;
+        }
+        
+        // Update employee in list if it exists
+        const employeeIndex = state.employees.findIndex(emp => emp.id == employeeId);
+        if (employeeIndex !== -1) {
+          state.employees[employeeIndex].profile_image = data.profile_image_url || data.profile_image;
+          state.employees[employeeIndex].profile_image_url = data.profile_image_url || data.profile_image;
+        }
+      })
+      .addCase(uploadEmployeeProfilePhoto.rejected, (state, action) => {
+        state.loading.profilePhoto = false;
+        state.error.profilePhoto = action.payload?.message || 'Failed to upload profile photo';
+      });
+
+    // Profile Photo Delete - YENİ
+    builder
+      .addCase(deleteEmployeeProfilePhoto.pending, (state) => {
+        state.loading.profilePhoto = true;
+        state.error.profilePhoto = null;
+        state.success.profilePhoto = false;
+      })
+      .addCase(deleteEmployeeProfilePhoto.fulfilled, (state, action) => {
+        state.loading.profilePhoto = false;
+        state.success.profilePhoto = true;
+        
+        const { employeeId } = action.payload;
+        
+        // Update current employee if it matches
+        if (state.currentEmployee && state.currentEmployee.id == employeeId) {
+          state.currentEmployee.profile_image = null;
+          state.currentEmployee.profile_image_url = null;
+        }
+        
+        // Update employee in list if it exists
+        const employeeIndex = state.employees.findIndex(emp => emp.id == employeeId);
+        if (employeeIndex !== -1) {
+          state.employees[employeeIndex].profile_image = null;
+          state.employees[employeeIndex].profile_image_url = null;
+        }
+      })
+      .addCase(deleteEmployeeProfilePhoto.rejected, (state, action) => {
+        state.loading.profilePhoto = false;
+        state.error.profilePhoto = action.payload?.message || 'Failed to delete profile photo';
+      });
+      
+      
     // Advanced search
     builder
       .addCase(searchEmployeesAdvanced.pending, (state) => {
@@ -1568,9 +1683,16 @@ export const {
   optimisticUpdateEmployeeGrade,
   optimisticToggleOrgChartVisibility,
   optimisticBulkToggleOrgChartVisibility,
+
+   clearProfilePhotoError,
+  clearProfilePhotoSuccess,
+  setProfilePhotoLoading,
 } = employeeSlice.actions;
 
 // Basic selectors - Enhanced
+export const selectProfilePhotoLoading = (state) => state.employees.loading.profilePhoto;
+export const selectProfilePhotoError = (state) => state.employees.error.profilePhoto;
+export const selectProfilePhotoSuccess = (state) => state.employees.success.profilePhoto;
 export const selectEmployees = (state) => state.employees.employees;
 export const selectCurrentEmployee = (state) => state.employees.currentEmployee;
 export const selectEmployeeLoading = (state) => state.employees.loading;

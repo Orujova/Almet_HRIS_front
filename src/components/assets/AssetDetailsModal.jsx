@@ -1,24 +1,18 @@
 "use client";
-import { useState, useEffect,useRef } from "react";
+import { useState } from "react";
 import { 
   XCircle, 
-  Plus, 
   Edit, 
- 
   Package, 
- 
   Settings,
-
   User,
-
   BarChart3,
-
   LogOut,
-  Search ,
   RotateCcw
 } from "lucide-react";
 
-
+import CheckInAssetModal from "@/components/assets/CheckInAssetModal";
+import ChangeStatusModal from "@/components/assets/ChangeStatusModal";
 
 // Asset Details Modal Component
 export const AssetDetailsModal = ({ asset, onClose, darkMode, onEdit, onCheckIn, onChangeStatus }) => {
@@ -34,8 +28,8 @@ export const AssetDetailsModal = ({ asset, onClose, darkMode, onEdit, onCheckIn,
   const bgAccent = darkMode ? "bg-gray-700/50" : "bg-almet-mystic/30";
   const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200";
   const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-  const btnSuccess = "bg-emerald-500 hover:bg-emerald-600 text-white transition-all duration-200";
-  const btnWarning = "bg-amber-500 hover:bg-amber-600 text-white transition-all duration-200";
+const btnSuccess = "bg-emerald-400 hover:bg-emerald-500 text-white transition-all duration-200";
+const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all duration-200";
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -54,18 +48,18 @@ export const AssetDetailsModal = ({ asset, onClose, darkMode, onEdit, onCheckIn,
     }).format(amount);
   };
 
-  const getStatusColor = (status) => {
+  
+ const getStatusColor = (status) => {
     const statusColors = {
-      'IN_STOCK': 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700/50',
-      'IN_USE': 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700/50',
-      'ASSIGNED': 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/50',
-      'NEED_CLARIFICATION': 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700/50',
-      'IN_REPAIR': 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-700/50',
-      'ARCHIVED': 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-900/30 dark:text-slate-300 dark:border-slate-700/50'
+      'IN_STOCK': 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-900/30',
+      'IN_USE': 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/30',
+      'ASSIGNED': 'bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-900/30',
+      'NEED_CLARIFICATION': 'bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-900/30',
+      'IN_REPAIR': 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-900/30',
+      'ARCHIVED': 'bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-950/50 dark:text-gray-400 dark:border-gray-900/30'
     };
-    return statusColors[status] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900/30 dark:text-gray-300 dark:border-gray-700/50';
+    return statusColors[status] || 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-950/50 dark:text-slate-400 dark:border-slate-900/30';
   };
-
   const handleCheckIn = () => {
     setShowCheckInModal(true);
   };
@@ -236,14 +230,6 @@ export const AssetDetailsModal = ({ asset, onClose, darkMode, onEdit, onCheckIn,
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={onClose}
-                className={`${btnSecondary} px-6 py-2.5 rounded-lg text-sm hover:shadow-md transition-all duration-200`}
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
       </div>

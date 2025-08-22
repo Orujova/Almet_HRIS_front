@@ -1,16 +1,11 @@
 "use client";
 import { useState } from "react";
-
 import {  employeeAssetService } from "@/services/assetService";
 import {
- 
   Loader,
- 
   XCircle,
-
   Ban,
-  Reply,
- 
+  Reply, 
 } from "lucide-react";
 
 const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkMode, actionType }) => {
@@ -103,7 +98,7 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
                   name="clarification_response"
                   value={actionData.clarification_response}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
+                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
                   rows="4"
                   placeholder="Please provide the requested clarification..."
                   required
@@ -120,7 +115,7 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
                   name="cancellation_reason"
                   value={actionData.cancellation_reason}
                   onChange={handleChange}
-                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
+                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
                   rows="3"
                   placeholder="Please explain why you want to cancel this assignment..."
                   required
@@ -146,24 +141,29 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
               }
               className={`${
                 actionType === 'provide_clarification' ? btnPrimary : btnDanger
-              } px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 hover:shadow-md transition-all duration-200`}
+              } px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 hover:shadow-md flex justify-center items-center transition-all duration-200`}
             >
               {loading ? (
                 <>
                   <Loader size={14} className="mr-2 animate-spin" />
-                  Processing...
+                  <span>Processing...</span>
                 </>
               ) : (
                 <>
                   {actionType === 'provide_clarification' ? (
                     <>
+                    <span>
+
                       <Reply size={14} className="mr-2" />
-                      Provide Clarification
+                    </span>
+                    <span>Provide Clarification</span>
+                      
                     </>
                   ) : (
                     <>
-                      <Ban size={14} className="mr-2" />
-                      Cancel Assignment
+                    <span><Ban size={12} className="mr-2" /></span>
+                      
+                     <span>Cancel Assignment</span> 
                     </>
                   )}
                 </>

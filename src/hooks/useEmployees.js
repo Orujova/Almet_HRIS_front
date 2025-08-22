@@ -109,7 +109,17 @@ import {
   selectIsAnyLoading,
   selectHasAnyError,
   selectDashboardSummary,
-  selectEmployeeMetrics
+  selectEmployeeMetrics,
+
+
+   uploadEmployeeProfilePhoto,
+  deleteEmployeeProfilePhoto,
+  clearProfilePhotoError,
+  clearProfilePhotoSuccess,
+  setProfilePhotoLoading,
+  selectProfilePhotoLoading,
+  selectProfilePhotoError,
+  selectProfilePhotoSuccess,
 } from '../store/slices/employeeSlice';
 
 // Reference data import
@@ -175,6 +185,10 @@ export const useEmployees = () => {
   const selectionInfo = useSelector(selectSelectionInfo);
   const isAnyLoading = useSelector(selectIsAnyLoading);
   const hasAnyError = useSelector(selectHasAnyError);
+
+const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
+  const profilePhotoError = useSelector(selectProfilePhotoError);
+  const profilePhotoSuccess = useSelector(selectProfilePhotoSuccess);
 
   // Helper functions
   const getSortDirection = useSelector(selectGetSortDirection);
@@ -290,6 +304,24 @@ export const useEmployees = () => {
   const setErrorAction = useCallback((key, message) => dispatch(setError({ key, message })), [dispatch]);
   const clearCurrentEmployeeAction = useCallback(() => dispatch(clearCurrentEmployee()), [dispatch]);
   
+
+
+   const uploadProfilePhotoAction = useCallback((employeeId, file) => 
+    dispatch(uploadEmployeeProfilePhoto({ employeeId, file })), [dispatch]);
+  
+  const deleteProfilePhotoAction = useCallback((employeeId) => 
+    dispatch(deleteEmployeeProfilePhoto(employeeId)), [dispatch]);
+  
+  const clearProfilePhotoErrorAction = useCallback(() => 
+    dispatch(clearProfilePhotoError()), [dispatch]);
+  
+  const clearProfilePhotoSuccessAction = useCallback(() => 
+    dispatch(clearProfilePhotoSuccess()), [dispatch]);
+  
+  const setProfilePhotoLoadingAction = useCallback((loading) => 
+    dispatch(setProfilePhotoLoading(loading)), [dispatch]);
+
+
   // Quick actions
   const setQuickFilterAction = useCallback((type, value) => dispatch(setQuickFilter({ type, value })), [dispatch]);
   const optimisticUpdateEmployeeAction = useCallback((id, updates) => dispatch(optimisticUpdateEmployee({ id, updates })), [dispatch]);
@@ -459,6 +491,12 @@ export const useEmployees = () => {
     // Statistics
     fetchStatistics: fetchStatisticsAction,
     
+  uploadProfilePhoto: uploadProfilePhotoAction,
+    deleteProfilePhoto: deleteProfilePhotoAction,
+    clearProfilePhotoError: clearProfilePhotoErrorAction,
+    clearProfilePhotoSuccess: clearProfilePhotoSuccessAction,
+    setProfilePhotoLoading: setProfilePhotoLoadingAction,
+
     // Bulk Operations - enhanced
     softDeleteEmployees: softDeleteEmployeesAction,
     restoreEmployees: restoreEmployeesAction,
@@ -578,6 +616,12 @@ export const useEmployees = () => {
     isLoadingContractAlerts: loading.contractAlerts,
     isLoadingOrgChart: loading.orgChart || false,
     
+
+
+    isUploadingProfilePhoto: profilePhotoLoading,
+    hasProfilePhotoError: !!profilePhotoError,
+    hasProfilePhotoSuccess: profilePhotoSuccess,
+
     // Selection
     hasSelection: selectedEmployees.length > 0,
     selectionCount: selectedEmployees.length,
@@ -1275,6 +1319,11 @@ export const useEmployees = () => {
     viewMode,
     showAdvancedFilters,
     
+
+
+     profilePhotoLoading,
+    profilePhotoError,
+    profilePhotoSuccess,
     // Grading data
     gradingData,
     gradingStatistics,

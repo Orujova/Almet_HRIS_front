@@ -19,7 +19,7 @@ import {
   EyeOff
 } from "lucide-react";
 import { categoryService } from "@/services/assetService";
-
+import CustomCheckbox from "../common/CustomCheckbox";
 const CategoryManagement = ({ darkMode }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -101,11 +101,11 @@ const CategoryManagement = ({ darkMode }) => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
+    <div >
+     {/* Header */}
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className={`${textPrimary} text-2xl font-bold mb-2`}>Asset Categories</h2>
+          <h2 className={`${textPrimary} text-xl font-bold mb-2`}>Asset Categories</h2>
           <p className={`${textMuted} text-sm`}>
             Manage asset categories for better organization and tracking
           </p>
@@ -120,7 +120,7 @@ const CategoryManagement = ({ darkMode }) => {
       </div>
 
       {/* Search */}
-      <div className={`${bgCard} rounded-xl ${shadowClass} border ${borderColor} p-4`}>
+      <div className={`${bgCard} rounded-xl ${shadowClass} mb-6 border ${borderColor} p-3`}>
         <div className="relative">
           <Search size={16} className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} />
           <input
@@ -128,7 +128,7 @@ const CategoryManagement = ({ darkMode }) => {
             placeholder="Search categories..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className={`w-full pl-10 pr-4 py-3 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
+            className={`w-full pl-10 pr-4 py-2 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
           />
         </div>
       </div>
@@ -295,13 +295,22 @@ const CategoryModal = ({ category, onClose, onSuccess, darkMode }) => {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
+  // CategoryModal componentində handleChange funksiyasını yeniləyin:
+const handleChange = (e) => {
+  const { name, value, type, checked } = e.target || {};
+  setFormData(prev => ({
+    ...prev,
+    [name]: type === 'checkbox' ? checked : value
+  }));
+};
+
+// Checkbox üçün ayrı handler yaradın:
+const handleCheckboxChange = () => {
+  setFormData(prev => ({
+    ...prev,
+    is_active: !prev.is_active
+  }));
+};
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -337,7 +346,7 @@ const CategoryModal = ({ category, onClose, onSuccess, darkMode }) => {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
+                className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
                 placeholder="Enter category name"
               />
             </div>
@@ -350,25 +359,22 @@ const CategoryModal = ({ category, onClose, onSuccess, darkMode }) => {
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
+                className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
                 rows="3"
                 placeholder="Enter category description (optional)"
               />
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                name="is_active"
-                id="is_active"
-                checked={formData.is_active}
-                onChange={handleChange}
-                className="rounded border-gray-300 text-almet-sapphire focus:ring-almet-sapphire h-4 w-4"
-              />
-              <label htmlFor="is_active" className={`ml-2 text-sm ${textPrimary}`}>
-                Active category
-              </label>
-            </div>
+           <div className="flex items-center">
+  <CustomCheckbox
+    checked={formData.is_active}
+    onChange={handleCheckboxChange}
+    className=""
+  />
+  <label htmlFor="is_active" className={`ml-2 text-sm ${textPrimary}`}>
+    Active category
+  </label>
+</div>
           </div>
 
           <div className="flex justify-end space-x-3 mt-8">
