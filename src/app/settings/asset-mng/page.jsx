@@ -36,9 +36,8 @@ import {
   AssetDetailsModal,
 } from "@/components/assets/AssetDetailsModal";
 import ChangeStatusModal from "@/components/assets/ChangeStatusModal";
-import {
-  CheckInAssetModal
-} from "@/components/assets/CheckInAssetModal";
+import 
+  CheckInAssetModal from "@/components/assets/CheckInAssetModal";
 import {
   AssetStatsModal,
   AssignAssetModal,
@@ -694,18 +693,18 @@ const AssetManagementPage = () => {
                       <thead className={`${bgAccent}rounded-lg border-b ${borderColor} sticky top-0 z-10`}>
                         <tr className="rounded-lg">
                           <th className="px-6 py-3 text-left w-12">
-                           <CustomCheckbox
-                                checked={selectedAssets.length === filteredAssets.length && filteredAssets.length > 0}
-                                indeterminate={selectedAssets.length > 0 && selectedAssets.length < filteredAssets.length}
-                                onChange={() => {
-                                  if (selectedAssets.length === filteredAssets.length) {
-                                    setSelectedAssets([]);
-                                  } else {
-                                    setSelectedAssets(filteredAssets.map(asset => asset.id));
-                                  }
-                                }}
-                              />
-                          </th>
+  <CustomCheckbox
+    checked={selectedAssets.length === filteredAssets.length && filteredAssets.length > 0}
+    indeterminate={selectedAssets.length > 0 && selectedAssets.length < filteredAssets.length}
+    onChange={() => {
+      if (selectedAssets.length === filteredAssets.length) {
+        setSelectedAssets([]);
+      } else {
+        setSelectedAssets(filteredAssets.map(asset => asset.id));
+      }
+    }}
+  />
+</th>
                           <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                             Asset
                           </th>
@@ -737,19 +736,18 @@ const AssetManagementPage = () => {
                               index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'
                             }`}
                           >
-                            <td className="px-6 py-4">
-                          <CustomCheckbox
-                                checked={selectedAssets.length === filteredAssets.length && filteredAssets.length > 0}
-                                indeterminate={selectedAssets.length > 0 && selectedAssets.length < filteredAssets.length}
-                                onChange={() => {
-                                  if (selectedAssets.length === filteredAssets.length) {
-                                    setSelectedAssets([]);
-                                  } else {
-                                    setSelectedAssets(filteredAssets.map(asset => asset.id));
-                                  }
-                                }}
-                              />
-                            </td>
+                           <td className="px-6 py-4">
+  <CustomCheckbox
+    checked={selectedAssets.includes(asset.id)}
+    onChange={() => {
+      setSelectedAssets(prev => 
+        prev.includes(asset.id)
+          ? prev.filter(id => id !== asset.id)
+          : [...prev, asset.id]
+      );
+    }}
+  />
+</td>
                             
                             <td className="px-6 py-2">
                               <div className="space-y-1">
@@ -849,17 +847,16 @@ const AssetManagementPage = () => {
                         
 
 
-                             <CustomCheckbox
-                                checked={selectedAssets.length === filteredAssets.length && filteredAssets.length > 0}
-                                indeterminate={selectedAssets.length > 0 && selectedAssets.length < filteredAssets.length}
-                                onChange={() => {
-                                  if (selectedAssets.length === filteredAssets.length) {
-                                    setSelectedAssets([]);
-                                  } else {
-                                    setSelectedAssets(filteredAssets.map(asset => asset.id));
-                                  }
-                                }}
-                              />
+                            <CustomCheckbox
+  checked={selectedAssets.includes(asset.id)}
+  onChange={() => {
+    setSelectedAssets(prev => 
+      prev.includes(asset.id)
+        ? prev.filter(id => id !== asset.id)
+        : [...prev, asset.id]
+    );
+  }}
+/>
                           </div>
 
                      
