@@ -4,9 +4,10 @@ import {
   Plus, Target, Search, Filter, Eye, Edit, Trash2, 
   Download, FileText, Calendar, Award, AlertCircle, CheckCircle,
   Loader2, X, Save, ChevronDown, ChevronRight, User, Building,
-  TrendingUp, TrendingDown, Minus
+  TrendingUp, TrendingDown, Minus, Info
 } from 'lucide-react';
 import { assessmentApi } from '@/services/assessmentApi';
+import { competencyApi } from '@/services/competencyApi';
 
 const CoreEmployeeCalculation = () => {
   // States
@@ -22,6 +23,7 @@ const CoreEmployeeCalculation = () => {
   const [showCreatePositionModal, setShowCreatePositionModal] = useState(false);
   const [showCreateEmployeeModal, setShowCreateEmployeeModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
+  const [showCoreScalesInfo, setShowCoreScalesInfo] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   
   // Data states
@@ -31,7 +33,7 @@ const CoreEmployeeCalculation = () => {
   const [positionGroups, setPositionGroups] = useState([]);
   const [coreScales, setCoreScales] = useState([]);
   const [skillGroups, setSkillGroups] = useState([]);
-  const [skills, setSkills] = useState([]);
+  const [jobTitles, setJobTitles] = useState([]);
   
   // Form states
   const [positionFormData, setPositionFormData] = useState({
@@ -118,6 +120,63 @@ const CoreEmployeeCalculation = () => {
     );
   };
 
+  // Job Title Dropdown (for string values)
+  const JobTitleDropdown = ({ value, onChange, placeholder }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [searchValue, setSearchValue] = useState('');
+    
+    const filteredTitles = jobTitles.filter(title =>
+      title?.toLowerCase().includes(searchValue.toLowerCase())
+    );
+    
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-left flex items-center justify-between bg-white hover:border-blue-500 focus:border-blue-500 focus:outline-none"
+        >
+          <span className={value ? 'text-gray-900' : 'text-gray-500'}>
+            {value || placeholder}
+          </span>
+          <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            <div className="p-2">
+              <input
+                type="text"
+                placeholder="Search job titles..."
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="max-h-40 overflow-y-auto">
+              {filteredTitles.length > 0 ? (
+                filteredTitles.map((title, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      onChange(title);
+                      setIsOpen(false);
+                      setSearchValue('');
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
+                  >
+                    {title}
+                  </button>
+                ))
+              ) : (
+                <div className="px-4 py-2 text-gray-500 text-sm">No job titles found</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Fetch all data
   const fetchData = async () => {
     setIsLoading(true);
@@ -129,13 +188,15 @@ const CoreEmployeeCalculation = () => {
         employeeAssessmentsRes, 
         employeesRes, 
         positionGroupsRes,
-        coreScalesRes
+        coreScalesRes,
+        skillGroupsRes
       ] = await Promise.all([
         assessmentApi.positionCore.getAll(),
         assessmentApi.employeeCore.getAll(),
         assessmentApi.employees.getAll(),
         assessmentApi.positionGroups.getAll(),
-        assessmentApi.coreScales.getAll()
+        assessmentApi.coreScales.getAll(),
+        competencyApi.skillGroups.getAll()
       ]);
       
       setPositionAssessments(positionAssessmentsRes.results || []);
@@ -143,6 +204,11 @@ const CoreEmployeeCalculation = () => {
       setEmployees(employeesRes.results || []);
       setPositionGroups(positionGroupsRes.results || []);
       setCoreScales(coreScalesRes.results || []);
+      setSkillGroups(skillGroupsRes.results || []);
+      
+      // Extract unique job titles from employees
+      const uniqueJobTitles = [...new Set(employeesRes.results?.map(emp => emp.job_title).filter(Boolean))];
+      setJobTitles(uniqueJobTitles);
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -204,7 +270,8 @@ const CoreEmployeeCalculation = () => {
       success: 'bg-green-500 hover:bg-green-600 text-white',
       danger: 'bg-red-500 hover:bg-red-600 text-white',
       warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
-      outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white'
+      outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white',
+      info: 'bg-blue-500 hover:bg-blue-600 text-white'
     };
 
     const sizes = {
@@ -290,8 +357,8 @@ const CoreEmployeeCalculation = () => {
 
   // Handle position assessment creation
   const handleCreatePositionAssessment = async () => {
-    if (!positionFormData.position_group || !positionFormData.job_title) {
-      setError({ message: 'Please fill all required fields' });
+    if (!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0) {
+      setError({ message: 'Please fill all required fields and add at least one competency rating' });
       return;
     }
 
@@ -555,88 +622,6 @@ const CoreEmployeeCalculation = () => {
                 </tbody>
               </table>
             </div>
-          ) : (
-            // Employee Assessments Table
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
-                  <tr>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Employee</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Position</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Gap Score</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Completion</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Date</th>
-                    <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEmployeeAssessments.length > 0 ? (
-                    filteredEmployeeAssessments.map((assessment) => (
-                      <tr key={assessment.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-gray-900 font-medium">
-                          <div>
-                            <div>{assessment.employee_name}</div>
-                            <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-900">
-                          {assessment.position_assessment_title}
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={assessment.status} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <GapIndicator gap={assessment.gap_score || 0} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <CompletionIndicator percentage={assessment.completion_percentage} />
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 text-sm">
-                          {new Date(assessment.assessment_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <ActionButton
-                              onClick={() => {
-                                setSelectedAssessment(assessment);
-                                setShowViewModal(true);
-                              }}
-                              icon={Eye}
-                              label="View"
-                              variant="outline"
-                              size="xs"
-                            />
-                            <ActionButton
-                              onClick={() => handleExport(assessment.id, 'employee')}
-                              icon={Download}
-                              label="Export"
-                              variant="secondary"
-                              size="xs"
-                            />
-                            <ActionButton
-                              onClick={() => handleDelete(assessment.id, 'employee')}
-                              icon={Trash2}
-                              label="Delete"
-                              variant="danger"
-                              size="xs"
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="text-center py-12">
-                        <Target className="w-12 h-12 mx-auto mb-4 text-gray-400 opacity-50" />
-                        <p className="text-gray-600 font-medium">No employee assessments found</p>
-                        <p className="text-gray-500 text-sm mt-2">Create your first employee assessment</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           )}
         </div>
       )}
@@ -678,14 +663,23 @@ const CoreEmployeeCalculation = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Job Title <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <JobTitleDropdown
                   value={positionFormData.job_title}
-                  onChange={(e) => setPositionFormData({...positionFormData, job_title: e.target.value})}
-                  placeholder="Enter job title"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm bg-white focus:border-blue-500 focus:outline-none"
+                  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
+                  placeholder="Select Job Title"
                 />
               </div>
+            </div>
+
+            {/* Core Scales Information Button */}
+            <div className="mb-4 flex justify-center">
+              <ActionButton
+                onClick={() => setShowCoreScalesInfo(true)}
+                icon={Info}
+                label="View Core Competency Assessment Scale Information"
+                variant="info"
+                size="md"
+              />
             </div>
 
             {/* Skills Matrix Table */}
@@ -711,23 +705,9 @@ const CoreEmployeeCalculation = () => {
                     </tr>
                   </thead>
                   
-                  {/* Core Scales Description */}
+                  {/* Skills by Groups */}
                   <tbody>
-                    <tr className="bg-blue-50">
-                      <td colSpan="3" className="px-4 py-2">
-                        <div className="text-sm text-gray-700">
-                          <strong>Assessment Scale:</strong>
-                          {coreScales.map(scale => (
-                            <div key={scale.id} className="ml-4">
-                              <span className="font-medium">"{scale.scale}"</span> - {scale.description}
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                    
-                    {/* Skill Groups */}
-                    {skillGroups.map(group => (
+                    {skillGroups.length > 0 ? skillGroups.map(group => (
                       <React.Fragment key={group.id}>
                         <tr className="bg-blue-900 text-white">
                           <td colSpan="3" className="px-4 py-2 font-bold text-center uppercase">
@@ -735,8 +715,8 @@ const CoreEmployeeCalculation = () => {
                           </td>
                         </tr>
                         
-                        {/* Group skills would be loaded here */}
-                        {group.skills?.map(skill => (
+                        {/* Group skills */}
+                        {group.skills && group.skills.length > 0 ? group.skills.map(skill => (
                           <tr key={skill.id} className="border-b hover:bg-gray-50">
                             <td className="px-4 py-3 font-medium text-gray-900">
                               {skill.name}
@@ -775,7 +755,7 @@ const CoreEmployeeCalculation = () => {
                               {skill.description || 'No description available'}
                             </td>
                           </tr>
-                        )) || (
+                        )) : (
                           <tr>
                             <td colSpan="3" className="px-4 py-3 text-center text-gray-500 text-sm">
                               No skills found for this group
@@ -783,7 +763,17 @@ const CoreEmployeeCalculation = () => {
                           </tr>
                         )}
                       </React.Fragment>
-                    ))}
+                    )) : (
+                      <tr>
+                        <td colSpan="3" className="px-4 py-8 text-center text-gray-500">
+                          <div className="flex flex-col items-center">
+                            <AlertCircle className="w-8 h-8 mb-2 text-gray-400" />
+                            <p className="font-medium">No skill groups available</p>
+                            <p className="text-sm">Please configure skill groups first</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -805,6 +795,79 @@ const CoreEmployeeCalculation = () => {
                 label="Create Template"
                 disabled={!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0}
                 loading={isSubmitting}
+                variant="primary"
+                size="md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Core Scales Information Modal */}
+      {showCoreScalesInfo && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-4xl border-2 border-gray-200 shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <Info className="w-5 h-5 text-blue-600" />
+                Core Competency Assessment Scale Information
+              </h3>
+              <button
+                onClick={() => setShowCoreScalesInfo(false)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-3">Assessment Scale Definitions</h4>
+                <div className="space-y-3">
+                  {coreScales.length > 0 ? coreScales.map(scale => (
+                    <div key={scale.id} className="bg-white p-3 rounded border">
+                      <div className="flex items-start gap-3">
+                        <span className="bg-blue-600 text-white px-2 py-1 rounded font-bold text-sm min-w-8 text-center">
+                          {scale.scale}
+                        </span>
+                        <div>
+                          <p className="text-gray-900 font-medium">{scale.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="text-gray-500 text-center py-4">
+                      <AlertCircle className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                      <p>No core scales configured</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">How to Use</h4>
+                <ul className="space-y-2 text-gray-700 text-sm">
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                    Select the appropriate scale level for each skill based on the position requirements
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                    Higher numbers indicate higher skill level requirements
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="w-1.5 h-1.5 bg-gray-400 rounded-full mt-2 flex-shrink-0"></span>
+                    Leave blank (-) for skills that are not required for this position
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+              <ActionButton
+                onClick={() => setShowCoreScalesInfo(false)}
+                icon={CheckCircle}
+                label="Got it"
                 variant="primary"
                 size="md"
               />
@@ -1105,3 +1168,85 @@ const CoreEmployeeCalculation = () => {
 };
 
 export default CoreEmployeeCalculation;
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            // Employee Assessments Table
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Employee</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Position</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Gap Score</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Completion</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Date</th>
+                    <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEmployeeAssessments.length > 0 ? (
+                    filteredEmployeeAssessments.map((assessment) => (
+                      <tr key={assessment.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-gray-900 font-medium">
+                          <div>
+                            <div>{assessment.employee_name}</div>
+                            <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-900">
+                          {assessment.position_assessment_title}
+                        </td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={assessment.status} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <GapIndicator gap={assessment.gap_score || 0} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <CompletionIndicator percentage={assessment.completion_percentage} />
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">
+                          {new Date(assessment.assessment_date).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <ActionButton
+                              onClick={() => {
+                                setSelectedAssessment(assessment);
+                                setShowViewModal(true);
+                              }}
+                              icon={Eye}
+                              label="View"
+                              variant="outline"
+                              size="xs"
+                            />
+                            <ActionButton
+                              onClick={() => handleExport(assessment.id, 'employee')}
+                              icon={Download}
+                              label="Export"
+                              variant="secondary"
+                              size="xs"
+                            />
+                            <ActionButton
+                              onClick={() => handleDelete(assessment.id, 'employee')}
+                              icon={Trash2}
+                              label="Delete"
+                              variant="danger"
+                              size="xs"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-12">
+                        <Target className="w-12 h-12 mx-auto mb-4 text-gray-400 opacity-50" />
+                        <p className="text-gray-600 font-medium">No employee assessments found</p>
+                        <p className="text-gray-500 text-sm mt-2">Create your first employee assessment</p>
+                      </td>
+                    </tr>
+                  )}

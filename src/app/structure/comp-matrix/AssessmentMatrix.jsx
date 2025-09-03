@@ -61,20 +61,7 @@ const AssessmentMatrix = () => {
     }
   };
 
-  const StatCard = ({ title, value, subtitle, icon: Icon, color = 'almet-sapphire' }) => (
-    <div className={`${bgCard} rounded-xl p-4 border-2 ${borderColor} hover:shadow-lg transition-all duration-200`}>
-      <div className="flex items-start justify-between mb-3">
-        <div className={`p-2 rounded-lg bg-${color} bg-opacity-10`}>
-          <Icon className={`w-5 h-5 text-${color}`} />
-        </div>
-        <div className="text-right">
-          <div className={`text-lg font-bold ${textPrimary}`}>{value}</div>
-          <div className={`text-xs ${textSecondary}`}>{subtitle}</div>
-        </div>
-      </div>
-      <h3 className={`text-sm font-semibold ${textPrimary}`}>{title}</h3>
-    </div>
-  );
+
 
   const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', className = '' }) => {
     const variants = {
@@ -130,30 +117,23 @@ const AssessmentMatrix = () => {
   }
 
   return (
-    <div className={`min-h-screen ${bgApp} p-6`}>
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={`min-h-screen ${bgApp} py-6`}>
+      <div className=" mx-auto space-y-6">
         
         {/* Header */}
         <header className={`${bgCard} rounded-xl p-6 shadow-lg border-2 ${borderColor}`}>
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
-              <h1 className={`text-2xl font-bold ${textPrimary} flex items-center gap-3`}>
+              <h1 className={`text-xl font-bold ${textPrimary} flex items-center gap-3`}>
                 <div className="p-2 bg-almet-sapphire bg-opacity-10 rounded-lg">
-                  <BarChart3 className="w-6 h-6 text-almet-sapphire" />
+                  <BarChart3 className="w-4 h-6 text-almet-sapphire" />
                 </div>
                 Assessment Matrix
               </h1>
-              <p className={`text-sm ${textSecondary}`}>
+              <p className={`text-xs ${textSecondary}`}>
                 Comprehensive employee competency assessment and evaluation system
               </p>
-              <div className="flex items-center gap-4 pt-2">
-                <div className="flex items-center gap-2">
-                  <Calendar className={`w-4 h-4 ${textSecondary}`} />
-                  <span className={`text-xs ${textSecondary}`}>
-                    Last updated: {new Date().toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
+            
             </div>
             
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
@@ -210,72 +190,7 @@ const AssessmentMatrix = () => {
           </div>
         </nav>
 
-        {/* Statistics Overview */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {activeView === 'behavioral' ? (
-            <>
-              <StatCard
-                title="Total Assessments"
-                value={stats.behavioral.totalAssessments}
-                subtitle="All time"
-                icon={FileText}
-                color="almet-sapphire"
-              />
-              <StatCard
-                title="Completed"
-                value={stats.behavioral.completedAssessments}
-                subtitle="This month"
-                icon={Award}
-                color="green-500"
-              />
-              <StatCard
-                title="Average Score"
-                value={`${stats.behavioral.averageScore}%`}
-                subtitle="Team average"
-                icon={TrendingUp}
-                color="blue-500"
-              />
-              <StatCard
-                title="Top Performers"
-                value={stats.behavioral.topPerformers}
-                subtitle="Above 80%"
-                icon={Users}
-                color="purple-500"
-              />
-            </>
-          ) : (
-            <>
-              <StatCard
-                title="Total Assessments"
-                value={stats.core.totalAssessments}
-                subtitle="All time"
-                icon={FileText}
-                color="almet-sapphire"
-              />
-              <StatCard
-                title="Completed"
-                value={stats.core.completedAssessments}
-                subtitle="This month"
-                icon={Award}
-                color="green-500"
-              />
-              <StatCard
-                title="Average Gap"
-                value={stats.core.averageGap}
-                subtitle="Skills gap"
-                icon={TrendingUp}
-                color="orange-500"
-              />
-              <StatCard
-                title="Skills Evaluated"
-                value={stats.core.skillsEvaluated}
-                subtitle="Unique skills"
-                icon={Target}
-                color="purple-500"
-              />
-            </>
-          )}
-        </section>
+       
 
         {/* Main Content */}
         <section className="space-y-6">

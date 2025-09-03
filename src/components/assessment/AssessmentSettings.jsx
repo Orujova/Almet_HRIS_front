@@ -285,9 +285,9 @@ const AssessmentSettings = ({ onBack }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div >
       {/* Header */}
-      <div className={`${bgCard} rounded-xl p-6 shadow-lg border-2 ${borderColor}`}>
+      <div className={`${bgCard} rounded-xl mb-6 p-6 shadow-lg border-2 ${borderColor}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <ActionButton
@@ -313,7 +313,7 @@ const AssessmentSettings = ({ onBack }) => {
       </div>
 
       {/* Section Navigation */}
-      <div className={`${bgCard} rounded-xl p-2 shadow-lg border-2 ${borderColor}`}>
+      <div className={`${bgCard} rounded-xl p-2 mb-6 shadow-lg border-2 ${borderColor}`}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <button
             onClick={() => setActiveSection('behavioral')}
@@ -783,7 +783,7 @@ const AssessmentSettings = ({ onBack }) => {
                   value={letterGradeFormData.letter_grade}
                   onChange={(e) => setLetterGradeFormData({...letterGradeFormData, letter_grade: e.target.value.toUpperCase()})}
                   placeholder="Enter grade letter (A, B, C, D, E, F)"
-                  maxLength="1"
+     
                   className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm ${
                     darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
                   } focus:border-almet-sapphire focus:outline-none`}

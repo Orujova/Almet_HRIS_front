@@ -1,14 +1,15 @@
 "use client";
-import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell } from "lucide-react";
+import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
+import { useState } from "react";
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
   return (
-    <div className={`${isHighlight ? 'bg-[#29339b]' : 'bg-white/10'} backdrop-blur-sm rounded-xl p-4 text-white`}>
+    <div className={`${isHighlight ? 'bg-[#29339b] hover:bg-[#1e2570]' : 'bg-white/10 hover:bg-white/20'} backdrop-blur-sm rounded-xl p-4 text-white transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer`}>
       <div className="flex items-center justify-between mb-2">
-        <div className={`p-1 ${isHighlight ? 'bg-white/30' : 'bg-white/20'} rounded-lg`}>
+        <div className={`p-1 ${isHighlight ? 'bg-white/30' : 'bg-white/20'} rounded-lg transition-all duration-300`}>
           {icon}
         </div>
       </div>
@@ -16,7 +17,7 @@ const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = fal
       <div className="text-xl font-bold mb-1">{value}</div>
       <p className="text-white/70 text-sm mb-4">{subtitle}</p>
       {actionText && (
-        <button className={`${isHighlight ? 'bg-white/30 hover:bg-white/40' : 'bg-white/20 hover:bg-white/30'} text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors`}>
+        <button className={`${isHighlight ? 'bg-white/30 hover:bg-white/40' : 'bg-white/20 hover:bg-white/30'} text-white text-xs font-medium px-3 py-2 rounded-lg transition-all duration-300 hover:scale-105`}>
           {actionText}
         </button>
       )}
@@ -28,10 +29,10 @@ const ActionCard = ({ icon, title, description, href }) => {
   return (
     <Link
       href={href}
-      className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-md transition-all hover:scale-[1.01]"
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1"
     >
       <div className="flex flex-col h-full">
-        <div className="text-almet-sapphire dark:text-almet-bali-hai mb-3">
+        <div className="text-almet-sapphire dark:text-almet-bali-hai mb-3 transition-all duration-300">
           {icon}
         </div>
         <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base">
@@ -47,15 +48,15 @@ const ActionCard = ({ icon, title, description, href }) => {
 
 const NewsCard = ({ tag, title, description, date, image }) => {
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow">
-      <img src={image} alt={title} className="w-full h-40 object-cover" />
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 cursor-pointer">
+      <img src={image} alt={title} className="w-full h-40 object-cover transition-transform duration-300 hover:scale-110" />
       <div className="p-4">
         <div className="bg-blue-100 dark:bg-almet-sapphire text-almet-sapphire dark:text-white text-xs rounded-full px-2 py-0.5 inline-block mb-2">{tag}</div>
         <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base mb-2">{title}</h3>
         <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mb-3 line-clamp-2">{description}</p>
         <div className="flex justify-between items-center">
           <span className="text-gray-400 dark:text-almet-waterloo text-xs">{date}</span>
-          <Link href="#" className="text-almet-sapphire dark:text-almet-bali-hai text-xs md:text-sm">
+          <Link href="#" className="text-almet-sapphire dark:text-almet-bali-hai text-xs md:text-sm hover:underline">
             Read more
           </Link>
         </div>
@@ -66,7 +67,7 @@ const NewsCard = ({ tag, title, description, date, image }) => {
 
 const EventCard = ({ icon, type, title, date, image }) => {
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow">
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300  cursor-pointer">
       <div className="flex items-center mb-3">
         <div className="h-9 w-9 rounded-full overflow-hidden mr-3">
           <img src={image} alt={type} className="h-full w-full object-cover" />
@@ -86,6 +87,7 @@ const EventCard = ({ icon, type, title, date, image }) => {
 
 export default function Home() {
   const { account } = useAuth();
+  const [isManager, setIsManager] = useState(false);
   
   return (
     <DashboardLayout>
@@ -96,17 +98,23 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-start mb-4">
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
-                {account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!"}
+                {isManager ? "Manager Dashboard" : (account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!")}
               </h1>
               <p className="text-blue-100 text-xs md:text-sm">
-                Your key stats and quick actions for the day.
+                {isManager ? "Approvals and team overview at a glance." : "Your key stats and quick actions for the day."}
               </p>
             </div>
             <div className="flex gap-2 mt-4 md:mt-0">
-              <button className="bg-white text-almet-sapphire px-4 py-2 rounded-lg font-medium text-sm">
+              <button 
+                onClick={() => setIsManager(false)}
+                className={`${!isManager ? 'bg-white text-almet-sapphire' : 'bg-white/20 border border-white/30 text-white hover:bg-white/30'} px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300`}
+              >
                 Employee
               </button>
-              <button className="bg-white/20 border border-white/30 text-white px-4 py-2 rounded-lg font-medium text-sm">
+              <button 
+                onClick={() => setIsManager(true)}
+                className={`${isManager ? 'bg-white text-almet-sapphire' : 'bg-white/20 border border-white/30 text-white hover:bg-white/30'} px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300`}
+              >
                 Manager
               </button>
             </div>
@@ -114,35 +122,71 @@ export default function Home() {
           
           {/* Key Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatsCard
-              icon={<Clock className="h-5 w-5" />}
-              title="My Leave Balance"
-              value="12"
-              subtitle="days available"
-              actionText="Request Leave"
-              isHighlight={true}
-            />
-            <StatsCard
-              icon={<CheckCircle className="h-5 w-5" />}
-              title="My Requests"
-              value="1"
-              subtitle="pending approval"
-              actionText="View All Requests"
-            />
-            <StatsCard
-              icon={<TrendingUp className="h-5 w-5" />}
-              title="Performance"
-              value="Nov 30"
-              subtitle="Next review on:"
-              actionText="View History"
-            />
-            <StatsCard
-              icon={<Bell className="h-5 w-5" />}
-              title="Info Center"
-              value="2"
-              subtitle="Latest company updates."
-              actionText="Read Company News"
-            />
+            {!isManager ? (
+              <>
+                <StatsCard
+                  icon={<Clock className="h-5 w-5" />}
+                  title="My Leave Balance"
+                  value="12"
+                  subtitle="days available"
+                  actionText="Request Leave"
+                  isHighlight={true}
+                />
+                <StatsCard
+                  icon={<CheckCircle className="h-5 w-5" />}
+                  title="My Requests"
+                  value="1"
+                  subtitle="pending approval"
+                  actionText="View All Requests"
+                />
+                <StatsCard
+                  icon={<TrendingUp className="h-5 w-5" />}
+                  title="Performance"
+                  value="Nov 30"
+                  subtitle="Next review on:"
+                  actionText="View History"
+                />
+                <StatsCard
+                  icon={<Bell className="h-5 w-5" />}
+                  title="Info Center"
+                  value="2"
+                  subtitle="Latest company updates."
+                  actionText="Read Company News"
+                />
+              </>
+            ) : (
+              <>
+                <StatsCard
+                  icon={<UserCheck className="h-5 w-5" />}
+                  title="Team Approvals"
+                  value="5"
+                  subtitle="requests awaiting action"
+                  actionText="Manage Requests"
+                  isHighlight={true}
+                />
+                <StatsCard
+                  icon={<Users className="h-5 w-5" />}
+                  title="Team Status"
+                  value="3 members"
+                  subtitle="out of office today"
+                  actionText="View Team Calendar"
+                />
+                <StatsCard
+                  icon={<MapPin className="h-5 w-5" />}
+                  title="Open Positions"
+                  value="1"
+                  subtitle="in the Marketing department"
+                  actionText="Review Candidates"
+                />
+                <StatsCard
+                  icon={<FileText className="h-5 w-5" />}
+                  title="Quick Reports"
+                  value="Generate"
+                  subtitle="one-click reports for your team"
+                  actionText="Go To Reports"
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -183,7 +227,7 @@ export default function Home() {
           </h2>
           <Link 
             href="#" 
-            className="text-almet-sapphire dark:text-almet-bali-hai flex items-center text-xs md:text-sm"
+            className="text-almet-sapphire dark:text-almet-bali-hai flex items-center text-xs md:text-sm hover:underline transition-all duration-300"
           >
             View All
             <svg 

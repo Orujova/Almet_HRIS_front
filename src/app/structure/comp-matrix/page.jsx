@@ -545,9 +545,9 @@ const CompetencyMatrixSystem = () => {
   return (
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} p-6`}>
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="max-w-7xl mx-auto ">
           {/* Header */}
-          <header className={`${bgCard} rounded-lg p-4 shadow-md border ${borderColor}`}>
+          <header className={`${bgCard} rounded-lg p-4 mb-6 shadow-md border ${borderColor}`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
               <div className="space-y-1">
                 <h1 className={`text-xl font-bold ${textPrimary} flex items-center gap-2`}>
@@ -572,7 +572,7 @@ const CompetencyMatrixSystem = () => {
           </header>
 
           {/* Navigation Tabs */}
-          <nav className={`${bgCard} rounded-lg p-1.5 shadow-md border ${borderColor}`}>
+          <nav className={`${bgCard} rounded-lg mb-6 p-1.5 shadow-md border ${borderColor}`}>
             <div className="flex space-x-1">
               {[
                 { id: 'skills', name: 'Skills', icon: Target },
@@ -597,7 +597,7 @@ const CompetencyMatrixSystem = () => {
 
           {/* Search and Filter */}
           {activeView !== 'matrix' && (
-            <section className={`${bgCard} rounded-lg p-4 shadow-md border ${borderColor}`}>
+            <section className={`${bgCard} rounded-lg p-4 mb-6 shadow-md border ${borderColor}`}>
               <div className="flex flex-col lg:flex-row gap-3">
                 <div className="flex-1 relative">
                   <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textSecondary} pointer-events-none`} size={16} />
@@ -643,7 +643,7 @@ const CompetencyMatrixSystem = () => {
           )}
 
           {/* Content */}
-          <section className={`${activeView === 'matrix' ? '' : bgCard + ' border ' + borderColor + ' shadow-md'} rounded-lg overflow-hidden`}>
+          <section className={`${activeView === 'matrix' ? '' : bgCard + ' border ' + borderColor + ' shadow-md'} rounded-lg mb-6 overflow-hidden`}>
             {activeView === 'matrix' ? (
               <AssessmentMatrix />
             ) : (
@@ -879,20 +879,7 @@ const CompetencyMatrixSystem = () => {
                     required
                   />
                   
-                  <div>
-                    <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-                      Description (optional)
-                    </label>
-                    <textarea
-                      value={newItem.description}
-                      onChange={(e) => setNewItem({ ...newItem, description: e.target.value })}
-                      className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm font-medium resize-none ${
-                        darkMode ? 'bg-almet-cloud-burst text-white border-almet-comet' : 'bg-white text-almet-cloud-burst'
-                      } focus:outline-none focus:border-almet-sapphire transition-all duration-200`}
-                      rows="3"
-                      placeholder={`Enter ${activeView === 'skills' ? 'skill' : 'competency'} description (optional)`}
-                    />
-                  </div>
+                
                 </div>
                 
                 <div className="flex justify-end gap-3 mt-6 pt-4 border-t-2 border-gray-200">
