@@ -1,14 +1,99 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Plus, Target, Search, Filter, Eye, Edit, Trash2, 
-  Download, FileText, Calendar, Award, AlertCircle, CheckCircle,
-  Loader2, X, Save, ChevronDown, ChevronRight, User, Building,
-  TrendingUp, TrendingDown, Minus, Info
+  Plus, Target, Search, Eye, Edit, Trash2, 
+  Download, Calendar, Award, AlertCircle, CheckCircle,
+  Loader2, X, Save, ChevronDown, User, Building,
+  TrendingUp, TrendingDown, Minus, Info, Send, RotateCcw
 } from 'lucide-react';
 import { assessmentApi } from '@/services/assessmentApi';
 import { competencyApi } from '@/services/competencyApi';
+import SuccessToast from './SuccessToast';
+import ErrorToast from './ErrorToast';
+import SearchableDropdown from './SearchableDropdown';
+import StatusBadge from './StatusBadge';
+const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', loading = false, disabled = false, size = 'sm' }) => {
+  const variants = {
+    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    secondary: 'bg-gray-600 hover:bg-gray-700 text-white',
+    success: 'bg-green-500 hover:bg-green-600 text-white',
+    danger: 'bg-red-500 hover:bg-red-600 text-white',
+    warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
+    outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white',
+    info: 'bg-blue-500 hover:bg-blue-600 text-white'
+  };
 
+  const sizes = {
+    xs: 'px-2 py-1 text-xs',
+    sm: 'px-3 py-1.5 text-xs',
+    md: 'px-4 py-2 text-sm'
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled || loading}
+      className={`
+        flex items-center gap-2 rounded-lg font-medium
+        transition-all duration-200 hover:shadow-md ${variants[variant]} ${sizes[size]}
+        ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''}
+      `}
+    >
+      {loading ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
+      {label}
+    </button>
+  );
+};
+
+
+
+const GapIndicator = ({ gap }) => {
+  if (gap > 0) {
+    return (
+      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
+        <TrendingUp size={12} />
+        +{gap}
+      </span>
+    );
+  } else if (gap < 0) {
+    return (
+      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
+        <TrendingDown size={12} />
+        {gap}
+      </span>
+    );
+  } else {
+    return (
+      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
+        <Minus size={12} />
+        0
+      </span>
+    );
+  }
+};
+
+const CompletionIndicator = ({ percentage }) => {
+  const numPercentage = parseFloat(percentage) || 0;
+  let colorClass = 'bg-red-100 text-red-800 border-red-200';
+  
+  if (numPercentage >= 100) {
+    colorClass = 'bg-green-100 text-green-800 border-green-200';
+  } else if (numPercentage >= 80) {
+    colorClass = 'bg-blue-100 text-blue-800 border-blue-200';
+  } else if (numPercentage >= 60) {
+    colorClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+  }
+
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-bold border ${colorClass}`}>
+      {numPercentage.toFixed(0)}%
+    </span>
+  );
+};
+
+
+
+// Main Component
 const CoreEmployeeCalculation = () => {
   // States
   const [activeTab, setActiveTab] = useState('employee');
@@ -22,9 +107,11 @@ const CoreEmployeeCalculation = () => {
   // Modal states
   const [showCreatePositionModal, setShowCreatePositionModal] = useState(false);
   const [showCreateEmployeeModal, setShowCreateEmployeeModal] = useState(false);
+  const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCoreScalesInfo, setShowCoreScalesInfo] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
+  const [editingAssessment, setEditingAssessment] = useState(null);
   
   // Data states
   const [positionAssessments, setPositionAssessments] = useState([]);
@@ -45,137 +132,12 @@ const CoreEmployeeCalculation = () => {
   const [employeeFormData, setEmployeeFormData] = useState({
     employee: '',
     position_assessment: '',
-    assessment_date: new Date().toISOString().split('T')[0],
     notes: '',
     competency_ratings: []
   });
 
-  // SearchableDropdown Component
-  const SearchableDropdown = ({ 
-    options, 
-    value, 
-    onChange, 
-    placeholder, 
-    displayKey = 'name', 
-    valueKey = 'id',
-    disabled = false 
-  }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchValue, setSearchValue] = useState('');
-    
-    const filteredOptions = options.filter(option =>
-      option[displayKey]?.toLowerCase().includes(searchValue.toLowerCase())
-    );
-    
-    const selectedOption = options.find(opt => opt[valueKey] === value);
-    
-    return (
-      <div className="relative">
-        <button
-          onClick={() => !disabled && setIsOpen(!isOpen)}
-          disabled={disabled}
-          className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-left flex items-center justify-between ${
-            disabled ? 'bg-gray-100 cursor-not-allowed' : 'bg-white hover:border-blue-500'
-          } focus:border-blue-500 focus:outline-none`}
-        >
-          <span className={selectedOption ? 'text-gray-900' : 'text-gray-500'}>
-            {selectedOption ? selectedOption[displayKey] : placeholder}
-          </span>
-          <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-            <div className="p-2">
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div className="max-h-40 overflow-y-auto">
-              {filteredOptions.length > 0 ? (
-                filteredOptions.map((option) => (
-                  <button
-                    key={option[valueKey]}
-                    onClick={() => {
-                      onChange(option[valueKey]);
-                      setIsOpen(false);
-                      setSearchValue('');
-                    }}
-                    className="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
-                  >
-                    {option[displayKey]}
-                  </button>
-                ))
-              ) : (
-                <div className="px-4 py-2 text-gray-500 text-sm">No options found</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Job Title Dropdown (for string values)
-  const JobTitleDropdown = ({ value, onChange, placeholder }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const [searchValue, setSearchValue] = useState('');
-    
-    const filteredTitles = jobTitles.filter(title =>
-      title?.toLowerCase().includes(searchValue.toLowerCase())
-    );
-    
-    return (
-      <div className="relative">
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-left flex items-center justify-between bg-white hover:border-blue-500 focus:border-blue-500 focus:outline-none"
-        >
-          <span className={value ? 'text-gray-900' : 'text-gray-500'}>
-            {value || placeholder}
-          </span>
-          <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        
-        {isOpen && (
-          <div className="absolute z-10 w-full mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-            <div className="p-2">
-              <input
-                type="text"
-                placeholder="Search job titles..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div className="max-h-40 overflow-y-auto">
-              {filteredTitles.length > 0 ? (
-                filteredTitles.map((title, index) => (
-                  <button
-                    key={index}
-                    onClick={() => {
-                      onChange(title);
-                      setIsOpen(false);
-                      setSearchValue('');
-                    }}
-                    className="w-full px-4 py-2 text-left hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
-                  >
-                    {title}
-                  </button>
-                ))
-              ) : (
-                <div className="px-4 py-2 text-gray-500 text-sm">No job titles found</div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  // Selected employee info state
+  const [selectedEmployeeInfo, setSelectedEmployeeInfo] = useState(null);
 
   // Fetch all data
   const fetchData = async () => {
@@ -204,7 +166,13 @@ const CoreEmployeeCalculation = () => {
       setEmployees(employeesRes.results || []);
       setPositionGroups(positionGroupsRes.results || []);
       setCoreScales(coreScalesRes.results || []);
-      setSkillGroups(skillGroupsRes.results || []);
+      
+      // Fetch detailed skill groups with skills
+      const skillGroupsList = skillGroupsRes.results || [];
+      const skillGroupsDetails = await Promise.all(
+        skillGroupsList.map(group => competencyApi.skillGroups.getById(group.id))
+      );
+      setSkillGroups(skillGroupsDetails);
       
       // Extract unique job titles from employees
       const uniqueJobTitles = [...new Set(employeesRes.results?.map(emp => emp.job_title).filter(Boolean))];
@@ -224,135 +192,44 @@ const CoreEmployeeCalculation = () => {
 
   // Auto-select position assessment based on employee
   const handleEmployeeChange = async (employeeId) => {
-    setEmployeeFormData({...employeeFormData, employee: employeeId});
-    
-    // Find selected employee
     const selectedEmployee = employees.find(e => e.id === employeeId);
     if (!selectedEmployee) return;
     
-    // Try to find matching position assessment by job title and position group
-    let matchingPosition = positionAssessments.find(p => 
-      p.job_title?.toLowerCase() === selectedEmployee.job_title?.toLowerCase()
-    );
-    
-    // If no exact job title match, try to get position assessment for this employee from API
-    if (!matchingPosition) {
-      try {
-        const response = await assessmentApi.positionCore.getForEmployee(employeeId);
-        if (response.assessment_template) {
-          matchingPosition = response.assessment_template;
-        }
-      } catch (err) {
-        console.error('Error fetching employee position template:', err);
-      }
+    // Check if this employee already has an assessment
+    const existingAssessment = employeeAssessments.find(a => a.employee === employeeId);
+    if (existingAssessment) {
+      setError({ message: `Employee ${selectedEmployee.name} already has an assessment. Each employee can only have one assessment.` });
+      return;
     }
     
-    if (matchingPosition) {
-      setEmployeeFormData(prev => ({
-        ...prev, 
-        employee: employeeId,
-        position_assessment: matchingPosition.id
-      }));
-    } else {
+    setSelectedEmployeeInfo(selectedEmployee);
+    setEmployeeFormData(prev => ({...prev, employee: employeeId}));
+    
+    // Try to get position assessment for this employee from API
+    try {
+      const response = await assessmentApi.positionCore.getForEmployee(employeeId);
+      if (response.assessment_template) {
+        setEmployeeFormData(prev => ({
+          ...prev, 
+          employee: employeeId,
+          position_assessment: response.assessment_template.id
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching employee position template:', err);
+      // Show error toast if no template found
+      if (err.response?.data?.error) {
+        setError({ message: err.response.data.error });
+      } else {
+        setError({ message: `No core assessment template found for ${selectedEmployee.job_title}` });
+      }
+      
       setEmployeeFormData(prev => ({
         ...prev, 
         employee: employeeId,
         position_assessment: ''
       }));
     }
-  };
-
-  // Helper components
-  const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', loading = false, disabled = false, size = 'sm' }) => {
-    const variants = {
-      primary: 'bg-blue-600 hover:bg-blue-700 text-white',
-      secondary: 'bg-gray-600 hover:bg-gray-700 text-white',
-      success: 'bg-green-500 hover:bg-green-600 text-white',
-      danger: 'bg-red-500 hover:bg-red-600 text-white',
-      warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
-      outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white',
-      info: 'bg-blue-500 hover:bg-blue-600 text-white'
-    };
-
-    const sizes = {
-      xs: 'px-2 py-1 text-xs',
-      sm: 'px-3 py-1.5 text-xs',
-      md: 'px-4 py-2 text-sm'
-    };
-
-    return (
-      <button
-        onClick={onClick}
-        disabled={disabled || loading}
-        className={`
-          flex items-center gap-2 rounded-lg font-medium
-          transition-all duration-200 hover:shadow-md ${variants[variant]} ${sizes[size]}
-          ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
-      >
-        {loading ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
-        {label}
-      </button>
-    );
-  };
-
-  const StatusBadge = ({ status }) => {
-    const statusConfig = {
-      'DRAFT': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Draft' },
-      'COMPLETED': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Completed' }
-    };
-
-    const config = statusConfig[status] || statusConfig['DRAFT'];
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
-        {config.label}
-      </span>
-    );
-  };
-
-  const GapIndicator = ({ gap }) => {
-    if (gap > 0) {
-      return (
-        <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
-          <TrendingUp size={12} />
-          +{gap}
-        </span>
-      );
-    } else if (gap < 0) {
-      return (
-        <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-200">
-          <TrendingDown size={12} />
-          {gap}
-        </span>
-      );
-    } else {
-      return (
-        <span className="flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200">
-          <Minus size={12} />
-          0
-        </span>
-      );
-    }
-  };
-
-  const CompletionIndicator = ({ percentage }) => {
-    const numPercentage = parseFloat(percentage) || 0;
-    let colorClass = 'bg-red-100 text-red-800 border-red-200';
-    
-    if (numPercentage >= 100) {
-      colorClass = 'bg-green-100 text-green-800 border-green-200';
-    } else if (numPercentage >= 80) {
-      colorClass = 'bg-blue-100 text-blue-800 border-blue-200';
-    } else if (numPercentage >= 60) {
-      colorClass = 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    }
-
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-bold border ${colorClass}`}>
-        {numPercentage.toFixed(0)}%
-      </span>
-    );
   };
 
   // Handle position assessment creation
@@ -377,10 +254,79 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle employee assessment creation
-  const handleCreateEmployeeAssessment = async () => {
-    if (!employeeFormData.employee || !employeeFormData.position_assessment) {
-      setError({ message: 'Please select employee and position assessment' });
+  // Handle edit assessment
+  const handleEditAssessment = async (assessment) => {
+    try {
+      // Fetch full assessment details
+      const fullAssessment = await assessmentApi.employeeCore.getById(assessment.id);
+      setEditingAssessment(fullAssessment);
+      
+      // Find the employee info
+      const employeeInfo = employees.find(e => e.id === fullAssessment.employee);
+      setSelectedEmployeeInfo(employeeInfo);
+      
+      // Set form data for editing
+      setEmployeeFormData({
+        employee: fullAssessment.employee,
+        position_assessment: fullAssessment.position_assessment,
+        notes: fullAssessment.notes || '',
+        competency_ratings: fullAssessment.competency_ratings?.map(rating => ({
+          skill_id: rating.skill,
+          actual_level: rating.actual_level,
+          notes: rating.notes || ''
+        })) || []
+      });
+      
+      setShowEditEmployeeModal(true);
+    } catch (err) {
+      console.error('Error loading assessment for edit:', err);
+      setError(err);
+    }
+  };
+
+  // Handle update assessment
+  const handleUpdateAssessment = async (actionType = 'save_draft') => {
+    if (!editingAssessment) return;
+
+    setIsSubmitting(true);
+    try {
+      const data = {
+        ...employeeFormData,
+        action_type: 'save_draft' // Always save as draft first
+      };
+      
+      // Update the assessment
+      await assessmentApi.employeeCore.update(editingAssessment.id, data);
+      
+      // If action is submit, then submit the updated assessment
+      if (actionType === 'submit') {
+        await assessmentApi.employeeCore.submit(editingAssessment.id, {});
+      }
+      
+      await fetchData();
+      setShowEditEmployeeModal(false);
+      setEditingAssessment(null);
+      setEmployeeFormData({
+        employee: '',
+        position_assessment: '',
+        notes: '',
+        competency_ratings: []
+      });
+      setSelectedEmployeeInfo(null);
+      const actionMessage = actionType === 'save_draft' ? 'Assessment updated successfully' : 'Assessment updated and submitted successfully';
+      setSuccessMessage(actionMessage);
+    } catch (err) {
+      console.error('Error updating assessment:', err);
+      setError(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle employee assessment creation and actions
+  const handleEmployeeAssessmentAction = async (actionType = 'save_draft') => {
+    if (!employeeFormData.employee) {
+      setError({ message: 'Please select employee' });
       return;
     }
 
@@ -388,24 +334,57 @@ const CoreEmployeeCalculation = () => {
     try {
       const data = {
         ...employeeFormData,
-        action_type: 'save_draft'
+        action_type: 'save_draft' // Always save as draft first to get ID
       };
-      await assessmentApi.employeeCore.create(data);
+      
+      // First create as draft
+      const response = await assessmentApi.employeeCore.create(data);
+      
+      // If action is submit, then submit the created assessment
+      if (actionType === 'submit' && response.id) {
+        await assessmentApi.employeeCore.submit(response.id, {});
+      }
+      
       await fetchData();
       setShowCreateEmployeeModal(false);
       setEmployeeFormData({
         employee: '',
         position_assessment: '',
-        assessment_date: new Date().toISOString().split('T')[0],
         notes: '',
         competency_ratings: []
       });
-      setSuccessMessage('Employee assessment created successfully');
+      setSelectedEmployeeInfo(null);
+      const actionMessage = actionType === 'save_draft' ? 'Employee assessment saved as draft' : 'Employee assessment submitted successfully';
+      setSuccessMessage(actionMessage);
     } catch (err) {
-      console.error('Error creating employee assessment:', err);
+      console.error('Error with employee assessment:', err);
       setError(err);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handle submit assessment
+  const handleSubmitAssessment = async (id) => {
+    try {
+      await assessmentApi.employeeCore.submit(id, {});
+      await fetchData();
+      setSuccessMessage('Assessment submitted successfully');
+    } catch (err) {
+      console.error('Error submitting assessment:', err);
+      setError(err);
+    }
+  };
+
+  // Handle reopen assessment
+  const handleReopenAssessment = async (id) => {
+    try {
+      await assessmentApi.employeeCore.reopen(id, {});
+      await fetchData();
+      setSuccessMessage('Assessment reopened for editing');
+    } catch (err) {
+      console.error('Error reopening assessment:', err);
+      setError(err);
     }
   };
 
@@ -451,29 +430,6 @@ const CoreEmployeeCalculation = () => {
      assessment.position_assessment_title?.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (selectedStatus === '' || assessment.status === selectedStatus)
   );
-
-  // Success Toast
-  const SuccessToast = ({ message, onClose }) => {
-    useEffect(() => {
-      const timer = setTimeout(onClose, 3000);
-      return () => clearTimeout(timer);
-    }, [onClose]);
-
-    return (
-      <div className="fixed bottom-6 right-6 bg-green-50 border-2 border-green-200 rounded-xl p-4 shadow-2xl z-50 max-w-sm">
-        <div className="flex items-start gap-3">
-          <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-          <div className="flex-1">
-            <h4 className="text-green-800 font-bold text-sm">Success!</h4>
-            <p className="text-green-700 text-sm mt-1">{message}</p>
-          </div>
-          <button onClick={onClose} className="text-green-600 hover:text-green-800">
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -674,6 +630,33 @@ const CoreEmployeeCalculation = () => {
                               variant="outline"
                               size="xs"
                             />
+                            {assessment.status === 'DRAFT' && (
+                              <>
+                                <ActionButton
+                                  onClick={() => handleEditAssessment(assessment)}
+                                  icon={Edit}
+                                  label="Edit"
+                                  variant="info"
+                                  size="xs"
+                                />
+                                <ActionButton
+                                  onClick={() => handleSubmitAssessment(assessment.id)}
+                                  icon={Send}
+                                  label="Submit"
+                                  variant="success"
+                                  size="xs"
+                                />
+                              </>
+                            )}
+                            {assessment.status === 'COMPLETED' && (
+                              <ActionButton
+                                onClick={() => handleReopenAssessment(assessment.id)}
+                                icon={RotateCcw}
+                                label="Reopen"
+                                variant="warning"
+                                size="xs"
+                              />
+                            )}
                             <ActionButton
                               onClick={() => handleExport(assessment.id, 'employee')}
                               icon={Download}
@@ -708,10 +691,262 @@ const CoreEmployeeCalculation = () => {
         </div>
       )}
 
+      {/* View Assessment Modal */}
+      {showViewModal && selectedAssessment && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-6xl border-2 border-gray-200 shadow-2xl max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                {activeTab === 'position' ? (
+                  <>
+                    <Building className="w-5 h-5 text-blue-600" />
+                    Position Assessment Template Details
+                  </>
+                ) : (
+                  <>
+                    <User className="w-5 h-5 text-blue-600" />
+                    Employee Assessment Details
+                  </>
+                )}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedAssessment(null);
+                }}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {activeTab === 'position' ? (
+              /* Position Assessment View */
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position Group</label>
+                    <div className="text-gray-900 font-medium">{selectedAssessment.position_group_name}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+                    <div className="text-gray-900 font-medium">{selectedAssessment.job_title}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+                    <div className="text-gray-900">{selectedAssessment.created_by_name}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
+                    <div className="text-gray-900">{new Date(selectedAssessment.created_at).toLocaleDateString()}</div>
+                  </div>
+                </div>
+
+                {/* Competency Requirements */}
+                <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-blue-900 text-white p-3">
+                    <h4 className="font-bold text-center">Required Competency Levels</h4>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b">
+                          <th className="text-left px-4 py-3 font-semibold text-gray-900">Skill Group</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-900">Skill Name</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-900">Required Level</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedAssessment.competency_ratings?.length > 0 ? (
+                          selectedAssessment.competency_ratings.map((rating, index) => (
+                            <tr key={index} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-3 text-gray-600">{rating.skill_group_name}</td>
+                              <td className="px-4 py-3 text-gray-900 font-medium">{rating.skill_name}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-bold">
+                                  {rating.required_level}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="text-center py-8 text-gray-500">
+                              No competency requirements defined
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Employee Assessment View */
+              <div className="space-y-6">
+                {/* Employee Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                    <div className="text-gray-900 font-medium">{selectedAssessment.employee_name}</div>
+                    <div className="text-xs text-gray-500">ID: {selectedAssessment.employee_id}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                    <div className="text-gray-900 font-medium">{selectedAssessment.position_assessment_title}</div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                    <StatusBadge status={selectedAssessment.status} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Assessment Date</label>
+                    <div className="text-gray-900">{new Date(selectedAssessment.assessment_date).toLocaleDateString()}</div>
+                  </div>
+                
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Gap Score</label>
+                    <GapIndicator gap={selectedAssessment.gap_score || 0} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Completion</label>
+                    <CompletionIndicator percentage={selectedAssessment.completion_percentage} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Total Scores</label>
+                    <div className="text-sm text-gray-600">
+                      Employee: {selectedAssessment.total_employee_score} | Position: {selectedAssessment.total_position_score}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {selectedAssessment.notes && (
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Assessment Notes</label>
+                    <p className="text-gray-900">{selectedAssessment.notes}</p>
+                  </div>
+                )}
+
+                {/* Gap Analysis Summary */}
+                {selectedAssessment.gap_analysis && Object.keys(selectedAssessment.gap_analysis).length > 0 && (
+                  <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-green-600 text-white p-3">
+                      <h4 className="font-bold text-center">Gap Analysis Summary</h4>
+                    </div>
+                    <div className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(selectedAssessment.gap_analysis).map(([groupName, analysis]) => (
+                          <div key={groupName} className="bg-gray-50 rounded-lg p-3 border">
+                            <h5 className="font-semibold text-gray-900 mb-2">{groupName}</h5>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span>Total Skills:</span>
+                                <span className="font-medium">{analysis.skills_count}</span>
+                              </div>
+                              <div className="flex justify-between text-green-600">
+                                <span>Exceeds:</span>
+                                <span className="font-medium">{analysis.exceeds_count}</span>
+                              </div>
+                              <div className="flex justify-between text-blue-600">
+                                <span>Meets:</span>
+                                <span className="font-medium">{analysis.meets_count}</span>
+                              </div>
+                              <div className="flex justify-between text-red-600">
+                                <span>Below:</span>
+                                <span className="font-medium">{analysis.below_count}</span>
+                              </div>
+                              <div className="flex justify-between border-t pt-1 mt-2">
+                                <span>Total Gap:</span>
+                                <GapIndicator gap={analysis.total_gap} />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Competency Ratings Details */}
+                <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                  <div className="bg-blue-900 text-white p-3">
+                    <h4 className="font-bold text-center">Detailed Assessment Results</h4>
+                  </div>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-gray-50 border-b">
+                          <th className="text-left px-4 py-3 font-semibold text-gray-900">Skill Group</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-900">Skill Name</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-900">Required</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-900">Actual</th>
+                          <th className="text-center px-4 py-3 font-semibold text-gray-900">Gap</th>
+                          <th className="text-left px-4 py-3 font-semibold text-gray-900">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedAssessment.competency_ratings?.length > 0 ? (
+                          selectedAssessment.competency_ratings.map((rating, index) => (
+                            <tr key={index} className="border-b hover:bg-gray-50">
+                              <td className="px-4 py-3 text-gray-600">{rating.skill_group_name}</td>
+                              <td className="px-4 py-3 text-gray-900 font-medium">{rating.skill_name}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="bg-blue-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                  {rating.required_level}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="bg-gray-600 text-white px-2 py-1 rounded-full text-xs font-bold">
+                                  {rating.actual_level}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <GapIndicator gap={rating.gap} />
+                              </td>
+                              <td className="px-4 py-3 text-gray-600 text-sm">
+                                {rating.notes || '-'}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="text-center py-8 text-gray-500">
+                              No assessment data available
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Close Button */}
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-200">
+              <ActionButton
+                onClick={() => {
+                  setShowViewModal(false);
+                  setSelectedAssessment(null);
+                }}
+                icon={X}
+                label="Close"
+                variant="outline"
+                size="md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Create Position Assessment Modal */}
       {showCreatePositionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-6xl border-2 border-gray-200 shadow-2xl max-h-[95vh] overflow-y-auto">
+          <div className="bg-white rounded-xl p-6 w-full max-w-5xl border-2 border-gray-200 shadow-2xl max-h-[95vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
                 <Building className="w-5 h-5 text-blue-600" />
@@ -731,25 +966,29 @@ const CoreEmployeeCalculation = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Position Group <span className="text-red-500">*</span>
                 </label>
-                <SearchableDropdown
-                  options={positionGroups}
-                  value={positionFormData.position_group}
-                  onChange={(value) => setPositionFormData({...positionFormData, position_group: value})}
-                  placeholder="Select Position Group"
-                  displayKey="name"
-                  valueKey="id"
-                />
+           <SearchableDropdown
+  options={positionGroups}
+  value={positionFormData.position_group}
+  onChange={(value) => setPositionFormData({...positionFormData, position_group: value})}
+  placeholder="Select Position Group"
+  displayKey="name"
+  valueKey="id"
+  searchPlaceholder="Search position groups..."
+/>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Job Title <span className="text-red-500">*</span>
                 </label>
-                <JobTitleDropdown
-                  value={positionFormData.job_title}
-                  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
-                  placeholder="Select Job Title"
-                />
+               <SearchableDropdown
+  options={jobTitles}
+  value={positionFormData.job_title}
+  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
+  placeholder="Select Job Title"
+  allowStringOptions={true}
+  searchPlaceholder="Search job titles..."
+/>
               </div>
             </div>
 
@@ -764,44 +1003,39 @@ const CoreEmployeeCalculation = () => {
               />
             </div>
 
-            {/* Skills Matrix Table */}
+            {/* Skills Assessment Matrix */}
             <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
               <div className="bg-blue-900 text-white p-3">
-                <h4 className="font-bold text-center">Core Competency Assessment Matrix</h4>
+                <h4 className="font-bold text-center">Skills Assessment Matrix</h4>
+                <p className="text-center text-sm opacity-90 mt-1">Select required skill levels for this position</p>
               </div>
               
-              {/* Table Header */}
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="bg-gray-100 border-b">
-                      <th className="px-4 py-3 text-left font-semibold text-gray-900 min-w-48">
-                        LIST OF SKILLS / ASSESSMENT SCALE
-                      </th>
-                      <th className="px-4 py-3 text-center font-semibold text-gray-900 min-w-32">
-                        POSITION ASSESSMENT
-                      </th>
-                      <th className="px-4 py-3 text-left font-semibold text-gray-900 min-w-64">
-                        DESCRIPTION
-                      </th>
+                    <tr className="bg-gray-50 border-b-2 border-gray-200">
+                      <th className="px-4 py-3 text-left font-semibold text-gray-900">Skill Name</th>
+                      <th className="px-4 py-3 text-center font-semibold text-gray-900 min-w-32">Required Level</th>
                     </tr>
                   </thead>
-                  
-                  {/* Skills by Groups */}
                   <tbody>
                     {skillGroups.length > 0 ? skillGroups.map(group => (
                       <React.Fragment key={group.id}>
                         <tr className="bg-blue-900 text-white">
-                          <td colSpan="3" className="px-4 py-2 font-bold text-center uppercase">
+                          <td colSpan="2" className="px-4 py-2 font-bold text-center uppercase text-sm">
                             {group.name}
                           </td>
                         </tr>
                         
-                        {/* Group skills */}
                         {group.skills && group.skills.length > 0 ? group.skills.map(skill => (
                           <tr key={skill.id} className="border-b hover:bg-gray-50">
-                            <td className="px-4 py-3 font-medium text-gray-900">
-                              {skill.name}
+                            <td className="px-4 py-3">
+                              <div>
+                                <div className="font-medium text-gray-900">{skill.name}</div>
+                                {skill.description && (
+                                  <div className="text-sm text-gray-600 mt-1">{skill.description}</div>
+                                )}
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-center">
                               <select
@@ -825,7 +1059,7 @@ const CoreEmployeeCalculation = () => {
                                   
                                   setPositionFormData({...positionFormData, competency_ratings: newRatings});
                                 }}
-                                className="w-full px-2 py-1 border border-gray-300 rounded text-center focus:border-blue-500 focus:outline-none"
+                                className="w-full max-w-24 px-3 py-2 border border-gray-300 rounded-lg text-center focus:border-blue-500 focus:outline-none font-semibold"
                               >
                                 <option value="">-</option>
                                 {coreScales.map(scale => (
@@ -833,25 +1067,22 @@ const CoreEmployeeCalculation = () => {
                                 ))}
                               </select>
                             </td>
-                            <td className="px-4 py-3 text-sm text-gray-600">
-                              {skill.description || 'No description available'}
-                            </td>
                           </tr>
                         )) : (
                           <tr>
-                            <td colSpan="3" className="px-4 py-3 text-center text-gray-500 text-sm">
-                              No skills found for this group
+                            <td colSpan="2" className="px-4 py-3 text-center text-gray-500 text-sm italic">
+                              No skills found in this group
                             </td>
                           </tr>
                         )}
                       </React.Fragment>
                     )) : (
                       <tr>
-                        <td colSpan="3" className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan="2" className="px-4 py-8 text-center text-gray-500">
                           <div className="flex flex-col items-center">
                             <AlertCircle className="w-8 h-8 mb-2 text-gray-400" />
                             <p className="font-medium">No skill groups available</p>
-                            <p className="text-sm">Please configure skill groups first</p>
+                            <p className="text-sm mt-1">Please configure skill groups first</p>
                           </div>
                         </td>
                       </tr>
@@ -859,6 +1090,23 @@ const CoreEmployeeCalculation = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Selected Skills Summary */}
+              {positionFormData.competency_ratings.length > 0 && (
+                <div className="bg-blue-50 border-t-2 border-gray-200 p-4">
+                  <h5 className="font-semibold text-gray-900 mb-2">Selected Skills ({positionFormData.competency_ratings.length})</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {positionFormData.competency_ratings.map(rating => {
+                      const skill = skillGroups.flatMap(g => g.skills || []).find(s => s.id === rating.skill_id);
+                      return skill ? (
+                        <div key={skill.id} className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                          {skill.name}: Level {rating.required_level}
+                        </div>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Action Buttons */}
@@ -887,7 +1135,7 @@ const CoreEmployeeCalculation = () => {
 
       {/* Core Scales Information Modal */}
       {showCoreScalesInfo && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl p-6 w-full max-w-4xl border-2 border-gray-200 shadow-2xl max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
@@ -961,14 +1209,17 @@ const CoreEmployeeCalculation = () => {
       {/* Create Employee Assessment Modal */}
       {showCreateEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-7xl border-2 border-gray-200 shadow-2xl max-h-[95vh] overflow-y-auto">
+          <div className="bg-white rounded-xl p-6 w-full max-w-6xl border-2 border-gray-200 shadow-2xl max-h-[95vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
                 <User className="w-5 h-5 text-blue-600" />
                 Create Employee Core Competency Assessment
               </h3>
               <button
-                onClick={() => setShowCreateEmployeeModal(false)}
+                onClick={() => {
+                  setShowCreateEmployeeModal(false);
+                  setSelectedEmployeeInfo(null);
+                }}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 <X size={20} />
@@ -976,59 +1227,52 @@ const CoreEmployeeCalculation = () => {
             </div>
             
             {/* Employee Selection */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg border">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Employee <span className="text-red-500">*</span>
-                </label>
-                <SearchableDropdown
-                  options={employees}
-                  value={employeeFormData.employee}
-                  onChange={handleEmployeeChange}
-                  placeholder="Select Employee"
-                  displayKey="name"
-                  valueKey="id"
-                />
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee <span className="text-red-500">*</span>
+                  </label>
+                  <SearchableDropdown
+  options={employees}
+  value={employeeFormData.employee}
+  onChange={handleEmployeeChange}
+  placeholder="Select Employee"
+  displayKey="name"
+  valueKey="id"
+  searchPlaceholder="Search employees..."
+/>
+                </div>
+                
+              
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Position Template <span className="text-red-500">*</span>
-                </label>
-                <SearchableDropdown
-                  options={positionAssessments}
-                  value={employeeFormData.position_assessment}
-                  onChange={(value) => setEmployeeFormData({...employeeFormData, position_assessment: value})}
-                  placeholder="Select Position Template"
-                  displayKey="job_title"
-                  valueKey="id"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assessment Date
-                </label>
-                <input
-                  type="date"
-                  value={employeeFormData.assessment_date}
-                  onChange={(e) => setEmployeeFormData({...employeeFormData, assessment_date: e.target.value})}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm bg-white focus:border-blue-500 focus:outline-none"
-                />
-              </div>
-              
-              <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assessment Notes
-                </label>
-                <textarea
-                  value={employeeFormData.notes}
-                  onChange={(e) => setEmployeeFormData({...employeeFormData, notes: e.target.value})}
-                  placeholder="Enter assessment notes and observations..."
-                  rows="3"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm resize-none bg-white focus:border-blue-500 focus:outline-none"
-                />
-              </div>
+              {/* Employee Info Display */}
+              {selectedEmployeeInfo && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-blue-900">Employee:</span>
+                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.name}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-blue-900">Job Title:</span>
+                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.job_title}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Core Scales Information Button */}
+            <div className="mb-4 flex justify-center">
+              <ActionButton
+                onClick={() => setShowCoreScalesInfo(true)}
+                icon={Info}
+                label="View Core Competency Assessment Scale Information"
+                variant="info"
+                size="md"
+              />
             </div>
 
             {/* Assessment Matrix Table */}
@@ -1047,7 +1291,7 @@ const CoreEmployeeCalculation = () => {
                     <thead>
                       <tr className="bg-gray-100 border-b">
                         <th className="px-4 py-3 text-left font-semibold text-gray-900 min-w-48">
-                          CORE COMPETENCIES / SKILLS
+                          CORE COMPETENCIES 
                         </th>
                         <th className="px-4 py-3 text-center font-semibold text-gray-900 min-w-24">
                           REQUIRED
@@ -1065,18 +1309,7 @@ const CoreEmployeeCalculation = () => {
                     </thead>
                     
                     <tbody>
-                      {/* Scale descriptions */}
-                      <tr className="bg-blue-50">
-                        <td colSpan="5" className="px-4 py-2">
-                          <div className="text-sm text-gray-700 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {coreScales.map(scale => (
-                              <div key={scale.id}>
-                                <span className="font-medium">"{scale.scale}"</span> - {scale.description}
-                              </div>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
+                 
 
                       {/* Selected position's skills */}
                       {(() => {
@@ -1201,7 +1434,10 @@ const CoreEmployeeCalculation = () => {
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 mt-6 pt-6 border-t-2 border-gray-200">
               <ActionButton
-                onClick={() => setShowCreateEmployeeModal(false)}
+                onClick={() => {
+                  setShowCreateEmployeeModal(false);
+                  setSelectedEmployeeInfo(null);
+                }}
                 icon={X}
                 label="Cancel"
                 disabled={isSubmitting}
@@ -1209,10 +1445,248 @@ const CoreEmployeeCalculation = () => {
                 size="md"
               />
               <ActionButton
-                onClick={handleCreateEmployeeAssessment}
+                onClick={() => handleEmployeeAssessmentAction('save_draft')}
                 icon={Save}
-                label="Create Assessment"
-                disabled={!employeeFormData.employee || !employeeFormData.position_assessment}
+                label="Save as Draft"
+                disabled={!employeeFormData.employee}
+                loading={isSubmitting}
+                variant="secondary"
+                size="md"
+              />
+             
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Employee Assessment Modal */}
+      {showEditEmployeeModal && editingAssessment && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-6xl border-2 border-gray-200 shadow-2xl max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
+                <Edit className="w-5 h-5 text-blue-600" />
+                Edit Employee Core Competency Assessment
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditEmployeeModal(false);
+                  setEditingAssessment(null);
+                  setSelectedEmployeeInfo(null);
+                }}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            {/* Employee Info Display */}
+            {selectedEmployeeInfo && (
+             
+                <div className="grid grid-cols-1 md:grid-cols-2 mb-3 gap-4">
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium text-blue-900">Employee:</span>
+                        <span className="ml-2 text-blue-700">{selectedEmployeeInfo.name}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-blue-900">Job Title:</span>
+                        <span className="ml-2 text-blue-700">{selectedEmployeeInfo.job_title}</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                
+                </div>
+          
+            )}
+
+            {/* Core Scales Information Button */}
+            <div className="mb-4 flex justify-center">
+              <ActionButton
+                onClick={() => setShowCoreScalesInfo(true)}
+                icon={Info}
+                label="View Core Competency Assessment Scale Information"
+                variant="info"
+                size="md"
+              />
+            </div>
+
+            {/* Assessment Matrix Table */}
+            {employeeFormData.position_assessment && (
+              <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-blue-900 text-white p-3">
+                  <h4 className="font-bold text-center">Employee Core Competency Assessment Matrix</h4>
+                  <p className="text-center text-sm opacity-90">
+                    Based on: {positionAssessments.find(p => p.id === employeeFormData.position_assessment)?.job_title}
+                  </p>
+                </div>
+                
+                {/* Assessment Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-100 border-b">
+                        <th className="px-4 py-3 text-left font-semibold text-gray-900 min-w-48">
+                          CORE COMPETENCIES 
+                        </th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-900 min-w-24">
+                          REQUIRED
+                        </th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-900 min-w-24">
+                          ACTUAL
+                        </th>
+                        <th className="px-4 py-3 text-center font-semibold text-gray-900 min-w-24">
+                          GAP
+                        </th>
+                        <th className="px-4 py-3 text-left font-semibold text-gray-900 min-w-64">
+                          ASSESSMENT NOTES
+                        </th>
+                      </tr>
+                    </thead>
+                    
+                    <tbody>
+                     
+
+                      {/* Selected position's skills */}
+                      {(() => {
+                        const selectedPosition = positionAssessments.find(p => p.id === employeeFormData.position_assessment);
+                        if (!selectedPosition) return null;
+
+                        // Group skills by group name
+                        const groupedSkills = {};
+                        selectedPosition.competency_ratings?.forEach(rating => {
+                          const groupName = rating.skill_group_name || 'Other';
+                          if (!groupedSkills[groupName]) {
+                            groupedSkills[groupName] = [];
+                          }
+                          groupedSkills[groupName].push(rating);
+                        });
+
+                        return Object.entries(groupedSkills).map(([groupName, skills]) => (
+                          <React.Fragment key={groupName}>
+                            <tr className="bg-blue-900 text-white">
+                              <td colSpan="5" className="px-4 py-2 font-bold text-center uppercase">
+                                {groupName}
+                              </td>
+                            </tr>
+                            
+                            {skills.map(skill => {
+                              const employeeRating = employeeFormData.competency_ratings.find(
+                                r => r.skill_id === skill.skill
+                              );
+                              
+                              const actualLevel = employeeRating?.actual_level || 0;
+                              const gap = actualLevel - skill.required_level;
+                              
+                              return (
+                                <tr key={skill.id} className="border-b hover:bg-gray-50">
+                                  <td className="px-4 py-3 font-medium text-gray-900">
+                                    {skill.skill_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-center font-bold text-blue-600">
+                                    {skill.required_level}
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <select
+                                      value={actualLevel}
+                                      onChange={(e) => {
+                                        const newRatings = [...employeeFormData.competency_ratings];
+                                        const existingIndex = newRatings.findIndex(
+                                          r => r.skill_id === skill.skill
+                                        );
+                                        
+                                        if (existingIndex >= 0) {
+                                          newRatings[existingIndex].actual_level = parseInt(e.target.value);
+                                        } else {
+                                          newRatings.push({
+                                            skill_id: skill.skill,
+                                            actual_level: parseInt(e.target.value),
+                                            notes: ''
+                                          });
+                                        }
+                                        
+                                        setEmployeeFormData({
+                                          ...employeeFormData, 
+                                          competency_ratings: newRatings
+                                        });
+                                      }}
+                                      className="w-full px-2 py-1 border border-gray-300 rounded text-center font-bold focus:border-blue-500 focus:outline-none"
+                                    >
+                                      {coreScales.map(scale => (
+                                        <option key={scale.id} value={scale.scale}>{scale.scale}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-4 py-3 text-center">
+                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                      gap > 0 ? 'bg-green-100 text-green-800' :
+                                      gap < 0 ? 'bg-red-100 text-red-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {gap > 0 ? `+${gap}` : gap}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <textarea
+                                      value={employeeRating?.notes || ''}
+                                      onChange={(e) => {
+                                        const newRatings = [...employeeFormData.competency_ratings];
+                                        const existingIndex = newRatings.findIndex(
+                                          r => r.skill_id === skill.skill
+                                        );
+                                        
+                                        if (existingIndex >= 0) {
+                                          newRatings[existingIndex].notes = e.target.value;
+                                        } else {
+                                          newRatings.push({
+                                            skill_id: skill.skill,
+                                            actual_level: 0,
+                                            notes: e.target.value
+                                          });
+                                        }
+                                        
+                                        setEmployeeFormData({
+                                          ...employeeFormData, 
+                                          competency_ratings: newRatings
+                                        });
+                                      }}
+                                      placeholder="Assessment notes..."
+                                      rows="2"
+                                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm resize-none focus:border-blue-500 focus:outline-none"
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 mt-6 pt-6 border-t-2 border-gray-200">
+              <ActionButton
+                onClick={() => {
+                  setShowEditEmployeeModal(false);
+                  setEditingAssessment(null);
+                  setSelectedEmployeeInfo(null);
+                }}
+                icon={X}
+                label="Cancel"
+                disabled={isSubmitting}
+                variant="outline"
+                size="md"
+              />
+              <ActionButton
+                onClick={handleUpdateAssessment}
+                icon={Save}
+                label="Update Assessment"
                 loading={isSubmitting}
                 variant="primary"
                 size="md"
@@ -1232,18 +1706,10 @@ const CoreEmployeeCalculation = () => {
 
       {/* Error Toast */}
       {error && (
-        <div className="fixed bottom-6 right-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 shadow-2xl z-50 max-w-sm">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="text-red-800 font-bold text-sm">Error</h4>
-              <p className="text-red-700 text-sm mt-1">{error.message}</p>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
-              <X size={16} />
-            </button>
-          </div>
-        </div>
+        <ErrorToast 
+          error={error} 
+          onClose={() => setError(null)} 
+        />
       )}
     </div>
   );

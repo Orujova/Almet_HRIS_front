@@ -24,18 +24,32 @@ const AssessmentMatrix = () => {
   const textSecondary = darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo';
   const borderColor = darkMode ? 'border-almet-comet' : 'border-gray-200';
 
-  // Fetch dashboard data
+  // Fetch dashboard data - with better error handling
   const fetchDashboardData = async () => {
     setIsLoading(true);
     try {
-      const [summary, employeeOverview] = await Promise.all([
-        assessmentApi.dashboard.getSummary(),
-        assessmentApi.dashboard.getEmployeeOverview()
+      // Try to fetch dashboard data, but don't fail if endpoints don't exist
+      const dashboardResults = await Promise.allSettled([
+        assessmentApi.dashboard.getSummary().catch(err => {
+          console.warn('Dashboard summary endpoint not available:', err);
+          return { data: null };
+        }),
+        assessmentApi.dashboard.getEmployeeOverview().catch(err => {
+          console.warn('Employee overview endpoint not available:', err);
+          return { data: null };
+        })
       ]);
       
-      setDashboardData({ summary, employeeOverview });
+      const [summaryResult, employeeOverviewResult] = dashboardResults;
+      
+      setDashboardData({
+        summary: summaryResult.status === 'fulfilled' ? summaryResult.value : null,
+        employeeOverview: employeeOverviewResult.status === 'fulfilled' ? employeeOverviewResult.value : null
+      });
+      
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      // Don't show error to user for dashboard data - it's not critical
     } finally {
       setIsLoading(false);
     }
@@ -44,24 +58,6 @@ const AssessmentMatrix = () => {
   useEffect(() => {
     fetchDashboardData();
   }, []);
-
-  // Default statistics if data not loaded
-  const stats = {
-    behavioral: {
-      totalAssessments: dashboardData?.summary?.behavioral_assessments_total || 0,
-      completedAssessments: dashboardData?.summary?.behavioral_assessments_completed || 0,
-      averageScore: dashboardData?.summary?.behavioral_average_score || 0,
-      topPerformers: dashboardData?.summary?.behavioral_top_performers || 0
-    },
-    core: {
-      totalAssessments: dashboardData?.summary?.core_assessments_total || 0,
-      completedAssessments: dashboardData?.summary?.core_assessments_completed || 0,
-      averageGap: dashboardData?.summary?.core_average_gap || 0,
-      skillsEvaluated: dashboardData?.summary?.core_skills_evaluated || 0
-    }
-  };
-
-
 
   const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', className = '' }) => {
     const variants = {
@@ -84,41 +80,13 @@ const AssessmentMatrix = () => {
     );
   };
 
-  // Handle export
-  const handleExportReport = async () => {
-    try {
-      // You can implement a combined report export here
-      const reportData = {
-        type: 'assessment_matrix_report',
-        activeView,
-        timestamp: new Date().toISOString(),
-        statistics: stats
-      };
-      
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], {
-        type: 'application/json'
-      });
-      
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `assessment_matrix_report_${new Date().toISOString().split('T')[0]}.json`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export error:', error);
-    }
-  };
-
   if (showSettings) {
     return <AssessmentSettings onBack={() => setShowSettings(false)} />;
   }
 
   return (
     <div className={`min-h-screen ${bgApp} py-6`}>
-      <div className=" mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         
         {/* Header */}
         <header className={`${bgCard} rounded-xl p-6 shadow-lg border-2 ${borderColor}`}>
@@ -133,7 +101,6 @@ const AssessmentMatrix = () => {
               <p className={`text-xs ${textSecondary}`}>
                 Comprehensive employee competency assessment and evaluation system
               </p>
-            
             </div>
             
             <div className="flex items-center gap-3 mt-4 lg:mt-0">
@@ -142,12 +109,6 @@ const AssessmentMatrix = () => {
                 icon={Settings}
                 label="Settings"
                 variant="outline"
-              />
-              <ActionButton
-                onClick={handleExportReport}
-                icon={Download}
-                label="Export Report"
-                variant="secondary"
               />
             </div>
           </div>
@@ -189,8 +150,6 @@ const AssessmentMatrix = () => {
             </button>
           </div>
         </nav>
-
-       
 
         {/* Main Content */}
         <section className="space-y-6">

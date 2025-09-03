@@ -2,11 +2,15 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Users, Target, Search, Filter, Eye, Edit, Trash2, 
-  Download, FileText, Calendar, Award, AlertCircle, CheckCircle,
+  Download,  AlertCircle, CheckCircle,
   Loader2, X, Save, ChevronDown, ChevronRight, User, Building,
-  RefreshCw, TrendingUp, TrendingDown, Minus, Settings
+  RefreshCw,
 } from 'lucide-react';
 import { assessmentApi } from '@/services/assessmentApi';
+import { competencyApi } from '@/services/competencyApi'; // Add this import
+import StatusBadge from './StatusBadge';
+import SuccessToast from './SuccessToast';
+import ErrorToast from './ErrorToast';
 
 const BehavioralAssessmentCalculation = () => {
   // States
@@ -31,6 +35,7 @@ const BehavioralAssessmentCalculation = () => {
   const [positionGroups, setPositionGroups] = useState([]);
   const [behavioralScales, setBehavioralScales] = useState([]);
   const [letterGrades, setLetterGrades] = useState([]);
+  const [behavioralGroups, setBehavioralGroups] = useState([]); // Add this line
   
   // Form states
   const [positionFormData, setPositionFormData] = useState({
@@ -129,14 +134,16 @@ const BehavioralAssessmentCalculation = () => {
         employeesRes, 
         positionGroupsRes,
         behavioralScalesRes,
-        letterGradesRes
+        letterGradesRes,
+        behavioralGroupsRes // Add this
       ] = await Promise.all([
         assessmentApi.positionBehavioral.getAll(),
         assessmentApi.employeeBehavioral.getAll(),
         assessmentApi.employees.getAll(),
         assessmentApi.positionGroups.getAll(),
         assessmentApi.behavioralScales.getAll(),
-        assessmentApi.letterGrades.getAll()
+        assessmentApi.letterGrades.getAll(),
+        competencyApi.behavioralGroups.getAll() // Add this
       ]);
       
       setPositionAssessments(positionAssessmentsRes.results || []);
@@ -145,6 +152,7 @@ const BehavioralAssessmentCalculation = () => {
       setPositionGroups(positionGroupsRes.results || []);
       setBehavioralScales(behavioralScalesRes.results || []);
       setLetterGrades(letterGradesRes.results || []);
+      setBehavioralGroups(behavioralGroupsRes.results || []); // Add this
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -228,21 +236,6 @@ const BehavioralAssessmentCalculation = () => {
         {loading ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
         {label}
       </button>
-    );
-  };
-
-  const StatusBadge = ({ status }) => {
-    const statusConfig = {
-      'DRAFT': { color: 'bg-yellow-100 text-yellow-800 border-yellow-200', label: 'Draft' },
-      'COMPLETED': { color: 'bg-green-100 text-green-800 border-green-200', label: 'Completed' }
-    };
-
-    const config = statusConfig[status] || statusConfig['DRAFT'];
-    
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${config.color}`}>
-        {config.label}
-      </span>
     );
   };
 
@@ -377,25 +370,6 @@ const BehavioralAssessmentCalculation = () => {
     }
   };
 
-  // Handle duplicate position assessment
-  const handleDuplicatePosition = async (id, newJobTitle) => {
-    const positionGroup = positionAssessments.find(p => p.id === id)?.position_group;
-    if (!positionGroup || !newJobTitle) return;
-    
-    try {
-      await assessmentApi.positionBehavioral.duplicate(id, {
-        position_group: positionGroup,
-        job_title: newJobTitle,
-        is_active: true
-      });
-      await fetchData();
-      setSuccessMessage(`Position assessment duplicated for ${newJobTitle}`);
-    } catch (err) {
-      console.error('Duplicate error:', err);
-      setError(err);
-    }
-  };
-
   // Handle delete
   const handleDelete = async (id, type) => {
     if (!confirm('Are you sure you want to delete this assessment?')) return;
@@ -425,29 +399,6 @@ const BehavioralAssessmentCalculation = () => {
      assessment.position_assessment_title?.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (selectedStatus === '' || assessment.status === selectedStatus)
   );
-
-  // Success Toast
-  const SuccessToast = ({ message, onClose }) => {
-    useEffect(() => {
-      const timer = setTimeout(onClose, 3000);
-      return () => clearTimeout(timer);
-    }, [onClose]);
-
-    return (
-      <div className="fixed bottom-6 right-6 bg-green-50 border-2 border-green-200 rounded-xl p-4 shadow-2xl z-50 max-w-sm">
-        <div className="flex items-start gap-3">
-          <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-          <div className="flex-1">
-            <h4 className="text-green-800 font-bold text-sm">Success!</h4>
-            <p className="text-green-700 text-sm mt-1">{message}</p>
-          </div>
-          <button onClick={onClose} className="text-green-600 hover:text-green-800">
-            <X size={16} />
-          </button>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -573,18 +524,7 @@ const BehavioralAssessmentCalculation = () => {
                               variant="outline"
                               size="xs"
                             />
-                            <ActionButton
-                              onClick={() => {
-                                const newJobTitle = prompt('Enter new job title for duplicate:');
-                                if (newJobTitle) {
-                                  handleDuplicatePosition(assessment.id, newJobTitle);
-                                }
-                              }}
-                              icon={Plus}
-                              label="Duplicate"
-                              variant="secondary"
-                              size="xs"
-                            />
+                            
                             <ActionButton
                               onClick={() => handleDelete(assessment.id, 'position')}
                               icon={Trash2}
@@ -814,7 +754,7 @@ const BehavioralAssessmentCalculation = () => {
                           </td>
                         </tr>
                         
-                        {/* Group competencies would be loaded here */}
+                        {/* Group competencies */}
                         {group.competencies?.map(competency => (
                           <tr key={competency.id} className="border-b hover:bg-gray-50">
                             <td className="px-4 py-3 font-medium text-gray-900">
@@ -1157,7 +1097,7 @@ const BehavioralAssessmentCalculation = () => {
         </div>
       )}
 
-            {/* Success Toast */}
+      {/* Success Toast */}
       {successMessage && (
         <SuccessToast 
           message={successMessage} 
@@ -1167,20 +1107,14 @@ const BehavioralAssessmentCalculation = () => {
 
       {/* Error Toast */}
       {error && (
-        <div className="fixed bottom-6 right-6 bg-red-50 border-2 border-red-200 rounded-xl p-4 shadow-2xl z-50 max-w-sm">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="text-red-800 font-bold text-sm">Error</h4>
-              <p className="text-red-700 text-sm mt-1">{error.message}</p>
-            </div>
-            <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800">
-              <X size={16} />
-            </button>
-          </div>
-        </div>
+        <ErrorToast 
+          error={error} 
+          onClose={() => setError(null)} 
+        />
       )}
+     
     </div>
-  );}
+  );
+};
 
 export default BehavioralAssessmentCalculation;
