@@ -622,6 +622,88 @@ const CoreEmployeeCalculation = () => {
                 </tbody>
               </table>
             </div>
+          ) : (
+            // Employee Assessments Table
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Employee</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Position</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Gap Score</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Completion</th>
+                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Date</th>
+                    <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEmployeeAssessments.length > 0 ? (
+                    filteredEmployeeAssessments.map((assessment) => (
+                      <tr key={assessment.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-gray-900 font-medium">
+                          <div>
+                            <div>{assessment.employee_name}</div>
+                            <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-900">
+                          {assessment.position_assessment_title}
+                        </td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={assessment.status} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <GapIndicator gap={assessment.gap_score || 0} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <CompletionIndicator percentage={assessment.completion_percentage} />
+                        </td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">
+                          {new Date(assessment.assessment_date).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <ActionButton
+                              onClick={() => {
+                                setSelectedAssessment(assessment);
+                                setShowViewModal(true);
+                              }}
+                              icon={Eye}
+                              label="View"
+                              variant="outline"
+                              size="xs"
+                            />
+                            <ActionButton
+                              onClick={() => handleExport(assessment.id, 'employee')}
+                              icon={Download}
+                              label="Export"
+                              variant="secondary"
+                              size="xs"
+                            />
+                            <ActionButton
+                              onClick={() => handleDelete(assessment.id, 'employee')}
+                              icon={Trash2}
+                              label="Delete"
+                              variant="danger"
+                              size="xs"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center py-12">
+                        <Target className="w-12 h-12 mx-auto mb-4 text-gray-400 opacity-50" />
+                        <p className="text-gray-600 font-medium">No employee assessments found</p>
+                        <p className="text-gray-500 text-sm mt-2">Create your first employee assessment</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -1168,85 +1250,3 @@ const CoreEmployeeCalculation = () => {
 };
 
 export default CoreEmployeeCalculation;
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            // Employee Assessments Table
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
-                  <tr>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Employee</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Position</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Gap Score</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Completion</th>
-                    <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Date</th>
-                    <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredEmployeeAssessments.length > 0 ? (
-                    filteredEmployeeAssessments.map((assessment) => (
-                      <tr key={assessment.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-gray-900 font-medium">
-                          <div>
-                            <div>{assessment.employee_name}</div>
-                            <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-900">
-                          {assessment.position_assessment_title}
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={assessment.status} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <GapIndicator gap={assessment.gap_score || 0} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <CompletionIndicator percentage={assessment.completion_percentage} />
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 text-sm">
-                          {new Date(assessment.assessment_date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <ActionButton
-                              onClick={() => {
-                                setSelectedAssessment(assessment);
-                                setShowViewModal(true);
-                              }}
-                              icon={Eye}
-                              label="View"
-                              variant="outline"
-                              size="xs"
-                            />
-                            <ActionButton
-                              onClick={() => handleExport(assessment.id, 'employee')}
-                              icon={Download}
-                              label="Export"
-                              variant="secondary"
-                              size="xs"
-                            />
-                            <ActionButton
-                              onClick={() => handleDelete(assessment.id, 'employee')}
-                              icon={Trash2}
-                              label="Delete"
-                              variant="danger"
-                              size="xs"
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="text-center py-12">
-                        <Target className="w-12 h-12 mx-auto mb-4 text-gray-400 opacity-50" />
-                        <p className="text-gray-600 font-medium">No employee assessments found</p>
-                        <p className="text-gray-500 text-sm mt-2">Create your first employee assessment</p>
-                      </td>
-                    </tr>
-                  )}
