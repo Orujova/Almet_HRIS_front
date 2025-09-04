@@ -106,7 +106,7 @@ const CompetencyMatrixSystem = () => {
   const [toast, setToast] = useState(null); // {type, message}
 
   // inline edit state
-  const [editKey, setEditKey] = useState(null); // `${group}-${index}`
+  const [editKey, setEditKey] = useState(null); // `${group}-${index}` for items, `group-${groupName}` for groups
   const [editValue, setEditValue] = useState('');
 
   // add forms
@@ -176,7 +176,18 @@ const CompetencyMatrixSystem = () => {
     setExpandedCard(expandedCard === g ? null : g);
   };
 
-  // CRUD
+  // CRUD - Fixed edit functions
+  const beginEditItem = (group, index) => { 
+    const name = (currentData[group][index]?.name) ?? currentData[group][index]; 
+    setEditKey(`${group}-${index}`); 
+    setEditValue(name); 
+  };
+
+  const beginEditGroup = (group) => {
+    setEditKey(`group-${group}`);
+    setEditValue(group);
+  };
+
   const addGroup = async () => {
     if (!newGroupName.trim()) return;
     setBusy(true); setErr(null);
@@ -233,24 +244,68 @@ const CompetencyMatrixSystem = () => {
     finally { setBusy(false); }
   };
 
-  const beginEdit = (group, index) => { const name = (currentData[group][index]?.name) ?? currentData[group][index]; setEditKey(`${group}-${index}`); setEditValue(name); };
   const cancelEdit = () => { setEditKey(null); setEditValue(''); };
+  
   const saveEdit = async () => {
     if (!editKey || !editValue.trim()) return;
-    const [group, idxStr] = editKey.split('-'); const index = Number(idxStr);
-    const item = currentData[group][index]; const id = item?.id;
+    
+    // Check if editing a group
+    if (editKey.startsWith('group-')) {
+      const groupName = editKey.replace('group-', '');
+      const gObj = findGroupByName(groupName);
+      if (!gObj) {
+        setToast({ type: 'error', message: 'Group not found.' });
+        return;
+      }
+      
+      setBusy(true); setErr(null);
+      try {
+        const payload = { name: editValue.trim() };
+        if (activeView === 'skills') {
+          await competencyApi.skillGroups.update(gObj.id, payload);
+        } else {
+          await competencyApi.behavioralGroups.update(gObj.id, payload);
+        }
+        await fetchData();
+        cancelEdit();
+        setToast({ type: 'success', message: 'Group updated.' });
+      } catch (e) { 
+        setErr(e); 
+        setToast({ type: 'error', message: e?.message || 'Could not update group.' }); 
+      } finally { 
+        setBusy(false); 
+      }
+      return;
+    }
+
+    // Edit item
+    const [group, idxStr] = editKey.split('-'); 
+    const index = Number(idxStr);
+    const item = currentData[group][index]; 
+    const id = item?.id;
+    
     if (!id) {
       setCurrentData(prev => ({ ...prev, [group]: prev[group].map((it, i) => i === index ? editValue.trim() : it) }));
-      cancelEdit(); return;
+      cancelEdit(); 
+      return;
     }
+    
     setBusy(true); setErr(null);
     try {
-      const gObj = findGroupByName(group); if (!gObj) throw new Error('Group not found');
+      const gObj = findGroupByName(group); 
+      if (!gObj) throw new Error('Group not found');
       const payload = { group: gObj.id, name: editValue.trim() };
-      if (activeView === 'skills') await competencyApi.skills.update(id, payload); else await competencyApi.behavioralCompetencies.update(id, payload);
-      await fetchData(); cancelEdit(); setToast({ type: 'success', message: 'Item updated.' });
-    } catch (e) { setErr(e); setToast({ type: 'error', message: e?.message || 'Could not update.' }); }
-    finally { setBusy(false); }
+      if (activeView === 'skills') await competencyApi.skills.update(id, payload); 
+      else await competencyApi.behavioralCompetencies.update(id, payload);
+      await fetchData(); 
+      cancelEdit(); 
+      setToast({ type: 'success', message: 'Item updated.' });
+    } catch (e) { 
+      setErr(e); 
+      setToast({ type: 'error', message: e?.message || 'Could not update.' }); 
+    } finally { 
+      setBusy(false); 
+    }
   };
 
   if (loading) {
@@ -310,9 +365,9 @@ const CompetencyMatrixSystem = () => {
               </div>
               {activeView !== 'matrix' && (
                 <div className="flex items-center gap-2">
-                  <StatChip label={`2 groups`}/>
-                  <StatChip label={`3 items`}/>
-                  <StatChip label={`avg 1.5 per group`}/>
+                  <StatChip label={`${stats.totalGroups} groups`}/>
+                  <StatChip label={`${stats.totalItems} items`}/>
+                  <StatChip label={`avg ${stats.avg} per group`}/>
                 </div>
               )}
             </div>
@@ -378,6 +433,8 @@ const CompetencyMatrixSystem = () => {
               {Object.keys(filtered).map(group => {
                 const isOpen = expandedCard === group;
                 const items = filtered[group] || [];
+                const isEditingGroup = editKey === `group-${group}`;
+                
                 return (
                   <article key={group} className={`${card} border ${border} rounded-2xl shadow-sm hover:shadow-md transition`}> 
                     {/* Group header */}
@@ -386,7 +443,7 @@ const CompetencyMatrixSystem = () => {
                         {isOpen ? <X size={16}/> : <Plus size={16}/>}
                       </button>
                       <div className="flex-1 min-w-0">
-                        {editKey === `group-${group}` ? (
+                        {isEditingGroup ? (
                           <div className="flex items-center gap-2">
                             <input
                               value={editValue} 
@@ -394,7 +451,7 @@ const CompetencyMatrixSystem = () => {
                               autoFocus 
                               className="w-full px-2 py-1 rounded-lg border-2 text-sm font-bold bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white border-gray-200 dark:border-almet-comet focus:outline-none focus:border-almet-sapphire"
                             />
-                            <button onClick={saveEdit} disabled={busy} className="p-1 rounded-lg text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition">
+                            <button onClick={saveEdit} disabled={busy} className="p-1 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition">
                               <Save size={14}/>
                             </button>
                             <button onClick={cancelEdit} className="p-1 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition">
@@ -409,10 +466,10 @@ const CompetencyMatrixSystem = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-1">
-                        {editKey !== `group-${group}` && (
+                        {!isEditingGroup && (
                           <button onClick={(e) => {
                             e.stopPropagation();
-                            beginEdit(group);
+                            beginEditGroup(group);
                           }} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition">
                             <Edit size={16}/>
                           </button>
@@ -460,7 +517,7 @@ const CompetencyMatrixSystem = () => {
                                     )}
                                   </div>
                                   <div className="flex items-center gap-2 ml-auto">
-                                    <button onClick={()=>{ setEditKey(k); setEditValue(name); }} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition">
+                                    <button onClick={()=>beginEditItem(group, idx)} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-700 dark:hover:text-gray-300 transition">
                                       <Edit size={14}/>
                                     </button>
                                     <button onClick={()=>deleteItem(group, idx)} disabled={busy} className="p-2 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
