@@ -374,7 +374,7 @@ const CompetencyMatrixSystem = () => {
           </header>
 
           {/* Tabs + Toolbar */}
-          <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm sticky top-4 z-10`}>
+          <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm   z-10`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div className="flex items-center gap-1">
                 {[
