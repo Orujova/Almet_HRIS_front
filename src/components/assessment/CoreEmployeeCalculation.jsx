@@ -12,6 +12,8 @@ import SuccessToast from './SuccessToast';
 import ErrorToast from './ErrorToast';
 import SearchableDropdown from './SearchableDropdown';
 import StatusBadge from './StatusBadge';
+
+// ActionButton Component
 const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', loading = false, disabled = false, size = 'sm' }) => {
   const variants = {
     primary: 'bg-blue-600 hover:bg-blue-700 text-white',
@@ -45,8 +47,7 @@ const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', loading
   );
 };
 
-
-
+// GapIndicator Component
 const GapIndicator = ({ gap }) => {
   if (gap > 0) {
     return (
@@ -72,6 +73,7 @@ const GapIndicator = ({ gap }) => {
   }
 };
 
+// CompletionIndicator Component
 const CompletionIndicator = ({ percentage }) => {
   const numPercentage = parseFloat(percentage) || 0;
   let colorClass = 'bg-red-100 text-red-800 border-red-200';
@@ -91,11 +93,59 @@ const CompletionIndicator = ({ percentage }) => {
   );
 };
 
+// DuplicateAssessmentWarning Component
+const DuplicateAssessmentWarning = ({ employeeName, onClose }) => {
+  return (
+    <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <h4 className="font-semibold text-red-800 mb-1">Duplicate Assessment</h4>
+          <p className="text-red-700 text-sm">
+            {employeeName} already has a core assessment. Each employee can only have one assessment.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-red-600 hover:text-red-800 transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
+// NoTemplateWarning Component
+const NoTemplateWarning = ({ jobTitle, onClose }) => {
+  return (
+    <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div className="flex items-start gap-3">
+        <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+        <div className="flex-1">
+          <h4 className="font-semibold text-yellow-800 mb-1">No Assessment Template Found</h4>
+          <p className="text-yellow-700 text-sm">
+            No core assessment template found for <strong>{jobTitle}</strong>. Please create a position assessment template first.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-yellow-600 hover:text-yellow-800 transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // Main Component
 const CoreEmployeeCalculation = () => {
-  // States
+  // ====================================
+  // STATE DEFINITIONS
+  // ====================================
+  
+  // Basic states
   const [activeTab, setActiveTab] = useState('employee');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -112,6 +162,8 @@ const CoreEmployeeCalculation = () => {
   const [showCoreScalesInfo, setShowCoreScalesInfo] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
   const [editingAssessment, setEditingAssessment] = useState(null);
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [noTemplateWarning, setNoTemplateWarning] = useState(null);
   
   // Data states
   const [positionAssessments, setPositionAssessments] = useState([]);
@@ -139,7 +191,10 @@ const CoreEmployeeCalculation = () => {
   // Selected employee info state
   const [selectedEmployeeInfo, setSelectedEmployeeInfo] = useState(null);
 
-  // Fetch all data
+  // ====================================
+  // DATA FETCHING
+  // ====================================
+
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
@@ -190,15 +245,31 @@ const CoreEmployeeCalculation = () => {
     fetchData();
   }, []);
 
-  // Auto-select position assessment based on employee
+  // ====================================
+  // EVENT HANDLERS
+  // ====================================
+
+  // Employee selection handler
   const handleEmployeeChange = async (employeeId) => {
     const selectedEmployee = employees.find(e => e.id === employeeId);
     if (!selectedEmployee) return;
     
+    // Clear previous warnings
+    setDuplicateWarning(null);
+    setNoTemplateWarning(null);
+    
     // Check if this employee already has an assessment
     const existingAssessment = employeeAssessments.find(a => a.employee === employeeId);
     if (existingAssessment) {
-      setError({ message: `Employee ${selectedEmployee.name} already has an assessment. Each employee can only have one assessment.` });
+      setDuplicateWarning({
+        employeeName: selectedEmployee.name,
+        type: 'core'
+      });
+      setError({ 
+        message: `Employee ${selectedEmployee.name} already has an assessment. Each employee can only have one assessment.`,
+        type: 'duplicate_assessment',
+        employeeName: selectedEmployee.name
+      });
       return;
     }
     
@@ -217,12 +288,10 @@ const CoreEmployeeCalculation = () => {
       }
     } catch (err) {
       console.error('Error fetching employee position template:', err);
-      // Show error toast if no template found
-      if (err.response?.data?.error) {
-        setError({ message: err.response.data.error });
-      } else {
-        setError({ message: `No core assessment template found for ${selectedEmployee.job_title}` });
-      }
+      // Show warning in modal instead of error toast
+      setNoTemplateWarning({
+        jobTitle: selectedEmployee.job_title
+      });
       
       setEmployeeFormData(prev => ({
         ...prev, 
@@ -232,7 +301,7 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle position assessment creation
+  // Position assessment handlers
   const handleCreatePositionAssessment = async () => {
     if (!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0) {
       setError({ message: 'Please fill all required fields and add at least one competency rating' });
@@ -245,6 +314,7 @@ const CoreEmployeeCalculation = () => {
       await fetchData();
       setShowCreatePositionModal(false);
       setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+      setEditingAssessment(null);
       setSuccessMessage('Position assessment template created successfully');
     } catch (err) {
       console.error('Error creating position assessment:', err);
@@ -254,18 +324,56 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle edit assessment
+  const handleEditPositionAssessment = async (assessment) => {
+    try {
+      setPositionFormData({
+        position_group: assessment.position_group,
+        job_title: assessment.job_title,
+        competency_ratings: assessment.competency_ratings?.map(rating => ({
+          skill_id: rating.skill,
+          required_level: rating.required_level
+        })) || []
+      });
+      
+      setEditingAssessment(assessment);
+      setShowCreatePositionModal(true);
+    } catch (err) {
+      console.error('Error loading position assessment for edit:', err);
+      setError(err);
+    }
+  };
+
+  const handleUpdatePositionAssessment = async () => {
+    if (!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0) {
+      setError({ message: 'Please fill all required fields and add at least one competency rating' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await assessmentApi.positionCore.update(editingAssessment.id, positionFormData);
+      await fetchData();
+      setShowCreatePositionModal(false);
+      setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+      setEditingAssessment(null);
+      setSuccessMessage('Position assessment template updated successfully');
+    } catch (err) {
+      console.error('Error updating position assessment:', err);
+      setError(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Employee assessment handlers
   const handleEditAssessment = async (assessment) => {
     try {
-      // Fetch full assessment details
       const fullAssessment = await assessmentApi.employeeCore.getById(assessment.id);
       setEditingAssessment(fullAssessment);
       
-      // Find the employee info
       const employeeInfo = employees.find(e => e.id === fullAssessment.employee);
       setSelectedEmployeeInfo(employeeInfo);
       
-      // Set form data for editing
       setEmployeeFormData({
         employee: fullAssessment.employee,
         position_assessment: fullAssessment.position_assessment,
@@ -284,7 +392,6 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle update assessment
   const handleUpdateAssessment = async (actionType = 'save_draft') => {
     if (!editingAssessment) return;
 
@@ -292,13 +399,11 @@ const CoreEmployeeCalculation = () => {
     try {
       const data = {
         ...employeeFormData,
-        action_type: 'save_draft' // Always save as draft first
+        action_type: 'save_draft'
       };
       
-      // Update the assessment
       await assessmentApi.employeeCore.update(editingAssessment.id, data);
       
-      // If action is submit, then submit the updated assessment
       if (actionType === 'submit') {
         await assessmentApi.employeeCore.submit(editingAssessment.id, {});
       }
@@ -323,7 +428,6 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle employee assessment creation and actions
   const handleEmployeeAssessmentAction = async (actionType = 'save_draft') => {
     if (!employeeFormData.employee) {
       setError({ message: 'Please select employee' });
@@ -332,15 +436,15 @@ const CoreEmployeeCalculation = () => {
 
     setIsSubmitting(true);
     try {
+      // First, always save as draft
       const data = {
         ...employeeFormData,
-        action_type: 'save_draft' // Always save as draft first to get ID
+        action_type: 'save_draft'
       };
       
-      // First create as draft
       const response = await assessmentApi.employeeCore.create(data);
       
-      // If action is submit, then submit the created assessment
+      // If action type is 'submit', then submit the newly created assessment
       if (actionType === 'submit' && response.id) {
         await assessmentApi.employeeCore.submit(response.id, {});
       }
@@ -354,7 +458,9 @@ const CoreEmployeeCalculation = () => {
         competency_ratings: []
       });
       setSelectedEmployeeInfo(null);
-      const actionMessage = actionType === 'save_draft' ? 'Employee assessment saved as draft' : 'Employee assessment submitted successfully';
+      setDuplicateWarning(null);
+      setNoTemplateWarning(null);
+      const actionMessage = actionType === 'save_draft' ? 'Employee assessment saved as draft' : 'Employee assessment created and submitted successfully';
       setSuccessMessage(actionMessage);
     } catch (err) {
       console.error('Error with employee assessment:', err);
@@ -364,7 +470,7 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle submit assessment
+  // Other action handlers
   const handleSubmitAssessment = async (id) => {
     try {
       await assessmentApi.employeeCore.submit(id, {});
@@ -376,7 +482,6 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle reopen assessment
   const handleReopenAssessment = async (id) => {
     try {
       await assessmentApi.employeeCore.reopen(id, {});
@@ -388,7 +493,6 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle export
   const handleExport = async (id, type) => {
     try {
       if (type === 'employee') {
@@ -401,7 +505,6 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Handle delete
   const handleDelete = async (id, type) => {
     if (!confirm('Are you sure you want to delete this assessment?')) return;
     
@@ -419,7 +522,10 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  // Filter data
+  // ====================================
+  // DATA FILTERING
+  // ====================================
+
   const filteredPositionAssessments = positionAssessments.filter(assessment => 
     assessment.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assessment.position_group_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -430,6 +536,10 @@ const CoreEmployeeCalculation = () => {
      assessment.position_assessment_title?.toLowerCase().includes(searchTerm.toLowerCase())) &&
     (selectedStatus === '' || assessment.status === selectedStatus)
   );
+
+  // ====================================
+  // RENDER
+  // ====================================
 
   return (
     <div className="space-y-6">
@@ -515,7 +625,6 @@ const CoreEmployeeCalculation = () => {
       ) : (
         <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 overflow-hidden">
           {activeTab === 'position' ? (
-            // Position Assessments Table
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b-2 border-gray-200">
@@ -531,18 +640,10 @@ const CoreEmployeeCalculation = () => {
                   {filteredPositionAssessments.length > 0 ? (
                     filteredPositionAssessments.map((assessment) => (
                       <tr key={assessment.id} className="border-b border-gray-200 hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 text-gray-900 font-medium">
-                          {assessment.position_group_name}
-                        </td>
-                        <td className="px-6 py-4 text-gray-900">
-                          {assessment.job_title}
-                        </td>
-                        <td className="px-6 py-4 text-gray-600">
-                          {assessment.competency_ratings?.length || 0} skills
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 text-sm">
-                          {new Date(assessment.created_at).toLocaleDateString()}
-                        </td>
+                        <td className="px-6 py-4 text-gray-900 font-medium">{assessment.position_group_name}</td>
+                        <td className="px-6 py-4 text-gray-900">{assessment.job_title}</td>
+                        <td className="px-6 py-4 text-gray-600">{assessment.competency_ratings?.length || 0} skills</td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">{new Date(assessment.created_at).toLocaleDateString()}</td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <ActionButton
@@ -553,6 +654,13 @@ const CoreEmployeeCalculation = () => {
                               icon={Eye}
                               label="View"
                               variant="outline"
+                              size="xs"
+                            />
+                            <ActionButton
+                              onClick={() => handleEditPositionAssessment(assessment)}
+                              icon={Edit}
+                              label="Edit"
+                              variant="info"
                               size="xs"
                             />
                             <ActionButton
@@ -579,7 +687,6 @@ const CoreEmployeeCalculation = () => {
               </table>
             </div>
           ) : (
-            // Employee Assessments Table
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b-2 border-gray-200">
@@ -603,21 +710,11 @@ const CoreEmployeeCalculation = () => {
                             <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-gray-900">
-                          {assessment.position_assessment_title}
-                        </td>
-                        <td className="px-6 py-4">
-                          <StatusBadge status={assessment.status} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <GapIndicator gap={assessment.gap_score || 0} />
-                        </td>
-                        <td className="px-6 py-4">
-                          <CompletionIndicator percentage={assessment.completion_percentage} />
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 text-sm">
-                          {new Date(assessment.assessment_date).toLocaleDateString()}
-                        </td>
+                        <td className="px-6 py-4 text-gray-900">{assessment.position_assessment_title}</td>
+                        <td className="px-6 py-4"><StatusBadge status={assessment.status} /></td>
+                        <td className="px-6 py-4"><GapIndicator gap={assessment.gap_score || 0} /></td>
+                        <td className="px-6 py-4"><CompletionIndicator percentage={assessment.completion_percentage} /></td>
+                        <td className="px-6 py-4 text-gray-600 text-sm">{new Date(assessment.assessment_date).toLocaleDateString()}</td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <ActionButton
@@ -655,7 +752,7 @@ const CoreEmployeeCalculation = () => {
                                 label="Reopen"
                                 variant="warning"
                                 size="xs"
-                              />
+                                />
                             )}
                             <ActionButton
                               onClick={() => handleExport(assessment.id, 'employee')}
@@ -721,7 +818,6 @@ const CoreEmployeeCalculation = () => {
             </div>
 
             {activeTab === 'position' ? (
-              /* Position Assessment View */
               <div className="space-y-6">
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border">
@@ -784,7 +880,6 @@ const CoreEmployeeCalculation = () => {
                 </div>
               </div>
             ) : (
-              /* Employee Assessment View */
               <div className="space-y-6">
                 {/* Employee Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border">
@@ -950,10 +1045,14 @@ const CoreEmployeeCalculation = () => {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-3">
                 <Building className="w-5 h-5 text-blue-600" />
-                Create Core Competency Position Template
+                {editingAssessment ? 'Edit' : 'Create'} Core Competency Position Template
               </h3>
               <button
-                onClick={() => setShowCreatePositionModal(false)}
+                onClick={() => {
+                  setShowCreatePositionModal(false);
+                  setEditingAssessment(null);
+                  setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+                }}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 <X size={20} />
@@ -966,29 +1065,29 @@ const CoreEmployeeCalculation = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Position Group <span className="text-red-500">*</span>
                 </label>
-           <SearchableDropdown
-  options={positionGroups}
-  value={positionFormData.position_group}
-  onChange={(value) => setPositionFormData({...positionFormData, position_group: value})}
-  placeholder="Select Position Group"
-  displayKey="name"
-  valueKey="id"
-  searchPlaceholder="Search position groups..."
-/>
+                <SearchableDropdown
+                  options={positionGroups}
+                  value={positionFormData.position_group}
+                  onChange={(value) => setPositionFormData({...positionFormData, position_group: value})}
+                  placeholder="Select Position Group"
+                  displayKey="name"
+                  valueKey="id"
+                  searchPlaceholder="Search position groups..."
+                />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Job Title <span className="text-red-500">*</span>
                 </label>
-               <SearchableDropdown
-  options={jobTitles}
-  value={positionFormData.job_title}
-  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
-  placeholder="Select Job Title"
-  allowStringOptions={true}
-  searchPlaceholder="Search job titles..."
-/>
+                <SearchableDropdown
+                  options={jobTitles}
+                  value={positionFormData.job_title}
+                  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
+                  placeholder="Select Job Title"
+                  allowStringOptions={true}
+                  searchPlaceholder="Search job titles..."
+                />
               </div>
             </div>
 
@@ -1112,7 +1211,11 @@ const CoreEmployeeCalculation = () => {
             {/* Action Buttons */}
             <div className="flex justify-end gap-3 mt-6 pt-6 border-t-2 border-gray-200">
               <ActionButton
-                onClick={() => setShowCreatePositionModal(false)}
+                onClick={() => {
+                  setShowCreatePositionModal(false);
+                  setEditingAssessment(null);
+                  setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+                }}
                 icon={X}
                 label="Cancel"
                 disabled={isSubmitting}
@@ -1120,9 +1223,9 @@ const CoreEmployeeCalculation = () => {
                 size="md"
               />
               <ActionButton
-                onClick={handleCreatePositionAssessment}
+                onClick={editingAssessment ? handleUpdatePositionAssessment : handleCreatePositionAssessment}
                 icon={Save}
-                label="Create Template"
+                label={editingAssessment ? 'Update Template' : 'Create Template'}
                 disabled={!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0}
                 loading={isSubmitting}
                 variant="primary"
@@ -1219,12 +1322,36 @@ const CoreEmployeeCalculation = () => {
                 onClick={() => {
                   setShowCreateEmployeeModal(false);
                   setSelectedEmployeeInfo(null);
+                  setDuplicateWarning(null);
+                  setNoTemplateWarning(null);
+                  setEmployeeFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
                 }}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 <X size={20} />
               </button>
             </div>
+            
+            {/* Duplicate Assessment Warning */}
+            {duplicateWarning && (
+              <DuplicateAssessmentWarning
+                employeeName={duplicateWarning.employeeName}
+                onClose={() => setDuplicateWarning(null)}
+              />
+            )}
+            
+            {/* No Template Warning */}
+            {noTemplateWarning && (
+              <NoTemplateWarning
+                jobTitle={noTemplateWarning.jobTitle}
+                onClose={() => setNoTemplateWarning(null)}
+              />
+            )}
             
             {/* Employee Selection */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
@@ -1234,17 +1361,15 @@ const CoreEmployeeCalculation = () => {
                     Employee <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown
-  options={employees}
-  value={employeeFormData.employee}
-  onChange={handleEmployeeChange}
-  placeholder="Select Employee"
-  displayKey="name"
-  valueKey="id"
-  searchPlaceholder="Search employees..."
-/>
+                    options={employees}
+                    value={employeeFormData.employee}
+                    onChange={handleEmployeeChange}
+                    placeholder="Select Employee"
+                    displayKey="name"
+                    valueKey="id"
+                    searchPlaceholder="Search employees..."
+                  />
                 </div>
-                
-              
               </div>
               
               {/* Employee Info Display */}
@@ -1309,14 +1434,10 @@ const CoreEmployeeCalculation = () => {
                     </thead>
                     
                     <tbody>
-                 
-
-                      {/* Selected position's skills */}
                       {(() => {
                         const selectedPosition = positionAssessments.find(p => p.id === employeeFormData.position_assessment);
                         if (!selectedPosition) return null;
 
-                        // Group skills by group name
                         const groupedSkills = {};
                         selectedPosition.competency_ratings?.forEach(rating => {
                           const groupName = rating.skill_group_name || 'Other';
@@ -1437,6 +1558,14 @@ const CoreEmployeeCalculation = () => {
                 onClick={() => {
                   setShowCreateEmployeeModal(false);
                   setSelectedEmployeeInfo(null);
+                  setDuplicateWarning(null);
+                  setNoTemplateWarning(null);
+                  setEmployeeFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
                 }}
                 icon={X}
                 label="Cancel"
@@ -1448,12 +1577,20 @@ const CoreEmployeeCalculation = () => {
                 onClick={() => handleEmployeeAssessmentAction('save_draft')}
                 icon={Save}
                 label="Save as Draft"
-                disabled={!employeeFormData.employee}
+                disabled={!employeeFormData.employee || !employeeFormData.position_assessment || duplicateWarning || noTemplateWarning}
                 loading={isSubmitting}
                 variant="secondary"
                 size="md"
               />
-             
+              <ActionButton
+                onClick={() => handleEmployeeAssessmentAction('submit')}
+                icon={Send}
+                label="Save & Submit"
+                disabled={!employeeFormData.employee || !employeeFormData.position_assessment || duplicateWarning || noTemplateWarning}
+                loading={isSubmitting}
+                variant="success"
+                size="md"
+              />
             </div>
           </div>
         </div>
@@ -1473,6 +1610,12 @@ const CoreEmployeeCalculation = () => {
                   setShowEditEmployeeModal(false);
                   setEditingAssessment(null);
                   setSelectedEmployeeInfo(null);
+                  setEmployeeFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
                 }}
                 className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
               >
@@ -1482,24 +1625,31 @@ const CoreEmployeeCalculation = () => {
             
             {/* Employee Info Display */}
             {selectedEmployeeInfo && (
-             
-                <div className="grid grid-cols-1 md:grid-cols-2 mb-3 gap-4">
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-blue-900">Employee:</span>
-                        <span className="ml-2 text-blue-700">{selectedEmployeeInfo.name}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium text-blue-900">Job Title:</span>
-                        <span className="ml-2 text-blue-700">{selectedEmployeeInfo.job_title}</span>
-                      </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 mb-6 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="grid grid-cols-1 gap-3 text-sm">
+                    <div>
+                      <span className="font-medium text-blue-900">Employee:</span>
+                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.name}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-blue-900">Job Title:</span>
+                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.job_title}</span>
                     </div>
                   </div>
-                  
-                
                 </div>
-          
+                
+                <div className="p-4 bg-gray-50 rounded-lg border">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Assessment Notes</label>
+                  <textarea
+                    value={employeeFormData.notes}
+                    onChange={(e) => setEmployeeFormData({...employeeFormData, notes: e.target.value})}
+                    placeholder="Additional assessment notes..."
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
             )}
 
             {/* Core Scales Information Button */}
@@ -1547,14 +1697,10 @@ const CoreEmployeeCalculation = () => {
                     </thead>
                     
                     <tbody>
-                     
-
-                      {/* Selected position's skills */}
                       {(() => {
                         const selectedPosition = positionAssessments.find(p => p.id === employeeFormData.position_assessment);
                         if (!selectedPosition) return null;
 
-                        // Group skills by group name
                         const groupedSkills = {};
                         selectedPosition.competency_ratings?.forEach(rating => {
                           const groupName = rating.skill_group_name || 'Other';
@@ -1676,6 +1822,12 @@ const CoreEmployeeCalculation = () => {
                   setShowEditEmployeeModal(false);
                   setEditingAssessment(null);
                   setSelectedEmployeeInfo(null);
+                  setEmployeeFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
                 }}
                 icon={X}
                 label="Cancel"

@@ -285,7 +285,7 @@ const AssessmentSettings = ({ onBack }) => {
   };
 
   return (
-    <div >
+    <div>
       {/* Header */}
       <div className={`${bgCard} rounded-xl mb-6 p-6 shadow-lg border-2 ${borderColor}`}>
         <div className="flex items-center justify-between">
@@ -600,6 +600,7 @@ const AssessmentSettings = ({ onBack }) => {
                 <input
                   type="number"
                   value={behavioralFormData.scale}
+                  onChange={(e) => setBehavioralFormData({...behavioralFormData, scale: parseInt(e.target.value) || ''})}
                   placeholder="Enter scale number (e.g., 1, 2, 3...)"
                   className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm ${
                     darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
@@ -690,7 +691,7 @@ const AssessmentSettings = ({ onBack }) => {
                 <input
                   type="number"
                   value={coreFormData.scale}
-                  onChange={(e) => setCoreFormData({...coreFormData, scale: parseInt(e.target.value)})}
+                  onChange={(e) => setCoreFormData({...coreFormData, scale: parseInt(e.target.value) || ''})}
                   placeholder="Enter scale number (e.g., 0, 1, 2, 3...)"
                   className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm ${
                     darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
@@ -783,7 +784,6 @@ const AssessmentSettings = ({ onBack }) => {
                   value={letterGradeFormData.letter_grade}
                   onChange={(e) => setLetterGradeFormData({...letterGradeFormData, letter_grade: e.target.value.toUpperCase()})}
                   placeholder="Enter grade letter (A, B, C, D, E, F)"
-     
                   className={`w-full px-4 py-3 border-2 border-gray-200 rounded-lg text-sm ${
                     darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-almet-cloud-burst'
                   } focus:border-almet-sapphire focus:outline-none`}
@@ -798,7 +798,7 @@ const AssessmentSettings = ({ onBack }) => {
                   <input
                     type="number"
                     value={letterGradeFormData.min_percentage}
-                    onChange={(e) => setLetterGradeFormData({...letterGradeFormData, min_percentage: parseFloat(e.target.value)})}
+                    onChange={(e) => setLetterGradeFormData({...letterGradeFormData, min_percentage: e.target.value})}
                     placeholder="0"
                     min="0"
                     max="100"
@@ -815,7 +815,7 @@ const AssessmentSettings = ({ onBack }) => {
                   <input
                     type="number"
                     value={letterGradeFormData.max_percentage}
-                    onChange={(e) => setLetterGradeFormData({...letterGradeFormData, max_percentage: parseFloat(e.target.value)})}
+                    onChange={(e) => setLetterGradeFormData({...letterGradeFormData, max_percentage: e.target.value})}
                     placeholder="100"
                     min="0"
                     max="100"
