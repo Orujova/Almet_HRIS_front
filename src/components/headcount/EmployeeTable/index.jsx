@@ -34,7 +34,7 @@ const EmployeeTable = ({
   // Loading state
   if (loading) {
     return (
-      <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass} overflow-hidden border ${styles.borderColor}`}>
+      <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass}  border ${styles.borderColor}`}>
         <div className="p-8 text-center">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-almet-sapphire"></div>
           <p className={`mt-4 ${styles.textMuted}`}>Loading employees...</p>
@@ -44,7 +44,7 @@ const EmployeeTable = ({
   }
 
   return (
-    <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass} overflow-hidden border ${styles.borderColor}`}>
+    <div className={`${styles.bgCard} rounded-lg ${styles.shadowClass}  border ${styles.borderColor}`}>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           {/* Table Header */}

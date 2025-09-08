@@ -3,18 +3,28 @@
 import { useState, useEffect } from "react";
 import { Palette } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
+import { setColorMode, getCurrentColorMode, getColorModes } from "./utils/themeStyles";
 
-// Global color mode state
-let globalColorMode = 'HIERARCHY';
+// Global listeners for color mode changes
 const colorModeListeners = new Set();
 
-// Color mode management functions
-export const setGlobalColorMode = (mode) => {
-  globalColorMode = mode;
-  // Notify all listeners
-  colorModeListeners.forEach(listener => listener(mode));
+// Add listener function
+export const addColorModeListener = (listener) => {
+  colorModeListeners.add(listener);
+  return () => colorModeListeners.delete(listener);
+};
+
+// Notify all listeners when color mode changes
+const notifyColorModeChange = (mode) => {
+  colorModeListeners.forEach(listener => {
+    try {
+      listener(mode);
+    } catch (error) {
+      console.error('Color mode listener error:', error);
+    }
+  });
   
-  // Dispatch custom event for components that use addEventListener
+  // Dispatch custom event for other components
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('colorModeChanged', { 
       detail: { mode } 
@@ -22,19 +32,12 @@ export const setGlobalColorMode = (mode) => {
   }
 };
 
-export const getCurrentColorMode = () => globalColorMode;
-
-export const addColorModeListener = (listener) => {
-  colorModeListeners.add(listener);
-  return () => colorModeListeners.delete(listener);
-};
-
 /**
  * Color mode selector component with proper state management
  */
 const ColorSelector = ({ onChange }) => {
   const { darkMode } = useTheme();
-  const [currentMode, setCurrentMode] = useState(globalColorMode);
+  const [currentMode, setCurrentMode] = useState(getCurrentColorMode());
 
   // Listen for color mode changes from other instances
   useEffect(() => {
@@ -48,15 +51,24 @@ const ColorSelector = ({ onChange }) => {
     return removeListener;
   }, [onChange]);
 
-  const colorModes = [
-    { value: 'HIERARCHY', label: 'Hierarchy', icon: '👑' },
-    { value: 'DEPARTMENT', label: 'Department', icon: '🏢' },
-    { value: 'BUSINESS_FUNCTION', label: 'Business', icon: '🌍' },
-    { value: 'GRADE', label: 'Grade', icon: '📊' }
-  ];
+  const colorModes = getColorModes();
 
   const handleModeChange = (newMode) => {
-    setGlobalColorMode(newMode);
+    console.log('🎨 COLOR MODE: Changing to', newMode);
+    
+    // Update the global color mode in themeStyles
+    setColorMode(newMode);
+    
+    // Update local state
+    setCurrentMode(newMode);
+    
+    // Notify all listeners
+    notifyColorModeChange(newMode);
+    
+    // Force re-render of table rows by triggering a custom event
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('forceTableRerender'));
+    }, 100);
   };
 
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -83,7 +95,7 @@ const ColorSelector = ({ onChange }) => {
               }
             `}
           >
-            <span className="mr-1">{mode.icon}</span>
+            <span className="mr-1">{mode.label.charAt(0)}</span>
             {mode.label}
           </button>
         ))}

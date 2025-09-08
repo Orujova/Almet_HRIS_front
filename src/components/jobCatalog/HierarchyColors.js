@@ -9,22 +9,22 @@ export const hierarchyColors = {
     text: 'text-almet-sapphire dark:text-almet-steel-blue', 
     border: 'border-almet-sapphire' 
   },
-  'DIRECTOR': { 
+  'Director': { 
     bg: 'bg-almet-astral/10 dark:bg-almet-astral/20', 
     text: 'text-almet-astral dark:text-almet-astral', 
     border: 'border-almet-astral' 
   },
-  'HEAD OF DEPARTMENT': { 
+  'HOD': { 
     bg: 'bg-almet-steel-blue/10 dark:bg-almet-steel-blue/20', 
     text: 'text-almet-steel-blue dark:text-almet-steel-blue', 
     border: 'border-almet-steel-blue' 
   },
-  'MANAGER': { 
+  'Manager': { 
     bg: 'bg-green-100 dark:bg-green-900/30', 
     text: 'text-green-700 dark:text-green-400', 
     border: 'border-green-500' 
   },
-  'SENIOR SPECIALIST': { 
+  'Senior Specialist': { 
     bg: 'bg-almet-bali-hai/10 dark:bg-almet-bali-hai/20', 
     text: 'text-almet-bali-hai dark:text-almet-bali-hai', 
     border: 'border-almet-bali-hai' 

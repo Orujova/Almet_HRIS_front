@@ -7,19 +7,9 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import { referenceDataAPI } from '@/store/api/referenceDataAPI';
 import { employeeAPI } from '@/store/api/employeeAPI';
 import { 
-  Search, 
-  Filter, 
-  Users, 
-  Briefcase, 
-  Building2, 
-  Target, 
-  BarChart3,
-  Plus,
-  Grid,
-  List,
-  Loader2,
+
   AlertCircle,
-  RefreshCw
+
 } from 'lucide-react';
 
 // Import components

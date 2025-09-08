@@ -1,9 +1,10 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Enhanced with Modern Components
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Enhanced with Color Mode Support
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
-import { getThemeStyles, getEmployeeColors } from "../utils/themeStyles";
+import { getThemeStyles, getEmployeeColors, getCurrentColorMode } from "../utils/themeStyles";
+import { addColorModeListener } from "../ColorModeSelector";
 import EmployeeStatusBadge from "../EmployeeStatusBadge";
 import EmployeeTag from "../EmployeeTag";
 import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
@@ -23,11 +24,43 @@ const EmployeeTableRow = ({
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
   
-  // Local state for visibility operations
+  // Local state for visibility operations and color mode changes
   const [visibilityLoading, setVisibilityLoading] = useState(false);
-  
-  // Get employee colors for border
+  const [currentColorMode, setCurrentColorMode] = useState(getCurrentColorMode());
+  const [, forceUpdate] = useState({});
+
+  // Listen for color mode changes and force re-render
+  useEffect(() => {
+    const removeListener = addColorModeListener((newMode) => {
+      console.log('🎨 ROW: Color mode changed to:', newMode);
+      setCurrentColorMode(newMode);
+      // Force re-render to update colors
+      forceUpdate({});
+    });
+
+    // Also listen for the custom force rerender event
+    const handleForceRerender = () => {
+      console.log('🔄 ROW: Force rerender triggered');
+      forceUpdate({});
+    };
+
+    window.addEventListener('forceTableRerender', handleForceRerender);
+
+    return () => {
+      removeListener();
+      window.removeEventListener('forceTableRerender', handleForceRerender);
+    };
+  }, []);
+
+  // Get employee colors based on current color mode - recalculate on each render
   const employeeColors = getEmployeeColors(employee, darkMode);
+
+  console.log('🎨 ROW RENDER: Employee colors calculated:', {
+    employee: employee.name,
+    colorMode: currentColorMode,
+    borderColor: employeeColors.borderColor,
+    backgroundStyle: employeeColors.backgroundStyle
+  });
 
   // Generate initials from employee name
   const getInitials = (name) => {
@@ -108,14 +141,12 @@ const EmployeeTableRow = ({
           tags.push({
             id: `tag_name_${idx}`,
             name: tagItem,
-        
             color: '#gray'
           });
         } else if (typeof tagItem === 'object' && tagItem.name) {
           tags.push({
             id: tagItem.id || `tag_obj_${idx}`,
             name: tagItem.name,
-       
             color: tagItem.color || '#gray'
           });
         }
@@ -129,7 +160,6 @@ const EmployeeTableRow = ({
           tags.push({
             id: tag.id || `tag_full_${idx}`,
             name: tag.name,
-          
             color: tag.color || '#gray'
           });
         }
@@ -141,15 +171,16 @@ const EmployeeTableRow = ({
 
   const tagsToDisplay = getTagsToDisplay();
 
-  // Modern row style with soft border and selection state
+  // Enhanced row style with proper color application
   const rowStyle = {
     borderLeft: `3px solid ${employeeColors.borderColor}`,
     backgroundColor: isSelected 
       ? (darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)')
-      : 'transparent'
+      : 'transparent',
+    transition: 'all 0.2s ease-out'
   };
 
-  // Modern avatar style with soft colors
+  // Enhanced avatar style with proper color application
   const avatarStyle = {
     background: `linear-gradient(135deg, ${employeeColors.borderColor}, ${employeeColors.borderColor}95)`,
     color: 'white'
@@ -175,7 +206,7 @@ const EmployeeTableRow = ({
             onChange={() => onToggleSelection(employee.id)}
           />
           <div className="flex items-center ml-2">
-            {/* Compact Avatar */}
+            {/* Enhanced Avatar with proper color */}
             <div 
               className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 shadow-sm backdrop-blur-sm"
               style={avatarStyle}

@@ -136,7 +136,7 @@ const ActionsDropdown = ({
 
       {isOpen && !disabled && (
         <div
-          className={`absolute right-0 top-full mt-1 z-50 w-56 rounded-md shadow-lg ${
+          className={`absolute right-0 top-full mt-1 z-100 w-56 rounded-md shadow-lg ${
             darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
           } border ring-1 ring-black ring-opacity-5 overflow-hidden`}
           style={{ zIndex: 9999 }}
