@@ -87,6 +87,7 @@ const BehavioralAssessmentCalculation = () => {
     const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
     console.log('Job Titles in Group:', jobTitlesInGroup);
     return jobTitlesInGroup.map(title => ({ 
+      value: title,
       name: title
     }));
   };
@@ -136,11 +137,11 @@ console.log('Position Form Data:', positionFormData);
     return (
       <button
         onClick={onClick}
-        disabled={disabled || loading}
+        
         className={`
           flex items-center gap-2 rounded-lg font-medium
           transition-all duration-200 hover:shadow ${variants[variant]} ${sizes[size]}
-          ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''}
+         
         `}
       >
         {loading ? <Loader2 size={14} className="animate-spin" /> : <Icon size={14} />}
