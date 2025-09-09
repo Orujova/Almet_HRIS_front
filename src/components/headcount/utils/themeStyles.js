@@ -1,14 +1,46 @@
-// src/utils/themeStyles.js
+// src/components/headcount/utils/themeStyles.js - FIXED EXPORTS
 
 /**
  * Global color mode management
  */
 let COLOR_MODE = 'HIERARCHY';
+let REFERENCE_DATA = null;
 
 /**
- * Üslubların hazırlanması üçün funksiya
- * @param {boolean} darkMode - Qaranlıq rejim fəaldır ya yox
- * @returns {Object} - Üslublar obyekti
+ * Color mode listeners for real-time updates
+ */
+const COLOR_MODE_LISTENERS = new Set();
+
+/**
+ * Enhanced predefined color palette for automatic assignment
+ */
+const COLOR_PALETTE = [
+  { primary: '#9333ea', light: '#a855f7', bg: '#faf5ff', bgDark: '#581c87' }, // purple
+  { primary: '#2563eb', light: '#3b82f6', bg: '#eff6ff', bgDark: '#1e3a8a' }, // blue
+  { primary: '#059669', light: '#10b981', bg: '#ecfdf5', bgDark: '#064e3b' }, // emerald
+  { primary: '#0891b2', light: '#06b6d4', bg: '#ecfeff', bgDark: '#164e63' }, // cyan
+  { primary: '#dc2626', light: '#ef4444', bg: '#fef2f2', bgDark: '#991b1b' }, // red
+  { primary: '#ea580c', light: '#f97316', bg: '#fff7ed', bgDark: '#9a3412' }, // orange
+  { primary: '#0d9488', light: '#14b8a6', bg: '#f0fdfa', bgDark: '#134e4a' }, // teal
+  { primary: '#7c3aed', light: '#8b5cf6', bg: '#f5f3ff', bgDark: '#4c1d95' }, // violet
+  { primary: '#db2777', light: '#ec4899', bg: '#fdf2f8', bgDark: '#831843' }, // pink
+  { primary: '#16a34a', light: '#22c55e', bg: '#f0fdf4', bgDark: '#14532d' }, // green
+  { primary: '#0369a1', light: '#0284c7', bg: '#f0f9ff', bgDark: '#0c4a6e' }, // sky
+  { primary: '#ca8a04', light: '#eab308', bg: '#fefce8', bgDark: '#713f12' }, // yellow
+];
+
+/**
+ * Default color configuration
+ */
+const DEFAULT_COLOR = {
+  primary: '#6b7280',
+  light: '#9ca3af',
+  bg: '#f9fafb',
+  bgDark: '#374151'
+};
+
+/**
+ * Theme styles helper function
  */
 export const getThemeStyles = (darkMode) => {
   return {
@@ -31,264 +63,475 @@ export const getThemeStyles = (darkMode) => {
 };
 
 /**
- * Rəng konfigurasiya obyekti - bunu dəyişməklə bütün rənglər dəyişir
+ * FIXED: Set reference data from API
  */
-export const COLOR_CONFIG = {
-  // Hierarchy rəngləri
-  HIERARCHY: {
-    'VC': { 
-      primary: '#9333ea', // purple-600
-      light: '#a855f7',   // purple-500
-      bg: '#faf5ff',      // purple-50
-      bgDark: '#581c87'   // purple-900
-    },
-    'DIRECTOR': {
-      primary: '#2563eb', // blue-600
-      light: '#3b82f6',   // blue-500
-      bg: '#eff6ff',      // blue-50
-      bgDark: '#1e3a8a'   // blue-900
-    },
-    'MANAGER': {
-      primary: '#059669', // emerald-600
-      light: '#10b981',   // emerald-500
-      bg: '#ecfdf5',      // emerald-50
-      bgDark: '#064e3b'   // emerald-900
-    },
-    'HEAD OF DEPARTMENT': {
-      primary: '#0891b2', // cyan-600
-      light: '#06b6d4',   // cyan-500
-      bg: '#ecfeff',      // cyan-50
-      bgDark: '#164e63'   // cyan-900
-    },
-    'SENIOR SPECIALIST': {
-      primary: '#ca8a04', // yellow-600
-      light: '#eab308',   // yellow-500
-      bg: '#fefce8',      // yellow-50
-      bgDark: '#713f12'   // yellow-900
-    },
-    'SPECIALIST': {
-      primary: '#ea580c', // orange-600
-      light: '#f97316',   // orange-500
-      bg: '#fff7ed',      // orange-50
-      bgDark: '#9a3412'   // orange-900
-    },
-    'JUNIOR SPECIALIST': {
-      primary: '#dc2626', // red-600
-      light: '#ef4444',   // red-500
-      bg: '#fef2f2',      // red-50
-      bgDark: '#991b1b'   // red-900
-    },
-    'BLUE COLLAR': {
-      primary: '#0d9488', // teal-600
-      light: '#14b8a6',   // teal-500
-      bg: '#f0fdfa',      // teal-50
-      bgDark: '#134e4a'   // teal-900
-    }
-  },
+export const setReferenceData = (data) => {
+  console.log('THEME: setReferenceData called with:', data);
   
-  // Departament rəngləri
-  DEPARTMENT: {
-    'BUSINESS DEVELOPMENT': {
-      primary: '#2563eb',
-      light: '#3b82f6',
-      bg: '#eff6ff',
-      bgDark: '#1e3a8a'
-    },
-    'FINANCE': {
-      primary: '#059669',
-      light: '#10b981',
-      bg: '#ecfdf5',
-      bgDark: '#064e3b'
-    },
-    'COMPLIANCE': {
-      primary: '#dc2626',
-      light: '#ef4444',
-      bg: '#fef2f2',
-      bgDark: '#991b1b'
-    },
-    'HR': {
-      primary: '#9333ea',
-      light: '#a855f7',
-      bg: '#faf5ff',
-      bgDark: '#581c87'
-    },
-    'ADMINISTRATIVE': {
-      primary: '#ca8a04',
-      light: '#eab308',
-      bg: '#fefce8',
-      bgDark: '#713f12'
-    },
-    'OPERATIONS': {
-      primary: '#ea580c',
-      light: '#f97316',
-      bg: '#fff7ed',
-      bgDark: '#9a3412'
-    },
-    'PROJECTS MANAGEMENT': {
-      primary: '#0d9488',
-      light: '#14b8a6',
-      bg: '#f0fdfa',
-      bgDark: '#134e4a'
-    },
-    'TRADE': {
-      primary: '#7c3aed',
-      light: '#8b5cf6',
-      bg: '#f5f3ff',
-      bgDark: '#4c1d95'
-    },
-    'STOCK SALES': {
-      primary: '#db2777',
-      light: '#ec4899',
-      bg: '#fdf2f8',
-      bgDark: '#831843'
-    }
-  },
+  if (!data) {
+    console.warn('THEME: No reference data provided');
+    return;
+  }
   
-  // Business Function rəngləri
-  BUSINESS_FUNCTION: {
-    'Holding': {
-      primary: '#2563eb',
-      light: '#3b82f6',
-      bg: '#eff6ff',
-      bgDark: '#1e3a8a'
-    },
-    'Trading': {
-      primary: '#059669',
-      light: '#10b981',
-      bg: '#ecfdf5',
-      bgDark: '#064e3b'
-    },
-    'Georgia': {
-      primary: '#dc2626',
-      light: '#ef4444',
-      bg: '#fef2f2',
-      bgDark: '#991b1b'
-    },
-    'UK': {
-      primary: '#9333ea',
-      light: '#a855f7',
-      bg: '#faf5ff',
-      bgDark: '#581c87'
-    }
-  },
+  REFERENCE_DATA = data;
   
-  // Grade rəngləri
-  GRADE: {
-    '1': {
-      primary: '#dc2626', // red-600
-      light: '#ef4444',
-      bg: '#fef2f2',
-      bgDark: '#991b1b'
-    },
-    '2': {
-      primary: '#ea580c', // orange-600
-      light: '#f97316',
-      bg: '#fff7ed',
-      bgDark: '#9a3412'
-    },
-    '3': {
-      primary: '#ca8a04', // yellow-600
-      light: '#eab308',
-      bg: '#fefce8',
-      bgDark: '#713f12'
-    },
-    '4': {
-      primary: '#059669', // emerald-600
-      light: '#10b981',
-      bg: '#ecfdf5',
-      bgDark: '#064e3b'
-    },
-    '5': {
-      primary: '#0891b2', // cyan-600
-      light: '#06b6d4',
-      bg: '#ecfeff',
-      bgDark: '#164e63'
-    },
-    '6': {
-      primary: '#2563eb', // blue-600
-      light: '#3b82f6',
-      bg: '#eff6ff',
-      bgDark: '#1e3a8a'
-    },
-    '7': {
-      primary: '#7c3aed', // violet-600
-      light: '#8b5cf6',
-      bg: '#f5f3ff',
-      bgDark: '#4c1d95'
-    },
-    '8': {
-      primary: '#9333ea', // purple-600
-      light: '#a855f7',
-      bg: '#faf5ff',
-      bgDark: '#581c87'
-    }
-  },
+  // Trigger color mode update to refresh colors
+  notifyColorModeListeners(COLOR_MODE);
   
-  // Default rəng
-  DEFAULT: {
-    primary: '#6b7280',
-    light: '#9ca3af',
-    bg: '#f9fafb',
-    bgDark: '#374151'
+  // Dispatch global event for components using addEventListener
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('referenceDataUpdated', { 
+      detail: { data, timestamp: Date.now() } 
+    }));
   }
 };
 
 /**
- * Employee üçün rəng əldə etmək
- * @param {Object} employee - Employee obyekti
- * @param {boolean} darkMode - Dark mode
- * @returns {Object} - Rəng obyekti
+ * FIXED: Color mode listener management - PROPER EXPORT
+ */
+export const addColorModeListener = (listener) => {
+  console.log('THEME: Adding color mode listener, current listeners:', COLOR_MODE_LISTENERS.size);
+  
+  if (typeof listener !== 'function') {
+    console.error('THEME: Listener must be a function:', typeof listener);
+    return () => {}; // Return empty cleanup function
+  }
+  
+  COLOR_MODE_LISTENERS.add(listener);
+  console.log('THEME: Listener added, total listeners:', COLOR_MODE_LISTENERS.size);
+  
+  // Immediately call with current mode
+  try {
+    listener(COLOR_MODE);
+  } catch (error) {
+    console.error('THEME: Error calling new listener:', error);
+  }
+  
+  // Return cleanup function
+  const cleanup = () => {
+    const wasDeleted = COLOR_MODE_LISTENERS.delete(listener);
+    console.log('THEME: Listener removed:', wasDeleted);
+  };
+  
+  return cleanup;
+};
+
+const notifyColorModeListeners = (mode) => {
+  console.log('THEME: Notifying listeners with mode:', mode);
+  COLOR_MODE_LISTENERS.forEach(listener => {
+    try {
+      listener(mode);
+    } catch (error) {
+      console.error('THEME: Error in listener:', error);
+    }
+  });
+};
+
+
+/**
+ * Validate hex color
+ */
+const isValidHexColor = (color) => {
+  return /^#[0-9A-F]{6}$/i.test(color);
+};
+
+/**
+ * Generate color variants from base color
+ */
+const generateColorVariants = (baseColor) => {
+  if (!isValidHexColor(baseColor)) {
+    return DEFAULT_COLOR;
+  }
+  
+  try {
+    const hex = baseColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    const lightR = Math.min(255, r + 40);
+    const lightG = Math.min(255, g + 40);
+    const lightB = Math.min(255, b + 40);
+    const light = `#${lightR.toString(16).padStart(2, '0')}${lightG.toString(16).padStart(2, '0')}${lightB.toString(16).padStart(2, '0')}`;
+    
+    const bg = `rgba(${r}, ${g}, ${b}, 0.1)`;
+    const bgDark = `rgba(${r}, ${g}, ${b}, 0.6)`;
+    
+    return {
+      primary: baseColor,
+      light: light,
+      bg: bg,
+      bgDark: bgDark
+    };
+  } catch (error) {
+    console.error('THEME: Error generating color variants:', error);
+    return DEFAULT_COLOR;
+  }
+};
+
+// themeStyles.js-də getEmployeeColors funksiyasını debug ilə əvəzləyin
+
+/**
+ * MAIN FUNCTION: Get employee colors with enhanced debugging
  */
 export const getEmployeeColors = (employee, darkMode = false) => {
   const mode = COLOR_MODE;
   let colorKey = '';
   
+  console.log(`THEME: getEmployeeColors called for employee: "${employee?.name}"`, {
+    mode,
+    employee_data: {
+      position_group_name: employee.position_group_name,
+      department_name: employee.department_name,
+      business_function_name: employee.business_function_name,
+      status_name: employee.status_name
+    }
+  });
+  
+  // Determine the key based on mode and employee data
   switch (mode) {
     case 'HIERARCHY':
-      colorKey = employee.positionGroup;
+      colorKey = employee.position_group_name || 
+                 employee.positionGroup || 
+                 employee.position_group || 
+                 'Unknown Position';
       break;
     case 'DEPARTMENT':
-      colorKey = employee.department;
+      colorKey = employee.department_name || 
+                 employee.department || 
+                 'Unknown Department';
       break;
     case 'BUSINESS_FUNCTION':
-      colorKey = employee.businessFunction;
+      colorKey = employee.business_function_name || 
+                 employee.businessFunction || 
+                 employee.business_function || 
+                 'Unknown Function';
+      break;
+    case 'UNIT':
+      colorKey = employee.unit_name || 
+                 employee.unit || 
+                 'Unknown Unit';
+      break;
+    case 'JOB_FUNCTION':
+      colorKey = employee.job_function_name || 
+                 employee.jobFunction || 
+                 employee.job_function || 
+                 'Unknown Job Function';
       break;
     case 'GRADE':
-      colorKey = employee.grade;
+      colorKey = employee.grading_level || 
+                 employee.grade || 
+                 'No Grade';
       break;
+    case 'STATUS':
+      colorKey = employee.status_name || 
+                 employee.status || 
+                 'Unknown Status';
+      break;
+ 
     default:
-      colorKey = employee.positionGroup;
+      colorKey = employee.position_group_name || 
+                 employee.positionGroup || 
+                 employee.position_group || 
+                 'Default';
   }
   
-  const colorConfig = COLOR_CONFIG[mode];
-  const selectedColor = colorConfig?.[colorKey] || COLOR_CONFIG.DEFAULT;
+  console.log(`THEME: Resolved color key: "${colorKey}" for mode: ${mode}`);
   
+  // Build dynamic color config
+  const colorConfig = buildDynamicColorConfig(mode);
+  console.log(`THEME: Available color keys in config:`, Object.keys(colorConfig));
+  
+  // Try exact match first
+  let selectedColor = colorConfig[colorKey];
+  
+  // If no exact match, try case-insensitive search
+  if (!selectedColor) {
+    const exactKey = Object.keys(colorConfig).find(key => 
+      key.toLowerCase() === colorKey.toLowerCase()
+    );
+    if (exactKey) {
+      selectedColor = colorConfig[exactKey];
+      console.log(`THEME: Found case-insensitive match: "${exactKey}" for "${colorKey}"`);
+    }
+  }
+  
+  // If still no match, try partial matching
+  if (!selectedColor) {
+    const partialKey = Object.keys(colorConfig).find(key => 
+      key.includes(colorKey) || colorKey.includes(key)
+    );
+    if (partialKey) {
+      selectedColor = colorConfig[partialKey];
+      console.log(`THEME: Found partial match: "${partialKey}" for "${colorKey}"`);
+    }
+  }
+  
+  // Use default if still no match
+  if (!selectedColor) {
+    selectedColor = DEFAULT_COLOR;
+    console.warn(`THEME: No match found for "${colorKey}", using default color. Available keys:`, Object.keys(colorConfig));
+  } else {
+    console.log(`THEME: SUCCESS - Found color for "${colorKey}":`, selectedColor.primary);
+  }
+
   return {
     borderColor: selectedColor.primary,
     backgroundColor: darkMode ? selectedColor.bgDark : selectedColor.bg,
     dotColor: selectedColor.light,
     textColor: darkMode ? '#ffffff' : '#000000',
-    
-    // CSS inline styles (Tailwind-dən asılı olmayan)
     borderStyle: `4px solid ${selectedColor.primary}`,
     backgroundStyle: darkMode ? 
-      `background-color: ${selectedColor.bgDark}20` : 
-      `background-color: ${selectedColor.bg}40`,
+      `background-color: ${selectedColor.bgDark}` : 
+      `background-color: ${selectedColor.bg}`,
     dotStyle: `background-color: ${selectedColor.light}`,
     avatarStyle: `background-color: ${selectedColor.primary}`
   };
 };
 
+// ENHANCED: buildDynamicColorConfig with more debug info
+const buildDynamicColorConfig = (mode) => {
+  console.log('THEME: buildDynamicColorConfig for mode:', mode);
+  console.log('THEME: Reference data available:', !!REFERENCE_DATA);
+  
+  if (!REFERENCE_DATA) {
+    console.warn('THEME: No reference data, using enhanced fallback');
+    // Enhanced fallback with common employee values
+    const enhancedFallback = {
+     
+      'Director': COLOR_PALETTE[1],
+      'HOD': COLOR_PALETTE[2],
+      'Manager': COLOR_PALETTE[3],
+      'Senior Specialist': COLOR_PALETTE[4],
+    
+    };
+    console.log('THEME: Using enhanced fallback with keys:', Object.keys(enhancedFallback));
+    return enhancedFallback;
+  }
+
+  let sourceData = [];
+  
+  try {
+    switch (mode) {
+      case 'HIERARCHY':
+        sourceData = REFERENCE_DATA.positionGroups || [];
+        console.log('THEME: HIERARCHY mode - position groups:', sourceData.length);
+        if (sourceData.length > 0) {
+          console.log('THEME: Position group sample:', sourceData[0]);
+        }
+        break;
+      case 'DEPARTMENT':
+        sourceData = REFERENCE_DATA.departments || [];
+        console.log('THEME: DEPARTMENT mode - departments:', sourceData.length);
+        break;
+      case 'BUSINESS_FUNCTION':
+        sourceData = REFERENCE_DATA.businessFunctions || [];
+        console.log('THEME: BUSINESS_FUNCTION mode - business functions:', sourceData.length);
+        break;
+      case 'UNIT':
+        sourceData = REFERENCE_DATA.units || [];
+        break;
+      case 'JOB_FUNCTION':
+        sourceData = REFERENCE_DATA.jobFunctions || [];
+        break;
+      case 'GRADE':
+        sourceData = [];
+        if (REFERENCE_DATA.positionGroups) {
+          REFERENCE_DATA.positionGroups.forEach(pg => {
+            if (pg.grading_levels) {
+              pg.grading_levels.forEach(level => {
+                sourceData.push({
+                  name: level.code || level.display || level.name,
+                  display_name: level.full_name || level.display || level.name,
+                  id: `${pg.id}_${level.code}`,
+                  color: level.color
+                });
+              });
+            }
+          });
+        }
+        break;
+      case 'STATUS':
+        sourceData = REFERENCE_DATA.employeeStatuses || [];
+        break;
+      case 'TAGS':
+        sourceData = REFERENCE_DATA.employeeTags || [];
+        break;
+      default:
+        sourceData = REFERENCE_DATA.positionGroups || [];
+    }
+
+    console.log('THEME: Source data count:', sourceData.length);
+    
+    if (sourceData.length === 0) {
+      console.warn('THEME: No source data for mode:', mode, '- using mode-specific fallback');
+      const fallbacks = {
+        'HIERARCHY': {
+          'Vice Chairman': COLOR_PALETTE[0],
+          'Director': COLOR_PALETTE[1],
+          'Manager': COLOR_PALETTE[2],
+          'Unknown Position': COLOR_PALETTE[3]
+        },
+        'DEPARTMENT': {
+          'OPERATIONS': COLOR_PALETTE[0],
+          'Unknown Department': COLOR_PALETTE[1]
+        },
+        'BUSINESS_FUNCTION': {
+          'Holding': COLOR_PALETTE[0],
+          'Unknown Function': COLOR_PALETTE[1]
+        }
+      };
+      return fallbacks[mode] || fallbacks['HIERARCHY'];
+    }
+
+    const colorConfig = {};
+    
+    sourceData.forEach((item, index) => {
+      let primaryKey, secondaryKey;
+      
+      if (mode === 'HIERARCHY') {
+        // CRITICAL: What employees actually use vs what API provides
+        primaryKey = item.name; // This should be the employee field value
+        secondaryKey = item.code; // This might be the API short code
+      } else if (mode === 'DEPARTMENT') {
+        primaryKey = item.name;
+        secondaryKey = item.code;
+      } else if (mode === 'BUSINESS_FUNCTION') {
+        primaryKey = item.name;
+        secondaryKey = item.code;
+      } else {
+        primaryKey = item.name || item.display_name || item.code || item.id;
+        secondaryKey = null;
+      }
+      
+      if (!primaryKey) {
+        console.warn('THEME: Skipping item without primaryKey:', item);
+        return;
+      }
+      
+      let colors;
+      if (item.color && isValidHexColor(item.color)) {
+        colors = generateColorVariants(item.color);
+        console.log(`THEME: Using API color for "${primaryKey}":`, item.color);
+      } else {
+        const paletteIndex = index % COLOR_PALETTE.length;
+        colors = COLOR_PALETTE[paletteIndex];
+        console.log(`THEME: Auto-assigned palette color for "${primaryKey}":`, colors.primary);
+      }
+      
+      // Add both keys to config
+      colorConfig[primaryKey] = colors;
+      
+      if (secondaryKey && secondaryKey !== primaryKey) {
+        colorConfig[secondaryKey] = colors;
+        console.log(`THEME: Added secondary mapping "${secondaryKey}" -> "${primaryKey}"`);
+      }
+      
+      // Add display_name if different
+      if (item.display_name && item.display_name !== primaryKey) {
+        colorConfig[item.display_name] = colors;
+        console.log(`THEME: Added display_name mapping "${item.display_name}" -> "${primaryKey}"`);
+      }
+    });
+
+    console.log('THEME: Built config with', Object.keys(colorConfig).length, 'keys:', Object.keys(colorConfig));
+    return colorConfig;
+    
+  } catch (error) {
+    console.error('THEME: Error building config:', error);
+    return {
+      'Default': COLOR_PALETTE[0],
+      'Vice Chairman': COLOR_PALETTE[0]
+    };
+  }
+};
+
 /**
- * Hierarchy əsaslı rəngləmə sistemi (köhnə funksiya - geriyə uyğunluq üçün)
- * @param {string} positionGroup - Position Group adı
- * @param {boolean} darkMode - Qaranlıq rejim
- * @returns {Object} - Rəng sinifləri
+ * FIXED: Set color mode with immediate notification
+ */
+export const setColorMode = (mode) => {
+  console.log('THEME: Setting color mode to:', mode);
+  COLOR_MODE = mode;
+  
+  // Notify listeners immediately
+  notifyColorModeListeners(mode);
+  
+  // Dispatch custom event
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('colorModeChanged', { 
+      detail: { mode, timestamp: Date.now() } 
+    }));
+  }
+};
+
+/**
+ * Get current color mode
+ */
+export const getCurrentColorMode = () => {
+  return COLOR_MODE;
+};
+
+/**
+ * Get hierarchy legend
+ */
+export const getHierarchyLegend = (darkMode) => {
+  const mode = COLOR_MODE;
+  const colorConfig = buildDynamicColorConfig(mode);
+  
+  return Object.entries(colorConfig).map(([key, colors]) => ({
+    level: key,
+    description: key,
+    color: colors.light,
+    colorHex: colors.primary
+  }));
+};
+
+/**
+ * Get available color modes
+ */
+export const getColorModes = () => {
+  const availableModes = [
+    { value: 'HIERARCHY', label: 'Position Hierarchy', description: 'Color by job level' }
+  ];
+  
+  if (REFERENCE_DATA?.departments?.length > 0) {
+    availableModes.push({ value: 'DEPARTMENT', label: 'Department', description: 'Color by department' });
+  }
+  
+  if (REFERENCE_DATA?.businessFunctions?.length > 0) {
+    availableModes.push({ value: 'BUSINESS_FUNCTION', label: 'Business Function', description: 'Color by business unit' });
+  }
+  
+  if (REFERENCE_DATA?.employeeStatuses?.length > 0) {
+    availableModes.push({ value: 'STATUS', label: 'Employment Status', description: 'Color by employment status' });
+  }
+  
+  return availableModes;
+};
+
+/**
+ * Initialize color system with reference data
+ */
+export const initializeColorSystem = (referenceData) => {
+  console.log('THEME: Initializing color system');
+  setReferenceData(referenceData);
+  
+  let selectedMode = 'HIERARCHY';
+  if (referenceData?.positionGroups?.length > 0) {
+    selectedMode = 'HIERARCHY';
+  } else if (referenceData?.departments?.length > 0) {
+    selectedMode = 'DEPARTMENT';
+  }
+  
+  setColorMode(selectedMode);
+};
+
+/**
+ * Backward compatibility functions
  */
 export const getHierarchyColors = (positionGroup, darkMode) => {
-  const employee = { positionGroup };
+  const employee = { position_group_name: positionGroup };
   const colors = getEmployeeColors(employee, darkMode);
-  
   return {
     borderColor: `border-l-[${colors.borderColor}]`,
     bgColor: darkMode ? `hover:bg-[${colors.backgroundColor}]` : `hover:bg-[${colors.backgroundColor}]`,
@@ -296,104 +539,8 @@ export const getHierarchyColors = (positionGroup, darkMode) => {
   };
 };
 
-/**
- * Departament üçün arxa fon rənginin hazırlanması (köhnə funksiya)
- * @param {string} department - Departament adı
- * @param {boolean} darkMode - Qaranlıq rejim
- * @returns {string} - Background class
- */
 export const getDepartmentColor = (department, darkMode) => {
-  const employee = { department };
+  const employee = { department_name: department };
   const colors = getEmployeeColors(employee, darkMode);
   return darkMode ? `bg-[${colors.backgroundColor}]` : `bg-[${colors.backgroundColor}]`;
 };
-
-/**
- * Rəng sistemini dəyişmək üçün funksiya
- * @param {string} mode - 'HIERARCHY', 'DEPARTMENT', 'BUSINESS_FUNCTION', 'GRADE'
- */
-export const setColorMode = (mode) => {
-  COLOR_MODE = mode;
-};
-
-/**
- * Cari color mode-u əldə etmək
- */
-export const getCurrentColorMode = () => COLOR_MODE;
-
-/**
- * Hierarchy Legend - rəng açıqlamaları
- * @param {boolean} darkMode - Dark mode
- * @returns {Array} - Legend məlumatları
- */
-export const getHierarchyLegend = (darkMode) => {
-  const mode = COLOR_MODE;
-  const config = COLOR_CONFIG[mode] || COLOR_CONFIG.HIERARCHY;
-  
-  return Object.entries(config).map(([key, colors]) => ({
-    level: key,
-    description: getLevelDescription(key, mode),
-    color: colors.light,
-    colorHex: colors.light
-  }));
-};
-
-/**
- * Səviyyə açıqlaması əldə etmək
- * @param {string} key - Açar
- * @param {string} mode - Rejim
- * @returns {string} - Açıqlama
- */
-const getLevelDescription = (key, mode) => {
-  const descriptions = {
-    HIERARCHY: {
-      'VC': 'Vice Chairman',
-      'DIRECTOR': 'Director Level',
-      'MANAGER': 'Manager Level',
-      'HEAD OF DEPARTMENT': 'Head of Department',
-      'SENIOR SPECIALIST': 'Senior Specialist',
-      'SPECIALIST': 'Specialist',
-      'JUNIOR SPECIALIST': 'Junior Specialist',
-      'BLUE COLLAR': 'Blue Collar Worker'
-    },
-    DEPARTMENT: {
-      'BUSINESS DEVELOPMENT': 'Business Development',
-      'FINANCE': 'Finance Department',
-      'COMPLIANCE': 'Compliance Department',
-      'HR': 'Human Resources',
-      'ADMINISTRATIVE': 'Administrative',
-      'OPERATIONS': 'Operations',
-      'PROJECTS MANAGEMENT': 'Projects Management',
-      'TRADE': 'Trade Department',
-      'STOCK SALES': 'Stock Sales'
-    },
-    BUSINESS_FUNCTION: {
-      'Holding': 'Holding Company',
-      'Trading': 'Trading Division',
-      'Georgia': 'Georgia Operations',
-      'UK': 'UK Operations'
-    },
-    GRADE: {
-      '1': 'Grade 1 - Entry Level',
-      '2': 'Grade 2 - Junior',
-      '3': 'Grade 3 - Standard',
-      '4': 'Grade 4 - Experienced',
-      '5': 'Grade 5 - Senior',
-      '6': 'Grade 6 - Principal',
-      '7': 'Grade 7 - Director',
-      '8': 'Grade 8 - Executive'
-    }
-  };
-  
-  return descriptions[mode]?.[key] || key;
-};
-
-/**
- * Rəng rejimləri siyahısı
- */
-export const getColorModes = () => [
-  { value: 'HIERARCHY', label: 'Position Hierarchy', description: 'Color by job level' },
-  { value: 'DEPARTMENT', label: 'Department', description: 'Color by department' },
-  { value: 'BUSINESS_FUNCTION', label: 'Business Function', description: 'Color by business unit' },
-  { value: 'GRADE', label: 'Grade Level', description: 'Color by grade level' }
-];

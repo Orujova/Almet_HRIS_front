@@ -1214,7 +1214,7 @@ const CoreEmployeeCalculation = () => {
       {/* Create Employee Assessment Modal */}
       {showCreateEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 w-full max-w-5xl max-h-[60vh] overflow-auto border border-almet-bali-hai shadow-lg  ">
+          <div className="bg-white rounded-lg p-4 w-full max-w-5xl max-h-[80vh] overflow-auto border border-almet-bali-hai shadow-lg  ">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
                 <User className="w-4 h-4 text-almet-sapphire" />

@@ -1,10 +1,17 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - Enhanced with Color Mode Support
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED IMPORTS
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
-import { getThemeStyles, getEmployeeColors, getCurrentColorMode } from "../utils/themeStyles";
-import { addColorModeListener } from "../ColorModeSelector";
+
+// FIXED: Correct imports from themeStyles (not ColorModeSelector)
+import { 
+  getThemeStyles, 
+  getEmployeeColors,
+  getCurrentColorMode, 
+  addColorModeListener 
+} from "../utils/themeStyles";
+
 import EmployeeStatusBadge from "../EmployeeStatusBadge";
 import EmployeeTag from "../EmployeeTag";
 import EmployeeVisibilityToggle from "../EmployeeVisibilityToggle";
@@ -17,65 +24,187 @@ const EmployeeTableRow = ({
   isVisible,
   onVisibilityChange,
   onAction,
-  // Enhanced functionality props
   isUpdatingVisibility = false,
   showVisibilityConfirmation = false
 }) => {
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
   
-  // Local state for visibility operations and color mode changes
+  // FIXED: Color mode state with correct function import
+  const [currentColorMode, setCurrentColorMode] = useState(() => {
+    try {
+      return getCurrentColorMode();
+    } catch (error) {
+      console.error('EmployeeTableRow: Error getting current color mode:', error);
+      return 'HIERARCHY'; // fallback
+    }
+  });
+  const [colorUpdateKey, setColorUpdateKey] = useState(0);
+  
+  // Local state for visibility operations
   const [visibilityLoading, setVisibilityLoading] = useState(false);
-  const [currentColorMode, setCurrentColorMode] = useState(getCurrentColorMode());
-  const [, forceUpdate] = useState({});
 
-  // Listen for color mode changes and force re-render
+  // FIXED: Listen to color mode changes with error handling
   useEffect(() => {
-    const removeListener = addColorModeListener((newMode) => {
-      console.log('🎨 ROW: Color mode changed to:', newMode);
-      setCurrentColorMode(newMode);
-      // Force re-render to update colors
-      forceUpdate({});
-    });
+    let isComponentMounted = true;
+    let removeListener;
+    
+    try {
+      // Primary listener through theme system
+      removeListener = addColorModeListener((newMode) => {
+        if (!isComponentMounted) return;
+        
+        console.log('EmployeeTableRow: Color mode changed to:', newMode, 'for:', employee?.name);
+        setCurrentColorMode(newMode);
+        setColorUpdateKey(prev => prev + 1);
+      });
+    } catch (error) {
+      console.error('EmployeeTableRow: Error setting up color mode listener:', error);
+    }
 
-    // Also listen for the custom force rerender event
-    const handleForceRerender = () => {
-      console.log('🔄 ROW: Force rerender triggered');
-      forceUpdate({});
+    // Secondary listener for custom events
+    const handleColorModeChange = (event) => {
+      if (!isComponentMounted) return;
+      setCurrentColorMode(event.detail.mode);
+      setColorUpdateKey(prev => prev + 1);
     };
 
-    window.addEventListener('forceTableRerender', handleForceRerender);
+    // Reference data update listener
+    const handleReferenceDataUpdate = (event) => {
+      if (!isComponentMounted) return;
+      setColorUpdateKey(prev => prev + 1);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('colorModeChanged', handleColorModeChange);
+      window.addEventListener('referenceDataUpdated', handleReferenceDataUpdate);
+    }
 
     return () => {
-      removeListener();
-      window.removeEventListener('forceTableRerender', handleForceRerender);
+      isComponentMounted = false;
+      if (removeListener && typeof removeListener === 'function') {
+        try {
+          removeListener();
+        } catch (error) {
+          console.error('EmployeeTableRow: Error removing listener:', error);
+        }
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('colorModeChanged', handleColorModeChange);
+        window.removeEventListener('referenceDataUpdated', handleReferenceDataUpdate);
+      }
     };
+  }, [employee?.name, employee?.id]);
+
+  // Enhanced getEmployeeColors with comprehensive field fallback
+  const getEmployeeColorsWithFallback = useCallback((employee, darkMode) => {
+    // Create normalized employee object with comprehensive field mapping
+    const normalizedEmployee = {
+      ...employee,
+      // Position group mapping - what employees actually use
+      position_group_name: employee.position_group_name || 
+                          employee.positionGroup || 
+                          employee.position_group ||
+                          employee.position_group_detail?.display_name ||
+                          employee.position_group_detail?.name ||
+                          'Unknown Position',
+      
+      // Department mapping
+      department_name: employee.department_name ||
+                      employee.department ||
+                      employee.department_detail?.display_name ||
+                      employee.department_detail?.name ||
+                      'Unknown Department',
+                      
+      // Business function mapping
+      business_function_name: employee.business_function_name ||
+                             employee.businessFunction ||
+                             employee.business_function ||
+                             employee.business_function_detail?.display_name ||
+                             employee.business_function_detail?.name ||
+                             'Unknown Function',
+      
+      // Unit mapping                     
+      unit_name: employee.unit_name ||
+                 employee.unit ||
+                 employee.unit_detail?.display_name ||
+                 employee.unit_detail?.name ||
+                 'Unknown Unit',
+                 
+      // Job function mapping
+      job_function_name: employee.job_function_name ||
+                        employee.jobFunction ||
+                        employee.job_function ||
+                        employee.job_function_detail?.display_name ||
+                        employee.job_function_detail?.name ||
+                        'Unknown Job Function',
+                        
+      // Status mapping
+      status_name: employee.status_name ||
+                  employee.status ||
+                  employee.status_detail?.display_name ||
+                  employee.status_detail?.name ||
+                  'Unknown Status',
+                  
+      // Grading mapping  
+      grading_level: employee.grading_level ||
+                    employee.grade ||
+                    employee.grading_display ||
+                    'No Grade',
+
+      // Tags mapping
+      tag_names: employee.tag_names || employee.tags || [],
+      tags: employee.tags || employee.tag_names || []
+    };
+    
+    try {
+      return getEmployeeColors(normalizedEmployee, darkMode);
+    } catch (error) {
+      console.error('EmployeeTableRow: Error getting colors:', error);
+      // Return safe fallback colors
+      return {
+        borderColor: '#6b7280',
+        backgroundColor: darkMode ? '#374151' : '#f9fafb',
+        dotColor: '#9ca3af',
+        textColor: darkMode ? '#ffffff' : '#000000',
+        borderStyle: '4px solid #6b7280',
+        backgroundStyle: darkMode ? 'background-color: #374151' : 'background-color: #f9fafb',
+        dotStyle: 'background-color: #9ca3af',
+        avatarStyle: 'background-color: #6b7280'
+      };
+    }
   }, []);
 
-  // Get employee colors based on current color mode - recalculate on each render
-  const employeeColors = getEmployeeColors(employee, darkMode);
-
-  console.log('🎨 ROW RENDER: Employee colors calculated:', {
-    employee: employee.name,
-    colorMode: currentColorMode,
-    borderColor: employeeColors.borderColor,
-    backgroundStyle: employeeColors.backgroundStyle
-  });
+  // Memoized employee colors with all update dependencies
+  const employeeColors = useMemo(() => {
+    const colors = getEmployeeColorsWithFallback(employee, darkMode);
+    
+    console.log(`EmployeeTableRow: Colors for "${employee?.name}":`, {
+      mode: currentColorMode,
+      borderColor: colors.borderColor,
+      isDefault: colors.borderColor === '#6b7280'
+    });
+    
+    return colors;
+  }, [employee, darkMode, currentColorMode, colorUpdateKey, getEmployeeColorsWithFallback]);
 
   // Generate initials from employee name
-  const getInitials = (name) => {
+  const getInitials = useCallback((name) => {
     if (!name) return "NA";
     const names = name.split(" ");
     if (names.length === 1) return names[0].charAt(0);
     return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`;
-  };
+  }, []);
 
   // Use the correct field from backend response
-  const employeeName = employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
-  const initials = getInitials(employeeName);
+  const employeeName = useMemo(() => {
+    return employee.name || `${employee.first_name || ''} ${employee.last_name || ''}`.trim();
+  }, [employee.name, employee.first_name, employee.last_name]);
+
+  const initials = useMemo(() => getInitials(employeeName), [employeeName, getInitials]);
 
   // Format date helper
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     if (!dateString) return "N/A";
     try {
       return new Date(dateString).toLocaleDateString("en-GB", { 
@@ -86,55 +215,42 @@ const EmployeeTableRow = ({
     } catch (error) {
       return "Invalid Date";
     }
-  };
+  }, []);
 
   // Format phone number
-  const formatPhone = (phone) => {
+  const formatPhone = useCallback((phone) => {
     if (!phone) return "N/A";
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length >= 10) {
-      return phone;
-    }
     return phone;
-  };
+  }, []);
 
-  // Enhanced visibility change handler with proper state management
-  const handleVisibilityChange = async (employeeId, newVisibility) => {
+  // Enhanced visibility change handler
+  const handleVisibilityChange = useCallback(async (employeeId, newVisibility) => {
     if (visibilityLoading) return;
     
     setVisibilityLoading(true);
     
     try {
-      // Call the parent handler which should handle API call
       await onVisibilityChange(employeeId, newVisibility);
-      
-      console.log(`✅ Employee ${employeeId} visibility updated to ${newVisibility ? 'visible' : 'hidden'}`);
-      
     } catch (error) {
-      console.error('❌ Failed to update visibility:', error);
+      console.error('Failed to update visibility:', error);
       alert(`Failed to update visibility: ${error.message}`);
     } finally {
       setVisibilityLoading(false);
     }
-  };
+  }, [onVisibilityChange, visibilityLoading]);
 
-  // Enhanced action handler - pass to parent
-  const handleEmployeeAction = (employeeId, action) => {
-    console.log('🔧 ROW: Employee action triggered:', { employeeId, action });
-    
-    // Call parent action handler
+  // Enhanced action handler
+  const handleEmployeeAction = useCallback((employeeId, action) => {
     if (onAction) {
       onAction(employeeId, action);
-    } else {
-      console.warn('⚠️ ROW: No onAction handler provided');
     }
-  };
+  }, [onAction]);
 
-  // Enhanced tag processing with safe handling
-  const getTagsToDisplay = () => {
+  // Enhanced tag processing
+  const getTagsToDisplay = useCallback(() => {
     const tags = [];
     
-    // Handle tag_names array (string names)
+    // Handle tag_names array
     if (employee.tag_names && Array.isArray(employee.tag_names)) {
       employee.tag_names.forEach((tagItem, idx) => {
         if (typeof tagItem === 'string') {
@@ -153,7 +269,7 @@ const EmployeeTableRow = ({
       });
     }
     
-    // Handle tags array (full tag objects)
+    // Handle tags array
     if (employee.tags && Array.isArray(employee.tags)) {
       employee.tags.forEach((tag, idx) => {
         if (typeof tag === 'object' && tag.name) {
@@ -167,29 +283,30 @@ const EmployeeTableRow = ({
     }
     
     return tags;
-  };
+  }, [employee.tag_names, employee.tags]);
 
-  const tagsToDisplay = getTagsToDisplay();
+  const tagsToDisplay = useMemo(() => getTagsToDisplay(), [getTagsToDisplay]);
 
-  // Enhanced row style with proper color application
-  const rowStyle = {
+  // Dynamic row style with real-time color updates
+  const rowStyle = useMemo(() => ({
     borderLeft: `3px solid ${employeeColors.borderColor}`,
     backgroundColor: isSelected 
       ? (darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)')
       : 'transparent',
-    transition: 'all 0.2s ease-out'
-  };
+    transition: 'all 0.3s ease-in-out'
+  }), [employeeColors.borderColor, isSelected, darkMode]);
 
-  // Enhanced avatar style with proper color application
-  const avatarStyle = {
+  // Dynamic avatar style with real-time color updates
+  const avatarStyle = useMemo(() => ({
     background: `linear-gradient(135deg, ${employeeColors.borderColor}, ${employeeColors.borderColor}95)`,
-    color: 'white'
-  };
+    color: 'white',
+    transition: 'background 0.3s ease-in-out'
+  }), [employeeColors.borderColor]);
 
   return (
     <tr
       className={`
-        transition-all duration-200 ease-out
+        transition-all duration-300 ease-out
         ${darkMode ? 'hover:bg-gray-800/50' : 'hover:bg-gray-50/80'}
         ${visibilityLoading ? 'opacity-75' : ''}
         border-b border-gray-100/50 dark:border-gray-800/50
@@ -206,9 +323,9 @@ const EmployeeTableRow = ({
             onChange={() => onToggleSelection(employee.id)}
           />
           <div className="flex items-center ml-2">
-            {/* Enhanced Avatar with proper color */}
+            {/* Compact Avatar with Dynamic Colors */}
             <div 
-              className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 shadow-sm backdrop-blur-sm"
+              className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-medium mr-2 shadow-sm"
               style={avatarStyle}
             >
               {employee.profile_image ? (
@@ -227,7 +344,6 @@ const EmployeeTableRow = ({
               </span>
             </div>
             <div>
-              {/* Smaller clickable name */}
               <Link href={`/structure/employee/${employee.id}`}>
                 <div className={`
                   text-xs font-medium ${styles.textPrimary} truncate max-w-[120px] 
@@ -245,7 +361,7 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Contact Info - Email & Phone */}
+      {/* Contact Info */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col space-y-0.5">
           <div className={`text-xs ${styles.textSecondary} truncate max-w-[120px]`}>
@@ -286,11 +402,17 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Position & Grade */}
+      {/* Position & Grade - Highlighted with color mode */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col items-center space-y-0.5">
           <div className="flex items-center">
-            <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px] text-center`}>
+            <div 
+              className={`text-xs ${styles.textSecondary} truncate max-w-[100px] text-center font-medium`}
+              style={{ 
+                color: currentColorMode === 'HIERARCHY' ? employeeColors.borderColor : undefined,
+                fontWeight: currentColorMode === 'HIERARCHY' ? '600' : '500'
+              }}
+            >
               {employee.position_group_name || 'No Position'}
             </div>
           </div>

@@ -16,7 +16,7 @@ import HierarchyLegend from "./HierarchyLegend";
 import ColorSelector from "./ColorModeSelector";
 import ExportModal from "./ExportModal";
 import BulkUploadForm from "./BulkUploadForm";
-
+import { initializeColorSystem, setReferenceData } from "./utils/themeStyles";
 // Import our Advanced Multiple Sorting System
 import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 import LineManagerModal from "./LineManagerAssignModal";
@@ -238,8 +238,7 @@ useEffect(() => {
       page_size: pagination.pageSize || 25
     };
 
-    console.log('🔧 HEADCOUNT: Building API params from localFilters:', localFilters);
-
+  
     // Text search
     if (localFilters.search?.trim()) {
       params.search = localFilters.search.trim();
@@ -251,7 +250,7 @@ useEffect(() => {
         sort.direction === 'desc' ? `-${sort.field}` : sort.field
       );
       params.ordering = orderingFields.join(',');
-      console.log('✅ HEADCOUNT: Multiple sorting applied:', params.ordering);
+
     }
 
     // Multi-select Filters - Send as arrays, backend will handle parsing
@@ -268,7 +267,7 @@ useEffect(() => {
           );
           if (cleanValues.length > 0) {
             params[filterKey] = cleanValues.join(',');
-            console.log(`✅ HEADCOUNT: ${filterKey} = "${params[filterKey]}" (from array of ${cleanValues.length} items)`);
+  
           }
         } else if (typeof localFilters[filterKey] === 'string') {
           const trimmed = localFilters[filterKey].trim();
@@ -326,7 +325,6 @@ useEffect(() => {
       params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
     }
 
-    console.log('🚀 HEADCOUNT: Final API params:', params);
     return params;
   }, [localFilters, pagination.page, pagination.pageSize, sorting]);
 
@@ -352,7 +350,7 @@ useEffect(() => {
     const lastParamsString = JSON.stringify(lastApiParamsRef.current);
     
     if (paramsString === lastParamsString && !immediate) {
-      console.log('🔄 Skipping fetch - same params');
+     
       return;
     }
 
@@ -365,7 +363,7 @@ useEffect(() => {
     debounceRef.current = setTimeout(() => {
       const now = Date.now();
       if (now - lastFetchTime.current > 100) {
-        console.log('🚀 Fetching employees with params:', params);
+     
         lastFetchTime.current = now;
         lastApiParamsRef.current = { ...params };
         fetchEmployees(params);
@@ -383,7 +381,7 @@ useEffect(() => {
       
       try {
         initialized.current = true;
-        console.log('🚀 Initializing HeadcountTable...');
+    
         
         clearErrors();
         lastApiParamsRef.current = { ...buildApiParams };
@@ -393,7 +391,6 @@ useEffect(() => {
           fetchEmployees(buildApiParams)
         ]);
         
-        console.log('✅ HeadcountTable initialized successfully');
       } catch (error) {
         console.error('❌ Failed to initialize HeadcountTable:', error);
         initialized.current = false;
@@ -403,16 +400,140 @@ useEffect(() => {
     initializeData();
   }, []);
 
+useEffect(() => {
+  // Check API data with comprehensive error handling
+  const isLoading = typeof refLoading === 'object' 
+    ? Object.values(refLoading).some(loading => loading === true)
+    : refLoading;
+
+  console.log('HEADCOUNT: API Status Check:', {
+    isLoading,
+    refError,
+    positionGroups: positionGroups?.length || 'null/undefined',
+    departments: departments?.length || 'null/undefined',
+    businessFunctions: businessFunctions?.length || 'null/undefined'
+  });
+
+  if (isLoading) {
+    console.log('HEADCOUNT: Still loading API data...');
+    return;
+  }
+
+  // CRITICAL FIX: Initialize color system even with API errors
+  let hasAnyData = false;
+  let apiReferenceData = {
+    positionGroups: [],
+    departments: [],
+    businessFunctions: [],
+    employeeStatuses: [],
+    employeeTags: []
+  };
+
+  // Try to extract any available data
+  if (positionGroups && Array.isArray(positionGroups) && positionGroups.length > 0) {
+    apiReferenceData.positionGroups = positionGroups.map(item => ({
+      name: item.display_name || item.label || item.name || `Position_${item.id || item.value}`,
+      display_name: item.display_name || item.label || item.name,
+      code: item.name || item.code,
+      color: item.color,
+      id: item.id || item.value,
+      hierarchy_level: item.hierarchy_level,
+      grading_levels: item.grading_levels || []
+    }));
+    hasAnyData = true;
+  }
+
+  if (departments && Array.isArray(departments) && departments.length > 0) {
+    apiReferenceData.departments = departments.map(item => ({
+      name: item.display_name || item.label || item.name || `Department_${item.id || item.value}`,
+      display_name: item.display_name || item.label || item.name,
+      code: item.name || item.code,
+      color: item.color,
+      id: item.id || item.value
+    }));
+    hasAnyData = true;
+  }
+
+  if (businessFunctions && Array.isArray(businessFunctions) && businessFunctions.length > 0) {
+    apiReferenceData.businessFunctions = businessFunctions.map(item => ({
+      name: item.display_name || item.label || item.name || `Function_${item.id || item.value}`,
+      display_name: item.display_name || item.label || item.name,
+      code: item.code || item.name,
+      color: item.color,
+      id: item.id || item.value
+    }));
+    hasAnyData = true;
+  }
+
+  if (employeeStatuses && Array.isArray(employeeStatuses) && employeeStatuses.length > 0) {
+    apiReferenceData.employeeStatuses = employeeStatuses.map(item => ({
+      name: item.display_name || item.label || item.name || `Status_${item.id || item.value}`,
+      display_name: item.display_name || item.label || item.name,
+      color: item.color,
+      id: item.id || item.value
+    }));
+    hasAnyData = true;
+  }
+
+  if (employeeTags && Array.isArray(employeeTags) && employeeTags.length > 0) {
+    apiReferenceData.employeeTags = employeeTags.map(item => ({
+      name: item.display_name || item.label || item.name || `Tag_${item.id || item.value}`,
+      display_name: item.display_name || item.label || item.name,
+      color: item.color,
+      id: item.id || item.value
+    }));
+    hasAnyData = true;
+  }
+
+  // Initialize color system regardless of API status
+  if (hasAnyData) {
+    console.log('HEADCOUNT: Found API data, initializing with real data');
+    initializeColorSystem(apiReferenceData);
+  } else {
+    console.warn('HEADCOUNT: No API data available, initializing with fallback');
+    // Initialize with minimal fallback data so color system works
+    const fallbackData = {
+      positionGroups: [
+        { name: 'Vice Chairman', display_name: 'Vice Chairman', code: 'VC', id: 1, color: null },
+        { name: 'Director', display_name: 'Director', code: 'DIR', id: 2, color: null },
+        { name: 'Manager', display_name: 'Manager', code: 'MGR', id: 3, color: null }
+      ],
+      departments: [
+        { name: 'OPERATIONS', display_name: 'Operations', code: 'OPS', id: 1, color: null }
+      ],
+      businessFunctions: [
+        { name: 'Holding', display_name: 'Holding Company', code: 'HLD', id: 1, color: null }
+      ],
+      employeeStatuses: [
+        { name: 'Active', display_name: 'Active', id: 1, color: '#10B981' },
+        { name: 'ONBOARDING', display_name: 'Onboarding', id: 2, color: '#3B82F6' }
+      ],
+      employeeTags: []
+    };
+    
+    initializeColorSystem(fallbackData);
+  }
+
+  console.log('HEADCOUNT: Color system initialization completed');
+}, [
+  refLoading, 
+  refError, 
+  positionGroups, 
+  departments, 
+  businessFunctions, 
+  employeeStatuses, 
+  employeeTags
+]);
+
+  
+
   // ========================================
   // DATA FETCHING ON PARAM CHANGES
   // ========================================
   
   useEffect(() => {
     if (initialized.current && apiParamsChanged) {
-      console.log('📡 API params changed, fetching employees...', {
-        current: buildApiParams,
-        last: lastApiParamsRef.current
-      });
+   
       debouncedFetchEmployees(buildApiParams);
     }
   }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
@@ -422,7 +543,7 @@ useEffect(() => {
   // ========================================
   
   const refreshAllData = useCallback(async (forceRefresh = false) => {
-    console.log('🔄 Refreshing all data...', { forceRefresh });
+
     try {
       if (forceRefresh) {
         lastApiParamsRef.current = null;
@@ -434,7 +555,7 @@ useEffect(() => {
       ]);
       
       lastApiParamsRef.current = { ...buildApiParams };
-      console.log('✅ Data refresh completed');
+  
     } catch (error) {
       console.error('❌ Data refresh failed:', error);
     }
@@ -449,7 +570,7 @@ useEffect(() => {
   }, []);
 
   const handleSortingChange = useCallback((newSorting) => {
-    console.log('🔢 Advanced sorting changed:', newSorting);
+  
     
     // Update the sorting state through useEmployees hook
     if (newSorting.length === 0) {
@@ -467,7 +588,7 @@ useEffect(() => {
   }, [setSorting, clearSorting, setCurrentPage]);
 
   const handleClearAllSorting = useCallback(() => {
-    console.log('❌ Clearing all sorting');
+   
     clearSorting();
     setCurrentPage(1);
   }, [clearSorting, setCurrentPage]);
@@ -479,37 +600,37 @@ useEffect(() => {
   // ========================================
 
   const handleSearchChange = useCallback((value) => {
-    console.log('🔍 HEADCOUNT: Search changed:', value);
+
     setLocalFilters(prev => ({ ...prev, search: value }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
   const handleStatusChange = useCallback((selectedStatuses) => {
-    console.log('📊 HEADCOUNT: Status filter changed:', selectedStatuses);
+
     setLocalFilters(prev => ({ ...prev, status: Array.isArray(selectedStatuses) ? selectedStatuses : [] }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
   const handleDepartmentChange = useCallback((selectedDepartments) => {
-    console.log('🏢 HEADCOUNT: Department filter changed:', selectedDepartments);
+  
     setLocalFilters(prev => ({ ...prev, department: Array.isArray(selectedDepartments) ? selectedDepartments : [] }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
   const handleBusinessFunctionChange = useCallback((selectedBFs) => {
-    console.log('🏭 HEADCOUNT: Business function filter changed:', selectedBFs);
+
     setLocalFilters(prev => ({ ...prev, business_function: Array.isArray(selectedBFs) ? selectedBFs : [] }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
   const handlePositionGroupChange = useCallback((selectedPGs) => {
-    console.log('📊 HEADCOUNT: Position group filter changed:', selectedPGs);
+
     setLocalFilters(prev => ({ ...prev, position_group: Array.isArray(selectedPGs) ? selectedPGs : [] }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
   const handleApplyAdvancedFilters = useCallback((filters) => {
-    console.log('🔧 HEADCOUNT: Advanced filters applied:', filters);
+    
     
     const processedFilters = {};
     Object.entries(filters).forEach(([key, value]) => {
@@ -522,13 +643,13 @@ useEffect(() => {
       }
     });
     
-    console.log('✅ HEADCOUNT: Processed advanced filters:', processedFilters);
+   
     setLocalFilters(prev => ({ ...prev, ...processedFilters }));
     setCurrentPage(1);
   }, [setCurrentPage]);
 
   const handleClearFilter = useCallback((key) => {
-    console.log('❌ HEADCOUNT: Clearing filter:', key);
+  
     
     setLocalFilters(prev => {
       const newFilters = { ...prev };
@@ -546,7 +667,7 @@ useEffect(() => {
   }, [setCurrentPage]);
 
   const handleClearAllFilters = useCallback(() => {
-    console.log('❌ HEADCOUNT: Clearing all filters');
+ 
     
     const clearedFilters = {
       search: "",
@@ -612,7 +733,6 @@ useEffect(() => {
       await hideFromOrgChart([employeeId]);
     }
 
-    console.log(`✅ Employee ${employeeId} visibility updated to ${newVisibility ? 'visible' : 'hidden'}`);
     
   } catch (error) {
     // Error olduqda əvvəlki vəziyyətə qaytar
@@ -621,7 +741,7 @@ useEffect(() => {
       [employeeId]: !newVisibility
     }));
     
-    console.error('❌ Failed to update visibility:', error);
+
     alert(`❌ Failed to update visibility: ${error.message}`);
   }
 }, [showInOrgChart, hideFromOrgChart]);
@@ -630,8 +750,7 @@ useEffect(() => {
   // ========================================
   
   const handleSort = useCallback((field, ctrlKey = false) => {
-    console.log('🔢 Sort requested:', { field, ctrlKey });
-    
+
     if (ctrlKey) {
       // Multi-column sorting
       const currentDirection = getSortDirection(field);
@@ -660,7 +779,7 @@ useEffect(() => {
   // ========================================
   
   const handleBulkAction = useCallback(async (action, options = {}) => {
-    console.log('🔥 BULK ACTION:', action, options);
+
     setIsActionMenuOpen(false);
 
     if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport'].includes(action)) {
@@ -780,7 +899,7 @@ case "hideFromOrgChart":
             await refreshAllData(true);
             alert(`✅ Tag removed from ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
           } catch (error) {
-            console.error('❌ Tag removal failed:', error);
+ 
             alert('❌ Tag removal failed: ' + error.message);
           }
           break;
@@ -865,8 +984,7 @@ case "hideFromOrgChart":
   // HeadcountTable.jsx içindəki REAL FIXED handleExport function
 
 const handleExport = useCallback(async (exportOptions) => {
-  console.log('📤 REAL FIXED: Export handler called with options:', exportOptions);
-  
+
   try {
     // ============================================
     // REAL FIXED: Backend API format-ına tam uyğun payload
@@ -947,7 +1065,7 @@ const handleExport = useCallback(async (exportOptions) => {
         
         // Backend employee_ids field-ini gözləyir
         apiPayload.employee_ids = selectedEmployees;
-        console.log('📋 REAL FIXED: Exporting selected employees count:', selectedEmployees.length);
+  
         break;
 
       case "filtered":
@@ -960,19 +1078,17 @@ const handleExport = useCallback(async (exportOptions) => {
         
         // Set filter params for query string
         apiPayload._filterParams = filterParams;
-        console.log('🔍 REAL FIXED: Exporting filtered employees with params:', filterParams);
+       
         break;
 
       case "all":
-        // No additional parameters needed for all employees
-        console.log('🌍 REAL FIXED: Exporting all employees');
+
         break;
 
       default:
         throw new Error(`Unknown export type: ${exportOptions.type}`);
     }
 
-    console.log('🚀 REAL FIXED: Final API payload:', apiPayload);
 
     // ============================================
     // API CALL - enhanced with better error handling
@@ -980,7 +1096,7 @@ const handleExport = useCallback(async (exportOptions) => {
     
     const result = await exportEmployees(exportOptions.format || 'excel', apiPayload);
     
-    console.log('✅ REAL FIXED: Export completed successfully:', result);
+
     
     // ============================================
     // SUCCESS MESSAGE
@@ -1004,7 +1120,7 @@ const handleExport = useCallback(async (exportOptions) => {
     return result;
 
   } catch (error) {
-    console.error('❌ REAL FIXED: Export failed in handler:', error);
+
     
     // ============================================
     // ENHANCED ERROR HANDLING
@@ -1037,7 +1153,7 @@ const handleExport = useCallback(async (exportOptions) => {
       userFriendlyMessage = "Network error. Please check your connection and try again.";
     }
     
-    console.error('💥 REAL FIXED: Final error message:', userFriendlyMessage);
+ 
     
     // Show error message
     if (typeof alert === 'function') {
@@ -1052,7 +1168,7 @@ const handleExport = useCallback(async (exportOptions) => {
 
 
 const handleQuickExport = useCallback(async (exportOptions) => {
-  console.log('⚡ QUICK EXPORT: Starting quick export:', exportOptions);
+
   
   try {
     // Set exporting state
@@ -1060,8 +1176,7 @@ const handleQuickExport = useCallback(async (exportOptions) => {
     
     // Use the existing handleExport with enhanced options
     await handleExport(exportOptions);
-    
-    console.log('✅ QUICK EXPORT: Completed successfully');
+
     
   } catch (error) {
     console.error('❌ QUICK EXPORT: Failed:', error);
@@ -1116,13 +1231,13 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
   
   // Use cached data if available and not skipping cache
   if (allEmployeesForModal && !shouldSkipCache && Array.isArray(allEmployeesForModal) && allEmployeesForModal.length > 0) {
-    console.log('✅ CACHE: Using cached employees:', allEmployeesForModal.length);
+  
     return Promise.resolve(allEmployeesForModal);
   }
   
   try {
     setFetchingAllEmployees(true);
-    console.log('🚀 FETCH: Starting to fetch all employees...');
+
     
     // Clear cache if requested
     if (shouldSkipCache) {
@@ -1133,11 +1248,9 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
     const params = {
       page: 1,
       page_size: 10000, // Increased to ensure we get ALL employees
-      // Remove any filtering that might limit results
-      // status: 'active' // Remove this if it exists
+      
     };
-    
-    console.log('📤 FETCH: Using params:', params);
+   
     const response = await fetchEmployees(params);
     
     console.log('📡 FETCH: Raw response received:', {
@@ -1150,8 +1263,7 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
     let employees = [];
     
     if (response) {
-      // Log the full structure for debugging
-      console.log('🔍 FETCH: Response structure:', response);
+   
       
       // Try different extraction methods
       if (Array.isArray(response)) {
@@ -1180,9 +1292,7 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
       }
     }
     
-    // Log extraction results
-    console.log('🎯 EXTRACT: Final extracted count:', employees.length);
-    console.log('🎯 EXTRACT: Sample employee:', employees[0]);
+   
     
     if (employees.length === 0) {
       console.warn('⚠️ EXTRACT: No employees extracted from response');
@@ -1204,8 +1314,7 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
       
       return true;
     });
-    
-    console.log('✅ FILTER: Valid employees after filtering:', validEmployees.length);
+
     
     // Cache the result
     setAllEmployeesForModal(validEmployees);
@@ -1238,22 +1347,17 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
   const handleEmployeeAction = useCallback(async (employeeId, action) => {
     const employee = formattedEmployees.find(emp => emp.id === employeeId);
     
-    console.log('🔧 ENHANCED: Employee action triggered:', {
-      employeeId,
-      action,
-      employeeName: employee?.name || employee?.employee_name
-    });
     
     try {
       switch (action) {
         case "changeManager":
-          console.log('👔 ENHANCED: Opening line manager modal...');
+       
           setCurrentModalEmployee(employee);
           setShowLineManagerModal(true);
           
           // ENHANCED: Pre-fetch employees for better UX
           if (!allEmployeesForModal) {
-            console.log('🔄 ENHANCED: Pre-fetching employees for line manager modal...');
+       
             fetchAllEmployeesForModal().catch(error => {
               console.warn('⚠️ ENHANCED: Pre-fetch failed, will try again when modal opens:', error);
             });
@@ -1261,13 +1365,13 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
           break;
 
         case "manageTag":
-          console.log('🏷️ ENHANCED: Opening tag management modal...');
+       ;
           setCurrentModalEmployee(employee);
           setShowTagModal(true);
           break;
 
         case "toggleVisibility":
-          console.log('👁️ ENHANCED: Toggling org chart visibility...');
+
           const currentVisibility = employee?.is_visible_in_org_chart !== false;
           const newVisibility = !currentVisibility;
           
@@ -1275,7 +1379,7 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
           break;
 
         case "delete":
-          console.log('🗑️ ENHANCED: Deleting employee...');
+
           if (confirm(`Are you sure you want to delete ${employee?.name || 'this employee'}?`)) {
             await deleteEmployee(employeeId);
             await refreshAllData(true);
@@ -1284,33 +1388,31 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
           break;
 
         case "viewTeam":
-          console.log('👥 ENHANCED: Viewing team...');
-          // Navigate to team view or open team modal
+       
           alert(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
         case "edit":
-          console.log('✏️ ENHANCED: Edit action - handled by navigation');
-          // Navigation handled by Link in ActionsDropdown
+          
           break;
 
         case "viewJobDescription":
-          console.log('📋 ENHANCED: Job description view...');
+        
           alert(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
         case "competencyMatrix":
-          console.log('📊 ENHANCED: Competency matrix...');
+         
           alert(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
         case "performanceManagement":
-          console.log('📈 ENHANCED: Performance management...');
+
           alert(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
         default:
-          console.warn('❓ ENHANCED: Unknown action:', action);
+
           alert(`Action "${action}" is not implemented yet`);
       }
     } catch (error) {
@@ -1326,13 +1428,7 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
     fetchAllEmployeesForModal
   ]);
 const debugEmployeeData = (data) => {
-  console.log('🐛 DEBUG: Employee data being passed to modal:', {
-    type: typeof data,
-    isArray: Array.isArray(data),
-    length: data ? data.length : 0,
-    sample: data && data.length > 0 ? data[0] : null,
-    structure: data && typeof data === 'object' && !Array.isArray(data) ? Object.keys(data) : 'N/A'
-  });
+
   return data;
 };
   // ========================================
@@ -1345,12 +1441,7 @@ const debugEmployeeData = (data) => {
         throw new Error('No employee selected for line manager assignment');
       }
       
-      console.log('👔 ENHANCED: Assigning line manager:', {
-        employeeId: currentModalEmployee.id,
-        managerId,
-        employeeName: currentModalEmployee.name || currentModalEmployee.employee_name
-      });
-      
+   
       await bulkAssignLineManager([currentModalEmployee.id], managerId);
       
       // Close modal
@@ -1378,12 +1469,7 @@ const debugEmployeeData = (data) => {
         throw new Error('No employee selected for tag operation');
       }
       
-      console.log('🏷️ ENHANCED: Tag operation:', {
-        operation,
-        tagId,
-        employeeId: currentModalEmployee.id,
-        employeeName: currentModalEmployee.name || currentModalEmployee.employee_name
-      });
+
       
       if (operation === 'add') {
         await bulkAddTags([currentModalEmployee.id], tagId);
@@ -1418,13 +1504,13 @@ const debugEmployeeData = (data) => {
   // ========================================
 
   const handleLineManagerModalClose = useCallback(() => {
-    console.log('🔒 ENHANCED: Closing line manager modal');
+  
     setShowLineManagerModal(false);
     setCurrentModalEmployee(null);
   }, []);
 
   const handleTagModalClose = useCallback(() => {
-    console.log('🔒 ENHANCED: Closing tag modal');
+
     setShowTagModal(false);
     setCurrentModalEmployee(null);
   }, []);
@@ -1761,11 +1847,16 @@ const headerProps = useMemo(() => ({
         </div>
       </div>
 
-      {/* Color Selector and Legend */}
-      <div className="flex justify-between items-center mb-3">
-        <ColorSelector />
-        <HierarchyLegend />
-      </div>
+
+{/* Color Selector and Legend */}
+<div className="flex justify-between items-center mb-3">
+  <ColorSelector 
+    onChange={(mode) => {
+    
+    }}
+  />
+  <HierarchyLegend />
+</div>
 
       {/* Filter Summary */}
       {activeFilters.length > 0 && (
