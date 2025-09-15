@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useReferenceData } from "../../hooks/useReferenceData";
+// FIXED: Import color system initialization
+import { initializeColorSystem, getEmployeeColorGroup, getCurrentColorMode, isColorModeActive } from "./utils/themeStyles";
 
 import HeadcountHeader from "./HeadcountHeader";
 import SearchBar from "./SearchBar";
@@ -12,12 +14,11 @@ import AdvancedFilterPanel from "./AdvancedFilterPanel";
 import EmployeeTable from "./EmployeeTable";
 import Pagination from "./Pagination";
 import ActionMenu from "./ActionMenu";
-import HierarchyLegend from "./HierarchyLegend";
+
 import ColorSelector from "./ColorModeSelector";
 import ExportModal from "./ExportModal";
 import BulkUploadForm from "./BulkUploadForm";
-import { initializeColorSystem, setReferenceData } from "./utils/themeStyles";
-// Import our Advanced Multiple Sorting System
+
 import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 import LineManagerModal from "./LineManagerAssignModal";
 import TagManagementModal from "./TagManagementModalsingle";
@@ -101,6 +102,8 @@ const HeadcountTable = () => {
     businessFunctions,
     positionGroups,
     employeeTags,
+    units,
+    jobFunctions ,
     contractConfigs,
     loading: refLoading,
     error: refError
@@ -125,6 +128,12 @@ const [isExporting, setIsExporting] = useState(false);
  const [allEmployeesForModal, setAllEmployeesForModal] = useState(null);
   const [fetchingAllEmployees, setFetchingAllEmployees] = useState(false);
   
+
+    // FIXED: Color system initialization state
+  const [colorSystemInitialized, setColorSystemInitialized] = useState(false);
+  const [currentColorMode, setCurrentColorMode] = useState('null');
+  const [defaultSortingApplied, setDefaultSortingApplied] = useState(false);
+
 // Update loading state based on API loading
 useEffect(() => {
   if (loading.exporting !== undefined) {
@@ -165,6 +174,187 @@ useEffect(() => {
   const lastFetchTime = useRef(0);
   const debounceRef = useRef(null);
   const lastApiParamsRef = useRef(null);
+  const colorSystemInitRef = useRef(false);
+
+  
+  useEffect(() => {
+
+    
+    // Prevent multiple initializations
+    if (colorSystemInitRef.current || colorSystemInitialized) {
+    
+      return;
+    }
+    
+    // Check if reference data is loading
+    const isRefLoading = typeof refLoading === 'object' 
+      ? Object.values(refLoading || {}).some(loading => loading === true)
+      : refLoading;
+    
+    if (isRefLoading) {
+
+      return;
+    }
+    
+    // Check if we have any reference data
+    const hasReferenceData = (
+      (positionGroups && positionGroups.length > 0) ||
+      (departments && departments.length > 0) ||
+      (businessFunctions && businessFunctions.length > 0) ||
+      (units && units.length > 0) ||
+      (jobFunctions && jobFunctions.length > 0)
+    );
+    
+  
+    // Only initialize if we have data
+    if (!hasReferenceData) {
+    
+      return;
+    }
+    
+    // Initialize color system
+    try {
+      colorSystemInitRef.current = true;
+      setColorSystemInitialized(true);
+      
+      const referenceData = {
+        positionGroups: positionGroups || [],
+        departments: departments || [],
+        businessFunctions: businessFunctions || [],
+        units: units || [],
+        jobFunctions: jobFunctions || [],
+        employeeTags: employeeTags || []
+      };
+      
+
+      initializeColorSystem(referenceData);
+      
+      // Get initial color mode
+      const initialMode = getCurrentColorMode();
+      setCurrentColorMode(initialMode);
+      
+ 
+      
+    } catch (error) {
+      console.error('HeadcountTable: Error initializing color system:', error);
+      colorSystemInitRef.current = false;
+      setColorSystemInitialized(false);
+    }
+    
+  }, [
+    refLoading,
+    positionGroups,
+    departments, 
+    businessFunctions,
+    units,
+    jobFunctions,
+    employeeTags,
+    colorSystemInitialized
+  ]);
+
+  // ========================================
+  // ENHANCED: EMPLOYEES WITH COLOR GROUPING
+  // ========================================
+  
+  const employeesWithColorGrouping = useMemo(() => {
+    if (!formattedEmployees || formattedEmployees.length === 0) {
+      return [];
+    }
+    
+    // Add color group to each employee
+    const employeesWithGroups = formattedEmployees.map(employee => ({
+      ...employee,
+      colorGroup: getEmployeeColorGroup(employee)
+    }));
+    
+  
+    
+    return employeesWithGroups;
+  }, [formattedEmployees, currentColorMode]);
+
+  // ========================================
+  // ENHANCED: DEFAULT COLOR-BASED SORTING
+  // ========================================
+  
+  useEffect(() => {
+    // Apply default color-based sorting when:
+    // 1. Color system is initialized
+    // 2. We have employees
+    // 3. No custom sorting is applied
+    // 4. Haven't applied default sorting yet
+    if (
+      colorSystemInitialized && 
+      employeesWithColorGrouping.length > 0 && 
+      (!sorting || sorting.length === 0) && 
+      !defaultSortingApplied
+    ) {
+     
+      
+      // Determine the field to sort by based on current color mode
+      let sortField = '';
+      switch (currentColorMode) {
+        case 'HIERARCHY':
+          sortField = 'position_group_name';
+          break;
+        case 'DEPARTMENT':
+          sortField = 'department_name';
+          break;
+        case 'BUSINESS_FUNCTION':
+          sortField = 'business_function_name';
+          break;
+        case 'UNIT':
+          sortField = 'unit_name';
+          break;
+        case 'JOB_FUNCTION':
+          sortField = 'job_function_name';
+          break;
+        case 'GRADE':
+          sortField = 'grading_level';
+          break;
+        default:
+          sortField = 'position_group_name';
+      }
+      
+      if(currentColorMode){
+        setSorting({ 
+        multiple: [
+          { field: sortField, direction: 'asc' },
+          // { field: 'name', direction: 'asc' }
+        ]
+      });
+      }
+      
+      
+      setDefaultSortingApplied(true);
+     
+    }
+  }, [
+    colorSystemInitialized, 
+    employeesWithColorGrouping.length, 
+    sorting, 
+    defaultSortingApplied, 
+    currentColorMode,
+    setSorting
+  ]);
+
+  // ========================================
+  // ENHANCED: COLOR MODE CHANGE HANDLER
+  // ========================================
+  
+  const handleColorModeChange = useCallback((newMode) => {
+ 
+    setCurrentColorMode(newMode);
+    
+    // Reset default sorting flag to allow new color-based sorting
+    setDefaultSortingApplied(false);
+    
+    // Clear current sorting to trigger new default sorting
+    clearSorting();
+    
+    // Reset to first page
+    setCurrentPage(1);
+  }, [clearSorting, setCurrentPage]);
+
 
   // ========================================
   // NEW: AVAILABLE FIELDS FOR SORTING
@@ -400,130 +590,6 @@ useEffect(() => {
     initializeData();
   }, []);
 
-useEffect(() => {
-  // Check API data with comprehensive error handling
-  const isLoading = typeof refLoading === 'object' 
-    ? Object.values(refLoading).some(loading => loading === true)
-    : refLoading;
-
-  console.log('HEADCOUNT: API Status Check:', {
-    isLoading,
-    refError,
-    positionGroups: positionGroups?.length || 'null/undefined',
-    departments: departments?.length || 'null/undefined',
-    businessFunctions: businessFunctions?.length || 'null/undefined'
-  });
-
-  if (isLoading) {
-    console.log('HEADCOUNT: Still loading API data...');
-    return;
-  }
-
-  // CRITICAL FIX: Initialize color system even with API errors
-  let hasAnyData = false;
-  let apiReferenceData = {
-    positionGroups: [],
-    departments: [],
-    businessFunctions: [],
-    employeeStatuses: [],
-    employeeTags: []
-  };
-
-  // Try to extract any available data
-  if (positionGroups && Array.isArray(positionGroups) && positionGroups.length > 0) {
-    apiReferenceData.positionGroups = positionGroups.map(item => ({
-      name: item.display_name || item.label || item.name || `Position_${item.id || item.value}`,
-      display_name: item.display_name || item.label || item.name,
-      code: item.name || item.code,
-      color: item.color,
-      id: item.id || item.value,
-      hierarchy_level: item.hierarchy_level,
-      grading_levels: item.grading_levels || []
-    }));
-    hasAnyData = true;
-  }
-
-  if (departments && Array.isArray(departments) && departments.length > 0) {
-    apiReferenceData.departments = departments.map(item => ({
-      name: item.display_name || item.label || item.name || `Department_${item.id || item.value}`,
-      display_name: item.display_name || item.label || item.name,
-      code: item.name || item.code,
-      color: item.color,
-      id: item.id || item.value
-    }));
-    hasAnyData = true;
-  }
-
-  if (businessFunctions && Array.isArray(businessFunctions) && businessFunctions.length > 0) {
-    apiReferenceData.businessFunctions = businessFunctions.map(item => ({
-      name: item.display_name || item.label || item.name || `Function_${item.id || item.value}`,
-      display_name: item.display_name || item.label || item.name,
-      code: item.code || item.name,
-      color: item.color,
-      id: item.id || item.value
-    }));
-    hasAnyData = true;
-  }
-
-  if (employeeStatuses && Array.isArray(employeeStatuses) && employeeStatuses.length > 0) {
-    apiReferenceData.employeeStatuses = employeeStatuses.map(item => ({
-      name: item.display_name || item.label || item.name || `Status_${item.id || item.value}`,
-      display_name: item.display_name || item.label || item.name,
-      color: item.color,
-      id: item.id || item.value
-    }));
-    hasAnyData = true;
-  }
-
-  if (employeeTags && Array.isArray(employeeTags) && employeeTags.length > 0) {
-    apiReferenceData.employeeTags = employeeTags.map(item => ({
-      name: item.display_name || item.label || item.name || `Tag_${item.id || item.value}`,
-      display_name: item.display_name || item.label || item.name,
-      color: item.color,
-      id: item.id || item.value
-    }));
-    hasAnyData = true;
-  }
-
-  // Initialize color system regardless of API status
-  if (hasAnyData) {
-    console.log('HEADCOUNT: Found API data, initializing with real data');
-    initializeColorSystem(apiReferenceData);
-  } else {
-    console.warn('HEADCOUNT: No API data available, initializing with fallback');
-    // Initialize with minimal fallback data so color system works
-    const fallbackData = {
-      positionGroups: [
-        { name: 'Vice Chairman', display_name: 'Vice Chairman', code: 'VC', id: 1, color: null },
-        { name: 'Director', display_name: 'Director', code: 'DIR', id: 2, color: null },
-        { name: 'Manager', display_name: 'Manager', code: 'MGR', id: 3, color: null }
-      ],
-      departments: [
-        { name: 'OPERATIONS', display_name: 'Operations', code: 'OPS', id: 1, color: null }
-      ],
-      businessFunctions: [
-        { name: 'Holding', display_name: 'Holding Company', code: 'HLD', id: 1, color: null }
-      ],
-      employeeStatuses: [
-        { name: 'Active', display_name: 'Active', id: 1, color: '#10B981' },
-        { name: 'ONBOARDING', display_name: 'Onboarding', id: 2, color: '#3B82F6' }
-      ],
-      employeeTags: []
-    };
-    
-    initializeColorSystem(fallbackData);
-  }
-
-  console.log('HEADCOUNT: Color system initialization completed');
-}, [
-  refLoading, 
-  refError, 
-  positionGroups, 
-  departments, 
-  businessFunctions, 
-  employeeStatuses, 
-  employeeTags
-]);
 
   
 
@@ -1049,7 +1115,7 @@ const handleExport = useCallback(async (exportOptions) => {
       if (selectedFields.length > 0) {
         // Remove duplicates
         apiPayload.include_fields = [...new Set(selectedFields)];
-        console.log('📊 REAL FIXED: Selected fields:', apiPayload.include_fields);
+       
       }
     }
     
@@ -1253,11 +1319,7 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
    
     const response = await fetchEmployees(params);
     
-    console.log('📡 FETCH: Raw response received:', {
-      type: typeof response,
-      isArray: Array.isArray(response),
-      keys: response && typeof response === 'object' ? Object.keys(response) : 'N/A'
-    });
+
     
     // IMPROVED: Extract employees from response
     let employees = [];
@@ -1268,27 +1330,27 @@ const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
       // Try different extraction methods
       if (Array.isArray(response)) {
         employees = response;
-        console.log('✅ EXTRACT: Method 1 - Direct array:', employees.length);
+    
       }
       else if (response.data && Array.isArray(response.data)) {
         employees = response.data;
-        console.log('✅ EXTRACT: Method 2 - response.data:', employees.length);
+   
       }
       else if (response.results && Array.isArray(response.results)) {
         employees = response.results;
-        console.log('✅ EXTRACT: Method 3 - response.results:', employees.length);
+      
       }
       else if (response.data && response.data.results && Array.isArray(response.data.results)) {
         employees = response.data.results;
-        console.log('✅ EXTRACT: Method 4 - response.data.results:', employees.length);
+
       }
       else if (response.payload && Array.isArray(response.payload)) {
         employees = response.payload;
-        console.log('✅ EXTRACT: Method 5 - response.payload:', employees.length);
+    
       }
       else if (response.payload && response.payload.data && Array.isArray(response.payload.data)) {
         employees = response.payload.data;
-        console.log('✅ EXTRACT: Method 6 - response.payload.data:', employees.length);
+       
       }
     }
     
@@ -1848,15 +1910,15 @@ const headerProps = useMemo(() => ({
       </div>
 
 
-{/* Color Selector and Legend */}
-<div className="flex justify-between items-center mb-3">
-  <ColorSelector 
-    onChange={(mode) => {
-    
-    }}
-  />
-  <HierarchyLegend />
-</div>
+      {colorSystemInitialized && (
+        <div className="flex justify-between items-center mb-3">
+          <ColorSelector onChange={handleColorModeChange} />
+      
+        </div>
+      )}
+
+   
+
 
       {/* Filter Summary */}
       {activeFilters.length > 0 && (

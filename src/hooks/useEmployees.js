@@ -331,7 +331,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
 
   // Filter options loading
   const fetchFilterOptionsAction = useCallback(() => {
-    console.log('🔄 Loading filter options...');
+
     
     if (isInitialized.current) {
       console.log('⚠️ Filter options already loaded');
@@ -1272,7 +1272,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   // Initialization - controlled to prevent loops
   useEffect(() => {
     if (!isInitialized.current) {
-      console.log('🚀 Initializing useEmployees hook...');
+
       actions.fetchFilterOptions().catch(error => {
         console.error('❌ Failed to initialize useEmployees:', error);
       });
@@ -1284,7 +1284,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     if (isInitialized.current) {
       const currentParams = JSON.stringify(apiParams);
       if (lastFetchParams.current !== currentParams) {
-        console.log('🔄 API params changed, fetching employees...', apiParams);
+
         lastFetchParams.current = currentParams;
         dispatch(fetchEmployees(apiParams));
       }
@@ -1294,7 +1294,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   // Initialize statistics and grading data only once
   useEffect(() => {
     if (isInitialized.current && statistics.total_employees === 0) {
-      console.log('📊 Fetching initial statistics and grading data...');
+    
       dispatch(fetchStatistics());
       dispatch(fetchEmployeeGrading());
       dispatch(getContractExpiryAlerts());

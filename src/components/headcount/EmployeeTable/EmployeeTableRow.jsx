@@ -1,10 +1,10 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED IMPORTS
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED COLOR INTEGRATION
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
 
-// FIXED: Correct imports from themeStyles (not ColorModeSelector)
+// FIXED: Correct imports from themeStyles
 import { 
   getThemeStyles, 
   getEmployeeColors,
@@ -30,31 +30,38 @@ const EmployeeTableRow = ({
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
   
-  // FIXED: Color mode state with correct function import
+  // FIXED: Color mode state with better initialization
   const [currentColorMode, setCurrentColorMode] = useState(() => {
     try {
       return getCurrentColorMode();
     } catch (error) {
-      console.error('EmployeeTableRow: Error getting current color mode:', error);
+      console.error('EmployeeTableRow: Error getting initial color mode:', error);
       return 'HIERARCHY'; // fallback
     }
   });
+  
+  // Force color updates
   const [colorUpdateKey, setColorUpdateKey] = useState(0);
   
   // Local state for visibility operations
   const [visibilityLoading, setVisibilityLoading] = useState(false);
 
-  // FIXED: Listen to color mode changes with error handling
+  // FIXED: Enhanced color mode listener with better error handling
   useEffect(() => {
     let isComponentMounted = true;
     let removeListener;
     
+  
+    
     try {
       // Primary listener through theme system
       removeListener = addColorModeListener((newMode) => {
-        if (!isComponentMounted) return;
+        if (!isComponentMounted) {
+
+          return;
+        }
         
-        console.log('EmployeeTableRow: Color mode changed to:', newMode, 'for:', employee?.name);
+ 
         setCurrentColorMode(newMode);
         setColorUpdateKey(prev => prev + 1);
       });
@@ -65,6 +72,7 @@ const EmployeeTableRow = ({
     // Secondary listener for custom events
     const handleColorModeChange = (event) => {
       if (!isComponentMounted) return;
+  
       setCurrentColorMode(event.detail.mode);
       setColorUpdateKey(prev => prev + 1);
     };
@@ -72,6 +80,7 @@ const EmployeeTableRow = ({
     // Reference data update listener
     const handleReferenceDataUpdate = (event) => {
       if (!isComponentMounted) return;
+ 
       setColorUpdateKey(prev => prev + 1);
     };
 
@@ -81,6 +90,7 @@ const EmployeeTableRow = ({
     }
 
     return () => {
+
       isComponentMounted = false;
       if (removeListener && typeof removeListener === 'function') {
         try {
@@ -94,10 +104,11 @@ const EmployeeTableRow = ({
         window.removeEventListener('referenceDataUpdated', handleReferenceDataUpdate);
       }
     };
-  }, [employee?.name, employee?.id]);
+  }, [employee?.id, employee?.name, currentColorMode]);
 
-  // Enhanced getEmployeeColors with comprehensive field fallback
+  // FIXED: Enhanced getEmployeeColors with comprehensive field fallback and debugging
   const getEmployeeColorsWithFallback = useCallback((employee, darkMode) => {
+  
     // Create normalized employee object with comprehensive field mapping
     const normalizedEmployee = {
       ...employee,
@@ -157,10 +168,14 @@ const EmployeeTableRow = ({
       tags: employee.tags || employee.tag_names || []
     };
     
+
+    
     try {
-      return getEmployeeColors(normalizedEmployee, darkMode);
+      const colors = getEmployeeColors(normalizedEmployee, darkMode);
+
+      return colors;
     } catch (error) {
-      console.error('EmployeeTableRow: Error getting colors:', error);
+      console.error('EmployeeTableRow: Error getting employee colors:', error);
       // Return safe fallback colors
       return {
         borderColor: '#6b7280',
@@ -173,18 +188,13 @@ const EmployeeTableRow = ({
         avatarStyle: 'background-color: #6b7280'
       };
     }
-  }, []);
+  }, [currentColorMode]);
 
-  // Memoized employee colors with all update dependencies
+  // FIXED: Memoized employee colors with all update dependencies
   const employeeColors = useMemo(() => {
+   
     const colors = getEmployeeColorsWithFallback(employee, darkMode);
-    
-    console.log(`EmployeeTableRow: Colors for "${employee?.name}":`, {
-      mode: currentColorMode,
-      borderColor: colors.borderColor,
-      isDefault: colors.borderColor === '#6b7280'
-    });
-    
+
     return colors;
   }, [employee, darkMode, currentColorMode, colorUpdateKey, getEmployeeColorsWithFallback]);
 
@@ -287,21 +297,41 @@ const EmployeeTableRow = ({
 
   const tagsToDisplay = useMemo(() => getTagsToDisplay(), [getTagsToDisplay]);
 
-  // Dynamic row style with real-time color updates
-  const rowStyle = useMemo(() => ({
-    borderLeft: `3px solid ${employeeColors.borderColor}`,
-    backgroundColor: isSelected 
-      ? (darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)')
-      : 'transparent',
-    transition: 'all 0.3s ease-in-out'
-  }), [employeeColors.borderColor, isSelected, darkMode]);
+  // FIXED: Dynamic row style with real-time color updates and better logging
+  const rowStyle = useMemo(() => {
+    const style = {
+      borderLeft: `3px solid ${employeeColors.borderColor}`,
+      backgroundColor: isSelected 
+        ? (darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)')
+        : 'transparent',
+      transition: 'all 0.3s ease-in-out'
+    };
+    
 
-  // Dynamic avatar style with real-time color updates
-  const avatarStyle = useMemo(() => ({
-    background: `linear-gradient(135deg, ${employeeColors.borderColor}, ${employeeColors.borderColor}95)`,
-    color: 'white',
-    transition: 'background 0.3s ease-in-out'
-  }), [employeeColors.borderColor]);
+    return style;
+  }, [employeeColors.borderColor, isSelected, darkMode, employee?.name]);
+
+  // FIXED: Dynamic avatar style with real-time color updates
+  const avatarStyle = useMemo(() => {
+    const style = {
+      background: `linear-gradient(135deg, ${employeeColors.borderColor}, ${employeeColors.borderColor}95)`,
+      color: 'white',
+      transition: 'background 0.3s ease-in-out'
+    };
+    
+   
+    return style;
+  }, [employeeColors.borderColor, employee?.name]);
+
+  // FIXED: Dynamic text highlighting based on color mode
+  const getFieldHighlight = useCallback((fieldType) => {
+    const isHighlighted = currentColorMode === fieldType;
+    return {
+      color: isHighlighted ? employeeColors.borderColor : undefined,
+      fontWeight: isHighlighted ? '600' : '500',
+      transition: 'all 0.3s ease-in-out'
+    };
+  }, [currentColorMode, employeeColors.borderColor]);
 
   return (
     <tr
@@ -378,40 +408,61 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Business Function & Department */}
+      {/* Business Function & Department - Highlighted when active */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col space-y-0.5">
-          <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
+          <div 
+            className={`text-xs truncate max-w-[100px] transition-all duration-200`}
+            style={{
+              ...getFieldHighlight('BUSINESS_FUNCTION'),
+              color: getFieldHighlight('BUSINESS_FUNCTION').color || (darkMode ? '#d1d5db' : '#374151')
+            }}
+          >
             {employee.business_function_name || 'No BF'}
           </div>
-          <div className={`text-xs ${styles.textMuted} truncate max-w-[100px]`}>
+          <div 
+            className={`text-xs truncate max-w-[100px] transition-all duration-200`}
+            style={{
+              ...getFieldHighlight('DEPARTMENT'),
+              color: getFieldHighlight('DEPARTMENT').color || (darkMode ? '#9ca3af' : '#6b7280')
+            }}
+          >
             {employee.department_name || 'No Department'}
           </div>
         </div>
       </td>
 
-      {/* Unit & Job Function */}
+      {/* Unit & Job Function - Highlighted when active */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col space-y-0.5">
-          <div className={`text-xs ${styles.textSecondary} truncate max-w-[100px]`}>
+          <div 
+            className={`text-xs truncate max-w-[100px] transition-all duration-200`}
+            style={{
+              ...getFieldHighlight('UNIT'),
+              color: getFieldHighlight('UNIT').color || (darkMode ? '#d1d5db' : '#374151')
+            }}
+          >
             {employee.unit_name || 'No Unit'}
           </div>
-          <div className={`text-xs ${styles.textMuted} truncate max-w-[100px]`}>
+          <div 
+            className={`text-xs truncate max-w-[100px] transition-all duration-200`}
+            style={{
+              ...getFieldHighlight('JOB_FUNCTION'),
+              color: getFieldHighlight('JOB_FUNCTION').color || (darkMode ? '#9ca3af' : '#6b7280')
+            }}
+          >
             {employee.job_function_name || 'No Job Function'}
           </div>
         </div>
       </td>
 
-      {/* Position & Grade - Highlighted with color mode */}
+      {/* Position & Grade - Highlighted when active */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col items-center space-y-0.5">
           <div className="flex items-center">
             <div 
-              className={`text-xs ${styles.textSecondary} truncate max-w-[100px] text-center font-medium`}
-              style={{ 
-                color: currentColorMode === 'HIERARCHY' ? employeeColors.borderColor : undefined,
-                fontWeight: currentColorMode === 'HIERARCHY' ? '600' : '500'
-              }}
+              className={`text-xs truncate max-w-[100px] text-center font-medium transition-all duration-200`}
+              style={getFieldHighlight('HIERARCHY')}
             >
               {employee.position_group_name || 'No Position'}
             </div>
@@ -462,7 +513,7 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Status & Tags */}
+      {/* Status & Tags - Highlighted when active */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col justify-center space-y-1">
           <div className="flex justify-center">
@@ -470,6 +521,7 @@ const EmployeeTableRow = ({
               status={employee.status_name || employee.current_status_display || 'Unknown'} 
               color={employee.status_color}
               size="xs"
+              isHighlighted={currentColorMode === 'STATUS'}
             />
           </div>
           <div className="flex flex-wrap justify-center gap-0.5">

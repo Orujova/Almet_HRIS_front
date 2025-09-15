@@ -418,28 +418,7 @@ const JobDescriptionPage = () => {
     });
   }, [jobDescriptions, searchTerm, selectedDepartment]);
 
-  // Export Functions
-  const handleExportAll = async () => {
-  if (!confirm('This will export all job descriptions to a single PDF file. This may take a few minutes for large datasets. Continue?')) {
-    return;
-  }
 
-  try {
-    setExportLoading(true);
-    await jobDescriptionService.exportAllJobDescriptionsPDF();
-    
-    // Show success message
-    alert('All job descriptions exported successfully! Check your downloads folder.');
-  } catch (error) {
-    console.error('Error exporting all job descriptions:', error);
-    
-    // Show user-friendly error message
-    const errorMessage = error.message || 'Error exporting job descriptions. Please try again.';
-    alert(errorMessage);
-  } finally {
-    setExportLoading(false);
-  }
-};
 
 const handleBulkExport = async () => {
   if (selectedJobs.length === 0) {
@@ -735,19 +714,7 @@ const handleDownloadSinglePDF = async (jobId) => {
                     ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} 
                     rounded-xl shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible 
                     transition-all duration-200 z-20 overflow-hidden`}>
-                    <button
-                      onClick={handleExportAll}
-                      disabled={exportLoading}
-                      className={`w-full px-4 py-3 text-left 
-                        ${darkMode 
-                          ? 'hover:bg-almet-san-juan text-almet-bali-hai hover:text-white' 
-                          : 'hover:bg-almet-mystic text-almet-waterloo hover:text-almet-cloud-burst'
-                        } 
-                        flex items-center gap-3 text-sm transition-colors duration-150`}
-                    >
-                      <Download size={14} />
-                      Export All Job Descriptions
-                    </button>
+                  
                     <button
                       onClick={() => setShowBulkExportModal(true)}
                       disabled={exportLoading}

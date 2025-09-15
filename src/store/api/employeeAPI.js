@@ -10,7 +10,7 @@ export const employeeAPI = {
     // Backend field names ilə map edilir və advanced filtering dəstəyi
     const backendParams = {};
     
-    console.log('🔥 RAW INPUT PARAMS:', params);
+
     
     // Pagination
     if (params.page) backendParams.page = params.page;
@@ -218,7 +218,7 @@ export const employeeAPI = {
     if (params.active_only !== undefined) backendParams.active_only = params.active_only;
     if (params.org_chart_visible !== undefined) backendParams.org_chart_visible = params.org_chart_visible;
     
-    console.log('🚀 FINAL API PARAMS BEING SENT TO BACKEND:', backendParams);
+
     return apiService.getEmployees(backendParams);
   },
 
