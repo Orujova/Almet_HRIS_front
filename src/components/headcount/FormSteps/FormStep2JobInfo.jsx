@@ -1,11 +1,11 @@
-// src/components/headcount/FormSteps/FormStep2JobInfo.jsx - Compact Design with Better UX
+// src/components/headcount/FormSteps/FormStep2JobInfo.jsx - FIXED: Display values instead of IDs
 import { useState, useEffect } from "react";
-import { Briefcase, Calendar, Info, Building, Users, Award, AlertCircle, Loader } from "lucide-react";
+import { Briefcase, Calendar, Info, Building, Users, Award, AlertCircle, Loader, CheckCircle } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 
 /**
- * Enhanced Job Information step with compact design and proper dropdown positioning
+ * Job Information step - Fixed to show proper display values instead of IDs
  */
 const FormStep2JobInfo = ({ 
   formData, 
@@ -18,27 +18,156 @@ const FormStep2JobInfo = ({
   positionGroups = [],
   gradeOptions = [],
   loadingGradingLevels = false,
-  loading = {}
+  loading = {},
+  isEditMode = false
 }) => {
   const { darkMode } = useTheme();
 
-  // Theme-dependent classes with Almet colors
+  // Local state for tracking loaded data and display values
+  const [departmentWarning, setDepartmentWarning] = useState(false);
+  const [unitWarning, setUnitWarning] = useState(false);
+
+  // Theme-dependent classes
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
   const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
   const bgInfo = darkMode ? "bg-almet-sapphire/20" : "bg-almet-sapphire/5";
   const bgWarning = darkMode ? "bg-amber-900/20" : "bg-amber-50";
+  const bgSuccess = darkMode ? "bg-green-900/20" : "bg-green-50";
   const borderColor = darkMode ? "border-gray-700" : "border-almet-bali-hai";
 
-  // Contract duration options from backend
+  // Contract duration options
   const contractDurationOptions = [
-    { value: "PERMANENT", label: "Permanent" },
-    { value: "3_MONTHS", label: "3 Months" },
-    { value: "6_MONTHS", label: "6 Months" },
-    { value: "1_YEAR", label: "1 Year" },
-    { value: "2_YEARS", label: "2 Years" },
-    { value: "3_YEARS", label: "3 Years" }
+    { value: "PERMANENT", label: "Permanent Contract" },
+    { value: "3_MONTHS", label: "3 Months Fixed" },
+    { value: "6_MONTHS", label: "6 Months Fixed" },
+    { value: "1_YEAR", label: "1 Year Fixed" },
+    { value: "2_YEARS", label: "2 Years Fixed" },
+    { value: "3_YEARS", label: "3 Years Fixed" }
   ];
+
+  // FIXED: Enhanced business function options with current value preservation
+  const getBusinessFunctionOptions = () => {
+    const baseOptions = Array.isArray(businessFunctions) ? [...businessFunctions] : [];
+    
+    // In edit mode, ensure current business function is available
+    if (isEditMode && formData.business_function && formData.business_function_name) {
+      const existingOption = baseOptions.find(bf => bf.value === formData.business_function);
+      if (!existingOption) {
+        baseOptions.unshift({
+          value: formData.business_function,
+          label: `${formData.business_function_name} (Current)`,
+          isCurrent: true,
+          color: '#059669' // green color for current
+        });
+      }
+    }
+    
+    return baseOptions;
+  };
+
+  // FIXED: Enhanced department options with current value preservation
+  const getDepartmentOptions = () => {
+    const baseOptions = Array.isArray(departments) ? [...departments] : [];
+    
+    // In edit mode, ensure current department is available
+    if (isEditMode && formData.department && formData.department_name) {
+      const existingOption = baseOptions.find(d => d.value === formData.department);
+      if (!existingOption && !loading.departments) {
+        baseOptions.unshift({
+          value: formData.department,
+          label: `${formData.department_name} (Current)`,
+          isCurrent: true,
+          color: '#059669' // green color for current
+        });
+        setDepartmentWarning(true);
+      } else {
+        setDepartmentWarning(false);
+      }
+    }
+    
+    return baseOptions;
+  };
+
+  // FIXED: Enhanced unit options with current value preservation
+  const getUnitOptions = () => {
+    const baseOptions = Array.isArray(units) ? [...units] : [];
+    
+    // In edit mode, ensure current unit is available
+    if (isEditMode && formData.unit && formData.unit_name) {
+      const existingOption = baseOptions.find(u => u.value === formData.unit);
+      if (!existingOption && !loading.units) {
+        baseOptions.unshift({
+          value: formData.unit,
+          label: `${formData.unit_name} (Current)`,
+          isCurrent: true,
+          color: '#059669' // green color for current
+        });
+        setUnitWarning(true);
+      } else {
+        setUnitWarning(false);
+      }
+    }
+    
+    return baseOptions;
+  };
+
+  // FIXED: Enhanced job function options with current value preservation
+  const getJobFunctionOptions = () => {
+    const baseOptions = Array.isArray(jobFunctions) ? [...jobFunctions] : [];
+    
+    // In edit mode, ensure current job function is available
+    if (isEditMode && formData.job_function && formData.job_function_name) {
+      const existingOption = baseOptions.find(jf => jf.value === formData.job_function);
+      if (!existingOption) {
+        baseOptions.unshift({
+          value: formData.job_function,
+          label: `${formData.job_function_name} (Current)`,
+          isCurrent: true,
+          color: '#059669'
+        });
+      }
+    }
+    
+    return baseOptions;
+  };
+
+  // FIXED: Enhanced position group options with current value preservation  
+  const getPositionGroupOptions = () => {
+    const baseOptions = Array.isArray(positionGroups) ? [...positionGroups] : [];
+    
+    // In edit mode, ensure current position group is available
+    if (isEditMode && formData.position_group && formData.position_group_name) {
+      const existingOption = baseOptions.find(pg => pg.value === formData.position_group);
+      if (!existingOption) {
+        baseOptions.unshift({
+          value: formData.position_group,
+          label: `${formData.position_group_name} (Current)`,
+          isCurrent: true,
+          color: '#059669'
+        });
+      }
+    }
+    
+    return baseOptions;
+  };
+
+  // FIXED: Enhanced grading level options with current value preservation
+  const getGradingLevelOptions = () => {
+    const baseOptions = Array.isArray(gradeOptions) ? [...gradeOptions] : [];
+    
+    // In edit mode, ensure current grading level is available
+    if (isEditMode && formData.grading_level && !baseOptions.find(g => g.value === formData.grading_level)) {
+      baseOptions.unshift({
+        value: formData.grading_level,
+        label: `${formData.grading_level} (Current)`,
+        isCurrent: true,
+        color: '#059669'
+      });
+    }
+    
+    return baseOptions;
+  };
 
   // Calculate minimum end date (start date + 1 day)
   const getMinEndDate = () => {
@@ -48,12 +177,39 @@ const FormStep2JobInfo = ({
     return startDate.toISOString().split('T')[0];
   };
 
-  // Helper to check if dropdown has options
-  const hasOptions = (options) => {
-    return Array.isArray(options) && options.length > 0;
+  // Calculate contract end date based on duration
+  const calculateContractEndDate = () => {
+    if (!formData.start_date || formData.contract_duration === 'PERMANENT') return null;
+    
+    const startDate = new Date(formData.start_date);
+    let endDate = new Date(startDate);
+    
+    switch (formData.contract_duration) {
+      case '3_MONTHS':
+        endDate.setMonth(endDate.getMonth() + 3);
+        break;
+      case '6_MONTHS':
+        endDate.setMonth(endDate.getMonth() + 6);
+        break;
+      case '1_YEAR':
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        break;
+      case '2_YEARS':
+        endDate.setFullYear(endDate.getFullYear() + 2);
+        break;
+      case '3_YEARS':
+        endDate.setFullYear(endDate.getFullYear() + 3);
+        break;
+      default:
+        return null;
+    }
+    
+    return endDate.toISOString().split('T')[0];
   };
 
-  // Get placeholder text based on loading state and dependencies
+  // Helper functions
+  const hasOptions = (options) => Array.isArray(options) && options.length > 0;
+
   const getPlaceholder = (type, dependent = null, dependentValue = null) => {
     if (dependent && !dependentValue) {
       return `Select ${dependent} first`;
@@ -63,61 +219,99 @@ const FormStep2JobInfo = ({
       return "Loading...";
     }
     
-    if (type === 'departments' && !hasOptions(departments) && formData.business_function) {
-      return "No departments available";
+    switch (type) {
+      case 'departments':
+        return !hasOptions(departments) && formData.business_function 
+          ? "No departments available" 
+          : "Select department";
+      case 'units':
+        return !hasOptions(units) && formData.department 
+          ? "No units available" 
+          : "Select unit (optional)";
+      case 'gradeOptions':
+        return !hasOptions(gradeOptions) && formData.position_group 
+          ? "No grading levels available" 
+          : "Select grading level";
+      default:
+        return `Select ${type.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
     }
-    
-    if (type === 'units' && !hasOptions(units) && formData.department) {
-      return "No units available";
-    }
-    
-    if (type === 'gradeOptions' && !hasOptions(gradeOptions) && formData.position_group) {
-      return "No grading levels available";
-    }
-    
-    return `Select ${type.replace(/([A-Z])/g, ' $1').toLowerCase()}`;
   };
 
-  // Debug logging for development
+  // Update contract end date when duration or start date changes
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('FormStep2JobInfo - Reference data received:', {
-        businessFunctions: businessFunctions?.length || 0,
-        departments: departments?.length || 0,
-        units: units?.length || 0,
-        jobFunctions: jobFunctions?.length || 0,
-        positionGroups: positionGroups?.length || 0,
-        gradeOptions: gradeOptions?.length || 0,
-        loading,
-        formData: {
-          business_function: formData.business_function,
-          department: formData.department,
-          position_group: formData.position_group
-        }
+    const calculatedEndDate = calculateContractEndDate();
+    if (calculatedEndDate && calculatedEndDate !== formData.contract_end_date) {
+      handleInputChange({
+        target: { name: 'contract_end_date', value: calculatedEndDate }
       });
     }
-  }, [businessFunctions, departments, units, jobFunctions, positionGroups, gradeOptions, loading, formData]);
+  }, [formData.start_date, formData.contract_duration]);
 
   return (
-    <div className="space-y-4 relative">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center border-b border-almet-bali-hai dark:border-gray-700 pb-2 mb-4">
-        <h2 className={`text-base font-bold ${textPrimary}`}>
-          Job Information
-        </h2>
-        <div className="text-[10px] px-2 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded font-medium">
-          Step 2 of 4
+      <div className="flex justify-between items-center border-b border-almet-bali-hai dark:border-gray-700 pb-3">
+        <div>
+          <h2 className={`text-lg font-bold ${textPrimary}`}>
+            Job Information
+          </h2>
+          <p className={`text-sm ${textMuted} mt-1`}>
+            Employment details and organizational structure
+          </p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <div className="text-xs px-3 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded-full font-medium">
+            Step 2 of 4
+          </div>
+          {isEditMode && (
+            <div className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded">
+              Edit Mode
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Edit Mode Current Values Notice */}
+      {isEditMode && (departmentWarning || unitWarning) && (
+        <div className={`p-4 ${bgSuccess} border border-green-200 dark:border-green-800 rounded-lg`}>
+          <div className="flex items-start">
+            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 mr-3 flex-shrink-0" />
+            <div>
+              <h4 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
+                Current Organization Values Preserved
+              </h4>
+              <div className="text-sm text-green-700 dark:text-green-400 space-y-1">
+                {departmentWarning && formData.department_name && (
+                  <div className="flex items-center">
+                    <Building size={14} className="mr-2" />
+                    <span><strong>Department:</strong> {formData.department_name}</span>
+                  </div>
+                )}
+                {unitWarning && formData.unit_name && (
+                  <div className="flex items-center">
+                    <Users size={14} className="mr-2" />
+                    <span><strong>Unit:</strong> {formData.unit_name}</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-green-600 dark:text-green-400 mt-2">
+                These values are maintained from the current employee record and will appear in the dropdowns with "(Current)" labels.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Employment Timeline Section */}
-      <div className="space-y-3">
-        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center`}>
-          <Calendar size={12} className="mr-1" />
-          Employment Timeline
-        </h3>
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Calendar size={16} className="text-almet-steel-blue" />
+          <h3 className={`text-sm font-semibold ${textSecondary}`}>
+            Employment Timeline
+          </h3>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <FormField
             label="Start Date"
             name="start_date"
@@ -125,9 +319,9 @@ const FormStep2JobInfo = ({
             onChange={handleInputChange}
             type="date"
             required={true}
-            icon={<Calendar size={12} className={textMuted} />}
+            icon={<Calendar size={14} className={textMuted} />}
             validationError={validationErrors.start_date}
-            helpText="First day of work"
+            helpText="Employee's first day of work"
           />
 
           <FormField
@@ -137,172 +331,190 @@ const FormStep2JobInfo = ({
             onChange={handleInputChange}
             type="select"
             required={true}
-            icon={<Calendar size={12} className={textMuted} />}
+            icon={<Calendar size={14} className={textMuted} />}
             options={contractDurationOptions}
             validationError={validationErrors.contract_duration}
-            helpText="Contract type"
-            dropdownPosition="auto"
+            helpText="Type of employment contract"
+            searchable={false}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <FormField
-            label="Contract Start"
+            label="Contract Start Date"
             name="contract_start_date"
             value={formData.contract_start_date || ""}
             onChange={handleInputChange}
             type="date"
-            icon={<Calendar size={12} className={textMuted} />}
+            icon={<Calendar size={14} className={textMuted} />}
             validationError={validationErrors.contract_start_date}
             helpText="If different from start date"
             min={formData.start_date}
           />
 
           <FormField
-            label="End Date"
+            label="Contract End Date"
             name="end_date"
             value={formData.end_date || ""}
             onChange={handleInputChange}
             type="date"
-            icon={<Calendar size={12} className={textMuted} />}
+            icon={<Calendar size={14} className={textMuted} />}
             validationError={validationErrors.end_date}
-            helpText="For fixed contracts"
+            helpText="For fixed-term contracts only"
             min={getMinEndDate()}
             disabled={formData.contract_duration === 'PERMANENT'}
           />
         </div>
 
         {/* Auto-calculated contract end date display */}
-        {formData.contract_end_date && formData.contract_duration !== 'PERMANENT' && (
-          <div className={`p-2 ${bgInfo} border border-almet-sapphire/20 dark:border-blue-800 rounded-md`}>
+        {formData.contract_duration !== 'PERMANENT' && calculateContractEndDate() && (
+          <div className={`p-3 ${bgInfo} border border-almet-sapphire/20 dark:border-blue-800 rounded-lg`}>
             <div className="flex items-center">
-              <Info className="h-3 w-3 text-almet-sapphire mr-2" />
-              <span className="text-xs text-almet-sapphire">
-                <strong>Contract End:</strong> {new Date(formData.contract_end_date).toLocaleDateString()}
-              </span>
+              <Info className="h-4 w-4 text-almet-sapphire mr-2 flex-shrink-0" />
+              <div>
+                <span className="text-sm text-almet-sapphire font-medium">
+                  Auto-calculated Contract End: {new Date(calculateContractEndDate()).toLocaleDateString()}
+                </span>
+                <p className="text-xs text-almet-sapphire/80 mt-1">
+                  Based on start date and contract duration
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Organizational Structure Section */}
-      <div className="space-y-3">
-        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center`}>
-          <Building size={12} className="mr-1" />
-          Organization
-        </h3>
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Building size={16} className="text-almet-san-juan" />
+          <h3 className={`text-sm font-semibold ${textSecondary}`}>
+            Organizational Structure
+          </h3>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="relative">
-            <FormField
-              label="Business Function"
-              name="business_function"
-              value={formData.business_function || ""}
-              onChange={handleInputChange}
-              type="select"
-              required={true}
-              icon={<Building size={12} className={textMuted} />}
-              options={businessFunctions}
-              validationError={validationErrors.business_function}
-              helpText="Top-level unit"
-              loading={loading.businessFunctions}
-              placeholder={loading.businessFunctions ? "Loading..." : "Select function"}
-              dropdownPosition="auto"
-              maxHeight="200px"
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* FIXED: Business Function Field */}
+          <FormField
+            label="Business Function"
+            name="business_function"
+            value={formData.business_function || ""}
+            onChange={handleInputChange}
+            type="select"
+            required={true}
+            icon={<Building size={14} className={textMuted} />}
+            options={getBusinessFunctionOptions()}
+            validationError={validationErrors.business_function}
+            helpText="Top-level organizational unit"
+            loading={loading.businessFunctions}
+            placeholder={loading.businessFunctions ? "Loading..." : "Select business function"}
+            searchable={true}
+            showCodes={true}
+            showColors={true}
+          />
 
-          <div className="relative">
-            <FormField
-              label="Department"
-              name="department"
-              value={formData.department || ""}
-              onChange={handleInputChange}
-              type="select"
-              required={true}
-              icon={<Users size={12} className={textMuted} />}
-              options={departments}
-              validationError={validationErrors.department}
-              helpText="Department"
-              disabled={!formData.business_function}
-              loading={loading.departments}
-              placeholder={getPlaceholder('departments', 'Business Function', formData.business_function)}
-              dropdownPosition="auto"
-              maxHeight="200px"
-            />
-          </div>
+          {/* FIXED: Department Field */}
+          <FormField
+            label="Department"
+            name="department"
+            value={formData.department || ""}
+            onChange={handleInputChange}
+            type="select"
+            required={true}
+            icon={<Users size={14} className={textMuted} />}
+            options={getDepartmentOptions()}
+            validationError={validationErrors.department}
+            helpText="Department within business function"
+            disabled={!formData.business_function}
+            loading={loading.departments}
+            placeholder={getPlaceholder('departments', 'Business Function', formData.business_function)}
+            searchable={true}
+            showColors={true}
+          />
 
-          <div className="relative">
-            <FormField
-              label="Unit"
-              name="unit"
-              value={formData.unit || ""}
-              onChange={handleInputChange}
-              type="select"
-              icon={<Users size={12} className={textMuted} />}
-              options={units}
-              validationError={validationErrors.unit}
-              helpText="Unit (optional)"
-              disabled={!formData.department}
-              loading={loading.units}
-              placeholder={getPlaceholder('units', 'Department', formData.department)}
-              clearable={true}
-              dropdownPosition="auto"
-              maxHeight="200px"
-            />
-          </div>
+          {/* FIXED: Unit Field */}
+          <FormField
+            label="Unit"
+            name="unit"
+            value={formData.unit || ""}
+            onChange={handleInputChange}
+            type="select"
+            icon={<Users size={14} className={textMuted} />}
+            options={getUnitOptions()}
+            validationError={validationErrors.unit}
+            helpText="Specific unit (optional)"
+            disabled={!formData.department}
+            loading={loading.units}
+            placeholder={getPlaceholder('units', 'Department', formData.department)}
+            clearable={true}
+            searchable={true}
+            showColors={true}
+          />
         </div>
 
         {/* Organization hierarchy warnings */}
         {!hasOptions(departments) && formData.business_function && !loading.departments && (
-          <div className={`p-2 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-md`}>
+          <div className={`p-3 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-lg`}>
             <div className="flex items-center">
-              <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400 mr-2" />
-              <span className="text-xs text-amber-800 dark:text-amber-300">
-                No departments found. Contact administrator.
-              </span>
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2 flex-shrink-0" />
+              <div>
+                <span className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                  No departments found for this business function
+                </span>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                  Please contact your system administrator to add departments for this business function.
+                </p>
+              </div>
             </div>
           </div>
         )}
 
         {!hasOptions(units) && formData.department && !loading.units && (
-          <div className={`p-2 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-md`}>
+          <div className={`p-3 ${bgInfo} border border-blue-200 dark:border-blue-800 rounded-lg`}>
             <div className="flex items-center">
-              <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400 mr-2" />
-              <span className="text-xs text-amber-800 dark:text-amber-300">
-                No units found. You can leave this empty.
-              </span>
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2 flex-shrink-0" />
+              <div>
+                <span className="text-sm text-blue-800 dark:text-blue-300 font-medium">
+                  No units found for this department
+                </span>
+                <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                  This is optional. You can leave the unit field empty if none are available.
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Job Details Section */}
-      <div className="space-y-3">
-        <h3 className={`text-xs font-semibold ${textSecondary} flex items-center`}>
-          <Briefcase size={12} className="mr-1" />
-          Job Details
-        </h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="relative">
-            <FormField
-              label="Job Function"
-              name="job_function"
-              value={formData.job_function || ""}
-              onChange={handleInputChange}
-              type="select"
-              required={true}
-              icon={<Briefcase size={12} className={textMuted} />}
-              options={jobFunctions}
-              validationError={validationErrors.job_function}
-              helpText="Functional area"
-              loading={loading.jobFunctions}
-              placeholder={loading.jobFunctions ? "Loading..." : "Select function"}
-              dropdownPosition="auto"
-              maxHeight="200px"
-            />
+      <div className="space-y-4">
+        <div className="flex items-center space-x-2">
+          <Briefcase size={16} className="text-almet-steel-blue" />
+          <div className="flex-1">
+            <h3 className={`text-sm font-semibold ${textSecondary}`}>
+              Position Details
+            </h3>
           </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* FIXED: Job Function Field */}
+          <FormField
+            label="Job Function"
+            name="job_function"
+            value={formData.job_function || ""}
+            onChange={handleInputChange}
+            type="select"
+            required={true}
+            icon={<Briefcase size={14} className={textMuted} />}
+            options={getJobFunctionOptions()}
+            validationError={validationErrors.job_function}
+            helpText="Functional area of work"
+            loading={loading.jobFunctions}
+            placeholder={loading.jobFunctions ? "Loading..." : "Select job function"}
+            searchable={true}
+            showColors={true}
+          />
 
           <FormField
             label="Job Title"
@@ -310,70 +522,77 @@ const FormStep2JobInfo = ({
             value={formData.job_title || ""}
             onChange={handleInputChange}
             required={true}
-            placeholder="Enter job title"
-            icon={<Briefcase size={12} className={textMuted} />}
+            placeholder="Enter specific job title"
+            icon={<Briefcase size={14} className={textMuted} />}
             validationError={validationErrors.job_title}
-            helpText="Specific role title"
+            helpText="Specific position title"
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="relative">
-            <FormField
-              label="Position Group"
-              name="position_group"
-              value={formData.position_group || ""}
-              onChange={handleInputChange}
-              type="select"
-              required={true}
-              icon={<Award size={12} className={textMuted} />}
-              options={positionGroups}
-              validationError={validationErrors.position_group}
-              helpText="Determines grading"
-              loading={loading.positionGroups}
-              placeholder={loading.positionGroups ? "Loading..." : "Select group"}
-              dropdownPosition="auto"
-              maxHeight="200px"
-            />
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* FIXED: Position Group Field */}
+          <FormField
+            label="Position Group"
+            name="position_group"
+            value={formData.position_group || ""}
+            onChange={handleInputChange}
+            type="select"
+            required={true}
+            icon={<Award size={14} className={textMuted} />}
+            options={getPositionGroupOptions()}
+            validationError={validationErrors.position_group}
+            helpText="Determines available grading levels"
+            loading={loading.positionGroups}
+            placeholder={loading.positionGroups ? "Loading..." : "Select position group"}
+            searchable={true}
+            showDescriptions={true}
+            showColors={true}
+          />
 
-          <div className="relative">
-            <FormField
-              label="Grading Level"
-              name="grading_level"
-              value={formData.grading_level || ""}
-              onChange={handleInputChange}
-              type="select"
-              required={true}
-              icon={<Award size={12} className={textMuted} />}
-              options={gradeOptions}
-              validationError={validationErrors.grading_level}
-              helpText="Salary grade"
-              disabled={!formData.position_group || loadingGradingLevels}
-              loading={loadingGradingLevels}
-              placeholder={getPlaceholder('gradeOptions', 'Position Group', formData.position_group)}
-              dropdownPosition="auto"
-              maxHeight="200px"
-            />
-          </div>
+          {/* FIXED: Grading Level Field */}
+          <FormField
+            label="Grading Level"
+            name="grading_level"
+            value={formData.grading_level || ""}
+            onChange={handleInputChange}
+            type="select"
+            required={true}
+            icon={<Award size={14} className={textMuted} />}
+            options={getGradingLevelOptions()}
+            validationError={validationErrors.grading_level}
+            helpText="Salary and benefits grade"
+            disabled={!formData.position_group || loadingGradingLevels}
+            loading={loadingGradingLevels}
+            placeholder={getPlaceholder('gradeOptions', 'Position Group', formData.position_group)}
+            searchable={true}
+            showDescriptions={true}
+            showColors={true}
+          />
         </div>
 
-        {/* Grading Level Information */}
+        {/* Selected Grading Level Information */}
         {formData.grading_level && gradeOptions.length > 0 && (
-          <div className={`p-2 ${bgInfo} border border-almet-sapphire/20 dark:border-blue-800 rounded-md`}>
+          <div className={`p-4 ${bgSuccess} border border-green-200 dark:border-green-800 rounded-lg`}>
             <div className="flex items-start">
-              <Info className="h-3 w-3 text-almet-sapphire mt-0.5 mr-2 flex-shrink-0" />
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-1 mr-3 flex-shrink-0" />
               <div>
-                <h4 className="text-xs font-medium text-almet-sapphire mb-1">
-                  Selected Grade
+                <h4 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
+                  Selected Grading Level
                 </h4>
                 {(() => {
                   const selectedGrade = gradeOptions.find(g => g.value === formData.grading_level);
                   return selectedGrade ? (
-                    <div className="text-xs text-almet-sapphire space-y-0.5">
-                      <div><strong>Code:</strong> {selectedGrade.label}</div>
+                    <div className="text-sm text-green-700 dark:text-green-400 space-y-1">
+                      <div className="flex items-center">
+                        <span className="font-medium mr-2">Code:</span>
+                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">
+                          {selectedGrade.label}
+                        </span>
+                      </div>
                       {selectedGrade.description && (
-                        <div><strong>Description:</strong> {selectedGrade.description}</div>
+                        <div>
+                          <span className="font-medium">Description:</span> {selectedGrade.description}
+                        </div>
                       )}
                     </div>
                   ) : null;
@@ -385,87 +604,66 @@ const FormStep2JobInfo = ({
 
         {/* No grading levels warning */}
         {!hasOptions(gradeOptions) && formData.position_group && !loadingGradingLevels && (
-          <div className={`p-2 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-md`}>
+          <div className={`p-3 ${bgWarning} border border-amber-200 dark:border-amber-800 rounded-lg`}>
             <div className="flex items-center">
-              <AlertCircle className="h-3 w-3 text-amber-600 dark:text-amber-400 mr-2" />
-              <span className="text-xs text-amber-800 dark:text-amber-300">
-                No grading levels found. Contact administrator.
-              </span>
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2 flex-shrink-0" />
+              <div>
+                <span className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                  No grading levels found for this position group
+                </span>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                  Please contact your system administrator to configure grading levels for this position group.
+                </p>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Loading States Info */}
+      {/* Loading States Summary */}
       {Object.values(loading || {}).some(Boolean) && (
-        <div className="flex items-center justify-center p-3 bg-almet-mystic dark:bg-gray-800 rounded-md">
-          <Loader className="animate-spin h-4 w-4 text-almet-sapphire mr-2" />
-          <span className={`text-xs ${textSecondary}`}>
-            Loading reference data...
-          </span>
+        <div className="flex items-center justify-center p-4 bg-almet-mystic dark:bg-gray-800 rounded-lg border border-almet-bali-hai dark:border-gray-700">
+          <Loader className="animate-spin h-5 w-5 text-almet-sapphire mr-3" />
+          <div className="text-center">
+            <span className={`text-sm font-medium ${textSecondary}`}>
+              Loading reference data...
+            </span>
+            <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2 justify-center">
+              {loading.businessFunctions && <span>Business Functions</span>}
+              {loading.departments && <span>Departments</span>}
+              {loading.units && <span>Units</span>}
+              {loading.jobFunctions && <span>Job Functions</span>}
+              {loading.positionGroups && <span>Position Groups</span>}
+              {loadingGradingLevels && <span>Grading Levels</span>}
+            </div>
+          </div>
         </div>
       )}
 
-  
-
-      {/* Custom CSS for better dropdown positioning */}
-      <style jsx>{`
-        .relative .dropdown-container {
-          position: relative;
-          z-index: 50;
-        }
-        
-        .dropdown-container select {
-          position: relative;
-          z-index: 10;
-        }
-        
-        .dropdown-container .dropdown-options {
-          position: absolute;
-          top: 100%;
-          left: 0;
-          right: 0;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.375rem;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-          max-height: 200px;
-          overflow-y: auto;
-          z-index: 60;
-        }
-        
-        .dark .dropdown-container .dropdown-options {
-          background: #374151;
-          border-color: #4b5563;
-        }
-        
-        @media (max-height: 600px) {
-          .dropdown-container .dropdown-options {
-            max-height: 150px;
-          }
-        }
-        
-        .dropdown-container .dropdown-options::-webkit-scrollbar {
-          width: 4px;
-        }
-        
-        .dropdown-container .dropdown-options::-webkit-scrollbar-track {
-          background: #f1f5f9;
-        }
-        
-        .dropdown-container .dropdown-options::-webkit-scrollbar-thumb {
-          background: #cbd5e1;
-          border-radius: 2px;
-        }
-        
-        .dark .dropdown-container .dropdown-options::-webkit-scrollbar-track {
-          background: #4b5563;
-        }
-        
-        .dark .dropdown-container .dropdown-options::-webkit-scrollbar-thumb {
-          background: #6b7280;
-        }
-      `}</style>
+      {/* Form Completion Status */}
+      <div className="pt-4 border-t border-almet-bali-hai dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              Object.keys(validationErrors).length === 0 
+                ? 'bg-green-500' 
+                : 'bg-amber-500'
+            }`} />
+            <span className={`text-sm ${textMuted}`}>
+              {Object.keys(validationErrors).length === 0 
+                ? 'All required fields completed' 
+                : `${Object.keys(validationErrors).length} field(s) need attention`
+              }
+            </span>
+          </div>
+          
+          {isEditMode && (
+            <span className="text-xs text-blue-600 dark:text-blue-400">
+              Changes will be saved when you submit the form
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

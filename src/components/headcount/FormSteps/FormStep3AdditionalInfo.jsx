@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - Compact & User-Friendly Design
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - FIXED: Tags and all issues
 import { useState, useEffect, useCallback } from "react";
 import { 
   Users, 
@@ -11,18 +11,16 @@ import {
   Loader, 
   AlertCircle, 
   Check,
-  ChevronDown,
-  Filter,
-  UserCheck,
-  Building,
-  Mail,
-  Phone,
   Camera,
   Upload,
   Image as ImageIcon,
   Trash2,
   Calendar,
-  Award
+  Award,
+  Building,
+  Mail,
+  Phone,
+  UserCheck
 } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
@@ -39,16 +37,13 @@ const FormStep3AdditionalInfo = ({
   tagOptions = [],
   onAddTag,
   onRemoveTag,
-  loading = {}
+  loading = {},
+  isEditMode = false
 }) => {
   const { darkMode } = useTheme();
   
   // Local state
   const [showLineManagerDropdown, setShowLineManagerDropdown] = useState(false);
-  const [showCreateTag, setShowCreateTag] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-
-  const [creatingTag, setCreatingTag] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -73,8 +68,6 @@ const FormStep3AdditionalInfo = ({
   const selectedLineManager = Array.isArray(lineManagerOptions) 
     ? lineManagerOptions.find(manager => manager.id === parseInt(formData.line_manager))
     : null;
-
- 
 
   // Handle line manager selection
   const handleLineManagerSelect = (manager) => {
@@ -109,44 +102,9 @@ const FormStep3AdditionalInfo = ({
     setLineManagerSearch("");
   };
 
-  // Handle tag creation
-  const handleCreateTag = async () => {
-    if (!newTagName.trim()) return;
-    
-    setCreatingTag(true);
-    try {
-      const newTag = {
-        name: newTagName.trim(),
-        
-        color: getRandomTagColor(),
-        is_active: true
-      };
-      
-      if (onAddTag) {
-        await onAddTag(newTag);
-      }
-      
-      setNewTagName("");
-    
-      setShowCreateTag(false);
-    } catch (error) {
-      console.error('Failed to create tag:', error);
-    } finally {
-      setCreatingTag(false);
-    }
-  };
-
-  // Get random color for new tags
-  const getRandomTagColor = () => {
-    const colors = [
-      '#3B82F6', '#10B981', '#F59E0B', '#EF4444', 
-      '#8B5CF6', '#06B6D4', '#F97316', '#84CC16'
-    ];
-    return colors[Math.floor(Math.random() * colors.length)];
-  };
-
-  // Handle tag selection change from MultiSelectDropdown
+  // FIXED: Handle tag selection change from MultiSelectDropdown
   const handleTagSelectionChange = (selectedTagIds) => {
+    console.log('🏷️ Tag selection changed:', selectedTagIds);
     handleInputChange({
       target: { 
         name: 'tag_ids', 
@@ -204,13 +162,33 @@ const FormStep3AdditionalInfo = ({
     }
   };
 
-  // Format tag options for MultiSelectDropdown
-  const formattedTagOptions = (tagOptions || []).map(tag => ({
-    value: tag.value,
-    label: tag.label,
-    color: tag.color,
-  
-  }));
+  // FIXED: Enhanced tag options formatting with current employee tags
+  const getFormattedTagOptions = () => {
+    const allTags = [...(tagOptions || [])];
+    
+    // In edit mode, ensure current employee tags are included even if not in global list
+    if (isEditMode && formData.current_tags && Array.isArray(formData.current_tags)) {
+      formData.current_tags.forEach(currentTag => {
+        const existsInOptions = allTags.find(tag => tag.value === currentTag.id?.toString());
+        if (!existsInOptions) {
+          // Add current tag to options
+          allTags.push({
+            value: currentTag.id?.toString(),
+            label: currentTag.name,
+            color: currentTag.color || '#6B7280',
+            isCurrent: true
+          });
+        }
+      });
+    }
+    
+    return allTags.map(tag => ({
+      value: tag.value,
+      label: tag.isCurrent ? `${tag.label} (Current)` : tag.label,
+      color: tag.color,
+      isCurrent: tag.isCurrent || false
+    }));
+  };
 
   return (
     <div className="space-y-4 relative">
@@ -223,6 +201,34 @@ const FormStep3AdditionalInfo = ({
           Step 3 of 4 (Optional)
         </div>
       </div>
+
+      {/* FIXED: Edit mode notice for tags */}
+      {isEditMode && formData.current_tags && formData.current_tags.length > 0 && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+          <div className="flex items-start">
+            <Tag className="h-3 w-3 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+            <div>
+              <h4 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">
+                Current Employee Tags
+              </h4>
+              <div className="flex flex-wrap gap-1 mb-2">
+                {formData.current_tags.map((tag, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white"
+                    style={{ backgroundColor: tag.color || '#6B7280' }}
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+              <p className="text-[10px] text-blue-700 dark:text-blue-400">
+                These are the employee's current tags. You can modify them below.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Profile Image Section */}
       <div className="space-y-3">
@@ -308,9 +314,9 @@ const FormStep3AdditionalInfo = ({
               {/* File Info */}
               <div className={`text-[10px] ${textMuted} leading-relaxed`}>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                  <span>• Max: 5MB</span>
-                  <span>• Recommended: 400×400px</span>
-                  <span>• Formats: JPG, PNG, GIF</span>
+                  <span>Max: 5MB</span>
+                  <span>Recommended: 400×400px</span>
+                  <span>Formats: JPG, PNG, GIF</span>
                 </div>
               </div>
 
@@ -491,7 +497,7 @@ const FormStep3AdditionalInfo = ({
         )}
       </div>
 
-      {/* Employee Tags Section */}
+      {/* Employee Tags Section - FIXED */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
@@ -506,7 +512,7 @@ const FormStep3AdditionalInfo = ({
             Select Tags
           </label>
           <MultiSelectDropdown
-            options={formattedTagOptions}
+            options={getFormattedTagOptions()}
             selectedValues={formData.tag_ids || []}
             onChange={handleTagSelectionChange}
             placeholder="Search and select tags..."
@@ -517,15 +523,18 @@ const FormStep3AdditionalInfo = ({
             size="sm"
           />
           
+          {/* FIXED: Show current selected tags summary */}
           {formData.tag_ids && formData.tag_ids.length > 0 && (
-            <div className={`text-[10px] ${textMuted} mt-1`}>
-              {formData.tag_ids.length} tag{formData.tag_ids.length !== 1 ? 's' : ''} selected
+            <div className="mt-2">
+              <div className={`text-[10px] ${textMuted} mb-1`}>
+                {formData.tag_ids.length} tag{formData.tag_ids.length !== 1 ? 's' : ''} selected
+              </div>
             </div>
           )}
         </div>
 
         {/* No tags message */}
-        {(!formattedTagOptions || formattedTagOptions.length === 0) && (
+        {(!getFormattedTagOptions() || getFormattedTagOptions().length === 0) && (
           <div className={`text-center py-4 ${bgAccent} rounded-md border ${borderColor}`}>
             <Tag size={24} className={`mx-auto mb-2 ${textMuted} opacity-50`} />
             <p className={`text-xs ${textMuted}`}>
@@ -612,8 +621,6 @@ const FormStep3AdditionalInfo = ({
           onClick={() => setShowLineManagerDropdown(false)}
         />
       )}
-
-      
     </div>
   );
 };

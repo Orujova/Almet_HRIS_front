@@ -16,25 +16,23 @@ import {
   UserX as UserVacant,
   ChevronDown,
   Filter,
-  X
+  X,
+  Building,
+  User,
+  Briefcase
 } from 'lucide-react';
 
 const JobDescriptionList = ({
   filteredJobs,
-  selectedJobs,
   searchTerm,
   selectedDepartment,
   dropdownData,
   onSearchChange,
   onDepartmentChange,
   onJobSelect,
-  onJobView,
   onJobEdit,
   onJobDelete,
   onDirectSubmission,
-  onToggleSelection,
-  onSelectAll,
-  onBulkExport,
   onDownloadPDF,
   actionLoading,
   darkMode
@@ -65,11 +63,25 @@ const JobDescriptionList = ({
     };
   }, []);
 
-  // Filter departments based on search term
-  const filteredDepartments = dropdownData.departments?.filter(dept =>
-    dept.name?.toLowerCase().includes(departmentSearchTerm.toLowerCase())
-  ) || [];
+  // Get unique departments from employee data
+  const getUniqueDepartments = () => {
+    if (!dropdownData.employees) return [];
+    
+    const departments = [...new Set(
+      dropdownData.employees
+        .map(emp => emp.department_name)
+        .filter(dept => dept && dept.trim() !== '')
+    )];
+    
+    return departments.sort();
+  };
 
+  const uniqueDepartments = getUniqueDepartments();
+  const filteredDepartments = uniqueDepartments.filter(dept =>
+    dept.toLowerCase().includes(departmentSearchTerm.toLowerCase())
+  );
+
+  // Status color and icon functions
   const getStatusColor = (status) => {
     switch (status) {
       case 'DRAFT':
@@ -107,6 +119,49 @@ const JobDescriptionList = ({
     }
   };
 
+  // Helper functions for employee info
+  const getEmployeeInfo = (job) => {
+    // Check employee_info from API response
+    if (job.employee_info && job.employee_info.name) {
+      return {
+        type: 'assigned',
+        name: job.employee_info.name,
+        id: job.employee_info.employee_id || job.employee_info.id,
+        phone: job.employee_info.phone,
+        email: job.employee_info.email,
+        hasEmployee: true
+      };
+    }
+    
+    // Check assigned_employee
+    if (job.assigned_employee?.full_name) {
+      return {
+        type: 'assigned',
+        name: job.assigned_employee.full_name,
+        id: job.assigned_employee.employee_id || job.assigned_employee.id,
+        hasEmployee: true
+      };
+    }
+    
+    // Vacant position
+    return {
+      type: 'vacant',
+      name: 'Vacant Position',
+      hasEmployee: false
+    };
+  };
+
+  const getManagerInfo = (job) => {
+    if (job.manager_info && job.manager_info.name) {
+      return job.manager_info.name;
+    }
+    if (job.reports_to_name) {
+      return job.reports_to_name;
+    }
+    return 'N/A';
+  };
+
+  // Event handlers
   const handleDownloadPDF = (jobId, event) => {
     event.stopPropagation();
     if (onDownloadPDF) {
@@ -120,9 +175,37 @@ const JobDescriptionList = ({
     }
   };
 
+  const handleDirectSubmissionClick = (jobId, event) => {
+    event.stopPropagation();
+    if (onDirectSubmission) {
+      onDirectSubmission(jobId);
+    }
+  };
+
+  const handleEditClick = (job, event) => {
+    event.stopPropagation();
+    if (onJobEdit) {
+      onJobEdit(job);
+    }
+  };
+
+  const handleDeleteClick = (jobId, event) => {
+    event.stopPropagation();
+    if (onJobDelete) {
+      onJobDelete(jobId);
+    }
+  };
+
+  const handleViewClick = (job, event) => {
+    event.stopPropagation();
+    if (onJobSelect) {
+      onJobSelect(job);
+    }
+  };
+
   return (
     <>
-      {/* Enhanced Search and Filter Bar */}
+      {/* Search and Filter Bar */}
       <div className={`${bgCard} rounded-xl p-4 mb-6 border ${borderColor} shadow-sm`}>
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search Input */}
@@ -148,7 +231,7 @@ const JobDescriptionList = ({
             )}
           </div>
           
-          {/* Department Filter Dropdown with Search */}
+          {/* Department Filter Dropdown */}
           <div className="relative" ref={departmentDropdownRef}>
             <button
               onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
@@ -197,16 +280,16 @@ const JobDescriptionList = ({
                   </button>
                   {filteredDepartments.map(dept => (
                     <button
-                      key={dept.id}
+                      key={dept}
                       onClick={() => {
-                        onDepartmentChange(dept.name);
+                        onDepartmentChange(dept);
                         setShowDepartmentDropdown(false);
                         setDepartmentSearchTerm('');
                       }}
                       className={`w-full px-4 py-2 text-left hover:${bgCardHover} ${textPrimary} text-xs transition-colors
-                        ${selectedDepartment === dept.name ? 'bg-almet-sapphire text-white' : ''}`}
+                        ${selectedDepartment === dept ? 'bg-almet-sapphire text-white' : ''}`}
                     >
-                      {dept.name}
+                      {dept}
                     </button>
                   ))}
                   
@@ -219,238 +302,250 @@ const JobDescriptionList = ({
               </div>
             )}
           </div>
-          
-          {/* Bulk Selection Controls */}
-          {selectedJobs.length > 0 && (
-            <div className="flex items-center gap-3 px-4 py-3 bg-almet-sapphire/10 border border-almet-sapphire/20 
-              rounded-xl">
-              <span className={`text-sm font-medium text-almet-sapphire`}>
-                {selectedJobs.length} selected
-              </span>
-              <button
-                onClick={() => {
-                  if (selectedJobs.length === 0) {
-                    alert('Please select at least one job description first.');
-                    return;
-                  }
-                  onBulkExport();
-                }}
-                className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-medium 
-                  hover:bg-almet-astral transition-colors duration-200"
-              >
-                Export Selected
-              </button>
-              <button
-                onClick={() => onSelectAll()}
-                className="px-3 py-1.5 bg-gray-500 text-white rounded-lg text-xs font-medium 
-                  hover:bg-gray-600 transition-colors duration-200"
-              >
-                Clear All
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Enhanced Job List */}
+      {/* Job List */}
       <div className={`${bgCard} rounded-xl border ${borderColor} shadow-sm overflow-hidden`}>
         <div className="p-6">
-          {/* Select All Header */}
-          <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-200 dark:border-almet-comet">
-            <input
-              type="checkbox"
-              checked={selectedJobs.length === filteredJobs.length && filteredJobs.length > 0}
-              onChange={onSelectAll}
-              className="text-almet-sapphire focus:ring-almet-sapphire rounded"
-            />
-            <span className={`text-xs font-semibold ${textSecondary}`}>
-              Select All ({filteredJobs.length} jobs)
-            </span>
-            {selectedJobs.length > 0 && (
-              <span className={`text-xs ${textMuted}`}>
-                {selectedJobs.length} selected for bulk export
-              </span>
-            )}
-            {filteredJobs.length > 0 && (
-              <span className={`text-xs ${textMuted} ml-auto`}>
-                Click on any job card to view details
-              </span>
-            )}
+          {/* List Header */}
+          <div className="mb-6 pb-4 border-b border-gray-200 dark:border-almet-comet">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <h3 className={`text-lg font-semibold ${textPrimary}`}>
+                  Job Descriptions
+                </h3>
+                <span className={`px-3 py-1 rounded-full text-xs font-medium bg-almet-sapphire/10 text-almet-sapphire`}>
+                  {filteredJobs.length} total
+                </span>
+              </div>
+              {filteredJobs.length > 0 && (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Eye size={12} />
+                  <span>Click any card to view details</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Job Cards Grid */}
-          <div className="grid gap-4">
-            {filteredJobs.map(job => (
-              <div 
-                key={job.id} 
-                className={`p-4 ${bgCardHover} rounded-xl border ${borderColor} 
-                  hover:shadow-md transition-all duration-200 group hover:scale-[1.02] cursor-pointer`}
-                onClick={() => handleJobCardClick(job)}
-              >
+          {filteredJobs.length > 0 ? (
+            <div className="grid gap-4">
+              {filteredJobs.map(job => {
+                const employeeInfo = getEmployeeInfo(job);
+                const managerName = getManagerInfo(job);
                 
-                {/* Job Header */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedJobs.includes(job.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        onToggleSelection(job.id);
-                      }}
-                      className="text-almet-sapphire focus:ring-almet-sapphire rounded"
-                    />
-                    <div className="bg-almet-sapphire text-white p-2 rounded-xl group-hover:scale-110 
-                      transition-transform duration-200">
-                      <FileText size={14} />
-                    </div>
-                    <div>
-                      <h3 className={`text-xs font-semibold ${textPrimary} mb-1 group-hover:text-almet-sapphire 
-                        transition-colors duration-200`}>
-                        {job.job_title}
-                      </h3>
-                      <p className={`text-xs ${textSecondary} flex items-center gap-2`}>
-                        <span>{job.business_function_name}</span>
-                        <span className={textMuted}>•</span>
-                        <span>{job.department_name}</span>
-                        {job.job_function_name && (
-                          <>
-                            <span className={textMuted}>•</span>
-                            <span>{job.job_function_name}</span>
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Status and Actions */}
-                  <div className="flex items-center gap-2">
-                    <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 
-                      ${getStatusColor(job.status)}`}>
-                      {getStatusIcon(job.status)}
-                      {job.status_display?.status || job.status}
-                    </span>
+                return (
+                  <div 
+                    key={job.id} 
+                    className={`p-4 ${bgCardHover} rounded-xl border ${borderColor} 
+                      hover:shadow-md transition-all duration-200 group hover:scale-[1.01] cursor-pointer
+                      hover:border-almet-sapphire/30`}
+                    onClick={() => handleJobCardClick(job)}
+                  >
                     
-                    {/* Action Buttons */}
-                    <div className="flex items-center gap-1 ml-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onJobSelect(job);
-                        }}
-                        className="p-2 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg 
-                          transition-colors duration-200"
-                        title="View Details"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => handleDownloadPDF(job.id, e)}
-                        disabled={actionLoading}
-                        className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg 
-                          transition-colors duration-200 disabled:opacity-50"
-                        title="Download PDF"
-                      >
-                        <Download size={14} />
-                      </button>
-                      {job.status === 'DRAFT' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDirectSubmission(job.id);
-                          }}
-                          disabled={actionLoading}
-                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg 
-                            transition-colors duration-200 disabled:opacity-50"
-                          title="Submit for Approval"
-                        >
-                          <Send size={14} />
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onJobEdit(job);
-                        }}
-                        disabled={actionLoading}
-                        className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
-                          transition-colors duration-200 disabled:opacity-50"
-                        title="Edit Job"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onJobDelete(job.id);
-                        }}
-                        disabled={actionLoading}
-                        className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg 
-                          transition-colors duration-200 disabled:opacity-50"
-                        title="Delete Job"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                    {/* Job Header */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="bg-almet-sapphire text-white p-3 rounded-xl group-hover:scale-110 
+                          transition-transform duration-200 flex-shrink-0">
+                          <FileText size={16} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`text-sm font-bold ${textPrimary} mb-2 group-hover:text-almet-sapphire 
+                            transition-colors duration-200 line-clamp-1`}>
+                            {job.job_title}
+                          </h3>
+                          <div className={`text-xs ${textSecondary} space-y-1`}>
+                            <div className="flex items-center gap-2">
+                              <Building size={12} className={textMuted} />
+                              <span>{job.business_function_name}</span>
+                              <span className={textMuted}>•</span>
+                              <span>{job.department_name}</span>
+                              {job.unit_name && (
+                                <>
+                                  <span className={textMuted}>•</span>
+                                  <span>{job.unit_name}</span>
+                                </>
+                              )}
+                            </div>
+                            {job.job_function_name && (
+                              <div className="flex items-center gap-2">
+                                <Briefcase size={12} className={textMuted} />
+                                <span>{job.job_function_name}</span>
+                                {job.position_group_name && (
+                                  <>
+                                    <span className={textMuted}>•</span>
+                                    <span>{job.position_group_name}</span>
+                                    {job.grading_level && (
+                                      <span className={`${textMuted} font-mono`}>({job.grading_level})</span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Status Badge */}
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 
+                          ${getStatusColor(job.status)}`}>
+                          {getStatusIcon(job.status)}
+                          {job.status_display?.status || job.status}
+                        </span>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => handleViewClick(job, e)}
+                            className="p-2 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg 
+                              transition-colors duration-200"
+                            title="View Details"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDownloadPDF(job.id, e)}
+                            disabled={actionLoading}
+                            className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg 
+                              transition-colors duration-200 disabled:opacity-50"
+                            title="Download PDF"
+                          >
+                            <Download size={14} />
+                          </button>
+                          {job.status === 'DRAFT' && (
+                            <button
+                              onClick={(e) => handleDirectSubmissionClick(job.id, e)}
+                              disabled={actionLoading}
+                              className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg 
+                                transition-colors duration-200 disabled:opacity-50"
+                              title="Submit for Approval"
+                            >
+                              <Send size={14} />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => handleEditClick(job, e)}
+                            disabled={actionLoading}
+                            className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
+                              transition-colors duration-200 disabled:opacity-50"
+                            title="Edit Job"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(job.id, e)}
+                            disabled={actionLoading}
+                            className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg 
+                              transition-colors duration-200 disabled:opacity-50"
+                            title="Delete Job"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                {/* Job Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                  <div className="flex items-center gap-3">
-                    <span className={`font-semibold ${textMuted} min-w-[80px]`}>Employee:</span>
-                    {job.employee_info?.name ? (
-                      <div className="flex items-center gap-2">
-                        <UserCheck size={14} className="text-green-600" />
-                        <span className={textPrimary}>{job.employee_info.name}</span>
+                    
+                    {/* Employee and Manager Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mb-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold ${textMuted} min-w-[70px]`}>Employee:</span>
+                          {employeeInfo.hasEmployee ? (
+                            <div className="flex items-center gap-2">
+                              <UserCheck size={12} className="text-green-600" />
+                              <span className={textPrimary}>{employeeInfo.name}</span>
+                              {employeeInfo.id && (
+                                <span className={`${textMuted} text-xs`}>({employeeInfo.id})</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <UserVacant size={12} className="text-orange-600" />
+                              <span className="text-orange-600 font-medium">Vacant Position</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold ${textMuted} min-w-[70px]`}>Reports to:</span>
+                          <div className="flex items-center gap-2">
+                            <User size={12} className={textMuted} />
+                            <span className={textPrimary}>{managerName}</span>
+                          </div>
+                        </div>
                       </div>
-                    ) : job.manual_employee_name ? (
-                      <div className="flex items-center gap-2">
-                        <UserCheck size={14} className="text-blue-600" />
-                        <span className={textPrimary}>{job.manual_employee_name}</span>
+                      
+                      {/* Additional Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold ${textMuted} min-w-[70px]`}>Created:</span>
+                          <span className={textPrimary}>
+                            {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className={`font-semibold ${textMuted} min-w-[70px]`}>Version:</span>
+                          <span className={textPrimary}>v{job.version || 1}</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <UserVacant size={14} className="text-orange-600" />
-                        <span className="text-orange-600 font-medium">Vacant Position</span>
+                    </div>
+
+                    {/* Employee Validation Display */}
+                    {job.employee_validation && (
+                      <div className="mb-4 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                        <div className={`flex items-center gap-2 text-xs ${
+                          job.employee_validation.is_valid 
+                            ? 'text-green-600' 
+                            : 'text-orange-600'
+                        }`}>
+                          {job.employee_validation.is_valid ? (
+                            <CheckCircle size={12} />
+                          ) : (
+                            <AlertCircle size={12} />
+                          )}
+                          <span className="font-medium">
+                            {job.employee_validation.message}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Job Purpose Preview */}
+                    {job.job_purpose && (
+                      <div className="pt-3 border-t border-gray-200 dark:border-almet-comet">
+                        <p className={`text-xs ${textMuted} mb-1 font-semibold uppercase tracking-wide`}>
+                          Job Purpose
+                        </p>
+                        <p className={`text-xs ${textSecondary} leading-relaxed line-clamp-2`}>
+                          {job.job_purpose.length > 150 
+                            ? `${job.job_purpose.substring(0, 150)}...` 
+                            : job.job_purpose
+                          }
+                        </p>
                       </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`font-semibold ${textMuted} min-w-[80px]`}>Reports to:</span>
-                    <span className={textPrimary}>{job.manager_info?.name || 'N/A'}</span>
-                  </div>
-                 
-                </div>
-
-                {/* Job Purpose Preview */}
-                {job.job_purpose && (
-                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
-                    <p className={`text-xs ${textMuted} mb-1 font-medium`}>Job Purpose:</p>
-                    <p className={`text-xs ${textSecondary} line-clamp-2`}>
-                      {job.job_purpose.length > 120 
-                        ? `${job.job_purpose.substring(0, 120)}...` 
-                        : job.job_purpose
-                      }
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-          
-          {/* Empty State */}
-          {filteredJobs.length === 0 && (
-            <div className="text-center py-12">
-              <div className={`mx-auto h-16 w-16 ${textMuted} mb-4 flex items-center justify-center 
+                );
+              })}
+            </div>
+          ) : (
+            /* Empty State */
+            <div className="text-center py-16">
+              <div className={`mx-auto h-20 w-20 ${textMuted} mb-6 flex items-center justify-center 
                 bg-gray-100 dark:bg-almet-comet rounded-full`}>
-                <FileText size={32} />
+                <FileText size={40} />
               </div>
-              <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>No Job Descriptions Found</h3>
-              <p className={`${textMuted} text-sm max-w-md mx-auto`}>
+              <h3 className={`text-xl font-semibold ${textPrimary} mb-3`}>
+                No Job Descriptions Found
+              </h3>
+              <p className={`${textMuted} text-sm max-w-md mx-auto mb-6`}>
                 {searchTerm || selectedDepartment 
-                  ? 'Try adjusting your search criteria or filters to find what you\'re looking for.' 
-                  : 'Create your first job description to get started with managing positions in your organization.'
+                  ? 'No job descriptions match your current search criteria. Try adjusting your filters or search terms.' 
+                  : 'Get started by creating your first job description. Define positions, responsibilities, and organizational structure.'
                 }
               </p>
               {(searchTerm || selectedDepartment) && (
@@ -459,45 +554,12 @@ const JobDescriptionList = ({
                     onSearchChange('');
                     onDepartmentChange('');
                   }}
-                  className="mt-4 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
-                    transition-colors duration-200 text-sm"
+                  className="px-6 py-3 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
+                    transition-colors duration-200 text-sm font-medium"
                 >
-                  Clear Filters
+                  Clear All Filters
                 </button>
               )}
-            </div>
-          )}
-
-          {/* Selection Summary */}
-          {selectedJobs.length > 0 && (
-            <div className="mt-6 pt-4 border-t border-gray-200 dark:border-almet-comet">
-              <div className="flex items-center justify-between">
-                <span className={`text-sm ${textSecondary}`}>
-                  {selectedJobs.length} job{selectedJobs.length !== 1 ? 's' : ''} selected for bulk operations
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (selectedJobs.length === 0) {
-                        alert('Please select at least one job description first.');
-                        return;
-                      }
-                      onBulkExport();
-                    }}
-                    className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg text-xs font-medium 
-                      hover:bg-almet-astral transition-colors duration-200"
-                  >
-                    Export Selected as PDF
-                  </button>
-                  <button
-                    onClick={onSelectAll}
-                    className="px-3 py-1.5 bg-gray-500 text-white rounded-lg text-xs font-medium 
-                      hover:bg-gray-600 transition-colors duration-200"
-                  >
-                    Clear Selection
-                  </button>
-                </div>
-              </div>
             </div>
           )}
         </div>

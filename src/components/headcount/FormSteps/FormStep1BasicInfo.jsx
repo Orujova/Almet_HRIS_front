@@ -1,12 +1,12 @@
-// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - Compact Design
+// src/components/headcount/FormSteps/FormStep1BasicInfo.jsx - CLEAN REWRITE
 import { useState, useEffect } from "react";
-import { User, Mail, Hash, Phone, Calendar, MapPin, AlertCircle, CheckCircle, Loader } from "lucide-react";
+import { User, Mail, Phone, Calendar, MapPin, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 import { apiService } from "../../../services/api";
 
 /**
- * Enhanced Basic Information step with compact design and Almet colors
+ * Basic Information step - Clean implementation without Employee ID
  */
 const FormStep1BasicInfo = ({ 
   formData, 
@@ -16,76 +16,16 @@ const FormStep1BasicInfo = ({
 }) => {
   const { darkMode } = useTheme();
   
-  // Local state for real-time validation
-  const [employeeIdStatus, setEmployeeIdStatus] = useState({ checking: false, available: null });
+  // Local state for email validation
   const [emailStatus, setEmailStatus] = useState({ checking: false, available: null });
   const [validationTimer, setValidationTimer] = useState(null);
 
-  // Theme-dependent classes with Almet colors
+  // Theme classes
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
   const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
-  const bgAccent = darkMode ? "bg-gray-700" : "bg-almet-mystic";
-  const borderColor = darkMode ? "border-gray-700" : "border-almet-bali-hai";
 
-  // Real-time employee ID validation (only for new employees or changed IDs)
-  useEffect(() => {
-    // Skip validation in edit mode if ID hasn't changed
-    if (isEditMode && !formData._employee_id_changed) {
-      setEmployeeIdStatus({ checking: false, available: true });
-      return;
-    }
-
-    if (formData.employee_id && formData.employee_id.length >= 3) {
-      if (validationTimer) {
-        clearTimeout(validationTimer);
-      }
-
-      const timer = setTimeout(async () => {
-        setEmployeeIdStatus({ checking: true, available: null });
-        try {
-          const response = await apiService.get('/employees/', { 
-            employee_id: formData.employee_id,
-            page_size: 1 
-          });
-          
-          const exists = response.data.results && response.data.results.length > 0;
-          
-          // In edit mode, if the existing employee has this ID, it's okay
-          if (isEditMode && exists) {
-            const existingEmployee = response.data.results[0];
-            // Check if it's the same employee being edited
-            const isSameEmployee = existingEmployee.id === formData.id || 
-                                 existingEmployee.employee_id === formData.original_employee_id;
-            setEmployeeIdStatus({ 
-              checking: false, 
-              available: isSameEmployee 
-            });
-          } else {
-            setEmployeeIdStatus({ 
-              checking: false, 
-              available: !exists 
-            });
-          }
-        } catch (error) {
-          console.error('Error checking employee ID:', error);
-          setEmployeeIdStatus({ checking: false, available: null });
-        }
-      }, 800);
-
-      setValidationTimer(timer);
-    } else {
-      setEmployeeIdStatus({ checking: false, available: null });
-    }
-
-    return () => {
-      if (validationTimer) {
-        clearTimeout(validationTimer);
-      }
-    };
-  }, [formData.employee_id, formData._employee_id_changed, isEditMode, formData.id, formData.original_employee_id]);
-
-  // Real-time email validation (only for new employees or changed emails)
+  // Real-time email validation
   useEffect(() => {
     // Skip validation in edit mode if email hasn't changed
     if (isEditMode && !formData._email_changed) {
@@ -134,6 +74,7 @@ const FormStep1BasicInfo = ({
       setEmailStatus({ checking: false, available: null });
     }
 
+    // Cleanup
     return () => {
       if (validationTimer) {
         clearTimeout(validationTimer);
@@ -141,42 +82,17 @@ const FormStep1BasicInfo = ({
     };
   }, [formData.email, formData._email_changed, isEditMode, formData.id, formData.original_email]);
 
-  // Track field changes in edit mode
+  // Handle field changes for email tracking in edit mode
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
     
-    // Mark fields as changed in edit mode
-    if (isEditMode) {
-      if (name === 'employee_id' && value !== formData.original_employee_id) {
-        e.target.value = value;
-        e.target.name = name;
-        handleInputChange(e);
-        handleInputChange({ target: { name: '_employee_id_changed', value: true } });
-      } else if (name === 'email' && value !== formData.original_email) {
-        e.target.value = value;
-        e.target.name = name;
-        handleInputChange(e);
-        handleInputChange({ target: { name: '_email_changed', value: true } });
-      } else {
-        handleInputChange(e);
-      }
-    } else {
-      handleInputChange(e);
+    // Mark email as changed in edit mode
+    if (name === 'email' && isEditMode && value !== formData.original_email) {
+      handleInputChange({ target: { name: '_email_changed', value: true } });
     }
-  };
-
-  // Get validation icon for employee ID
-  const getEmployeeIdValidationIcon = () => {
-    if (employeeIdStatus.checking) {
-      return <Loader size={12} className="text-almet-sapphire animate-spin" />;
-    }
-    if (employeeIdStatus.available === true) {
-      return <CheckCircle size={12} className="text-green-500" />;
-    }
-    if (employeeIdStatus.available === false) {
-      return <AlertCircle size={12} className="text-red-500" />;
-    }
-    return null;
+    
+    // Call the original handler
+    handleInputChange(e);
   };
 
   // Get validation icon for email
@@ -193,23 +109,7 @@ const FormStep1BasicInfo = ({
     return null;
   };
 
-  // Get validation help text
-  const getEmployeeIdHelpText = () => {
-    if (isEditMode && !formData._employee_id_changed) {
-      return "Current employee ID";
-    }
-    if (employeeIdStatus.checking) {
-      return "Checking...";
-    }
-    if (employeeIdStatus.available === true) {
-      return "Available";
-    }
-    if (employeeIdStatus.available === false) {
-      return "Already exists";
-    }
-    return "Unique identifier";
-  };
-
+  // Get validation help text for email
   const getEmailHelpText = () => {
     if (isEditMode && !formData._email_changed) {
       return "Current email";
@@ -226,7 +126,7 @@ const FormStep1BasicInfo = ({
     return "Business email";
   };
 
-  // Gender options - only MALE and FEMALE as per API
+  // Gender options
   const genderOptions = [
     { value: "MALE", label: "Male" },
     { value: "FEMALE", label: "Female" }
@@ -261,57 +161,50 @@ const FormStep1BasicInfo = ({
         </div>
       )}
 
+      {/* Employee ID Notice for New Employees */}
+      {!isEditMode && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
+          <div className="flex items-start">
+            <CheckCircle className="h-3 w-3 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+            <div>
+              <h4 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">
+                Employee ID Auto-Assignment
+              </h4>
+              <p className="text-[10px] text-blue-700 dark:text-blue-400">
+                Employee ID will be automatically assigned by the system after creation.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Essential Information Section */}
       <div className="space-y-3">
         <h3 className={`text-xs font-semibold ${textSecondary} flex items-center`}>
-          <Hash size={12} className="mr-1" />
+          <Mail size={12} className="mr-1" />
           Essential Information
         </h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Employee ID with real-time validation */}
-          <div className="relative">
-            <FormField
-              label="Employee ID"
-              name="employee_id"
-              value={formData.employee_id || ""}
-              onChange={handleFieldChange}
-              required={true}
-              placeholder="EMP001"
-              icon={<Hash size={12} className={textMuted} />}
-              validationError={
-                validationErrors.employee_id || 
-                (employeeIdStatus.available === false ? "ID already exists" : null)
-              }
-              helpText={getEmployeeIdHelpText()}
-            />
-            {/* Validation indicator */}
-            <div className="absolute top-6 right-2 flex items-center">
-              {getEmployeeIdValidationIcon()}
-            </div>
-          </div>
-
-          {/* Email with real-time validation */}
-          <div className="relative">
-            <FormField
-              label="Email Address"
-              name="email"
-              value={formData.email || ""}
-              onChange={handleFieldChange}
-              type="email"
-              required={true}
-              placeholder="john@company.com"
-              icon={<Mail size={12} className={textMuted} />}
-              validationError={
-                validationErrors.email || 
-                (emailStatus.available === false ? "Email already exists" : null)
-              }
-              helpText={getEmailHelpText()}
-            />
-            {/* Validation indicator */}
-            <div className="absolute top-6 right-2 flex items-center">
-              {getEmailValidationIcon()}
-            </div>
+        {/* Email field only - Employee ID removed completely */}
+        <div className="relative">
+          <FormField
+            label="Email Address"
+            name="email"
+            value={formData.email || ""}
+            onChange={handleFieldChange}
+            type="email"
+            required={true}
+            placeholder="john@company.com"
+            icon={<Mail size={12} className={textMuted} />}
+            validationError={
+              validationErrors.email || 
+              (emailStatus.available === false ? "Email already exists" : null)
+            }
+            helpText={getEmailHelpText()}
+          />
+          {/* Validation indicator */}
+          <div className="absolute top-6 right-2 flex items-center">
+            {getEmailValidationIcon()}
           </div>
         </div>
       </div>
@@ -394,7 +287,7 @@ const FormStep1BasicInfo = ({
             options={genderOptions}
             icon={<User size={12} className={textMuted} />}
             validationError={validationErrors.gender}
-            helpText="Required"
+            helpText="Optional"
             placeholder="Select"
           />
         </div>
@@ -468,8 +361,6 @@ const FormStep1BasicInfo = ({
           </ul>
         </div>
       )}
-
- 
     </div>
   );
 };

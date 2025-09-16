@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus, X } from 'lucide-react';
 import SearchableSelect from './SearchableSelect';
-import MultiSelect from './MultiSelect';
+import MultiSelect from '../common/MultiSelect';
 
 const JobResponsibilitiesTab = ({
   formData,

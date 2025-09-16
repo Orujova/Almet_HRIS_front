@@ -1,5 +1,5 @@
 import React from 'react';
-import MultiSelect from './MultiSelect';
+import MultiSelect from '../common/MultiSelect';
 
 const WorkConditionsTab = ({
   formData,

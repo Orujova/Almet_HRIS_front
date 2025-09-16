@@ -1,5 +1,5 @@
-// src/components/headcount/EmployeeForm.jsx - Fixed API Format with Document & Profile Upload
-import { useState, useEffect, useCallback } from "react";
+// src/components/headcount/EmployeeForm.jsx - FIXED: Date handling and all errors
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight, Save, X, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useRouter } from "next/navigation";
@@ -27,16 +27,17 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     clearErrors 
   } = useEmployees();
 
-  // Form state - Initialize with proper structure for edit mode
+  // FIXED: Enhanced form state initialization with proper date and boolean handling
   const [formData, setFormData] = useState(() => {
     if (isEditMode && employee) {
       return {
         // Basic Information
-        employee_id: employee.employee_id || "",
+        id: employee.id,
         first_name: employee.first_name || "",
         last_name: employee.last_name || "",
         email: employee.email || employee.user?.email || "",
-        father_name: employee.father_name || "", // Add father_name
+        original_email: employee.email || employee.user?.email || "",
+        father_name: employee.father_name || "",
         
         // Personal Information
         phone: employee.phone || "",
@@ -45,13 +46,17 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         address: employee.address || "",
         emergency_contact: employee.emergency_contact || "",
         
-        // Job Information - Convert to strings for form inputs
+        // Job Information - FIXED: Enhanced handling with names
         business_function: employee.business_function?.toString() || "",
+        business_function_name: employee.business_function_name || "",
         department: employee.department?.toString() || "",
+        department_name: employee.department_name || "",
         unit: employee.unit?.toString() || "",
+        unit_name: employee.unit_name || "",
         job_function: employee.job_function?.toString() || "",
         job_title: employee.job_title || "",
         position_group: employee.position_group?.toString() || "",
+        position_group_name: employee.position_group_name || "",
         grading_level: employee.grading_level || employee.grade || "",
         start_date: employee.start_date || "",
         contract_duration: employee.contract_duration || "PERMANENT",
@@ -63,25 +68,31 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         
         // Management Information
         line_manager: employee.line_manager?.toString() || "",
+        line_manager_name: employee.line_manager_name || "",
         notes: employee.notes || "",
         
-        // System Fields
+        // System Fields - FIXED: Proper boolean conversion
         status: employee.status || "ONBOARDING",
-        is_visible_in_org_chart: employee.is_visible_in_org_chart !== undefined ? employee.is_visible_in_org_chart : true,
+        is_visible_in_org_chart: Boolean(employee.is_visible_in_org_chart),
         
-        // Tags and Documents
-        tag_ids: employee.tags ? employee.tags.map(tag => tag.id?.toString()) : [],
+        // Tags and Documents - FIXED: Enhanced tag handling
+        tag_ids: employee.tags ? employee.tags.map(tag => tag.toString()) : [],
+current_tags: employee.tag_details || [],
         documents: employee.documents || [],
-        profile_image: employee.profile_image || null,
+        profile_image: employee.profile_image || employee.profile_image_url || null,
         
-        // New fields based on API format
-        vacancy_id: employee.vacancy_id || null
+        vacancy_id: employee.vacancy_id || null,
+        
+        // Internal tracking
+        _email_changed: false,
+        _department_loaded: false,
+        _unit_loaded: false,
+        _grading_loaded: false
       };
     }
     
     // Default form data for new employee
     return {
-      employee_id: "",
       first_name: "",
       last_name: "",
       email: "",
@@ -108,6 +119,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       status: "ONBOARDING",
       is_visible_in_org_chart: true,
       tag_ids: [],
+      current_tags: [],
       documents: [],
       profile_image: null,
       vacancy_id: null
@@ -121,7 +133,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     units: [],
     jobFunctions: [],
     positionGroups: [],
-    employeeStatuses: [],
     employeeTags: [],
     lineManagers: [],
     gradingLevels: []
@@ -134,14 +145,13 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     units: false,
     jobFunctions: false,
     positionGroups: false,
-    employeeStatuses: false,
     employeeTags: false,
     lineManagers: false,
     gradingLevels: false,
     initialLoad: true
   });
 
-  // Document type options for API
+  // Document type options
   const documentTypes = [
     { value: "CONTRACT", label: "Contract" },
     { value: "ID", label: "ID Document" },
@@ -181,13 +191,14 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   const stepLabels = ["Basic Information", "Job Details", "Additional Info", "Documents"];
   const totalSteps = stepLabels.length;
 
+  // File input ref
+  const fileInputRef = useRef(null);
+
   // ========================================
   // REFERENCE DATA LOADING FUNCTIONS
   // ========================================
 
   const loadBusinessFunctions = useCallback(async () => {
-    if (referenceData.businessFunctions.length > 0) return;
-    
     setLoading(prev => ({ ...prev, businessFunctions: true }));
     try {
       const response = await apiService.getBusinessFunctions();
@@ -198,8 +209,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         businessFunctions: data.map(item => ({
           value: item.id?.toString(),
           label: item.name,
-          code: item.code,
-          employee_count: item.employee_count
+          code: item.code
         }))
       }));
     } catch (error) {
@@ -207,11 +217,15 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     } finally {
       setLoading(prev => ({ ...prev, businessFunctions: false }));
     }
-  }, [referenceData.businessFunctions.length]);
+  }, []);
 
-  const loadDepartments = useCallback(async (businessFunctionId = null) => {
+  const loadDepartments = useCallback(async (businessFunctionId, skipIfLoaded = false) => {
     if (!businessFunctionId) {
       setReferenceData(prev => ({ ...prev, departments: [] }));
+      return;
+    }
+
+    if (skipIfLoaded && formData._department_loaded) {
       return;
     }
 
@@ -222,26 +236,45 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       });
       const data = response.data.results || response.data || [];
       
+      const departments = data.map(item => ({
+        value: item.id?.toString(),
+        label: item.name
+      }));
+
+      if (isEditMode && formData.department && formData.department_name) {
+        const exists = departments.find(d => d.value === formData.department);
+        if (!exists) {
+          departments.unshift({
+            value: formData.department,
+            label: `${formData.department_name} (Current)`,
+            isCurrent: true
+          });
+        }
+      }
+      
       setReferenceData(prev => ({
         ...prev,
-        departments: data.map(item => ({
-          value: item.id?.toString(),
-          label: item.name,
-          business_function: item.business_function,
-          business_function_name: item.business_function_name
-        }))
+        departments
       }));
+
+      if (isEditMode) {
+        setFormData(prev => ({ ...prev, _department_loaded: true }));
+      }
     } catch (error) {
       console.error('Failed to load departments:', error);
       setReferenceData(prev => ({ ...prev, departments: [] }));
     } finally {
       setLoading(prev => ({ ...prev, departments: false }));
     }
-  }, []);
+  }, [isEditMode, formData.department, formData.department_name, formData._department_loaded]);
 
-  const loadUnits = useCallback(async (departmentId = null) => {
+  const loadUnits = useCallback(async (departmentId, skipIfLoaded = false) => {
     if (!departmentId) {
       setReferenceData(prev => ({ ...prev, units: [] }));
+      return;
+    }
+
+    if (skipIfLoaded && formData._unit_loaded) {
       return;
     }
 
@@ -252,26 +285,39 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       });
       const data = response.data.results || response.data || [];
       
+      const units = data.map(item => ({
+        value: item.id?.toString(),
+        label: item.name
+      }));
+
+      if (isEditMode && formData.unit && formData.unit_name) {
+        const exists = units.find(u => u.value === formData.unit);
+        if (!exists) {
+          units.unshift({
+            value: formData.unit,
+            label: `${formData.unit_name} (Current)`,
+            isCurrent: true
+          });
+        }
+      }
+      
       setReferenceData(prev => ({
         ...prev,
-        units: data.map(item => ({
-          value: item.id?.toString(),
-          label: item.name,
-          department: item.department,
-          department_name: item.department_name
-        }))
+        units
       }));
+
+      if (isEditMode) {
+        setFormData(prev => ({ ...prev, _unit_loaded: true }));
+      }
     } catch (error) {
       console.error('Failed to load units:', error);
       setReferenceData(prev => ({ ...prev, units: [] }));
     } finally {
       setLoading(prev => ({ ...prev, units: false }));
     }
-  }, []);
+  }, [isEditMode, formData.unit, formData.unit_name, formData._unit_loaded]);
 
   const loadJobFunctions = useCallback(async () => {
-    if (referenceData.jobFunctions.length > 0) return;
-    
     setLoading(prev => ({ ...prev, jobFunctions: true }));
     try {
       const response = await apiService.getJobFunctions();
@@ -281,8 +327,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         ...prev,
         jobFunctions: data.map(item => ({
           value: item.id?.toString(),
-          label: item.name,
-      
+          label: item.name
         }))
       }));
     } catch (error) {
@@ -290,11 +335,9 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     } finally {
       setLoading(prev => ({ ...prev, jobFunctions: false }));
     }
-  }, [referenceData.jobFunctions.length]);
+  }, []);
 
   const loadPositionGroups = useCallback(async () => {
-    if (referenceData.positionGroups.length > 0) return;
-    
     setLoading(prev => ({ ...prev, positionGroups: true }));
     try {
       const response = await apiService.getPositionGroups();
@@ -305,8 +348,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         positionGroups: data.map(item => ({
           value: item.id?.toString(),
           label: item.display_name || item.name,
-          hierarchy_level: item.hierarchy_level,
-          grading_levels: item.grading_levels || []
+          hierarchy_level: item.hierarchy_level
         }))
       }));
     } catch (error) {
@@ -314,11 +356,9 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     } finally {
       setLoading(prev => ({ ...prev, positionGroups: false }));
     }
-  }, [referenceData.positionGroups.length]);
+  }, []);
 
   const loadEmployeeTags = useCallback(async () => {
-    if (referenceData.employeeTags.length > 0) return;
-    
     setLoading(prev => ({ ...prev, employeeTags: true }));
     try {
       const response = await apiService.getEmployeeTags();
@@ -329,7 +369,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         employeeTags: data.map(item => ({
           value: item.id?.toString(),
           label: item.name,
- 
           color: item.color
         }))
       }));
@@ -338,11 +377,15 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     } finally {
       setLoading(prev => ({ ...prev, employeeTags: false }));
     }
-  }, [referenceData.employeeTags.length]);
+  }, []);
 
-  const loadGradingLevels = useCallback(async (positionGroupId = null) => {
+  const loadGradingLevels = useCallback(async (positionGroupId, skipIfLoaded = false) => {
     if (!positionGroupId) {
       setReferenceData(prev => ({ ...prev, gradingLevels: [] }));
+      return;
+    }
+
+    if (skipIfLoaded && formData._grading_loaded) {
       return;
     }
 
@@ -359,48 +402,42 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           description: level.full_name
         }))
       }));
+
+      if (isEditMode) {
+        setFormData(prev => ({ ...prev, _grading_loaded: true }));
+      }
     } catch (error) {
       console.error('Failed to load grading levels:', error);
       setReferenceData(prev => ({ ...prev, gradingLevels: [] }));
     } finally {
       setLoading(prev => ({ ...prev, gradingLevels: false }));
     }
-  }, []);
+  }, [isEditMode, formData._grading_loaded]);
 
   const loadLineManagers = useCallback(async (searchTerm = "") => {
     setLoading(prev => ({ ...prev, lineManagers: true }));
     try {
-      // Use general employees API for line manager selection
       const response = await apiService.get('/employees/', { 
         search: searchTerm,
-        page_size: 100, // Get more results for better selection
-        ordering: 'name' // Order by name for better UX
+        page_size: 100,
+        ordering: 'name'
       });
       
       const results = response.data.results || response.data || [];
       
-      // Filter and map employee data for line manager selection
-      // Exclude the current employee being edited if in edit mode
       const managers = results
-        .filter(emp => {
-          // In edit mode, exclude the current employee from line manager options
-          if (isEditMode && employee && emp.id === employee.id) {
-            return false;
-          }
-          return true;
-        })
+        .filter(emp => isEditMode ? emp.id !== employee?.id : true)
         .map(manager => ({
           id: manager.id,
           employee_id: manager.employee_id,
           name: manager.name,
           job_title: manager.job_title,
-          position_group_name: manager.position_group_name,
           department: manager.department_name,
           business_function: manager.business_function_name,
-          direct_reports_count: manager.direct_reports_count || 0,
           email: manager.email,
           phone: manager.phone,
           grading_level: manager.grading_level,
+          position_group_name: manager.position_group_name,
           start_date: manager.start_date
         }));
       
@@ -411,19 +448,22 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     } finally {
       setLoading(prev => ({ ...prev, lineManagers: false }));
     }
-  }, [isEditMode, employee]);
+  }, [isEditMode, employee?.id]);
 
   // ========================================
   // INITIALIZATION AND EFFECTS
   // ========================================
 
-  // Initialize reference data on mount
+  // Initialize reference data
   useEffect(() => {
-    const initializeReferenceData = async () => {
+    let mounted = true;
+
+    const initializeData = async () => {
+      if (!mounted) return;
+      
       setLoading(prev => ({ ...prev, initialLoad: true }));
       
       try {
-        // Load independent reference data in parallel
         await Promise.all([
           loadBusinessFunctions(),
           loadJobFunctions(),
@@ -432,45 +472,48 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           loadLineManagers()
         ]);
 
-        // If editing, load dependent data based on current values
-        if (isEditMode && employee) {
+        if (isEditMode && employee && mounted) {
           if (employee.business_function) {
-            await loadDepartments(employee.business_function);
+            await loadDepartments(employee.business_function, true);
             
             if (employee.department) {
-              await loadUnits(employee.department);
+              await loadUnits(employee.department, true);
             }
           }
           
           if (employee.position_group) {
-            await loadGradingLevels(employee.position_group);
+            await loadGradingLevels(employee.position_group, true);
           }
         }
       } catch (error) {
         console.error('Failed to initialize reference data:', error);
       } finally {
-        setLoading(prev => ({ ...prev, initialLoad: false }));
-        clearErrors();
+        if (mounted) {
+          setLoading(prev => ({ ...prev, initialLoad: false }));
+          clearErrors();
+        }
       }
     };
 
-    initializeReferenceData();
-  }, [isEditMode]);
+    initializeData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Handle business function change
   useEffect(() => {
     if (formData.business_function) {
       loadDepartments(formData.business_function);
       
-      // Only clear dependent fields if this is a user change (not initial load)
-      const shouldClearFields = !isEditMode || 
-        (isEditMode && formData.business_function !== employee?.business_function?.toString());
-      
-      if (shouldClearFields) {
+      if (!isEditMode || formData.business_function !== employee?.business_function?.toString()) {
         setFormData(prev => ({
           ...prev,
           department: "",
-          unit: ""
+          unit: "",
+          _department_loaded: false,
+          _unit_loaded: false
         }));
       }
     } else {
@@ -480,85 +523,41 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         units: [] 
       }));
     }
-  }, [formData.business_function, loadDepartments, isEditMode, employee?.business_function]);
+  }, [formData.business_function]);
 
   // Handle department change
   useEffect(() => {
     if (formData.department) {
       loadUnits(formData.department);
       
-      const shouldClearUnit = !isEditMode || 
-        (isEditMode && formData.department !== employee?.department?.toString());
-      
-      if (shouldClearUnit) {
+      if (!isEditMode || formData.department !== employee?.department?.toString()) {
         setFormData(prev => ({
           ...prev,
-          unit: ""
+          unit: "",
+          _unit_loaded: false
         }));
       }
     } else {
       setReferenceData(prev => ({ ...prev, units: [] }));
     }
-  }, [formData.department, loadUnits, isEditMode, employee?.department]);
+  }, [formData.department]);
 
   // Handle position group change
   useEffect(() => {
     if (formData.position_group) {
       loadGradingLevels(formData.position_group);
       
-      const shouldClearGrading = !isEditMode || 
-        (isEditMode && formData.position_group !== employee?.position_group?.toString());
-      
-      if (shouldClearGrading) {
+      if (!isEditMode || formData.position_group !== employee?.position_group?.toString()) {
         setFormData(prev => ({
           ...prev,
-          grading_level: ""
+          grading_level: "",
+          _grading_loaded: false
         }));
       }
     } else {
       setReferenceData(prev => ({ ...prev, gradingLevels: [] }));
     }
-  }, [formData.position_group, loadGradingLevels, isEditMode, employee?.position_group]);
-
-  // Auto-calculate contract end date
-  useEffect(() => {
-    if (formData.start_date && formData.contract_duration && formData.contract_duration !== 'PERMANENT') {
-      const startDate = new Date(formData.contract_start_date || formData.start_date);
-      let endDate = new Date(startDate);
-      
-      switch (formData.contract_duration) {
-        case '3_MONTHS':
-          endDate.setMonth(endDate.getMonth() + 3);
-          break;
-        case '6_MONTHS':
-          endDate.setMonth(endDate.getMonth() + 6);
-          break;
-        case '1_YEAR':
-          endDate.setFullYear(endDate.getFullYear() + 1);
-          break;
-        case '2_YEARS':
-          endDate.setFullYear(endDate.getFullYear() + 2);
-          break;
-        case '3_YEARS':
-          endDate.setFullYear(endDate.getFullYear() + 3);
-          break;
-        default:
-          endDate = null;
-      }
-      
-      if (endDate) {
-        setFormData(prev => ({
-          ...prev,
-          contract_end_date: endDate.toISOString().split('T')[0]
-        }));
-      }
-    } else if (formData.contract_duration === 'PERMANENT') {
-      setFormData(prev => ({
-        ...prev,
-        contract_end_date: ""
-      }));
-    }
-  }, [formData.start_date, formData.contract_start_date, formData.contract_duration]);
+  }, [formData.position_group]);
 
   // ========================================
   // FORM VALIDATION
@@ -568,10 +567,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     const errors = {};
 
     switch (step) {
-      case 1: // Basic Information
-        if (!formData.employee_id?.trim()) {
-          errors.employee_id = "Employee ID is required";
-        }
+      case 1:
         if (!formData.first_name?.trim()) {
           errors.first_name = "First name is required";
         }
@@ -585,7 +581,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         }
         break;
 
-      case 2: // Job Information
+      case 2:
         if (!formData.start_date) {
           errors.start_date = "Start date is required";
         }
@@ -614,7 +610,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
 
       case 3:
       case 4:
-        // Steps 3 and 4 are optional
         break;
     }
 
@@ -629,7 +624,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       newStepValidation[step] = Object.keys(errors).length === 0;
     }
     setStepValidation(newStepValidation);
-  }, [formData, validateStep]);
+  }, [formData, validateStep, totalSteps]);
 
   // Get step status for indicator
   const getStepStatus = useCallback((step) => {
@@ -649,17 +644,20 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   // EVENT HANDLERS
   // ========================================
 
-  // Handle input changes
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
-    const newValue = type === 'checkbox' ? checked : value;
+    let newValue = type === 'checkbox' ? checked : value;
+
+    // FIXED: Proper boolean handling
+    if (name === 'is_visible_in_org_chart') {
+      newValue = Boolean(type === 'checkbox' ? checked : (value === 'true' || value === true));
+    }
 
     setFormData(prev => ({
       ...prev,
       [name]: newValue
     }));
 
-    // Clear validation error for this field
     if (validationErrors[name]) {
       setValidationErrors(prev => {
         const newErrors = { ...prev };
@@ -669,7 +667,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   }, [validationErrors]);
 
-  // Handle line manager search
   const handleLineManagerSearch = useCallback((searchTerm) => {
     setLineManagerSearch(searchTerm);
     if (searchTerm.length >= 2) {
@@ -679,7 +676,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   }, [loadLineManagers]);
 
-  // Handle tag management
   const handleAddTag = useCallback((tagId) => {
     setFormData(prev => ({
       ...prev,
@@ -694,7 +690,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }));
   }, []);
 
-  // Handle document upload - enhanced with type selection
   const handleDocumentUpload = useCallback((documentData) => {
     setFormData(prev => ({
       ...prev,
@@ -706,7 +701,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }));
   }, []);
 
-  // Handle document removal
   const handleRemoveDocument = useCallback((index) => {
     setFormData(prev => {
       const newDocuments = [...(prev.documents || [])];
@@ -716,6 +710,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         documents: newDocuments
       };
     });
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   }, []);
 
   // ========================================
@@ -743,15 +741,50 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   }, []);
 
   // ========================================
-  // FORM SUBMISSION - FIXED FOR PROPER API FORMAT
+  // FORM SUBMISSION - COMPLETELY FIXED WITH PROPER DATE HANDLING
   // ========================================
 
+  // FIXED: Date validation and formatting function
+// Replace your formatDateForAPI function around line 600:
+const formatDateForAPI = (dateString) => {
+  if (!dateString) return null;
+  
+  try {
+    // If it's already in YYYY-MM-DD format, validate it's a real date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const date = new Date(dateString + 'T00:00:00');
+      if (isNaN(date.getTime())) {
+        console.warn(`Invalid date: ${dateString}`);
+        return null;
+      }
+      return dateString;
+    }
+    
+    // Parse and format other date formats
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      console.warn(`Invalid date: ${dateString}`);
+      return null;
+    }
+    
+    // Convert to YYYY-MM-DD format with timezone handling
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error(`Error formatting date ${dateString}:`, error);
+    return null;
+  }
+};
+
   const handleSubmit = async () => {
-    // Validate all steps
+    // Validate required steps
     let allErrors = {};
     let hasErrors = false;
 
-    for (let step = 1; step <= 2; step++) { // Only validate required steps
+    for (let step = 1; step <= 2; step++) {
       const stepErrors = validateStep(step);
       if (Object.keys(stepErrors).length > 0) {
         allErrors = { ...allErrors, ...stepErrors };
@@ -768,135 +801,114 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     setSubmitting(true);
     
     try {
-      // Prepare FormData for API - according to API format
-      const formDataForAPI = new FormData();
+      // FIXED: Create FormData object matching API specification exactly
+      const formDataObj = new FormData();
 
-      // Required fields
-      formDataForAPI.append('employee_id', formData.employee_id);
-      formDataForAPI.append('first_name', formData.first_name);
-      formDataForAPI.append('last_name', formData.last_name);
-      formDataForAPI.append('email', formData.email);
-      formDataForAPI.append('job_title', formData.job_title);
-      formDataForAPI.append('start_date', formData.start_date);
-      formDataForAPI.append('business_function', formData.business_function);
-      formDataForAPI.append('department', formData.department);
-      formDataForAPI.append('job_function', formData.job_function);
-      formDataForAPI.append('position_group', formData.position_group);
+      // Basic Information - Required fields
+      formDataObj.append('first_name', formData.first_name);
+      formDataObj.append('last_name', formData.last_name);
+      formDataObj.append('email', formData.email);
 
-      // Optional basic fields
+      // Job Information - Required fields  
+      formDataObj.append('job_title', formData.job_title);
+     
+      formDataObj.append('business_function', formData.business_function);
+      formDataObj.append('department', formData.department);
+      formDataObj.append('job_function', formData.job_function);
+      formDataObj.append('position_group', formData.position_group);
+      formDataObj.append('contract_duration', formData.contract_duration);
+
+      // FIXED: Boolean field - convert to string as API expects
+      const booleanValue = formData.is_visible_in_org_chart === true || formData.is_visible_in_org_chart === 'true';
+formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
+
+
+      // Optional fields with proper null/empty checks and date formatting
       if (formData.father_name) {
-        formDataForAPI.append('father_name', formData.father_name);
+        formDataObj.append('father_name', formData.father_name);
       }
       if (formData.unit) {
-        formDataForAPI.append('unit', formData.unit);
+        formDataObj.append('unit', formData.unit);
       }
       if (formData.phone) {
-        formDataForAPI.append('phone', formData.phone);
+        formDataObj.append('phone', formData.phone);
       }
-      if (formData.date_of_birth) {
-        formDataForAPI.append('date_of_birth', formData.date_of_birth);
-      }
+    
       if (formData.gender) {
-        formDataForAPI.append('gender', formData.gender);
+        formDataObj.append('gender', formData.gender);
       }
       if (formData.address) {
-        formDataForAPI.append('address', formData.address);
+        formDataObj.append('address', formData.address);
       }
       if (formData.emergency_contact) {
-        formDataForAPI.append('emergency_contact', formData.emergency_contact);
+        formDataObj.append('emergency_contact', formData.emergency_contact);
       }
       if (formData.grading_level) {
-        formDataForAPI.append('grading_level', formData.grading_level);
+        formDataObj.append('grading_level', formData.grading_level);
       }
       if (formData.line_manager) {
-        formDataForAPI.append('line_manager', formData.line_manager);
+        formDataObj.append('line_manager', formData.line_manager);
       }
-      if (formData.contract_duration) {
-        formDataForAPI.append('contract_duration', formData.contract_duration);
-      }
-      if (formData.contract_start_date) {
-        formDataForAPI.append('contract_start_date', formData.contract_start_date);
-      }
-      if (formData.end_date) {
-        formDataForAPI.append('end_date', formData.end_date);
-      }
+   
+   // In your handleSubmit function, add validation before appending dates:
+const dateFields = [
+  'start_date', 
+  'date_of_birth', 
+  'contract_start_date', 
+  'end_date'
+];
+
+dateFields.forEach(field => {
+  if (formData[field]) {
+    const formattedDate = formatDateForAPI(formData[field]);
+    if (formattedDate) {
+      formDataObj.append(field, formattedDate);
+    }
+  }
+});
       if (formData.notes) {
-        formDataForAPI.append('notes', formData.notes);
+        formDataObj.append('notes', formData.notes);
       }
       if (formData.vacancy_id) {
-        formDataForAPI.append('vacancy_id', formData.vacancy_id);
+        formDataObj.append('vacancy_id', formData.vacancy_id);
       }
 
-      // Boolean field
-      formDataForAPI.append('is_visible_in_org_chart', formData.is_visible_in_org_chart);
-
-      // Tags - append each tag ID separately
+      // Tags - FIXED: Append each tag ID separately as API expects array
       if (formData.tag_ids && formData.tag_ids.length > 0) {
-        formData.tag_ids.forEach(tagId => {
-          formDataForAPI.append('tag_ids', tagId);
-        });
+  formData.tag_ids.forEach(tagId => {
+    formDataObj.append('tag_ids[]', tagId); // Note the [] suffix
+  });
+}
+
+      // Profile image - FIXED: Handle file upload properly
+      if (formData.profile_image && formData.profile_image instanceof File) {
+        formDataObj.append('profile_photo', formData.profile_image);
       }
 
-      // Profile image
-      if (formData.profile_image && typeof formData.profile_image === 'object') {
-        formDataForAPI.append('profile_photo', formData.profile_image);
-      }
-
-      // Document handling - only add first document with type
+      // Documents - FIXED: Handle document uploads
       if (formData.documents && formData.documents.length > 0) {
-        const firstDoc = formData.documents[0];
-        if (firstDoc.file) {
-          formDataForAPI.append('document', firstDoc.file);
-          formDataForAPI.append('document_type', firstDoc.document_type || 'OTHER');
-          if (firstDoc.document_name || firstDoc.name) {
-            formDataForAPI.append('document_name', firstDoc.document_name || firstDoc.name);
+        // For now, just take the first document as API handles one at a time
+        const doc = formData.documents[0];
+        if (doc.file instanceof File) {
+          formDataObj.append('document', doc.file);
+          formDataObj.append('document_type', doc.document_type || 'OTHER');
+          if (doc.document_name) {
+            formDataObj.append('document_name', doc.document_name);
           }
         }
       }
 
-      // Submit to API
+      console.log('Submitting FormData with entries:');
+      for (let [key, value] of formDataObj.entries()) {
+        console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);
+      }
+
+      // Submit to API using FormData (multipart/form-data)
       let result;
       if (isEditMode) {
-        // For updates, use PUT with employee ID in URL
-        result = await apiService.put(`/employees/${employee.id}/`, formDataForAPI, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+        result = await apiService.put(`/employees/${employee.id}/`, formDataObj);
       } else {
-        // For creation, use POST
-        result = await apiService.post('/employees/', formDataForAPI, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-      }
-
-      // Handle additional documents (after first one is uploaded during creation)
-      if (!isEditMode && result.data && result.data.id && formData.documents && formData.documents.length > 1) {
-        // Upload remaining documents one by one
-        for (let i = 1; i < formData.documents.length; i++) {
-          const doc = formData.documents[i];
-          if (doc.file) {
-            try {
-              const docFormData = new FormData();
-              docFormData.append('employee_id', result.data.id);
-              docFormData.append('document', doc.file);
-              docFormData.append('document_type', doc.document_type || 'OTHER');
-              if (doc.document_name || doc.name) {
-                docFormData.append('document_name', doc.document_name || doc.name);
-              }
-              
-              await apiService.post('/employee-documents/', docFormData, {
-                headers: {
-                  'Content-Type': 'multipart/form-data'
-                }
-              });
-            } catch (docError) {
-              console.warn(`Failed to upload document ${i + 1}:`, docError);
-            }
-          }
-        }
+        result = await apiService.post('/employees/', formDataObj);
       }
 
       // Handle success
@@ -907,19 +919,16 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           router.push("/structure/headcount-table");
         }
       } else {
-        // Handle API errors
         const errorMessage = result.data?.detail || result.data?.message || 'Failed to save employee';
         setValidationErrors({ submit: errorMessage });
       }
     } catch (error) {
       console.error('Submit error:', error);
       
-      // Parse API validation errors
       if (error.response?.data) {
         const apiErrors = {};
         const errorData = error.response.data;
         
-        // Handle field-specific validation errors
         if (typeof errorData === 'object' && !errorData.detail && !errorData.message) {
           Object.keys(errorData).forEach(field => {
             if (Array.isArray(errorData[field])) {
@@ -930,12 +939,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           });
         }
         
-        // Handle general error messages
         if (errorData.detail || errorData.message) {
           apiErrors.submit = errorData.detail || errorData.message;
         }
         
-        // If no specific field errors, show general error
         if (Object.keys(apiErrors).length === 0) {
           apiErrors.submit = 'Failed to save employee. Please check your data and try again.';
         }
@@ -951,7 +958,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   };
 
-  // Handle cancel
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -969,7 +975,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     handleInputChange,
     validationErrors,
     
-    // Reference data with proper formatting
     businessFunctions: referenceData.businessFunctions,
     departments: referenceData.departments,
     units: referenceData.units,
@@ -978,26 +983,20 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     gradeOptions: referenceData.gradingLevels,
     loadingGradingLevels: loading.gradingLevels,
     
-    // Line manager options
     lineManagerOptions: referenceData.lineManagers,
     lineManagerSearch,
     setLineManagerSearch: handleLineManagerSearch,
     loadingLineManagers: loading.lineManagers,
     
-    // Tag options
     tagOptions: referenceData.employeeTags,
     onAddTag: handleAddTag,
     onRemoveTag: handleRemoveTag,
     
-    // Document handling - enhanced with type options
     handleDocumentUpload,
     removeDocument: handleRemoveDocument,
     documentTypes,
     
-    // Loading states
     loading,
-    
-    // Edit mode flag for disabling validation during initial load
     isEditMode
   };
 
@@ -1014,13 +1013,13 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       case 3:
         return <FormStep3AdditionalInfo {...stepProps} />;
       case 4:
-        return <FormStep4Documents {...stepProps} />;
+        return <FormStep4Documents {...stepProps} fileInputRef={fileInputRef} />;
       default:
         return null;
     }
   };
 
-  // Show loading state during initial data load
+  // Show loading state
   if (loading.initialLoad) {
     return (
       <div className="container mx-auto px-4 py-0">
@@ -1043,7 +1042,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
 
   return (
     <div className="container mx-auto py-0">
-      <div className={`${bgCard} rounded-xl shadow-lg  border ${borderColor}`}>
+      <div className={`${bgCard} rounded-xl shadow-lg border ${borderColor}`}>
         {/* Header */}
         <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center">
@@ -1129,7 +1128,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
             </button>
 
             <div className="flex items-center space-x-3">
-              {/* Step progress indicator */}
               <div className={`text-xs ${textSecondary}`}>
                 Step {currentStep} of {totalSteps}
               </div>

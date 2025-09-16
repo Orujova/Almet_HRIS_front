@@ -1,18 +1,19 @@
-// src/components/headcount/FormSteps/FormStep4Documents.jsx - Compact & User-Friendly Design
+// src/components/headcount/FormSteps/FormStep4Documents.jsx - FIXED: Runtime error resolved
 import { useState } from "react";
 import { Check, X, Upload, File, AlertCircle, Info, FileText, Award, IdCard, Heart } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
 
 /**
- * Documents upload step with compact design and Almet colors
+ * FIXED Documents upload step - resolved document.getElementById runtime error
  */
 const FormStep4Documents = ({ 
   formData, 
   handleDocumentUpload, 
   removeDocument, 
   validationErrors = {},
-  documentTypes = []
+  documentTypes = [],
+  fileInputRef = null // FIXED: Accept ref from parent component
 }) => {
   const { darkMode } = useTheme();
   const [dragActive, setDragActive] = useState(false);
@@ -121,10 +122,19 @@ const FormStep4Documents = ({
     setDocumentName("");
     setSelectedDocumentType("OTHER");
     
-    // Clear file input
-    const fileInput = document.getElementById('document-upload');
-    if (fileInput) {
-      fileInput.value = '';
+    // FIXED: Use ref instead of document.getElementById
+    if (fileInputRef && fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // FIXED: Handle document removal with ref
+  const handleRemoveDocument = (index) => {
+    removeDocument(index);
+    
+    // FIXED: Clear file input using ref
+    if (fileInputRef && fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -237,16 +247,18 @@ const FormStep4Documents = ({
             PDF, Word, Excel, Images, Text (Max 10MB)
           </p>
           
+          {/* FIXED: Use ref instead of id */}
           <input
             type="file"
             onChange={handleFileInput}
             className="hidden"
-            id="document-upload"
+            ref={fileInputRef}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.bmp,.txt"
           />
           
           <label
-            htmlFor="document-upload"
+            htmlFor=""
+            onClick={() => fileInputRef?.current?.click()}
             className={`${btnSecondary} px-4 py-2 rounded-md text-xs font-medium cursor-pointer transition-all inline-flex items-center hover:shadow-sm`}
           >
             <Upload size={10} className="mr-1" />
@@ -308,7 +320,7 @@ const FormStep4Documents = ({
                   </div>
                 </div>
                 <button
-                  onClick={() => removeDocument(index)}
+                  onClick={() => handleRemoveDocument(index)}
                   className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-red-500 hover:text-red-600 transition-colors"
                   title="Remove document"
                 >
@@ -380,8 +392,6 @@ const FormStep4Documents = ({
           </div>
         </div>
       </div>
-
-     
     </div>
   );
 };

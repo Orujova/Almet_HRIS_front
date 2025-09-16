@@ -7,7 +7,6 @@ import {
   X, 
   AlertCircle,
   UserCheck,
-  UserX as UserVacant,
   CheckCircle,
   ArrowRight,
   ArrowLeft,
@@ -22,7 +21,6 @@ const JobDescriptionForm = ({
   formData = {},
   editingJob = null,
   dropdownData = {},
-  positionType = 'assigned',
   selectedEmployee = '',
   autoManager = null,
   selectedSkillGroup = '',
@@ -32,9 +30,9 @@ const JobDescriptionForm = ({
   selectedPositionGroup = '',
   businessFunctionDepartments = [],
   departmentUnits = [],
+  matchingEmployees = [],
   actionLoading = false,
   onFormDataChange = () => {},
-  onPositionTypeChange = () => {},
   onEmployeeSelect = () => {},
   onSkillGroupChange = () => {},
   onBehavioralGroupChange = () => {},
@@ -167,13 +165,6 @@ const JobDescriptionForm = ({
       errors.position_group = 'Position Group is required';
     }
     
-    // Position type validation
-    if (positionType === 'assigned') {
-      if (!selectedEmployee && !formData.manual_employee_name?.trim()) {
-        errors.employee_assignment = 'Either select an employee or provide manual employee details for assigned positions';
-      }
-    }
-    
     // Validate department-business function relationship
     if (formData.department && formData.business_function) {
       const isValidDepartment = (businessFunctionDepartments || []).some(dept => dept.id === parseInt(formData.department));
@@ -228,12 +219,6 @@ const JobDescriptionForm = ({
         if (!formData.position_group) {
           errors.position_group = 'Position Group is required';
         }
-        
-        if (positionType === 'assigned') {
-          if (!selectedEmployee && !formData.manual_employee_name?.trim()) {
-            errors.employee_assignment = 'Either select an employee or provide manual employee details for assigned positions';
-          }
-        }
         break;
         
       case 'responsibilities':
@@ -261,13 +246,12 @@ const JobDescriptionForm = ({
     e.preventDefault();
     e.stopPropagation();
     
-    // Explicit check - only proceed if this is a manual save action
-    console.log('🔍 Form submit triggered');
+    console.log('📝 Form submit triggered');
     
     if (!validateForm()) {
       // Find which tab contains errors and switch to it
       const errorKeys = Object.keys(validationErrors);
-      if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group', 'employee_assignment'].includes(key))) {
+      if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
         setActiveTab('position');
       } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
         setActiveTab('responsibilities');
@@ -281,7 +265,7 @@ const JobDescriptionForm = ({
     }
 
     try {
-      // Prepare data for API
+      // Prepare data for API - Updated structure without manual employee fields
       const apiData = {
         job_title: formData.job_title.trim(),
         job_purpose: formData.job_purpose.trim(),
@@ -291,10 +275,8 @@ const JobDescriptionForm = ({
         position_group: parseInt(formData.position_group),
         grading_level: formData.grading_level?.trim() || null,
         
-        // Handle employee assignment based on position type
-        assigned_employee: positionType === 'assigned' && selectedEmployee ? parseInt(selectedEmployee) : null,
-        manual_employee_name: positionType === 'assigned' ? (formData.manual_employee_name?.trim() || '') : '',
-        manual_employee_phone: positionType === 'assigned' ? (formData.manual_employee_phone?.trim() || '') : '',
+        // Handle employee assignment - only assigned_employee field
+        assigned_employee: selectedEmployee ? parseInt(selectedEmployee) : null,
         reports_to: formData.reports_to ? parseInt(formData.reports_to) : null,
         
         // Sections
@@ -410,7 +392,6 @@ const JobDescriptionForm = ({
     }
   };
 
-
   // Check if tab is completed
   const isTabCompleted = (tabId) => {
     switch (tabId) {
@@ -489,15 +470,14 @@ const JobDescriptionForm = ({
             <PositionInformationTab
               formData={formData}
               dropdownData={dropdownData}
-              positionType={positionType}
               selectedEmployee={selectedEmployee}
               autoManager={autoManager}
               selectedPositionGroup={selectedPositionGroup}
               businessFunctionDepartments={businessFunctionDepartments}
               departmentUnits={departmentUnits}
+              matchingEmployees={matchingEmployees}
               validationErrors={validationErrors}
               onFormDataChange={onFormDataChange}
-              onPositionTypeChange={onPositionTypeChange}
               onEmployeeSelect={onEmployeeSelect}
               onPositionGroupChange={onPositionGroupChange}
               darkMode={darkMode}

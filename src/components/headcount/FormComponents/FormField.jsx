@@ -1,10 +1,10 @@
-// src/components/headcount/FormComponents/FormField.jsx - Enhanced with Searchable Dropdowns
-import { useState } from "react";
+// src/components/headcount/FormComponents/FormField.jsx - Enhanced and Fixed
+import { useState, useEffect, useRef } from "react";
 import { ChevronDown, Loader, AlertCircle, Search, X, Check } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 
 /**
- * Enhanced form field component with searchable dropdowns by default
+ * Enhanced form field component with searchable dropdowns and proper event handling
  */
 const FormField = ({ 
   label, 
@@ -21,19 +21,22 @@ const FormField = ({
   loading = false,
   disabled = false,
   onSearch = null,
-  searchable = true, // Make searchable by default
+  searchable = true,
   clearable = false,
   onClear = null,
   multiple = false,
   rows = 3,
-  showColors = false, // For status/tag options with colors
-  showCodes = false, // For business functions with codes
-  showDescriptions = false, // For detailed options
+  showColors = false,
+  showCodes = false,
+  showDescriptions = false,
+  min = null,
+  max = null,
   ...props
 }) => {
   const { darkMode } = useTheme();
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Theme-dependent classes
   const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
@@ -44,6 +47,26 @@ const FormField = ({
   const focusRing = "focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire";
   const errorBorder = validationError ? "border-red-500 focus:border-red-500 focus:ring-red-500" : "";
   const disabledStyle = disabled ? "opacity-50 cursor-not-allowed" : "";
+
+  // Click outside handler
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
 
   // Filter options based on search term
   const filteredOptions = searchable && searchTerm && type === "select"
@@ -86,11 +109,12 @@ const FormField = ({
         typeof opt === 'object' ? opt.value === val : opt === val
       );
       return typeof option === 'object' ? option.label : option;
-    });
+    }).filter(Boolean);
   };
 
   // Handle clear
-  const handleClear = () => {
+  const handleClear = (e) => {
+    e.stopPropagation();
     if (onClear) {
       onClear();
     } else {
@@ -108,6 +132,13 @@ const FormField = ({
     return typeof option === 'object' ? option.label : value;
   };
 
+  // Handle dropdown toggle
+  const handleDropdownToggle = () => {
+    if (!disabled && type === "select" && (searchable || multiple)) {
+      setIsOpen(!isOpen);
+    }
+  };
+
   return (
     <div className="mb-4">
       <label
@@ -117,7 +148,7 @@ const FormField = ({
         {label} {required && <span className="text-red-500">*</span>}
       </label>
       
-      <div className="relative">
+      <div className="relative" ref={dropdownRef}>
         {/* Icon */}
         {icon && (
           <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none z-10">
@@ -137,7 +168,7 @@ const FormField = ({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute inset-y-0 right-0 pr-2.5 flex items-center z-10 hover:text-red-500"
+            className="absolute inset-y-0 right-0 pr-2.5 flex items-center z-10 hover:text-red-500 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -148,7 +179,7 @@ const FormField = ({
           <select
             id={name}
             name={name}
-            value={value}
+            value={value || ""}
             onChange={onChange}
             required={required}
             disabled={disabled || loading}
@@ -169,7 +200,7 @@ const FormField = ({
           <div className="relative">
             <div
               className={`block w-full ${icon ? "pl-8" : "pl-2.5"} pr-8 py-2 text-sm border ${errorBorder || borderColor} ${inputBg} ${textPrimary} rounded-lg ${focusRing} transition-colors duration-200 outline-none cursor-pointer ${disabledStyle}`}
-              onClick={() => !disabled && setIsOpen(!isOpen)}
+              onClick={handleDropdownToggle}
             >
               {multiple && Array.isArray(value) && value.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
@@ -206,6 +237,7 @@ const FormField = ({
                         value={searchTerm}
                         onChange={(e) => handleSearch(e.target.value)}
                         className={`w-full pl-8 pr-2 py-1 text-sm border ${borderColor} rounded ${inputBg} ${textPrimary} focus:outline-none focus:border-almet-sapphire`}
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </div>
                   </div>
@@ -220,6 +252,7 @@ const FormField = ({
                       const optionCode = typeof option === 'object' ? option.code : null;
                       const optionColor = typeof option === 'object' ? option.color : null;
                       const optionDescription = typeof option === 'object' ? option.description : null;
+                      const isCurrent = typeof option === 'object' ? option.isCurrent : false;
                       
                       const isSelected = multiple 
                         ? Array.isArray(value) && value.includes(optionValue)
@@ -228,7 +261,8 @@ const FormField = ({
                       return (
                         <div
                           key={idx}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             if (multiple) {
                               handleMultipleSelect(optionValue);
                             } else {
@@ -237,26 +271,32 @@ const FormField = ({
                               setSearchTerm("");
                             }
                           }}
-                          className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-600 ${
+                          className={`px-3 py-2 text-sm cursor-pointer flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors ${
                             isSelected ? 'bg-almet-sapphire/10 text-almet-sapphire' : textPrimary
-                          }`}
+                          } ${isCurrent ? 'border-l-4 border-green-500' : ''}`}
                         >
                           <div className="flex items-center flex-1">
                             {/* Color indicator */}
                             {showColors && optionColor && (
                               <div 
-                                className="w-3 h-3 rounded-full mr-2"
+                                className="w-3 h-3 rounded-full mr-2 flex-shrink-0"
                                 style={{ backgroundColor: optionColor }}
                               />
                             )}
                             
-                            <div className="flex-1">
-                              <div className="flex items-center">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
                                 <span className="truncate">{optionLabel}</span>
                                 {/* Code display */}
                                 {showCodes && optionCode && (
-                                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded">
+                                  <span className="px-1.5 py-0.5 text-xs bg-gray-200 dark:bg-gray-600 rounded flex-shrink-0">
                                     {optionCode}
+                                  </span>
+                                )}
+                                {/* Current indicator */}
+                                {isCurrent && (
+                                  <span className="px-1.5 py-0.5 text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded flex-shrink-0">
+                                    Current
                                   </span>
                                 )}
                               </div>
@@ -268,7 +308,7 @@ const FormField = ({
                               )}
                             </div>
                           </div>
-                          {isSelected && <Check className="h-4 w-4" />}
+                          {isSelected && <Check className="h-4 w-4 flex-shrink-0" />}
                         </div>
                       );
                     })
@@ -288,7 +328,7 @@ const FormField = ({
           <textarea
             id={name}
             name={name}
-            value={value}
+            value={value || ""}
             onChange={onChange}
             required={required}
             placeholder={placeholder}
@@ -305,18 +345,20 @@ const FormField = ({
             id={name}
             type={type}
             name={name}
-            value={value}
+            value={value || ""}
             onChange={onChange}
             required={required}
             placeholder={placeholder}
             disabled={disabled || loading}
+            min={min}
+            max={max}
             className={`block w-full ${icon ? "pl-8" : "pl-2.5"} ${clearable && value ? "pr-8" : "pr-2.5"} py-2 text-sm border ${errorBorder || borderColor} ${inputBg} ${textPrimary} rounded-lg ${focusRing} transition-colors duration-200 outline-none ${disabledStyle}`}
             {...props}
           />
         )}
         
         {/* Select dropdown arrow */}
-        {type === "select" && !multiple && (
+        {type === "select" && !multiple && !loading && (
           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-gray-500">
             <ChevronDown className="h-3.5 w-3.5" />
           </div>
@@ -326,7 +368,7 @@ const FormField = ({
       {/* Error Message */}
       {validationError && (
         <div className="mt-1 flex items-center text-red-500 text-xs">
-          <AlertCircle className="h-3 w-3 mr-1" />
+          <AlertCircle className="h-3 w-3 mr-1 flex-shrink-0" />
           <span>{validationError}</span>
         </div>
       )}
@@ -334,14 +376,6 @@ const FormField = ({
       {/* Help Text */}
       {helpText && !validationError && (
         <p className={`mt-1 text-xs ${textMuted}`}>{helpText}</p>
-      )}
-
-      {/* Click outside handler for dropdown */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-10"
-          onClick={() => setIsOpen(false)}
-        />
       )}
     </div>
   );
