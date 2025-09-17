@@ -28,7 +28,7 @@ const SubmissionModal = ({
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
   const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
-  const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
+  const borderColor = darkMode ? "border-almet-comet" : "border-gray-400";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
 
   // Extract job creation information
@@ -60,7 +60,7 @@ const SubmissionModal = ({
     
     return {
       title: 'Job Description Created Successfully',
-      description: 'Your job description has been saved as a draft. Choose your next action.',
+     
       icon: FileText,
       iconColor: 'text-green-600',
       iconBgColor: 'bg-green-50 dark:bg-green-900/30'
@@ -74,19 +74,17 @@ const SubmissionModal = ({
       <div className={`${bgModal} rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-xl`}>
         
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-almet-comet">
+        <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`p-3 rounded-lg ${modalInfo.iconBgColor}`}>
-                <modalInfo.icon size={24} className={modalInfo.iconColor} />
+              <div className={`p-2 rounded-lg ${modalInfo.iconBgColor}`}>
+                <modalInfo.icon size={20} className={modalInfo.iconColor} />
               </div>
               <div>
-                <h2 className={`text-xl font-bold ${textPrimary}`}>
+                <h2 className={`text-base font-bold ${textPrimary}`}>
                   {modalInfo.title}
                 </h2>
-                <p className={`${textSecondary} text-sm mt-1`}>
-                  {modalInfo.description}
-                </p>
+               
               </div>
             </div>
             <button
@@ -185,12 +183,7 @@ const SubmissionModal = ({
                 disabled:opacity-50 disabled:cursor-not-allowed`}
               placeholder="Add any comments about the job description(s) (optional)..."
             />
-            <p className={`text-xs ${textMuted} mt-1`}>
-              {isMultipleJobs 
-                ? 'These comments will be included with all job description submissions.'
-                : 'These comments will be included with the job description submission.'
-              }
-            </p>
+           
           </div>
 
           {/* Action Information */}
@@ -199,10 +192,10 @@ const SubmissionModal = ({
               What happens next?
             </h4>
             
-            <div className="space-y-4 text-sm">
+            <div className="space-y-4 text-xs">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
-                  <div className="w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                  <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
                     1
                   </div>
                 </div>
@@ -325,48 +318,13 @@ const SubmissionModal = ({
             </div>
           </div>
 
-          {/* Important Notes */}
-          <div className={`p-3 border border-amber-200 dark:border-amber-800 rounded-lg bg-amber-50 dark:bg-amber-900/20`}>
-            <div className="flex items-start gap-2">
-              <AlertCircle size={14} className="text-amber-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="text-xs font-medium text-amber-800 dark:text-amber-300 mb-1">
-                  Important Notes:
-                </p>
-                <div className="text-xs text-amber-700 dark:text-amber-400 space-y-1">
-                  {isMultipleJobs ? (
-                    <>
-                      <p>• Each job description follows its own independent approval workflow</p>
-                      <p>• Managers can approve their employee's job description individually</p>
-                      <p>• You can track the progress of each job description separately</p>
-                      <p>• Email notifications will be sent to relevant managers and employees</p>
-                    </>
-                  ) : (
-                    <>
-                      <p>• Both line manager and employee approval are required</p>
-                      <p>• Email notifications will be sent to the relevant parties</p>
-                      <p>• You can track progress from the job descriptions dashboard</p>
-                      <p>• Comments and signatures can be added during approval</p>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+      
         </div>
 
         {/* Footer Actions */}
         <div className={`p-6 border-t ${borderColor} ${bgAccent}`}>
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className={`text-sm ${textSecondary}`}>
-              {isMultipleJobs ? (
-                <span>
-                  Ready to process <span className="font-semibold text-almet-sapphire">{jobCount}</span> job descriptions
-                </span>
-              ) : (
-                <span>Ready to process your job description</span>
-              )}
-            </div>
+          
 
             <div className="flex items-center gap-3">
               {!isExistingJobSubmission && (
@@ -376,7 +334,7 @@ const SubmissionModal = ({
                   className={`px-4 py-2 border ${borderColor} rounded-lg ${textSecondary} hover:${textPrimary} 
                     transition-colors disabled:opacity-50 text-sm font-medium flex items-center gap-2`}
                 >
-                  <Save size={14} />
+                  <div><Save size={14} /></div>
                   Keep as Draft{isMultipleJobs ? 's' : ''}
                 </button>
               )}

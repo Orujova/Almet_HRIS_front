@@ -1,4 +1,4 @@
-// components/jobDescription/JobDescriptionForm.jsx - FIXED: Proper Data Flow and Preview Control
+// components/jobDescription/JobDescriptionForm.jsx - COMPLETE FIXED VERSION with Proper ID Mapping
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   FileText,
   Users,
-  Eye,
   Target
 } from 'lucide-react';
 import PositionInformationTab from './PositionInformationTab';
@@ -83,64 +82,43 @@ const JobDescriptionForm = ({
     }
   ];
 
-  // FIXED: Helper functions to get IDs from names for API calls
-  const getFieldId = (fieldName, fieldValue) => {
-    if (!fieldValue || !dropdownData.employees) return null;
-    
-    const fieldMappings = {
-      business_function: {
-        nameField: 'business_function_name',
-        idField: 'business_function'
-      },
-      department: {
-        nameField: 'department_name', 
-        idField: 'department_id'
-      },
-      unit: {
-        nameField: 'unit_name',
-        idField: 'unit_id'
-      },
-      job_function: {
-        nameField: 'job_function_name',
-        idField: 'job_function_id'
-      },
-      position_group: {
-        nameField: 'position_group_name',
-        idField: 'position_group_id'
-      }
-    };
-
-    const mapping = fieldMappings[fieldName];
-    if (!mapping) return null;
-
-    const employee = dropdownData.employees.find(emp => 
-      emp[mapping.nameField] === fieldValue
-    );
-
-    return employee ? employee[mapping.idField] : null;
-  };
-
   // Handle assignment preview updates from PositionInformationTab
   const handleAssignmentPreviewUpdate = (previewData) => {
     console.log('📋 Assignment preview updated:', previewData);
+    
     setAssignmentPreview(previewData);
     
     // Clear selected employees when preview changes
-    if (previewData?.strategy !== 'manual_selection_required') {
+    if (!previewData || previewData.strategy !== 'manual_selection_required') {
       setSelectedEmployeeIds([]);
       setEligibleEmployees([]);
       setJobCriteria({});
     } else {
-      setEligibleEmployees(previewData.employees || []);
-      setJobCriteria(previewData.criteria || {});
+      // Extract data from preview response
+      const employees = previewData.employees || [];
+      const criteria = previewData.criteria || {};
+      
+      console.log('🔍 Setting eligible employees:', employees.length);
+      console.log('🎯 Setting job criteria:', criteria);
+      
+      setEligibleEmployees(employees);
+      setJobCriteria(criteria);
     }
   };
 
   // Handle employee selection from modal
   const handleEmployeeSelection = (employeeIds, employeeData) => {
     console.log('👥 Employees selected:', employeeIds, employeeData);
+    
+    if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
+      console.warn('⚠️  Invalid employee selection data');
+      return;
+    }
+    
     setSelectedEmployeeIds(employeeIds);
     setShowEmployeeSelectionModal(false);
+    
+    console.log('✅ Employee selection completed. Selected IDs:', employeeIds);
   };
 
   // Get current tab index
@@ -292,157 +270,488 @@ const JobDescriptionForm = ({
     return Object.keys(errors).length === 0;
   };
 
-  // Enhanced form submission with employee selection handling
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  // FIXED: Enhanced helper functions to get IDs from names with proper error handling
+  const getBusinessFunctionId = (name) => {
+    if (!name || !dropdownData.employees) {
+      console.log('❌ getBusinessFunctionId: Missing name or employees data');
+      return null;
+    }
     
-    console.log('📋 Form submit triggered');
-    console.log('🎯 Assignment Preview:', assignmentPreview);
-    console.log('👥 Selected Employee IDs:', selectedEmployeeIds);
+    console.log('🔍 Looking for business function ID for:', name);
     
-    if (!validateForm()) {
-      // Find which tab contains errors and switch to it
-      const errorKeys = Object.keys(validationErrors);
-      if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
-        setActiveTab('position');
-      } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
-        setActiveTab('responsibilities');
-      } else {
-        setActiveTab('conditions');
-      }
+    // Try multiple approaches to find the business function ID
+    const emp = dropdownData.employees.find(emp => {
+      return emp.business_function_name === name || 
+             emp.business_function_detail?.name === name ||
+             emp.business_function?.name === name;
+    });
+    
+    if (emp) {
+      // Try multiple field patterns for the ID
+      const id = emp.business_function_id || 
+                 emp.business_function || 
+                 emp.business_function_detail?.id ||
+                 emp['business_function']['id'];
       
-      const errorMessage = Object.values(validationErrors).join('\n');
-      alert('Please fix the following errors:\n\n' + errorMessage);
+      console.log('✅ Found business function ID:', id, 'from employee:', emp.name || emp.full_name);
+      return id;
+    }
+    
+    // Fallback: check if we can find by employeeMap
+    if (dropdownData.employeeMap) {
+      const mappedEmp = dropdownData.employeeMap.get(`bf_${name}`);
+      if (mappedEmp) {
+        const id = mappedEmp.business_function_id || mappedEmp.business_function;
+        console.log('✅ Found business function ID via map:', id);
+        return id;
+      }
+    }
+    
+    console.log('❌ Business function ID not found for:', name);
+    console.log('📊 Available business functions:', [...new Set(dropdownData.employees.map(e => e.business_function_name).filter(Boolean))]);
+    return null;
+  };
+
+  const getDepartmentId = (name) => {
+    if (!name || !dropdownData.employees) {
+      console.log('❌ getDepartmentId: Missing name or employees data');
+      return null;
+    }
+    
+    console.log('🔍 Looking for department ID for:', name);
+    
+    const emp = dropdownData.employees.find(emp => {
+      return emp.department_name === name || 
+             emp.department_detail?.name === name ||
+             emp.department?.name === name;
+    });
+    
+    if (emp) {
+      const id = emp.department_id || 
+                 emp.department || 
+                 emp.department_detail?.id ||
+                 emp['department']['id'];
+      
+      console.log('✅ Found department ID:', id, 'from employee:', emp.name || emp.full_name);
+      return id;
+    }
+    
+    // Fallback: check employeeMap
+    if (dropdownData.employeeMap) {
+      const mappedEmp = dropdownData.employeeMap.get(`dept_${name}`);
+      if (mappedEmp) {
+        const id = mappedEmp.department_id || mappedEmp.department;
+        console.log('✅ Found department ID via map:', id);
+        return id;
+      }
+    }
+    
+    console.log('❌ Department ID not found for:', name);
+    console.log('📊 Available departments:', [...new Set(dropdownData.employees.map(e => e.department_name).filter(Boolean))]);
+    return null;
+  };
+
+  const getUnitId = (name) => {
+    if (!name) return null;
+    
+    const emp = dropdownData.employees?.find(emp => {
+      return emp.unit_name === name || 
+             emp.unit_detail?.name === name ||
+             emp.unit?.name === name;
+    });
+    
+    if (emp) {
+      const id = emp.unit_id || 
+                 emp.unit || 
+                 emp.unit_detail?.id ||
+                 emp['unit']['id'];
+      
+      console.log('✅ Found unit ID:', id, 'for name:', name);
+      return id;
+    }
+    
+    return null;
+  };
+
+  const getJobFunctionId = (name) => {
+    if (!name || !dropdownData.employees) {
+      console.log('❌ getJobFunctionId: Missing name or employees data');
+      return null;
+    }
+    
+    console.log('🔍 Looking for job function ID for:', name);
+    
+    const emp = dropdownData.employees.find(emp => {
+      return emp.job_function_name === name || 
+             emp.job_function_detail?.name === name ||
+             emp.job_function?.name === name;
+    });
+    
+    if (emp) {
+      const id = emp.job_function_id || 
+                 emp.job_function || 
+                 emp.job_function_detail?.id ||
+                 emp['job_function']['id'];
+      
+      console.log('✅ Found job function ID:', id, 'from employee:', emp.name || emp.full_name);
+      return id;
+    }
+    
+    // Fallback: check employeeMap
+    if (dropdownData.employeeMap) {
+      const mappedEmp = dropdownData.employeeMap.get(`jf_${name}`);
+      if (mappedEmp) {
+        const id = mappedEmp.job_function_id || mappedEmp.job_function;
+        console.log('✅ Found job function ID via map:', id);
+        return id;
+      }
+    }
+    
+    console.log('❌ Job function ID not found for:', name);
+    console.log('📊 Available job functions:', [...new Set(dropdownData.employees.map(e => e.job_function_name).filter(Boolean))]);
+    return null;
+  };
+
+  const getPositionGroupId = (name) => {
+    if (!name || !dropdownData.employees) {
+      console.log('❌ getPositionGroupId: Missing name or employees data');
+      return null;
+    }
+    
+    console.log('🔍 Looking for position group ID for:', name);
+    
+    const emp = dropdownData.employees.find(emp => {
+      return emp.position_group_name === name || 
+             emp.position_group_detail?.name === name ||
+             emp.position_group?.name === name;
+    });
+    
+    if (emp) {
+      const id = emp.position_group_id || 
+                 emp.position_group || 
+                 emp.position_group_detail?.id ||
+                 emp['position_group']['id'];
+      
+      console.log('✅ Found position group ID:', id, 'from employee:', emp.name || emp.full_name);
+      return id;
+    }
+    
+    // Fallback: check employeeMap
+    if (dropdownData.employeeMap) {
+      const mappedEmp = dropdownData.employeeMap.get(`pg_${name}`);
+      if (mappedEmp) {
+        const id = mappedEmp.position_group_id || mappedEmp.position_group;
+        console.log('✅ Found position group ID via map:', id);
+        return id;
+      }
+    }
+    
+    console.log('❌ Position group ID not found for:', name);
+    console.log('📊 Available position groups:', [...new Set(dropdownData.employees.map(e => e.position_group_name).filter(Boolean))]);
+    return null;
+  };
+
+
+  const handleCancel = () => {
+  console.log('❌ Cancel button clicked');
+  
+  // Check if form has data
+  const hasFormData = formData.job_title?.trim() || 
+                     formData.job_purpose?.trim() || 
+                     formData.criticalDuties?.some(d => d?.trim()) ||
+                     formData.positionMainKpis?.some(d => d?.trim()) ||
+                     formData.jobDuties?.some(d => d?.trim()) ||
+                     formData.requirements?.some(d => d?.trim()) ||
+                     formData.required_skills_data?.length > 0 ||
+                     formData.behavioral_competencies_data?.length > 0 ||
+                     formData.business_resources_ids?.length > 0 ||
+                     formData.access_rights_ids?.length > 0 ||
+                     formData.company_benefits_ids?.length > 0;
+
+  // Ask for confirmation if form has data and not in edit mode
+  if (hasFormData && !editingJob) {
+    const confirmCancel = window.confirm(
+      'Are you sure you want to cancel? All unsaved changes will be lost.'
+    );
+    
+    if (!confirmCancel) {
+      return; // Don't cancel if user chooses to stay
+    }
+  }
+  
+  // Call the parent cancel handler
+  onCancel();
+};
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  console.log('📋 Form submit triggered');
+  console.log('🎯 Assignment Preview:', assignmentPreview);
+  console.log('👥 Selected Employee IDs:', selectedEmployeeIds);
+  console.log('✏️ Editing Job:', editingJob);
+  
+  if (!validateForm()) {
+    // Find which tab contains errors and switch to it
+    const errorKeys = Object.keys(validationErrors);
+    if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
+      setActiveTab('position');
+    } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
+      setActiveTab('responsibilities');
+    } else {
+      setActiveTab('conditions');
+    }
+    
+    const errorMessage = Object.values(validationErrors).join('\n');
+    alert('Please fix the following errors:\n\n' + errorMessage);
+    return;
+  }
+
+  // FIXED: Skip employee selection check for edit mode
+  if (!editingJob) {
+    // Check for employee selection requirement only for new jobs
+    if (assignmentPreview?.requiresSelection || assignmentPreview?.strategy === 'manual_selection_required') {
+      if (selectedEmployeeIds.length === 0) {
+        console.log('🚨 Employee selection required but none selected');
+        
+        if (eligibleEmployees.length > 0) {
+          setShowEmployeeSelectionModal(true);
+          return;
+        } else {
+          alert('Multiple employees match your criteria, but employee data is not available. Please try refreshing the preview.');
+          return;
+        }
+      }
+    }
+  }
+
+  try {
+    setIsSubmitting(true);
+
+    // Get IDs with enhanced error handling
+    const businessFunctionId = getBusinessFunctionId(formData.business_function);
+    const departmentId = getDepartmentId(formData.department);
+    const jobFunctionId = getJobFunctionId(formData.job_function);
+    const positionGroupId = getPositionGroupId(formData.position_group);
+    const unitId = formData.unit ? getUnitId(formData.unit) : null;
+
+    console.log('🔍 Final ID mapping results:');
+    console.log('- Business Function:', formData.business_function, '→', businessFunctionId);
+    console.log('- Department:', formData.department, '→', departmentId);
+    console.log('- Job Function:', formData.job_function, '→', jobFunctionId);
+    console.log('- Position Group:', formData.position_group, '→', positionGroupId);
+    console.log('- Unit:', formData.unit, '→', unitId);
+
+    // Validate that we have all required IDs
+    const missingIds = [];
+    if (!businessFunctionId) missingIds.push(`Business Function "${formData.business_function}"`);
+    if (!departmentId) missingIds.push(`Department "${formData.department}"`);
+    if (!jobFunctionId) missingIds.push(`Job Function "${formData.job_function}"`);
+    if (!positionGroupId) missingIds.push(`Position Group "${formData.position_group}"`);
+
+    if (missingIds.length > 0) {
+      const errorMessage = `Cannot find IDs for: ${missingIds.join(', ')}. This might indicate a data synchronization issue.`;
+      console.error('❌ ID mapping failed:', errorMessage);
+      alert(errorMessage);
       return;
     }
 
-    // Check for employee selection requirement
-    if (assignmentPreview?.strategy === 'manual_selection_required' && selectedEmployeeIds.length === 0) {
-      console.log('🚨 Employee selection required but none selected');
-      alert('Multiple employees match your criteria. Please select which employees should receive job descriptions.');
-      setShowEmployeeSelectionModal(true);
-      return;
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      // Prepare data for API with proper ID mapping
-      const apiData = {
-        job_title: formData.job_title.trim(),
-        job_purpose: formData.job_purpose.trim(),
-        business_function: getFieldId('business_function', formData.business_function),
-        department: getFieldId('department', formData.department),
-        job_function: getFieldId('job_function', formData.job_function),
-        position_group: getFieldId('position_group', formData.position_group),
-        grading_level: formData.grading_level?.trim() || null,
-        
-        // Include selected employee IDs if manual selection was made
-        ...(selectedEmployeeIds.length > 0 && { selected_employee_ids: selectedEmployeeIds }),
-        
-        // Handle unit if selected
-        ...(formData.unit && { unit: getFieldId('unit', formData.unit) }),
-        
-        // Sections
-        sections: [],
-        
-        // Skills and competencies
-        required_skills_data: (formData.required_skills_data || []).map(skillId => ({
+    // Prepare data in exact format that works in Swagger
+    const apiData = {
+      job_title: formData.job_title.trim(),
+      job_purpose: formData.job_purpose.trim(),
+      business_function: businessFunctionId,
+      department: departmentId,
+      job_function: jobFunctionId,
+      position_group: positionGroupId,
+      
+      // Only include grading_level if it has a value
+      ...(formData.grading_level && formData.grading_level.trim() && { 
+        grading_level: formData.grading_level.trim() 
+      }),
+      
+      // Only include unit if it has a value
+      ...(unitId && { unit: unitId }),
+      
+      // Process sections
+      sections: [],
+      
+      // Skills and competencies
+      required_skills_data: (formData.required_skills_data || [])
+        .filter(skillId => skillId && !isNaN(parseInt(skillId)))
+        .map(skillId => ({
           skill_id: parseInt(skillId),
           proficiency_level: "INTERMEDIATE",
           is_mandatory: true
         })),
-        behavioral_competencies_data: (formData.behavioral_competencies_data || []).map(competencyId => ({
+      
+      behavioral_competencies_data: (formData.behavioral_competencies_data || [])
+        .filter(competencyId => competencyId && !isNaN(parseInt(competencyId)))
+        .map(competencyId => ({
           competency_id: parseInt(competencyId),
-          proficiency_level: "INTERMEDIATE",
+          proficiency_level: "INTERMEDIATE", 
           is_mandatory: true
         })),
-        
-        // Resources and benefits
-        business_resources_ids: (formData.business_resources_ids || []).map(id => parseInt(id)).filter(id => !isNaN(id)),
-        access_rights_ids: (formData.access_rights_ids || []).map(id => parseInt(id)).filter(id => !isNaN(id)),
-        company_benefits_ids: (formData.company_benefits_ids || []).map(id => parseInt(id)).filter(id => !isNaN(id))
-      };
-
-      // Process sections
-      const sectionTypes = [
-        { type: 'CRITICAL_DUTIES', title: 'Critical Duties', content: formData.criticalDuties || [] },
-        { type: 'MAIN_KPIS', title: 'Position Main KPIs', content: formData.positionMainKpis || [] },
-        { type: 'JOB_DUTIES', title: 'Job Duties', content: formData.jobDuties || [] },
-        { type: 'REQUIREMENTS', title: 'Requirements', content: formData.requirements || [] }
-      ];
-
-      sectionTypes.forEach((section, index) => {
-        if (section.content && Array.isArray(section.content) && section.content.length > 0) {
-          const validContent = section.content.filter(item => item && item.trim() !== '');
-          if (validContent.length > 0) {
-            apiData.sections.push({
-              section_type: section.type,
-              title: section.title,
-              content: validContent.map(item => `• ${item.trim()}`).join('\n'),
-              order: index + 1
-            });
-          }
-        }
-      });
-
-      console.log('📤 API data being sent:', apiData);
       
-      if (editingJob) {
-        // Update existing job
-        await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
-        alert('Job description updated successfully!');
-        onUpdate();
-      } else {
-        // Create new job(s)
-        const createdJob = await jobDescriptionService.createJobDescription(apiData);
-        console.log('✅ Job(s) created successfully:', createdJob);
+      // FIXED: For edit mode, convert names back to IDs for resources/benefits/access
+      business_resources_ids: await convertNamesToIds(formData.business_resources_ids, 'business_resources'),
+      access_rights_ids: await convertNamesToIds(formData.access_rights_ids, 'access_rights'),
+      company_benefits_ids: await convertNamesToIds(formData.company_benefits_ids, 'company_benefits'),
         
-        // Handle multiple job creation response
-        if (createdJob.summary && createdJob.summary.total_job_descriptions_created > 1) {
-          console.log(`🎉 Successfully created ${createdJob.summary.total_job_descriptions_created} job descriptions!`);
-        }
-        
-        onSubmit(createdJob);
+      // Include selected employee IDs only for new jobs
+      ...(!editingJob && selectedEmployeeIds.length > 0 && { 
+        selected_employee_ids: selectedEmployeeIds.map(id => parseInt(id)).filter(id => !isNaN(id))
+      })
+    };
+
+    // Process sections
+    const sectionTypes = [
+      { 
+        type: 'CRITICAL_DUTIES', 
+        title: 'Critical Duties and Responsibilities', 
+        content: formData.criticalDuties || [],
+        order: 1
+      },
+      { 
+        type: 'MAIN_KPIS', 
+        title: 'Key Performance Indicators', 
+        content: formData.positionMainKpis || [],
+        order: 2 
+      },
+      { 
+        type: 'JOB_DUTIES', 
+        title: 'Job Duties', 
+        content: formData.jobDuties || [],
+        order: 3
+      },
+      { 
+        type: 'REQUIREMENTS', 
+        title: 'Requirements and Qualifications', 
+        content: formData.requirements || [],
+        order: 4
       }
-    } catch (error) {
-      console.error('⚠️ Error saving job description:', error);
+    ];
+
+    sectionTypes.forEach((section) => {
+      if (section.content && Array.isArray(section.content) && section.content.length > 0) {
+        const validContent = section.content.filter(item => item && item.trim() !== '');
+        if (validContent.length > 0) {
+          const formattedContent = validContent
+            .map((item, index) => `${index + 1}. ${item.trim()}`)
+            .join('\n');
+            
+          apiData.sections.push({
+            section_type: section.type,
+            title: section.title,
+            content: formattedContent,
+            order: section.order
+          });
+        }
+      }
+    });
+
+    console.log('📤 Final API data being sent:', JSON.stringify(apiData, null, 2));
+    
+    if (editingJob) {
+      // Update existing job
+      await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
+      alert('Job description updated successfully!');
+      onUpdate();
+    } else {
+      // Create new job(s)
+      const createdJob = await jobDescriptionService.createJobDescription(apiData);
+      console.log('✅ Job(s) created successfully:', createdJob);
       
-      // Handle different error types
-      if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
-        // Show employee selection modal with server data
-        setEligibleEmployees(error.response.data.eligible_employees || []);
-        setJobCriteria(error.response.data.criteria || {});
+      // Handle multiple job creation response
+      if (createdJob.summary && createdJob.summary.total_job_descriptions_created > 1) {
+        console.log(`🎉 Successfully created ${createdJob.summary.total_job_descriptions_created} job descriptions!`);
+      }
+      
+      onSubmit(createdJob);
+    }
+  } catch (error) {
+    console.error('⚠️ Error saving job description:', error);
+    console.error('⚠️ Error response:', error.response?.data);
+    
+    // Handle server response for employee selection requirement
+    if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
+      console.log('📋 Server requires employee selection, showing modal with server data');
+      
+      const serverEmployees = error.response.data.eligible_employees || [];
+      const serverCriteria = error.response.data.criteria || {};
+      
+      if (serverEmployees.length > 0) {
+        setEligibleEmployees(serverEmployees);
+        setJobCriteria(serverCriteria);
         setShowEmployeeSelectionModal(true);
         return;
       }
-      
-      let errorMessage = 'Error saving job description: ';
-      
-      if (error.response?.data) {
-        if (typeof error.response.data === 'string') {
-          errorMessage += error.response.data;
-        } else if (typeof error.response.data === 'object') {
-          const errorDetails = [];
-          Object.keys(error.response.data).forEach(field => {
-            const fieldErrors = Array.isArray(error.response.data[field]) 
-              ? error.response.data[field].join(', ')
-              : error.response.data[field];
-            errorDetails.push(`${field}: ${fieldErrors}`);
-          });
-          errorMessage += errorDetails.join('\n');
-        }
-      } else {
-        errorMessage += error.message || 'Please try again.';
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
-
+    
+    let errorMessage = 'Error saving job description: ';
+    
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorMessage += error.response.data;
+      } else if (typeof error.response.data === 'object') {
+        const errorDetails = [];
+        Object.keys(error.response.data).forEach(field => {
+          const fieldErrors = Array.isArray(error.response.data[field]) 
+            ? error.response.data[field].join(', ')
+            : error.response.data[field];
+          errorDetails.push(`${field}: ${fieldErrors}`);
+        });
+        errorMessage += errorDetails.join('\n');
+      }
+    } else {
+      errorMessage += error.message || 'Please try again.';
+    }
+    
+    console.error('📋 Full error details:', errorMessage);
+    alert(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+const convertNamesToIds = async (nameArray, resourceType) => {
+  if (!Array.isArray(nameArray) || nameArray.length === 0) return [];
+  
+  const ids = [];
+  
+  for (const name of nameArray) {
+    // If it's already a number, use it as is
+    if (!isNaN(parseInt(name))) {
+      ids.push(parseInt(name));
+      continue;
+    }
+    
+    // Find ID by name in dropdownData
+    let foundId = null;
+    switch (resourceType) {
+      case 'business_resources':
+        const resource = dropdownData.businessResources?.find(r => r.name === name);
+        foundId = resource?.id;
+        break;
+      case 'access_rights':
+        const access = dropdownData.accessMatrix?.find(a => a.name === name);
+        foundId = access?.id;
+        break;
+      case 'company_benefits':
+        const benefit = dropdownData.companyBenefits?.find(b => b.name === name);
+        foundId = benefit?.id;
+        break;
+    }
+    
+    if (foundId) {
+      ids.push(parseInt(foundId));
+    } else {
+      console.warn(`Could not find ID for ${resourceType} name: ${name}`);
+    }
+  }
+  
+  return ids;
+};
   // Explicit save handler
   const handleExplicitSave = async () => {
     console.log('💾 Explicit save button clicked');
@@ -485,57 +794,68 @@ const JobDescriptionForm = ({
 
   // Get final submission info for display
   const getSubmissionInfo = () => {
-    if (!assignmentPreview) {
+  // FIXED: For edit mode, don't check assignment preview
+  if (editingJob) {
+    return {
+      title: 'Ready to Update Job Description',
+      description: 'Click "Update Job Description" to save your changes.',
+      employeeCount: 0,
+      type: 'edit',
+      needsSelection: false // Never needs selection for edit
+    };
+  }
+  
+  if (!assignmentPreview) {
+    return {
+      title: 'Ready to Create Job Description',
+      description: 'Click "Save & Continue" to create the job description.',
+      employeeCount: 0,
+      type: 'single'
+    };
+  }
+
+  switch (assignmentPreview.strategy) {
+    case 'auto_assign_single':
+      return {
+        title: 'Ready to Create & Auto-Assign',
+        description: `Job will be automatically assigned to ${assignmentPreview.employees?.[0]?.full_name}.`,
+        employeeCount: 1,
+        type: 'auto_single',
+        employee: assignmentPreview.employees?.[0]
+      };
+    
+    case 'manual_selection_required':
+      const selectedCount = selectedEmployeeIds.length;
+      return {
+        title: selectedCount > 0 
+          ? `Ready to Create ${selectedCount} Job Description${selectedCount > 1 ? 's' : ''}` 
+          : 'Employee Selection Required',
+        description: selectedCount > 0 
+          ? `Will create job descriptions for ${selectedCount} selected employee${selectedCount > 1 ? 's' : ''}.`
+          : `${assignmentPreview.employeeCount} employees match your criteria. Please select employees before proceeding.`,
+        employeeCount: selectedCount,
+        totalAvailable: assignmentPreview.employeeCount,
+        type: 'manual_multiple',
+        needsSelection: selectedCount === 0
+      };
+    
+    case 'no_employees_found':
+      return {
+        title: 'Ready to Create Vacant Position',
+        description: 'Job will be created as a vacant position (no employee assigned).',
+        employeeCount: 0,
+        type: 'vacant'
+      };
+    
+    default:
       return {
         title: 'Ready to Create Job Description',
         description: 'Click "Save & Continue" to create the job description.',
         employeeCount: 0,
-        type: 'single'
+        type: 'unknown'
       };
-    }
-
-    switch (assignmentPreview.strategy) {
-      case 'auto_assign_single':
-        return {
-          title: 'Ready to Create & Auto-Assign',
-          description: `Job will be automatically assigned to ${assignmentPreview.employees?.[0]?.full_name}.`,
-          employeeCount: 1,
-          type: 'auto_single',
-          employee: assignmentPreview.employees?.[0]
-        };
-      
-      case 'manual_selection_required':
-        const selectedCount = selectedEmployeeIds.length;
-        return {
-          title: selectedCount > 0 
-            ? `Ready to Create ${selectedCount} Job Description${selectedCount > 1 ? 's' : ''}` 
-            : 'Employee Selection Required',
-          description: selectedCount > 0 
-            ? `Will create job descriptions for ${selectedCount} selected employee${selectedCount > 1 ? 's' : ''}.`
-            : `${assignmentPreview.employeeCount} employees match your criteria. Please select employees before proceeding.`,
-          employeeCount: selectedCount,
-          totalAvailable: assignmentPreview.employeeCount,
-          type: 'manual_multiple',
-          needsSelection: selectedCount === 0
-        };
-      
-      case 'no_employees_found':
-        return {
-          title: 'Ready to Create Vacant Position',
-          description: 'Job will be created as a vacant position (no employee assigned).',
-          employeeCount: 0,
-          type: 'vacant'
-        };
-      
-      default:
-        return {
-          title: 'Ready to Create Job Description',
-          description: 'Click "Save & Continue" to create the job description.',
-          employeeCount: 0,
-          type: 'unknown'
-        };
-    }
-  };
+  }
+};
 
   const submissionInfo = getSubmissionInfo();
 
@@ -554,12 +874,12 @@ const JobDescriptionForm = ({
                 Step {getCurrentTabIndex() + 1} of {tabs.length}: {tabs[getCurrentTabIndex()]?.description}
               </p>
             </div>
-            <button
+            {/* <button
               onClick={onCancel}
               className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-lg`}
             >
               <X size={18} />
-            </button>
+            </button> */}
           </div>
         </div>
 
@@ -659,42 +979,41 @@ const JobDescriptionForm = ({
                   </button>
                 )}
 
-                {/* Cancel Button */}
                 <button
-                  type="button"
-                  onClick={onCancel}
-                  disabled={isSubmitting}
-                  className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors disabled:opacity-50 text-sm 
-                    border border-gray-300 dark:border-almet-comet rounded-lg`}
-                >
-                  Cancel
-                </button>
+  type="button"
+  onClick={handleCancel} // Use enhanced handler
+  disabled={isSubmitting}
+  className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors disabled:opacity-50 text-sm 
+    border border-gray-300 dark:border-almet-comet rounded-lg`}
+>
+  Cancel
+</button>
 
                 {/* Next/Submit Button */}
                 {!isLastTab() ? (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    disabled={isSubmitting || !canNavigateToNext()}
-                    className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
-                      transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
-                  >
-                    Next
-                    <ArrowRight size={14} />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleExplicitSave}
-                    disabled={isSubmitting || (submissionInfo.needsSelection)}
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
-                      transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
-                  >
-                    {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    <Save size={14} />
-                    {editingJob ? 'Update Job Description' : 'Save & Continue'}
-                  </button>
-                )}
+  <button
+    type="button"
+    onClick={handleNext}
+    disabled={isSubmitting || !canNavigateToNext()}
+    className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
+      transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+  >
+    Next
+    <ArrowRight size={14} />
+  </button>
+) : (
+  <button
+    type="button"
+    onClick={handleExplicitSave}
+    disabled={isSubmitting || (submissionInfo.needsSelection && !editingJob)} // FIXED: Don't disable for edit mode
+    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
+      transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+  >
+    {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+    <Save size={14} />
+    {editingJob ? 'Update Job Description' : 'Save & Continue'}
+  </button>
+)}
               </div>
             </div>
 

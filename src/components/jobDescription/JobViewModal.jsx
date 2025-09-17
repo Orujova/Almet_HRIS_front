@@ -459,14 +459,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                           {resourceItem.resource_detail.description}
                         </p>
                       )}
-                      <div className={`text-xs ${textMuted}`}>
-                        <p>Status: <span className={`font-medium ${resourceItem.resource_detail?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                          {resourceItem.resource_detail?.is_active ? 'Active' : 'Inactive'}
-                        </span></p>
-                        {resourceItem.resource_detail?.created_by_name && (
-                          <p>Created by: <span className="font-medium">{resourceItem.resource_detail.created_by_name}</span></p>
-                        )}
-                      </div>
+                    
                     </div>
                   ))}
                 </div>
@@ -493,14 +486,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                           {accessItem.access_detail.description}
                         </p>
                       )}
-                      <div className={`text-xs ${textMuted}`}>
-                        <p>Status: <span className={`font-medium ${accessItem.access_detail?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                          {accessItem.access_detail?.is_active ? 'Active' : 'Inactive'}
-                        </span></p>
-                        {accessItem.access_detail?.created_by_name && (
-                          <p>Created by: <span className="font-medium">{accessItem.access_detail.created_by_name}</span></p>
-                        )}
-                      </div>
+                     
                     </div>
                   ))}
                 </div>
@@ -527,14 +513,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                           {benefitItem.benefit_detail.description}
                         </p>
                       )}
-                      <div className={`text-xs ${textMuted}`}>
-                        <p>Status: <span className={`font-medium ${benefitItem.benefit_detail?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                          {benefitItem.benefit_detail?.is_active ? 'Active' : 'Inactive'}
-                        </span></p>
-                        {benefitItem.benefit_detail?.created_by_name && (
-                          <p>Created by: <span className="font-medium">{benefitItem.benefit_detail.created_by_name}</span></p>
-                        )}
-                      </div>
+                  
                     </div>
                   ))}
                 </div>

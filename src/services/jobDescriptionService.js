@@ -342,6 +342,8 @@ class JobDescriptionService {
     }
   }
 
+
+
   /**
    * ENHANCED: Create method with employee selection support
    */
@@ -1346,74 +1348,206 @@ class JobDescriptionService {
   // LEGACY SUPPORT METHODS
   // ========================================
 
-  transformJobDescriptionResponse(apiData) {
-    const sections = {
-      criticalDuties: [],
-      positionMainKpis: [],
-      jobDuties: [],
-      requirements: []
-    };
+// jobDescriptionService.js - transformJobDescriptionResponse methodunun düzəlişi
 
-    // Process sections
-    if (apiData.sections) {
-      apiData.sections.forEach(section => {
-        const content = section.content.split('\n• ').filter(item => item.trim());
-        
-        switch (section.section_type) {
-          case 'CRITICAL_DUTIES':
-            sections.criticalDuties = content;
-            break;
-          case 'MAIN_KPIS':
-            sections.positionMainKpis = content;
-            break;
-          case 'JOB_DUTIES':
-            sections.jobDuties = content;
-            break;
-          case 'REQUIREMENTS':
-            sections.requirements = content;
-            break;
-        }
-      });
-    }
-
+transformJobDescriptionResponse(apiData) {
+  if (!apiData) {
     return {
-      id: apiData.id,
-      job_title: apiData.job_title,
-      job_purpose: apiData.job_purpose,
-      business_function: apiData.business_function?.id,
-      business_function_name: apiData.business_function?.name,
-      department: apiData.department?.id,
-      department_name: apiData.department?.name,
-      unit: apiData.unit?.id,
-      unit_name: apiData.unit?.name,
-      job_function: apiData.job_function?.id,
-      job_function_name: apiData.job_function?.name,
-      position_group: apiData.position_group?.id,
-      position_group_name: apiData.position_group?.name,
-      grading_level: apiData.grading_level,
-      reports_to: apiData.reports_to?.id,
-      reports_to_name: apiData.reports_to?.full_name,
-      assigned_employee: apiData.assigned_employee?.id,
-      assigned_employee_name: apiData.assigned_employee?.full_name,
-      manual_employee_name: apiData.manual_employee_name,
-      manual_employee_phone: apiData.manual_employee_phone,
-      status: apiData.status,
-      status_display: apiData.status_display,
-      version: apiData.version,
-      created_at: apiData.created_at,
-      updated_at: apiData.updated_at,
-      ...sections,
-      required_skills_data: (apiData.required_skills || []).map(skill => skill.skill?.id || skill.id),
-      behavioral_competencies_data: (apiData.behavioral_competencies || []).map(comp => comp.competency?.id || comp.id),
-      business_resources_ids: (apiData.business_resources || []).map(res => res.id),
-      access_rights_ids: (apiData.access_rights || []).map(access => access.id),
-      company_benefits_ids: (apiData.company_benefits || []).map(benefit => benefit.id),
-      line_manager_approved: !!apiData.line_manager_approved_at,
-      employee_approved: !!apiData.employee_approved_at,
-      line_manager_comments: apiData.line_manager_comments,
-      employee_comments: apiData.employee_comments
+      job_title: '',
+      job_purpose: '',
+      business_function: '',
+      department: '',
+      unit: '',
+      job_function: '',
+      position_group: '',
+      grading_level: '',
+      criticalDuties: [''],
+      positionMainKpis: [''],
+      jobDuties: [''],
+      requirements: [''],
+      required_skills_data: [],
+      behavioral_competencies_data: [],
+      business_resources_ids: [],
+      access_rights_ids: [],
+      company_benefits_ids: []
     };
   }
+
+  console.log('🔄 Transforming job description response:', apiData);
+
+  // FIXED: Process sections properly
+  const sections = {
+    criticalDuties: [''],
+    positionMainKpis: [''],
+    jobDuties: [''],
+    requirements: ['']
+  };
+
+  if (apiData.sections && Array.isArray(apiData.sections)) {
+    apiData.sections.forEach(section => {
+      if (!section || !section.content) return;
+      
+      // Split content and clean up
+      const content = section.content
+        .split('\n')
+        .map(item => item.replace(/^[\d]+\.\s*/, '').replace(/^•\s*/, '').trim())
+        .filter(item => item.length > 0);
+      
+      switch (section.section_type) {
+        case 'CRITICAL_DUTIES':
+          sections.criticalDuties = content.length > 0 ? content : [''];
+          break;
+        case 'MAIN_KPIS':
+          sections.positionMainKpis = content.length > 0 ? content : [''];
+          break;
+        case 'JOB_DUTIES':
+          sections.jobDuties = content.length > 0 ? content : [''];
+          break;
+        case 'REQUIREMENTS':
+          sections.requirements = content.length > 0 ? content : [''];
+          break;
+      }
+    });
+  }
+
+  // FIXED: Business Resources - extract names for display
+  const businessResourcesIds = [];
+  if (apiData.business_resources && Array.isArray(apiData.business_resources)) {
+    apiData.business_resources.forEach(resource => {
+      if (resource && resource.resource_detail && resource.resource_detail.name) {
+        businessResourcesIds.push(resource.resource_detail.name);
+      } else if (resource && resource.name) {
+        businessResourcesIds.push(resource.name);
+      } else if (resource && resource.id) {
+        businessResourcesIds.push(resource.id); // Fallback to ID
+      }
+    });
+  }
+
+  // FIXED: Access Rights - extract names for display
+  const accessRightsIds = [];
+  if (apiData.access_rights && Array.isArray(apiData.access_rights)) {
+    apiData.access_rights.forEach(access => {
+      if (access && access.access_detail && access.access_detail.name) {
+        accessRightsIds.push(access.access_detail.name);
+      } else if (access && access.name) {
+        accessRightsIds.push(access.name);
+      } else if (access && access.id) {
+        accessRightsIds.push(access.id); // Fallback to ID
+      }
+    });
+  }
+
+  // FIXED: Company Benefits - extract names for display
+  const companyBenefitsIds = [];
+  if (apiData.company_benefits && Array.isArray(apiData.company_benefits)) {
+    apiData.company_benefits.forEach(benefit => {
+      if (benefit && benefit.benefit_detail && benefit.benefit_detail.name) {
+        companyBenefitsIds.push(benefit.benefit_detail.name);
+      } else if (benefit && benefit.name) {
+        companyBenefitsIds.push(benefit.name);
+      } else if (benefit && benefit.id) {
+        companyBenefitsIds.push(benefit.id); // Fallback to ID
+      }
+    });
+  }
+
+  // FIXED: Skills - extract skill IDs for selection
+  const skillsData = [];
+  if (apiData.required_skills && Array.isArray(apiData.required_skills)) {
+    apiData.required_skills.forEach(skill => {
+      let skillId = null;
+      
+      if (skill && skill.skill_detail && skill.skill_detail.id) {
+        skillId = skill.skill_detail.id;
+      } else if (skill && skill.skill_id) {
+        skillId = skill.skill_id;
+      } else if (skill && skill.skill) {
+        skillId = skill.skill;
+      } else if (skill && skill.id) {
+        skillId = skill.id;
+      }
+      
+      if (skillId) {
+        skillsData.push(String(skillId));
+      }
+    });
+  }
+
+  // FIXED: Behavioral Competencies - extract competency IDs for selection
+  const competenciesData = [];
+  if (apiData.behavioral_competencies && Array.isArray(apiData.behavioral_competencies)) {
+    apiData.behavioral_competencies.forEach(comp => {
+      let compId = null;
+      
+      if (comp && comp.competency_detail && comp.competency_detail.id) {
+        compId = comp.competency_detail.id;
+      } else if (comp && comp.competency_id) {
+        compId = comp.competency_id;
+      } else if (comp && comp.competency) {
+        compId = comp.competency;
+      } else if (comp && comp.id) {
+        compId = comp.id;
+      }
+      
+      if (compId) {
+        competenciesData.push(String(compId));
+      }
+    });
+  }
+
+  // FIXED: For edit mode - use NAMES instead of IDs for dropdowns
+  const result = {
+    id: apiData.id,
+    job_title: apiData.job_title || '',
+    job_purpose: apiData.job_purpose || '',
+    
+    // FIXED: Use names for form display (these will work with SearchableSelect)
+    business_function: apiData.business_function?.name || apiData.business_function_name || '',
+    department: apiData.department?.name || apiData.department_name || '',
+    unit: apiData.unit?.name || apiData.unit_name || '',
+    job_function: apiData.job_function?.name || apiData.job_function_name || '',
+    position_group: apiData.position_group?.name || apiData.position_group_name || '',
+    grading_level: apiData.grading_level || '',
+    
+    // Employee and reporting info
+    reports_to: apiData.reports_to?.id,
+    reports_to_name: apiData.reports_to?.full_name,
+    assigned_employee: apiData.assigned_employee?.id,
+    assigned_employee_name: apiData.assigned_employee?.full_name,
+    manual_employee_name: apiData.manual_employee_name || '',
+    manual_employee_phone: apiData.manual_employee_phone || '',
+    
+    // Status and metadata
+    status: apiData.status,
+    status_display: apiData.status_display,
+    version: apiData.version,
+    created_at: apiData.created_at,
+    updated_at: apiData.updated_at,
+    
+    // Sections
+    ...sections,
+    
+    // FIXED: Skills and competencies with proper IDs
+    required_skills_data: skillsData,
+    behavioral_competencies_data: competenciesData,
+    
+    // FIXED: Resources, access rights, and benefits with NAMES for display
+    business_resources_ids: businessResourcesIds,
+    access_rights_ids: accessRightsIds,
+    company_benefits_ids: companyBenefitsIds,
+    
+    // Approval status
+    line_manager_approved: !!apiData.line_manager_approved_at,
+    employee_approved: !!apiData.employee_approved_at,
+    line_manager_comments: apiData.line_manager_comments || '',
+    employee_comments: apiData.employee_comments || ''
+  };
+
+  console.log('✅ Transformed result:', result);
+  
+  return result;
+}
 
   
 

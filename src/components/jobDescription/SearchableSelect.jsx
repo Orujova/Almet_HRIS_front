@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 const SearchableSelect = ({ 
-  options, 
+  options = [], // Default to empty array
   value, 
   onChange, 
   placeholder, 
@@ -23,13 +23,35 @@ const SearchableSelect = ({
   const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   
-  const filteredOptions = options.filter(option =>
-    option.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    option.display_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // FIXED: Better filtering and ensure options is array
+  const safeOptions = Array.isArray(options) ? options : [];
+  const filteredOptions = safeOptions.filter(option => {
+    if (!option) return false;
+    const name = option.name || option.display_name || '';
+    return name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
-  const selectedOption = options.find(option => option.id === value);
-  const displayValue = selectedOption ? (selectedOption.display_name || selectedOption.name) : value;
+  // FIXED: Better value matching - check both string and numeric values
+  const selectedOption = safeOptions.find(option => {
+    if (!option) return false;
+    // Handle both string and numeric IDs
+    return option.id === value || 
+           option.id === String(value) || 
+           String(option.id) === String(value);
+  });
+  
+  // FIXED: Better display value logic
+  const getDisplayValue = () => {
+    if (selectedOption) {
+      return selectedOption.display_name || selectedOption.name || String(selectedOption.id);
+    }
+    if (value && allowCustom) {
+      return String(value);
+    }
+    return '';
+  };
+
+  const displayValue = getDisplayValue();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -46,13 +68,32 @@ const SearchableSelect = ({
     };
   }, []);
 
+  // Debug log
+  useEffect(() => {
+    if (value && safeOptions.length > 0) {
+      console.log('SearchableSelect Debug:', {
+        value,
+        valueType: typeof value,
+        selectedOption,
+        displayValue,
+        optionsCount: safeOptions.length,
+        sampleOption: safeOptions[0]
+      });
+    }
+  }, [value, safeOptions, selectedOption, displayValue]);
+
+  // Reset search term when value changes (for edit mode)
+  useEffect(() => {
+    setSearchTerm('');
+  }, [value]);
+
   return (
     <div className="relative" ref={dropdownRef}>
       <div className="relative">
         {allowCustom ? (
           <input
             type="text"
-            value={displayValue || ''}
+            value={displayValue}
             onChange={(e) => {
               onChange(e.target.value);
               setSearchTerm(e.target.value);
@@ -122,25 +163,31 @@ const SearchableSelect = ({
             )}
             
             {filteredOptions.length > 0 ? (
-              filteredOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.id);
-                    setIsOpen(false);
-                    setSearchTerm('');
-                  }}
-                  className={`w-full px-3 py-2 text-left hover:${bgCardHover} ${textPrimary} text-sm ${
-                    value === option.id ? 'bg-almet-sapphire text-white' : ''
-                  }`}
-                >
-                  {option.display_name || option.name}
-                </button>
-              ))
+              filteredOptions.map((option) => {
+                const isSelected = option.id === value || 
+                                 option.id === String(value) || 
+                                 String(option.id) === String(value);
+                
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(option.id);
+                      setIsOpen(false);
+                      setSearchTerm('');
+                    }}
+                    className={`w-full px-3 py-2 text-left hover:${bgCardHover} text-sm ${
+                      isSelected ? 'bg-almet-sapphire text-white' : textPrimary
+                    }`}
+                  >
+                    {option.display_name || option.name}
+                  </button>
+                );
+              })
             ) : (
               <div className="px-3 py-2 text-sm text-gray-500">
-                No options found
+                {searchTerm ? `No options found for "${searchTerm}"` : 'No options available'}
               </div>
             )}
           </div>
