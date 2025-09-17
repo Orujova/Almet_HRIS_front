@@ -1,4 +1,4 @@
-// components/jobDescription/EmployeeSelectionModal.jsx
+// components/jobDescription/EmployeeSelectionModal.jsx - FIXED & ENHANCED
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -12,7 +12,9 @@ import {
   User,
   Building,
   Briefcase,
-  Target
+  Target,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 const EmployeeSelectionModal = ({
@@ -52,7 +54,8 @@ const EmployeeSelectionModal = ({
     emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     emp.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.department_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    emp.department_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.business_function_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Handle individual employee selection
@@ -64,7 +67,7 @@ const EmployeeSelectionModal = ({
         : [...prev, employeeId];
       
       // Update select all state
-      setSelectAll(newSelection.length === filteredEmployees.length);
+      setSelectAll(newSelection.length === filteredEmployees.length && filteredEmployees.length > 0);
       
       return newSelection;
     });
@@ -72,7 +75,7 @@ const EmployeeSelectionModal = ({
 
   // Handle select all toggle
   const handleSelectAll = () => {
-    if (selectAll) {
+    if (selectAll || selectedEmployees.length === filteredEmployees.length) {
       setSelectedEmployees([]);
       setSelectAll(false);
     } else {
@@ -97,8 +100,8 @@ const EmployeeSelectionModal = ({
       selectedEmployees.includes(emp.id)
     );
 
+    console.log('Confirming selection of employees:', selectedEmployees, selectedEmployeeData);
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -169,6 +172,12 @@ const EmployeeSelectionModal = ({
               <div>
                 <span className={`font-medium ${textMuted}`}>Grading Level:</span>
                 <span className={`${textPrimary} ml-2`}>{jobCriteria.grading_level}</span>
+              </div>
+            )}
+            {jobCriteria.unit?.name && (
+              <div>
+                <span className={`font-medium ${textMuted}`}>Unit:</span>
+                <span className={`${textPrimary} ml-2`}>{jobCriteria.unit.name}</span>
               </div>
             )}
           </div>
@@ -268,6 +277,8 @@ const EmployeeSelectionModal = ({
                                 <p>ID: {employee.employee_id} • {employee.job_title}</p>
                                 <div className="flex items-center gap-1">
                                   <Building size={10} />
+                                  <span>{employee.business_function_name}</span>
+                                  <span>•</span>
                                   <span>{employee.department_name}</span>
                                   {employee.unit_name && (
                                     <>
@@ -305,41 +316,72 @@ const EmployeeSelectionModal = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-4">
                           <div>
                             <h5 className={`font-semibold ${textSecondary} mb-2`}>Contact Information</h5>
-                            <div className="space-y-1">
-                              <p><span className={`font-medium ${textMuted}`}>Phone:</span> <span className={textPrimary}>{employee.phone || 'N/A'}</span></p>
-                              <p><span className={`font-medium ${textMuted}`}>Email:</span> <span className={textPrimary}>{employee.email || 'N/A'}</span></p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Phone size={10} className={textMuted} />
+                                <span className={`font-medium ${textMuted}`}>Phone:</span> 
+                                <span className={textPrimary}>{employee.phone || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Mail size={10} className={textMuted} />
+                                <span className={`font-medium ${textMuted}`}>Email:</span> 
+                                <span className={textPrimary}>{employee.email || 'N/A'}</span>
+                              </div>
                             </div>
                           </div>
                           
                           <div>
                             <h5 className={`font-semibold ${textSecondary} mb-2`}>Organization</h5>
-                            <div className="space-y-1">
-                              <p><span className={`font-medium ${textMuted}`}>Business Function:</span> <span className={textPrimary}>{employee.business_function_name}</span></p>
-                              <p><span className={`font-medium ${textMuted}`}>Job Function:</span> <span className={textPrimary}>{employee.job_function_name}</span></p>
-                              <p><span className={`font-medium ${textMuted}`}>Position Group:</span> <span className={textPrimary}>{employee.position_group_name}</span></p>
-                              <p><span className={`font-medium ${textMuted}`}>Grading Level:</span> <span className={textPrimary}>{employee.grading_level}</span></p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Building size={10} className={textMuted} />
+                                <span className={`font-medium ${textMuted}`}>Business Function:</span> 
+                                <span className={textPrimary}>{employee.business_function_name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Briefcase size={10} className={textMuted} />
+                                <span className={`font-medium ${textMuted}`}>Job Function:</span> 
+                                <span className={textPrimary}>{employee.job_function_name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Target size={10} className={textMuted} />
+                                <span className={`font-medium ${textMuted}`}>Position Group:</span> 
+                                <span className={textPrimary}>{employee.position_group_name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${textMuted}`}>Grading Level:</span> 
+                                <span className={textPrimary}>{employee.grading_level || 'N/A'}</span>
+                              </div>
                             </div>
                           </div>
 
                           <div>
                             <h5 className={`font-semibold ${textSecondary} mb-2`}>Reporting</h5>
-                            <div className="space-y-1">
-                              <p><span className={`font-medium ${textMuted}`}>Line Manager:</span> 
-                                <span className={textPrimary}> {employee.line_manager_name || 'None'}</span>
-                              </p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <User size={10} className={textMuted} />
+                                <span className={`font-medium ${textMuted}`}>Line Manager:</span>
+                                <span className={textPrimary}>{employee.line_manager_name || 'None'}</span>
+                              </div>
                               {employee.organizational_path && (
-                                <p><span className={`font-medium ${textMuted}`}>Path:</span> <span className={textPrimary}>{employee.organizational_path}</span></p>
+                                <div>
+                                  <span className={`font-medium ${textMuted}`}>Path:</span> 
+                                  <span className={`${textPrimary} text-xs`}>{employee.organizational_path}</span>
+                                </div>
                               )}
                             </div>
                           </div>
 
                           <div>
                             <h5 className={`font-semibold ${textSecondary} mb-2`}>Matching</h5>
-                            <div className="space-y-1">
-                              <p><span className={`font-medium ${textMuted}`}>Score:</span> <span className={textPrimary}>{employee.matching_score || 100}%</span></p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-medium ${textMuted}`}>Score:</span> 
+                                <span className={textPrimary}>{employee.matching_score || 100}%</span>
+                              </div>
                               <div className="flex items-center gap-1">
                                 <CheckCircle size={12} className="text-green-600" />
-                                <span className="text-green-600">Perfect Match</span>
+                                <span className="text-green-600 font-medium">Perfect Match</span>
                               </div>
                             </div>
                           </div>
@@ -357,14 +399,13 @@ const EmployeeSelectionModal = ({
         <div className={`p-4 border-t ${borderColor} ${bgAccent}`}>
           <div className="flex items-center justify-between">
             <div className={`text-sm ${textSecondary}`}>
-              {selectedEmployees.length > 0 && (
+              {selectedEmployees.length > 0 ? (
                 <>
                   <span className="font-semibold text-almet-sapphire">{selectedEmployees.length}</span>
                   <span> employee{selectedEmployees.length === 1 ? '' : 's'} selected.</span>
                   <span className="ml-2">Each will receive a separate job description.</span>
                 </>
-              )}
-              {selectedEmployees.length === 0 && (
+              ) : (
                 <span>Select employees to create job descriptions for.</span>
               )}
             </div>

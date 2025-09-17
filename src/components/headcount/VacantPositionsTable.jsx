@@ -1,10 +1,10 @@
-// src/components/headcount/VacantPositionsTable.jsx
+// src/components/headcount/VacantPositionsTable.jsx - FIXED VERSION
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
-import { Plus, Filter, Search, MoreVertical, Briefcase, Users, FileText } from "lucide-react";
+import { Plus, Filter, Search, MoreVertical, Briefcase, Users, FileText, X } from "lucide-react";
 
 // Components
 import SearchBar from "./SearchBar";
@@ -84,9 +84,10 @@ const VacantPositionsTable = () => {
   const [selectedPosition, setSelectedPosition] = useState(null);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-  // Refs
+  // Refs for preventing infinite loops
   const initialized = useRef(false);
   const debounceRef = useRef(null);
+  const lastApiParamsRef = useRef(null);
 
   // ========================================
   // THEME STYLES
@@ -100,7 +101,19 @@ const VacantPositionsTable = () => {
   const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
   // ========================================
-  // API PARAMS BUILDER
+  // GRADING LEVEL OPTIONS
+  // ========================================
+  
+  const gradingLevelOptions = [
+    { value: '_LD', label: 'Lower Decile (-LD)' },
+    { value: '_LQ', label: 'Lower Quartile (-LQ)' },
+    { value: '_M', label: 'Median (-M)' },
+    { value: '_UQ', label: 'Upper Quartile (-UQ)' },
+    { value: '_UD', label: 'Upper Decile (-UD)' }
+  ];
+
+  // ========================================
+  // API PARAMS BUILDER WITH LOOP PREVENTION
   // ========================================
   
   const buildApiParams = useMemo(() => {
@@ -114,7 +127,7 @@ const VacantPositionsTable = () => {
       params.search = searchTerm.trim();
     }
 
-    // Filters
+    // Filters - Handle arrays properly
     Object.keys(filters).forEach(filterKey => {
       if (filters[filterKey] && Array.isArray(filters[filterKey]) && filters[filterKey].length > 0) {
         params[filterKey] = filters[filterKey].join(',');
@@ -122,13 +135,33 @@ const VacantPositionsTable = () => {
     });
 
     return params;
-  }, [searchTerm, filters, vacantPagination]);
+  }, [searchTerm, filters, vacantPagination.page, vacantPagination.pageSize]);
+
+  // ========================================
+  // PREVENT INFINITE LOOP WITH PARAMS COMPARISON
+  // ========================================
+  
+  const apiParamsChanged = useMemo(() => {
+    if (!lastApiParamsRef.current) return true;
+    
+    const currentParams = JSON.stringify(buildApiParams);
+    const lastParams = JSON.stringify(lastApiParamsRef.current);
+    
+    return currentParams !== lastParams;
+  }, [buildApiParams]);
 
   // ========================================
   // DEBOUNCED DATA FETCHING
   // ========================================
   
   const debouncedFetchPositions = useCallback((params, immediate = false) => {
+    const paramsString = JSON.stringify(params);
+    const lastParamsString = JSON.stringify(lastApiParamsRef.current);
+    
+    if (paramsString === lastParamsString && !immediate) {
+      return;
+    }
+
     const delay = immediate ? 0 : 500;
     
     if (debounceRef.current) {
@@ -136,6 +169,7 @@ const VacantPositionsTable = () => {
     }
 
     debounceRef.current = setTimeout(() => {
+      lastApiParamsRef.current = { ...params };
       fetchVacantPositions(params);
     }, delay);
   }, [fetchVacantPositions]);
@@ -151,6 +185,7 @@ const VacantPositionsTable = () => {
       try {
         initialized.current = true;
         clearErrors();
+        lastApiParamsRef.current = { ...buildApiParams };
         
         await Promise.all([
           fetchVacantPositionsStatistics(),
@@ -164,17 +199,17 @@ const VacantPositionsTable = () => {
     };
 
     initializeData();
-  }, []);
+  }, []); // Only run once on mount
 
   // ========================================
   // DATA FETCHING ON PARAM CHANGES
   // ========================================
   
   useEffect(() => {
-    if (initialized.current) {
+    if (initialized.current && apiParamsChanged) {
       debouncedFetchPositions(buildApiParams);
     }
-  }, [buildApiParams, debouncedFetchPositions]);
+  }, [apiParamsChanged, buildApiParams, debouncedFetchPositions]);
 
   // ========================================
   // EVENT HANDLERS
@@ -203,6 +238,15 @@ const VacantPositionsTable = () => {
     setVacantPositionsPage(1);
   }, [setVacantPositionsPage]);
 
+  const handleClearFilter = useCallback((filterKey) => {
+    if (filterKey === 'search') {
+      setSearchTerm("");
+    } else {
+      setFilters(prev => ({ ...prev, [filterKey]: [] }));
+    }
+    setVacantPositionsPage(1);
+  }, [setVacantPositionsPage]);
+
   // ========================================
   // MODAL HANDLERS
   // ========================================
@@ -223,7 +267,10 @@ const VacantPositionsTable = () => {
   }, []);
 
   const handleDeletePosition = useCallback(async (positionId) => {
-    if (confirm('Are you sure you want to delete this vacant position?')) {
+    const position = vacantPositions.find(p => p.id === positionId);
+    const positionName = position?.job_title || 'this vacant position';
+    
+    if (confirm(`Are you sure you want to delete "${positionName}"?`)) {
       try {
         await deleteVacantPosition(positionId);
         alert('Vacant position deleted successfully!');
@@ -231,7 +278,7 @@ const VacantPositionsTable = () => {
         alert(`Failed to delete position: ${error.message}`);
       }
     }
-  }, [deleteVacantPosition]);
+  }, [deleteVacantPosition, vacantPositions]);
 
   // ========================================
   // FORM SUBMISSION HANDLERS
@@ -243,7 +290,7 @@ const VacantPositionsTable = () => {
       setIsCreateModalOpen(false);
       alert('Vacant position created successfully!');
     } catch (error) {
-      alert(`Failed to create position: ${error.message}`);
+      throw error; // Let the modal handle the error
     }
   }, [createVacantPosition]);
 
@@ -254,7 +301,7 @@ const VacantPositionsTable = () => {
       setSelectedPosition(null);
       alert('Vacant position updated successfully!');
     } catch (error) {
-      alert(`Failed to update position: ${error.message}`);
+      throw error; // Let the modal handle the error
     }
   }, [updateVacantPosition, selectedPosition]);
 
@@ -265,9 +312,49 @@ const VacantPositionsTable = () => {
       setSelectedPosition(null);
       alert(result.message || 'Position converted to employee successfully!');
     } catch (error) {
-      alert(`Failed to convert position: ${error.message}`);
+      throw error; // Let the modal handle the error
     }
   }, [convertToEmployee, selectedPosition]);
+
+  // ========================================
+  // SELECTION HANDLERS
+  // ========================================
+
+  const handleToggleSelection = useCallback((positionId) => {
+    toggleVacantPositionSelection(positionId);
+  }, [toggleVacantPositionSelection]);
+
+  const handleSelectAll = useCallback(() => {
+    if (selectedVacantPositions.length === vacantPositions.length && vacantPositions.length > 0) {
+      clearVacantPositionsSelection();
+    } else {
+      selectAllVacantPositions();
+    }
+  }, [selectedVacantPositions.length, vacantPositions.length, clearVacantPositionsSelection, selectAllVacantPositions]);
+
+  // ========================================
+  // BULK ACTIONS
+  // ========================================
+
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedVacantPositions.length === 0) {
+      alert("Please select positions to delete.");
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete ${selectedVacantPositions.length} vacant position${selectedVacantPositions.length !== 1 ? 's' : ''}?`;
+    
+    if (confirm(confirmMessage)) {
+      try {
+        const deletePromises = selectedVacantPositions.map(id => deleteVacantPosition(id));
+        await Promise.all(deletePromises);
+        clearVacantPositionsSelection();
+        alert(`Successfully deleted ${selectedVacantPositions.length} position${selectedVacantPositions.length !== 1 ? 's' : ''}!`);
+      } catch (error) {
+        alert(`Failed to delete positions: ${error.message}`);
+      }
+    }
+  }, [selectedVacantPositions, deleteVacantPosition, clearVacantPositionsSelection]);
 
   // ========================================
   // ACTIVE FILTERS CALCULATION
@@ -282,15 +369,45 @@ const VacantPositionsTable = () => {
     
     Object.keys(filters).forEach(key => {
       if (filters[key] && filters[key].length > 0) {
-        active.push({ 
-          key, 
-          label: `${key.replace('_', ' ')}: ${filters[key].length} selected`
-        });
+        let label = '';
+        switch (key) {
+          case 'business_function':
+            const bfLabels = filters[key].map(id => {
+              const bf = businessFunctions?.find(b => b.id === parseInt(id));
+              return bf ? `${bf.name} (${bf.code})` : id;
+            });
+            label = `Business Function: ${bfLabels.join(', ')}`;
+            break;
+          case 'department':
+            const deptLabels = filters[key].map(id => {
+              const dept = departments?.find(d => d.id === parseInt(id));
+              return dept ? dept.name : id;
+            });
+            label = `Department: ${deptLabels.join(', ')}`;
+            break;
+          case 'position_group':
+            const pgLabels = filters[key].map(id => {
+              const pg = positionGroups?.find(p => p.id === parseInt(id));
+              return pg ? pg.display_name : id;
+            });
+            label = `Position Group: ${pgLabels.join(', ')}`;
+            break;
+          case 'grading_level':
+            const gradeLabels = filters[key].map(value => {
+              const grade = gradingLevelOptions.find(g => g.value === value);
+              return grade ? grade.label : value;
+            });
+            label = `Grade: ${gradeLabels.join(', ')}`;
+            break;
+          default:
+            label = `${key.replace('_', ' ')}: ${filters[key].length} selected`;
+        }
+        active.push({ key, label });
       }
     });
     
     return active;
-  }, [searchTerm, filters]);
+  }, [searchTerm, filters, businessFunctions, departments, positionGroups]);
 
   // ========================================
   // RENDER HELPERS
@@ -310,13 +427,35 @@ const VacantPositionsTable = () => {
                 Vacant Positions Management
               </h1>
               <p className={`text-sm ${textSecondary}`}>
-                {vacantPositionsStats.total_vacant_positions || 0} vacant positions
+                {vacantPositionsStats?.total_vacant_positions || 0} vacant positions
               </p>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex items-center space-x-2">
+            {/* Bulk Delete Button */}
+            {selectedVacantPositions.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center px-3 py-2 text-sm rounded-lg transition-colors font-medium bg-red-600 text-white hover:bg-red-700"
+                disabled={loading.deleting}
+              >
+                {loading.deleting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <X size={14} className="mr-1" />
+                    Delete ({selectedVacantPositions.length})
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Filters Button */}
             <button
               onClick={() => setIsFiltersOpen(!isFiltersOpen)}
               className={`flex items-center px-3 py-2 text-sm border rounded-lg transition-colors ${
@@ -332,6 +471,7 @@ const VacantPositionsTable = () => {
               )}
             </button>
 
+            {/* Create Position Button */}
             <button
               onClick={handleCreatePosition}
               className="flex items-center px-3 py-2 text-sm rounded-lg transition-colors font-medium bg-orange-600 text-white hover:bg-orange-700"
@@ -347,25 +487,25 @@ const VacantPositionsTable = () => {
           <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div className={`text-sm ${textMuted}`}>Total Positions</div>
             <div className={`text-xl font-semibold ${textPrimary}`}>
-              {vacantPositionsStats.total_vacant_positions || 0}
+              {vacantPositionsStats?.total_vacant_positions || 0}
             </div>
           </div>
           <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div className={`text-sm ${textMuted}`}>Recent (30 days)</div>
             <div className={`text-xl font-semibold ${textPrimary}`}>
-              {vacantPositionsStats.recent_vacancies || 0}
+              {vacantPositionsStats?.recent_vacancies || 0}
             </div>
           </div>
           <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div className={`text-sm ${textMuted}`}>Departments</div>
             <div className={`text-xl font-semibold ${textPrimary}`}>
-              {Object.keys(vacantPositionsStats.by_department || {}).length}
+              {Object.keys(vacantPositionsStats?.by_department || {}).length}
             </div>
           </div>
           <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
             <div className={`text-sm ${textMuted}`}>Functions</div>
             <div className={`text-xl font-semibold ${textPrimary}`}>
-              {Object.keys(vacantPositionsStats.by_business_function || {}).length}
+              {Object.keys(vacantPositionsStats?.by_business_function || {}).length}
             </div>
           </div>
         </div>
@@ -382,18 +522,27 @@ const VacantPositionsTable = () => {
             <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
               Business Function
             </label>
-            <select
-              multiple
-              value={filters.business_function}
-              onChange={(e) => handleFilterChange('business_function', Array.from(e.target.selectedOptions, option => option.value))}
-              className={`w-full p-2 border ${borderColor} rounded-md ${bgCard} ${textPrimary}`}
-            >
+            <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2">
               {businessFunctions?.map(bf => (
-                <option key={bf.id} value={bf.id}>
-                  {bf.name} ({bf.code})
-                </option>
+                <label key={bf.id} className="flex items-center mb-1">
+                  <input
+                    type="checkbox"
+                    checked={filters.business_function.includes(bf.id.toString())}
+                    onChange={(e) => {
+                      const value = bf.id.toString();
+                      const newValues = e.target.checked
+                        ? [...filters.business_function, value]
+                        : filters.business_function.filter(v => v !== value);
+                      handleFilterChange('business_function', newValues);
+                    }}
+                    className="w-3 h-3 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className={`ml-2 text-sm ${textPrimary}`}>
+                    {bf.name} ({bf.code})
+                  </span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Department Filter */}
@@ -401,18 +550,25 @@ const VacantPositionsTable = () => {
             <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
               Department
             </label>
-            <select
-              multiple
-              value={filters.department}
-              onChange={(e) => handleFilterChange('department', Array.from(e.target.selectedOptions, option => option.value))}
-              className={`w-full p-2 border ${borderColor} rounded-md ${bgCard} ${textPrimary}`}
-            >
+            <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2">
               {departments?.map(dept => (
-                <option key={dept.id} value={dept.id}>
-                  {dept.name}
-                </option>
+                <label key={dept.id} className="flex items-center mb-1">
+                  <input
+                    type="checkbox"
+                    checked={filters.department.includes(dept.id.toString())}
+                    onChange={(e) => {
+                      const value = dept.id.toString();
+                      const newValues = e.target.checked
+                        ? [...filters.department, value]
+                        : filters.department.filter(v => v !== value);
+                      handleFilterChange('department', newValues);
+                    }}
+                    className="w-3 h-3 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className={`ml-2 text-sm ${textPrimary}`}>{dept.name}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
           {/* Position Group Filter */}
@@ -420,52 +576,137 @@ const VacantPositionsTable = () => {
             <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
               Position Group
             </label>
-            <select
-              multiple
-              value={filters.position_group}
-              onChange={(e) => handleFilterChange('position_group', Array.from(e.target.selectedOptions, option => option.value))}
-              className={`w-full p-2 border ${borderColor} rounded-md ${bgCard} ${textPrimary}`}
-            >
+            <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2">
               {positionGroups?.map(pg => (
-                <option key={pg.id} value={pg.id}>
-                  {pg.display_name} (Level {pg.hierarchy_level})
-                </option>
+                <label key={pg.id} className="flex items-center mb-1">
+                  <input
+                    type="checkbox"
+                    checked={filters.position_group.includes(pg.id.toString())}
+                    onChange={(e) => {
+                      const value = pg.id.toString();
+                      const newValues = e.target.checked
+                        ? [...filters.position_group, value]
+                        : filters.position_group.filter(v => v !== value);
+                      handleFilterChange('position_group', newValues);
+                    }}
+                    className="w-3 h-3 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className={`ml-2 text-sm ${textPrimary}`}>
+                    {pg.display_name} (Level {pg.hierarchy_level})
+                  </span>
+                </label>
               ))}
-            </select>
+            </div>
+          </div>
+
+          {/* Job Function Filter */}
+          <div>
+            <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+              Job Function
+            </label>
+            <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2">
+              {jobFunctions?.map(jf => (
+                <label key={jf.id} className="flex items-center mb-1">
+                  <input
+                    type="checkbox"
+                    checked={filters.job_function.includes(jf.id.toString())}
+                    onChange={(e) => {
+                      const value = jf.id.toString();
+                      const newValues = e.target.checked
+                        ? [...filters.job_function, value]
+                        : filters.job_function.filter(v => v !== value);
+                      handleFilterChange('job_function', newValues);
+                    }}
+                    className="w-3 h-3 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className={`ml-2 text-sm ${textPrimary}`}>{jf.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Unit Filter */}
+          <div>
+            <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+              Unit
+            </label>
+            <div className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded p-2">
+              {units?.map(unit => (
+                <label key={unit.id} className="flex items-center mb-1">
+                  <input
+                    type="checkbox"
+                    checked={filters.unit.includes(unit.id.toString())}
+                    onChange={(e) => {
+                      const value = unit.id.toString();
+                      const newValues = e.target.checked
+                        ? [...filters.unit, value]
+                        : filters.unit.filter(v => v !== value);
+                      handleFilterChange('unit', newValues);
+                    }}
+                    className="w-3 h-3 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className={`ml-2 text-sm ${textPrimary}`}>{unit.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Grading Level Filter */}
+          <div>
+            <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+              Grading Level
+            </label>
+            <div className="space-y-1">
+              {gradingLevelOptions.map(grade => (
+                <label key={grade.value} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={filters.grading_level.includes(grade.value)}
+                    onChange={(e) => {
+                      const newValues = e.target.checked
+                        ? [...filters.grading_level, grade.value]
+                        : filters.grading_level.filter(v => v !== grade.value);
+                      handleFilterChange('grading_level', newValues);
+                    }}
+                    className="w-3 h-3 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className={`ml-2 text-sm ${textPrimary}`}>{grade.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Filter Actions */}
-        <div className="flex items-center justify-between mt-4">
-          <div className="flex items-center space-x-2">
-            {activeFilters.map(filter => (
-              <span
-                key={filter.key}
-                className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
+        {/* Active Filters and Actions */}
+        {activeFilters.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center flex-wrap gap-2">
+                <span className={`text-sm font-medium ${textPrimary}`}>Active Filters:</span>
+                {activeFilters.map(filter => (
+                  <span
+                    key={filter.key}
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-200"
+                  >
+                    {filter.label}
+                    <button
+                      onClick={() => handleClearFilter(filter.key)}
+                      className="ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={handleClearFilters}
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
               >
-                {filter.label}
-                <button
-                  onClick={() => {
-                    if (filter.key === 'search') {
-                      setSearchTerm('');
-                    } else {
-                      handleFilterChange(filter.key, []);
-                    }
-                  }}
-                  className="ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
+                Clear All
+              </button>
+            </div>
           </div>
-          <button
-            onClick={handleClearFilters}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
-          >
-            Clear All
-          </button>
-        </div>
+        )}
       </div>
     )
   );
@@ -473,8 +714,8 @@ const VacantPositionsTable = () => {
   const renderPositionsList = () => (
     <div className="space-y-4">
       {loading.vacantPositions ? (
-        <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border border-orange-500 border-t-transparent mx-auto mb-2"></div>
+        <div className={`${bgCard} rounded-lg border ${borderColor} p-8 text-center`}>
+          <div className="animate-spin rounded-full h-8 w-8 border border-orange-500 border-t-transparent mx-auto mb-4"></div>
           <p className={textSecondary}>Loading vacant positions...</p>
         </div>
       ) : vacantPositions.length === 0 ? (
@@ -505,21 +746,81 @@ const VacantPositionsTable = () => {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {vacantPositions.map(position => (
-            <VacantPositionCard
-              key={position.id}
-              position={position}
-              onEdit={handleEditPosition}
-              onDelete={handleDeletePosition}
-              onConvert={handleConvertPosition}
-              darkMode={darkMode}
-            />
-          ))}
-        </div>
+        <>
+          {/* Selection Controls */}
+          {vacantPositions.length > 0 && (
+            <div className={`${bgCard} rounded-lg border ${borderColor} p-4 mb-4`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedVacantPositions.length === vacantPositions.length && vacantPositions.length > 0}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 text-orange-600 bg-gray-100 border-gray-300 rounded focus:ring-orange-500"
+                    />
+                    <span className={`ml-2 text-sm ${textPrimary}`}>
+                      Select All ({vacantPositions.length})
+                    </span>
+                  </label>
+                  {selectedVacantPositions.length > 0 && (
+                    <span className={`text-sm ${textSecondary}`}>
+                      {selectedVacantPositions.length} position{selectedVacantPositions.length !== 1 ? 's' : ''} selected
+                    </span>
+                  )}
+                </div>
+                {selectedVacantPositions.length > 0 && (
+                  <button
+                    onClick={() => clearVacantPositionsSelection()}
+                    className="text-sm text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-200"
+                  >
+                    Clear Selection
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Positions Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {vacantPositions.map(position => (
+              <div key={position.id} className="relative">
+                {/* Selection Checkbox */}
+                <div className="absolute top-2 left-2 z-10">
+                  <input
+                    type="checkbox"
+                    checked={selectedVacantPositions.includes(position.id)}
+                    onChange={() => handleToggleSelection(position.id)}
+                    className="w-4 h-4 text-orange-600 bg-white border-gray-300 rounded focus:ring-orange-500 shadow-sm"
+                  />
+                </div>
+
+                <VacantPositionCard
+                  position={position}
+                  onEdit={handleEditPosition}
+                  onDelete={handleDeletePosition}
+                  onConvert={handleConvertPosition}
+                  darkMode={darkMode}
+                />
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
+
+  // ========================================
+  // CLEANUP ON UNMOUNT
+  // ========================================
+  
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
 
   // ========================================
   // ERROR HANDLING
@@ -535,7 +836,11 @@ const VacantPositionsTable = () => {
               {errors.vacantPositions.message || 'Failed to load vacant positions'}
             </p>
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                initialized.current = false;
+                lastApiParamsRef.current = null;
+                window.location.reload();
+              }}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
             >
               Try Again
@@ -582,6 +887,14 @@ const VacantPositionsTable = () => {
             onPageSizeChange={setVacantPositionsPageSize}
             loading={loading.vacantPositions}
             darkMode={darkMode}
+            showQuickJump={true}
+            showPageSizeSelector={true}
+            showItemsInfo={true}
+            showFirstLast={true}
+            compactMode={false}
+            allowCustomPageSize={true}
+            maxDisplayPages={7}
+            pageSizeOptions={[10, 25, 50, 100, 250, 500]}
           />
         </div>
       )}

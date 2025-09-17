@@ -1,3 +1,4 @@
+// pages/structure/job-descriptions/index.js - FIXED: Complete Employee Selection Integration
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,7 +12,9 @@ import {
   CheckCircle,
   Settings,
   Send,
-  Download
+  X,
+  Users,
+  AlertCircle
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -24,6 +27,7 @@ import JobDescriptionForm from '@/components/jobDescription/JobDescriptionForm';
 import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
 import StatCard from '@/components/jobDescription/StatCard';
+import EmployeeSelectionModal from '@/components/jobDescription/EmployeeSelectionModal';
 
 const JobDescriptionPage = () => {
   const { darkMode } = useTheme();
@@ -44,11 +48,11 @@ const JobDescriptionPage = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   
-  // State for submission workflow
+  // Enhanced submission workflow state
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionComments, setSubmissionComments] = useState('');
   const [submissionLoading, setSubmissionLoading] = useState(false);
-  const [createdJobId, setCreatedJobId] = useState(null);
+  const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
 
   // Data states
@@ -65,7 +69,7 @@ const JobDescriptionPage = () => {
     companyBenefits: []
   });
 
-  // Form state - simplified without employee assignment fields
+  // Enhanced form state
   const [formData, setFormData] = useState({
     job_title: '',
     job_purpose: '',
@@ -95,6 +99,12 @@ const JobDescriptionPage = () => {
 
   // Employee matching state for display only
   const [matchingEmployees, setMatchingEmployees] = useState([]);
+
+  // Enhanced notification state
+  const [notification, setNotification] = useState(null);
+
+  // FIXED: Employee selection workflow state - removed duplicate modal
+  const [assignmentPreview, setAssignmentPreview] = useState(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -132,6 +142,16 @@ const JobDescriptionPage = () => {
     dropdownData.employees
   ]);
 
+  // Auto-clear notifications after 5 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   // Filter employees based on selected job criteria (for display only)
   const filterMatchingEmployees = () => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
@@ -139,7 +159,6 @@ const JobDescriptionPage = () => {
       return;
     }
 
-    // Only filter if we have essential criteria
     const hasBasicCriteria = formData.business_function && formData.department && 
                            formData.job_function && formData.position_group;
     
@@ -149,43 +168,36 @@ const JobDescriptionPage = () => {
     }
 
     let filtered = dropdownData.employees.filter(employee => {
-      // Match business function
       if (formData.business_function && 
           employee.business_function_name !== formData.business_function) {
         return false;
       }
 
-      // Match department
       if (formData.department && 
           employee.department_name !== formData.department) {
         return false;
       }
 
-      // Match unit if specified
       if (formData.unit && 
           employee.unit_name !== formData.unit) {
         return false;
       }
 
-      // Match job function if employee has one
       if (formData.job_function && employee.job_function_name && 
           employee.job_function_name !== formData.job_function) {
         return false;
       }
 
-      // Match position group if employee has one
       if (formData.position_group && employee.position_group_name && 
           employee.position_group_name !== formData.position_group) {
         return false;
       }
 
-      // Match grading level if both are specified
       if (formData.grading_level && employee.grading_level && 
           employee.grading_level !== formData.grading_level) {
         return false;
       }
 
-      // Match job title if specified (partial match)
       if (formData.job_title && employee.job_title && 
           !employee.job_title.toLowerCase().includes(formData.job_title.toLowerCase())) {
         return false;
@@ -198,6 +210,11 @@ const JobDescriptionPage = () => {
     setMatchingEmployees(filtered);
   };
 
+  // Show notification helper
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+  };
+
   const fetchInitialData = async () => {
     try {
       setLoading(true);
@@ -208,6 +225,7 @@ const JobDescriptionPage = () => {
       ]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
+      showNotification('Error loading initial data', 'error');
     } finally {
       setLoading(false);
     }
@@ -231,7 +249,6 @@ const JobDescriptionPage = () => {
     }
   };
 
-  // Fetch dropdown data from employees and other sources
   const fetchDropdownData = async () => {
     try {
       const fetchOptions = (endpoint) => ({
@@ -262,7 +279,6 @@ const JobDescriptionPage = () => {
         jobDescriptionService.getCompanyBenefits({ page_size: 1000 })
       ]);
 
-      // Parse JSON responses
       const employees = employeesRes.ok ? await employeesRes.json() : { results: [] };
 
       setDropdownData({
@@ -320,13 +336,10 @@ const JobDescriptionPage = () => {
     try {
       setActionLoading(true);
       await jobDescriptionService.downloadJobDescriptionPDF(jobId);
-      
-      console.log('✅ PDF downloaded successfully');
+      showNotification('PDF downloaded successfully');
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
-      
-      const errorMessage = error.message || 'Error downloading PDF. Please try again.';
-      alert(errorMessage);
+      showNotification('Error downloading PDF. Please try again.', 'error');
     } finally {
       setActionLoading(false);
     }
@@ -334,55 +347,77 @@ const JobDescriptionPage = () => {
 
   // Handle direct submission for approval (for existing draft jobs)
   const handleDirectSubmissionForApproval = async (jobId) => {
-    setCreatedJobId(jobId);
+    setCreatedJobsData({ id: jobId, isExisting: true });
     setIsExistingJobSubmission(true);
     setShowSubmissionModal(true);
   };
 
-  // Handle submission for approval
+  // Enhanced submission handling for multiple jobs
   const handleSubmitForApproval = async () => {
-    if (!createdJobId) return;
+    if (!createdJobsData) return;
 
     try {
       setSubmissionLoading(true);
       
-      await jobDescriptionService.submitForApproval(createdJobId, {
-        comments: submissionComments,
-        submit_to_line_manager: true
-      });
-      
-      alert('Job description submitted for approval successfully! Employee assignment was handled automatically.');
+      if (createdJobsData.isExisting) {
+        // Single existing job submission
+        await jobDescriptionService.submitForApproval(createdJobsData.id, {
+          comments: submissionComments,
+          submit_to_line_manager: true
+        });
+        
+        showNotification('Job description submitted for approval successfully!');
+      } else {
+        // Multiple job submission handling
+        const jobsToSubmit = createdJobsData.created_job_descriptions || [{ id: createdJobsData.id }];
+        
+        for (const job of jobsToSubmit) {
+          await jobDescriptionService.submitForApproval(job.id, {
+            comments: submissionComments,
+            submit_to_line_manager: true
+          });
+        }
+        
+        const message = jobsToSubmit.length > 1 
+          ? `${jobsToSubmit.length} job descriptions submitted for approval successfully!`
+          : 'Job description submitted for approval successfully!';
+        
+        showNotification(message);
+      }
       
       await fetchJobDescriptions();
       await fetchStats();
       setShowSubmissionModal(false);
       setSubmissionComments('');
-      setCreatedJobId(null);
+      setCreatedJobsData(null);
       setIsExistingJobSubmission(false);
       resetForm();
     } catch (error) {
       console.error('Error submitting for approval:', error);
-      alert('Error submitting for approval. Please try again.');
+      showNotification('Error submitting for approval. Please try again.', 'error');
     } finally {
       setSubmissionLoading(false);
     }
   };
 
-  // Handle keeping as draft
+  // Enhanced keep as draft handling
   const handleKeepAsDraft = async () => {
-    alert('Job description saved as draft successfully! Employee assignment was handled automatically.');
+    const message = createdJobsData?.summary?.total_job_descriptions_created > 1 
+      ? `${createdJobsData.summary.total_job_descriptions_created} job descriptions saved as drafts successfully!`
+      : 'Job description saved as draft successfully!';
+    
+    showNotification(message);
     
     await fetchJobDescriptions();
     await fetchStats();
 
     setShowSubmissionModal(false);
     setSubmissionComments('');
-    setCreatedJobId(null);
+    setCreatedJobsData(null);
     setIsExistingJobSubmission(false);
     resetForm();
   };
 
-  // Reset form - simplified without employee assignment fields
   const resetForm = () => {
     setFormData({
       job_title: '',
@@ -411,9 +446,9 @@ const JobDescriptionPage = () => {
     setAvailableSkills([]);
     setAvailableCompetencies([]);
     setMatchingEmployees([]);
+    setAssignmentPreview(null);
   };
 
-  // Handle edit
   const handleEdit = async (job) => {
     try {
       setActionLoading(true);
@@ -422,7 +457,6 @@ const JobDescriptionPage = () => {
       setFormData(transformedData);
       setEditingJob(fullJob);
       
-      // Set selected groups for dependent dropdowns
       if (transformedData.position_group) {
         setSelectedPositionGroup(transformedData.position_group);
       }
@@ -430,13 +464,12 @@ const JobDescriptionPage = () => {
       setActiveView('create');
     } catch (error) {
       console.error('Error loading job for edit:', error);
-      alert('Error loading job description. Please try again.');
+      showNotification('Error loading job description. Please try again.', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Handle delete
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this job description?')) {
       return;
@@ -447,16 +480,15 @@ const JobDescriptionPage = () => {
       await jobDescriptionService.deleteJobDescription(id);
       await fetchJobDescriptions();
       await fetchStats();
-      alert('Job description deleted successfully!');
+      showNotification('Job description deleted successfully!');
     } catch (error) {
       console.error('Error deleting job description:', error);
-      alert('Error deleting job description. Please try again.');
+      showNotification('Error deleting job description. Please try again.', 'error');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Handle view modal
   const handleViewJob = async (job) => {
     try {
       setActionLoading(true);
@@ -464,10 +496,20 @@ const JobDescriptionPage = () => {
       setSelectedJob(fullJob);
     } catch (error) {
       console.error('Error loading job for view:', error);
-      alert('Error loading job description details. Please try again.');
+      showNotification('Error loading job description details. Please try again.', 'error');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // FIXED: Enhanced job creation handling
+  const handleJobSubmit = (createdJob) => {
+    console.log('📋 Job creation completed:', createdJob);
+    
+    // Store the created job(s) data for submission modal
+    setCreatedJobsData(createdJob);
+    setIsExistingJobSubmission(false);
+    setShowSubmissionModal(true);
   };
 
   if (loading) {
@@ -489,6 +531,32 @@ const JobDescriptionPage = () => {
       <div className={`min-h-screen ${bgApp} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto p-4 lg:p-6">
           
+          {/* Enhanced Notification Banner */}
+          {notification && (
+            <div className={`mb-4 p-4 rounded-lg border ${
+              notification.type === 'error' 
+                ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                : 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {notification.type === 'error' ? (
+                    <AlertCircle size={16} />
+                  ) : (
+                    <CheckCircle size={16} />
+                  )}
+                  <span className="font-medium text-sm">{notification.message}</span>
+                </div>
+                <button
+                  onClick={() => setNotification(null)}
+                  className="text-current opacity-70 hover:opacity-100 transition-opacity"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+          
           {/* Enhanced Header Section */}
           <div className="mb-8">
             {/* Title and Action Buttons */}
@@ -498,7 +566,7 @@ const JobDescriptionPage = () => {
                   Job Descriptions
                 </h1>
                 <p className={`${textSecondary} text-sm lg:text-base leading-relaxed`}>
-                  Create job descriptions with automatic employee assignment based on your organizational structure and employee data
+                  Create job descriptions with intelligent employee assignment based on your organizational structure and employee data
                 </p>
               </div>
               
@@ -557,7 +625,7 @@ const JobDescriptionPage = () => {
               />
             </div>
 
-            {/* Simplified Navigation Tabs */}
+            {/* Enhanced Navigation Tabs */}
             <div className={`flex items-center justify-between p-1 
               ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'} rounded-lg shadow-inner`}>
               {[
@@ -642,11 +710,7 @@ const JobDescriptionPage = () => {
                   onSkillGroupChange={setSelectedSkillGroup}
                   onBehavioralGroupChange={setSelectedBehavioralGroup}
                   onPositionGroupChange={setSelectedPositionGroup}
-                  onSubmit={(createdJob) => {
-                    setCreatedJobId(createdJob.id);
-                    setIsExistingJobSubmission(false);
-                    setShowSubmissionModal(true);
-                  }}
+                  onSubmit={handleJobSubmit}
                   onCancel={resetForm}
                   onUpdate={() => {
                     fetchJobDescriptions();
@@ -672,7 +736,7 @@ const JobDescriptionPage = () => {
           {/* Enhanced Submission Modal */}
           {showSubmissionModal && (
             <SubmissionModal
-              createdJobId={createdJobId}
+              createdJobsData={createdJobsData}
               isExistingJobSubmission={isExistingJobSubmission}
               submissionComments={submissionComments}
               submissionLoading={submissionLoading}
@@ -682,7 +746,7 @@ const JobDescriptionPage = () => {
               onClose={() => {
                 setShowSubmissionModal(false);
                 setSubmissionComments('');
-                setCreatedJobId(null);
+                setCreatedJobsData(null);
                 setIsExistingJobSubmission(false);
               }}
               darkMode={darkMode}

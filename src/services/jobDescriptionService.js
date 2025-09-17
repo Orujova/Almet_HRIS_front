@@ -178,12 +178,15 @@ class JobDescriptionService {
       
       // Optional ID fields
       grading_level: data.grading_level?.trim() || null,
-      reports_to: data.reports_to ? parseInt(data.reports_to) : null,
-      assigned_employee: data.assigned_employee ? parseInt(data.assigned_employee) : null,
+  
+     
       
-      // Manual employee fields
-      manual_employee_name: data.manual_employee_name?.trim() || '',
-      manual_employee_phone: data.manual_employee_phone?.trim() || '',
+      // NEW: Employee selection support
+      selected_employee_ids: Array.isArray(data.selected_employee_ids) 
+        ? data.selected_employee_ids.map(id => parseInt(id)).filter(id => !isNaN(id))
+        : [],
+      
+
       
       // Arrays
       sections: Array.isArray(data.sections) ? data.sections : [],
@@ -255,22 +258,92 @@ class JobDescriptionService {
     }
   }
 
-   async previewEligibleEmployees(criteria) {
+  // ENHANCED: Preview eligible employees with better error handling
+  async previewEligibleEmployees(criteria) {
     try {
       console.log('🔍 Previewing eligible employees for criteria:', criteria);
       
-      const response = await api.post('/job-descriptions/preview_eligible_employees/', criteria);
+      // Validate required fields
+      if (!criteria.job_title || !criteria.business_function || !criteria.department || 
+          !criteria.job_function || !criteria.position_group) {
+        throw new Error('Missing required criteria fields');
+      }
+
+      // Clean criteria - ensure all IDs are integers and remove null/undefined values
+      const cleanedCriteria = {
+        job_title: criteria.job_title?.trim(),
+        business_function: parseInt(criteria.business_function),
+        department: parseInt(criteria.department),
+        job_function: parseInt(criteria.job_function),
+        position_group: parseInt(criteria.position_group),
+        grading_level: criteria.grading_level?.trim() || null,
+        max_preview: criteria.max_preview || 50
+      };
+
+      // Only include unit if it's provided and valid
+      if (criteria.unit && parseInt(criteria.unit)) {
+        cleanedCriteria.unit = parseInt(criteria.unit);
+      } else {
+        cleanedCriteria.unit = null;
+      }
+
+      // Remove any null/undefined/empty values to avoid 400 errors
+      Object.keys(cleanedCriteria).forEach(key => {
+        if (cleanedCriteria[key] === null || cleanedCriteria[key] === undefined || 
+            cleanedCriteria[key] === '' || (typeof cleanedCriteria[key] === 'number' && isNaN(cleanedCriteria[key]))) {
+          delete cleanedCriteria[key];
+        }
+      });
+
+      console.log('📤 Cleaned criteria being sent:', cleanedCriteria);
+      
+      const response = await api.post('/job-descriptions/preview_eligible_employees/', cleanedCriteria);
       
       console.log('✅ Preview response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error previewing eligible employees:', error);
+      
+      // Enhanced error handling for different response types
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        console.error('Bad Request Details:', errorData);
+        
+        let errorMessage = 'Invalid request parameters';
+        if (typeof errorData === 'string') {
+          errorMessage = errorData;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (Array.isArray(errorData)) {
+          errorMessage = errorData.join(', ');
+        } else if (typeof errorData === 'object') {
+          // Handle field-specific errors
+          const fieldErrors = [];
+          Object.keys(errorData).forEach(field => {
+            if (Array.isArray(errorData[field])) {
+              fieldErrors.push(`${field}: ${errorData[field].join(', ')}`);
+            } else {
+              fieldErrors.push(`${field}: ${errorData[field]}`);
+            }
+          });
+          if (fieldErrors.length > 0) {
+            errorMessage = fieldErrors.join('; ');
+          }
+        }
+        
+        throw new Error(`Preview request failed: ${errorMessage}`);
+      }
+      
       throw error;
     }
   }
 
   /**
-   * Enhanced create method with employee selection support
+   * ENHANCED: Create method with employee selection support
    */
   async createJobDescription(data) {
     try {
@@ -285,11 +358,11 @@ class JobDescriptionService {
 
       // Clean data
       const cleanedData = this.cleanJobDescriptionData(data);
-      console.log('📝 Cleaned data for API:', cleanedData);
+      console.log('🔧 Cleaned data for API:', cleanedData);
       
       const response = await api.post('/job-descriptions/', cleanedData);
       
-      console.log('✅ Job description created successfully');
+      console.log('✅ Job description created successfully:', response.data);
       return response.data;
     } catch (error) {
       console.log('=== CREATE ERROR DEBUG ===');
@@ -319,7 +392,9 @@ class JobDescriptionService {
 
   async updateJobDescription(id, data) {
     try {
-    
+      console.log('=== UPDATE DEBUG ===');
+      console.log('1. Update ID:', id);
+      console.log('2. Raw form data:', JSON.stringify(data, null, 2));
       
       const validationErrors = this.validateJobDescriptionData(data);
       if (validationErrors.length > 0) {
@@ -561,9 +636,33 @@ class JobDescriptionService {
     }
   }
 
- 
-
-
+  async downloadMultipleJobDescriptionsPDF(jobIds) {
+    try {
+      console.log('📄 Downloading multiple PDFs for job descriptions:', jobIds);
+      
+      const response = await api.post('/job-descriptions/download_multiple_pdfs/', {
+        job_description_ids: jobIds
+      }, {
+        responseType: 'blob'
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `job-descriptions-${Date.now()}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      console.log('✅ Multiple PDFs download successful');
+      return response.data;
+    } catch (error) {
+      console.error('Error downloading multiple job descriptions PDFs:', error);
+      throw error;
+    }
+  }
 
   // ========================================
   // SUPPORTING DATA ENDPOINTS - ACCESS MATRIX
@@ -792,6 +891,8 @@ class JobDescriptionService {
     }
   }
 
+ 
+
   // ========================================
   // EMPLOYEE HELPERS
   // ========================================
@@ -893,21 +994,32 @@ class JobDescriptionService {
   // PERMISSION UTILITIES - CLIENT-SIDE LOGIC
   // ========================================
 
-canApproveAsLineManager(jobDescription) {
-    // Everyone can approve if status is correct
+  canApproveAsLineManager(jobDescription) {
     const validStatuses = ['PENDING_LINE_MANAGER', 'PENDING_APPROVAL'];
     return validStatuses.includes(jobDescription.status);
   }
 
   canApproveAsEmployee(jobDescription) {
-    // Everyone can approve if status is correct
     return jobDescription.status === 'PENDING_EMPLOYEE';
   }
 
   canReject(jobDescription) {
-    // Everyone can reject if status allows
     const validStatuses = ['PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE', 'PENDING_APPROVAL'];
     return validStatuses.includes(jobDescription.status);
+  }
+
+  canEdit(jobDescription) {
+    const editableStatuses = ['DRAFT', 'REVISION_REQUIRED'];
+    return editableStatuses.includes(jobDescription.status);
+  }
+
+  canDelete(jobDescription) {
+    const deletableStatuses = ['DRAFT'];
+    return deletableStatuses.includes(jobDescription.status);
+  }
+
+  canSubmitForApproval(jobDescription) {
+    return jobDescription.status === 'DRAFT';
   }
 
   // ========================================
@@ -990,9 +1102,6 @@ canApproveAsLineManager(jobDescription) {
   // UTILITY METHODS
   // ========================================
 
-  /**
-   * Format date for display
-   */
   formatDate(dateString) {
     if (!dateString) return "N/A";
     try {
@@ -1006,9 +1115,21 @@ canApproveAsLineManager(jobDescription) {
     }
   }
 
-  /**
-   * Calculate days since creation
-   */
+  formatDateTime(dateString) {
+    if (!dateString) return "N/A";
+    try {
+      return new Date(dateString).toLocaleString("en-GB", {
+        day: "2-digit",
+        month: "short", 
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  }
+
   getDaysSinceCreation(dateString) {
     if (!dateString) return 0;
     try {
@@ -1020,9 +1141,6 @@ canApproveAsLineManager(jobDescription) {
     }
   }
 
-  /**
-   * Get display name for employee info
-   */
   getEmployeeDisplayName(jobDescription) {
     if (jobDescription.employee_info?.name) {
       return jobDescription.employee_info.name;
@@ -1036,18 +1154,12 @@ canApproveAsLineManager(jobDescription) {
     return 'Vacant Position';
   }
 
-  /**
-   * Check if position is vacant
-   */
   isVacantPosition(jobDescription) {
     return !jobDescription.employee_info?.id && 
            !jobDescription.assigned_employee?.id && 
            !jobDescription.manual_employee_name?.trim();
   }
 
-  /**
-   * Get next action required for job description
-   */
   getNextAction(jobDescription) {
     switch (jobDescription.status) {
       case 'DRAFT':
@@ -1068,9 +1180,10 @@ canApproveAsLineManager(jobDescription) {
     }
   }
 
-  /**
-   * Filter and search job descriptions
-   */
+  // ========================================
+  // FILTERING AND SEARCHING UTILITIES
+  // ========================================
+
   filterJobDescriptions(jobDescriptions, filters) {
     if (!Array.isArray(jobDescriptions)) return [];
     
@@ -1133,9 +1246,6 @@ canApproveAsLineManager(jobDescription) {
     return filtered;
   }
 
-  /**
-   * Sort job descriptions
-   */
   sortJobDescriptions(jobDescriptions, sortBy, sortOrder = 'asc') {
     if (!Array.isArray(jobDescriptions)) return [];
     
@@ -1182,9 +1292,6 @@ canApproveAsLineManager(jobDescription) {
     return sorted;
   }
 
-  /**
-   * Get unique values for filters
-   */
   getUniqueFilterValues(jobDescriptions, field) {
     if (!Array.isArray(jobDescriptions)) return [];
     
@@ -1215,9 +1322,6 @@ canApproveAsLineManager(jobDescription) {
     return Array.from(values).sort();
   }
 
-  /**
-   * Paginate job descriptions
-   */
   paginateJobDescriptions(jobDescriptions, page = 1, itemsPerPage = 10) {
     if (!Array.isArray(jobDescriptions)) return { items: [], totalPages: 0, totalItems: 0 };
     
@@ -1310,6 +1414,10 @@ canApproveAsLineManager(jobDescription) {
       employee_comments: apiData.employee_comments
     };
   }
+
+  
+
+  
 }
 
 // Create and export singleton instance
