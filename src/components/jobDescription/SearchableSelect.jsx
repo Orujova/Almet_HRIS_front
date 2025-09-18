@@ -68,19 +68,7 @@ const SearchableSelect = ({
     };
   }, []);
 
-  // Debug log
-  useEffect(() => {
-    if (value && safeOptions.length > 0) {
-      console.log('SearchableSelect Debug:', {
-        value,
-        valueType: typeof value,
-        selectedOption,
-        displayValue,
-        optionsCount: safeOptions.length,
-        sampleOption: safeOptions[0]
-      });
-    }
-  }, [value, safeOptions, selectedOption, displayValue]);
+
 
   // Reset search term when value changes (for edit mode)
   useEffect(() => {

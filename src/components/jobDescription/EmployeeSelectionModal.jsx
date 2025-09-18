@@ -1,4 +1,4 @@
-// components/jobDescription/EmployeeSelectionModal.jsx - FIXED & ENHANCED
+// components/jobDescription/EmployeeSelectionModal.jsx - FIXED: Proper Vacancy ID Handling
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -14,8 +14,10 @@ import {
   Briefcase,
   Target,
   Phone,
-  Mail
+  Mail,
+  UserX // For vacancy icon
 } from 'lucide-react';
+import CustomCheckbox from '../common/CustomCheckbox';
 
 const EmployeeSelectionModal = ({
   isOpen,
@@ -49,22 +51,31 @@ const EmployeeSelectionModal = ({
     }
   }, [isOpen]);
 
-  // Filter employees based on search
-  const filteredEmployees = eligibleEmployees.filter(emp => 
-    emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.employee_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.department_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.business_function_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filter employees based on search - FIXED: Handle both employees and vacancies
+  const filteredEmployees = eligibleEmployees.filter(emp => {
+    const isVacancy = emp.is_vacancy || emp.record_type === 'vacancy';
+    const name = isVacancy ? `Vacant Position (${emp.employee_id})` : (emp.full_name || emp.name || '');
+    const searchableText = [
+      name,
+      emp.employee_id || '',
+      emp.job_title || '',
+      emp.department_name || '',
+      emp.business_function_name || ''
+    ].join(' ').toLowerCase();
 
-  // Handle individual employee selection
-  const handleEmployeeToggle = (employeeId) => {
+    return searchableText.includes(searchTerm.toLowerCase());
+  });
+
+  // FIXED: Handle individual employee selection using correct ID
+  const handleEmployeeToggle = (employeeRecord) => {
+    // CRITICAL: Use the database ID (not employee_id) for both employees and vacancies
+    const recordId = employeeRecord.id;
+    
     setSelectedEmployees(prev => {
-      const isSelected = prev.includes(employeeId);
+      const isSelected = prev.includes(recordId);
       const newSelection = isSelected 
-        ? prev.filter(id => id !== employeeId)
-        : [...prev, employeeId];
+        ? prev.filter(id => id !== recordId)
+        : [...prev, recordId];
       
       // Update select all state
       setSelectAll(newSelection.length === filteredEmployees.length && filteredEmployees.length > 0);
@@ -73,12 +84,13 @@ const EmployeeSelectionModal = ({
     });
   };
 
-  // Handle select all toggle
+  // Handle select all toggle - FIXED: Use correct IDs
   const handleSelectAll = () => {
     if (selectAll || selectedEmployees.length === filteredEmployees.length) {
       setSelectedEmployees([]);
       setSelectAll(false);
     } else {
+      // CRITICAL: Use database IDs for all records
       setSelectedEmployees(filteredEmployees.map(emp => emp.id));
       setSelectAll(true);
     }
@@ -89,19 +101,41 @@ const EmployeeSelectionModal = ({
     setExpandedEmployee(prev => prev === employeeId ? null : employeeId);
   };
 
-  // Handle final selection
+  // FIXED: Handle final selection with proper ID mapping
   const handleConfirmSelection = () => {
     if (selectedEmployees.length === 0) {
-      alert('Please select at least one employee');
+      alert('Please select at least one employee or vacancy');
       return;
     }
 
+    // Get the full employee/vacancy data for selected records
     const selectedEmployeeData = eligibleEmployees.filter(emp => 
       selectedEmployees.includes(emp.id)
     );
 
-    console.log('Confirming selection of employees:', selectedEmployees, selectedEmployeeData);
+    console.log('FIXED: Confirming selection with database IDs:', selectedEmployees);
+    console.log('FIXED: Selected employee/vacancy data:', selectedEmployeeData);
+    
+    // Pass the database IDs (not employee_ids) to parent
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
+  };
+
+  // Helper function to check if record is a vacancy
+  const isVacancy = (record) => {
+    return record.is_vacancy || record.record_type === 'vacancy' || record.name === 'VACANT';
+  };
+
+  // Helper function to get display name
+  const getDisplayName = (record) => {
+    if (isVacancy(record)) {
+      return `Vacant Position (${record.employee_id})`;
+    }
+    return record.full_name || record.name || 'Unknown';
+  };
+
+  // Helper function to get appropriate icon
+  const getRecordIcon = (record) => {
+    return isVacancy(record) ? UserX : User;
   };
 
   if (!isOpen) return null;
@@ -111,15 +145,15 @@ const EmployeeSelectionModal = ({
       <div className={`${bgModal} rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden border ${borderColor} shadow-xl`}>
         
         {/* Header */}
-        <div className="p-6 border-b border-gray-200 dark:border-almet-comet">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-almet-comet">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>
-                Select Employees for Job Assignment
+              <h2 className={`text-base font-bold ${textPrimary} mb-1`}>
+                Select Employees & Vacancies for Job Assignment
               </h2>
-              <p className={`${textSecondary} text-sm`}>
-                {eligibleEmployees.length} employees match your job criteria. 
-                Select which employees should receive job descriptions.
+              <p className={`${textSecondary} text-xs`}>
+                {eligibleEmployees.length} records match your job criteria. 
+                Select which employees and vacant positions should receive job descriptions.
               </p>
             </div>
             <button
@@ -132,7 +166,7 @@ const EmployeeSelectionModal = ({
         </div>
 
         {/* Job Criteria Display */}
-        <div className={`p-4 ${bgAccent} border-b ${borderColor}`}>
+        <div className={`px-4 py-2 ${bgAccent} border-b ${borderColor}`}>
           <h3 className={`text-sm font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
             <Target size={14} />
             Job Criteria
@@ -191,7 +225,7 @@ const EmployeeSelectionModal = ({
               <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={16} />
               <input
                 type="text"
-                placeholder="Search employees..."
+                placeholder="Search employees and vacancies..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className={`w-full pl-10 pr-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
@@ -202,14 +236,12 @@ const EmployeeSelectionModal = ({
             {/* Controls */}
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="selectAll"
+                <CustomCheckbox
                   checked={selectAll}
                   onChange={handleSelectAll}
-                  className="rounded border-gray-300 text-almet-sapphire focus:ring-almet-sapphire"
+                  indeterminate={selectedEmployees.length > 0 && selectedEmployees.length < filteredEmployees.length}
                 />
-                <label htmlFor="selectAll" className={`text-sm ${textSecondary}`}>
+                <label className={`text-sm ${textSecondary} cursor-pointer`} onClick={handleSelectAll}>
                   Select All ({filteredEmployees.length})
                 </label>
               </div>
@@ -226,18 +258,18 @@ const EmployeeSelectionModal = ({
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-almet-sapphire"></div>
-              <span className={`ml-3 ${textSecondary}`}>Loading employees...</span>
+              <span className={`ml-3 ${textSecondary}`}>Loading records...</span>
             </div>
           ) : filteredEmployees.length === 0 ? (
             <div className="text-center py-12">
               <Users className={`mx-auto h-12 w-12 ${textMuted} mb-4`} />
               <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
-                {searchTerm ? 'No employees found' : 'No eligible employees'}
+                {searchTerm ? 'No records found' : 'No eligible records'}
               </h3>
               <p className={`${textMuted}`}>
                 {searchTerm 
-                  ? `No employees match "${searchTerm}"`
-                  : 'No employees match the job criteria'
+                  ? `No employees or vacancies match "${searchTerm}"`
+                  : 'No employees or vacancies match the job criteria'
                 }
               </p>
             </div>
@@ -246,6 +278,9 @@ const EmployeeSelectionModal = ({
               {filteredEmployees.map((employee) => {
                 const isSelected = selectedEmployees.includes(employee.id);
                 const isExpanded = expandedEmployee === employee.id;
+                const isVacancyRecord = isVacancy(employee);
+                const RecordIcon = getRecordIcon(employee);
+                const displayName = getDisplayName(employee);
 
                 return (
                   <div 
@@ -254,26 +289,28 @@ const EmployeeSelectionModal = ({
                       isSelected ? 'border-almet-sapphire bg-blue-50 dark:bg-blue-900/10' : ''
                     }`}
                   >
-                    {/* Employee Summary */}
-                    <div className="p-4">
+                    {/* Employee/Vacancy Summary */}
+                    <div className="p-3">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 flex-1">
-                          <input
-                            type="checkbox"
+                        <div className="flex items-center gap-3 flex-1">
+                          <CustomCheckbox
                             checked={isSelected}
-                            onChange={() => handleEmployeeToggle(employee.id)}
-                            className="rounded border-gray-300 text-almet-sapphire focus:ring-almet-sapphire"
+                            onChange={() => handleEmployeeToggle(employee)}
                           />
                           
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${isSelected ? 'bg-almet-sapphire text-white' : `${bgAccent} ${textPrimary}`}`}>
-                              <User size={16} />
+                            <div className={`p-2 rounded-lg ${
+                              isSelected ? 'bg-almet-sapphire text-white' : 
+                              isVacancyRecord ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400' :
+                              `${bgAccent} ${textPrimary}`
+                            }`}>
+                              <RecordIcon size={16} />
                             </div>
                             <div>
                               <h4 className={`font-semibold ${textPrimary} text-sm`}>
-                                {employee.full_name}
+                                {displayName}
                               </h4>
-                              <div className={`${textSecondary} text-xs space-y-1`}>
+                              <div className={`${textSecondary} flex items-center gap-8 text-xs space-y-1`}>
                                 <p>ID: {employee.employee_id} • {employee.job_title}</p>
                                 <div className="flex items-center gap-1">
                                   <Building size={10} />
@@ -293,7 +330,13 @@ const EmployeeSelectionModal = ({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {employee.has_line_manager && (
+                          {/* Status indicators */}
+                          {isVacancyRecord ? (
+                            <div className="flex items-center gap-1 text-orange-600 text-xs">
+                              <UserX size={12} />
+                              <span>Vacancy</span>
+                            </div>
+                          ) : employee.has_line_manager && (
                             <div className="flex items-center gap-1 text-green-600 text-xs">
                               <CheckCircle size={12} />
                               <span>Has Manager</span>
@@ -310,26 +353,55 @@ const EmployeeSelectionModal = ({
                       </div>
                     </div>
 
-                    {/* Employee Details (Expanded) */}
+                    {/* Employee/Vacancy Details (Expanded) */}
                     {isExpanded && (
                       <div className={`px-4 pb-4 border-t ${borderColor} ${bgAccent}`}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-4">
-                          <div>
-                            <h5 className={`font-semibold ${textSecondary} mb-2`}>Contact Information</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Phone size={10} className={textMuted} />
-                                <span className={`font-medium ${textMuted}`}>Phone:</span> 
-                                <span className={textPrimary}>{employee.phone || 'N/A'}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Mail size={10} className={textMuted} />
-                                <span className={`font-medium ${textMuted}`}>Email:</span> 
-                                <span className={textPrimary}>{employee.email || 'N/A'}</span>
+                          
+                          {/* Contact Information - Only for employees */}
+                          {!isVacancyRecord && (
+                            <div>
+                              <h5 className={`font-semibold ${textSecondary} mb-2`}>Contact Information</h5>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Phone size={10} className={textMuted} />
+                                  <span className={`font-medium ${textMuted}`}>Phone:</span> 
+                                  <span className={textPrimary}>{employee.phone || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Mail size={10} className={textMuted} />
+                                  <span className={`font-medium ${textMuted}`}>Email:</span> 
+                                  <span className={textPrimary}>{employee.email || 'N/A'}</span>
+                                </div>
                               </div>
                             </div>
-                          </div>
+                          )}
+
+                          {/* Vacancy-specific Information */}
+                          {isVacancyRecord && employee.vacancy_details && (
+                            <div>
+                              <h5 className={`font-semibold ${textSecondary} mb-2`}>Vacancy Details</h5>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <AlertCircle size={10} className={textMuted} />
+                                  <span className={`font-medium ${textMuted}`}>Status:</span> 
+                                  <span className="text-orange-600">
+                                    {employee.vacancy_details.is_filled ? 'Filled' : 'Open'}
+                                  </span>
+                                </div>
+                                {employee.vacancy_details.notes && (
+                                  <div className="flex items-start gap-2">
+                                    <span className={`font-medium ${textMuted} mt-1`}>Notes:</span>
+                                    <span className={`${textPrimary} text-xs leading-relaxed flex-1`}>
+                                      {employee.vacancy_details.notes}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                           
+                          {/* Organization Information */}
                           <div>
                             <h5 className={`font-semibold ${textSecondary} mb-2`}>Organization</h5>
                             <div className="space-y-2">
@@ -355,36 +427,19 @@ const EmployeeSelectionModal = ({
                             </div>
                           </div>
 
-                          <div>
-                            <h5 className={`font-semibold ${textSecondary} mb-2`}>Reporting</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <User size={10} className={textMuted} />
-                                <span className={`font-medium ${textMuted}`}>Line Manager:</span>
-                                <span className={textPrimary}>{employee.line_manager_name || 'None'}</span>
-                              </div>
-                              {employee.organizational_path && (
-                                <div>
-                                  <span className={`font-medium ${textMuted}`}>Path:</span> 
-                                  <span className={`${textPrimary} text-xs`}>{employee.organizational_path}</span>
+                          {/* Reporting - Only for employees */}
+                          {!isVacancyRecord && (
+                            <div>
+                              <h5 className={`font-semibold ${textSecondary} mb-2`}>Reporting</h5>
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <User size={10} className={textMuted} />
+                                  <span className={`font-medium ${textMuted}`}>Line Manager:</span>
+                                  <span className={textPrimary}>{employee.line_manager_name || 'None'}</span>
                                 </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div>
-                            <h5 className={`font-semibold ${textSecondary} mb-2`}>Matching</h5>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <span className={`font-medium ${textMuted}`}>Score:</span> 
-                                <span className={textPrimary}>{employee.matching_score || 100}%</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <CheckCircle size={12} className="text-green-600" />
-                                <span className="text-green-600 font-medium">Perfect Match</span>
                               </div>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -402,11 +457,11 @@ const EmployeeSelectionModal = ({
               {selectedEmployees.length > 0 ? (
                 <>
                   <span className="font-semibold text-almet-sapphire">{selectedEmployees.length}</span>
-                  <span> employee{selectedEmployees.length === 1 ? '' : 's'} selected.</span>
+                  <span> record{selectedEmployees.length === 1 ? '' : 's'} selected.</span>
                   <span className="ml-2">Each will receive a separate job description.</span>
                 </>
               ) : (
-                <span>Select employees to create job descriptions for.</span>
+                <span>Select employees and vacancies to create job descriptions for.</span>
               )}
             </div>
 

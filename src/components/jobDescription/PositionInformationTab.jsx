@@ -1,4 +1,4 @@
-// components/jobDescription/PositionInformationTab.jsx - FIXED: Preview API only triggers when all required fields filled
+// components/jobDescription/PositionInformationTab.jsx - FIXED: Proper Vacancy Handling
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   UserCheck,
@@ -9,7 +9,8 @@ import {
   Target,
   RefreshCw,
   Eye,
-  Loader
+  Loader,
+  UserX // For vacancy icon
 } from 'lucide-react';
 import SearchableSelect from './SearchableSelect';
 import jobDescriptionService from '@/services/jobDescriptionService';
@@ -189,175 +190,227 @@ const PositionInformationTab = ({
     }));
   };
 
-
-const getBusinessFunctionId = (value) => {
-  if (!value) return null;
+const findExactConstraintMatch = (requiredCriteria, debugLabel = '') => {
+  if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
   
-  // If it's already a number/ID, return it
-  if (typeof value === 'number' || (!isNaN(parseInt(value)) && value.toString() === parseInt(value).toString())) {
-    console.log('✅ Business function already an ID:', parseInt(value));
-    return parseInt(value);
+
+  
+  // Find ALL records that match EVERY criteria exactly
+  const exactMatches = dropdownData.employees.filter(emp => {
+    let matches = true;
+    
+    for (const [field, value] of Object.entries(requiredCriteria)) {
+      if (emp[field] !== value) {
+        matches = false;
+        break;
+      }
+    }
+    
+  
+    
+    return matches;
+  });
+  
+  if (exactMatches.length === 0) {
+    console.log(`  ❌ NO EXACT MATCHES found for ${debugLabel}`);
+    
+    // Debug: Show what combinations ARE available
+    console.log(`  📊 Available combinations:`);
+    const availableCombos = new Set();
+    dropdownData.employees.forEach(emp => {
+      const combo = `BF: ${emp.business_function_name} + Dept: ${emp.department_name} (ID: ${emp.department_id})`;
+      availableCombos.add(combo);
+    });
+    
+    Array.from(availableCombos).slice(0, 10).forEach(combo => {
+      console.log(`    - ${combo}`);
+    });
+    
+    return null;
   }
   
-  // Otherwise, it's a name - find the ID
-  if (!dropdownData.employees) return null;
+  console.log(`  ✅ Found ${exactMatches.length} exact match(es) for ${debugLabel}`);
   
-  console.log('🔍 Looking for business function ID for name:', value);
-  
-  const emp = dropdownData.employees.find(emp => 
-    emp.business_function_name === value || 
-    emp.business_function_detail?.name === value ||
-    emp.business_function?.name === value
+  // Priority: Vacant positions first, then regular employees
+  const vacantMatches = exactMatches.filter(emp => 
+    emp.is_vacancy || emp.record_type === 'vacancy' || emp.name === 'VACANT'
   );
   
-  if (emp) {
-    const id = emp.business_function || emp.business_function_id || emp.business_function_detail?.id;
-    console.log('✅ Found business function ID:', id, 'for name:', value);
-    return parseInt(id);
-  }
+  const chosen = vacantMatches.length > 0 ? vacantMatches[0] : exactMatches[0];
   
-  console.log('❌ Business function not found for name:', value);
-  return null;
+  console.log(`  🎯 CHOSEN: ${chosen.employee_id} (${chosen.is_vacancy ? 'VACANCY' : 'EMPLOYEE'}) | Dept_ID: ${chosen.department_id}`);
+  
+  return chosen;
 };
 
-const getDepartmentId = (value) => {
-  if (!value) return null;
-  
-  // If it's already a number/ID, return it
-  if (typeof value === 'number' || (!isNaN(parseInt(value)) && value.toString() === parseInt(value).toString())) {
-    console.log('✅ Department already an ID:', parseInt(value));
-    return parseInt(value);
+const getBusinessFunctionId = (name) => {
+  if (!name || !dropdownData.employees) {
+    console.log('⌐ getBusinessFunctionId: Missing data');
+    return null;
   }
   
-  // Otherwise, it's a name - find the ID
-  if (!dropdownData.employees) return null;
+  const employee = findExactConstraintMatch({
+    business_function_name: name
+  }, 'Business Function');
   
-  console.log('🔍 Looking for department ID for name:', value);
-  
-  const emp = dropdownData.employees.find(emp => 
-    emp.department_name === value || 
-    emp.department_detail?.name === value ||
-    emp.department?.name === value
-  );
-  
-  if (emp) {
-    const id = emp.department || emp.department_id || emp.department_detail?.id;
-    console.log('✅ Found department ID:', id, 'for name:', value);
-    return parseInt(id);
-  }
-  
-  console.log('❌ Department not found for name:', value);
-  return null;
-};
-
-const getUnitId = (value) => {
-  if (!value) return null;
-  
-  // If it's already a number/ID, return it
-  if (typeof value === 'number' || (!isNaN(parseInt(value)) && value.toString() === parseInt(value).toString())) {
-    console.log('✅ Unit already an ID:', parseInt(value));
-    return parseInt(value);
-  }
-  
-  // Otherwise, it's a name - find the ID
-  const emp = dropdownData.employees?.find(emp => 
-    emp.unit_name === value || 
-    emp.unit_detail?.name === value ||
-    emp.unit?.name === value
-  );
-  
-  if (emp) {
-    const id = emp.unit || emp.unit_id || emp.unit_detail?.id;
-    console.log('✅ Found unit ID:', id, 'for name:', value);
-    return parseInt(id);
+  if (employee) {
+    const id = employee.business_function_id || employee.business_function;
+    return id;
   }
   
   return null;
 };
 
-const getJobFunctionId = (value) => {
-  if (!value) return null;
-  
-  // If it's already a number/ID, return it
-  if (typeof value === 'number' || (!isNaN(parseInt(value)) && value.toString() === parseInt(value).toString())) {
-    console.log('✅ Job function already an ID:', parseInt(value));
-    return parseInt(value);
+// CRITICAL FIX: Department ID with ABSOLUTE constraint checking
+const getDepartmentId = (name) => {
+  if (!name || !dropdownData.employees) {
+    console.log('⌐ getDepartmentId: Missing data');
+    return null;
   }
   
-  // Otherwise, it's a name - find the ID
-  if (!dropdownData.employees) return null;
+  if (!formData.business_function) {
+    console.log('❌ getDepartmentId: Business function MUST be selected first');
+    return null;
+  }
+
   
-  console.log('🔍 Looking for job function ID for name:', value);
+  // ABSOLUTE REQUIREMENT: Both BF and Dept must match exactly
+  const employee = findExactConstraintMatch({
+    business_function_name: formData.business_function,
+    department_name: name
+  }, 'Department');
   
-  const emp = dropdownData.employees.find(emp => 
-    emp.job_function_name === value || 
-    emp.job_function_detail?.name === value ||
-    emp.job_function?.name === value
-  );
-  
-  if (emp) {
-    const id = emp.job_function || emp.job_function_id || emp.job_function_detail?.id;
-    console.log('✅ Found job function ID:', id, 'for name:', value);
-    return parseInt(id);
+  if (employee) {
+    const id = employee.department_id || employee.department;
+    console.log(`✅ SUCCESS: Found valid combination! Department ID = ${id}`);
+    return id;
   }
   
-  console.log('❌ Job function not found for name:', value);
+
+  
   return null;
 };
 
-const getPositionGroupId = (value) => {
-  if (!value) return null;
+const getUnitId = (name) => {
+  if (!name) return null;
   
-  // If it's already a number/ID, return it
-  if (typeof value === 'number' || (!isNaN(parseInt(value)) && value.toString() === parseInt(value).toString())) {
-    console.log('✅ Position group already an ID:', parseInt(value));
-    return parseInt(value);
+  if (!formData.business_function || !formData.department) {
+    console.log('❌ getUnitId: Business function AND department must be selected first');
+    return null;
   }
   
-  // Otherwise, it's a name - find the ID
-  if (!dropdownData.employees) return null;
+  const employee = findExactConstraintMatch({
+    business_function_name: formData.business_function,
+    department_name: formData.department,
+    unit_name: name
+  }, 'Unit');
   
-  console.log('🔍 Looking for position group ID for name:', value);
-  
-  const emp = dropdownData.employees.find(emp => 
-    emp.position_group_name === value || 
-    emp.position_group_detail?.name === value ||
-    emp.position_group?.name === value
-  );
-  
-  if (emp) {
-    const id = emp.position_group || emp.position_group_id || emp.position_group_detail?.id;
-    console.log('✅ Found position group ID:', id, 'for name:', value);
-    return parseInt(id);
+  if (employee) {
+    const id = employee.unit_id || employee.unit;
+    return id;
   }
   
-  console.log('❌ Position group not found for name:', value);
+  console.log(`❌ INVALID: Unit "${name}" doesn't exist in ${formData.business_function} > ${formData.department}`);
   return null;
 };
 
-  // FIXED: Check if ALL required fields are filled before triggering preview
-const areAllRequiredFieldsFilled = () => {
-  // Helper function to safely check if a field has a value
-  const hasValue = (field) => {
-    if (field === null || field === undefined) return false;
-    if (typeof field === 'string') return field.trim() !== '';
-    if (typeof field === 'number') return true;
-    return !!field; // For other types, check if truthy
+const getJobFunctionId = (name) => {
+  if (!name || !dropdownData.employees) {
+    console.log('⌐ getJobFunctionId: Missing data');
+    return null;
+  }
+  
+  if (!formData.business_function || !formData.department) {
+    console.log('❌ getJobFunctionId: Business function AND department must be selected first');
+    return null;
+  }
+  
+  const employee = findExactConstraintMatch({
+    business_function_name: formData.business_function,
+    department_name: formData.department,
+    job_function_name: name
+  }, 'Job Function');
+  
+  if (employee) {
+    const id = employee.job_function_id || employee.job_function;
+    return id;
+  }
+  
+  console.log(`❌ INVALID: Job function "${name}" doesn't exist in ${formData.business_function} > ${formData.department}`);
+  return null;
+};
+
+const getPositionGroupId = (name) => {
+  if (!name || !dropdownData.employees) {
+    console.log('⌐ getPositionGroupId: Missing data');
+    return null;
+  }
+  
+  if (!formData.business_function || !formData.department || !formData.job_function) {
+    console.log('❌ getPositionGroupId: Full organizational path must be selected first');
+    return null;
+  }
+  
+  const employee = findExactConstraintMatch({
+    business_function_name: formData.business_function,
+    department_name: formData.department,
+    job_function_name: formData.job_function,
+    position_group_name: name
+  }, 'Position Group');
+  
+  if (employee) {
+    const id = employee.position_group_id || employee.position_group;
+    return id;
+  }
+  
+  console.log(`❌ INVALID: Position group "${name}" doesn't exist in the selected organizational path`);
+  return null;
+};
+
+
+
+
+  // Check if all required fields are filled and can be mapped to IDs
+  const areAllRequiredFieldsFilled = () => {
+    const hasValue = (field) => {
+      if (field === null || field === undefined) return false;
+      if (typeof field === 'string') return field.trim() !== '';
+      if (typeof field === 'number') return true;
+      return !!field;
+    };
+
+    // Check that all required fields have values
+    const basicRequirementsMet = !!(
+      hasValue(formData.job_title) &&
+      hasValue(formData.job_purpose) &&
+      hasValue(formData.business_function) &&
+      hasValue(formData.department) &&
+      hasValue(formData.job_function) &&
+      hasValue(formData.position_group)
+    );
+
+    if (!basicRequirementsMet) {
+      return false;
+    }
+
+    // ADDITIONAL CHECK: Ensure we can map all required fields to valid IDs
+    const businessFunctionId = getBusinessFunctionId(formData.business_function);
+    const departmentId = getDepartmentId(formData.department);
+    const jobFunctionId = getJobFunctionId(formData.job_function);
+    const positionGroupId = getPositionGroupId(formData.position_group);
+
+    // Only proceed if we can map all required fields to valid IDs
+    const canMapToIds = !!(businessFunctionId && departmentId && jobFunctionId && positionGroupId);
+    
+  
+    return canMapToIds;
   };
 
-  return !!(
-    hasValue(formData.job_title) &&
-    hasValue(formData.business_function) &&
-    hasValue(formData.department) &&
-    hasValue(formData.job_function) &&
-    hasValue(formData.position_group)
-  );
-};
   // Update assignment preview based on form data
   const updateAssignmentPreview = async () => {
-    // FIXED: Only proceed if ALL required fields are filled
+    // Only proceed if ALL required fields are filled AND can be mapped to IDs
     if (!areAllRequiredFieldsFilled()) {
-      console.log('🔍 Not all required fields filled, clearing preview');
+      console.log('Not all required fields filled or cannot map to IDs, clearing preview');
       const emptyPreview = {
         strategy: null,
         employeeCount: 0,
@@ -377,7 +430,7 @@ const areAllRequiredFieldsFilled = () => {
 
     // Check if we have employee data loaded
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
-      console.log('⏳ Employee data not loaded yet, skipping preview');
+      console.log('Employee data not loaded yet, skipping preview');
       setAssignmentPreview({
         strategy: null,
         employeeCount: 0,
@@ -389,86 +442,98 @@ const areAllRequiredFieldsFilled = () => {
       return;
     }
 
-    try {
-      setPreviewLoading(true);
-      setPreviewError(null);
+   try {
+    setPreviewLoading(true);
+    setPreviewError(null);
 
-      // Transform names to IDs for API call
-      const businessFunctionId = getBusinessFunctionId(formData.business_function);
-      const departmentId = getDepartmentId(formData.department);
-      const jobFunctionId = getJobFunctionId(formData.job_function);
-      const positionGroupId = getPositionGroupId(formData.position_group);
-      const unitId = formData.unit ? getUnitId(formData.unit) : null;
+    // Transform names to IDs for API call
+    const businessFunctionId = getBusinessFunctionId(formData.business_function);
+    const departmentId = getDepartmentId(formData.department);
+    const jobFunctionId = getJobFunctionId(formData.job_function);
+    const positionGroupId = getPositionGroupId(formData.position_group);
+    const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-      console.log('🔍 ID Mapping Results:');
-      console.log('- Business Function:', formData.business_function, '→', businessFunctionId);
-      console.log('- Department:', formData.department, '→', departmentId);
-      console.log('- Job Function:', formData.job_function, '→', jobFunctionId);
-      console.log('- Position Group:', formData.position_group, '→', positionGroupId);
-      console.log('- Unit:', formData.unit, '→', unitId);
+    console.log('🔧 FIXED: ID Mapping Results for Preview API:');
+    console.log('- Business Function:', formData.business_function, '→', businessFunctionId);
+    console.log('- Department:', formData.department, '→', departmentId);
+    console.log('- Job Function:', formData.job_function, '→', jobFunctionId);
+    console.log('- Position Group:', formData.position_group, '→', positionGroupId);
+    console.log('- Unit:', formData.unit, '→', unitId);
 
-      // Prepare criteria for API call
-      const previewCriteria = {
-        job_title: formData.job_title.trim(),
-        business_function: businessFunctionId,
-        department: departmentId,
-        unit: unitId,
-        job_function: jobFunctionId,
-        position_group: positionGroupId,
-        grading_level: formData.grading_level?.trim() || null,
-        max_preview: 50
-      };
+    // Prepare criteria for API call
+    const previewCriteria = {
+      job_title: formData.job_title.trim(),
+      business_function: businessFunctionId,
+      department: departmentId,
+      unit: unitId,
+      job_function: jobFunctionId,
+      position_group: positionGroupId,
+      grading_level: formData.grading_level?.trim() || null,
+      max_preview: 50,
+      include_vacancies: true
+    };
 
-      console.log('📤 Preview criteria being sent:', previewCriteria);
+    console.log('🚀 FIXED: Preview criteria being sent to API:', previewCriteria);
 
-      // Validate that we have all required IDs
-      const requiredMappings = [
-        { field: 'business_function', value: businessFunctionId, name: formData.business_function },
-        { field: 'department', value: departmentId, name: formData.department },
-        { field: 'job_function', value: jobFunctionId, name: formData.job_function },
-        { field: 'position_group', value: positionGroupId, name: formData.position_group }
-      ];
+    const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
+    
+    console.log('📥 FIXED: Preview API response received:', response);
+    console.log('📊 Response details:');
+    console.log('- Assignment strategy:', response.assignment_strategy);
+    console.log('- Employees count:', response.eligible_employees_count);
+    console.log('- Vacancies count:', response.eligible_vacancies_count); 
+    console.log('- Total count:', response.total_eligible_count);
+    console.log('- Requires manual selection:', response.requires_manual_selection);
 
-      const failedMappings = requiredMappings.filter(mapping => !mapping.value);
-      
-      if (failedMappings.length > 0) {
-        const errorDetails = failedMappings.map(mapping => 
-          `${mapping.field}: "${mapping.name}" not found in employee data`
-        ).join(', ');
-        
-        console.error('❌ Field mapping errors:', errorDetails);
-        throw new Error(`Cannot map form values to employee data: ${errorDetails}`);
-      }
+    // Log the actual records
+    const employees = response.employees || [];
+    const vacancies = response.vacancies || [];
+    const unifiedList = response.unified_list || [];
+    
+    console.log('📋 Records in response:');
+    console.log('- Employees:', employees.length, employees.map(e => e.employee_id));
+    console.log('- Vacancies:', vacancies.length, vacancies.map(v => v.employee_id));
+    console.log('- Unified list:', unifiedList.length, unifiedList.map(u => u.employee_id));
 
-      const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
-      
-      console.log('✅ Preview response received:', response);
+    // Use unified_list as primary data source, fallback to combining employees and vacancies
+    const allRecords = unifiedList.length > 0 ? unifiedList : [...employees, ...vacancies];
+    
+    console.log('🎯 Final records for assignment:', allRecords.length);
+    allRecords.forEach((record, index) => {
+      const isVacancy = record.is_vacancy || record.record_type === 'vacancy';
+      console.log(`  ${index + 1}. ${record.employee_id}: ${record.full_name || record.name} (${isVacancy ? 'VACANCY' : 'EMPLOYEE'})`);
+    });
 
-      const newPreview = {
-        strategy: response.assignment_strategy,
-        employeeCount: response.eligible_employees_count,
+    const newPreview = {
+      strategy: response.assignment_strategy,
+      employeeCount: response.eligible_employees_count || 0,
+      vacancyCount: response.eligible_vacancies_count || 0,
+      totalCount: response.total_eligible_count || allRecords.length,
+      requiresSelection: response.requires_manual_selection,
+      previewMessage: response.strategy_message,
+      records: allRecords,
+      criteria: response.criteria || {},
+      nextSteps: response.next_steps || {}
+    };
+
+    console.log('🔄 Setting assignment preview:', newPreview);
+    setAssignmentPreview(newPreview);
+
+    // CRITICAL: Always notify parent component
+    if (onAssignmentPreviewUpdate) {
+      console.log('📤 Sending preview update to parent component');
+      onAssignmentPreviewUpdate({
+        ...newPreview,
+        employees: allRecords, // Send combined records as employees for backward compatibility
         requiresSelection: response.requires_manual_selection,
-        previewMessage: response.strategy_message,
-        employees: response.employees || [],
-        criteria: response.criteria || {},
-        nextSteps: response.next_steps || {}
-      };
+        originalResponse: response
+      });
+    } else {
+      console.log('⚠️ onAssignmentPreviewUpdate callback is missing!');
+    }
 
-      setAssignmentPreview(newPreview);
-
-      // FIXED: Always notify parent component with proper data structure
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate({
-          ...newPreview,
-          // Ensure we pass the requiresSelection flag properly
-          requiresSelection: response.requires_manual_selection,
-          // Add original response for debugging
-          originalResponse: response
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Error fetching assignment preview:', error);
+  } catch (error) {
+      console.error('Error fetching assignment preview:', error);
       
       let errorMessage = 'Error loading assignment preview';
       if (error.response?.data?.detail) {
@@ -499,19 +564,19 @@ const areAllRequiredFieldsFilled = () => {
     }
   };
 
-  // FIXED: Only watch for changes in required fields to trigger preview
+  // Watch for changes in ALL required fields + employee data changes
   useEffect(() => {
-    // Only trigger preview if we have ALL required fields
+    console.log('Form data changed, checking if preview should update...');
+    
     if (areAllRequiredFieldsFilled()) {
-      console.log('🔄 All required fields filled, updating preview...');
+      console.log('All required fields filled and can be mapped, updating preview...');
       const timer = setTimeout(() => {
         updateAssignmentPreview();
-      }, 800); // Slightly longer debounce for better UX
+      }, 1200);
 
       return () => clearTimeout(timer);
     } else {
-      console.log('⚠️  Not all required fields filled, clearing preview');
-      // Clear preview immediately when required fields are missing
+      console.log('Not all required fields filled or cannot map to IDs, clearing preview');
       const emptyPreview = {
         strategy: null,
         employeeCount: 0,
@@ -529,10 +594,12 @@ const areAllRequiredFieldsFilled = () => {
     }
   }, [
     formData.job_title,
+    formData.job_purpose,
     formData.business_function,
     formData.department,
     formData.job_function,
-    formData.position_group
+    formData.position_group,
+    dropdownData.employees
   ]);
 
   // Optional fields can still trigger preview updates if all required fields are present
@@ -540,7 +607,7 @@ const areAllRequiredFieldsFilled = () => {
     if (areAllRequiredFieldsFilled()) {
       const timer = setTimeout(() => {
         updateAssignmentPreview();
-      }, 800);
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
@@ -669,14 +736,18 @@ const areAllRequiredFieldsFilled = () => {
 
     switch (assignmentPreview.strategy) {
       case 'auto_assign_single':
+        const employee = assignmentPreview.employees?.[0];
+        const isVacancy = employee?.is_vacancy || employee?.record_type === 'vacancy';
+        
         return {
-          icon: UserCheck,
-          color: 'text-green-600',
-          bgColor: 'bg-green-50 dark:bg-green-900/20',
-          borderColor: 'border-green-200 dark:border-green-800',
-          title: 'Single Employee Match',
-          message: 'Will automatically assign to the matching employee',
-          employee: assignmentPreview.employees?.[0]
+          icon: isVacancy ? UserX : UserCheck,
+          color: isVacancy ? 'text-orange-600' : 'text-green-600',
+          bgColor: isVacancy ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-green-50 dark:bg-green-900/20',
+          borderColor: isVacancy ? 'border-orange-200 dark:border-orange-800' : 'border-green-200 dark:border-green-800',
+          title: isVacancy ? 'Single Vacancy Position Match' : 'Single Employee Match',
+          message: isVacancy ? 'Will assign to vacant position' : 'Will automatically assign to the matching employee',
+          employee: employee,
+          isVacancy: isVacancy
         };
       
       case 'manual_selection_required':
@@ -685,7 +756,7 @@ const areAllRequiredFieldsFilled = () => {
           color: 'text-orange-600',
           bgColor: 'bg-orange-50 dark:bg-orange-900/20',
           borderColor: 'border-orange-200 dark:border-orange-800',
-          title: `${assignmentPreview.employeeCount} Employees Match`,
+          title: `${assignmentPreview.employeeCount} Matches Found`,
           message: 'Manual selection will be required during job creation',
           showPreviewButton: true
         };
@@ -696,8 +767,8 @@ const areAllRequiredFieldsFilled = () => {
           color: 'text-gray-600',
           bgColor: 'bg-gray-50 dark:bg-gray-900/20',
           borderColor: 'border-gray-200 dark:border-gray-800',
-          title: 'No Matching Employees',
-          message: 'Will create as vacant position'
+          title: 'No Matching Records',
+          message: 'Will create as unassigned position'
         };
       
       default:
@@ -716,8 +787,6 @@ const areAllRequiredFieldsFilled = () => {
 
   return (
     <div className="space-y-6">
-    
-
       {/* Basic Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -731,7 +800,7 @@ const areAllRequiredFieldsFilled = () => {
             options={getUniqueJobTitles()}
             value={formData.job_title}
             onChange={(value) => onFormDataChange({...formData, job_title: value})}
-            placeholder={counts.jobTitles > 0 ? "Select job title from employees" : "Enter job title"}
+            placeholder={counts.jobTitles > 0 ? "Select job title from records" : "Enter job title"}
             allowCustom={true}
             error={validationErrors.job_title}
             disabled={counts.jobTitles === 0}
@@ -899,7 +968,7 @@ const areAllRequiredFieldsFilled = () => {
         )}
       </div>
 
-      {/* Assignment Preview Section */}
+      {/* Assignment Preview Section - Only show when all required fields are completed */}
       {shouldShowPreview && (
         <div className={`p-4 ${assignmentDisplay.bgColor} rounded-lg border ${assignmentDisplay.borderColor}`}>
           <div className="flex items-start gap-3">
@@ -918,69 +987,126 @@ const areAllRequiredFieldsFilled = () => {
                 {assignmentDisplay.message}
               </p>
               
-              {/* Single Employee Display */}
+              {/* Single Employee/Vacancy Display - FIXED: Handle vacancies properly */}
               {assignmentDisplay.employee && (
                 <div className={`p-3 border ${borderColor} rounded-lg ${bgCard} mb-3`}>
                   <h5 className={`text-xs font-semibold ${textSecondary} mb-2 uppercase tracking-wider flex items-center gap-2`}>
-                    <CheckCircle size={12} className="text-green-600" />
-                    Auto-Assignment Target
+                    {assignmentDisplay.isVacancy ? (
+                      <>
+                        <UserX size={12} className="text-orange-600" />
+                        Vacancy Assignment Target
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={12} className="text-green-600" />
+                        Auto-Assignment Target
+                      </>
+                    )}
                   </h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className={`font-medium ${textMuted}`}>Name:</span>
-                      <span className={`${textPrimary} ml-2`}>{assignmentDisplay.employee.full_name}</span>
+                      <span className={`font-medium ${textMuted}`}>
+                        {assignmentDisplay.isVacancy ? 'Position:' : 'Name:'}
+                      </span>
+                      <span className={`${textPrimary} ml-2`}>
+                        {assignmentDisplay.isVacancy ? 
+                          `Vacant Position (${assignmentDisplay.employee.employee_id})` : 
+                          assignmentDisplay.employee.full_name || assignmentDisplay.employee.name
+                        }
+                      </span>
                     </div>
                     <div>
-                      <span className={`font-medium ${textMuted}`}>Employee ID:</span>
-                      <span className={`${textPrimary} ml-2`}>{assignmentDisplay.employee.employee_id}</span>
+                      <span className={`font-medium ${textMuted}`}>
+                        {assignmentDisplay.isVacancy ? 'Position ID:' : 'Employee ID:'}
+                      </span>
+                      <span className={`${textPrimary} ml-2`}>
+                        {assignmentDisplay.employee.employee_id}
+                      </span>
                     </div>
                     <div>
                       <span className={`font-medium ${textMuted}`}>Current Job:</span>
-                      <span className={`${textPrimary} ml-2`}>{assignmentDisplay.employee.job_title}</span>
+                      <span className={`${textPrimary} ml-2`}>
+                        {assignmentDisplay.employee.job_title || 'N/A'}
+                      </span>
                     </div>
                     <div>
                       <span className={`font-medium ${textMuted}`}>Manager:</span>
-                      <span className={`${textPrimary} ml-2`}>{assignmentDisplay.employee.line_manager_name || 'N/A'}</span>
+                      <span className={`${textPrimary} ml-2`}>
+                        {assignmentDisplay.employee.line_manager_name || 'N/A'}
+                      </span>
                     </div>
+                    {assignmentDisplay.isVacancy && assignmentDisplay.employee.vacancy_details && (
+                      <div className="md:col-span-2">
+                        <span className={`font-medium ${textMuted}`}>Notes:</span>
+                        <span className={`${textPrimary} ml-2 text-xs`}>
+                          {assignmentDisplay.employee.vacancy_details.notes || 'No additional notes'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Multiple Employees Preview */}
               {assignmentDisplay.showPreviewButton && assignmentPreview.employees.length > 0 && (
-              
-                 
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {assignmentPreview.employees.slice(0, 10).map((emp, index) => (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {assignmentPreview.employees.slice(0, 10).map((emp, index) => {
+                    const isVacancy = emp.is_vacancy || emp.record_type === 'vacancy';
+                    return (
                       <div key={emp.id} className={`text-xs ${textSecondary} p-2 ${bgAccent} rounded flex items-center justify-between`}>
                         <div className="flex-1">
-                          <span className="font-medium">{emp.full_name}</span>
+                          <span className="font-medium">
+                            {isVacancy ? `Vacant Position (${emp.employee_id})` : (emp.full_name || emp.name)}
+                          </span>
                           <span className={`${textMuted} ml-2`}>({emp.employee_id})</span>
                           <span className={`${textMuted} ml-2`}>- {emp.job_title}</span>
                         </div>
                         <div className="flex items-center gap-1 text-xs">
-                          <CheckCircle size={10} className="text-green-600" />
-                          <span className="text-green-600">Match</span>
+                          {isVacancy ? (
+                            <>
+                              <UserX size={10} className="text-orange-600" />
+                              <span className="text-orange-600">Vacancy</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle size={10} className="text-green-600" />
+                              <span className="text-green-600">Match</span>
+                            </>
+                          )}
                         </div>
                       </div>
-                    ))}
-                    
-                    {assignmentPreview.employees.length > 3 && (
-                      <div className={`text-center py-2 ${textMuted} text-xs`}>
-                        ... and {assignmentPreview.employees.length - 10} more employees
-                      </div>
-                    )}
-                  </div>
-               
+                    );
+                  })}
+                  
+                  {assignmentPreview.employees.length > 10 && (
+                    <div className={`text-center py-2 ${textMuted} text-xs`}>
+                      ... and {assignmentPreview.employees.length - 10} more records
+                    </div>
+                  )}
+                </div>
               )}
-
-             
             </div>
           </div>
         </div>
       )}
 
-    
+      {/* Helpful message when not all fields are filled */}
+      {!shouldShowPreview && (
+        <div className={`p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-800`}>
+          <div className="flex items-start gap-3">
+            <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h4 className={`text-sm font-semibold ${textPrimary} mb-1`}>
+                Complete Required Fields
+              </h4>
+            
+              <div className="text-xs text-gray-600 dark:text-gray-400">
+                <span className="font-medium">Required:</span> Job Title, Business Function, Department, Job Function, Position Group, Job Purpose
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

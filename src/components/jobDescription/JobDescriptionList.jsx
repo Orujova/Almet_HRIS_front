@@ -1,3 +1,4 @@
+// components/jobDescription/JobDescriptionList.jsx - Enhanced with Edit Restrictions
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, 
@@ -19,7 +20,8 @@ import {
   X,
   Building,
   User,
-  Briefcase
+  Briefcase,
+  Lock // Added for disabled edit icon
 } from 'lucide-react';
 
 const JobDescriptionList = ({
@@ -119,6 +121,76 @@ const JobDescriptionList = ({
     }
   };
 
+  // BUSINESS RULE 1: Check if job can be edited (only DRAFT status)
+  const canEditJob = (job) => {
+    return job.status === 'DRAFT';
+  };
+
+  // BUSINESS RULE 2: Check if job can be submitted (no other submitted jobs for same employee)
+  const canSubmitJob = (job) => {
+    // First check if it's in draft status
+    if (job.status !== 'DRAFT') {
+      return false;
+    }
+
+    // Get employee ID from the job
+    const employeeId = job.assigned_employee?.id || 
+                      job.assigned_employee?.employee_id || 
+                      job.employee_info?.id || 
+                      job.employee_info?.employee_id;
+
+    if (!employeeId) {
+      // If no employee assigned (vacant position), allow submission
+      return true;
+    }
+
+    // Check if there are other submitted jobs for the same employee
+    const otherSubmittedJobs = filteredJobs.filter(otherJob => {
+      // Skip the current job
+      if (otherJob.id === job.id) return false;
+
+      // Check if it's submitted (not draft)
+      if (otherJob.status === 'DRAFT') return false;
+
+      // Get employee ID from other job
+      const otherEmployeeId = otherJob.assigned_employee?.id || 
+                              otherJob.assigned_employee?.employee_id || 
+                              otherJob.employee_info?.id || 
+                              otherJob.employee_info?.employee_id;
+
+      // Check if same employee
+      return String(employeeId) === String(otherEmployeeId);
+    });
+
+    return otherSubmittedJobs.length === 0;
+  };
+
+  // Get tooltip message for disabled actions
+  const getEditTooltip = (job) => {
+    if (!canEditJob(job)) {
+      return `Cannot edit job with status: ${job.status}. Only DRAFT jobs can be edited.`;
+    }
+    return "Edit Job";
+  };
+
+  const getSubmitTooltip = (job) => {
+    if (!canSubmitJob(job)) {
+      if (job.status !== 'DRAFT') {
+        return `Cannot submit job with status: ${job.status}.`;
+      }
+      
+      const employeeId = job.assigned_employee?.id || 
+                        job.assigned_employee?.employee_id || 
+                        job.employee_info?.id || 
+                        job.employee_info?.employee_id;
+      
+      if (employeeId) {
+        return `Cannot submit: Another job description for this employee is already submitted.`;
+      }
+    }
+    return "Submit for Approval";
+  };
+
   // Helper functions for employee info
   const getEmployeeInfo = (job) => {
     // Check employee_info from API response
@@ -184,7 +256,7 @@ const JobDescriptionList = ({
 
   const handleEditClick = (job, event) => {
     event.stopPropagation();
-    if (onJobEdit) {
+    if (canEditJob(job) && onJobEdit) {
       onJobEdit(job);
     }
   };
@@ -334,6 +406,8 @@ const JobDescriptionList = ({
               {filteredJobs.map(job => {
                 const employeeInfo = getEmployeeInfo(job);
                 const managerName = getManagerInfo(job);
+                const canEdit = canEditJob(job);
+                const canSubmit = canSubmitJob(job);
                 
                 return (
                   <div 
@@ -345,7 +419,7 @@ const JobDescriptionList = ({
                   >
                     
                     {/* Job Header */}
-                    <div className="flex items-start justify-between mb-4">
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="bg-almet-sapphire text-white p-3 rounded-xl group-hover:scale-110 
                           transition-transform duration-200 flex-shrink-0">
@@ -356,7 +430,7 @@ const JobDescriptionList = ({
                             transition-colors duration-200 line-clamp-1`}>
                             {job.job_title}
                           </h3>
-                          <div className={`text-xs ${textSecondary} space-y-1`}>
+                          <div className={`text-xs flex gap-12 ${textSecondary} space-y-1`}>
                             <div className="flex items-center gap-2">
                               <Building size={12} className={textMuted} />
                               <span>{job.business_function_name}</span>
@@ -415,26 +489,37 @@ const JobDescriptionList = ({
                           >
                             <Download size={14} />
                           </button>
+                          
+                          {/* ENHANCED: Submit button with business rule check */}
                           {job.status === 'DRAFT' && (
                             <button
-                              onClick={(e) => handleDirectSubmissionClick(job.id, e)}
-                              disabled={actionLoading}
-                              className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg 
-                                transition-colors duration-200 disabled:opacity-50"
-                              title="Submit for Approval"
+                              onClick={(e) => canSubmit ? handleDirectSubmissionClick(job.id, e) : e.stopPropagation()}
+                              disabled={actionLoading || !canSubmit}
+                              className={`p-2 rounded-lg transition-colors duration-200 ${
+                                canSubmit 
+                                  ? 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30' 
+                                  : 'text-gray-400 cursor-not-allowed opacity-50'
+                              } disabled:opacity-50`}
+                              title={getSubmitTooltip(job)}
                             >
-                              <Send size={14} />
+                              {canSubmit ? <Send size={14} /> : <Lock size={14} />}
                             </button>
                           )}
+                          
+                          {/* ENHANCED: Edit button with business rule check */}
                           <button
-                            onClick={(e) => handleEditClick(job, e)}
-                            disabled={actionLoading}
-                            className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
-                              transition-colors duration-200 disabled:opacity-50"
-                            title="Edit Job"
+                            onClick={(e) => canEdit ? handleEditClick(job, e) : e.stopPropagation()}
+                            disabled={actionLoading || !canEdit}
+                            className={`p-2 rounded-lg transition-colors duration-200 ${
+                              canEdit 
+                                ? 'text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30' 
+                                : 'text-gray-400 cursor-not-allowed opacity-50'
+                            } disabled:opacity-50`}
+                            title={getEditTooltip(job)}
                           >
-                            <Edit size={14} />
+                            {canEdit ? <Edit size={14} /> : <Lock size={14} />}
                           </button>
+                          
                           <button
                             onClick={(e) => handleDeleteClick(job.id, e)}
                             disabled={actionLoading}
@@ -468,7 +553,10 @@ const JobDescriptionList = ({
                             </div>
                           )}
                         </div>
-                        
+                      </div>
+                      
+                      {/* Additional Info */}
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className={`font-semibold ${textMuted} min-w-[70px]`}>Reports to:</span>
                           <div className="flex items-center gap-2">
@@ -477,55 +565,26 @@ const JobDescriptionList = ({
                           </div>
                         </div>
                       </div>
-                      
-                      {/* Additional Info */}
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${textMuted} min-w-[70px]`}>Created:</span>
-                          <span className={textPrimary}>
-                            {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'N/A'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold ${textMuted} min-w-[70px]`}>Version:</span>
-                          <span className={textPrimary}>v{job.version || 1}</span>
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Employee Validation Display */}
-                    {job.employee_validation && (
-                      <div className="mb-4 p-2 rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                        <div className={`flex items-center gap-2 text-xs ${
-                          job.employee_validation.is_valid 
-                            ? 'text-green-600' 
-                            : 'text-orange-600'
-                        }`}>
-                          {job.employee_validation.is_valid ? (
-                            <CheckCircle size={12} />
-                          ) : (
-                            <AlertCircle size={12} />
-                          )}
-                          <span className="font-medium">
-                            {job.employee_validation.message}
-                          </span>
+                 
+
+                    {/* Business Rule Warnings */}
+                    {!canEdit && job.status !== 'DRAFT' && (
+                      <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-yellow-800 dark:text-yellow-400">
+                          <Lock size={12} />
+                          <span>Editing disabled - Job is {job.status.toLowerCase()}</span>
                         </div>
                       </div>
                     )}
 
-                    {/* Job Purpose Preview */}
-                    {job.job_purpose && (
-                      <div className="pt-3 border-t border-gray-200 dark:border-almet-comet">
-                        <p className={`text-xs ${textMuted} mb-1 font-semibold uppercase tracking-wide`}>
-                          Job Purpose
-                        </p>
-                        <p className={`text-xs ${textSecondary} leading-relaxed line-clamp-2`}>
-                          {job.job_purpose.length > 150 
-                            ? `${job.job_purpose.substring(0, 150)}...` 
-                            : job.job_purpose
-                          }
-                        </p>
+                    {!canSubmit && job.status === 'DRAFT' && employeeInfo.hasEmployee && (
+                      <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-orange-800 dark:text-orange-400">
+                          <AlertCircle size={12} />
+                          <span>Submission blocked - Employee has another submitted job description</span>
+                        </div>
                       </div>
                     )}
                   </div>

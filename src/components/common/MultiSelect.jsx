@@ -1,4 +1,4 @@
-// components/jobDescription/MultiSelect.jsx - FINAL FIXED VERSION with proper ID-to-name conversion
+// components/jobDescription/MultiSelect.jsx - FIXED VERSION with no nested buttons
 
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, X, Search } from 'lucide-react';
@@ -32,7 +32,7 @@ const MultiSelect = ({
     return name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
-  // FIXED: Enhanced ID-to-Name conversion for display
+  // Enhanced ID-to-Name conversion for display
   const getSelectedNames = () => {
     if (safeSelected.length === 0) return [];
     
@@ -95,7 +95,7 @@ const MultiSelect = ({
     }
   };
 
-  // FIXED: Enhanced selection check - handles both names and IDs
+  // Enhanced selection check - handles both names and IDs
   const isItemSelected = (optionValue) => {
     return safeSelected.some(selectedValue => 
       selectedValue === optionValue ||
@@ -148,13 +148,22 @@ const MultiSelect = ({
                     className={`inline-flex items-center gap-1 px-2 py-0.5 bg-almet-sapphire text-white rounded text-xs max-w-[120px] truncate`}
                   >
                     {name}
-                    <button
+                    {/* FIXED: Changed from button to div with click handler */}
+                    <div
                       onClick={(e) => removeItem(safeSelected[index], e)}
-                      className="hover:bg-white/20 rounded-full p-0.5 flex-shrink-0"
+                      className="hover:bg-white/20 rounded-full p-0.5 flex-shrink-0 cursor-pointer"
                       title={`Remove ${name}`}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          removeItem(safeSelected[index], e);
+                        }
+                      }}
                     >
                       <X size={10} />
-                    </button>
+                    </div>
                   </span>
                 ))}
                 {safeSelected.length > 2 && (
@@ -180,7 +189,7 @@ const MultiSelect = ({
                 placeholder="Search options..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-8 pr-3 py-2 border ${borderColor} rounded ${bgCard} ${textPrimary} focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-sm`}
+                className={`w-full pl-8 pr-3 text-xs py-2 border ${borderColor} rounded ${bgCard} ${textPrimary} focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-sm`}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -193,7 +202,8 @@ const MultiSelect = ({
                 <span className={`text-xs ${textSecondary} font-medium`}>
                   {safeSelected.length} item{safeSelected.length !== 1 ? 's' : ''} selected
                 </span>
-                <button
+                {/* FIXED: Changed from button to div with click handler */}
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     // Clear all selections
@@ -203,10 +213,23 @@ const MultiSelect = ({
                       }
                     });
                   }}
-                  className={`text-xs ${textMuted} hover:${textPrimary} transition-colors`}
+                  className={`text-xs ${textMuted} hover:${textPrimary} transition-colors cursor-pointer`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      safeSelected.forEach(item => {
+                        if (onChange && fieldName) {
+                          onChange(fieldName, item);
+                        }
+                      });
+                    }
+                  }}
                 >
                   Clear all
-                </button>
+                </div>
               </div>
             </div>
           )}
@@ -234,7 +257,7 @@ const MultiSelect = ({
                       onChange={() => handleOptionClick(option)}
                       className="mr-3 text-almet-sapphire focus:ring-almet-sapphire rounded"
                     />
-                    <span className={`text-sm flex-1 ${isSelected ? 'font-medium' : ''} ${textPrimary}`}>
+                    <span className={`text-xs flex-1 ${isSelected ? 'font-medium' : ''} ${textPrimary}`}>
                       {optionName}
                     </span>
                     {isSelected && (
@@ -262,7 +285,8 @@ const MultiSelect = ({
           {safeOptions.length > 0 && (
             <div className={`px-3 py-2 border-t border-gray-200 dark:border-almet-comet ${darkMode ? 'bg-almet-comet/20' : 'bg-gray-50'}`}>
               <div className="flex justify-between text-xs">
-                <button
+                {/* FIXED: Changed from button to div with click handler */}
+                <div
                   onClick={(e) => {
                     e.stopPropagation();
                     // Select all filtered options
@@ -273,10 +297,24 @@ const MultiSelect = ({
                       }
                     });
                   }}
-                  className={`${textMuted} hover:${textPrimary} transition-colors`}
+                  className={`${textMuted} hover:${textPrimary} transition-colors cursor-pointer`}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      filteredOptions.forEach(option => {
+                        const optionValue = option.id || option.value || option.name;
+                        if (!isItemSelected(optionValue) && onChange && fieldName) {
+                          handleOptionClick(option);
+                        }
+                      });
+                    }
+                  }}
                 >
                   Select all{searchTerm ? ' filtered' : ''}
-                </button>
+                </div>
                 <span className={textMuted}>
                   {filteredOptions.length} option{filteredOptions.length !== 1 ? 's' : ''}
                 </span>

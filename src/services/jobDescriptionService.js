@@ -277,7 +277,8 @@ class JobDescriptionService {
         job_function: parseInt(criteria.job_function),
         position_group: parseInt(criteria.position_group),
         grading_level: criteria.grading_level?.trim() || null,
-        max_preview: criteria.max_preview || 50
+        max_preview: criteria.max_preview || 50,
+        include_vacancies: true
       };
 
       // Only include unit if it's provided and valid
