@@ -332,66 +332,8 @@ const FormStep4Documents = ({
         </div>
       )}
 
-      {/* Document Guidelines */}
-      <div className="bg-almet-sapphire/5 dark:bg-blue-900/20 border border-almet-sapphire/20 dark:border-blue-800 rounded-md p-3">
-        <div className="flex items-start">
-          <Info className="h-4 w-4 text-almet-sapphire mt-0.5 mr-2 flex-shrink-0" />
-          <div>
-            <h3 className={`text-xs font-medium text-almet-sapphire mb-2`}>
-              Document Guidelines
-            </h3>
-            <div className={`text-[10px] text-almet-sapphire space-y-1`}>
-              <p>• Document upload is optional but recommended for complete records</p>
-              <p>• Upload contracts, certificates, IDs, CVs, or relevant documents</p>
-              <p>• Supported: PDF, Word, Excel, Images, Text files (Max 10MB each)</p>
-              <p>• Files are securely stored and manageable after creation</p>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Document Type Descriptions */}
-      <div className={`${bgAccent} rounded-md p-3 border ${borderColor}`}>
-        <h4 className={`text-xs font-medium ${textPrimary} mb-2`}>Document Types</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px]">
-          <div className="space-y-1">
-            <div className="flex items-center">
-              <span className="w-16 text-almet-sapphire font-medium">CONTRACT:</span>
-              <span className={textMuted}>Employment contracts</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-16 text-purple-600 dark:text-purple-400 font-medium">ID:</span>
-              <span className={textMuted}>Identity documents</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-16 text-yellow-600 dark:text-yellow-400 font-medium">CERTIFICATE:</span>
-              <span className={textMuted}>Certifications, diplomas</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-16 text-green-600 dark:text-green-400 font-medium">CV:</span>
-              <span className={textMuted}>Resumes, CV</span>
-            </div>
-          </div>
-          <div className="space-y-1">
-            <div className="flex items-center">
-              <span className="w-16 text-indigo-600 dark:text-indigo-400 font-medium">PERFORMANCE:</span>
-              <span className={textMuted}>Reviews, evaluations</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-16 text-red-600 dark:text-red-400 font-medium">MEDICAL:</span>
-              <span className={textMuted}>Health records</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-16 text-teal-600 dark:text-teal-400 font-medium">TRAINING:</span>
-              <span className={textMuted}>Training certificates</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-16 text-gray-600 dark:text-gray-400 font-medium">OTHER:</span>
-              <span className={textMuted}>Other documents</span>
-            </div>
-          </div>
-        </div>
-      </div>
+ 
     </div>
   );
 };

@@ -220,6 +220,8 @@ export const referenceDataAPI = {
   getContractConfigDropdown: () => {
     return apiService.getContractConfigs().then(response => {
       const data = response.data.results || response.data || [];
+
+
       return {
         ...response,
         data: data.map(item => ({

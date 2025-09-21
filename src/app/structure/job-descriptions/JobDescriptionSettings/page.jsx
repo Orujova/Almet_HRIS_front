@@ -1,6 +1,7 @@
-// pages/job-descriptions/JobDescriptionSettings.jsx
+// pages/job-descriptions/JobDescriptionSettings.jsx - UPDATED: With Back Navigation
 'use client'
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation'; // ADDED: Import router for navigation
 import { 
   Plus, 
   Edit, 
@@ -16,14 +17,20 @@ import {
   EyeOff,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  ArrowLeft // ADDED: Back arrow icon
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
+// ADDED: Import common components
+import { ToastProvider, useToast } from '@/components/common/Toast';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
-const JobDescriptionSettings = () => {
+const JobDescriptionSettingsContent = () => {
   const { darkMode } = useTheme();
+  const router = useRouter(); // ADDED: Router instance
+  const { showSuccess, showError } = useToast(); // ADDED: Toast hooks
   
   // Theme-dependent classes using Almet colors
   const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
@@ -45,6 +52,16 @@ const JobDescriptionSettings = () => {
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
   const [editingItem, setEditingItem] = useState(null);
+
+  // ADDED: Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: 'default',
+    title: '',
+    message: '',
+    onConfirm: null,
+    loading: false
+  });
   
   // Data states
   const [accessMatrix, setAccessMatrix] = useState([]);
@@ -57,9 +74,6 @@ const JobDescriptionSettings = () => {
     description: '',
     is_active: true
   });
-
-  // Error and success states
-  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -75,7 +89,7 @@ const JobDescriptionSettings = () => {
       ]);
     } catch (error) {
       console.error('Error fetching data:', error);
-      showNotification('Error fetching data', 'error');
+      showError('Error fetching data'); // UPDATED: Use toast
     } finally {
       setLoading(false);
     }
@@ -108,9 +122,9 @@ const JobDescriptionSettings = () => {
     }
   };
 
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 5000);
+  // ADDED: Back navigation handler
+  const handleBack = () => {
+    router.push('/structure/job-descriptions');
   };
 
   const getCurrentData = () => {
@@ -171,7 +185,7 @@ const JobDescriptionSettings = () => {
     e.preventDefault();
     
     if (!formData.name?.trim()) {
-      showNotification('Name is required', 'error');
+      showError('Name is required'); // UPDATED: Use toast
       return;
     }
 
@@ -192,9 +206,8 @@ const JobDescriptionSettings = () => {
       
       closeModal();
       await fetchData();
-      showNotification(
-        `${getTabDisplayName()} ${modalMode === 'create' ? 'created' : 'updated'} successfully!`,
-        'success'
+      showSuccess( // UPDATED: Use toast
+        `${getTabDisplayName()} ${modalMode === 'create' ? 'created' : 'updated'} successfully!`
       );
     } catch (error) {
       console.error('Error saving item:', error);
@@ -216,7 +229,7 @@ const JobDescriptionSettings = () => {
         }
       }
       
-      showNotification(errorMessage, 'error');
+      showError(errorMessage); // UPDATED: Use toast
     } finally {
       setActionLoading(false);
     }
@@ -248,35 +261,47 @@ const JobDescriptionSettings = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(`Are you sure you want to delete this ${getTabDisplayName().toLowerCase()}?`)) {
-      return;
-    }
-
-    try {
-      setActionLoading(true);
-      
-      switch (activeTab) {
-        case 'access-matrix':
-          await jobDescriptionService.deleteAccessMatrix(id);
-          break;
-        case 'business-resources':
-          await jobDescriptionService.deleteBusinessResource(id);
-          break;
-        case 'company-benefits':
-          await jobDescriptionService.deleteCompanyBenefit(id);
-          break;
-        default:
-          throw new Error('Invalid tab');
+  // UPDATED: Use confirmation modal instead of browser confirm
+  const handleDelete = async (id, itemName) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'danger',
+      title: `Delete ${getTabDisplayName()}`,
+      message: `Are you sure you want to delete "${itemName}"? This action cannot be undone.`,
+      onConfirm: async () => {
+        try {
+          setConfirmModal(prev => ({ ...prev, loading: true }));
+          
+          switch (activeTab) {
+            case 'access-matrix':
+              await jobDescriptionService.deleteAccessMatrix(id);
+              break;
+            case 'business-resources':
+              await jobDescriptionService.deleteBusinessResource(id);
+              break;
+            case 'company-benefits':
+              await jobDescriptionService.deleteCompanyBenefit(id);
+              break;
+            default:
+              throw new Error('Invalid tab');
+          }
+          
+          await fetchData();
+          setConfirmModal(prev => ({ ...prev, isOpen: false, loading: false }));
+          showSuccess(`${getTabDisplayName()} deleted successfully!`); // UPDATED: Use toast
+        } catch (error) {
+          console.error('Error deleting item:', error);
+          setConfirmModal(prev => ({ ...prev, loading: false }));
+          showError(`Error deleting ${getTabDisplayName().toLowerCase()}`); // UPDATED: Use toast
+        }
       }
-      
-      await fetchData();
-      showNotification(`${getTabDisplayName()} deleted successfully!`, 'success');
-    } catch (error) {
-      console.error('Error deleting item:', error);
-      showNotification(`Error deleting ${getTabDisplayName().toLowerCase()}`, 'error');
-    } finally {
-      setActionLoading(false);
+    });
+  };
+
+  // ADDED: Close confirmation modal
+  const closeConfirmModal = () => {
+    if (!confirmModal.loading) {
+      setConfirmModal({ ...confirmModal, isOpen: false });
     }
   };
 
@@ -330,17 +355,31 @@ const JobDescriptionSettings = () => {
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} p-6`}>
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
+          {/* UPDATED: Header with Back Navigation */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className={`text-3xl font-bold ${textPrimary} flex items-center gap-3`}>
-                  <Settings size={32} />
-                  Job Description Settings
-                </h1>
-                <p className={`${textSecondary} mt-1`}>
-                  Manage access matrix, business resources, and company benefits
-                </p>
+              <div className="flex items-center gap-4">
+                {/* ADDED: Back Button */}
+                <button
+                  onClick={handleBack}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${borderColor} 
+                    ${textSecondary} hover:${textPrimary} hover:border-almet-sapphire/50 
+                    transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md`}
+                  title="Back to Job Descriptions"
+                >
+                  <ArrowLeft size={16} />
+                  <span className="hidden sm:inline">Back</span>
+                </button>
+                
+                <div>
+                  <h1 className={`text-2xl lg:text-3xl font-bold ${textPrimary} flex items-center gap-3`}>
+                    <Settings size={28} />
+                    Job Description Settings
+                  </h1>
+                  <p className={`${textSecondary} mt-1 text-sm lg:text-base`}>
+                    Manage access matrix, business resources, and company benefits
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -355,93 +394,74 @@ const JobDescriptionSettings = () => {
                       setActiveTab(tab.id);
                       setSearchTerm('');
                     }}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-colors text-sm ${
                       activeTab === tab.id
                         ? `${bgCard} text-almet-sapphire shadow-sm`
                         : `${textSecondary} hover:${textPrimary}`
                     }`}
                   >
                     <Icon size={16} />
-                    {tab.name}
+                    <span className="hidden sm:inline">{tab.name}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Notification */}
-          {notification && (
-            <div className={`mb-6 p-4 rounded-lg border flex items-center gap-3 ${
-              notification.type === 'success' 
-                ? 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300'
-                : 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300'
-            }`}>
-              {notification.type === 'success' ? (
-                <CheckCircle size={20} />
-              ) : (
-                <XCircle size={20} />
-              )}
-              <span>{notification.message}</span>
-              <button
-                onClick={() => setNotification(null)}
-                className="ml-auto hover:opacity-70"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )}
-
           {/* Search and Actions */}
-          <div className={`${bgCard} rounded-lg p-6 mb-6 border ${borderColor} shadow-sm`}>
+          <div className={`${bgCard} rounded-lg p-4 lg:p-6 mb-6 border ${borderColor} shadow-sm`}>
             <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="flex-1 relative">
-                <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={20} />
+                <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={18} />
                 <input
                   type="text"
                   placeholder={`Search ${getTabDisplayName().toLowerCase()}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                  className={`w-full pl-10 pr-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
+                    focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
                 />
               </div>
               <button
                 onClick={openCreateModal}
-                className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg 
+                  hover:bg-almet-astral transition-colors text-sm font-medium whitespace-nowrap"
               >
                 <Plus size={16} />
-                Create New {getTabDisplayName()}
+                <span className="hidden sm:inline">Create New</span>
+                <span className="sm:hidden">Create</span>
               </button>
             </div>
           </div>
 
           {/* Data Table */}
           <div className={`${bgCard} rounded-lg border ${borderColor} shadow-sm`}>
-            <div className="p-6">
+            <div className="p-4 lg:p-6">
               <div className="space-y-4">
                 {getFilteredData().map(item => (
                   <div key={item.id} className={`p-4 ${bgCardHover} rounded-lg border ${borderColor} hover:shadow-sm transition-all`}>
                     <div className="flex items-center justify-between">
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className={`text-lg font-semibold ${textPrimary}`}>{item.name}</h3>
+                          <h3 className={`text-base lg:text-lg font-semibold ${textPrimary} truncate`}>{item.name}</h3>
                           <div className="flex items-center gap-1">
                             {item.is_active ? (
                               <>
-                                <Eye size={14} className="text-green-600" />
+                                <Eye size={12} className="text-green-600" />
                                 <span className="text-xs text-green-600 font-medium">Active</span>
                               </>
                             ) : (
                               <>
-                                <EyeOff size={14} className="text-gray-400" />
+                                <EyeOff size={12} className="text-gray-400" />
                                 <span className="text-xs text-gray-400 font-medium">Inactive</span>
                               </>
                             )}
                           </div>
                         </div>
                         {item.description && (
-                          <p className={`text-sm ${textSecondary} mb-2`}>{item.description}</p>
+                          <p className={`text-sm ${textSecondary} mb-2 line-clamp-2`}>{item.description}</p>
                         )}
-                        <div className="flex items-center gap-4 text-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs">
                           <span className={`${textMuted}`}>
                             Created: {new Date(item.created_at).toLocaleDateString()}
                           </span>
@@ -450,19 +470,21 @@ const JobDescriptionSettings = () => {
                           </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 ml-4">
                         <button
                           onClick={() => openEditModal(item)}
                           disabled={actionLoading}
-                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors disabled:opacity-50"
+                          className="p-2 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded 
+                            transition-colors disabled:opacity-50"
                           title="Edit"
                         >
                           <Edit size={16} />
                         </button>
                         <button
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDelete(item.id, item.name)}
                           disabled={actionLoading}
-                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
+                          className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded 
+                            transition-colors disabled:opacity-50"
                           title="Delete"
                         >
                           <Trash2 size={16} />
@@ -492,7 +514,7 @@ const JobDescriptionSettings = () => {
           {/* Create/Edit Modal */}
           {showModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-              <div className={`${bgCard} rounded-lg w-full max-w-md border ${borderColor}`}>
+              <div className={`${bgCard} rounded-lg w-full max-w-md border ${borderColor} shadow-xl`}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className={`text-lg font-bold ${textPrimary}`}>
@@ -515,7 +537,8 @@ const JobDescriptionSettings = () => {
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
+                          focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
                         placeholder={`Enter ${getTabDisplayName().toLowerCase()} name`}
                         required
                       />
@@ -529,7 +552,8 @@ const JobDescriptionSettings = () => {
                         value={formData.description}
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         rows="3"
-                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} focus:outline-none focus:ring-2 focus:ring-almet-sapphire`}
+                        className={`w-full px-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
+                          focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
                         placeholder={`Enter ${getTabDisplayName().toLowerCase()} description`}
                       />
                     </div>
@@ -552,14 +576,15 @@ const JobDescriptionSettings = () => {
                         type="button"
                         onClick={closeModal}
                         disabled={actionLoading}
-                        className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors disabled:opacity-50`}
+                        className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors disabled:opacity-50 text-sm`}
                       >
                         Cancel
                       </button>
                       <button
                         type="submit"
                         disabled={actionLoading}
-                        className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
+                          transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
                       >
                         {actionLoading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
                         <Save size={16} />
@@ -571,9 +596,30 @@ const JobDescriptionSettings = () => {
               </div>
             </div>
           )}
+
+          {/* ADDED: Confirmation Modal */}
+          <ConfirmationModal
+            isOpen={confirmModal.isOpen}
+            onClose={closeConfirmModal}
+            onConfirm={confirmModal.onConfirm}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            type={confirmModal.type}
+            loading={confirmModal.loading}
+            darkMode={darkMode}
+          />
         </div>
       </div>
     </DashboardLayout>
+  );
+};
+
+// ADDED: Wrap with ToastProvider
+const JobDescriptionSettings = () => {
+  return (
+    <ToastProvider>
+      <JobDescriptionSettingsContent />
+    </ToastProvider>
   );
 };
 

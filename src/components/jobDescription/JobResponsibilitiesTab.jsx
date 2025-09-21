@@ -1,6 +1,7 @@
+// components/jobDescription/JobResponsibilitiesTab.jsx - UPDATED: Using SearchableDropdown
 import React from 'react';
 import { Plus, X } from 'lucide-react';
-import SearchableSelect from './SearchableSelect';
+import SearchableDropdown from '../common/SearchableDropdown'; // UPDATED: Import from common
 import MultiSelect from '../common/MultiSelect';
 
 const JobResponsibilitiesTab = ({
@@ -59,7 +60,7 @@ const JobResponsibilitiesTab = ({
     }));
   };
 
-  // Enhanced Competency Selection Component
+  // UPDATED: Enhanced Competency Selection Component using SearchableDropdown
   const CompetencySelection = ({ 
     type, 
     groupOptions, 
@@ -71,14 +72,21 @@ const JobResponsibilitiesTab = ({
     groupLabel, 
     itemLabel 
   }) => {
+    // UPDATED: Transform group options for SearchableDropdown format
+    const transformedGroupOptions = groupOptions?.map(group => ({
+      value: group.id,
+      label: group.name || group.display_name || `Group ${group.id}`
+    })) || [];
+
     return (
       <div className="space-y-4">
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             {groupLabel}
           </label>
-          <SearchableSelect
-            options={groupOptions}
+          {/* UPDATED: Using SearchableDropdown instead of SearchableSelect */}
+          <SearchableDropdown
+            options={transformedGroupOptions}
             value={selectedGroup}
             onChange={(value) => onGroupChange(value)}
             placeholder={`Select ${groupLabel}`}
@@ -163,7 +171,7 @@ const JobResponsibilitiesTab = ({
         </div>
       ))}
 
-      {/* Enhanced Competency Selection */}
+      {/* UPDATED: Enhanced Competency Selection using SearchableDropdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <CompetencySelection
           type="skills"

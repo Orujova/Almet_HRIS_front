@@ -1,6 +1,9 @@
-// src/components/headcount/ConvertToEmployeeModal.jsx
+// src/components/headcount/ConvertToEmployeeModal.jsx - Enhanced with Toast and Dropdown Z-Index Fix
 import { useState, useEffect } from 'react';
-import { X, UserPlus, Upload, AlertCircle, Calendar, User } from 'lucide-react';
+import { X, UserPlus, Upload, AlertCircle, Calendar, User, FileText } from 'lucide-react';
+import SearchableDropdown from '../common/SearchableDropdown';
+import { referenceDataAPI } from '@/store/api/referenceDataAPI';
+import { useToast } from "../common/Toast";
 
 const ConvertToEmployeeModal = ({ 
   isOpen, 
@@ -9,6 +12,8 @@ const ConvertToEmployeeModal = ({
   position,
   darkMode = false 
 }) => {
+  const { showError, showWarning } = useToast();
+
   // Form state
   const [formData, setFormData] = useState({
     first_name: '',
@@ -35,25 +40,19 @@ const ConvertToEmployeeModal = ({
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Reference data states
+  const [contractDurations, setContractDurations] = useState([]);
+  const [loadingContractDurations, setLoadingContractDurations] = useState(false);
 
   // Theme styles
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-600";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
+  const textSecondary = darkMode ? "text-gray-400" : "text-gray-600";
+  const textMuted = darkMode ? "text-gray-500" : "text-gray-500";
   const bgModal = darkMode ? "bg-gray-800" : "bg-white";
   const bgInput = darkMode ? "bg-gray-700" : "bg-white";
+  const bgSection = darkMode ? "bg-gray-700/30" : "bg-gray-50";
   const borderColor = darkMode ? "border-gray-600" : "border-gray-300";
-
-  // Contract duration options
-  const contractDurations = [
-    { value: 'PERMANENT', label: 'Permanent' },
-    { value: '1_MONTH', label: '1 Month' },
-    { value: '3_MONTHS', label: '3 Months' },
-    { value: '6_MONTHS', label: '6 Months' },
-    { value: '1_YEAR', label: '1 Year' },
-    { value: '2_YEARS', label: '2 Years' },
-    { value: '3_YEARS', label: '3 Years' }
-  ];
 
   // Gender options
   const genderOptions = [
@@ -73,10 +72,37 @@ const ConvertToEmployeeModal = ({
     { value: 'OTHER', label: 'Other' }
   ];
 
+  // Fetch contract durations from API
+  const fetchContractDurations = async () => {
+    setLoadingContractDurations(true);
+    try {
+      const response = await referenceDataAPI.getContractConfigDropdown();
+      setContractDurations(response.data || []);
+      
+      if (response.data && response.data.length > 0 && !formData.contract_duration) {
+        const permanentContract = response.data.find(contract => 
+          contract.contract_type === 'PERMANENT' || 
+          contract.label.toLowerCase().includes('permanent')
+        );
+        
+        if (permanentContract) {
+          setFormData(prev => ({ 
+            ...prev, 
+            contract_duration: permanentContract.value 
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch contract durations:', error);
+      showError('Failed to load contract duration options');
+    } finally {
+      setLoadingContractDurations(false);
+    }
+  };
+
   // Initialize form data
   useEffect(() => {
     if (isOpen) {
-      // Set default dates
       const today = new Date().toISOString().split('T')[0];
       setFormData(prev => ({
         ...prev,
@@ -85,24 +111,43 @@ const ConvertToEmployeeModal = ({
       }));
       setErrors({});
       setFiles({ document: null, profile_photo: null });
+      fetchContractDurations();
     }
   }, [isOpen]);
 
   // Handle input changes
   const handleInputChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error for this field
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: null }));
     }
   };
 
-  // Handle file changes
+  // Handle file changes with validation
   const handleFileChange = (field, file) => {
+    if (!file) {
+      setFiles(prev => ({ ...prev, [field]: null }));
+      return;
+    }
+
+    // File size validation (10MB limit)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showWarning('File size must be less than 10MB');
+      return;
+    }
+
+    // File type validation for profile photo
+    if (field === 'profile_photo') {
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+      if (!allowedTypes.includes(file.type)) {
+        showWarning('Profile photo must be a JPEG, PNG, or GIF image');
+        return;
+      }
+    }
+
     setFiles(prev => ({ ...prev, [field]: file }));
     
-    // If document is uploaded, require document type and name
     if (field === 'document' && file) {
       if (!formData.document_type) {
         setFormData(prev => ({ ...prev, document_type: 'CONTRACT' }));
@@ -128,7 +173,7 @@ const ConvertToEmployeeModal = ({
       newErrors.email = 'Please enter a valid email address';
     }
 
-    // Field length validations
+    // Length validations
     if (formData.first_name && formData.first_name.length > 150) {
       newErrors.first_name = 'First name must be 150 characters or less';
     }
@@ -158,7 +203,17 @@ const ConvertToEmployeeModal = ({
       }
     }
 
-    // Document validation
+    // Date of birth validation
+    if (formData.date_of_birth) {
+      const birthDate = new Date(formData.date_of_birth);
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      if (age < 16 || age > 100) {
+        newErrors.date_of_birth = 'Please enter a valid date of birth (age must be between 16-100)';
+      }
+    }
+
+    // Document validations
     if (files.document && !formData.document_type) {
       newErrors.document_type = 'Document type is required when uploading a document';
     }
@@ -175,6 +230,7 @@ const ConvertToEmployeeModal = ({
     e.preventDefault();
     
     if (!validateForm()) {
+      showWarning('Please correct the form errors before submitting');
       return;
     }
 
@@ -185,7 +241,6 @@ const ConvertToEmployeeModal = ({
     } catch (error) {
       console.error('Form submission error:', error);
       
-      // Handle API errors
       if (error.response?.data) {
         const apiErrors = {};
         Object.keys(error.response.data).forEach(key => {
@@ -196,6 +251,9 @@ const ConvertToEmployeeModal = ({
           }
         });
         setErrors(apiErrors);
+        showError('Please correct the form errors and try again');
+      } else {
+        showError(error.message || 'Failed to convert position to employee');
       }
     } finally {
       setIsSubmitting(false);
@@ -205,45 +263,45 @@ const ConvertToEmployeeModal = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className={`${bgModal} rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden`}>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-visible">
+      <div className={`${bgModal} rounded-xl shadow-2xl w-full max-w-4xl max-h-[95vh] border ${borderColor} relative z-[60] overflow-visible`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center">
-            <div className="flex items-center justify-center w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-lg mr-3">
-              <UserPlus className="w-4 h-4 text-green-600" />
+        <div className={`p-4 border-b ${borderColor} bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl mr-4">
+                <UserPlus className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className={`text-lg font-semibold ${textPrimary}`}>
+                  Convert to Employee
+                </h2>
+                <p className={`text-xs ${textSecondary} mt-1`}>
+                  Position: {position?.job_title} • {position?.position_id}
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className={`text-xl font-semibold ${textPrimary}`}>
-                Convert to Employee
-              </h2>
-              <p className={`text-sm ${textSecondary}`}>
-                Position: {position?.job_title} ({position?.position_id})
-              </p>
-            </div>
+            <button
+              onClick={onClose}
+              className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors ${textMuted}`}
+            >
+              <X size={20} />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className={`p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ${textMuted}`}
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[calc(90vh-140px)]">
-          <div className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="overflow-y-auto max-h-[75vh] overflow-visible">
+          <div className="p-6 space-y-8 overflow-visible">
+            
             {/* Basic Information Section */}
             <div>
-              <h3 className={`text-lg font-medium ${textPrimary} mb-4 flex items-center`}>
-                <User className="w-5 h-5 mr-2" />
-                Basic Information
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
                 {/* First Name */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    First Name *
+                    First Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -251,11 +309,15 @@ const ConvertToEmployeeModal = ({
                     onChange={(e) => handleInputChange('first_name', e.target.value)}
                     placeholder="Enter first name"
                     maxLength={150}
-                    className={`w-full p-3 border ${errors.first_name ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.first_name 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                     required
                   />
                   {errors.first_name && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.first_name}
                     </p>
@@ -265,7 +327,7 @@ const ConvertToEmployeeModal = ({
                 {/* Last Name */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Last Name *
+                    Last Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -273,11 +335,15 @@ const ConvertToEmployeeModal = ({
                     onChange={(e) => handleInputChange('last_name', e.target.value)}
                     placeholder="Enter last name"
                     maxLength={150}
-                    className={`w-full p-3 border ${errors.last_name ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.last_name 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                     required
                   />
                   {errors.last_name && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.last_name}
                     </p>
@@ -287,18 +353,22 @@ const ConvertToEmployeeModal = ({
                 {/* Email */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Email *
+                    Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                     placeholder="Enter email address"
-                    className={`w-full p-3 border ${errors.email ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.email 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                     required
                   />
                   {errors.email && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.email}
                     </p>
@@ -316,10 +386,10 @@ const ConvertToEmployeeModal = ({
                     onChange={(e) => handleInputChange('father_name', e.target.value)}
                     placeholder="Enter father's name"
                     maxLength={200}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`}
                   />
                   {errors.father_name && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.father_name}
                     </p>
@@ -335,27 +405,35 @@ const ConvertToEmployeeModal = ({
                     type="date"
                     value={formData.date_of_birth}
                     onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.date_of_birth 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                   />
+                  {errors.date_of_birth && (
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
+                      <AlertCircle size={14} className="mr-1" />
+                      {errors.date_of_birth}
+                    </p>
+                  )}
                 </div>
 
                 {/* Gender */}
-                <div>
+                <div className="relative z-[100]">
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
                     Gender
                   </label>
-                  <select
+                  <SearchableDropdown
+                    options={genderOptions}
                     value={formData.gender}
-                    onChange={(e) => handleInputChange('gender', e.target.value)}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
-                  >
-                    <option value="">Select Gender</option>
-                    {genderOptions.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(value) => handleInputChange('gender', value)}
+                    placeholder="Select Gender"
+                    searchPlaceholder="Search gender..."
+                    darkMode={darkMode}
+                    dropdownClassName="z-[9999] fixed"
+                    portal={true}
+                  />
                 </div>
 
                 {/* Phone */}
@@ -369,14 +447,32 @@ const ConvertToEmployeeModal = ({
                     onChange={(e) => handleInputChange('phone', e.target.value)}
                     placeholder="Enter phone number"
                     maxLength={20}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.phone 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                   />
                   {errors.phone && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.phone}
                     </p>
                   )}
+                </div>
+
+                {/* Emergency Contact */}
+                <div>
+                  <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+                    Emergency Contact
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.emergency_contact}
+                    onChange={(e) => handleInputChange('emergency_contact', e.target.value)}
+                    placeholder="Enter emergency contact information"
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`}
+                  />
                 </div>
 
                 {/* Address */}
@@ -389,21 +485,7 @@ const ConvertToEmployeeModal = ({
                     value={formData.address}
                     onChange={(e) => handleInputChange('address', e.target.value)}
                     placeholder="Enter address"
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
-                  />
-                </div>
-
-                {/* Emergency Contact */}
-                <div className="md:col-span-2">
-                  <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Emergency Contact
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.emergency_contact}
-                    onChange={(e) => handleInputChange('emergency_contact', e.target.value)}
-                    placeholder="Enter emergency contact information"
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`}
                   />
                 </div>
               </div>
@@ -411,25 +493,26 @@ const ConvertToEmployeeModal = ({
 
             {/* Employment Details Section */}
             <div>
-              <h3 className={`text-lg font-medium ${textPrimary} mb-4 flex items-center`}>
-                <Calendar className="w-5 h-5 mr-2" />
-                Employment Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
                 {/* Start Date */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Start Date *
+                    Start Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
                     value={formData.start_date}
                     onChange={(e) => handleInputChange('start_date', e.target.value)}
-                    className={`w-full p-3 border ${errors.start_date ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.start_date 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                     required
                   />
                   {errors.start_date && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.start_date}
                     </p>
@@ -437,21 +520,27 @@ const ConvertToEmployeeModal = ({
                 </div>
 
                 {/* Contract Duration */}
-                <div>
+                <div className="relative z-[100]">
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Contract Duration
+                    Contract Duration <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={formData.contract_duration}
-                    onChange={(e) => handleInputChange('contract_duration', e.target.value)}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
-                  >
-                    {contractDurations.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  {loadingContractDurations ? (
+                    <div className={`w-full p-3 border rounded-xl ${bgInput} ${textPrimary} flex items-center justify-center`}>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-almet-sapphire border-t-transparent mr-2"></div>
+                      Loading...
+                    </div>
+                  ) : (
+                    <SearchableDropdown
+                      options={contractDurations}
+                      value={formData.contract_duration}
+                      onChange={(value) => handleInputChange('contract_duration', value)}
+                      placeholder="Select Contract Duration"
+                      searchPlaceholder="Search contract types..."
+                      darkMode={darkMode}
+                      dropdownClassName="z-[9999] fixed"
+                      portal={true}
+                    />
+                  )}
                 </div>
 
                 {/* Contract Start Date */}
@@ -463,10 +552,14 @@ const ConvertToEmployeeModal = ({
                     type="date"
                     value={formData.contract_start_date}
                     onChange={(e) => handleInputChange('contract_start_date', e.target.value)}
-                    className={`w-full p-3 border ${errors.contract_start_date ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.contract_start_date 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                   />
                   {errors.contract_start_date && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.contract_start_date}
                     </p>
@@ -482,10 +575,14 @@ const ConvertToEmployeeModal = ({
                     type="date"
                     value={formData.end_date}
                     onChange={(e) => handleInputChange('end_date', e.target.value)}
-                    className={`w-full p-3 border ${errors.end_date ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                      errors.end_date 
+                        ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                        : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                    }`}
                   />
                   {errors.end_date && (
-                    <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <p className="mt-2 text-xs text-red-600 flex items-center">
                       <AlertCircle size={14} className="mr-1" />
                       {errors.end_date}
                     </p>
@@ -496,11 +593,8 @@ const ConvertToEmployeeModal = ({
 
             {/* Documents Section */}
             <div>
-              <h3 className={`text-lg font-medium ${textPrimary} mb-4 flex items-center`}>
-                <Upload className="w-5 h-5 mr-2" />
-                Documents
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
                 {/* Profile Photo */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
@@ -508,18 +602,21 @@ const ConvertToEmployeeModal = ({
                   </label>
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/gif"
                     onChange={(e) => handleFileChange('profile_photo', e.target.files[0])}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-almet-sapphire file:text-white hover:file:bg-almet-astral`}
                   />
                   {files.profile_photo && (
-                    <p className={`mt-1 text-sm ${textSecondary}`}>
+                    <p className={`mt-2 text-xs ${textSecondary}`}>
                       Selected: {files.profile_photo.name}
                     </p>
                   )}
+                  <p className={`mt-1 text-xs ${textMuted}`}>
+                    Max 10MB. Supported: JPEG, PNG, GIF
+                  </p>
                 </div>
 
-                {/* Document */}
+                {/* Employee Document */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
                     Employee Document
@@ -527,36 +624,36 @@ const ConvertToEmployeeModal = ({
                   <input
                     type="file"
                     onChange={(e) => handleFileChange('document', e.target.files[0])}
-                    className={`w-full p-3 border ${borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                    className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-almet-sapphire file:text-white hover:file:bg-almet-astral`}
                   />
                   {files.document && (
-                    <p className={`mt-1 text-sm ${textSecondary}`}>
+                    <p className={`mt-2 text-xs ${textSecondary}`}>
                       Selected: {files.document.name}
                     </p>
                   )}
+                  <p className={`mt-1 text-xs ${textMuted}`}>
+                    Max 10MB. Any file type supported
+                  </p>
                 </div>
 
                 {/* Document Type - Show only if document is uploaded */}
                 {files.document && (
-                  <div>
+                  <div className="relative z-[100]">
                     <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                      Document Type *
+                      Document Type <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <SearchableDropdown
+                      options={documentTypes}
                       value={formData.document_type}
-                      onChange={(e) => handleInputChange('document_type', e.target.value)}
-                      className={`w-full p-3 border ${errors.document_type ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
-                      required
-                    >
-                      <option value="">Select Document Type</option>
-                      {documentTypes.map(type => (
-                        <option key={type.value} value={type.value}>
-                          {type.label}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => handleInputChange('document_type', value)}
+                      placeholder="Select Document Type"
+                      searchPlaceholder="Search document types..."
+                      darkMode={darkMode}
+                      dropdownClassName="z-[9999] fixed"
+                      portal={true}
+                    />
                     {errors.document_type && (
-                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                      <p className="mt-2 text-xs text-red-600 flex items-center">
                         <AlertCircle size={14} className="mr-1" />
                         {errors.document_type}
                       </p>
@@ -568,7 +665,7 @@ const ConvertToEmployeeModal = ({
                 {files.document && (
                   <div>
                     <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                      Document Name *
+                      Document Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -576,11 +673,15 @@ const ConvertToEmployeeModal = ({
                       onChange={(e) => handleInputChange('document_name', e.target.value)}
                       placeholder="Enter document name"
                       maxLength={255}
-                      className={`w-full p-3 border ${errors.document_name ? 'border-red-500' : borderColor} rounded-lg ${bgInput} ${textPrimary} focus:ring-2 focus:ring-green-500 focus:border-transparent`}
+                      className={`w-full py-2 px-3 border text-xs outline-0 rounded-xl ${bgInput} ${textPrimary} transition-all ${
+                        errors.document_name 
+                          ? 'border-red-400 focus:ring-red-200 focus:border-red-400' 
+                          : `${borderColor} focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire`
+                      }`}
                       required
                     />
                     {errors.document_name && (
-                      <p className="mt-1 text-sm text-red-600 flex items-center">
+                      <p className="mt-2 text-xs text-red-600 flex items-center">
                         <AlertCircle size={14} className="mr-1" />
                         {errors.document_name}
                       </p>
@@ -592,11 +693,11 @@ const ConvertToEmployeeModal = ({
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-700">
+          <div className={`flex items-center justify-end space-x-3 p-4 border-t ${borderColor} bg-gray-50 dark:bg-gray-800/50`}>
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 text-sm font-medium border border-gray-300 dark:border-gray-600 rounded-lg ${textSecondary} hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors`}
+              className={`px-5 py-2 text-xs font-medium border rounded-xl transition-all ${borderColor} ${textSecondary} hover:bg-gray-50 dark:hover:bg-gray-700`}
               disabled={isSubmitting}
             >
               Cancel
@@ -604,7 +705,7 @@ const ConvertToEmployeeModal = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex items-center px-4 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-5 py-2 text-xs font-medium bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-xl hover:from-almet-astral hover:to-almet-steel-blue focus:ring-2 focus:ring-almet-sapphire/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
               {isSubmitting ? (
                 <>

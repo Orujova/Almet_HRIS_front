@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountHeader.jsx - FIXED VERSION
+// src/components/headcount/HeadcountHeader.jsx - Smaller Font Sizes
 import { useState } from "react";
 import { 
   Plus, 
@@ -12,14 +12,9 @@ import {
   Briefcase,
   Archive,
   Building2,
-
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-/**
- * Fixed workforce management header
- * Only shows employee-specific buttons when activeTab === 'employees'
- */
 const HeadcountHeader = ({ 
   // Tab props
   activeTab = 'employees',
@@ -30,7 +25,7 @@ const HeadcountHeader = ({
   vacantPositionsStats = {},
   archiveStats = {},
   
-  // Employee-specific props (only passed when activeTab === 'employees')
+  // Employee-specific props
   hasActiveFilters = false,
   onToggleAdvancedFilter,
   
@@ -46,7 +41,7 @@ const HeadcountHeader = ({
   onBulkImport,
   onBulkImportComplete,
   
-  // Sorting (for employees tab)
+  // Sorting
   currentSorting = [],
   onToggleAdvancedSorting,
   hasActiveSorting = false,
@@ -63,34 +58,44 @@ const HeadcountHeader = ({
   
   // Theme classes
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-600";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
+  const textSecondary = darkMode ? "text-gray-400" : "text-gray-600";
+  const textMuted = darkMode ? "text-gray-500" : "text-gray-500";
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  const bgSection = darkMode ? "bg-gray-700/30" : "bg-gray-50";
+  const borderColor = darkMode ? "border-gray-600" : "border-gray-300";
   const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
-  // Tab configurations with simplified design
+  // Tab configurations with clean design
   const tabs = [
     {
       id: 'employees',
       label: 'Employees',
       icon: Users,
       count: statistics.total_employees || 0,
-      color: 'blue'
+      color: 'almet-sapphire',
+      bgColor: 'bg-almet-sapphire/10',
+      borderColor: 'border-almet-sapphire/30',
+      textColor: 'text-almet-sapphire'
     },
     {
       id: 'vacant',
       label: 'Vacant',
       icon: Briefcase,
       count: vacantPositionsStats.total_vacant_positions || 0,
-      color: 'orange'
+      color: 'orange-600',
+      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      borderColor: 'border-orange-200 dark:border-orange-700',
+      textColor: 'text-orange-700 dark:text-orange-300'
     },
     {
       id: 'archive',
       label: 'Archive',
       icon: Archive,
       count: archiveStats.total_archived || 0,
-      color: 'gray'
+      color: 'gray-600',
+      bgColor: 'bg-gray-50 dark:bg-gray-700/20',
+      borderColor: 'border-gray-200 dark:border-gray-600',
+      textColor: 'text-gray-700 dark:text-gray-300'
     }
   ];
 
@@ -102,12 +107,12 @@ const HeadcountHeader = ({
           label: 'Add Employee',
           icon: Plus,
           onClick: () => router.push('/structure/add-employee'),
-          className: 'bg-almet-sapphire text-white hover:bg-almet-astral'
+          className: 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white hover:from-almet-astral hover:to-almet-steel-blue shadow-lg'
         };
       case 'vacant':
         return null;
       case 'archive':
-        return null; // No primary action for archive
+        return null;
       default:
         return null;
     }
@@ -131,20 +136,23 @@ const HeadcountHeader = ({
   const showEmployeeControls = activeTab === 'employees';
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Main Header */}
-      <div className={`${bgCard} rounded-lg border ${borderColor} shadow-sm`}>
-        <div className="p-4">
+      <div className={`${bgCard} rounded-xl border ${borderColor} shadow-sm `}>
+        <div className="p-5">
           {/* Top Row: Title + Main Actions */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center">
-              <div className="flex items-center justify-center w-8 h-8 bg-almet-sapphire/10 rounded-lg mr-3">
-                <Building2 className="w-4 h-4 text-almet-sapphire" />
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl mr-3 shadow-lg">
+                <Building2 className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className={`text-lg font-semibold ${textPrimary}`}>
                   Workforce Management
                 </h1>
+                <p className={`text-xs ${textSecondary} mt-0.5`}>
+                  Manage employees, vacant positions, and archived records
+                </p>
               </div>
             </div>
 
@@ -156,42 +164,42 @@ const HeadcountHeader = ({
                   <button
                     onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
                     disabled={isExporting}
-                    className={`flex items-center px-4 py-2 text-sm font-medium border ${borderColor} rounded-lg transition-all ${
+                    className={`flex items-center px-3 py-2 text-xs font-medium border rounded-lg transition-all ${
                       isExporting 
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600 text-green-700 dark:text-green-300 cursor-not-allowed'
-                        : `${textSecondary} ${hoverBg} hover:border-green-300 dark:hover:border-green-600 hover:text-green-700 dark:hover:text-green-300 hover:shadow-md`
-                    } ${isExportDropdownOpen ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-600' : ''}`}
+                        : `${borderColor} ${textSecondary} ${hoverBg} hover:border-almet-sapphire/50 hover:text-almet-sapphire`
+                    } ${isExportDropdownOpen ? 'bg-almet-sapphire/5 border-almet-sapphire/30 text-almet-sapphire' : ''}`}
                     title="Export employee data"
                   >
                     {isExporting ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-500 border-t-transparent mr-2"></div>
+                        <div className="animate-spin rounded-full h-3 w-3 border border-green-500 border-t-transparent mr-2"></div>
                         Exporting...
                       </>
                     ) : (
                       <>
-                        <Download size={16} className="mr-2" />
+                        <Download size={14} className="mr-2" />
                         Export
-                        <ChevronDown size={14} className={`ml-2 transition-transform ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
+                        <ChevronDown size={12} className={`ml-1 transition-transform ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
                       </>
                     )}
                   </button>
 
                   {/* Enhanced Export Menu */}
                   {isExportDropdownOpen && !isExporting && (
-                    <div className="absolute right-0 top-full mt-1 w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
-                      <div className="py-2">
-                        <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                          Quick Export
+                    <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
+                      <div className="py-1">
+                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide border-b border-gray-100 dark:border-gray-700">
+                          Quick Export Options
                         </div>
                         <button
                           onClick={() => handleQuickExport('all', 'excel')}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           <div className="flex items-start">
-                            <Download size={16} className="mt-0.5 mr-3 text-green-600 flex-shrink-0" />
+                            <Download size={14} className="mt-0.5 mr-2 text-green-600 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium ${textPrimary}`}>
+                              <p className={`text-xs font-medium ${textPrimary}`}>
                                 All Employees to Excel
                               </p>
                               <p className={`text-xs ${textMuted} mt-0.5`}>
@@ -205,12 +213,12 @@ const HeadcountHeader = ({
                             <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                             <button
                               onClick={() => handleQuickExport('filtered', 'excel')}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors bg-blue-50 dark:bg-blue-900/20"
+                              className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors bg-almet-sapphire/5"
                             >
                               <div className="flex items-start">
-                                <Download size={16} className="mt-0.5 mr-3 text-green-600 flex-shrink-0" />
+                                <Download size={14} className="mt-0.5 mr-2 text-green-600 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-medium ${textPrimary}`}>
+                                  <p className={`text-xs font-medium ${textPrimary}`}>
                                     Filtered Results to Excel
                                   </p>
                                   <p className={`text-xs ${textMuted} mt-0.5`}>
@@ -226,12 +234,12 @@ const HeadcountHeader = ({
                             <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
                             <button
                               onClick={() => handleQuickExport('selected', 'excel')}
-                              className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors bg-blue-50 dark:bg-blue-900/20"
+                              className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors bg-almet-sapphire/5"
                             >
                               <div className="flex items-start">
-                                <Download size={16} className="mt-0.5 mr-3 text-green-600 flex-shrink-0" />
+                                <Download size={14} className="mt-0.5 mr-2 text-green-600 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-medium ${textPrimary}`}>
+                                  <p className={`text-xs font-medium ${textPrimary}`}>
                                     Selected Employees to Excel
                                   </p>
                                   <p className={`text-xs ${textMuted} mt-0.5`}>
@@ -250,12 +258,12 @@ const HeadcountHeader = ({
                               onToggleExportModal();
                             }
                           }}
-                          className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          className="w-full px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           <div className="flex items-start">
-                            <Download size={16} className="mt-0.5 mr-3 text-purple-600 flex-shrink-0" />
+                            <Download size={14} className="mt-0.5 mr-2 text-purple-600 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className={`text-sm font-medium ${textPrimary}`}>
+                              <p className={`text-xs font-medium ${textPrimary}`}>
                                 Advanced Export Options...
                               </p>
                               <p className={`text-xs ${textMuted} mt-0.5`}>
@@ -274,10 +282,10 @@ const HeadcountHeader = ({
               {showEmployeeControls && (
                 <button
                   onClick={onBulkImport}
-                  className={`flex items-center px-3 py-2 text-sm border ${borderColor} rounded-lg transition-colors ${textSecondary} ${hoverBg}`}
+                  className={`flex items-center px-3 py-2 text-xs border rounded-lg transition-all ${borderColor} ${textSecondary} ${hoverBg} hover:border-almet-sapphire/50 hover:text-almet-sapphire`}
                   title="Import employees from Excel/CSV"
                 >
-                  <Upload size={16} className="mr-2" />
+                  <Upload size={14} className="mr-2" />
                   Import
                 </button>
               )}
@@ -286,9 +294,9 @@ const HeadcountHeader = ({
               {primaryAction && (
                 <button
                   onClick={primaryAction.onClick}
-                  className={`flex items-center px-3 py-2 text-sm rounded-lg transition-colors font-medium ${primaryAction.className}`}
+                  className={`flex items-center px-3 py-2 text-xs rounded-lg transition-all font-medium ${primaryAction.className}`}
                 >
-                  <primaryAction.icon size={14} className="mr-1" />
+                  <primaryAction.icon size={14} className="mr-2" />
                   {primaryAction.label}
                 </button>
               )}
@@ -306,17 +314,17 @@ const HeadcountHeader = ({
                   <button
                     key={tab.id}
                     onClick={() => onTabChange && onTabChange(tab.id)}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                    className={`flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all ${
                       isActive
-                        ? `bg-${tab.color}-50 dark:bg-${tab.color}-900/20 text-${tab.color}-700 dark:text-${tab.color}-300 border border-${tab.color}-200 dark:border-${tab.color}-800`
+                        ? `${tab.bgColor} ${tab.textColor} border ${tab.borderColor} shadow-sm`
                         : `${textSecondary} hover:bg-gray-50 dark:hover:bg-gray-700 border border-transparent`
                     }`}
                   >
-                    <Icon size={14} className="mr-1.5" />
+                    <Icon size={14} className="mr-2" />
                     <span>{tab.label}</span>
-                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-xs font-medium ${
+                    <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-semibold ${
                       isActive
-                        ? `bg-${tab.color}-100 dark:bg-${tab.color}-800 text-${tab.color}-800 dark:text-${tab.color}-200`
+                        ? `bg-white/20 ${tab.textColor}`
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                     }`}>
                       {tab.count.toLocaleString()}
@@ -328,36 +336,36 @@ const HeadcountHeader = ({
 
             {/* Tab-specific Actions - Only show for employees tab */}
             {showEmployeeControls && (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 {/* Filters */}
                 <button
                   onClick={onToggleAdvancedFilter}
-                  className={`flex items-center px-3 py-2 text-sm border rounded-lg transition-colors ${
+                  className={`flex items-center px-2.5 py-1.5 text-xs border rounded-lg transition-all ${
                     hasActiveFilters 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
+                      ? 'bg-almet-sapphire/10 border-almet-sapphire/30 text-almet-sapphire'
                       : `${borderColor} ${textSecondary} ${hoverBg}`
                   }`}
                 >
-                  <Filter size={14} className="mr-1" />
+                  <Filter size={12} className="mr-1.5" />
                   Filters
                   {hasActiveFilters && (
-                    <span className="ml-1 w-2 h-2 bg-blue-500 rounded-full"></span>
+                    <span className="ml-1.5 w-1.5 h-1.5 bg-almet-sapphire rounded-full"></span>
                   )}
                 </button>
 
                 {/* Sort */}
                 <button
                   onClick={onToggleAdvancedSorting}
-                  className={`flex items-center px-3 py-2 text-sm border rounded-lg transition-colors ${
+                  className={`flex items-center px-2.5 py-1.5 text-xs border rounded-lg transition-all ${
                     hasActiveSorting 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
+                      ? 'bg-almet-sapphire/10 border-almet-sapphire/30 text-almet-sapphire'
                       : `${borderColor} ${textSecondary} ${hoverBg}`
                   }`}
                 >
-                  <ArrowUpDown size={14} className="mr-1" />
+                  <ArrowUpDown size={12} className="mr-1.5" />
                   Sort
                   {hasActiveSorting && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full font-medium">
+                    <span className="ml-1.5 px-1 py-0.5 bg-almet-sapphire text-white text-xs rounded-full font-medium">
                       {currentSorting.length}
                     </span>
                   )}
@@ -366,14 +374,14 @@ const HeadcountHeader = ({
                 {/* Actions Menu */}
                 <button
                   onClick={onToggleActionMenu}
-                  className={`flex items-center px-3 py-2 text-sm border rounded-lg transition-colors ${
+                  className={`flex items-center px-2.5 py-1.5 text-xs border rounded-lg transition-all ${
                     isActionMenuOpen ? 'bg-gray-50 dark:bg-gray-700' : ''
                   } ${borderColor} ${textSecondary} ${hoverBg}`}
                 >
-                  <MoreVertical size={14} className="mr-1" />
+                  <MoreVertical size={12} className="mr-1.5" />
                   Actions
                   {selectedEmployees.length > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full">
+                    <span className="ml-1.5 px-1 py-0.5 bg-almet-sapphire text-white text-xs rounded-full font-medium">
                       {selectedEmployees.length}
                     </span>
                   )}
@@ -385,27 +393,26 @@ const HeadcountHeader = ({
 
         {/* Active Filters/Sorting Indicator - Only for employees tab */}
         {showEmployeeControls && (hasActiveFilters || hasActiveSorting) && (
-          <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-900/10">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center space-x-4">
+          <div className={`px-5 py-2 border-t border-gray-200 dark:border-gray-700 ${bgSection}`}>
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center space-x-3">
                 {hasActiveFilters && (
-                  <span className="text-blue-700 dark:text-blue-300">
+                  <span className="text-almet-sapphire font-medium">
                     Filters active
                   </span>
                 )}
                 {hasActiveSorting && (
-                  <span className="text-blue-700 dark:text-blue-300">
+                  <span className="text-almet-sapphire font-medium">
                     Sorted by {currentSorting.length} field{currentSorting.length !== 1 ? 's' : ''}
                   </span>
                 )}
               </div>
               <button
                 onClick={() => {
-                  // Clear all filters and sorting
                   if (hasActiveFilters && onToggleAdvancedFilter) onToggleAdvancedFilter();
                   if (hasActiveSorting && onToggleAdvancedSorting) onToggleAdvancedSorting();
                 }}
-                className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 text-xs"
+                className="text-almet-sapphire hover:text-almet-astral text-xs font-medium"
               >
                 Clear all
               </button>
@@ -415,8 +422,8 @@ const HeadcountHeader = ({
 
         {/* Export Progress Indicator - Only for employees tab */}
         {showEmployeeControls && isExporting && (
-          <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/10">
-            <div className="flex items-center text-sm text-green-700 dark:text-green-300">
+          <div className="px-5 py-2 border-t border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/10">
+            <div className="flex items-center text-xs text-green-700 dark:text-green-300">
               <div className="animate-spin rounded-full h-3 w-3 border border-green-500 border-t-transparent mr-2"></div>
               Preparing export...
             </div>

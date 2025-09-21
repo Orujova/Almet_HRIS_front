@@ -46,7 +46,7 @@ export const employeeAPI = {
     
     // Helper function to process filter values
     const processFilterValue = (value, filterName) => {
-      console.log(`🔧 Processing ${filterName}:`, value, typeof value);
+     
       
       if (!value) return null;
       
@@ -65,7 +65,7 @@ export const employeeAPI = {
           const splitValues = value.split(',')
             .map(val => val.trim())
             .filter(val => val.length > 0);
-          console.log(`✅ ${filterName} processed string array:`, splitValues);
+     
           return splitValues.length > 0 ? splitValues : null;
         } else {
           const trimmed = value.trim();
@@ -450,7 +450,7 @@ export const employeeAPI = {
     return apiService.updateEmployee(id, formData);
   },
 
-  delete: (id) => apiService.deleteEmployee(id),
+
   
   // ========================================
   // EMPLOYEE SPECIFIC DETAILS
@@ -467,8 +467,7 @@ export const employeeAPI = {
   // ========================================
   // BULK OPERATIONS - Enhanced
   // ========================================
-  softDelete: (ids) => apiService.softDeleteEmployees(ids),
-  restore: (ids) => apiService.restoreEmployees(ids),
+
   bulkUpload: (file) => apiService.bulkUploadEmployees(file),
   
   // ========================================

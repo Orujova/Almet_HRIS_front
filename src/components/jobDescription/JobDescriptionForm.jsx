@@ -89,14 +89,20 @@ const handleAssignmentPreviewUpdate = (previewData) => {
   
   setAssignmentPreview(previewData);
   
-  // Clear selected employees when preview changes
+  // CRITICAL FIX: Edit modundaysa employee selection'ı sıfırlama
+  if (editingJob) {
+    console.log('✅ Edit mode detected - preserving current selections');
+    return; // Edit modunda hiçbir şey değiştirme
+  }
+  
+  // Clear selected employees when preview changes (sadece new job için)
   if (!previewData || previewData.strategy !== 'manual_selection_required') {
-   setSelectedEmployeeIds([]);
+    setSelectedEmployeeIds([]);
     setEligibleEmployees([]);
     setJobCriteria({});
   }
   
-  // CRITICAL FIX: Auto-assign single record (vacancy or employee)
+  // Auto-assign single record (sadece new job için)
   if (previewData && previewData.strategy === 'auto_assign_single') {
     const records = previewData.records || previewData.employees || [];
     
@@ -104,16 +110,15 @@ const handleAssignmentPreviewUpdate = (previewData) => {
     
     if (records.length === 1) {
       const record = records[0];
-      const recordId = record.id; // This is the database ID (106 for HLD27)
+      const recordId = record.id;
       
       console.log('✅ Auto-selecting record:', {
-        employee_id: record.employee_id, // HLD27
-        database_id: record.id, // 106
+        employee_id: record.employee_id,
+        database_id: record.id,
         name: record.full_name || record.name,
         type: record.is_vacancy ? 'VACANCY' : 'EMPLOYEE'
       });
       
-      // Set the database ID for API submission
       setSelectedEmployeeIds([recordId]);
       setEligibleEmployees(records);
       setJobCriteria(previewData.criteria || {});
@@ -122,7 +127,7 @@ const handleAssignmentPreviewUpdate = (previewData) => {
     }
   }
   
-  // Handle manual selection case
+  // Handle manual selection case (sadece new job için)
   if (previewData && previewData.strategy === 'manual_selection_required') {
     const records = previewData.records || previewData.employees || [];
     const criteria = previewData.criteria || {};
@@ -544,13 +549,10 @@ const handleSubmit = async (e) => {
     return;
   }
 
-  // FIXED: Skip employee selection check for edit mode
   if (!editingJob) {
-    // Check for employee selection requirement only for new jobs
+    // Sadece YENİ job'lar için employee selection kontrolü
     if (assignmentPreview?.requiresSelection || assignmentPreview?.strategy === 'manual_selection_required') {
       if (selectedEmployeeIds.length === 0) {
-   
-        
         if (eligibleEmployees.length > 0) {
           setShowEmployeeSelectionModal(true);
           return;
@@ -572,12 +574,7 @@ const handleSubmit = async (e) => {
     const positionGroupId = getPositionGroupId(formData.position_group);
     const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-    console.log('🔍 Final ID mapping results:');
-    console.log('- Business Function:', formData.business_function, '→', businessFunctionId);
-    console.log('- Department:', formData.department, '→', departmentId);
-    console.log('- Job Function:', formData.job_function, '→', jobFunctionId);
-    console.log('- Position Group:', formData.position_group, '→', positionGroupId);
-    console.log('- Unit:', formData.unit, '→', unitId);
+   
 
     // Validate that we have all required IDs
     const missingIds = [];
@@ -635,12 +632,11 @@ const handleSubmit = async (e) => {
   access_rights_ids: await convertNamesToIds(formData.access_rights_ids, 'access_rights'),
   company_benefits_ids: await convertNamesToIds(formData.company_benefits_ids, 'company_benefits'),
     
-  // CRITICAL FIX: Use database IDs for both employees and vacancies
   ...(!editingJob && selectedEmployeeIds.length > 0 && { 
-    selected_employee_ids: selectedEmployeeIds
-      .map(id => parseInt(id))
-      .filter(id => !isNaN(id))
-  })
+        selected_employee_ids: selectedEmployeeIds
+          .map(id => parseInt(id))
+          .filter(id => !isNaN(id))
+      })
 };
 
 console.log('🔧 FIXED: API data with database IDs:', {
@@ -694,29 +690,22 @@ console.log('🔧 FIXED: API data with database IDs:', {
       }
     });
 
-    console.log('📤 Final API data being sent:', JSON.stringify(apiData, null, 2));
+
     
     if (editingJob) {
-      // Update existing job
+      // Edit için employee selection tamamen görmezden gel
+      console.log('✏️ Updating existing job - ignoring employee selection');
       await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
       alert('Job description updated successfully!');
       onUpdate();
     } else {
-      // Create new job(s)
+      // Yeni job creation
       const createdJob = await jobDescriptionService.createJobDescription(apiData);
       console.log('✅ Job(s) created successfully:', createdJob);
-      
-      // Handle multiple job creation response
-      if (createdJob.summary && createdJob.summary.total_job_descriptions_created > 1) {
-        console.log(`🎉 Successfully created ${createdJob.summary.total_job_descriptions_created} job descriptions!`);
-      }
-      
       onSubmit(createdJob);
     }
   } catch (error) {
-    console.error('⚠️ Error saving job description:', error);
-    console.error('⚠️ Error response:', error.response?.data);
-    
+
     // Handle server response for employee selection requirement
     if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
       console.log('📋 Server requires employee selection, showing modal with server data');

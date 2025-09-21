@@ -1,4 +1,4 @@
-// pages/structure/job-descriptions/index.js - COMPLETE FIXED VERSION
+// pages/structure/job-descriptions/index.js - UPDATED: Using Common Components and Enhanced Navigation
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
+// UPDATED: Import common components
+import { ToastProvider, useToast } from '@/components/common/Toast';
+import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
+
 import jobDescriptionService from '@/services/jobDescriptionService';
 import competencyApi from '@/services/competencyApi';
 
@@ -28,9 +33,10 @@ import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
 import StatCard from '@/components/jobDescription/StatCard';
 
-const JobDescriptionPage = () => {
+const JobDescriptionPageContent = () => {
   const { darkMode } = useTheme();
   const router = useRouter();
+  const { showSuccess, showError, showWarning, showInfo } = useToast(); // UPDATED: Use toast hook
   
   // Theme-dependent classes using Almet colors
   const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
@@ -54,14 +60,24 @@ const JobDescriptionPage = () => {
   const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
 
+  // UPDATED: Confirmation modal states
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    type: 'default',
+    title: '',
+    message: '',
+    onConfirm: null,
+    loading: false
+  });
+
   // Data states
   const [jobDescriptions, setJobDescriptions] = useState([]);
   const [stats, setStats] = useState({});
   
-  // FIXED: Enhanced dropdown data with proper structure
+  // Enhanced dropdown data with proper structure
   const [dropdownData, setDropdownData] = useState({
     employees: [],
-    employeeMap: new Map(), // For faster lookups
+    employeeMap: new Map(),
     skillGroups: [],
     behavioralGroups: [],
     businessResources: [],
@@ -69,7 +85,7 @@ const JobDescriptionPage = () => {
     companyBenefits: []
   });
 
-  // FIXED: Enhanced form state with proper initialization
+  // Enhanced form state with proper initialization
   const [formData, setFormData] = useState({
     job_title: '',
     job_purpose: '',
@@ -99,9 +115,6 @@ const JobDescriptionPage = () => {
 
   // Employee matching state for display only
   const [matchingEmployees, setMatchingEmployees] = useState([]);
-
-  // Enhanced notification state
-  const [notification, setNotification] = useState(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -138,16 +151,6 @@ const JobDescriptionPage = () => {
     formData.job_title,
     dropdownData.employees
   ]);
-
-  // Auto-clear notifications after 5 seconds
-  useEffect(() => {
-    if (notification) {
-      const timer = setTimeout(() => {
-        setNotification(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [notification]);
 
   // Filter employees based on selected job criteria (for display only)
   const filterMatchingEmployees = () => {
@@ -203,13 +206,7 @@ const JobDescriptionPage = () => {
       return true;
     });
 
-    console.log('Filtered matching employees for display:', filtered.length, 'out of', dropdownData.employees.length);
     setMatchingEmployees(filtered);
-  };
-
-  // Show notification helper
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type });
   };
 
   const fetchInitialData = async () => {
@@ -222,7 +219,7 @@ const JobDescriptionPage = () => {
       ]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
-      showNotification('Error loading initial data', 'error');
+      showError('Error loading initial data'); // UPDATED: Use toast
     } finally {
       setLoading(false);
     }
@@ -246,7 +243,6 @@ const JobDescriptionPage = () => {
     }
   };
 
-  // FIXED: Enhanced dropdown data fetching with proper employee mapping
   const fetchDropdownData = async () => {
     try {
       const fetchOptions = (endpoint) => ({
@@ -258,8 +254,6 @@ const JobDescriptionPage = () => {
       });
 
       const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-      console.log('📄 Fetching dropdown data from employees...');
 
       const [
         employeesRes,
@@ -280,29 +274,21 @@ const JobDescriptionPage = () => {
       const employees = employeesRes.ok ? await employeesRes.json() : { results: [] };
       const employeeList = employees.results || [];
 
-      // FIXED: Create employee mapping for faster lookups
       const employeeMap = new Map();
       employeeList.forEach(emp => {
-        // Map by business function name
         if (emp.business_function_name) {
           employeeMap.set(`bf_${emp.business_function_name}`, emp);
         }
-        // Map by department name
         if (emp.department_name) {
           employeeMap.set(`dept_${emp.department_name}`, emp);
         }
-        // Map by job function name
         if (emp.job_function_name) {
           employeeMap.set(`jf_${emp.job_function_name}`, emp);
         }
-        // Map by position group name
         if (emp.position_group_name) {
           employeeMap.set(`pg_${emp.position_group_name}`, emp);
         }
       });
-
-      console.log('✅ Employee mapping created with', employeeMap.size, 'entries');
-      console.log('📊 Sample employee data:', employeeList[0]);
 
       setDropdownData({
         employees: employeeList,
@@ -314,10 +300,9 @@ const JobDescriptionPage = () => {
         companyBenefits: companyBenefitsRes.results || []
       });
 
-      console.log('✅ Dropdown data loaded successfully from', employeeList.length, 'employees');
     } catch (error) {
-      console.error('❌ Error fetching dropdown data:', error);
-      showNotification('Error loading employee data', 'error');
+      console.error('Error fetching dropdown data:', error);
+      showError('Error loading employee data'); // UPDATED: Use toast
     }
   };
 
@@ -361,10 +346,10 @@ const JobDescriptionPage = () => {
     try {
       setActionLoading(true);
       await jobDescriptionService.downloadJobDescriptionPDF(jobId);
-      showNotification('PDF downloaded successfully');
+      showSuccess('PDF downloaded successfully'); // UPDATED: Use toast
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
-      showNotification('Error downloading PDF. Please try again.', 'error');
+      showError('Error downloading PDF. Please try again.'); // UPDATED: Use toast
     } finally {
       setActionLoading(false);
     }
@@ -385,15 +370,13 @@ const JobDescriptionPage = () => {
       setSubmissionLoading(true);
       
       if (createdJobsData.isExisting) {
-        // Single existing job submission
         await jobDescriptionService.submitForApproval(createdJobsData.id, {
           comments: submissionComments,
           submit_to_line_manager: true
         });
         
-        showNotification('Job description submitted for approval successfully!');
+        showSuccess('Job description submitted for approval successfully!'); // UPDATED: Use toast
       } else {
-        // Multiple job submission handling
         const jobsToSubmit = createdJobsData.created_job_descriptions || [{ id: createdJobsData.id }];
         
         for (const job of jobsToSubmit) {
@@ -407,7 +390,7 @@ const JobDescriptionPage = () => {
           ? `${jobsToSubmit.length} job descriptions submitted for approval successfully!`
           : 'Job description submitted for approval successfully!';
         
-        showNotification(message);
+        showSuccess(message); // UPDATED: Use toast
       }
       
       await fetchJobDescriptions();
@@ -417,9 +400,12 @@ const JobDescriptionPage = () => {
       setCreatedJobsData(null);
       setIsExistingJobSubmission(false);
       resetForm();
+      
+      // UPDATED: Navigate to list view after submission
+      setActiveView('list');
     } catch (error) {
       console.error('Error submitting for approval:', error);
-      showNotification('Error submitting for approval. Please try again.', 'error');
+      showError('Error submitting for approval. Please try again.'); // UPDATED: Use toast
     } finally {
       setSubmissionLoading(false);
     }
@@ -431,7 +417,7 @@ const JobDescriptionPage = () => {
       ? `${createdJobsData.summary.total_job_descriptions_created} job descriptions saved as drafts successfully!`
       : 'Job description saved as draft successfully!';
     
-    showNotification(message);
+    showSuccess(message); // UPDATED: Use toast
     
     await fetchJobDescriptions();
     await fetchStats();
@@ -441,56 +427,13 @@ const JobDescriptionPage = () => {
     setCreatedJobsData(null);
     setIsExistingJobSubmission(false);
     resetForm();
+    
+    // UPDATED: Navigate to list view after keeping as draft
+    setActiveView('list');
   };
 
- // Add to useEffect hooks for proper cleanup
-useEffect(() => {
-  // Cleanup when leaving the page
-  const handleBeforeUnload = () => {
-    // Save current tab state
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('jobDescriptionActiveView', activeView);
-      sessionStorage.setItem('jobDescriptionFormDirty', JSON.stringify({
-        hasData: formData.job_title || formData.job_purpose,
-        isEditing: !!editingJob
-      }));
-    }
-  };
-
-  window.addEventListener('beforeunload', handleBeforeUnload);
-  return () => {
-    window.removeEventListener('beforeunload', handleBeforeUnload);
-  };
-}, [activeView, formData, editingJob]);
-
-// Load saved state on component mount
-useEffect(() => {
-  const loadSavedState = () => {
-    if (typeof window !== 'undefined') {
-      const savedView = sessionStorage.getItem('jobDescriptionActiveView');
-      const savedFormState = sessionStorage.getItem('jobDescriptionFormDirty');
-      
-      if (savedView && (savedView === 'list' || savedView === 'create')) {
-        setActiveView(savedView);
-      }
-      
-      // Clear saved state after loading
-      sessionStorage.removeItem('jobDescriptionActiveView');
-      sessionStorage.removeItem('jobDescriptionFormDirty');
-    }
-  };
-
-  // Load state after initial data is loaded
-  if (!loading) {
-    loadSavedState();
-  }
-}, [loading]);
-
-// Enhanced resetForm function with complete cleanup
-const resetForm = () => {
-  console.log('🧹 Resetting form completely');
-  
-  // FIXED: Complete form reset
+  // Enhanced resetForm function with complete cleanup
+  const resetForm = () => {
   setFormData({
     job_title: '',
     job_purpose: '',
@@ -511,7 +454,6 @@ const resetForm = () => {
     company_benefits_ids: []
   });
   
-  // FIXED: Complete state cleanup
   setEditingJob(null);
   setSelectedSkillGroup('');
   setSelectedBehavioralGroup('');
@@ -520,168 +462,190 @@ const resetForm = () => {
   setAvailableCompetencies([]);
   setMatchingEmployees([]);
   
-  
-  
-  console.log('✅ Form reset completed');
+  // CRITICAL FIX: Edit'ten çıkışta employee selection'ı sıfırlama
+  // Sadece yeni job creation'a dönerken sıfırla
+  if (!editingJob) {
+    // setSelectedEmployeeIds([]);
+    // setEligibleEmployees([]);
+    // setJobCriteria({});
+  }
 };
-
-
-
-
-const handleTabNavigation = (targetView) => {
-  console.log(`📍 Tab navigation: ${activeView} → ${targetView}`);
-  
+  // UPDATED: Enhanced tab navigation with confirmation
+  const handleTabNavigation = (targetView) => {
   if (targetView === 'create') {
-    // FIXED: Always reset form when going to create new
     if (activeView === 'list' || editingJob) {
-      console.log('🆕 Starting new job creation - resetting form');
       resetForm();
     }
     setActiveView('create');
   } else if (targetView === 'list') {
-    // FIXED: Ask for confirmation if form has data
     const hasFormData = formData.job_title?.trim() || 
                        formData.job_purpose?.trim() || 
                        formData.criticalDuties?.some(d => d?.trim()) ||
                        formData.required_skills_data?.length > 0;
     
     if (hasFormData && !editingJob) {
-      const confirm = window.confirm(
-        'You have unsaved changes. Are you sure you want to leave? All changes will be lost.'
-      );
-      
-      if (!confirm) {
-        return; // Stay on current tab
-      }
+      setConfirmModal({
+        isOpen: true,
+        type: 'warning',
+        title: 'Unsaved Changes',
+        message: 'You have unsaved changes. Are you sure you want to leave? All changes will be lost.',
+        onConfirm: () => {
+          setConfirmModal({ ...confirmModal, isOpen: false });
+          resetForm();
+          setActiveView('list');
+        }
+      });
+      return;
     }
     
-    console.log('📋 Going to list view - cleaning up');
+    // CRITICAL FIX: List'e dönerken employee selection'ı da sıfırla
     resetForm();
+    // setSelectedEmployeeIds([]);
+    // setEligibleEmployees([]);
+    // setJobCriteria({});
     setActiveView('list');
   }
 };
 
-// FIXED: Enhanced handleEdit with proper cleanup
-const handleEdit = async (job) => {
-  try {
-    setActionLoading(true);
-    
-    // FIXED: Clear any existing form data first
-    resetForm();
-    
-    console.log('✏️ Starting edit mode for job:', job.id);
-    
-    const fullJob = await jobDescriptionService.getJobDescription(job.id);
-    const transformedData = jobDescriptionService.transformJobDescriptionResponse(fullJob);
-    
-    console.log('🔧 Edit mode - Full job data:', fullJob);
-    console.log('🔧 Edit mode - Transformed data:', transformedData);
-    
-    // FIXED: Set form data and edit state
-    setFormData(transformedData);
-    setEditingJob(fullJob);
-    
-    // FIXED: Position group selection
-    if (transformedData.position_group) {
-      setSelectedPositionGroup(transformedData.position_group);
-    }
-    
-    // FIXED: Skill Group Selection
-    if (transformedData.required_skills_data && transformedData.required_skills_data.length > 0) {
-      console.log('🎯 Finding skill group for skills:', transformedData.required_skills_data);
-      
-      const findSkillGroup = async () => {
-        const firstSkillId = transformedData.required_skills_data[0];
-        
-        for (const skillGroup of dropdownData.skillGroups) {
-          try {
-            const skills = await competencyApi.skillGroups.getSkills(skillGroup.id);
-            const skillArray = Array.isArray(skills) ? skills : (skills.skills || skills.results || []);
-            
-            const hasSkill = skillArray.some(skill => 
-              String(skill.id) === String(firstSkillId) || 
-              skill.id === parseInt(firstSkillId)
-            );
-            
-            if (hasSkill) {
-              console.log('✅ Found skill group:', skillGroup.name, 'for skill:', firstSkillId);
-              setSelectedSkillGroup(skillGroup.id);
-              setAvailableSkills(skillArray);
-              break;
-            }
-          } catch (error) {
-            console.warn('Failed to fetch skills for group:', skillGroup.id, error);
-          }
-        }
-      };
-      
-      if (dropdownData.skillGroups && dropdownData.skillGroups.length > 0) {
-        findSkillGroup();
-      }
-    }
-    
-    // FIXED: Behavioral Group Selection
-    if (transformedData.behavioral_competencies_data && transformedData.behavioral_competencies_data.length > 0) {
-      console.log('🎯 Finding behavioral group for competencies:', transformedData.behavioral_competencies_data);
-      
-      const findBehavioralGroup = async () => {
-        const firstCompetencyId = transformedData.behavioral_competencies_data[0];
-        
-        for (const behavioralGroup of dropdownData.behavioralGroups) {
-          try {
-            const competencies = await competencyApi.behavioralGroups.getCompetencies(behavioralGroup.id);
-            const competencyArray = Array.isArray(competencies) ? competencies : (competencies.competencies || competencies.results || []);
-            
-            const hasCompetency = competencyArray.some(comp => 
-              String(comp.id) === String(firstCompetencyId) || 
-              comp.id === parseInt(firstCompetencyId)
-            );
-            
-            if (hasCompetency) {
-              console.log('✅ Found behavioral group:', behavioralGroup.name, 'for competency:', firstCompetencyId);
-              setSelectedBehavioralGroup(behavioralGroup.id);
-              setAvailableCompetencies(competencyArray);
-              break;
-            }
-          } catch (error) {
-            console.warn('Failed to fetch competencies for group:', behavioralGroup.id, error);
-          }
-        }
-      };
-      
-      if (dropdownData.behavioralGroups && dropdownData.behavioralGroups.length > 0) {
-        findBehavioralGroup();
-      }
-    }
-    
-    // FIXED: Navigate to create view for editing
-    setActiveView('create');
-    
-  } catch (error) {
-    console.error('Error loading job for edit:', error);
-    showNotification('Error loading job description. Please try again.', 'error');
-  } finally {
-    setActionLoading(false);
-  }
-};
-
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this job description?')) {
-      return;
-    }
-
+  // UPDATED: Enhanced handleEdit with proper cleanup
+  const handleEdit = async (job) => {
     try {
       setActionLoading(true);
-      await jobDescriptionService.deleteJobDescription(id);
-      await fetchJobDescriptions();
-      await fetchStats();
-      showNotification('Job description deleted successfully!');
+      // resetForm();
+      
+        setFormData({
+      job_title: '',
+      job_purpose: '',
+      business_function: '',
+      department: '',
+      unit: '',
+      job_function: '',
+      position_group: '',
+      grading_level: '',
+      criticalDuties: [''],
+      positionMainKpis: [''],
+      jobDuties: [''],
+      requirements: [''],
+      required_skills_data: [],
+      behavioral_competencies_data: [],
+      business_resources_ids: [],
+      access_rights_ids: [],
+      company_benefits_ids: []
+    });
+    
+    // Skill/competency state'ini reset et
+    setSelectedSkillGroup('');
+    setSelectedBehavioralGroup('');
+    setSelectedPositionGroup('');
+    setAvailableSkills([]);
+    setAvailableCompetencies([]);
+
+      const fullJob = await jobDescriptionService.getJobDescription(job.id);
+      const transformedData = jobDescriptionService.transformJobDescriptionResponse(fullJob);
+      
+      setFormData(transformedData);
+      setEditingJob(fullJob);
+      
+      if (transformedData.position_group) {
+        setSelectedPositionGroup(transformedData.position_group);
+      }
+      
+      // Skill Group Selection
+      if (transformedData.required_skills_data && transformedData.required_skills_data.length > 0) {
+        const findSkillGroup = async () => {
+          const firstSkillId = transformedData.required_skills_data[0];
+          
+          for (const skillGroup of dropdownData.skillGroups) {
+            try {
+              const skills = await competencyApi.skillGroups.getSkills(skillGroup.id);
+              const skillArray = Array.isArray(skills) ? skills : (skills.skills || skills.results || []);
+              
+              const hasSkill = skillArray.some(skill => 
+                String(skill.id) === String(firstSkillId) || 
+                skill.id === parseInt(firstSkillId)
+              );
+              
+              if (hasSkill) {
+                setSelectedSkillGroup(skillGroup.id);
+                setAvailableSkills(skillArray);
+                break;
+              }
+            } catch (error) {
+              console.warn('Failed to fetch skills for group:', skillGroup.id, error);
+            }
+          }
+        };
+        
+        if (dropdownData.skillGroups && dropdownData.skillGroups.length > 0) {
+          findSkillGroup();
+        }
+      }
+      
+      // Behavioral Group Selection
+      if (transformedData.behavioral_competencies_data && transformedData.behavioral_competencies_data.length > 0) {
+        const findBehavioralGroup = async () => {
+          const firstCompetencyId = transformedData.behavioral_competencies_data[0];
+          
+          for (const behavioralGroup of dropdownData.behavioralGroups) {
+            try {
+              const competencies = await competencyApi.behavioralGroups.getCompetencies(behavioralGroup.id);
+              const competencyArray = Array.isArray(competencies) ? competencies : (competencies.competencies || competencies.results || []);
+              
+              const hasCompetency = competencyArray.some(comp => 
+                String(comp.id) === String(firstCompetencyId) || 
+                comp.id === parseInt(firstCompetencyId)
+              );
+              
+              if (hasCompetency) {
+                setSelectedBehavioralGroup(behavioralGroup.id);
+                setAvailableCompetencies(competencyArray);
+                break;
+              }
+            } catch (error) {
+              console.warn('Failed to fetch competencies for group:', behavioralGroup.id, error);
+            }
+          }
+        };
+        
+        if (dropdownData.behavioralGroups && dropdownData.behavioralGroups.length > 0) {
+          findBehavioralGroup();
+        }
+      }
+      
+      setActiveView('create');
+      
     } catch (error) {
-      console.error('Error deleting job description:', error);
-      showNotification('Error deleting job description. Please try again.', 'error');
+      console.error('Error loading job for edit:', error);
+      showError('Error loading job description. Please try again.'); // UPDATED: Use toast
     } finally {
       setActionLoading(false);
     }
+  };
+
+  // UPDATED: Enhanced delete with confirmation modal
+  const handleDelete = async (id) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'danger',
+      title: 'Delete Job Description',
+      message: 'Are you sure you want to delete this job description? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          setConfirmModal({ ...confirmModal, loading: true });
+          
+          await jobDescriptionService.deleteJobDescription(id);
+          await fetchJobDescriptions();
+          await fetchStats();
+          
+          setConfirmModal({ ...confirmModal, isOpen: false, loading: false });
+          showSuccess('Job description deleted successfully!'); // UPDATED: Use toast
+        } catch (error) {
+          console.error('Error deleting job description:', error);
+          setConfirmModal({ ...confirmModal, loading: false });
+          showError('Error deleting job description. Please try again.'); // UPDATED: Use toast
+        }
+      }
+    });
   };
 
   const handleViewJob = async (job) => {
@@ -691,7 +655,7 @@ const handleEdit = async (job) => {
       setSelectedJob(fullJob);
     } catch (error) {
       console.error('Error loading job for view:', error);
-      showNotification('Error loading job description details. Please try again.', 'error');
+      showError('Error loading job description details. Please try again.'); // UPDATED: Use toast
     } finally {
       setActionLoading(false);
     }
@@ -699,87 +663,22 @@ const handleEdit = async (job) => {
 
   // Enhanced job creation handling
   const handleJobSubmit = (createdJob) => {
-    console.log('📋 Job creation completed:', createdJob);
-    
-    // Store the created job(s) data for submission modal
     setCreatedJobsData(createdJob);
     setIsExistingJobSubmission(false);
     setShowSubmissionModal(true);
   };
 
-
-  useEffect(() => {
-  const handlePopState = () => {
-    // When user uses browser back/forward, respect the current view
-    console.log('🔄 Browser navigation detected, maintaining current view:', activeView);
-  };
-
-  window.addEventListener('popstate', handlePopState);
-  return () => {
-    window.removeEventListener('popstate', handlePopState);
-  };
-}, [activeView]);
-
-// FIXED: Add window focus event to check for stale data
-useEffect(() => {
-  const handleWindowFocus = () => {
-    // When user returns to tab, check if we need to refresh data
-    if (activeView === 'list') {
-      console.log('🔄 Window focused - refreshing job list');
-      fetchJobDescriptions();
+  // UPDATED: Close confirmation modal
+  const closeConfirmModal = () => {
+    if (!confirmModal.loading) {
+      setConfirmModal({ ...confirmModal, isOpen: false });
     }
   };
-
-  window.addEventListener('focus', handleWindowFocus);
-  return () => {
-    window.removeEventListener('focus', handleWindowFocus);
-  };
-}, [activeView]);
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className={`min-h-screen ${bgApp} p-4`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-almet-sapphire"></div>
-            </div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto p-4 lg:p-6">
-          
-          {/* Enhanced Notification Banner */}
-          {notification && (
-            <div className={`mb-4 p-4 rounded-lg border ${
-              notification.type === 'error' 
-                ? 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
-                : 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {notification.type === 'error' ? (
-                    <AlertCircle size={16} />
-                  ) : (
-                    <CheckCircle size={16} />
-                  )}
-                  <span className="font-medium text-sm">{notification.message}</span>
-                </div>
-                <button
-                  onClick={() => setNotification(null)}
-                  className="text-current opacity-70 hover:opacity-100 transition-opacity"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            </div>
-          )}
           
           {/* Enhanced Header Section */}
           <div className="mb-8">
@@ -851,45 +750,45 @@ useEffect(() => {
 
             {/* Enhanced Navigation Tabs */}
             <div className={`flex items-center justify-between p-1 
-  ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'} rounded-lg shadow-inner`}>
-  {[
-    { 
-      id: 'list', 
-      name: 'Job Descriptions', 
-      icon: FileText, 
-      count: filteredJobs.length 
-    },
-    { 
-      id: 'create', 
-      name: editingJob ? 'Edit Job' : 'Create New', 
-      icon: editingJob ? Edit : Plus,
-      count: null 
-    }
-  ].map((tab) => (
-    <button
-      key={tab.id}
-      onClick={() => handleTabNavigation(tab.id)} // FIXED: Use new navigation handler
-      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium 
-        transition-all duration-200 text-sm relative ${
-        activeView === tab.id
-          ? `${bgCard} text-almet-sapphire shadow-md border border-almet-sapphire/20`
-          : `${textSecondary} hover:${textPrimary} hover:${darkMode ? 'bg-almet-san-juan/50' : 'bg-white/50'}`
-      }`}
-    >
-      <tab.icon size={16} />
-      <span className="font-semibold">{tab.name}</span>
-      {tab.count !== null && (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[20px] text-center
-          ${activeView === tab.id 
-            ? 'bg-almet-sapphire text-white' 
-            : darkMode ? 'bg-almet-san-juan text-almet-bali-hai' : 'bg-gray-200 text-gray-600'
-          }`}>
-          {tab.count}
-        </span>
-      )}
-    </button>
-  ))}
-</div>
+              ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'} rounded-lg shadow-inner`}>
+              {[
+                { 
+                  id: 'list', 
+                  name: 'Job Descriptions', 
+                  icon: FileText, 
+                  count: filteredJobs.length 
+                },
+                { 
+                  id: 'create', 
+                  name: editingJob ? 'Edit Job' : 'Create New', 
+                  icon: editingJob ? Edit : Plus,
+                  count: null 
+                }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabNavigation(tab.id)}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium 
+                    transition-all duration-200 text-sm relative ${
+                    activeView === tab.id
+                      ? `${bgCard} text-almet-sapphire shadow-md border border-almet-sapphire/20`
+                      : `${textSecondary} hover:${textPrimary} hover:${darkMode ? 'bg-almet-san-juan/50' : 'bg-white/50'}`
+                  }`}
+                >
+                  <tab.icon size={16} />
+                  <span className="font-semibold">{tab.name}</span>
+                  {tab.count !== null && (
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[20px] text-center
+                      ${activeView === tab.id 
+                        ? 'bg-almet-sapphire text-white' 
+                        : darkMode ? 'bg-almet-san-juan text-almet-bali-hai' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Main Content Area */}
@@ -971,9 +870,30 @@ useEffect(() => {
               darkMode={darkMode}
             />
           )}
+
+          {/* UPDATED: Confirmation Modal */}
+          <ConfirmationModal
+            isOpen={confirmModal.isOpen}
+            onClose={closeConfirmModal}
+            onConfirm={confirmModal.onConfirm}
+            title={confirmModal.title}
+            message={confirmModal.message}
+            type={confirmModal.type}
+            loading={confirmModal.loading}
+            darkMode={darkMode}
+          />
         </div>
       </div>
     </DashboardLayout>
+  );
+};
+
+// UPDATED: Wrap with ToastProvider
+const JobDescriptionPage = () => {
+  return (
+    <ToastProvider>
+      <JobDescriptionPageContent />
+    </ToastProvider>
   );
 };
 

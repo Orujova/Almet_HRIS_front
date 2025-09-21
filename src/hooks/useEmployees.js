@@ -6,10 +6,7 @@ import {
   fetchEmployee,
   createEmployee,
   updateEmployee,
-  deleteEmployee,
   fetchStatistics,
-  softDeleteEmployees,
-  restoreEmployees,
   addEmployeeTag,
   removeEmployeeTag,
   bulkAddTags,
@@ -29,8 +26,6 @@ import {
   fetchEmployeeActivities,
   fetchEmployeeDirectReports,
   fetchEmployeeStatusPreview,
- 
-  // New actions for org chart visibility
   toggleOrgChartVisibility,
   bulkToggleOrgChartVisibility,
   setSelectedEmployees,
@@ -65,7 +60,7 @@ import {
   clearCurrentEmployee,
   setQuickFilter,
   optimisticUpdateEmployee,
-  optimisticDeleteEmployee,
+
   optimisticUpdateEmployeeGrade,
   selectEmployees,
   selectCurrentEmployee,
@@ -110,9 +105,7 @@ import {
   selectHasAnyError,
   selectDashboardSummary,
   selectEmployeeMetrics,
-
-
-   uploadEmployeeProfilePhoto,
+  uploadEmployeeProfilePhoto,
   deleteEmployeeProfilePhoto,
   clearProfilePhotoError,
   clearProfilePhotoSuccess,
@@ -200,12 +193,8 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   const fetchEmployeeAction = useCallback((id) => dispatch(fetchEmployee(id)), [dispatch]);
   const createEmployeeAction = useCallback((data) => dispatch(createEmployee(data)), [dispatch]);
   const updateEmployeeAction = useCallback((id, data) => dispatch(updateEmployee({ id, data })), [dispatch]);
-  const deleteEmployeeAction = useCallback((id) => dispatch(deleteEmployee(id)), [dispatch]);
   const fetchStatisticsAction = useCallback(() => dispatch(fetchStatistics()), [dispatch]);
   
-  // Bulk operations
-  const softDeleteEmployeesAction = useCallback((ids) => dispatch(softDeleteEmployees(ids)), [dispatch]);
-  const restoreEmployeesAction = useCallback((ids) => dispatch(restoreEmployees(ids)), [dispatch]);
   
   // Org chart visibility - YENİ FUNKSİYALAR
   const toggleOrgChartVisibilityAction = useCallback((employeeId) => 
@@ -325,7 +314,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   // Quick actions
   const setQuickFilterAction = useCallback((type, value) => dispatch(setQuickFilter({ type, value })), [dispatch]);
   const optimisticUpdateEmployeeAction = useCallback((id, updates) => dispatch(optimisticUpdateEmployee({ id, updates })), [dispatch]);
-  const optimisticDeleteEmployeeAction = useCallback((id) => dispatch(optimisticDeleteEmployee(id)), [dispatch]);
+
   const optimisticUpdateEmployeeGradeAction = useCallback((employee_id, grading_level) => 
     dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level })), [dispatch]);
 
@@ -486,7 +475,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     // Create/Update/Delete
     createEmployee: createEmployeeAction,
     updateEmployee: updateEmployeeAction,
-    deleteEmployee: deleteEmployeeAction,
+
     
     // Statistics
     fetchStatistics: fetchStatisticsAction,
@@ -497,10 +486,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     clearProfilePhotoSuccess: clearProfilePhotoSuccessAction,
     setProfilePhotoLoading: setProfilePhotoLoadingAction,
 
-    // Bulk Operations - enhanced
-    softDeleteEmployees: softDeleteEmployeesAction,
-    restoreEmployees: restoreEmployeesAction,
-    
+ 
     // ORG CHART VISIBILITY - YENİ FUNKSİYALAR
     toggleOrgChartVisibility: toggleOrgChartVisibilityAction,
     bulkToggleOrgChartVisibility: bulkToggleOrgChartVisibilityAction,
@@ -598,7 +584,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     // Quick actions
     setQuickFilter: setQuickFilterAction,
     optimisticUpdateEmployee: optimisticUpdateEmployeeAction,
-    optimisticDeleteEmployee: optimisticDeleteEmployeeAction,
+ 
     optimisticUpdateEmployeeGrade: optimisticUpdateEmployeeGradeAction,
   };
 
@@ -982,10 +968,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       
       // Perform operation
       switch (operation) {
-        case 'delete':
-          return dispatch(softDeleteEmployees(employeeIds));
-        case 'restore':
-          return dispatch(restoreEmployees(employeeIds));
+  
         case 'add_tag':
           return dispatch(bulkAddTags({ employee_ids: employeeIds, tag_id: operationData.tagId }));
         case 'remove_tag':

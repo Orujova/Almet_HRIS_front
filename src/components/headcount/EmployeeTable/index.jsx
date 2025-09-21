@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeTable/index.jsx - Updated for Modal Actions
+// src/components/headcount/EmployeeTable/index.jsx - FIXED: Unique Key Generation
 "use client";
 import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles } from "../utils/themeStyles";
@@ -14,22 +14,54 @@ const EmployeeTable = ({
   onToggleEmployeeSelection,
   onSort,
   getSortDirection,
-  isSorted, // ← YENİ
-  getSortIndex, // ← YENİ
+  isSorted,
+  getSortIndex,
   employeeVisibility = {},
   onVisibilityChange,
-  onEmployeeAction, // ← YENİ: Modal actions üçün
+  onEmployeeAction,
   hasFilters = false,
   onClearFilters,
   loading = false,
-  // YENİ: Enhanced props
   isUpdatingVisibility = false,
   showVisibilityConfirmation = false,
-  darkMode // ← Bu artıq direct prop kimi gələ bilər
+  darkMode
 }) => {
   const { darkMode: themeDarkMode } = useTheme();
   const effectiveDarkMode = darkMode !== undefined ? darkMode : themeDarkMode;
   const styles = getThemeStyles(effectiveDarkMode);
+
+  // FIXED: Generate guaranteed unique keys for each employee
+  const generateUniqueKey = (employee, index) => {
+    // Priority order for unique identification:
+    // 1. employee.id (database primary key)
+    // 2. employee.employee_id (HC number)
+    // 3. combination of multiple fields
+    // 4. fallback to index with prefix
+    
+    if (employee.id) {
+      // Check if it's a vacancy (might have special ID format)
+      if (employee.is_vacancy && employee.vacancy_details?.position_id) {
+        return `vacancy-${employee.vacancy_details.position_id}-${employee.id}`;
+      }
+      return `employee-${employee.id}`;
+    }
+    
+    if (employee.employee_id) {
+      return `emp-id-${employee.employee_id}-${index}`;
+    }
+    
+    // For complex cases (like combined employee/vacancy data)
+    if (employee.name && employee.email) {
+      return `name-email-${employee.name.replace(/\s/g, '')}-${employee.email}-${index}`;
+    }
+    
+    if (employee.name) {
+      return `name-${employee.name.replace(/\s/g, '')}-${index}`;
+    }
+    
+    // Ultimate fallback
+    return `row-${index}-${Date.now()}`;
+  };
 
   // Loading state
   if (loading) {
@@ -53,23 +85,22 @@ const EmployeeTable = ({
             onToggleSelectAll={onToggleSelectAll}
             onSort={onSort}
             getSortDirection={getSortDirection}
-            isSorted={isSorted} // ← YENİ: Sorting state
-            getSortIndex={getSortIndex} // ← YENİ: Multi-sort index
+            isSorted={isSorted}
+            getSortIndex={getSortIndex}
           />
           
-          {/* Table Body */}
+          {/* Table Body - FIXED: Guaranteed unique keys */}
           <tbody className={`bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700`}>
             {employees && employees.length > 0 ? (
-              employees.map((employee) => (
+              employees.map((employee, index) => (
                 <EmployeeTableRow
-                  key={employee.id}
+                  key={generateUniqueKey(employee, index)} // FIXED: Always unique key
                   employee={employee}
                   isSelected={selectedEmployees.includes(employee.id)}
                   onToggleSelection={onToggleEmployeeSelection}
                   isVisible={employeeVisibility[employee.id] ?? employee.is_visible_in_org_chart ?? true}
                   onVisibilityChange={onVisibilityChange}
-                  onAction={onEmployeeAction} // ← YENİ: Pass modal action handler
-                  // YENİ: Enhanced props
+                  onAction={onEmployeeAction}
                   isUpdatingVisibility={isUpdatingVisibility}
                   showVisibilityConfirmation={showVisibilityConfirmation}
                 />
@@ -78,14 +109,11 @@ const EmployeeTable = ({
               <EmptyStateMessage
                 hasFilters={hasFilters}
                 onClearFilters={onClearFilters}
-                colSpan={10} // ← YENİ: Adjust for all columns
               />
             )}
           </tbody>
         </table>
       </div>
-      
-   
     </div>
   );
 };

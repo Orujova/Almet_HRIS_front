@@ -64,17 +64,7 @@ export const updateEmployee = createAsyncThunk(
   }
 );
 
-export const deleteEmployee = createAsyncThunk(
-  'employees/deleteEmployee',
-  async (id, { rejectWithValue }) => {
-    try {
-      await employeeAPI.delete(id);
-      return id;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
+
 
 // ========================================
 // STATISTICS & ANALYTICS
@@ -92,33 +82,7 @@ export const fetchStatistics = createAsyncThunk(
   }
 );
 
-// ========================================
-// BULK OPERATIONS - Enhanced
-// ========================================
 
-export const softDeleteEmployees = createAsyncThunk(
-  'employees/softDeleteEmployees',
-  async (ids, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.softDelete(ids);
-      return { ids, result: response.data };
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
-
-export const restoreEmployees = createAsyncThunk(
-  'employees/restoreEmployees',
-  async (ids, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.restore(ids);
-      return { ids, result: response.data };
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
 
 // ========================================
 // ORG CHART VISIBILITY - YENİ ASYNC THUNKS
@@ -953,15 +917,7 @@ const employeeSlice = createSlice({
         state.currentEmployee = { ...state.currentEmployee, ...updates };
       }
     },
-    
-    optimisticDeleteEmployee: (state, action) => {
-      const id = action.payload;
-      state.employees = state.employees.filter(emp => emp.id !== id);
-      state.selectedEmployees = state.selectedEmployees.filter(empId => empId !== id);
-      if (state.currentEmployee?.id === id) {
-        state.currentEmployee = null;
-      }
-    },
+
 
     // Grading optimistic updates
     optimisticUpdateEmployeeGrade: (state, action) => {
@@ -1172,26 +1128,7 @@ const employeeSlice = createSlice({
         state.error.update = action.payload;
       });
 
-    // Delete employee
-    builder
-      .addCase(deleteEmployee.pending, (state) => {
-        state.loading.deleting = true;
-        state.error.delete = null;
-      })
-      .addCase(deleteEmployee.fulfilled, (state, action) => {
-        state.loading.deleting = false;
-        const deletedId = action.payload;
-        state.employees = state.employees.filter(emp => emp.id !== deletedId);
-        state.selectedEmployees = state.selectedEmployees.filter(id => id !== deletedId);
-        if (state.currentEmployee?.id === deletedId) {
-          state.currentEmployee = null;
-        }
-        state.statistics.total_employees -= 1;
-      })
-      .addCase(deleteEmployee.rejected, (state, action) => {
-        state.loading.deleting = false;
-        state.error.delete = action.payload;
-      });
+
 
     // Statistics
     builder
@@ -1208,43 +1145,7 @@ const employeeSlice = createSlice({
         state.error.statistics = action.payload;
       });
 
-    // Soft delete employees
-    builder
-      .addCase(softDeleteEmployees.pending, (state) => {
-        state.loading.bulkOperations = true;
-        state.error.bulkOperations = null;
-      })
-      .addCase(softDeleteEmployees.fulfilled, (state, action) => {
-        state.loading.bulkOperations = false;
-        const { ids } = action.payload;
-        ids.forEach(id => {
-          const employee = state.employees.find(emp => emp.id === id);
-          if (employee) {
-            employee.is_deleted = true;
-            employee.deleted_at = new Date().toISOString();
-          }
-        });
-        state.selectedEmployees = state.selectedEmployees.filter(id => !ids.includes(id));
-      })
-      .addCase(softDeleteEmployees.rejected, (state, action) => {
-        state.loading.bulkOperations = false;
-        state.error.bulkOperations = action.payload;
-      });
-
-    // Restore employees
-    builder
-      .addCase(restoreEmployees.fulfilled, (state, action) => {
-        const { ids } = action.payload;
-        ids.forEach(id => {
-          const employee = state.employees.find(emp => emp.id === id);
-          if (employee) {
-            employee.is_deleted = false;
-            employee.deleted_at = null;
-          }
-        });
-      });
-
-    // ========================================
+  
     // ORG CHART VISIBILITY - YENİ REDUCER-LƏR
     // ========================================
     

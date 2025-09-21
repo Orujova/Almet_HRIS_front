@@ -1,33 +1,31 @@
-// src/components/headcount/ExportModal.jsx - FIXED: API endpoint uyğunluğu
+// src/components/headcount/ExportModal.jsx - FIXED: Field mapping for backend
 import { useState } from "react";
 import { 
   Download, 
   X, 
-
   AlertCircle,
- 
 } from "lucide-react";
 
 /**
- * FIXED Export Modal - API endpoint ilə uyğun format
- * Backend export_selected endpoint-i üçün düzəldildi
+ * FIXED Export Modal - Backend field mapping düzəldildi
+ * Field groups frontend-də seçilir, backend field names-ə çevrilir
  */
 const ExportModal = ({ 
   isOpen, 
   onClose, 
-  onExport, // Bu artıq HeadcountTable-dan gələn düzəldilmiş handler-dir
+  onExport, 
   totalEmployees, 
   filteredCount, 
   selectedEmployees, 
   darkMode 
 }) => {
   // Local state
-  const [exportType, setExportType] = useState("selected"); // "selected", "filtered", "all"
-  const [exportFormat, setExportFormat] = useState("excel"); // "excel", "csv"
+  const [exportType, setExportType] = useState("selected");
+  const [exportFormat, setExportFormat] = useState("excel");
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   
-  // FIXED: Backend API ilə uyğun field selection
+  // FIXED: Field groups that map to actual backend field names
   const [includeFields, setIncludeFields] = useState({
     basic_info: true,
     job_info: true,
@@ -41,6 +39,45 @@ const ExportModal = ({
     documents_count: false,
     activities_count: false
   });
+
+  // FIXED: Field group to actual field mapping
+  const fieldGroupMappings = {
+    basic_info: [
+      'employee_id', 'name', 'email', 'gender', 'father_name', 
+      'first_name', 'last_name', 'phone'
+    ],
+    job_info: [
+      'job_title', 'department_name', 'business_function_name', 
+      'business_function_code', 'position_group_name', 'job_function_name'
+    ],
+    contact_info: [
+      'phone', 'address', 'emergency_contact'
+    ],
+    contract_info: [
+      'contract_duration', 'contract_start_date', 'contract_end_date', 
+      'contract_extensions', 'last_extension_date', 'contract_duration_display'
+    ],
+    management_info: [
+      'line_manager_name', 'line_manager_hc_number', 
+      'direct_reports_count'
+    ],
+    tags: [
+      'tag_names'
+    ],
+    grading: [
+      'grading_level', 'grading_display', 'position_group_level'
+    ],
+    status: [
+      'status_name', 'status_color', 'is_visible_in_org_chart', 
+      'status_needs_update', 'current_status_display'
+    ],
+    dates: [
+      'start_date', 'end_date', 'date_of_birth', 'years_of_service',
+      'created_at', 'updated_at'
+    ],
+    documents_count: ['documents_count'],
+    activities_count: ['activities_count']
+  };
 
   // Theme classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
@@ -74,17 +111,45 @@ const ExportModal = ({
     }));
   };
 
-  // FIXED: Export handler - API format ilə uyğun
+  // FIXED: Convert field groups to actual field names
+  const getSelectedFields = () => {
+    const selectedFields = [];
+    
+    Object.keys(includeFields).forEach(fieldGroup => {
+      if (includeFields[fieldGroup] && fieldGroupMappings[fieldGroup]) {
+        selectedFields.push(...fieldGroupMappings[fieldGroup]);
+      }
+    });
+
+    // Remove duplicates and return
+    return [...new Set(selectedFields)];
+  };
+
+  // FIXED: Export handler - sends actual field names to backend
   const handleExport = async () => {
     try {
       setIsExporting(true);
       setExportError(null);
 
-      // FIXED: Backend API format-ına uyğun export options hazırlanması
+      // Get actual field names from selected groups
+      const selectedFields = getSelectedFields();
+      
+      console.log('🔧 FIXED: Selected field groups:', includeFields);
+      console.log('🔧 FIXED: Converted to field names:', selectedFields);
+      console.log('🔧 FIXED: Export type:', exportType);
+      console.log('🔧 FIXED: Selected employees:', selectedEmployees);
+
+      // FIXED: Backend API format-ına uyğun export options
       const exportOptions = {
         type: exportType,
         format: exportFormat,
-        fields: includeFields,
+        // Send actual field names instead of field groups
+        include_fields: selectedFields,
+        
+        // CRITICAL FIX: Always send employee_ids for selected export
+        ...(exportType === "selected" && selectedEmployees?.length > 0 && {
+          employee_ids: selectedEmployees
+        }),
         
         // Additional metadata for better error handling
         selectedCount: selectedEmployees?.length || 0,
@@ -92,7 +157,7 @@ const ExportModal = ({
         totalCount: totalEmployees || 0
       };
 
-      console.log('🔧 FIXED: Sending export options to handler:', exportOptions);
+      console.log('🔧 FIXED: Final export options to handler:', exportOptions);
 
       // Call the export handler from HeadcountTable
       await onExport(exportOptions);
@@ -108,63 +173,74 @@ const ExportModal = ({
     }
   };
 
-  // FIXED: Field options uyğun backend field mappings ilə
+  // Field options with descriptions
   const fieldOptions = [
     { 
       key: "basic_info", 
       label: "Basic Information", 
       description: "Employee ID, name, email, gender, father name",
-      fields: "employee_id,name,email,gender,father_name"
+      fields: fieldGroupMappings.basic_info.join(', ')
     },
     { 
       key: "job_info", 
       label: "Job Information", 
       description: "Job title, department, business function, position group",
-      fields: "job_title,department_name,business_function_name,position_group_name"
+      fields: fieldGroupMappings.job_info.join(', ')
     },
     { 
       key: "contact_info", 
       label: "Contact Information", 
       description: "Phone number, address, emergency contact",
-      fields: "phone,address,emergency_contact"
+      fields: fieldGroupMappings.contact_info.join(', ')
     },
     { 
       key: "contract_info", 
       label: "Contract Information", 
       description: "Contract duration, start/end dates, extensions",
-      fields: "contract_duration,contract_start_date,contract_end_date,contract_extensions"
+      fields: fieldGroupMappings.contract_info.join(', ')
     },
     { 
       key: "management_info", 
       label: "Management", 
       description: "Line manager, direct reports count",
-      fields: "line_manager_name,line_manager_hc_number,direct_reports_count"
+      fields: fieldGroupMappings.management_info.join(', ')
     },
     { 
       key: "tags", 
       label: "Employee Tags", 
       description: "All assigned tags and categories",
-      fields: "tag_names"
+      fields: fieldGroupMappings.tags.join(', ')
     },
     { 
       key: "grading", 
       label: "Grading Information", 
       description: "Grade level, position group level",
-      fields: "grading_level,grading_display,position_group_level"
+      fields: fieldGroupMappings.grading.join(', ')
     },
     { 
       key: "status", 
       label: "Status Information", 
       description: "Current status, org chart visibility, status updates",
-      fields: "status_name,status_color,is_visible_in_org_chart,status_needs_update"
+      fields: fieldGroupMappings.status.join(', ')
     },
     { 
       key: "dates", 
       label: "Important Dates", 
       description: "Start date, birth date, years of service",
-      fields: "start_date,end_date,date_of_birth,years_of_service"
+      fields: fieldGroupMappings.dates.join(', ')
     },
-  
+    { 
+      key: "documents_count", 
+      label: "Documents Count", 
+      description: "Number of associated documents",
+      fields: fieldGroupMappings.documents_count.join(', ')
+    },
+    { 
+      key: "activities_count", 
+      label: "Activities Count", 
+      description: "Number of recorded activities",
+      fields: fieldGroupMappings.activities_count.join(', ')
+    }
   ];
 
   // Validation - at least one field must be selected
@@ -321,8 +397,6 @@ const ExportModal = ({
             </div>
           </div>
 
-         
-
           {/* Field Selection */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -373,6 +447,15 @@ const ExportModal = ({
             </div>
           </div>
 
+          {/* Selected Fields Preview */}
+          <div className="space-y-2">
+            <h4 className={`text-xs font-medium ${textSecondary}`}>
+              Selected Fields ({getSelectedFields().length} fields)
+            </h4>
+            <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-700 p-2 rounded max-h-20 overflow-y-auto">
+              {getSelectedFields().length > 0 ? getSelectedFields().join(', ') : 'No fields selected'}
+            </div>
+          </div>
 
           {/* Error Display */}
           {exportError && (
@@ -411,7 +494,7 @@ const ExportModal = ({
             ) : (
               <>
                 <Download size={14} className="mr-2" />
-                Export {getExportCount()} Employees
+                Export {getExportCount()} Employees ({getSelectedFields().length} fields)
               </>
             )}
           </button>

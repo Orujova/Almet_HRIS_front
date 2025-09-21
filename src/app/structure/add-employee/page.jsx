@@ -30,10 +30,7 @@ const InfoModal = ({ isOpen, onClose, title, content, type = "info" }) => {
         return <FileText className="text-green-500" size={20} />;
       case 'employees':
         return <Users className="text-purple-500" size={20} />;
-      case 'grading':
-        return <CheckCircle className="text-indigo-500" size={20} />;
-      case 'status':
-        return <AlertTriangle className="text-amber-500" size={20} />;
+    
       default:
         return <Info className="text-blue-500" size={20} />;
     }
@@ -144,163 +141,8 @@ const AddEmployeePage = () => {
         );
         break;
 
-      case 'grading':
-        title = 'Grading System Integration';
-        content = (
-          <div className="space-y-6">
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-indigo-800 dark:text-indigo-300 mb-3">
-                Understanding the Grading System
-              </h3>
-              <p className={`${textSecondary} leading-relaxed`}>
-                Our HRIS uses a comprehensive grading system that automatically assigns appropriate salary levels 
-                based on position groups. Each position has specific grading levels with standardized short codes.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium text-indigo-600 dark:text-indigo-400 mb-3">Grading Levels</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <span>LD - Lower Decile</span>
-                    <span className="text-gray-500">Entry level</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <span>LQ - Lower Quartile</span>
-                    <span className="text-gray-500">Below average</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <span>M - Median</span>
-                    <span className="text-gray-500">Standard level</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <span>UQ - Upper Quartile</span>
-                    <span className="text-gray-500">Above average</span>
-                  </div>
-                  <div className="flex justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <span>UD - Upper Decile</span>
-                    <span className="text-gray-500">Top tier</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-indigo-600 dark:text-indigo-400 mb-3">Position Examples</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Vice Chairman</div>
-                    <div className="text-gray-500">VC-LD, VC-LQ, VC-M, VC-UQ, VC-UD</div>
-                  </div>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Director</div>
-                    <div className="text-gray-500">DIR-LD, DIR-LQ, DIR-M, DIR-UQ, DIR-UD</div>
-                  </div>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Manager</div>
-                    <div className="text-gray-500">MGR-LD, MGR-LQ, MGR-M, MGR-UQ, MGR-UD</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <h4 className="font-medium text-amber-800 dark:text-amber-300 mb-2">
-                Important Notes
-              </h4>
-              <ul className={`space-y-1 text-sm ${textSecondary}`}>
-                <li>• Grading levels are automatically fetched based on selected position group</li>
-                <li>• Each position has standardized shorthand codes for easy identification</li>
-                <li>• Median (M) level is typically assigned as default for new employees</li>
-                <li>• Grading affects salary calculations and organizational reporting</li>
-              </ul>
-            </div>
-          </div>
-        );
-        break;
-
-      case 'status':
-        title = 'Automatic Status Management';
-        content = (
-          <div className="space-y-6">
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-amber-800 dark:text-amber-300 mb-3">
-                Smart Status Assignment
-              </h3>
-              <p className={`${textSecondary} leading-relaxed`}>
-                Employee status is automatically managed by the system based on contract type, start dates, 
-                and duration. This ensures consistency and reduces manual errors in status tracking.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium text-amber-600 dark:text-amber-400 mb-3">Status Flow</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
-                    <div className="w-3 h-3 bg-orange-500 rounded-full mr-3"></div>
-                    <div>
-                      <div className="font-medium text-orange-800 dark:text-orange-300">ONBOARDING</div>
-                      <div className="text-sm text-orange-600 dark:text-orange-400">Initial status for new employees</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full mr-3"></div>
-                    <div>
-                      <div className="font-medium text-yellow-800 dark:text-yellow-300">PROBATION</div>
-                      <div className="text-sm text-yellow-600 dark:text-yellow-400">Based on contract duration</div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                    <div>
-                      <div className="font-medium text-green-800 dark:text-green-300">ACTIVE</div>
-                      <div className="text-sm text-green-600 dark:text-green-400">Regular working status</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-amber-600 dark:text-amber-400 mb-3">Contract Types</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Permanent</div>
-                    <div className="text-gray-500">No end date, standard progression</div>
-                  </div>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Fixed Term (1-3 years)</div>
-                    <div className="text-gray-500">Specific end date, status tracking</div>
-                  </div>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Probation</div>
-                    <div className="text-gray-500">Trial period with review dates</div>
-                  </div>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                    <div className="font-medium">Internship</div>
-                    <div className="text-gray-500">Learning-focused, limited duration</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <h4 className="font-medium text-blue-800 dark:text-blue-300 mb-2">
-                Status Update Rules
-              </h4>
-              <ul className={`space-y-1 text-sm ${textSecondary}`}>
-                <li>• Status change durations are configurable per contract type</li>
-                <li>• System automatically transitions employees based on time periods</li>
-                <li>• Manual status updates are logged for audit purposes</li>
-                <li>• Contract end dates trigger automatic status reviews</li>
-              </ul>
-            </div>
-          </div>
-        );
-        break;
-
+     
+   
       case 'documents':
         title = 'Document Management';
         content = (
@@ -406,21 +248,7 @@ const AddEmployeePage = () => {
 
               {/* Help buttons */}
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openModal('grading')}
-                  className={`${bgCard} border ${borderColor} px-3 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-sm flex items-center`}
-                >
-                  <CheckCircle size={16} className="mr-2 text-indigo-500" />
-                  Grading System
-                </button>
-                
-                <button
-                  onClick={() => openModal('status')}
-                  className={`${bgCard} border ${borderColor} px-3 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-sm flex items-center`}
-                >
-                  <AlertTriangle size={16} className="mr-2 text-amber-500" />
-                  Status Management
-                </button>
+            
                 
                 <button
                   onClick={() => openModal('documents')}

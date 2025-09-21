@@ -1,4 +1,4 @@
-// components/jobDescription/PositionInformationTab.jsx - FIXED: Proper Vacancy Handling
+// components/jobDescription/PositionInformationTab.jsx - UPDATED: Using SearchableDropdown from common
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   UserCheck,
@@ -12,7 +12,7 @@ import {
   Loader,
   UserX // For vacancy icon
 } from 'lucide-react';
-import SearchableSelect from './SearchableSelect';
+import SearchableDropdown from '../common/SearchableDropdown'; // UPDATED: Import from common
 import jobDescriptionService from '@/services/jobDescriptionService';
 
 const PositionInformationTab = ({
@@ -84,7 +84,7 @@ const PositionInformationTab = ({
     return filtered;
   };
 
-  // Get unique values for each dropdown based on current selections
+  // UPDATED: Transform data for SearchableDropdown format
   const getUniqueJobTitles = () => {
     const filtered = getFilteredEmployees('job_title');
     const titles = [...new Set(
@@ -94,9 +94,8 @@ const PositionInformationTab = ({
     )];
     
     return titles.map(title => ({
-      id: title,
-      name: title,
-      display_name: title
+      value: title,
+      label: title
     }));
   };
 
@@ -109,9 +108,8 @@ const PositionInformationTab = ({
     )];
     
     return functions.map(func => ({
-      id: func,
-      name: func,
-      display_name: func
+      value: func,
+      label: func
     }));
   };
 
@@ -124,9 +122,8 @@ const PositionInformationTab = ({
     )];
     
     return departments.map(dept => ({
-      id: dept,
-      name: dept,
-      display_name: dept
+      value: dept,
+      label: dept
     }));
   };
 
@@ -139,9 +136,8 @@ const PositionInformationTab = ({
     )];
     
     return units.map(unit => ({
-      id: unit,
-      name: unit,
-      display_name: unit
+      value: unit,
+      label: unit
     }));
   };
 
@@ -154,9 +150,8 @@ const PositionInformationTab = ({
     )];
     
     return jobFunctions.map(func => ({
-      id: func,
-      name: func,
-      display_name: func
+      value: func,
+      label: func
     }));
   };
 
@@ -169,9 +164,8 @@ const PositionInformationTab = ({
     )];
     
     return positionGroups.map(group => ({
-      id: group,
-      name: group,
-      display_name: group
+      value: group,
+      label: group
     }));
   };
 
@@ -184,191 +178,148 @@ const PositionInformationTab = ({
     )];
     
     return gradingLevels.map(level => ({
-      id: level,
-      name: level,
-      display_name: level
+      value: level,
+      label: level
     }));
   };
 
-const findExactConstraintMatch = (requiredCriteria, debugLabel = '') => {
-  if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
-  
+  // ... (keeping all the existing constraint matching and preview logic)
 
-  
-  // Find ALL records that match EVERY criteria exactly
-  const exactMatches = dropdownData.employees.filter(emp => {
-    let matches = true;
+  const findExactConstraintMatch = (requiredCriteria, debugLabel = '') => {
+    if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
     
-    for (const [field, value] of Object.entries(requiredCriteria)) {
-      if (emp[field] !== value) {
-        matches = false;
-        break;
+    const exactMatches = dropdownData.employees.filter(emp => {
+      let matches = true;
+      
+      for (const [field, value] of Object.entries(requiredCriteria)) {
+        if (emp[field] !== value) {
+          matches = false;
+          break;
+        }
       }
+      
+      return matches;
+    });
+    
+    if (exactMatches.length === 0) {
+      return null;
     }
     
-  
+    const vacantMatches = exactMatches.filter(emp => 
+      emp.is_vacancy || emp.record_type === 'vacancy' || emp.name === 'VACANT'
+    );
     
-    return matches;
-  });
-  
-  if (exactMatches.length === 0) {
-    console.log(`  ❌ NO EXACT MATCHES found for ${debugLabel}`);
+    const chosen = vacantMatches.length > 0 ? vacantMatches[0] : exactMatches[0];
     
-    // Debug: Show what combinations ARE available
-    console.log(`  📊 Available combinations:`);
-    const availableCombos = new Set();
-    dropdownData.employees.forEach(emp => {
-      const combo = `BF: ${emp.business_function_name} + Dept: ${emp.department_name} (ID: ${emp.department_id})`;
-      availableCombos.add(combo);
-    });
+    return chosen;
+  };
+
+  const getBusinessFunctionId = (name) => {
+    if (!name || !dropdownData.employees) {
+      return null;
+    }
     
-    Array.from(availableCombos).slice(0, 10).forEach(combo => {
-      console.log(`    - ${combo}`);
-    });
+    const employee = findExactConstraintMatch({
+      business_function_name: name
+    }, 'Business Function');
+    
+    if (employee) {
+      const id = employee.business_function_id || employee.business_function;
+      return id;
+    }
     
     return null;
-  }
-  
-  console.log(`  ✅ Found ${exactMatches.length} exact match(es) for ${debugLabel}`);
-  
-  // Priority: Vacant positions first, then regular employees
-  const vacantMatches = exactMatches.filter(emp => 
-    emp.is_vacancy || emp.record_type === 'vacancy' || emp.name === 'VACANT'
-  );
-  
-  const chosen = vacantMatches.length > 0 ? vacantMatches[0] : exactMatches[0];
-  
-  console.log(`  🎯 CHOSEN: ${chosen.employee_id} (${chosen.is_vacancy ? 'VACANCY' : 'EMPLOYEE'}) | Dept_ID: ${chosen.department_id}`);
-  
-  return chosen;
-};
+  };
 
-const getBusinessFunctionId = (name) => {
-  if (!name || !dropdownData.employees) {
-    console.log('⌐ getBusinessFunctionId: Missing data');
+  const getDepartmentId = (name) => {
+    if (!name || !dropdownData.employees) {
+      return null;
+    }
+    
+    if (!formData.business_function) {
+      return null;
+    }
+    
+    const employee = findExactConstraintMatch({
+      business_function_name: formData.business_function,
+      department_name: name
+    }, 'Department');
+    
+    if (employee) {
+      const id = employee.department_id || employee.department;
+      return id;
+    }
+    
     return null;
-  }
-  
-  const employee = findExactConstraintMatch({
-    business_function_name: name
-  }, 'Business Function');
-  
-  if (employee) {
-    const id = employee.business_function_id || employee.business_function;
-    return id;
-  }
-  
-  return null;
-};
+  };
 
-// CRITICAL FIX: Department ID with ABSOLUTE constraint checking
-const getDepartmentId = (name) => {
-  if (!name || !dropdownData.employees) {
-    console.log('⌐ getDepartmentId: Missing data');
+  const getUnitId = (name) => {
+    if (!name) return null;
+    
+    if (!formData.business_function || !formData.department) {
+      return null;
+    }
+    
+    const employee = findExactConstraintMatch({
+      business_function_name: formData.business_function,
+      department_name: formData.department,
+      unit_name: name
+    }, 'Unit');
+    
+    if (employee) {
+      const id = employee.unit_id || employee.unit;
+      return id;
+    }
+    
     return null;
-  }
-  
-  if (!formData.business_function) {
-    console.log('❌ getDepartmentId: Business function MUST be selected first');
+  };
+
+  const getJobFunctionId = (name) => {
+    if (!name || !dropdownData.employees) {
+      return null;
+    }
+    
+    if (!formData.business_function || !formData.department) {
+      return null;
+    }
+    
+    const employee = findExactConstraintMatch({
+      business_function_name: formData.business_function,
+      department_name: formData.department,
+      job_function_name: name
+    }, 'Job Function');
+    
+    if (employee) {
+      const id = employee.job_function_id || employee.job_function;
+      return id;
+    }
+    
     return null;
-  }
+  };
 
-  
-  // ABSOLUTE REQUIREMENT: Both BF and Dept must match exactly
-  const employee = findExactConstraintMatch({
-    business_function_name: formData.business_function,
-    department_name: name
-  }, 'Department');
-  
-  if (employee) {
-    const id = employee.department_id || employee.department;
-    console.log(`✅ SUCCESS: Found valid combination! Department ID = ${id}`);
-    return id;
-  }
-  
-
-  
-  return null;
-};
-
-const getUnitId = (name) => {
-  if (!name) return null;
-  
-  if (!formData.business_function || !formData.department) {
-    console.log('❌ getUnitId: Business function AND department must be selected first');
+  const getPositionGroupId = (name) => {
+    if (!name || !dropdownData.employees) {
+      return null;
+    }
+    
+    if (!formData.business_function || !formData.department || !formData.job_function) {
+      return null;
+    }
+    
+    const employee = findExactConstraintMatch({
+      business_function_name: formData.business_function,
+      department_name: formData.department,
+      job_function_name: formData.job_function,
+      position_group_name: name
+    }, 'Position Group');
+    
+    if (employee) {
+      const id = employee.position_group_id || employee.position_group;
+      return id;
+    }
+    
     return null;
-  }
-  
-  const employee = findExactConstraintMatch({
-    business_function_name: formData.business_function,
-    department_name: formData.department,
-    unit_name: name
-  }, 'Unit');
-  
-  if (employee) {
-    const id = employee.unit_id || employee.unit;
-    return id;
-  }
-  
-  console.log(`❌ INVALID: Unit "${name}" doesn't exist in ${formData.business_function} > ${formData.department}`);
-  return null;
-};
-
-const getJobFunctionId = (name) => {
-  if (!name || !dropdownData.employees) {
-    console.log('⌐ getJobFunctionId: Missing data');
-    return null;
-  }
-  
-  if (!formData.business_function || !formData.department) {
-    console.log('❌ getJobFunctionId: Business function AND department must be selected first');
-    return null;
-  }
-  
-  const employee = findExactConstraintMatch({
-    business_function_name: formData.business_function,
-    department_name: formData.department,
-    job_function_name: name
-  }, 'Job Function');
-  
-  if (employee) {
-    const id = employee.job_function_id || employee.job_function;
-    return id;
-  }
-  
-  console.log(`❌ INVALID: Job function "${name}" doesn't exist in ${formData.business_function} > ${formData.department}`);
-  return null;
-};
-
-const getPositionGroupId = (name) => {
-  if (!name || !dropdownData.employees) {
-    console.log('⌐ getPositionGroupId: Missing data');
-    return null;
-  }
-  
-  if (!formData.business_function || !formData.department || !formData.job_function) {
-    console.log('❌ getPositionGroupId: Full organizational path must be selected first');
-    return null;
-  }
-  
-  const employee = findExactConstraintMatch({
-    business_function_name: formData.business_function,
-    department_name: formData.department,
-    job_function_name: formData.job_function,
-    position_group_name: name
-  }, 'Position Group');
-  
-  if (employee) {
-    const id = employee.position_group_id || employee.position_group;
-    return id;
-  }
-  
-  console.log(`❌ INVALID: Position group "${name}" doesn't exist in the selected organizational path`);
-  return null;
-};
-
-
-
+  };
 
   // Check if all required fields are filled and can be mapped to IDs
   const areAllRequiredFieldsFilled = () => {
@@ -379,7 +330,6 @@ const getPositionGroupId = (name) => {
       return !!field;
     };
 
-    // Check that all required fields have values
     const basicRequirementsMet = !!(
       hasValue(formData.job_title) &&
       hasValue(formData.job_purpose) &&
@@ -393,24 +343,19 @@ const getPositionGroupId = (name) => {
       return false;
     }
 
-    // ADDITIONAL CHECK: Ensure we can map all required fields to valid IDs
     const businessFunctionId = getBusinessFunctionId(formData.business_function);
     const departmentId = getDepartmentId(formData.department);
     const jobFunctionId = getJobFunctionId(formData.job_function);
     const positionGroupId = getPositionGroupId(formData.position_group);
 
-    // Only proceed if we can map all required fields to valid IDs
     const canMapToIds = !!(businessFunctionId && departmentId && jobFunctionId && positionGroupId);
     
-  
     return canMapToIds;
   };
 
   // Update assignment preview based on form data
   const updateAssignmentPreview = async () => {
-    // Only proceed if ALL required fields are filled AND can be mapped to IDs
     if (!areAllRequiredFieldsFilled()) {
-      console.log('Not all required fields filled or cannot map to IDs, clearing preview');
       const emptyPreview = {
         strategy: null,
         employeeCount: 0,
@@ -428,9 +373,7 @@ const getPositionGroupId = (name) => {
       return;
     }
 
-    // Check if we have employee data loaded
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
-      console.log('Employee data not loaded yet, skipping preview');
       setAssignmentPreview({
         strategy: null,
         employeeCount: 0,
@@ -442,97 +385,60 @@ const getPositionGroupId = (name) => {
       return;
     }
 
-   try {
-    setPreviewLoading(true);
-    setPreviewError(null);
+    try {
+      setPreviewLoading(true);
+      setPreviewError(null);
 
-    // Transform names to IDs for API call
-    const businessFunctionId = getBusinessFunctionId(formData.business_function);
-    const departmentId = getDepartmentId(formData.department);
-    const jobFunctionId = getJobFunctionId(formData.job_function);
-    const positionGroupId = getPositionGroupId(formData.position_group);
-    const unitId = formData.unit ? getUnitId(formData.unit) : null;
+      const businessFunctionId = getBusinessFunctionId(formData.business_function);
+      const departmentId = getDepartmentId(formData.department);
+      const jobFunctionId = getJobFunctionId(formData.job_function);
+      const positionGroupId = getPositionGroupId(formData.position_group);
+      const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-    console.log('🔧 FIXED: ID Mapping Results for Preview API:');
-    console.log('- Business Function:', formData.business_function, '→', businessFunctionId);
-    console.log('- Department:', formData.department, '→', departmentId);
-    console.log('- Job Function:', formData.job_function, '→', jobFunctionId);
-    console.log('- Position Group:', formData.position_group, '→', positionGroupId);
-    console.log('- Unit:', formData.unit, '→', unitId);
+      const previewCriteria = {
+        job_title: formData.job_title.trim(),
+        business_function: businessFunctionId,
+        department: departmentId,
+        unit: unitId,
+        job_function: jobFunctionId,
+        position_group: positionGroupId,
+        grading_level: formData.grading_level?.trim() || null,
+        max_preview: 50,
+        include_vacancies: true
+      };
 
-    // Prepare criteria for API call
-    const previewCriteria = {
-      job_title: formData.job_title.trim(),
-      business_function: businessFunctionId,
-      department: departmentId,
-      unit: unitId,
-      job_function: jobFunctionId,
-      position_group: positionGroupId,
-      grading_level: formData.grading_level?.trim() || null,
-      max_preview: 50,
-      include_vacancies: true
-    };
+      const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
+      
+      const employees = response.employees || [];
+      const vacancies = response.vacancies || [];
+      const unifiedList = response.unified_list || [];
+      
+      const allRecords = unifiedList.length > 0 ? unifiedList : [...employees, ...vacancies];
 
-    console.log('🚀 FIXED: Preview criteria being sent to API:', previewCriteria);
-
-    const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
-    
-    console.log('📥 FIXED: Preview API response received:', response);
-    console.log('📊 Response details:');
-    console.log('- Assignment strategy:', response.assignment_strategy);
-    console.log('- Employees count:', response.eligible_employees_count);
-    console.log('- Vacancies count:', response.eligible_vacancies_count); 
-    console.log('- Total count:', response.total_eligible_count);
-    console.log('- Requires manual selection:', response.requires_manual_selection);
-
-    // Log the actual records
-    const employees = response.employees || [];
-    const vacancies = response.vacancies || [];
-    const unifiedList = response.unified_list || [];
-    
-    console.log('📋 Records in response:');
-    console.log('- Employees:', employees.length, employees.map(e => e.employee_id));
-    console.log('- Vacancies:', vacancies.length, vacancies.map(v => v.employee_id));
-    console.log('- Unified list:', unifiedList.length, unifiedList.map(u => u.employee_id));
-
-    // Use unified_list as primary data source, fallback to combining employees and vacancies
-    const allRecords = unifiedList.length > 0 ? unifiedList : [...employees, ...vacancies];
-    
-    console.log('🎯 Final records for assignment:', allRecords.length);
-    allRecords.forEach((record, index) => {
-      const isVacancy = record.is_vacancy || record.record_type === 'vacancy';
-      console.log(`  ${index + 1}. ${record.employee_id}: ${record.full_name || record.name} (${isVacancy ? 'VACANCY' : 'EMPLOYEE'})`);
-    });
-
-    const newPreview = {
-      strategy: response.assignment_strategy,
-      employeeCount: response.eligible_employees_count || 0,
-      vacancyCount: response.eligible_vacancies_count || 0,
-      totalCount: response.total_eligible_count || allRecords.length,
-      requiresSelection: response.requires_manual_selection,
-      previewMessage: response.strategy_message,
-      records: allRecords,
-      criteria: response.criteria || {},
-      nextSteps: response.next_steps || {}
-    };
-
-    console.log('🔄 Setting assignment preview:', newPreview);
-    setAssignmentPreview(newPreview);
-
-    // CRITICAL: Always notify parent component
-    if (onAssignmentPreviewUpdate) {
-      console.log('📤 Sending preview update to parent component');
-      onAssignmentPreviewUpdate({
-        ...newPreview,
-        employees: allRecords, // Send combined records as employees for backward compatibility
+      const newPreview = {
+        strategy: response.assignment_strategy,
+        employeeCount: response.eligible_employees_count || 0,
+        vacancyCount: response.eligible_vacancies_count || 0,
+        totalCount: response.total_eligible_count || allRecords.length,
         requiresSelection: response.requires_manual_selection,
-        originalResponse: response
-      });
-    } else {
-      console.log('⚠️ onAssignmentPreviewUpdate callback is missing!');
-    }
+        previewMessage: response.strategy_message,
+        records: allRecords,
+        criteria: response.criteria || {},
+        nextSteps: response.next_steps || {}
+      };
 
-  } catch (error) {
+      setAssignmentPreview(newPreview);
+
+      if (onAssignmentPreviewUpdate) {
+        onAssignmentPreviewUpdate({
+          ...newPreview,
+          employees: allRecords,
+          requiresSelection: response.requires_manual_selection,
+          originalResponse: response
+        });
+      }
+
+    } catch (error) {
       console.error('Error fetching assignment preview:', error);
       
       let errorMessage = 'Error loading assignment preview';
@@ -566,17 +472,13 @@ const getPositionGroupId = (name) => {
 
   // Watch for changes in ALL required fields + employee data changes
   useEffect(() => {
-    console.log('Form data changed, checking if preview should update...');
-    
     if (areAllRequiredFieldsFilled()) {
-      console.log('All required fields filled and can be mapped, updating preview...');
       const timer = setTimeout(() => {
         updateAssignmentPreview();
       }, 1200);
 
       return () => clearTimeout(timer);
     } else {
-      console.log('Not all required fields filled or cannot map to IDs, clearing preview');
       const emptyPreview = {
         strategy: null,
         employeeCount: 0,
@@ -602,7 +504,6 @@ const getPositionGroupId = (name) => {
     dropdownData.employees
   ]);
 
-  // Optional fields can still trigger preview updates if all required fields are present
   useEffect(() => {
     if (areAllRequiredFieldsFilled()) {
       const timer = setTimeout(() => {
@@ -616,7 +517,6 @@ const getPositionGroupId = (name) => {
     formData.grading_level
   ]);
 
-  // Check if we should show employee assignment preview
   const shouldShowPreview = areAllRequiredFieldsFilled();
 
   // Handle field changes with smart clearing
@@ -631,7 +531,6 @@ const getPositionGroupId = (name) => {
       grading_level: ''
     };
     
-    // Check if current job_title is available in new business function
     if (formData.job_title) {
       const filteredEmployees = dropdownData.employees?.filter(emp => 
         emp.business_function_name === value && 
@@ -657,7 +556,6 @@ const getPositionGroupId = (name) => {
       grading_level: ''
     };
     
-    // Check if current job_title is available in new department
     if (formData.job_title) {
       const filteredEmployees = dropdownData.employees?.filter(emp => 
         emp.business_function_name === formData.business_function &&
@@ -789,6 +687,7 @@ const getPositionGroupId = (name) => {
     <div className="space-y-6">
       {/* Basic Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* UPDATED: Job Title with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Job Title <span className="text-red-500">*</span>
@@ -796,14 +695,12 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.jobTitles} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getUniqueJobTitles()}
             value={formData.job_title}
             onChange={(value) => onFormDataChange({...formData, job_title: value})}
             placeholder={counts.jobTitles > 0 ? "Select job title from records" : "Enter job title"}
-            allowCustom={true}
-            error={validationErrors.job_title}
-            disabled={counts.jobTitles === 0}
+            className={validationErrors.job_title ? 'border-red-500' : ''}
             darkMode={darkMode}
           />
           {validationErrors.job_title && (
@@ -811,6 +708,7 @@ const getPositionGroupId = (name) => {
           )}
         </div>
         
+        {/* UPDATED: Business Function with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Business Function <span className="text-red-500">*</span>
@@ -818,13 +716,12 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.businessFunctions} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getUniqueBusinessFunctions()}
             value={formData.business_function}
             onChange={handleBusinessFunctionChange}
             placeholder={counts.businessFunctions > 0 ? "Select Business Function" : "No business functions available"}
-            error={validationErrors.business_function}
-            disabled={counts.businessFunctions === 0}
+            className={validationErrors.business_function ? 'border-red-500' : ''}
             darkMode={darkMode}
           />
           {validationErrors.business_function && (
@@ -832,6 +729,7 @@ const getPositionGroupId = (name) => {
           )}
         </div>
         
+        {/* UPDATED: Department with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Department <span className="text-red-500">*</span>
@@ -839,7 +737,7 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.departments} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getFilteredDepartments()}
             value={formData.department}
             onChange={handleDepartmentChange}
@@ -847,8 +745,7 @@ const getPositionGroupId = (name) => {
               (counts.departments > 0 ? "Select Department" : "No departments available") : 
               "Select Business Function First"
             }
-            disabled={!formData.business_function || counts.departments === 0}
-            error={validationErrors.department}
+            className={validationErrors.department ? 'border-red-500' : ''}
             darkMode={darkMode}
           />
           {validationErrors.department && (
@@ -856,6 +753,7 @@ const getPositionGroupId = (name) => {
           )}
         </div>
         
+        {/* UPDATED: Unit with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Unit
@@ -863,7 +761,7 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.units} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getFilteredUnits()}
             value={formData.unit}
             onChange={(value) => onFormDataChange({...formData, unit: value})}
@@ -871,8 +769,7 @@ const getPositionGroupId = (name) => {
               (counts.units > 0 ? "Select Unit" : "No units available") : 
               "Select Department First"
             }
-            disabled={!formData.department || counts.units === 0}
-            error={validationErrors.unit}
+            className={validationErrors.unit ? 'border-red-500' : ''}
             darkMode={darkMode}
           />
           {validationErrors.unit && (
@@ -880,6 +777,7 @@ const getPositionGroupId = (name) => {
           )}
         </div>
 
+        {/* UPDATED: Job Function with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Job Function <span className="text-red-500">*</span>
@@ -887,7 +785,7 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.jobFunctions} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getFilteredJobFunctions()}
             value={formData.job_function}
             onChange={handleJobFunctionChange}
@@ -895,8 +793,7 @@ const getPositionGroupId = (name) => {
               (counts.jobFunctions > 0 ? "Select Job Function" : "No job functions available") : 
               "Select Department First"
             }
-            disabled={!formData.department || counts.jobFunctions === 0}
-            error={validationErrors.job_function}
+            className={validationErrors.job_function ? 'border-red-500' : ''}
             darkMode={darkMode}
           />
           {validationErrors.job_function && (
@@ -904,6 +801,7 @@ const getPositionGroupId = (name) => {
           )}
         </div>
         
+        {/* UPDATED: Position Group with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Position Group <span className="text-red-500">*</span>
@@ -911,7 +809,7 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.positionGroups} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getFilteredPositionGroups()}
             value={formData.position_group}
             onChange={handlePositionGroupChange}
@@ -919,8 +817,7 @@ const getPositionGroupId = (name) => {
               (counts.positionGroups > 0 ? "Select Position Group" : "No position groups available") : 
               "Select Job Function First"
             }
-            disabled={!formData.job_function || counts.positionGroups === 0}
-            error={validationErrors.position_group}
+            className={validationErrors.position_group ? 'border-red-500' : ''}
             darkMode={darkMode}
           />
           {validationErrors.position_group && (
@@ -928,6 +825,7 @@ const getPositionGroupId = (name) => {
           )}
         </div>
         
+        {/* UPDATED: Grading Level with SearchableDropdown */}
         <div className="md:col-span-2">
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Grading Level
@@ -935,7 +833,7 @@ const getPositionGroupId = (name) => {
               <span className={`text-xs ${textMuted} ml-1`}>({counts.gradingLevels} available)</span>
             )}
           </label>
-          <SearchableSelect
+          <SearchableDropdown
             options={getFilteredGradingLevels()}
             value={formData.grading_level}
             onChange={(value) => onFormDataChange({...formData, grading_level: value})}
@@ -943,7 +841,6 @@ const getPositionGroupId = (name) => {
               (counts.gradingLevels > 0 ? "Select Grading Level" : "No grading levels available") : 
               "Select Position Group First"
             }
-            disabled={!formData.position_group || counts.gradingLevels === 0}
             darkMode={darkMode}
           />
         </div>

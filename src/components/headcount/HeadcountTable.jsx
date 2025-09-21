@@ -11,7 +11,7 @@ import VacantPositionsTable from "./VacantPositionsTable";
 import ArchiveEmployeesTable from "./ArchiveEmployeesTable";
 
 // Import existing employee table components
-import { initializeColorSystem, getEmployeeColorGroup, getCurrentColorMode, isColorModeActive } from "./utils/themeStyles";
+import { initializeColorSystem, getEmployeeColorGroup, getCurrentColorMode } from "./utils/themeStyles";
 import HeadcountHeader from "./HeadcountHeader";
 import SearchBar from "./SearchBar";
 import QuickFilterBar from "./QuickFilterBar";
@@ -91,7 +91,7 @@ const HeadcountTable = () => {
     archiveStats, 
     loading: vacantLoading,
     fetchVacantPositionsStatistics,
-    fetchArchiveStatistics
+
   } = useVacantPositions();
 
   const {
@@ -331,7 +331,7 @@ const HeadcountTable = () => {
         }
         await Promise.all([
           fetchVacantPositionsStatistics(),
-          fetchArchiveStatistics()
+        
         ]);
       } catch (error) {
         console.error('Failed to initialize tab statistics:', error);
@@ -341,7 +341,7 @@ const HeadcountTable = () => {
     if (!initialized.current) {
       initializeAllStats();
     }
-  }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics, fetchArchiveStatistics]);
+  }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics]);
 
   // ========================================
   // COMPLETE API PARAMS BUILDER
@@ -952,143 +952,100 @@ const HeadcountTable = () => {
   // EXPORT FUNCTIONALITY
   // ========================================
   
-  const handleExport = useCallback(async (exportOptions) => {
-    try {
-      setIsExporting(true);
-      
-      const apiPayload = {};
-      
-      apiPayload.export_format = exportOptions.format || 'excel';
-      
-      if (exportOptions.fields && typeof exportOptions.fields === 'object') {
-        const fieldMappings = {
-          basic_info: [
-            'employee_id', 'name', 'email', 'gender', 'father_name', 
-            'first_name', 'last_name', 'phone'
-          ],
-          job_info: [
-            'job_title', 'department_name', 'business_function_name', 
-            'business_function_code', 'position_group_name', 'job_function_name'
-          ],
-          contact_info: [
-            'phone', 'address', 'emergency_contact'
-          ],
-          contract_info: [
-            'contract_duration', 'contract_start_date', 'contract_end_date', 
-            'contract_extensions', 'last_extension_date', 'contract_duration_display'
-          ],
-          management_info: [
-            'line_manager_name', 'line_manager_hc_number', 
-            'direct_reports_count'
-          ],
-          tags: [
-            'tag_names'
-          ],
-          grading: [
-            'grading_level', 'grading_display', 'position_group_level'
-          ],
-          status: [
-            'status_name', 'status_color', 'is_visible_in_org_chart', 
-            'status_needs_update', 'current_status_display'
-          ],
-          dates: [
-            'start_date', 'end_date', 'date_of_birth', 'years_of_service',
-            'created_at', 'updated_at'
-          ],
-          documents_count: ['documents_count'],
-          activities_count: ['activities_count']
-        };
-
-        const selectedFields = [];
-        Object.keys(exportOptions.fields).forEach(fieldGroup => {
-          if (exportOptions.fields[fieldGroup] && fieldMappings[fieldGroup]) {
-            selectedFields.push(...fieldMappings[fieldGroup]);
-          }
-        });
-
-        if (selectedFields.length > 0) {
-          apiPayload.include_fields = [...new Set(selectedFields)];
-        }
-      }
-      
-      switch (exportOptions.type) {
-        case "selected":
-          if (!selectedEmployees || selectedEmployees.length === 0) {
-            throw new Error("No employees selected for export");
-          }
-          apiPayload.employee_ids = selectedEmployees;
-          break;
-
-        case "filtered":
-          const filterParams = { ...buildApiParams };
-          delete filterParams.page;
-          delete filterParams.page_size;
-          apiPayload._filterParams = filterParams;
-          break;
-
-        case "all":
-          break;
-
-        default:
-          throw new Error(`Unknown export type: ${exportOptions.type}`);
-      }
-
-      const result = await exportEmployees(exportOptions.format || 'excel', apiPayload);
-      
-      const exportTypeLabel = exportOptions.type === "selected" 
-        ? `${selectedEmployees?.length || 0} selected` 
-        : exportOptions.type === "filtered" 
-        ? "filtered"
-        : "all";
-      
-      const successMessage = `Export completed! ${exportTypeLabel} employees exported in ${(exportOptions.format || 'excel').toUpperCase()} format.`;
-      
-      if (typeof alert === 'function') {
-        alert(successMessage);
-      } else {
-        console.log(successMessage);
-      }
-      
-      return result;
-
-    } catch (error) {
-      let userFriendlyMessage = "Export failed. Please try again.";
-      
-      if (error.message) {
-        userFriendlyMessage = error.message;
-      } else if (typeof error === 'string') {
-        userFriendlyMessage = error;
-      } else if (error.response?.data?.message) {
-        userFriendlyMessage = error.response.data.message;
-      } else if (error.response?.data?.detail) {
-        userFriendlyMessage = error.response.data.detail;
-      } else if (error.data?.message) {
-        userFriendlyMessage = error.data.message;
-      } else if (error.data?.detail) {
-        userFriendlyMessage = error.data.detail;
-      }
-      
-      if (error.message?.includes('406') || error.message?.includes('Not Acceptable')) {
-        userFriendlyMessage = "Export format not supported by server. Please try a different format or contact support.";
-      } else if (error.message?.includes('400') || error.message?.includes('Bad Request')) {
-        userFriendlyMessage = "Invalid export parameters. Please check your selection and try again.";
-      } else if (error.message?.includes('timeout')) {
-        userFriendlyMessage = "Export timeout. The export is taking too long. Please try with fewer employees.";
-      } else if (error.message?.includes('Network Error')) {
-        userFriendlyMessage = "Network error. Please check your connection and try again.";
-      }
-      
-      if (typeof alert === 'function') {
-        alert(`Export failed: ${userFriendlyMessage}`);
-      } else {
-        console.error(`Export failed: ${userFriendlyMessage}`);
-      }
-      
-      throw error;
-    } finally {
-      setIsExporting(false);
+const handleExport = useCallback(async (exportOptions) => {
+  try {
+    setIsExporting(true);
+    
+    console.log('🎯 EXPORT MODAL OPTIONS:');
+    console.log('   Type:', exportOptions.type);
+    console.log('   Format:', exportOptions.format);
+    console.log('   Include fields:', exportOptions.include_fields);
+    console.log('   Selected employees (from state):', selectedEmployees);
+    
+    const apiPayload = {
+      export_format: exportOptions.format || 'excel'
+    };
+    
+    // Handle field selection
+    if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
+      apiPayload.include_fields = exportOptions.include_fields;
+      console.log('📊 Fields to export:', exportOptions.include_fields);
     }
-  }, [selectedEmployees, buildApiParams, exportEmployees]);
+    
+    // Handle export type
+    switch (exportOptions.type) {
+      case "selected":
+        if (!selectedEmployees || selectedEmployees.length === 0) {
+          alert("No employees selected for export!");
+          return;
+        }
+        
+        // CRITICAL: Ensure employee IDs are properly formatted
+        const cleanEmployeeIds = selectedEmployees.map(id => {
+          if (typeof id === 'string') return parseInt(id, 10);
+          if (typeof id === 'number') return id;
+          return null;
+        }).filter(id => id !== null && id > 0);
+        
+        if (cleanEmployeeIds.length === 0) {
+          alert("Selected employee IDs are invalid!");
+          return;
+        }
+        
+        apiPayload.employee_ids = cleanEmployeeIds;
+        console.log('📋 Clean employee IDs for export:', cleanEmployeeIds);
+        break;
+
+      case "filtered":
+        const filterParams = { ...buildApiParams };
+        delete filterParams.page;
+        delete filterParams.page_size;
+        apiPayload._filterParams = filterParams;
+        console.log('🔍 Filter params for export:', filterParams);
+        break;
+
+      case "all":
+        console.log('🌍 Exporting all employees');
+        break;
+
+      default:
+        throw new Error(`Unknown export type: ${exportOptions.type}`);
+    }
+
+    console.log('🚀 Final API payload:', JSON.stringify(apiPayload, null, 2));
+    
+    const result = await exportEmployees(exportOptions.format || 'excel', apiPayload);
+    
+    const exportTypeLabel = exportOptions.type === "selected" 
+      ? `${selectedEmployees?.length || 0} selected` 
+      : exportOptions.type === "filtered" 
+      ? "filtered"
+      : "all";
+    
+    const fieldsCount = exportOptions.include_fields?.length || 'default';
+    alert(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
+    
+    return result;
+
+  } catch (error) {
+    console.error('❌ Export error:', error);
+    
+    let userFriendlyMessage = error.message || "Export failed. Please try again.";
+    
+    if (error.message?.includes('No employees selected')) {
+      userFriendlyMessage = "Please select at least one employee to export.";
+    } else if (error.message?.includes('Invalid fields')) {
+      userFriendlyMessage = "Some selected fields are not available. Please check your field selection.";
+    } else if (error.message?.includes('No data received')) {
+      userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
+    }
+    
+    alert(`Export failed: ${userFriendlyMessage}`);
+    throw error;
+  } finally {
+    setIsExporting(false);
+  }
+}, [selectedEmployees, buildApiParams, exportEmployees]);
 
   const handleQuickExport = useCallback(async (exportOptions) => {
     try {

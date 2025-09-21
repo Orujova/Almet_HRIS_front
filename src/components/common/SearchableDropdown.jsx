@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import {
   Search,
@@ -14,11 +15,16 @@ const SearchableDropdown = ({
   searchPlaceholder = "Search...",
   className = "",
   darkMode = false,
-  icon = null
+  icon = null,
+  portal = false,
+  dropdownClassName = "",
+  zIndex = "z-50"
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [buttonRect, setButtonRect] = useState(null);
   const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
 
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
@@ -32,17 +38,113 @@ const SearchableDropdown = ({
 
   const selectedOption = options.find(option => option.value === value);
 
+  // Update button position when dropdown opens
+  useEffect(() => {
+    if (isOpen && buttonRef.current && portal) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setButtonRect({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width
+      });
+    }
+  }, [isOpen, portal]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // Check if click is outside both dropdown and button
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
+      const isOutsideButton = buttonRef.current && !buttonRef.current.contains(event.target);
+      
+      if (isOutsideDropdown && isOutsideButton) {
         setIsOpen(false);
         setSearchTerm("");
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    const handleScroll = (event) => {
+      if (isOpen && portal) {
+        // Only close if scroll is NOT inside the dropdown
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+          setIsOpen(false);
+          setSearchTerm("");
+        }
+      }
+    };
+
+    const handleResize = () => {
+      if (isOpen && portal) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      window.addEventListener('scroll', handleScroll, true);
+      window.addEventListener('resize', handleResize);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [isOpen, portal]);
+
+  const dropdownContent = isOpen && (
+    <div 
+      className={`${portal ? 'fixed' : 'absolute'} ${zIndex} w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-60 overflow-hidden ${dropdownClassName}`}
+      style={portal && buttonRect ? {
+        top: `${buttonRect.top + 4}px`,
+        left: `${buttonRect.left}px`,
+        width: `${buttonRect.width}px`,
+        zIndex: 9999
+      } : {}}
+      ref={dropdownRef}
+    >
+      <div className={`p-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="relative">
+          <Search size={12} className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${textMuted}`} />
+          <input
+            type="text"
+            placeholder={searchPlaceholder}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className={`w-full pl-7 pr-2 py-1.5 outline-0 border ${borderColor} rounded focus:ring-1 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs`}
+            autoFocus
+          />
+        </div>
+      </div>
+      <div 
+        className="max-h-44 overflow-y-auto custom-scrollbar"
+        onMouseDown={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+      >
+        {filteredOptions.length === 0 ? (
+          <div className={`px-3 py-2 ${textMuted} text-xs text-center`}>
+            No options found
+          </div>
+        ) : (
+          filteredOptions.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+                setSearchTerm("");
+              }}
+              className={`w-full px-3 py-2 text-left ${hoverBg} ${textPrimary} text-xs transition-colors duration-150 ${
+                value === option.value ? 'bg-almet-sapphire/10 text-almet-sapphire' : ''
+              }`}
+            >
+              {option.label}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -76,8 +178,9 @@ const SearchableDropdown = ({
         }
       `}</style>
       
-      <div className={`relative ${className}`} ref={dropdownRef}>
+      <div className={`relative ${className}`}>
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs text-left flex items-center justify-between transition-all duration-200 hover:border-almet-sapphire/50`}
@@ -91,46 +194,11 @@ const SearchableDropdown = ({
           <ChevronDown size={14} className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        {isOpen && (
-          <div className={`absolute z-50 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-60 overflow-hidden`}>
-            <div className={`p-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <div className="relative">
-                <Search size={12} className={`absolute left-2 top-1/2 transform -translate-y-1/2 ${textMuted}`} />
-                <input
-                  type="text"
-                  placeholder={searchPlaceholder}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-7 pr-2 py-1.5 outline-0 border ${borderColor} rounded focus:ring-1 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs`}
-                  autoFocus
-                />
-              </div>
-            </div>
-            <div className="max-h-44 overflow-y-auto custom-scrollbar">
-              {filteredOptions.length === 0 ? (
-                <div className={`px-3 py-2 ${textMuted} text-xs text-center`}>
-                  No options found
-                </div>
-              ) : (
-                filteredOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => {
-                      onChange(option.value);
-                      setIsOpen(false);
-                      setSearchTerm("");
-                    }}
-                    className={`w-full px-3 py-2 text-left ${hoverBg} ${textPrimary} text-xs transition-colors duration-150 ${
-                      value === option.value ? 'bg-almet-sapphire/10 text-almet-sapphire' : ''
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        )}
+        {/* Render dropdown with or without portal */}
+        {portal && typeof window !== 'undefined' 
+          ? createPortal(dropdownContent, document.body)
+          : dropdownContent
+        }
       </div>
     </>
   );

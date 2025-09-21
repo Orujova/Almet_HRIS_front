@@ -314,7 +314,7 @@ const TagManagementModal = ({
       />
       
       {/* Modal */}
-      <div className={`relative ${bgModal} rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden border ${borderColor}`}>
+      <div className={`relative ${bgModal} rounded-xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh]  border ${borderColor}`}>
         {/* Header */}
         <div className={`px-5 py-4 border-b ${borderColor} flex items-center justify-between`}>
           <div className="flex items-center">

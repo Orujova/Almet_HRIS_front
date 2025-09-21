@@ -234,19 +234,7 @@ const SearchBar = ({
         </div>
       )}
 
-      {/* No Recent Searches Message */}
-      {isOpen && showRecentSearches && recentSearches.length === 0 && safeSearchTerm === "" && (
-        <div className={`
-          absolute z-50 w-full mt-1 
-          ${bgCard} border ${borderColor}
-          rounded-lg shadow-lg
-          p-4 text-center
-        `}>
-          <div className={`text-sm ${textMuted}`}>
-            Start typing to search employees...
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 };
