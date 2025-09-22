@@ -16,7 +16,7 @@ import {
   KeyRound,
   UserCog,
   Building2,
-  Home
+  TicketsPlane
 } from "lucide-react";
 
 const Sidebar = ({ collapsed = false }) => {
@@ -139,6 +139,12 @@ const Sidebar = ({ collapsed = false }) => {
       path: "/settings/asset-mng",
       id: "asset-mng",
     },
+     {
+      label: "Vacation Settings",
+      icon: <TicketsPlane className="w-4 h-4" />,
+      path: "/settings/vacation-settings",
+      id: "vacation-settings",
+    },
   ];
 
   return (
@@ -202,20 +208,6 @@ const Sidebar = ({ collapsed = false }) => {
         </nav>
       </div>
 
-      {/* User Profile - only show when not collapsed */}
-      {/* {!collapsed && (
-        <div className="p-3 border-t border-gray-200 dark:border-almet-comet">
-          <div className="flex items-center">
-            <div className="h-6 w-6 rounded-full bg-almet-steel-blue text-white flex items-center justify-center text-xs">
-              NT
-            </div>
-            <div className="ml-2">
-              <p className="text-xs font-medium text-gray-800 dark:text-white">Nizami T</p>
-              <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai">Administrator</p>
-            </div>
-          </div>
-        </div>
-      )} */}
     </div>
   );
 };

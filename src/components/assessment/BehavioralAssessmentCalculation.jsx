@@ -80,17 +80,18 @@ const BehavioralAssessmentCalculation = () => {
 
   // Helper function to filter job titles based on position group
   const getJobTitlesForPositionGroup = (positionGroupId) => {
-    if (!positionGroupId) return uniqueJobTitles;
-    
-    // Filter employees by position group and extract unique job titles
-    const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
-    const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
-    console.log('Job Titles in Group:', jobTitlesInGroup);
-    return jobTitlesInGroup.map(title => ({ 
-      value: title,
-      name: title
-    }));
-  };
+  if (!positionGroupId) return uniqueJobTitles;
+  
+  const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
+  const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
+  
+  // Ensure each option has a truly unique identifier
+  return jobTitlesInGroup.map((title, index) => ({ 
+    value: title,
+    name: title,
+    uniqueId: `${positionGroupId}-${title}-${index}` // Add unique identifier
+  }));
+};
 
   // Update filtered job titles when position group changes in create modal
   useEffect(() => {

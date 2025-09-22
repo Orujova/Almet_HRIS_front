@@ -1,4 +1,4 @@
-// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - FIXED: Tags and all issues
+// src/components/headcount/FormSteps/FormStep3AdditionalInfo.jsx - FIXED: Single select for tags
 import { useState, useEffect, useCallback } from "react";
 import { 
   Users, 
@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 import FormField from "../FormComponents/FormField";
-import MultiSelectDropdown from "../MultiSelectDropdown";
 
 const FormStep3AdditionalInfo = ({
   formData,
@@ -102,13 +101,14 @@ const FormStep3AdditionalInfo = ({
     setLineManagerSearch("");
   };
 
-  // FIXED: Handle tag selection change from MultiSelectDropdown
-  const handleTagSelectionChange = (selectedTagIds) => {
-    console.log('🏷️ Tag selection changed:', selectedTagIds);
+  // FIXED: Handle single tag selection change
+  const handleTagSelectionChange = (e) => {
+    const selectedTagId = e.target.value;
+    console.log('🏷️ Tag selection changed:', selectedTagId);
     handleInputChange({
       target: { 
-        name: 'tag_ids', 
-        value: selectedTagIds
+        name: 'tag_id', // Changed from tag_ids to tag_id for single select
+        value: selectedTagId
       }
     });
   };
@@ -162,24 +162,22 @@ const FormStep3AdditionalInfo = ({
     }
   };
 
-  // FIXED: Enhanced tag options formatting with current employee tags
+  // FIXED: Enhanced tag options formatting with current employee tag (single)
   const getFormattedTagOptions = () => {
     const allTags = [...(tagOptions || [])];
     
-    // In edit mode, ensure current employee tags are included even if not in global list
-    if (isEditMode && formData.current_tags && Array.isArray(formData.current_tags)) {
-      formData.current_tags.forEach(currentTag => {
-        const existsInOptions = allTags.find(tag => tag.value === currentTag.id?.toString());
-        if (!existsInOptions) {
-          // Add current tag to options
-          allTags.push({
-            value: currentTag.id?.toString(),
-            label: currentTag.name,
-            color: currentTag.color || '#6B7280',
-            isCurrent: true
-          });
-        }
-      });
+    // In edit mode, ensure current employee tag is included even if not in global list
+    if (isEditMode && formData.current_tag && formData.current_tag.id) {
+      const existsInOptions = allTags.find(tag => tag.value === formData.current_tag.id?.toString());
+      if (!existsInOptions) {
+        // Add current tag to options
+        allTags.push({
+          value: formData.current_tag.id?.toString(),
+          label: formData.current_tag.name,
+          color: formData.current_tag.color || '#6B7280',
+          isCurrent: true
+        });
+      }
     }
     
     return allTags.map(tag => ({
@@ -202,28 +200,25 @@ const FormStep3AdditionalInfo = ({
         </div>
       </div>
 
-      {/* FIXED: Edit mode notice for tags */}
-      {isEditMode && formData.current_tags && formData.current_tags.length > 0 && (
+      {/* FIXED: Edit mode notice for single tag */}
+      {isEditMode && formData.current_tag && (
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
           <div className="flex items-start">
             <Tag className="h-3 w-3 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
             <div>
               <h4 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-1">
-                Current Employee Tags
+                Current Employee Tag
               </h4>
               <div className="flex flex-wrap gap-1 mb-2">
-                {formData.current_tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white"
-                    style={{ backgroundColor: tag.color || '#6B7280' }}
-                  >
-                    {tag.name}
-                  </span>
-                ))}
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white"
+                  style={{ backgroundColor: formData.current_tag.color || '#6B7280' }}
+                >
+                  {formData.current_tag.name}
+                </span>
               </div>
               <p className="text-[10px] text-blue-700 dark:text-blue-400">
-                These are the employee's current tags. You can modify them below.
+                This is the employee's current tag. You can change it below.
               </p>
             </div>
           </div>
@@ -497,37 +492,50 @@ const FormStep3AdditionalInfo = ({
         )}
       </div>
 
-      {/* Employee Tags Section - FIXED */}
+      {/* Employee Tag Section - FIXED: Single Select */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Tag className="text-almet-san-juan" size={12} />
-            <h4 className={`text-xs font-medium ${textPrimary}`}>Employee Tags</h4>
+            <h4 className={`text-xs font-medium ${textPrimary}`}>Employee Tag</h4>
           </div>
         </div>
 
-        {/* Multi-Select Tags Dropdown */}
+        {/* Single Select Tag Dropdown */}
         <div>
-          <label className={`block text-xs font-medium ${textSecondary} mb-1`}>
-            Select Tags
-          </label>
-          <MultiSelectDropdown
-            options={getFormattedTagOptions()}
-            selectedValues={formData.tag_ids || []}
+          <FormField
+            label="Select Tag"
+            name="tag_id"
+            value={formData.tag_id || ""}
             onChange={handleTagSelectionChange}
-            placeholder="Search and select tags..."
+            type="select"
+            options={getFormattedTagOptions()}
+            placeholder="Select a tag..."
             showColors={true}
-            showDescriptions={true}
             searchable={true}
-            className="w-full"
-            size="sm"
+            clearable={true}
+            validationError={validationErrors.tag_id}
+            helpText="Choose one tag for this employee"
           />
           
-          {/* FIXED: Show current selected tags summary */}
-          {formData.tag_ids && formData.tag_ids.length > 0 && (
+          {/* FIXED: Show current selected tag summary */}
+          {formData.tag_id && (
             <div className="mt-2">
               <div className={`text-[10px] ${textMuted} mb-1`}>
-                {formData.tag_ids.length} tag{formData.tag_ids.length !== 1 ? 's' : ''} selected
+                Selected tag
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {(() => {
+                  const selectedTag = getFormattedTagOptions().find(tag => tag.value === formData.tag_id);
+                  return selectedTag ? (
+                    <span
+                      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white"
+                      style={{ backgroundColor: selectedTag.color || '#6B7280' }}
+                    >
+                      {selectedTag.label}
+                    </span>
+                  ) : null;
+                })()}
               </div>
             </div>
           )}

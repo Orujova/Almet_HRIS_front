@@ -1,4 +1,4 @@
-// src/components/headcount/ExportModal.jsx - FIXED: Field mapping for backend
+// src/components/headcount/ExportModal.jsx - FIXED: Complete field mapping və backend integration
 import { useState } from "react";
 import { 
   Download, 
@@ -7,8 +7,7 @@ import {
 } from "lucide-react";
 
 /**
- * FIXED Export Modal - Backend field mapping düzəldildi
- * Field groups frontend-də seçilir, backend field names-ə çevrilir
+ * COMPLETELY FIXED Export Modal - Field selection və backend integration
  */
 const ExportModal = ({ 
   isOpen, 
@@ -25,47 +24,47 @@ const ExportModal = ({
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState(null);
   
-  // FIXED: Field groups that map to actual backend field names
+  // COMPLETELY FIXED: Backend-ə tam uyğun field mapping
   const [includeFields, setIncludeFields] = useState({
     basic_info: true,
     job_info: true,
-    contact_info: true,
+    contact_info: false,
     contract_info: true,
     management_info: true,
-    tags: true,
+    tags: false,
     grading: true,
     status: true,
-    dates: true,
+    dates: false,
     documents_count: false,
     activities_count: false
   });
 
-  // FIXED: Field group to actual field mapping
+  // FIXED: Backend serializer-də olan EXACT field names
   const fieldGroupMappings = {
     basic_info: [
-      'employee_id', 'name', 'email', 'gender', 'father_name', 
-      'first_name', 'last_name', 'phone'
+      'employee_id', 'name', 'email', 'father_name', 'date_of_birth', 
+      'gender', 'phone', 'address', 'emergency_contact'
     ],
     job_info: [
-      'job_title', 'department_name', 'business_function_name', 
-      'business_function_code', 'position_group_name', 'job_function_name'
+      'job_title', 'business_function_name', 'business_function_code', 'business_function_id',
+      'department_name', 'department_id', 'unit_name', 'unit_id',
+      'job_function_name', 'job_function_id'
     ],
     contact_info: [
       'phone', 'address', 'emergency_contact'
     ],
     contract_info: [
-      'contract_duration', 'contract_start_date', 'contract_end_date', 
-      'contract_extensions', 'last_extension_date', 'contract_duration_display'
+      'contract_duration', 'contract_duration_display', 'contract_start_date', 'contract_end_date', 
+      'contract_extensions', 'last_extension_date', 'start_date', 'end_date'
     ],
     management_info: [
-      'line_manager_name', 'line_manager_hc_number', 
-      'direct_reports_count'
+      'line_manager_name', 'line_manager_hc_number', 'direct_reports_count'
     ],
     tags: [
       'tag_names'
     ],
     grading: [
-      'grading_level', 'grading_display', 'position_group_level'
+      'grading_level', 'position_group_name', 'position_group_level', 'position_group_id'
     ],
     status: [
       'status_name', 'status_color', 'is_visible_in_org_chart', 
@@ -111,7 +110,7 @@ const ExportModal = ({
     }));
   };
 
-  // FIXED: Convert field groups to actual field names
+  // COMPLETELY FIXED: Convert field groups to backend field names
   const getSelectedFields = () => {
     const selectedFields = [];
     
@@ -121,11 +120,11 @@ const ExportModal = ({
       }
     });
 
-    // Remove duplicates and return
+    // Remove duplicates və return
     return [...new Set(selectedFields)];
   };
 
-  // FIXED: Export handler - sends actual field names to backend
+  // COMPLETELY FIXED: Export handler - backend API structure-ına tam uyğun
   const handleExport = async () => {
     try {
       setIsExporting(true);
@@ -134,33 +133,49 @@ const ExportModal = ({
       // Get actual field names from selected groups
       const selectedFields = getSelectedFields();
       
-      console.log('🔧 FIXED: Selected field groups:', includeFields);
-      console.log('🔧 FIXED: Converted to field names:', selectedFields);
-      console.log('🔧 FIXED: Export type:', exportType);
-      console.log('🔧 FIXED: Selected employees:', selectedEmployees);
+      console.log('🎯 COMPLETELY FIXED: Selected field groups:', includeFields);
+      console.log('🎯 COMPLETELY FIXED: Converted to field names:', selectedFields);
+      console.log('🎯 COMPLETELY FIXED: Export type:', exportType);
+      console.log('🎯 COMPLETELY FIXED: Selected employees:', selectedEmployees);
 
-      // FIXED: Backend API format-ına uyğun export options
-      const exportOptions = {
-        type: exportType,
-        format: exportFormat,
-        // Send actual field names instead of field groups
-        include_fields: selectedFields,
-        
-        // CRITICAL FIX: Always send employee_ids for selected export
-        ...(exportType === "selected" && selectedEmployees?.length > 0 && {
-          employee_ids: selectedEmployees
-        }),
-        
-        // Additional metadata for better error handling
-        selectedCount: selectedEmployees?.length || 0,
-        filteredCount: filteredCount || 0,
-        totalCount: totalEmployees || 0
-      };
+      // COMPLETELY FIXED: Backend export_selected endpoint format
+      let exportOptions;
 
-      console.log('🔧 FIXED: Final export options to handler:', exportOptions);
+      if (exportType === "selected") {
+        // Selected employees export
+        if (!selectedEmployees || selectedEmployees.length === 0) {
+          throw new Error('No employees selected for export');
+        }
+
+        exportOptions = {
+          type: "selected",
+          format: exportFormat,
+          include_fields: selectedFields,
+          employee_ids: selectedEmployees, // Backend gözləyir
+          selectedCount: selectedEmployees.length
+        };
+      } else if (exportType === "filtered") {
+        // Filtered export - use current filters
+        exportOptions = {
+          type: "filtered", 
+          format: exportFormat,
+          include_fields: selectedFields,
+          filteredCount: filteredCount
+        };
+      } else {
+        // All employees export
+        exportOptions = {
+          type: "all",
+          format: exportFormat, 
+          include_fields: selectedFields,
+          totalCount: totalEmployees
+        };
+      }
+
+      console.log('🎯 COMPLETELY FIXED: Final export options:', exportOptions);
 
       // Call the export handler from HeadcountTable
-      await onExport(exportOptions);
+      const result = await onExport(exportOptions);
       
       // If successful, close modal
       onClose();
@@ -173,73 +188,73 @@ const ExportModal = ({
     }
   };
 
-  // Field options with descriptions
+  // FIXED: Field options with better descriptions
   const fieldOptions = [
     { 
       key: "basic_info", 
       label: "Basic Information", 
-      description: "Employee ID, name, email, gender, father name",
-      fields: fieldGroupMappings.basic_info.join(', ')
+      description: "Employee ID, name, email, gender, father name, phone",
+      count: fieldGroupMappings.basic_info.length
     },
     { 
       key: "job_info", 
       label: "Job Information", 
-      description: "Job title, department, business function, position group",
-      fields: fieldGroupMappings.job_info.join(', ')
+      description: "Job title, department, business function, units",
+      count: fieldGroupMappings.job_info.length
     },
     { 
       key: "contact_info", 
       label: "Contact Information", 
-      description: "Phone number, address, emergency contact",
-      fields: fieldGroupMappings.contact_info.join(', ')
+      description: "Phone, address, emergency contact",
+      count: fieldGroupMappings.contact_info.length
     },
     { 
       key: "contract_info", 
       label: "Contract Information", 
       description: "Contract duration, start/end dates, extensions",
-      fields: fieldGroupMappings.contract_info.join(', ')
+      count: fieldGroupMappings.contract_info.length
     },
     { 
       key: "management_info", 
       label: "Management", 
       description: "Line manager, direct reports count",
-      fields: fieldGroupMappings.management_info.join(', ')
+      count: fieldGroupMappings.management_info.length
     },
     { 
       key: "tags", 
       label: "Employee Tags", 
       description: "All assigned tags and categories",
-      fields: fieldGroupMappings.tags.join(', ')
+      count: fieldGroupMappings.tags.length
     },
     { 
       key: "grading", 
       label: "Grading Information", 
-      description: "Grade level, position group level",
-      fields: fieldGroupMappings.grading.join(', ')
+      description: "Grade level, position group information",
+      count: fieldGroupMappings.grading.length
     },
     { 
       key: "status", 
       label: "Status Information", 
-      description: "Current status, org chart visibility, status updates",
-      fields: fieldGroupMappings.status.join(', ')
+      description: "Current status, org chart visibility",
+      count: fieldGroupMappings.status.length
     },
     { 
       key: "dates", 
       label: "Important Dates", 
       description: "Start date, birth date, years of service",
-      fields: fieldGroupMappings.dates.join(', ')
+      count: fieldGroupMappings.dates.length
     },
     { 
       key: "documents_count", 
       label: "Documents Count", 
       description: "Number of associated documents",
-      fields: fieldGroupMappings.documents_count.join(', ')
+      count: fieldGroupMappings.documents_count.length
     },
     { 
       key: "activities_count", 
       label: "Activities Count", 
       description: "Number of recorded activities",
-      fields: fieldGroupMappings.activities_count.join(', ')
+      count: fieldGroupMappings.activities_count.length
     }
   ];
 
@@ -438,9 +453,14 @@ const ExportModal = ({
                     onChange={() => handleFieldToggle(field.key)}
                     className="mt-0.5 mr-3 h-4 w-4 text-almet-sapphire focus:ring-almet-sapphire border-gray-300 rounded"
                   />
-                  <div>
-                    <p className={`text-sm font-medium ${textPrimary}`}>{field.label}</p>
-                    <p className={`text-xs ${textMuted}`}>{field.description}</p>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <p className={`text-sm font-medium ${textPrimary}`}>{field.label}</p>
+                      <span className={`text-xs px-1.5 py-0.5 rounded ${textMuted} bg-gray-100 dark:bg-gray-700`}>
+                        {field.count}
+                      </span>
+                    </div>
+                    <p className={`text-xs ${textMuted} mt-1`}>{field.description}</p>
                   </div>
                 </label>
               ))}
@@ -450,7 +470,7 @@ const ExportModal = ({
           {/* Selected Fields Preview */}
           <div className="space-y-2">
             <h4 className={`text-xs font-medium ${textSecondary}`}>
-              Selected Fields ({getSelectedFields().length} fields)
+              Selected Fields ({getSelectedFields().length} total fields)
             </h4>
             <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-700 p-2 rounded max-h-20 overflow-y-auto">
               {getSelectedFields().length > 0 ? getSelectedFields().join(', ') : 'No fields selected'}

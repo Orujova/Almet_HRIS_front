@@ -8,9 +8,12 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { competencyApi } from '@/services/competencyApi';
 import AssessmentMatrix from './AssessmentMatrix';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
+import SearchableDropdown from '@/components/common/SearchableDropdown';
+import { ToastProvider, useToast } from '@/components/common/Toast';
 
 /*************************************
- * Compact primitives (same API/colors)
+ * Compact primitives
  *************************************/
 const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', disabled = false, loading = false, size = 'md', className = '' }) => {
   const variants = {
@@ -62,34 +65,24 @@ const StatChip = ({ label }) => (
   </div>
 );
 
-const Toast = ({ type = 'success', message, onClose }) => (
-  <div className={`fixed top-6 right-6 z-50 max-w-sm rounded-2xl p-4 shadow-2xl border-2 ${type === 'success' ? 'bg-blue-50 border-blue-200' : 'bg-red-50 border-red-200'}`}>
-    <div className="flex items-start gap-3">
-      <div className={`p-1 rounded-lg ${type === 'success' ? 'bg-blue-100' : 'bg-red-100'}`}>
-        {type === 'success' ? <CheckCircle className="h-5 w-5 text-blue-700"/> : <AlertCircle className="h-5 w-5 text-red-600"/>}
-      </div>
-      <div className="flex-1">
-        <p className={`${type === 'success' ? 'text-blue-800' : 'text-red-800'} text-sm font-semibold`}>{type === 'success' ? 'Successful Operation' : 'Error Occurred'}</p>
-        <p className={`${type === 'success' ? 'text-blue-700' : 'text-red-700'} text-sm mt-1`}>{message}</p>
-      </div>
-      <button onClick={onClose} className={`${type === 'success' ? 'text-blue-700 hover:text-blue-900' : 'text-red-700 hover:text-red-900'} p-1`}>
-        <X size={16}/>
-      </button>
-    </div>
-  </div>
-);
-
 /*************************************
- * Enhanced main screen
+ * Main Component (with Toast wrapper)
  *************************************/
-const CompetencyMatrixSystem = () => {
+const CompetencyMatrixSystemInner = () => {
   const { darkMode } = useTheme();
+  const { showSuccess, showError } = useToast();
 
-  // ui state
-  const [activeView, setActiveView] = useState('skills'); // 'skills' | 'behavioral' | 'matrix'
+  // ui state - TAB STATE-Nİ STORAGE-DƏ SAXLA
+  const [activeView, setActiveView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('competencyActiveView') || 'skills';
+    }
+    return 'skills';
+  });
+  
   const [search, setSearch] = useState('');
   const [selectedGroup, setSelectedGroup] = useState('');
-  const [expandedCard, setExpandedCard] = useState(null); // Only one card can be expanded
+  const [expandedCard, setExpandedCard] = useState(null);
   const [showAddItem, setShowAddItem] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
 
@@ -103,15 +96,30 @@ const CompetencyMatrixSystem = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  const [toast, setToast] = useState(null); // {type, message}
 
   // inline edit state
-  const [editKey, setEditKey] = useState(null); // `${group}-${index}` for items, `group-${groupName}` for groups
+  const [editKey, setEditKey] = useState(null);
   const [editValue, setEditValue] = useState('');
 
   // add forms
   const [newGroupName, setNewGroupName] = useState('');
   const [newItem, setNewItem] = useState({ group: '', name: '' });
+
+  // confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'default'
+  });
+
+  // TAB DEYİŞƏNDƏ STORAGE-Ə YARAT
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('competencyActiveView', activeView);
+    }
+  }, [activeView]);
 
   const bgApp = darkMode ? 'bg-gray-950' : 'bg-almet-mystic';
   const card = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
@@ -166,8 +174,7 @@ const CompetencyMatrixSystem = () => {
   const stats = useMemo(() => {
     const totalGroups = Object.keys(currentData).length;
     const totalItems = Object.values(currentData).reduce((a, b) => a + b.length, 0);
-    const avg = totalGroups ? Math.round((totalItems / totalGroups) * 10) / 10 : 0;
-    return { totalGroups, totalItems, avg };
+    return { totalGroups, totalItems };
   }, [currentData]);
 
   // helpers
@@ -176,7 +183,7 @@ const CompetencyMatrixSystem = () => {
     setExpandedCard(expandedCard === g ? null : g);
   };
 
-  // CRUD - Fixed edit functions
+  // CRUD operations
   const beginEditItem = (group, index) => { 
     const name = (currentData[group][index]?.name) ?? currentData[group][index]; 
     setEditKey(`${group}-${index}`); 
@@ -196,52 +203,94 @@ const CompetencyMatrixSystem = () => {
       else await competencyApi.behavioralGroups.create({ name: newGroupName.trim() });
       await fetchData();
       setShowAddGroup(false); setNewGroupName('');
-      setToast({ type: 'success', message: 'Group created successfully.' });
-    } catch (e) { setErr(e); setToast({ type: 'error', message: e?.message || 'Could not add group.' }); }
-    finally { setBusy(false); }
+      showSuccess('Group created successfully');
+    } catch (e) { 
+      setErr(e); 
+      showError(e?.message || 'Could not add group');
+    } finally { setBusy(false); }
   };
 
   const deleteGroup = async (gName) => {
-    if (!confirm(`Are you sure you want to delete "${gName}" group and all its items?`)) return;
-    setBusy(true); setErr(null);
-    try {
-      const g = findGroupByName(gName); if (!g) throw new Error('Group not found');
-      if (activeView === 'skills') await competencyApi.skillGroups.delete(g.id); else await competencyApi.behavioralGroups.delete(g.id);
-      await fetchData(); 
-      if (expandedCard === gName) setExpandedCard(null);
-      if (selectedGroup === gName) setSelectedGroup('');
-      setToast({ type: 'success', message: 'Group deleted.' });
-    } catch (e) { setErr(e); setToast({ type: 'error', message: e?.message || 'Could not delete.' }); }
-    finally { setBusy(false); }
+    const g = findGroupByName(gName);
+    if (!g) {
+      showError('Group not found');
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Group',
+      message: `Are you sure you want to delete "${gName}" group and all its items? This action cannot be undone.`,
+      type: 'danger',
+      onConfirm: async () => {
+        setBusy(true); setErr(null);
+        try {
+          if (activeView === 'skills') await competencyApi.skillGroups.delete(g.id); 
+          else await competencyApi.behavioralGroups.delete(g.id);
+          await fetchData(); 
+          if (expandedCard === gName) setExpandedCard(null);
+          if (selectedGroup === gName) setSelectedGroup('');
+          showSuccess('Group deleted successfully');
+        } catch (e) { 
+          setErr(e); 
+          showError(e?.message || 'Could not delete group');
+        } finally { 
+          setBusy(false); 
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }
+      }
+    });
   };
 
   const addItem = async () => {
     if (!newItem.group || !newItem.name.trim()) return;
     setBusy(true); setErr(null);
     try {
-      const g = findGroupByName(newItem.group); if (!g) throw new Error('Group not found');
+      const g = findGroupByName(newItem.group); 
+      if (!g) throw new Error('Group not found');
       const payload = { group: g.id, name: newItem.name.trim() };
-      if (activeView === 'skills') await competencyApi.skills.create(payload); else await competencyApi.behavioralCompetencies.create(payload);
-      await fetchData(); setShowAddItem(false); setNewItem({ group: '', name: '' });
-      setToast({ type: 'success', message: 'Item added.' });
-    } catch (e) { setErr(e); setToast({ type: 'error', message: e?.message || 'Could not add item.' }); }
-    finally { setBusy(false); }
+      if (activeView === 'skills') await competencyApi.skills.create(payload); 
+      else await competencyApi.behavioralCompetencies.create(payload);
+      await fetchData(); 
+      setShowAddItem(false); 
+      setNewItem({ group: '', name: '' });
+      showSuccess('Item added successfully');
+    } catch (e) { 
+      setErr(e); 
+      showError(e?.message || 'Could not add item');
+    } finally { setBusy(false); }
   };
 
   const deleteItem = async (group, index) => {
     const item = currentData[group][index];
     const id = typeof item === 'object' ? item.id : null;
+    
     if (!id) {
       setCurrentData(prev => ({ ...prev, [group]: prev[group].filter((_, i) => i !== index) }));
       return;
     }
-    if (!confirm(`Delete "${item.name}"?`)) return;
-    setBusy(true); setErr(null);
-    try {
-      if (activeView === 'skills') await competencyApi.skills.delete(id); else await competencyApi.behavioralCompetencies.delete(id);
-      await fetchData(); setToast({ type: 'success', message: 'Item deleted.' });
-    } catch (e) { setErr(e); setToast({ type: 'error', message: e?.message || 'Could not delete.' }); }
-    finally { setBusy(false); }
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Item',
+      message: `Are you sure you want to delete "${item.name}"?`,
+      type: 'danger',
+      onConfirm: async () => {
+        setBusy(true); setErr(null);
+        try {
+          if (activeView === 'skills') await competencyApi.skills.delete(id); 
+          else await competencyApi.behavioralCompetencies.delete(id);
+          await fetchData(); 
+          showSuccess('Item deleted successfully');
+        } catch (e) { 
+          setErr(e); 
+          showError(e?.message || 'Could not delete item');
+        } finally { 
+          setBusy(false); 
+          setConfirmModal({ ...confirmModal, isOpen: false });
+        }
+      }
+    });
   };
 
   const cancelEdit = () => { setEditKey(null); setEditValue(''); };
@@ -249,12 +298,11 @@ const CompetencyMatrixSystem = () => {
   const saveEdit = async () => {
     if (!editKey || !editValue.trim()) return;
     
-    // Check if editing a group
     if (editKey.startsWith('group-')) {
       const groupName = editKey.replace('group-', '');
       const gObj = findGroupByName(groupName);
       if (!gObj) {
-        setToast({ type: 'error', message: 'Group not found.' });
+        showError('Group not found');
         return;
       }
       
@@ -268,17 +316,14 @@ const CompetencyMatrixSystem = () => {
         }
         await fetchData();
         cancelEdit();
-        setToast({ type: 'success', message: 'Group updated.' });
+        showSuccess('Group updated successfully');
       } catch (e) { 
         setErr(e); 
-        setToast({ type: 'error', message: e?.message || 'Could not update group.' }); 
-      } finally { 
-        setBusy(false); 
-      }
+        showError(e?.message || 'Could not update group');
+      } finally { setBusy(false); }
       return;
     }
 
-    // Edit item
     const [group, idxStr] = editKey.split('-'); 
     const index = Number(idxStr);
     const item = currentData[group][index]; 
@@ -299,13 +344,11 @@ const CompetencyMatrixSystem = () => {
       else await competencyApi.behavioralCompetencies.update(id, payload);
       await fetchData(); 
       cancelEdit(); 
-      setToast({ type: 'success', message: 'Item updated.' });
+      showSuccess('Item updated successfully');
     } catch (e) { 
       setErr(e); 
-      setToast({ type: 'error', message: e?.message || 'Could not update.' }); 
-    } finally { 
-      setBusy(false); 
-    }
+      showError(e?.message || 'Could not update item');
+    } finally { setBusy(false); }
   };
 
   if (loading) {
@@ -347,6 +390,9 @@ const CompetencyMatrixSystem = () => {
     );
   }
 
+  // Group dropdown options
+  const groupOptions = groupsArr.map(g => ({ value: g, label: g }));
+
   return (
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} p-6`}>
@@ -367,14 +413,13 @@ const CompetencyMatrixSystem = () => {
                 <div className="flex items-center gap-2">
                   <StatChip label={`${stats.totalGroups} groups`}/>
                   <StatChip label={`${stats.totalItems} items`}/>
-                  <StatChip label={`avg ${stats.avg} per group`}/>
                 </div>
               )}
             </div>
           </header>
 
           {/* Tabs + Toolbar */}
-          <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm   z-10`}>
+          <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm z-10`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div className="flex items-center gap-1">
                 {[
@@ -395,13 +440,19 @@ const CompetencyMatrixSystem = () => {
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-almet-waterloo"/>
                     <input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search..." className="pl-9 pr-3 py-2 rounded-xl border-2 text-xs bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white border-gray-200 dark:border-almet-comet focus:outline-none focus:border-almet-sapphire"/>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <ListFilter size={16} className="text-almet-waterloo"/>
-                    <select value={selectedGroup} onChange={e=>setSelectedGroup(e.target.value)} className="px-3 py-2 rounded-xl border-2 text-xs font-medium bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white border-gray-200 dark:border-almet-comet focus:outline-none focus:border-almet-sapphire min-w-40">
-                      <option value="">All groups</option>
-                      {groupsArr.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
+                  
+                  <SearchableDropdown
+                    options={[{ value: '', label: 'All groups' }, ...groupOptions]}
+                    value={selectedGroup}
+                    onChange={setSelectedGroup}
+                    placeholder="Filter by group"
+                    searchPlaceholder="Search groups..."
+                    darkMode={darkMode}
+                    icon={<ListFilter size={14} />}
+                    portal={true}
+                    className="min-w-[160px]"
+                  />
+                  
                   <ActionButton icon={Plus} label="Item" onClick={()=>setShowAddItem(true)} size="sm"/>
                   <ActionButton icon={Building} label="Group" onClick={()=>setShowAddGroup(true)} size="sm" variant="success"/>
                 </div>
@@ -437,7 +488,6 @@ const CompetencyMatrixSystem = () => {
                 
                 return (
                   <article key={group} className={`${card} border ${border} rounded-2xl shadow-sm hover:shadow-md transition`}> 
-                    {/* Group header */}
                     <header className={`p-4 flex items-center gap-3 border-b ${border}`}>
                       <button onClick={()=>toggleExpand(group)} className={`p-2 rounded-xl ${isOpen ? 'bg-almet-sapphire text-white' : 'bg-almet-mystic text-almet-cloud-burst'} transition`}>
                         {isOpen ? <X size={16}/> : <Plus size={16}/>}
@@ -483,7 +533,6 @@ const CompetencyMatrixSystem = () => {
                       </div>
                     </header>
 
-                    {/* Items */}
                     {isOpen ? (
                       <div className="p-3 space-y-2">
                         {items.length === 0 && (
@@ -551,11 +600,15 @@ const CompetencyMatrixSystem = () => {
               </div>
               <div className="p-5 space-y-4">
                 <Field label="Group" required>
-                  <select value={newItem.group} onChange={(e)=>setNewItem(s=>({ ...s, group: e.target.value }))}
-                          className="w-full px-3 py-2 rounded-xl border-2 text-sm bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white border-gray-200 dark:border-almet-comet focus:outline-none focus:border-almet-sapphire">
-                    <option value="">Select</option>
-                    {Object.keys(currentData).map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <SearchableDropdown
+                    options={groupOptions}
+                    value={newItem.group}
+                    onChange={(value) => setNewItem(s => ({ ...s, group: value }))}
+                    placeholder="Select a group"
+                    searchPlaceholder="Search groups..."
+                    darkMode={darkMode}
+                    portal={true}
+                  />
                 </Field>
                 <Field label="Name" required>
                   <TextInput value={newItem.name} onChange={(e)=>setNewItem(s=>({ ...s, name: e.target.value }))} placeholder="e.g. React, Teamwork" />
@@ -591,10 +644,30 @@ const CompetencyMatrixSystem = () => {
           </div>
         )}
 
-        {/* Toasts */}
-        {toast && <Toast type={toast.type} message={toast.message} onClose={()=>setToast(null)} />}
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type={confirmModal.type}
+          loading={busy}
+          darkMode={darkMode}
+        />
       </div>
     </DashboardLayout>
+  );
+};
+
+// Wrap with ToastProvider
+const CompetencyMatrixSystem = () => {
+  return (
+    <ToastProvider>
+      <CompetencyMatrixSystemInner />
+    </ToastProvider>
   );
 };
 

@@ -112,7 +112,7 @@ const SearchableDropdown = ({
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option, index) => (
                 <button
-                  key={option[valueKey] || index}
+                  key={`${option[valueKey]}-${index}`}
                   onClick={() => {
                     onChange(option[valueKey]);
                     setIsOpen(false);

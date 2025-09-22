@@ -2,17 +2,28 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Target, ArrowRight, Loader2, AlertCircle, Settings,
-  RefreshCw, X
+  RefreshCw, ChevronDown, ChevronRight
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import BehavioralAssessmentCalculation from '@/components/assessment/BehavioralAssessmentCalculation';
 import CoreEmployeeCalculation from '@/components/assessment/CoreEmployeeCalculation';
 import AssessmentSettings from '@/components/assessment/AssessmentSettings';
 import { assessmentApi } from '@/services/assessmentApi';
+import { ToastProvider, useToast } from '@/components/common/Toast';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
 
-const AssessmentMatrix = () => {
+const AssessmentMatrixInner = () => {
   const { darkMode } = useTheme();
-  const [activeView, setActiveView] = useState('dashboard');
+  const { showSuccess, showError } = useToast();
+  
+  // TAB STATE-NI STORAGE-DƏ SAXLA
+  const [activeView, setActiveView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('assessmentMatrixView') || 'dashboard';
+    }
+    return 'dashboard';
+  });
+  
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -22,6 +33,22 @@ const AssessmentMatrix = () => {
     totalAssessments: 0,
     completedAssessments: 0
   });
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+    type: 'default'
+  });
+
+  // TAB DEYİŞƏNDƏ STORAGE-Ə YARAT
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('assessmentMatrixView', activeView);
+    }
+  }, [activeView]);
 
   // Theme classes
   const bgApp = darkMode ? 'bg-gray-900' : 'bg-almet-mystic';
@@ -54,6 +81,7 @@ const AssessmentMatrix = () => {
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       setError(error);
+      showError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -96,37 +124,37 @@ const AssessmentMatrix = () => {
   const NavigationCard = ({ icon: Icon, title, subtitle, isActive, onClick, color, count }) => (
     <button
       onClick={onClick}
-      className={`w-full p-4 rounded-lg text-left transition-all duration-200 hover:shadow group ${
+      className={`w-full p-6 rounded-xl text-left transition-all duration-200 hover:shadow-lg group ${
         isActive
-          ? `bg-gradient-to-r ${color} text-white shadow-lg`
-          : `${bgCard} border ${borderColor} ${textPrimary} hover:border-almet-sapphire`
+          ? `bg-gradient-to-br ${color} text-white shadow-xl`
+          : `${bgCard} border ${borderColor} ${textPrimary} hover:border-almet-sapphire hover:shadow-md`
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className={`p-2 rounded-lg ${
+      <div className="flex items-center justify-between mb-4">
+        <div className={`p-3 rounded-xl ${
           isActive ? 'bg-white/20' : 'bg-almet-sapphire bg-opacity-10'
         }`}>
-          <Icon className={`w-5 h-5 ${
+          <Icon className={`w-6 h-6 ${
             isActive ? 'text-white' : 'text-almet-sapphire'
           }`} />
         </div>
         <div className="flex items-center gap-2">
           {count !== undefined && (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
               isActive ? 'bg-white/20 text-white' : 'bg-almet-sapphire bg-opacity-10 text-almet-sapphire'
             }`}>
               {count}
             </span>
           )}
-          <ArrowRight className={`w-4 h-4 transition-transform duration-200 ${
+          <ArrowRight className={`w-5 h-5 transition-transform duration-200 ${
             isActive ? 'rotate-0' : 'group-hover:translate-x-1'
           }`} />
         </div>
       </div>
       
-      <h3 className="font-semibold text-sm mb-1">{title}</h3>
+      <h3 className="font-bold text-base mb-2">{title}</h3>
       <p className={`text-sm ${
-        isActive ? 'text-white/80' : textSecondary
+        isActive ? 'text-white/90' : textSecondary
       }`}>
         {subtitle}
       </p>
@@ -141,11 +169,11 @@ const AssessmentMatrix = () => {
   if (loading && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
-        <div className={`${bgCard} border ${borderColor} rounded-lg p-4 shadow-sm`}>
+        <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className={`font-semibold ${textPrimary}`}>Assessment Matrix</h2>
-              <p className={`text-sm ${textSecondary}`}>Employee competency assessment system</p>
+              <h2 className={`text-lg font-bold ${textPrimary}`}>Assessment Matrix</h2>
+              <p className={`text-sm ${textSecondary} mt-1`}>Employee competency assessment system</p>
             </div>
             <ActionButton
               onClick={() => setShowSettings(true)}
@@ -156,10 +184,11 @@ const AssessmentMatrix = () => {
           </div>
         </div>
         
-        <div className={`min-h-96 flex items-center justify-center ${bgCard} border ${borderColor} rounded-lg p-8`}>
+        <div className={`min-h-96 flex items-center justify-center ${bgCard} border ${borderColor} rounded-xl p-12`}>
           <div className="text-center">
-            <Loader2 className="w-6 h-6 mx-auto mb-3 animate-spin text-almet-sapphire" />
-            <p className={`${textPrimary} font-medium text-sm`}>Loading assessment data...</p>
+            <Loader2 className="w-8 h-8 mx-auto mb-4 animate-spin text-almet-sapphire" />
+            <p className={`${textPrimary} font-semibold`}>Loading assessment data...</p>
+            <p className={`${textSecondary} text-sm mt-1`}>Please wait</p>
           </div>
         </div>
       </div>
@@ -169,11 +198,11 @@ const AssessmentMatrix = () => {
   if (error && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
-        <div className={`${bgCard} border ${borderColor} rounded-lg p-4 shadow-sm`}>
+        <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
           <div className="flex items-center justify-between">
             <div>
-              <h2 className={`font-semibold ${textPrimary}`}>Assessment Matrix</h2>
-              <p className={`text-sm ${textSecondary}`}>Employee competency assessment system</p>
+              <h2 className={`text-lg font-bold ${textPrimary}`}>Assessment Matrix</h2>
+              <p className={`text-sm ${textSecondary} mt-1`}>Employee competency assessment system</p>
             </div>
             <div className="flex items-center gap-2">
               <ActionButton
@@ -193,21 +222,19 @@ const AssessmentMatrix = () => {
           </div>
         </div>
         
-        <div className={`${bgCard} border border-red-200 rounded-lg p-6 shadow-sm`}>
+        <div className={`${bgCard} border border-red-200 rounded-xl p-6 shadow-sm`}>
           <div className="flex items-start gap-3">
-            <AlertCircle className="text-red-500" size={20}/>
-            <div>
-              <h3 className="text-red-700 font-semibold text-sm">Error Loading Data</h3>
-              <p className="text-sm text-red-600 mt-1">{error?.message || 'Failed to load assessment data.'}</p>
+            <AlertCircle className="text-red-500" size={24}/>
+            <div className="flex-1">
+              <h3 className="text-red-700 font-bold text-base">Error Loading Data</h3>
+              <p className="text-sm text-red-600 mt-2">{error?.message || 'Failed to load assessment data.'}</p>
             </div>
-            <div className="ml-auto">
-              <ActionButton 
-                icon={RefreshCw} 
-                label="Try Again" 
-                onClick={fetchDashboardData}
-                variant="outline"
-              />
-            </div>
+            <ActionButton 
+              icon={RefreshCw} 
+              label="Try Again" 
+              onClick={fetchDashboardData}
+              variant="outline"
+            />
           </div>
         </div>
       </div>
@@ -217,31 +244,23 @@ const AssessmentMatrix = () => {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className={`${bgCard} border ${borderColor} rounded-lg p-4 shadow-sm`}>
+      <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
         <div className="flex items-center justify-between">
           <div>
-            <h2 className={`font-semibold ${textPrimary}`}>Assessment Matrix</h2>
-            <p className={`text-sm ${textSecondary}`}>Employee competency assessment system</p>
+            <h2 className={`text-lg font-bold ${textPrimary}`}>Assessment Matrix</h2>
+            <p className={`text-sm ${textSecondary} mt-1`}>Employee competency assessment system</p>
           </div>
           <div className="flex items-center gap-2">
             {activeView !== 'dashboard' && (
               <button
                 onClick={() => setActiveView('dashboard')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${darkMode ? 'bg-almet-comet hover:bg-almet-cloud-burst' : 'bg-almet-mystic hover:bg-almet-bali-hai'} ${textPrimary}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${darkMode ? 'bg-almet-comet hover:bg-almet-cloud-burst' : 'bg-almet-mystic hover:bg-gray-200'} ${textPrimary} hover:shadow-sm`}
               >
                 <ArrowRight className="w-4 h-4 rotate-180" />
-                Back
+                Back to Dashboard
               </button>
             )}
-            {activeView === 'dashboard' && (
-              <ActionButton
-                onClick={fetchDashboardData}
-                icon={RefreshCw}
-                label="Refresh"
-                variant="secondary"
-                loading={loading}
-              />
-            )}
+            
             <ActionButton
               onClick={() => setShowSettings(true)}
               icon={Settings}
@@ -254,12 +273,12 @@ const AssessmentMatrix = () => {
 
       {/* Content */}
       {activeView === 'dashboard' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <NavigationCard
             icon={Users}
             title="Behavioral Assessment"
-            subtitle="Employee behavioral competencies evaluation"
-            color="from-purple-500 to-purple-600"
+            subtitle="Evaluate employee behavioral competencies and soft skills"
+            color="from-purple-500 via-purple-600 to-purple-700"
             count={dashboardData.behavioralAssessments}
             isActive={false}
             onClick={() => setActiveView('behavioral')}
@@ -268,8 +287,8 @@ const AssessmentMatrix = () => {
           <NavigationCard
             icon={Target}
             title="Core Employee Assessment"
-            subtitle="Technical skills and core competencies"
-            color="from-blue-500 to-blue-600"
+            subtitle="Assess technical skills and core competencies"
+            color="from-blue-500 via-blue-600 to-blue-700"
             count={dashboardData.coreAssessments}
             isActive={false}
             onClick={() => setActiveView('core')}
@@ -289,7 +308,29 @@ const AssessmentMatrix = () => {
           <CoreEmployeeCalculation />
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Confirm"
+        cancelText="Cancel"
+        type={confirmModal.type}
+        darkMode={darkMode}
+      />
     </div>
+  );
+};
+
+// Wrap with ToastProvider
+const AssessmentMatrix = () => {
+  return (
+    <ToastProvider>
+      <AssessmentMatrixInner />
+    </ToastProvider>
   );
 };
 

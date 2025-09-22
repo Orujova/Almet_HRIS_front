@@ -189,7 +189,7 @@ const MultiSelect = ({
                 placeholder="Search options..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-8 pr-3 text-xs py-2 border ${borderColor} rounded ${bgCard} ${textPrimary} focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-sm`}
+                className={`w-full pl-7 pr-2 py-1.5 outline-0 border ${borderColor} rounded focus:ring-1 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs`}
                 onClick={(e) => e.stopPropagation()}
               />
             </div>

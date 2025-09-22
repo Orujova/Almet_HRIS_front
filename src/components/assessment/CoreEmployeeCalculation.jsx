@@ -1,9 +1,9 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, Target, Search, Eye, Edit, Trash2, 
-  Download, Calendar, Award, AlertCircle, CheckCircle,
-  Loader2, X, Save, ChevronDown, User, Building,
+  Download, AlertCircle, CheckCircle,
+  Loader2, X, Save, User, Building,
   TrendingUp, TrendingDown, Minus, Info, Send, RotateCcw
 } from 'lucide-react';
 import { assessmentApi } from '@/services/assessmentApi';
@@ -87,50 +87,6 @@ const CompletionIndicator = ({ percentage }) => {
   );
 };
 
-const DuplicateAssessmentWarning = ({ employeeName, onClose }) => {
-  return (
-    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-      <div className="flex items-start gap-2">
-        <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h4 className="font-medium text-red-800 text-sm mb-1">Duplicate Assessment</h4>
-          <p className="text-red-700 text-sm">
-            {employeeName} already has a core assessment. Each employee can only have one assessment.
-          </p>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-red-500 hover:text-red-700 transition-colors"
-        >
-          <X size={14} />
-        </button>
-      </div>
-    </div>
-  );
-};
-
-const NoTemplateWarning = ({ jobTitle, onClose }) => {
-  return (
-    <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-      <div className="flex items-start gap-2">
-        <AlertCircle className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <h4 className="font-medium text-yellow-800 text-sm mb-1">No Assessment Template Found</h4>
-          <p className="text-yellow-700 text-sm">
-            No core assessment template found for <strong>{jobTitle}</strong>. Please create a position assessment template first.
-          </p>
-        </div>
-        <button
-          onClick={onClose}
-          className="text-yellow-600 hover:text-yellow-800 transition-colors"
-        >
-          <X size={14} />
-        </button>
-      </div>
-    </div>
-  );
-};
-
 // Main Component
 const CoreEmployeeCalculation = () => {
   // Basic states
@@ -144,14 +100,14 @@ const CoreEmployeeCalculation = () => {
   
   // Modal states
   const [showCreatePositionModal, setShowCreatePositionModal] = useState(false);
+  const [showEditPositionModal, setShowEditPositionModal] = useState(false);
   const [showCreateEmployeeModal, setShowCreateEmployeeModal] = useState(false);
   const [showEditEmployeeModal, setShowEditEmployeeModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showCoreScalesInfo, setShowCoreScalesInfo] = useState(false);
   const [selectedAssessment, setSelectedAssessment] = useState(null);
-  const [editingAssessment, setEditingAssessment] = useState(null);
-  const [duplicateWarning, setDuplicateWarning] = useState(null);
-  const [noTemplateWarning, setNoTemplateWarning] = useState(null);
+  const [templateError, setTemplateError] = useState(null);
+  const [selectedEmployeeInfo, setSelectedEmployeeInfo] = useState(null);
   
   // Data states
   const [positionAssessments, setPositionAssessments] = useState([]);
@@ -160,10 +116,17 @@ const CoreEmployeeCalculation = () => {
   const [positionGroups, setPositionGroups] = useState([]);
   const [coreScales, setCoreScales] = useState([]);
   const [skillGroups, setSkillGroups] = useState([]);
-  const [jobTitles, setJobTitles] = useState([]);
+  const [uniqueJobTitles, setUniqueJobTitles] = useState([]);
   
   // Form states
   const [positionFormData, setPositionFormData] = useState({
+    position_group: '',
+    job_title: '',
+    competency_ratings: []
+  });
+
+  const [editPositionFormData, setEditPositionFormData] = useState({
+    id: '',
     position_group: '',
     job_title: '',
     competency_ratings: []
@@ -176,7 +139,50 @@ const CoreEmployeeCalculation = () => {
     competency_ratings: []
   });
 
-  const [selectedEmployeeInfo, setSelectedEmployeeInfo] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    employee: '',
+    position_assessment: '',
+    notes: '',
+    competency_ratings: []
+  });
+
+  // Position-Job Title Relationship States
+  const [filteredJobTitles, setFilteredJobTitles] = useState([]);
+  const [editFilteredJobTitles, setEditFilteredJobTitles] = useState([]);
+
+  // Helper function to filter job titles based on position group
+  const getJobTitlesForPositionGroup = (positionGroupId) => {
+    if (!positionGroupId) return uniqueJobTitles;
+    
+    const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
+    const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
+    
+    return jobTitlesInGroup.map((title, index) => ({ 
+      value: title,
+      name: title,
+      uniqueId: `${positionGroupId}-${title}-${index}`
+    }));
+  };
+
+  // Update filtered job titles when position group changes in create modal
+  useEffect(() => {
+    const filtered = getJobTitlesForPositionGroup(positionFormData.position_group);
+    setFilteredJobTitles(filtered);
+    
+    if (positionFormData.job_title && !filtered.find(jt => jt.value === positionFormData.job_title)) {
+      setPositionFormData(prev => ({ ...prev, job_title: '' }));
+    }
+  }, [positionFormData.position_group, employees, uniqueJobTitles]);
+
+  // Update filtered job titles when position group changes in edit modal
+  useEffect(() => {
+    const filtered = getJobTitlesForPositionGroup(editPositionFormData.position_group);
+    setEditFilteredJobTitles(filtered);
+    
+    if (editPositionFormData.job_title && !filtered.find(jt => jt.value === editPositionFormData.job_title)) {
+      setEditPositionFormData(prev => ({ ...prev, job_title: '' }));
+    }
+  }, [editPositionFormData.position_group, employees, uniqueJobTitles]);
 
   // Data fetching
   const fetchData = async () => {
@@ -202,18 +208,20 @@ const CoreEmployeeCalculation = () => {
       
       setPositionAssessments(positionAssessmentsRes.results || []);
       setEmployeeAssessments(employeeAssessmentsRes.results || []);
-      setEmployees(employeesRes.results || []);
+      const employeesList = employeesRes.results || [];
+      setEmployees(employeesList);
       setPositionGroups(positionGroupsRes.results || []);
       setCoreScales(coreScalesRes.results || []);
+      
+      // Extract unique job titles from employees
+      const jobTitles = [...new Set(employeesList.map(emp => emp.job_title).filter(Boolean))];
+      setUniqueJobTitles(jobTitles.map(title => ({ name: title, value: title })));
       
       const skillGroupsList = skillGroupsRes.results || [];
       const skillGroupsDetails = await Promise.all(
         skillGroupsList.map(group => competencyApi.skillGroups.getById(group.id))
       );
       setSkillGroups(skillGroupsDetails);
-      
-      const uniqueJobTitles = [...new Set(employeesRes.results?.map(emp => emp.job_title).filter(Boolean))];
-      setJobTitles(uniqueJobTitles);
       
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -227,134 +235,126 @@ const CoreEmployeeCalculation = () => {
     fetchData();
   }, []);
 
+  // Position Group change handler for create modal
+  const handlePositionGroupChange = (positionGroupId) => {
+    setPositionFormData(prev => ({
+      ...prev,
+      position_group: positionGroupId,
+      job_title: ''
+    }));
+  };
+
+  // Position Group change handler for edit modal
+  const handleEditPositionGroupChange = (positionGroupId) => {
+    setEditPositionFormData(prev => ({
+      ...prev,
+      position_group: positionGroupId,
+      job_title: ''
+    }));
+  };
+
   // Employee selection handler
   const handleEmployeeChange = async (employeeId) => {
+    setTemplateError(null);
     const selectedEmployee = employees.find(e => e.id === employeeId);
     if (!selectedEmployee) return;
+
+    setSelectedEmployeeInfo(selectedEmployee);
     
-    setDuplicateWarning(null);
-    setNoTemplateWarning(null);
+    const existingAssessment = employeeAssessments.find(assessment => assessment.employee === employeeId);
     
-    const existingAssessment = employeeAssessments.find(a => a.employee === employeeId);
     if (existingAssessment) {
-      setDuplicateWarning({
-        employeeName: selectedEmployee.name,
-        type: 'core'
+      setTemplateError({
+        type: 'duplicate',
+        message: `${selectedEmployee.name} already has a core assessment. Each employee can only have one assessment.`,
+        employee: selectedEmployee
       });
-      setError({ 
-        message: `Employee ${selectedEmployee.name} already has an assessment. Each employee can only have one assessment.`,
-        type: 'duplicate_assessment',
-        employeeName: selectedEmployee.name
-      });
+      setEmployeeFormData(prev => ({ ...prev, employee: employeeId, position_assessment: '' }));
       return;
     }
-    
-    setSelectedEmployeeInfo(selectedEmployee);
-    setEmployeeFormData(prev => ({...prev, employee: employeeId}));
+
+    setEmployeeFormData(prev => ({ ...prev, employee: employeeId }));
     
     try {
       const response = await assessmentApi.positionCore.getForEmployee(employeeId);
+      
       if (response.assessment_template) {
         setEmployeeFormData(prev => ({
           ...prev, 
           employee: employeeId,
-          position_assessment: response.assessment_template.id
+          position_assessment: response.assessment_template.id,
+          competency_ratings: response.assessment_template.competency_ratings?.map(rating => ({
+            skill_id: rating.skill,
+            actual_level: 0,
+            notes: ''
+          })) || []
         }));
+        setTemplateError(null);
       }
     } catch (err) {
       console.error('Error fetching employee position template:', err);
-      setNoTemplateWarning({
-        jobTitle: selectedEmployee.job_title
-      });
+      
+      if (err.response?.data?.error) {
+        setTemplateError({
+          type: 'no_template',
+          message: err.response.data.error,
+          employee: selectedEmployee
+        });
+      } else {
+        setTemplateError({
+          type: 'api_error',
+          message: 'Failed to load position template for this employee',
+          employee: selectedEmployee
+        });
+      }
       
       setEmployeeFormData(prev => ({
         ...prev, 
         employee: employeeId,
-        position_assessment: ''
+        position_assessment: '',
+        competency_ratings: []
       }));
     }
   };
 
-  // Position assessment handlers
-  const handleCreatePositionAssessment = async () => {
-    if (!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0) {
-      setError({ message: 'Please fill all required fields and add at least one competency rating' });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await assessmentApi.positionCore.create(positionFormData);
-      await fetchData();
-      setShowCreatePositionModal(false);
-      setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
-      setEditingAssessment(null);
-      setSuccessMessage('Position assessment template created successfully');
-    } catch (err) {
-      console.error('Error creating position assessment:', err);
-      setError(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
+  // Handle edit position assessment
   const handleEditPositionAssessment = async (assessment) => {
     try {
-      setPositionFormData({
+      const detailedAssessment = await assessmentApi.positionCore.getById(assessment.id);
+      
+      setEditPositionFormData({
+        id: assessment.id,
         position_group: assessment.position_group,
         job_title: assessment.job_title,
-        competency_ratings: assessment.competency_ratings?.map(rating => ({
+        competency_ratings: detailedAssessment.competency_ratings?.map(rating => ({
           skill_id: rating.skill,
           required_level: rating.required_level
         })) || []
       });
       
-      setEditingAssessment(assessment);
-      setShowCreatePositionModal(true);
+      setShowEditPositionModal(true);
     } catch (err) {
       console.error('Error loading position assessment for edit:', err);
       setError(err);
     }
   };
 
-  const handleUpdatePositionAssessment = async () => {
-    if (!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0) {
-      setError({ message: 'Please fill all required fields and add at least one competency rating' });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      await assessmentApi.positionCore.update(editingAssessment.id, positionFormData);
-      await fetchData();
-      setShowCreatePositionModal(false);
-      setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
-      setEditingAssessment(null);
-      setSuccessMessage('Position assessment template updated successfully');
-    } catch (err) {
-      console.error('Error updating position assessment:', err);
-      setError(err);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // Employee assessment handlers
+  // Handle edit employee assessment
   const handleEditAssessment = async (assessment) => {
     try {
-      const fullAssessment = await assessmentApi.employeeCore.getById(assessment.id);
-      setEditingAssessment(fullAssessment);
+      const detailedAssessment = await assessmentApi.employeeCore.getById(assessment.id);
       
-      const employeeInfo = employees.find(e => e.id === fullAssessment.employee);
+      const employeeInfo = employees.find(e => e.id === detailedAssessment.employee);
       setSelectedEmployeeInfo(employeeInfo);
       
-      setEmployeeFormData({
-        employee: fullAssessment.employee,
-        position_assessment: fullAssessment.position_assessment,
-        notes: fullAssessment.notes || '',
-        competency_ratings: fullAssessment.competency_ratings?.map(rating => ({
+      setEditFormData({
+        id: assessment.id,
+        employee: detailedAssessment.employee,
+        position_assessment: detailedAssessment.position_assessment,
+        notes: detailedAssessment.notes || '',
+        competency_ratings: detailedAssessment.competency_ratings?.map(rating => ({
           skill_id: rating.skill,
-          actual_level: rating.actual_level,
+          actual_level: rating.actual_level || 0,
           notes: rating.notes || ''
         })) || []
       });
@@ -366,45 +366,70 @@ const CoreEmployeeCalculation = () => {
     }
   };
 
-  const handleUpdateAssessment = async (actionType = 'save_draft') => {
-    if (!editingAssessment) return;
+  // Handle position assessment creation
+  const handleCreatePositionAssessment = async () => {
+    if (!positionFormData.position_group || !positionFormData.job_title) {
+      setError({ message: 'Please fill all required fields' });
+      return;
+    }
+
+    if (positionFormData.competency_ratings.length === 0) {
+      setError({ message: 'Please rate at least one competency' });
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const data = {
-        ...employeeFormData,
-        action_type: 'save_draft'
-      };
-      
-      await assessmentApi.employeeCore.update(editingAssessment.id, data);
-      
-      if (actionType === 'submit') {
-        await assessmentApi.employeeCore.submit(editingAssessment.id, {});
-      }
-      
+      await assessmentApi.positionCore.create(positionFormData);
       await fetchData();
-      setShowEditEmployeeModal(false);
-      setEditingAssessment(null);
-      setEmployeeFormData({
-        employee: '',
-        position_assessment: '',
-        notes: '',
-        competency_ratings: []
-      });
-      setSelectedEmployeeInfo(null);
-      const actionMessage = actionType === 'save_draft' ? 'Assessment updated successfully' : 'Assessment updated and submitted successfully';
-      setSuccessMessage(actionMessage);
+      setShowCreatePositionModal(false);
+      setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+      setSuccessMessage('Position assessment template created successfully');
     } catch (err) {
-      console.error('Error updating assessment:', err);
+      console.error('Error creating position assessment:', err);
       setError(err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleEmployeeAssessmentAction = async (actionType = 'save_draft') => {
-    if (!employeeFormData.employee) {
-      setError({ message: 'Please select employee' });
+  // Handle position assessment update
+  const handleUpdatePositionAssessment = async () => {
+    if (!editPositionFormData.position_group || !editPositionFormData.job_title) {
+      setError({ message: 'Please fill all required fields' });
+      return;
+    }
+
+    if (editPositionFormData.competency_ratings.length === 0) {
+      setError({ message: 'Please rate at least one competency' });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const updateData = {
+        position_group: editPositionFormData.position_group,
+        job_title: editPositionFormData.job_title,
+        competency_ratings: editPositionFormData.competency_ratings
+      };
+      
+      await assessmentApi.positionCore.update(editPositionFormData.id, updateData);
+      await fetchData();
+      setShowEditPositionModal(false);
+      setEditPositionFormData({ id: '', position_group: '', job_title: '', competency_ratings: [] });
+      setSuccessMessage('Position assessment template updated successfully');
+    } catch (err) {
+      console.error('Error updating position assessment:', err);
+      setError(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle employee assessment creation
+  const handleCreateEmployeeAssessment = async (isDraft = true) => {
+    if (!employeeFormData.employee || !employeeFormData.position_assessment) {
+      setError({ message: 'Please select employee and ensure position template is loaded' });
       return;
     }
 
@@ -412,15 +437,10 @@ const CoreEmployeeCalculation = () => {
     try {
       const data = {
         ...employeeFormData,
-        action_type: 'save_draft'
+        action_type: isDraft ? 'save_draft' : 'submit'
       };
       
-      const response = await assessmentApi.employeeCore.create(data);
-      
-      if (actionType === 'submit' && response.id) {
-        await assessmentApi.employeeCore.submit(response.id, {});
-      }
-      
+      await assessmentApi.employeeCore.create(data);
       await fetchData();
       setShowCreateEmployeeModal(false);
       setEmployeeFormData({
@@ -429,13 +449,41 @@ const CoreEmployeeCalculation = () => {
         notes: '',
         competency_ratings: []
       });
+      setTemplateError(null);
       setSelectedEmployeeInfo(null);
-      setDuplicateWarning(null);
-      setNoTemplateWarning(null);
-      const actionMessage = actionType === 'save_draft' ? 'Employee assessment saved as draft' : 'Employee assessment created and submitted successfully';
-      setSuccessMessage(actionMessage);
+      setSuccessMessage(isDraft ? 'Employee assessment saved as draft' : 'Employee assessment submitted successfully');
     } catch (err) {
-      console.error('Error with employee assessment:', err);
+      console.error('Error creating employee assessment:', err);
+      setError(err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle employee assessment update
+  const handleUpdateEmployeeAssessment = async (isDraft = true) => {
+    if (!editFormData.id) return;
+
+    setIsSubmitting(true);
+    try {
+      const data = {
+        ...editFormData,
+        action_type: isDraft ? 'save_draft' : 'submit'
+      };
+      
+      await assessmentApi.employeeCore.update(editFormData.id, data);
+      await fetchData();
+      setShowEditEmployeeModal(false);
+      setEditFormData({
+        employee: '',
+        position_assessment: '',
+        notes: '',
+        competency_ratings: []
+      });
+      setSelectedEmployeeInfo(null);
+      setSuccessMessage(isDraft ? 'Assessment updated successfully' : 'Assessment submitted successfully');
+    } catch (err) {
+      console.error('Error updating employee assessment:', err);
       setError(err);
     } finally {
       setIsSubmitting(false);
@@ -444,23 +492,27 @@ const CoreEmployeeCalculation = () => {
 
   // Other action handlers
   const handleSubmitAssessment = async (id) => {
+    if (!confirm('Are you sure you want to submit this assessment? It will be finalized and cannot be edited.')) return;
+    
     try {
       await assessmentApi.employeeCore.submit(id, {});
       await fetchData();
       setSuccessMessage('Assessment submitted successfully');
     } catch (err) {
-      console.error('Error submitting assessment:', err);
+      console.error('Submit error:', err);
       setError(err);
     }
   };
 
   const handleReopenAssessment = async (id) => {
+    if (!confirm('Are you sure you want to reopen this assessment for editing?')) return;
+    
     try {
       await assessmentApi.employeeCore.reopen(id, {});
       await fetchData();
       setSuccessMessage('Assessment reopened for editing');
     } catch (err) {
-      console.error('Error reopening assessment:', err);
+      console.error('Reopen error:', err);
       setError(err);
     }
   };
@@ -755,23 +807,1054 @@ const CoreEmployeeCalculation = () => {
         )}
       </div>
 
+      {/* Create Position Assessment Modal */}
+      {showCreatePositionModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 w-full max-w-6xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
+                <Building className="w-4 h-4 text-almet-sapphire" />
+                Create Core Competency Position Template
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreatePositionModal(false);
+                  setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+                }}
+                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 p-3 bg-almet-mystic rounded-lg border border-almet-bali-hai">
+              <div>
+                <label className="block text-sm font-medium text-almet-waterloo mb-2">
+                  Position Group <span className="text-red-400">*</span>
+                </label>
+                <SearchableDropdown
+                  options={positionGroups}
+                  value={positionFormData.position_group}
+                  onChange={handlePositionGroupChange}
+                  placeholder="Select Position Group"
+                  displayKey="name"
+                  valueKey="id"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-almet-waterloo mb-2">
+                  Job Title <span className="text-red-400">*</span>
+                </label>
+                <SearchableDropdown
+                  options={filteredJobTitles}
+                  value={positionFormData.job_title}
+                  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
+                  placeholder={positionFormData.position_group ? "Select or type job title" : "Select position group first"}
+                  displayKey="name"
+                  valueKey="value"
+                  allowStringOptions={true}
+                  disabled={!positionFormData.position_group}
+                />
+                {positionFormData.position_group && filteredJobTitles.length === 0 && (
+                  <p className="text-xs text-almet-waterloo mt-1">
+                    No existing job titles for this position group. You can type a new one.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Core Scales Info */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="text-base font-medium text-almet-cloud-burst">Assessment Scales</h4>
+                <ActionButton
+                  onClick={() => setShowCoreScalesInfo(!showCoreScalesInfo)}
+                  icon={Info}
+                  label={showCoreScalesInfo ? "Hide Info" : "Show Info"}
+                  variant="info"
+                  size="sm"
+                />
+              </div>
+              
+              {showCoreScalesInfo && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h5 className="font-medium text-blue-900 mb-3 text-sm">Core Competency Assessment Scale Definitions:</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {coreScales.map(scale => (
+                      <div key={scale.id} className="bg-white p-2 rounded border border-blue-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="bg-almet-sapphire text-white px-2 py-1 rounded text-xs font-medium">
+                            {scale.scale}
+                          </span>
+                          <span className="text-xs font-medium text-blue-900">Level {scale.scale}</span>
+                        </div>
+                        <p className="text-xs text-blue-700">{scale.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Skills Assessment Matrix */}
+            <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
+              <div className="bg-almet-sapphire text-white p-3">
+                <h4 className="font-semibold text-center text-sm">Core Competency Assessment Matrix</h4>
+                <p className="text-center text-xs opacity-90 mt-1">Rate required skill levels for this position</p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-almet-mystic border-b border-almet-bali-hai">
+                      <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm w-2/5">
+                        SKILL
+                      </th>
+                      <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm w-32">
+                        REQUIRED LEVEL
+                      </th>
+                    </tr>
+                  </thead>
+                  
+                  <tbody>
+                    {skillGroups.length > 0 ? (
+                      skillGroups.map(group => (
+                        <React.Fragment key={group.id}>
+                          {/* Group Header */}
+                          <tr className="bg-almet-sapphire text-white">
+                            <td colSpan="2" className="px-3 py-2 font-semibold text-center uppercase text-sm">
+                              {group.name}
+                            </td>
+                          </tr>
+                          
+                          {/* Group Skills */}
+                          {group.skills && group.skills.length > 0 ? (
+                            group.skills.map(skill => (
+                              <tr key={skill.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
+                                <td className="px-3 py-2 font-medium text-almet-cloud-burst text-sm">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{skill.name}</span>
+                                    {skill.description && (
+                                      <span className="text-xs text-almet-waterloo mt-1">{skill.description}</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <select
+                                    value={positionFormData.competency_ratings.find(r => r.skill_id === skill.id)?.required_level || ''}
+                                    onChange={(e) => {
+                                      const newRatings = [...positionFormData.competency_ratings];
+                                      const existingIndex = newRatings.findIndex(r => r.skill_id === skill.id);
+                                      
+                                      if (existingIndex >= 0) {
+                                        if (e.target.value) {
+                                          newRatings[existingIndex].required_level = parseInt(e.target.value);
+                                        } else {
+                                          newRatings.splice(existingIndex, 1);
+                                        }
+                                      } else if (e.target.value) {
+                                        newRatings.push({
+                                          skill_id: skill.id,
+                                          required_level: parseInt(e.target.value)
+                                        });
+                                      }
+                                      
+                                      setPositionFormData({...positionFormData, competency_ratings: newRatings});
+                                    }}
+                                    className="w-20 px-2 py-1 border border-almet-bali-hai rounded text-center font-medium bg-white focus:border-almet-sapphire focus:outline-none text-sm"
+                                  >
+                                    <option value="">-</option>
+                                    {coreScales.map(scale => (
+                                      <option key={scale.id} value={scale.scale}>{scale.scale}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="2" className="px-3 py-2 text-center text-almet-waterloo text-sm italic">
+                                No skills found for this group
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="2" className="px-3 py-6 text-center text-almet-waterloo">
+                          <AlertCircle className="w-6 h-6 mx-auto mb-2 text-almet-bali-hai" />
+                          <p className="font-medium text-sm">No skill groups found</p>
+                          <p className="text-xs mt-1">Please create skill groups first</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            {/* Rating Summary */}
+            {positionFormData.competency_ratings.length > 0 && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <h5 className="font-medium text-green-900 mb-2 text-sm">Assessment Summary</h5>
+                <p className="text-sm text-green-700">
+                  {positionFormData.competency_ratings.length} skills rated across {
+                    [...new Set(positionFormData.competency_ratings.map(r => {
+                      const skill = skillGroups.flatMap(g => g.skills || []).find(s => s.id === r.skill_id);
+                      return skill ? skillGroups.find(g => g.skills?.some(s => s.id === skill.id))?.name : null;
+                    }).filter(Boolean))].length
+                  } groups
+                </p>
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-almet-bali-hai">
+              <ActionButton
+                onClick={() => {
+                  setShowCreatePositionModal(false);
+                  setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+                }}
+                icon={X}
+                label="Cancel"
+                disabled={isSubmitting}
+                variant="outline"
+                size="md"
+              />
+              <ActionButton
+                onClick={handleCreatePositionAssessment}
+                icon={Save}
+                label="Create Template"
+                disabled={!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0}
+                loading={isSubmitting}
+                variant="primary"
+                size="md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Position Assessment Modal */}
+      {showEditPositionModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 w-full max-w-6xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
+                <Edit className="w-4 h-4 text-almet-sapphire" />
+                Edit Core Competency Position Template
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditPositionModal(false);
+                  setEditPositionFormData({ id: '', position_group: '', job_title: '', competency_ratings: [] });
+                }}
+                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 p-3 bg-almet-mystic rounded-lg border border-almet-bali-hai">
+              <div>
+                <label className="block text-sm font-medium text-almet-waterloo mb-2">
+                  Position Group <span className="text-red-400">*</span>
+                </label>
+                <SearchableDropdown
+                  options={positionGroups}
+                  value={editPositionFormData.position_group}
+                  onChange={handleEditPositionGroupChange}
+                  placeholder="Select Position Group"
+                  displayKey="name"
+                  valueKey="id"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-almet-waterloo mb-2">
+                  Job Title <span className="text-red-400">*</span>
+                </label>
+                <SearchableDropdown
+                  options={editFilteredJobTitles}
+                  value={editPositionFormData.job_title}
+                  onChange={(value) => setEditPositionFormData({...editPositionFormData, job_title: value})}
+                  placeholder={editPositionFormData.position_group ? "Select or type job title" : "Select position group first"}
+                  displayKey="name"
+                  valueKey="value"
+                  allowStringOptions={true}
+                  disabled={!editPositionFormData.position_group}
+                />
+                {editPositionFormData.position_group && editFilteredJobTitles.length === 0 && (
+                  <p className="text-xs text-almet-waterloo mt-1">
+                    No existing job titles for this position group. You can type a new one.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Core Scales Info */}
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="text-base font-medium text-almet-cloud-burst">Assessment Scales</h4>
+                <ActionButton
+                  onClick={() => setShowCoreScalesInfo(!showCoreScalesInfo)}
+                  icon={Info}
+                  label={showCoreScalesInfo ? "Hide Info" : "Show Info"}
+                  variant="info"
+                  size="sm"
+                />
+              </div>
+              
+              {showCoreScalesInfo && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <h5 className="font-medium text-blue-900 mb-3 text-sm">Core Competency Assessment Scale Definitions:</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {coreScales.map(scale => (
+                      <div key={scale.id} className="bg-white p-2 rounded border border-blue-200">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="bg-almet-sapphire text-white px-2 py-1 rounded text-xs font-medium">
+                            {scale.scale}
+                          </span>
+                          <span className="text-xs font-medium text-blue-900">Level {scale.scale}</span>
+                        </div>
+                        <p className="text-xs text-blue-700">{scale.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Skills Assessment Matrix */}
+            <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
+              <div className="bg-almet-sapphire text-white p-3">
+                <h4 className="font-semibold text-center text-sm">Edit Core Competency Assessment Matrix</h4>
+                <p className="text-center text-xs opacity-90 mt-1">Update required skill levels for this position</p>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-almet-mystic border-b border-almet-bali-hai">
+                      <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm w-2/5">
+                        SKILL
+                      </th>
+                      <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm w-32">
+                        REQUIRED LEVEL
+                      </th>
+                    </tr>
+                  </thead>
+                  
+                  <tbody>
+                    {skillGroups.length > 0 ? (
+                      skillGroups.map(group => (
+                        <React.Fragment key={group.id}>
+                          {/* Group Header */}
+                          <tr className="bg-almet-sapphire text-white">
+                            <td colSpan="2" className="px-3 py-2 font-semibold text-center uppercase text-sm">
+                              {group.name}
+                            </td>
+                          </tr>
+                          
+                          {/* Group Skills */}
+                          {group.skills && group.skills.length > 0 ? (
+                            group.skills.map(skill => (
+                              <tr key={skill.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
+                                <td className="px-3 py-2 font-medium text-almet-cloud-burst text-sm">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{skill.name}</span>
+                                    {skill.description && (
+                                      <span className="text-xs text-almet-waterloo mt-1">{skill.description}</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <select
+                                    value={editPositionFormData.competency_ratings.find(r => r.skill_id === skill.id)?.required_level || ''}
+                                    onChange={(e) => {
+                                      const newRatings = [...editPositionFormData.competency_ratings];
+                                      const existingIndex = newRatings.findIndex(r => r.skill_id === skill.id);
+                                      
+                                      if (existingIndex >= 0) {
+                                        if (e.target.value) {
+                                          newRatings[existingIndex].required_level = parseInt(e.target.value);
+                                        } else {
+                                          newRatings.splice(existingIndex, 1);
+                                        }
+                                      } else if (e.target.value) {
+                                        newRatings.push({
+                                          skill_id: skill.id,
+                                          required_level: parseInt(e.target.value)
+                                        });
+                                      }
+                                      
+                                      setEditPositionFormData({...editPositionFormData, competency_ratings: newRatings});
+                                    }}
+                                    className="w-20 px-2 py-1 border border-almet-bali-hai rounded text-center font-medium bg-white focus:border-almet-sapphire focus:outline-none text-sm"
+                                  >
+                                    <option value="">-</option>
+                                    {coreScales.map(scale => (
+                                      <option key={scale.id} value={scale.scale}>{scale.scale}</option>
+                                    ))}
+                                  </select>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="2" className="px-3 py-2 text-center text-almet-waterloo text-sm italic">
+                                No skills found for this group
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="2" className="px-3 py-6 text-center text-almet-waterloo">
+                          <AlertCircle className="w-6 h-6 mx-auto mb-2 text-almet-bali-hai" />
+                          <p className="font-medium text-sm">No skill groups found</p>
+                          <p className="text-xs mt-1">Please create skill groups first</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            {/* Rating Summary */}
+            {editPositionFormData.competency_ratings.length > 0 && (
+              <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                <h5 className="font-medium text-green-900 mb-2 text-sm">Assessment Summary</h5>
+                <p className="text-sm text-green-700">
+                  {editPositionFormData.competency_ratings.length} skills rated across {
+                    [...new Set(editPositionFormData.competency_ratings.map(r => {
+                      const skill = skillGroups.flatMap(g => g.skills || []).find(s => s.id === r.skill_id);
+                      return skill ? skillGroups.find(g => g.skills?.some(s => s.id === skill.id))?.name : null;
+                    }).filter(Boolean))].length
+                  } groups
+                </p>
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-almet-bali-hai">
+              <ActionButton
+                onClick={() => {
+                  setShowEditPositionModal(false);
+                  setEditPositionFormData({ id: '', position_group: '', job_title: '', competency_ratings: [] });
+                }}
+                icon={X}
+                label="Cancel"
+                disabled={isSubmitting}
+                variant="outline"
+                size="md"
+              />
+              <ActionButton
+                onClick={handleUpdatePositionAssessment}
+                icon={Save}
+                label="Update Template"
+                disabled={!editPositionFormData.position_group || !editPositionFormData.job_title || editPositionFormData.competency_ratings.length === 0}
+                loading={isSubmitting}
+                variant="primary"
+                size="md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Employee Assessment Modal */}
+      {showCreateEmployeeModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 w-full max-w-6xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
+                <User className="w-4 h-4 text-almet-sapphire" />
+                Create Employee Core Competency Assessment
+              </h3>
+              <button
+                onClick={() => {
+                  setShowCreateEmployeeModal(false);
+                  setEmployeeFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
+                  setTemplateError(null);
+                  setSelectedEmployeeInfo(null);
+                }}
+                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            {/* Employee Selection */}
+            <div className="mb-4 p-3 bg-almet-mystic rounded-lg border border-almet-bali-hai">
+              <div className="mb-3">
+                <label className="block text-sm font-medium text-almet-waterloo mb-2">
+                  Employee <span className="text-red-400">*</span>
+                </label>
+                <SearchableDropdown
+                  options={employees}
+                  value={employeeFormData.employee}
+                  onChange={handleEmployeeChange}
+                  placeholder="Select Employee"
+                  displayKey="name"
+                  valueKey="id"
+                />
+              </div>
+
+              {/* Employee Info Display */}
+              {selectedEmployeeInfo && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <span className="text-xs font-medium text-blue-700">Employee:</span>
+                      <p className="text-sm font-medium text-blue-900">{selectedEmployeeInfo.name}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-blue-700">Job Title:</span>
+                      <p className="text-sm font-medium text-blue-900">{selectedEmployeeInfo.job_title}</p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-blue-700">Position Group:</span>
+                      <p className="text-sm font-medium text-blue-900">{selectedEmployeeInfo.position_group}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Template Error Display */}
+              {templateError && (
+                <div className={`mt-3 p-3 rounded-lg border ${
+                  templateError.type === 'duplicate' 
+                    ? 'bg-yellow-50 border-yellow-300' 
+                    : 'bg-red-50 border-red-300'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className={`w-4 h-4 mt-0.5 ${
+                      templateError.type === 'duplicate' 
+                        ? 'text-yellow-600' 
+                        : 'text-red-600'
+                    }`} />
+                    <div>
+                      <h4 className={`font-medium text-sm ${
+                        templateError.type === 'duplicate' 
+                          ? 'text-yellow-800' 
+                          : 'text-red-800'
+                      }`}>
+                        {templateError.type === 'duplicate' 
+                          ? 'Duplicate Assessment' 
+                          : 'Template Not Found'}
+                      </h4>
+                      <p className={`text-sm mt-1 ${
+                        templateError.type === 'duplicate' 
+                          ? 'text-yellow-700' 
+                          : 'text-red-700'
+                      }`}>
+                        {templateError.message}
+                      </p>
+                      {templateError.type === 'no_template' && (
+                        <p className="text-xs text-red-600 mt-2">
+                          Please create a position template for "{templateError.employee?.job_title}" first.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              </div>
+
+            {/* Core Scales Info for Employee Assessment */}
+            {employeeFormData.position_assessment && !templateError && (
+              <div className="mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <h4 className="text-base font-medium text-almet-cloud-burst">Assessment Scales</h4>
+                  <ActionButton
+                    onClick={() => setShowCoreScalesInfo(!showCoreScalesInfo)}
+                    icon={Info}
+                    label={showCoreScalesInfo ? "Hide Info" : "Show Info"}
+                    variant="info"
+                    size="sm"
+                  />
+                </div>
+                
+                {showCoreScalesInfo && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <h5 className="font-medium text-blue-900 mb-3 text-sm">Core Competency Assessment Scale Definitions:</h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {coreScales.map(scale => (
+                        <div key={scale.id} className="bg-white p-2 rounded border border-blue-200">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="bg-almet-sapphire text-white px-2 py-1 rounded text-xs font-medium">
+                              {scale.scale}
+                            </span>
+                            <span className="text-xs font-medium text-blue-900">Level {scale.scale}</span>
+                          </div>
+                          <p className="text-xs text-blue-700">{scale.description}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Assessment Matrix Table */}
+            {employeeFormData.position_assessment && !templateError && (
+              <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
+                <div className="bg-almet-sapphire text-white p-3">
+                  <h4 className="font-semibold text-center text-sm">Employee Core Competency Assessment Matrix</h4>
+                  <p className="text-center text-xs opacity-90">
+                    Assess competency levels for {selectedEmployeeInfo?.name}
+                  </p>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-almet-mystic border-b border-almet-bali-hai">
+                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-48">
+                          CORE COMPETENCIES
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">
+                          REQUIRED
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">
+                          ACTUAL
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">
+                          GAP
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-64">
+                          ASSESSMENT NOTES
+                        </th>
+                      </tr>
+                    </thead>
+                    
+                    <tbody>
+                      {(() => {
+                        const selectedPosition = positionAssessments.find(p => p.id === employeeFormData.position_assessment);
+                        if (!selectedPosition) return null;
+
+                        const groupedCompetencies = {};
+                        selectedPosition.competency_ratings?.forEach(rating => {
+                          const groupName = rating.skill_group_name || 'Other';
+                          if (!groupedCompetencies[groupName]) {
+                            groupedCompetencies[groupName] = [];
+                          }
+                          groupedCompetencies[groupName].push(rating);
+                        });
+
+                        return Object.entries(groupedCompetencies).map(([groupName, competencies]) => (
+                          <React.Fragment key={groupName}>
+                            <tr className="bg-almet-sapphire text-white">
+                              <td colSpan="5" className="px-3 py-2 font-semibold text-center uppercase text-sm">
+                                {groupName}
+                              </td>
+                            </tr>
+                            
+                            {competencies.map(competency => {
+                              const employeeRating = employeeFormData.competency_ratings.find(
+                                r => r.skill_id === competency.skill
+                              );
+                              
+                              const actualLevel = employeeRating?.actual_level || 0;
+                              const gap = actualLevel - competency.required_level;
+                              
+                              return (
+                                <tr key={competency.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
+                                  <td className="px-3 py-2 font-medium text-almet-cloud-burst text-sm">
+                                    {competency.skill_name}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-semibold text-almet-sapphire">
+                                    {competency.required_level}
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <select
+                                      value={actualLevel}
+                                      onChange={(e) => {
+                                        const newRatings = [...employeeFormData.competency_ratings];
+                                        const existingIndex = newRatings.findIndex(
+                                          r => r.skill_id === competency.skill
+                                        );
+                                        
+                                        if (existingIndex >= 0) {
+                                          newRatings[existingIndex].actual_level = parseInt(e.target.value);
+                                        } else {
+                                          newRatings.push({
+                                            skill_id: competency.skill,
+                                            actual_level: parseInt(e.target.value),
+                                            notes: ''
+                                          });
+                                        }
+                                        
+                                        setEmployeeFormData({
+                                          ...employeeFormData, 
+                                          competency_ratings: newRatings
+                                        });
+                                      }}
+                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-center font-medium focus:border-almet-sapphire focus:outline-none text-sm"
+                                    >
+                                      <option value={0}>-</option>
+                                      {coreScales.map(scale => (
+                                        <option key={scale.id} value={scale.scale}>{scale.scale}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                      gap > 0 ? 'bg-green-100 text-green-800' :
+                                      gap < 0 ? 'bg-red-100 text-red-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {gap > 0 ? `+${gap}` : gap}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <textarea
+                                      value={employeeRating?.notes || ''}
+                                      onChange={(e) => {
+                                        const newRatings = [...employeeFormData.competency_ratings];
+                                        const existingIndex = newRatings.findIndex(
+                                          r => r.skill_id === competency.skill
+                                        );
+                                        
+                                        if (existingIndex >= 0) {
+                                          newRatings[existingIndex].notes = e.target.value;
+                                        } else {
+                                          newRatings.push({
+                                            skill_id: competency.skill,
+                                            actual_level: 0,
+                                            notes: e.target.value
+                                          });
+                                        }
+                                        
+                                        setEmployeeFormData({
+                                          ...employeeFormData, 
+                                          competency_ratings: newRatings
+                                        });
+                                      }}
+                                      placeholder="Assessment notes..."
+                                      rows="2"
+                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-sm resize-none focus:border-almet-sapphire focus:outline-none"
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 mt-4 pt-3 border-t border-almet-bali-hai">
+              <ActionButton
+                onClick={() => {
+                  setShowCreateEmployeeModal(false);
+                  setEmployeeFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
+                  setTemplateError(null);
+                  setSelectedEmployeeInfo(null);
+                }}
+                icon={X}
+                label="Cancel"
+                disabled={isSubmitting}
+                variant="outline"
+                size="md"
+              />
+              {employeeFormData.position_assessment && !templateError && (
+                <>
+                  <ActionButton
+                    onClick={() => handleCreateEmployeeAssessment(true)}
+                    icon={Save}
+                    label="Save as Draft"
+                    disabled={!employeeFormData.employee || !employeeFormData.position_assessment}
+                    loading={isSubmitting}
+                    variant="secondary"
+                    size="md"
+                  />
+                  <ActionButton
+                    onClick={() => handleCreateEmployeeAssessment(false)}
+                    icon={CheckCircle}
+                    label="Save & Submit"
+                    disabled={!employeeFormData.employee || !employeeFormData.position_assessment}
+                    loading={isSubmitting}
+                    variant="success"
+                    size="md"
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Employee Assessment Modal */}
+      {showEditEmployeeModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-4 w-full max-w-6xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
+                <Edit className="w-4 h-4 text-almet-sapphire" />
+                Edit Employee Core Competency Assessment
+              </h3>
+              <button
+                onClick={() => {
+                  setShowEditEmployeeModal(false);
+                  setEditFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
+                  setSelectedEmployeeInfo(null);
+                }}
+                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            {/* Employee Info Display */}
+            {selectedEmployeeInfo && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
+                    <span className="text-xs font-medium text-blue-700">Employee:</span>
+                    <p className="text-sm font-medium text-blue-900">{selectedEmployeeInfo.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-blue-700">Job Title:</span>
+                    <p className="text-sm font-medium text-blue-900">{selectedEmployeeInfo.job_title}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-medium text-blue-700">Position Group:</span>
+                    <p className="text-sm font-medium text-blue-900">{selectedEmployeeInfo.position_group_name}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Assessment Matrix Table */}
+            {editFormData.position_assessment && (
+              <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
+                <div className="bg-almet-sapphire text-white p-3">
+                  <h4 className="font-semibold text-center text-sm">Edit Core Competency Assessment</h4>
+                  <p className="text-center text-xs opacity-90">
+                    Update competency ratings for {selectedEmployeeInfo?.name}
+                  </p>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-almet-mystic border-b border-almet-bali-hai">
+                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-48">
+                          CORE COMPETENCIES
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">
+                          REQUIRED
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">
+                          ACTUAL
+                        </th>
+                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">
+                          GAP
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-64">
+                          ASSESSMENT NOTES
+                        </th>
+                      </tr>
+                    </thead>
+                    
+                    <tbody>
+                      {(() => {
+                        const selectedPosition = positionAssessments.find(p => p.id === editFormData.position_assessment);
+                        if (!selectedPosition) return null;
+
+                        const groupedCompetencies = {};
+                        selectedPosition.competency_ratings?.forEach(rating => {
+                          const groupName = rating.skill_group_name || 'Other';
+                          if (!groupedCompetencies[groupName]) {
+                            groupedCompetencies[groupName] = [];
+                          }
+                          groupedCompetencies[groupName].push(rating);
+                        });
+
+                        return Object.entries(groupedCompetencies).map(([groupName, competencies]) => (
+                          <React.Fragment key={groupName}>
+                            <tr className="bg-almet-sapphire text-white">
+                              <td colSpan="5" className="px-3 py-2 font-semibold text-center uppercase text-sm">
+                                {groupName}
+                              </td>
+                            </tr>
+                            
+                            {competencies.map(competency => {
+                              const employeeRating = editFormData.competency_ratings.find(
+                                r => r.skill_id === competency.skill
+                              );
+                              
+                              const actualLevel = employeeRating?.actual_level || 0;
+                              const gap = actualLevel - competency.required_level;
+                              
+                              return (
+                                <tr key={competency.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
+                                  <td className="px-3 py-2 font-medium text-almet-cloud-burst text-sm">
+                                    {competency.skill_name}
+                                  </td>
+                                  <td className="px-3 py-2 text-center font-semibold text-almet-sapphire">
+                                    {competency.required_level}
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <select
+                                      value={actualLevel}
+                                      onChange={(e) => {
+                                        const newRatings = [...editFormData.competency_ratings];
+                                        const existingIndex = newRatings.findIndex(
+                                          r => r.skill_id === competency.skill
+                                        );
+                                        
+                                        if (existingIndex >= 0) {
+                                          newRatings[existingIndex].actual_level = parseInt(e.target.value);
+                                        } else {
+                                          newRatings.push({
+                                            skill_id: competency.skill,
+                                            actual_level: parseInt(e.target.value),
+                                            notes: ''
+                                          });
+                                        }
+                                        
+                                        setEditFormData({
+                                          ...editFormData, 
+                                          competency_ratings: newRatings
+                                        });
+                                      }}
+                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-center font-medium focus:border-almet-sapphire focus:outline-none text-sm"
+                                    >
+                                      <option value={0}>-</option>
+                                      {coreScales.map(scale => (
+                                        <option key={scale.id} value={scale.scale}>{scale.scale}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-3 py-2 text-center">
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                      gap > 0 ? 'bg-green-100 text-green-800' :
+                                      gap < 0 ? 'bg-red-100 text-red-800' :
+                                      'bg-blue-100 text-blue-800'
+                                    }`}>
+                                      {gap > 0 ? `+${gap}` : gap}
+                                    </span>
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <textarea
+                                      value={employeeRating?.notes || ''}
+                                      onChange={(e) => {
+                                        const newRatings = [...editFormData.competency_ratings];
+                                        const existingIndex = newRatings.findIndex(
+                                          r => r.skill_id === competency.skill
+                                        );
+                                        
+                                        if (existingIndex >= 0) {
+                                          newRatings[existingIndex].notes = e.target.value;
+                                        } else {
+                                          newRatings.push({
+                                            skill_id: competency.skill,
+                                            actual_level: 0,
+                                            notes: e.target.value
+                                          });
+                                        }
+                                        
+                                        setEditFormData({
+                                          ...editFormData, 
+                                          competency_ratings: newRatings
+                                        });
+                                      }}
+                                      placeholder="Assessment notes..."
+                                      rows="2"
+                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-sm resize-none focus:border-almet-sapphire focus:outline-none"
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </React.Fragment>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-almet-bali-hai">
+              <ActionButton
+                onClick={() => {
+                  setShowEditEmployeeModal(false);
+                  setEditFormData({
+                    employee: '',
+                    position_assessment: '',
+                    notes: '',
+                    competency_ratings: []
+                  });
+                  setSelectedEmployeeInfo(null);
+                }}
+                icon={X}
+                label="Cancel"
+                disabled={isSubmitting}
+                variant="outline"
+                size="md"
+              />
+              <ActionButton
+                onClick={() => handleUpdateEmployeeAssessment(true)}
+                icon={Save}
+                label="Update Draft"
+                disabled={!editFormData.id}
+                loading={isSubmitting}
+                variant="secondary"
+                size="md"
+              />
+              <ActionButton
+                onClick={() => handleUpdateEmployeeAssessment(false)}
+                icon={CheckCircle}
+                label="Update & Submit"
+                disabled={!editFormData.id}
+                loading={isSubmitting}
+                variant="success"
+                size="md"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Assessment Modal */}
       {showViewModal && selectedAssessment && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-4 w-full max-w-5xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
-                {activeTab === 'position' ? (
-                  <>
-                    <Building className="w-4 h-4 text-almet-sapphire" />
-                    Position Assessment Template Details
-                  </>
-                ) : (
-                  <>
-                    <User className="w-4 h-4 text-almet-sapphire" />
-                    Employee Assessment Details
-                  </>
-                )}
+                <Eye className="w-4 h-4 text-almet-sapphire" />
+                {activeTab === 'position' ? 'Position Template Details' : 'Employee Assessment Details'}
               </h3>
               <button
                 onClick={() => {
@@ -789,44 +1872,48 @@ const CoreEmployeeCalculation = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-3 bg-almet-mystic rounded-lg border border-almet-bali-hai">
                   <div>
                     <label className="block text-sm font-medium text-almet-waterloo mb-1">Position Group</label>
-                    <div className="text-almet-cloud-burst font-medium text-sm">{selectedAssessment.position_group_name}</div>
+                    <p className="text-base font-medium text-almet-cloud-burst">{selectedAssessment.position_group_name}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-almet-waterloo mb-1">Job Title</label>
-                    <div className="text-almet-cloud-burst font-medium text-sm">{selectedAssessment.job_title}</div>
+                    <p className="text-base font-medium text-almet-cloud-burst">{selectedAssessment.job_title}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-almet-waterloo mb-1">Created By</label>
-                    <div className="text-almet-cloud-burst text-sm">{selectedAssessment.created_by_name}</div>
+                    <p className="text-sm text-almet-waterloo">{selectedAssessment.created_by_name}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-almet-waterloo mb-1">Created Date</label>
-                    <div className="text-almet-cloud-burst text-sm">{new Date(selectedAssessment.created_at).toLocaleDateString()}</div>
+                    <p className="text-sm text-almet-waterloo">{new Date(selectedAssessment.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
 
                 <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
                   <div className="bg-almet-sapphire text-white p-3">
-                    <h4 className="font-semibold text-center text-sm">Required Competency Levels</h4>
+                    <h4 className="font-semibold text-center text-sm">Required Skill Levels</h4>
                   </div>
                   
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead>
-                        <tr className="bg-almet-mystic border-b border-almet-bali-hai">
-                          <th className="text-left px-3 py-2 font-medium text-almet-cloud-burst text-sm">Skill Group</th>
-                          <th className="text-left px-3 py-2 font-medium text-almet-cloud-burst text-sm">Skill Name</th>
-                          <th className="text-center px-3 py-2 font-medium text-almet-cloud-burst text-sm">Required Level</th>
+                      <thead className="bg-almet-mystic border-b border-almet-bali-hai">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm">Skill Group</th>
+                          <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm">Skill</th>
+                          <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm">Required Level</th>
                         </tr>
                       </thead>
                       <tbody>
                         {selectedAssessment.competency_ratings?.length > 0 ? (
                           selectedAssessment.competency_ratings.map((rating, index) => (
                             <tr key={index} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
-                              <td className="px-3 py-2 text-almet-waterloo text-sm">{rating.skill_group_name}</td>
-                              <td className="px-3 py-2 text-almet-cloud-burst font-medium text-sm">{rating.skill_name}</td>
+                              <td className="px-3 py-2 text-almet-waterloo font-medium text-sm">
+                                {rating.skill_group_name}
+                              </td>
+                              <td className="px-3 py-2 text-almet-cloud-burst font-medium text-sm">
+                                {rating.skill_name}
+                              </td>
                               <td className="px-3 py-2 text-center">
-                                <span className="bg-almet-sapphire text-white px-2 py-1 rounded-full text-xs font-medium">
+                                <span className="bg-almet-sapphire text-white px-3 py-1 rounded-full font-medium text-sm">
                                   {rating.required_level}
                                 </span>
                               </td>
@@ -834,8 +1921,8 @@ const CoreEmployeeCalculation = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="3" className="text-center py-6 text-almet-waterloo text-sm">
-                              No competency requirements defined
+                            <td colSpan="3" className="px-3 py-6 text-center text-almet-waterloo text-sm">
+                              No skills defined
                             </td>
                           </tr>
                         )}
@@ -898,7 +1985,7 @@ const CoreEmployeeCalculation = () => {
                       <thead>
                         <tr className="bg-almet-mystic border-b border-almet-bali-hai">
                           <th className="text-left px-3 py-2 font-medium text-almet-cloud-burst text-sm">Skill Group</th>
-                          <th className="text-left px-3 py-2 font-medium text-almet-cloud-burst text-sm">Skill Name</th>
+                          <th className="text-left px-3 py-2 font-medium text-almet-cloud-burst text-sm">Skill</th>
                           <th className="text-center px-3 py-2 font-medium text-almet-cloud-burst text-sm">Required</th>
                           <th className="text-center px-3 py-2 font-medium text-almet-cloud-burst text-sm">Actual</th>
                           <th className="text-center px-3 py-2 font-medium text-almet-cloud-burst text-sm">Gap</th>
@@ -943,7 +2030,16 @@ const CoreEmployeeCalculation = () => {
               </div>
             )}
 
-            <div className="flex justify-end mt-4 pt-4 border-t border-almet-bali-hai">
+            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-almet-bali-hai">
+              {activeTab === 'employee' && selectedAssessment.status === 'COMPLETED' && (
+                <ActionButton
+                  onClick={() => handleExport(selectedAssessment.id, 'employee')}
+                  icon={Download}
+                  label="Export Assessment"
+                  variant="secondary"
+                  size="md"
+                />
+              )}
               <ActionButton
                 onClick={() => {
                   setShowViewModal(false);
@@ -952,780 +2048,6 @@ const CoreEmployeeCalculation = () => {
                 icon={X}
                 label="Close"
                 variant="outline"
-                size="md"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Position Assessment Modal */}
-      {showCreatePositionModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 w-full max-w-4xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
-                <Building className="w-4 h-4 text-almet-sapphire" />
-                {editingAssessment ? 'Edit' : 'Create'} Core Competency Position Template
-              </h3>
-              <button
-                onClick={() => {
-                  setShowCreatePositionModal(false);
-                  setEditingAssessment(null);
-                  setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
-                }}
-                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 p-3 bg-almet-mystic rounded-lg border border-almet-bali-hai">
-              <div>
-                <label className="block text-sm font-medium text-almet-waterloo mb-2">
-                  Position Group <span className="text-red-400">*</span>
-                </label>
-                <SearchableDropdown
-                  options={positionGroups}
-                  value={positionFormData.position_group}
-                  onChange={(value) => setPositionFormData({...positionFormData, position_group: value})}
-                  placeholder="Select Position Group"
-                  displayKey="name"
-                  valueKey="id"
-                  searchPlaceholder="Search position groups..."
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-almet-waterloo mb-2">
-                  Job Title <span className="text-red-400">*</span>
-                </label>
-                <SearchableDropdown
-                  options={jobTitles}
-                  value={positionFormData.job_title}
-                  onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
-                  placeholder="Select Job Title"
-                  allowStringOptions={true}
-                  searchPlaceholder="Search job titles..."
-                />
-              </div>
-            </div>
-
-            <div className="mb-3 flex justify-center">
-              <ActionButton
-                onClick={() => setShowCoreScalesInfo(true)}
-                icon={Info}
-                label="View Core Competency Assessment Scale Information"
-                variant="info"
-                size="md"
-              />
-            </div>
-
-            <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
-              <div className="bg-almet-sapphire text-white p-3">
-                <h4 className="font-semibold text-center text-sm">Skills Assessment Matrix</h4>
-                <p className="text-center text-xs opacity-90 mt-1">Select required skill levels for this position</p>
-              </div>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-almet-mystic border-b border-almet-bali-hai">
-                      <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm">Skill Name</th>
-                      <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-24">Required Level</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {skillGroups.length > 0 ? skillGroups.map(group => (
-                      <React.Fragment key={group.id}>
-                        <tr className="bg-almet-sapphire text-white">
-                          <td colSpan="2" className="px-3 py-2 font-semibold text-center uppercase text-sm">
-                            {group.name}
-                          </td>
-                        </tr>
-                        
-                        {group.skills && group.skills.length > 0 ? group.skills.map(skill => (
-                          <tr key={skill.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
-                            <td className="px-3 py-2">
-                              <div>
-                                <div className="font-medium text-almet-cloud-burst text-sm">{skill.name}</div>
-                                {skill.description && (
-                                  <div className="text-sm text-almet-waterloo mt-1">{skill.description}</div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <select
-                                value={positionFormData.competency_ratings.find(r => r.skill_id === skill.id)?.required_level || ''}
-                                onChange={(e) => {
-                                  const newRatings = [...positionFormData.competency_ratings];
-                                  const existingIndex = newRatings.findIndex(r => r.skill_id === skill.id);
-                                  
-                                  if (existingIndex >= 0) {
-                                    if (e.target.value) {
-                                      newRatings[existingIndex].required_level = parseInt(e.target.value);
-                                    } else {
-                                      newRatings.splice(existingIndex, 1);
-                                    }
-                                  } else if (e.target.value) {
-                                    newRatings.push({
-                                      skill_id: skill.id,
-                                      required_level: parseInt(e.target.value)
-                                    });
-                                  }
-                                  
-                                  setPositionFormData({...positionFormData, competency_ratings: newRatings});
-                                }}
-                                className="w-full max-w-20 px-2 py-1 border border-almet-bali-hai rounded text-center focus:border-almet-sapphire focus:outline-none font-medium text-sm"
-                              >
-                                <option value="">-</option>
-                                {coreScales.map(scale => (
-                                  <option key={scale.id} value={scale.scale}>{scale.scale}</option>
-                                ))}
-                              </select>
-                            </td>
-                          </tr>
-                        )) : (
-                          <tr>
-                            <td colSpan="2" className="px-3 py-2 text-center text-almet-waterloo text-sm italic">
-                              No skills found in this group
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    )) : (
-                      <tr>
-                        <td colSpan="2" className="px-3 py-6 text-center text-almet-waterloo">
-                          <div className="flex flex-col items-center">
-                            <AlertCircle className="w-6 h-6 mb-2 text-almet-bali-hai" />
-                            <p className="font-medium text-sm">No skill groups available</p>
-                            <p className="text-xs mt-1">Please configure skill groups first</p>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-             
-            </div>
-            
-            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-almet-bali-hai">
-              <ActionButton
-                onClick={() => {
-                  setShowCreatePositionModal(false);
-                  setEditingAssessment(null);
-                  setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
-                }}
-                icon={X}
-                label="Cancel"
-                disabled={isSubmitting}
-                variant="outline"
-                size="md"
-              />
-              <ActionButton
-                onClick={editingAssessment ? handleUpdatePositionAssessment : handleCreatePositionAssessment}
-                icon={Save}
-                label={editingAssessment ? 'Update Template' : 'Create Template'}
-                disabled={!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0}
-                loading={isSubmitting}
-                variant="primary"
-                size="md"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Core Scales Information Modal */}
-      {showCoreScalesInfo && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-lg p-4 w-full max-w-3xl border border-almet-bali-hai shadow-lg max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
-                <Info className="w-4 h-4 text-almet-sapphire" />
-                Core Competency Assessment Scale Information
-              </h3>
-              <button
-                onClick={() => setShowCoreScalesInfo(false)}
-                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <h4 className="font-medium text-blue-900 mb-3 text-sm">Assessment Scale Definitions</h4>
-                <div className="space-y-2">
-                  {coreScales.length > 0 ? coreScales.map(scale => (
-                    <div key={scale.id} className="bg-white p-3 rounded border">
-                      <div className="flex items-start gap-2">
-                        <span className="bg-almet-sapphire text-white px-2 py-1 rounded font-medium text-sm min-w-8 text-center">
-                          {scale.scale}
-                        </span>
-                        <div>
-                          <p className="text-almet-cloud-burst font-medium text-sm">{scale.description}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="text-almet-waterloo text-center py-3">
-                      <AlertCircle className="w-6 h-6 mx-auto mb-2 text-almet-bali-hai" />
-                      <p className="text-sm">No core scales configured</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <div className="bg-almet-mystic border border-almet-bali-hai rounded-lg p-3">
-                <h4 className="font-medium text-almet-cloud-burst mb-3 text-sm">How to Use</h4>
-                <ul className="space-y-2 text-almet-waterloo text-sm">
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 bg-almet-bali-hai rounded-full mt-2 flex-shrink-0"></span>
-                    Select the appropriate scale level for each skill based on the position requirements
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 bg-almet-bali-hai rounded-full mt-2 flex-shrink-0"></span>
-                    Higher numbers indicate higher skill level requirements
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 bg-almet-bali-hai rounded-full mt-2 flex-shrink-0"></span>
-                    Leave blank (-) for skills that are not required for this position
-                  </li>
-                </ul>
-              </div>
-            </div>
-            
-            <div className="flex justify-end mt-4 pt-3 border-t border-almet-bali-hai">
-              <ActionButton
-                onClick={() => setShowCoreScalesInfo(false)}
-                icon={CheckCircle}
-                label="Got it"
-                variant="primary"
-                size="md"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create Employee Assessment Modal */}
-      {showCreateEmployeeModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 w-full max-w-5xl max-h-[80vh] overflow-auto border border-almet-bali-hai shadow-lg  ">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
-                <User className="w-4 h-4 text-almet-sapphire" />
-                Create Employee Core Competency Assessment
-              </h3>
-              <button
-                onClick={() => {
-                  setShowCreateEmployeeModal(false);
-                  setSelectedEmployeeInfo(null);
-                  setDuplicateWarning(null);
-                  setNoTemplateWarning(null);
-                  setEmployeeFormData({
-                    employee: '',
-                    position_assessment: '',
-                    notes: '',
-                    competency_ratings: []
-                  });
-                }}
-                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            {duplicateWarning && (
-              <DuplicateAssessmentWarning
-                employeeName={duplicateWarning.employeeName}
-                onClose={() => setDuplicateWarning(null)}
-              />
-            )}
-            
-            {noTemplateWarning && (
-              <NoTemplateWarning
-                jobTitle={noTemplateWarning.jobTitle}
-                onClose={() => setNoTemplateWarning(null)}
-              />
-            )}
-            
-            <div className="mb-4 p-3 bg-almet-mystic rounded-lg border border-almet-bali-hai">
-              <div className="grid grid-cols-1 md:grid-cols-1 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-almet-waterloo mb-2">
-                    Employee <span className="text-red-400">*</span>
-                  </label>
-                  <SearchableDropdown
-                    options={employees}
-                    value={employeeFormData.employee}
-                    onChange={handleEmployeeChange}
-                    placeholder="Select Employee"
-                    displayKey="name"
-                    valueKey="id"
-                    searchPlaceholder="Search employees..."
-                  />
-                </div>
-              </div>
-              
-              {selectedEmployeeInfo && (
-                <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="font-medium text-blue-900">Employee:</span>
-                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.name}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-blue-900">Job Title:</span>
-                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.job_title}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mb-3 flex justify-center">
-              <ActionButton
-                onClick={() => setShowCoreScalesInfo(true)}
-                icon={Info}
-                label="View Core Competency Assessment Scale Information"
-                variant="info"
-                size="md"
-              />
-            </div>
-
-            {employeeFormData.position_assessment && !duplicateWarning && !noTemplateWarning && (
-              <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
-                <div className="bg-almet-sapphire text-white p-3">
-                  <h4 className="font-semibold text-center text-sm">Employee Core Competency Assessment Matrix</h4>
-                  <p className="text-center text-xs opacity-90">
-                    Based on: {positionAssessments.find(p => p.id === employeeFormData.position_assessment)?.job_title}
-                  </p>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-almet-mystic border-b border-almet-bali-hai">
-                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-40">
-                          CORE COMPETENCIES 
-                        </th>
-                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-20">
-                          REQUIRED
-                        </th>
-                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-20">
-                          ACTUAL
-                        </th>
-                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-20">
-                          GAP
-                        </th>
-                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-48">
-                          ASSESSMENT NOTES
-                        </th>
-                      </tr>
-                    </thead>
-                    
-                    <tbody>
-                      {(() => {
-                        const selectedPosition = positionAssessments.find(p => p.id === employeeFormData.position_assessment);
-                        if (!selectedPosition) return null;
-
-                        const groupedSkills = {};
-                        selectedPosition.competency_ratings?.forEach(rating => {
-                          const groupName = rating.skill_group_name || 'Other';
-                          if (!groupedSkills[groupName]) {
-                            groupedSkills[groupName] = [];
-                          }
-                          groupedSkills[groupName].push(rating);
-                        });
-
-                        return Object.entries(groupedSkills).map(([groupName, skills]) => (
-                          <React.Fragment key={groupName}>
-                            <tr className="bg-almet-sapphire text-white">
-                              <td colSpan="5" className="px-3 py-2 font-semibold text-center uppercase text-sm">
-                                {groupName}
-                              </td>
-                            </tr>
-                            
-                            {skills.map(skill => {
-                              const employeeRating = employeeFormData.competency_ratings.find(
-                                r => r.skill_id === skill.skill
-                              );
-                              
-                              const actualLevel = employeeRating?.actual_level || 0;
-                              const gap = actualLevel - skill.required_level;
-                              
-                              return (
-                                <tr key={skill.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
-                                  <td className="px-3 py-2 font-medium text-almet-cloud-burst text-sm">
-                                    {skill.skill_name}
-                                  </td>
-                                  <td className="px-3 py-2 text-center font-semibold text-almet-sapphire">
-                                    {skill.required_level}
-                                  </td>
-                                  <td className="px-3 py-2 text-center">
-                                    <select
-                                      value={actualLevel}
-                                      onChange={(e) => {
-                                        const newRatings = [...employeeFormData.competency_ratings];
-                                        const existingIndex = newRatings.findIndex(
-                                          r => r.skill_id === skill.skill
-                                        );
-                                        
-                                        if (existingIndex >= 0) {
-                                          newRatings[existingIndex].actual_level = parseInt(e.target.value);
-                                        } else {
-                                          newRatings.push({
-                                            skill_id: skill.skill,
-                                            actual_level: parseInt(e.target.value),
-                                            notes: ''
-                                          });
-                                        }
-                                        
-                                        setEmployeeFormData({
-                                          ...employeeFormData, 
-                                          competency_ratings: newRatings
-                                        });
-                                      }}
-                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-center font-semibold focus:border-almet-sapphire focus:outline-none text-sm"
-                                    >
-                                      {coreScales.map(scale => (
-                                        <option key={scale.id} value={scale.scale}>{scale.scale}</option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td className="px-3 py-2 text-center">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                      gap > 0 ? 'bg-green-100 text-green-700' :
-                                      gap < 0 ? 'bg-red-100 text-red-700' :
-                                      'bg-blue-100 text-blue-700'
-                                    }`}>
-                                      {gap > 0 ? `+${gap}` : gap}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <textarea
-                                      value={employeeRating?.notes || ''}
-                                      onChange={(e) => {
-                                        const newRatings = [...employeeFormData.competency_ratings];
-                                        const existingIndex = newRatings.findIndex(
-                                          r => r.skill_id === skill.skill
-                                        );
-                                        
-                                        if (existingIndex >= 0) {
-                                          newRatings[existingIndex].notes = e.target.value;
-                                        } else {
-                                          newRatings.push({
-                                            skill_id: skill.skill,
-                                            actual_level: 0,
-                                            notes: e.target.value
-                                          });
-                                        }
-                                        
-                                        setEmployeeFormData({
-                                          ...employeeFormData, 
-                                          competency_ratings: newRatings
-                                        });
-                                      }}
-                                      placeholder="Assessment notes..."
-                                      rows="2"
-                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-sm resize-none focus:border-almet-sapphire focus:outline-none"
-                                    />
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-almet-bali-hai">
-              <ActionButton
-                onClick={() => {
-                  setShowCreateEmployeeModal(false);
-                  setSelectedEmployeeInfo(null);
-                  setDuplicateWarning(null);
-                  setNoTemplateWarning(null);
-                  setEmployeeFormData({
-                    employee: '',
-                    position_assessment: '',
-                    notes: '',
-                    competency_ratings: []
-                  });
-                }}
-                icon={X}
-                label="Cancel"
-                disabled={isSubmitting}
-                variant="outline"
-                size="md"
-              />
-              {employeeFormData.position_assessment && !duplicateWarning && !noTemplateWarning && (
-                <>
-                  <ActionButton
-                    onClick={() => handleEmployeeAssessmentAction('save_draft')}
-                    icon={Save}
-                    label="Save as Draft"
-                    disabled={!employeeFormData.employee || !employeeFormData.position_assessment}
-                    loading={isSubmitting}
-                    variant="secondary"
-                    size="md"
-                  />
-                  <ActionButton
-                    onClick={() => handleEmployeeAssessmentAction('submit')}
-                    icon={Send}
-                    label="Save & Submit"
-                    disabled={!employeeFormData.employee || !employeeFormData.position_assessment}
-                    loading={isSubmitting}
-                    variant="success"
-                    size="md"
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Employee Assessment Modal */}
-      {showEditEmployeeModal && editingAssessment && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-4 w-full max-w-5xl border border-almet-bali-hai shadow-lg max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-almet-cloud-burst flex items-center gap-2">
-                <Edit className="w-4 h-4 text-almet-sapphire" />
-                Edit Employee Core Competency Assessment
-              </h3>
-              <button
-                onClick={() => {
-                  setShowEditEmployeeModal(false);
-                  setEditingAssessment(null);
-                  setSelectedEmployeeInfo(null);
-                  setEmployeeFormData({
-                    employee: '',
-                    position_assessment: '',
-                    notes: '',
-                    competency_ratings: []
-                  });
-                }}
-                className="p-2 rounded-lg text-almet-waterloo hover:bg-almet-mystic transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            {selectedEmployeeInfo && (
-              <div className="grid grid-cols-1 md:grid-cols-2 mb-4 gap-3">
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex justify-between text-sm">
-                    <div>
-                      <span className="font-medium text-blue-900">Employee:</span>
-                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.name}</span>
-                    </div>
-                    <div>
-                      <span className="font-medium text-blue-900">Job Title:</span>
-                      <span className="ml-2 text-blue-700">{selectedEmployeeInfo.job_title}</span>
-                    </div>
-                  </div>
-
-                  
-                </div>
-                      <div className="mb-3 flex justify-center">
-              <ActionButton
-                onClick={() => setShowCoreScalesInfo(true)}
-                icon={Info}
-                label="View Core Competency Assessment Scale Information"
-                variant="info"
-                size="md"
-              />
-            </div>
-              </div>
-            )}
-
-      
-
-            {employeeFormData.position_assessment && (
-              <div className="border border-almet-bali-hai rounded-lg overflow-hidden">
-                <div className="bg-almet-sapphire text-white p-3">
-                  <h4 className="font-semibold text-center text-sm">Employee Core Competency Assessment Matrix</h4>
-                  <p className="text-center text-xs opacity-90">
-                    Based on: {positionAssessments.find(p => p.id === employeeFormData.position_assessment)?.job_title}
-                  </p>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-almet-mystic border-b border-almet-bali-hai">
-                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-40">
-                          CORE COMPETENCIES 
-                        </th>
-                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-20">
-                          REQUIRED
-                        </th>
-                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-20">
-                          ACTUAL
-                        </th>
-                        <th className="px-3 py-2 text-center font-medium text-almet-cloud-burst text-sm min-w-20">
-                          GAP
-                        </th>
-                        <th className="px-3 py-2 text-left font-medium text-almet-cloud-burst text-sm min-w-48">
-                          ASSESSMENT NOTES
-                        </th>
-                      </tr>
-                    </thead>
-                    
-                    <tbody>
-                      {(() => {
-                        const selectedPosition = positionAssessments.find(p => p.id === employeeFormData.position_assessment);
-                        if (!selectedPosition) return null;
-
-                        const groupedSkills = {};
-                        selectedPosition.competency_ratings?.forEach(rating => {
-                          const groupName = rating.skill_group_name || 'Other';
-                          if (!groupedSkills[groupName]) {
-                            groupedSkills[groupName] = [];
-                          }
-                          groupedSkills[groupName].push(rating);
-                        });
-
-                        return Object.entries(groupedSkills).map(([groupName, skills]) => (
-                          <React.Fragment key={groupName}>
-                            <tr className="bg-almet-sapphire text-white">
-                              <td colSpan="5" className="px-3 py-2 font-semibold text-center uppercase text-sm">
-                                {groupName}
-                              </td>
-                            </tr>
-                            
-                            {skills.map(skill => {
-                              const employeeRating = employeeFormData.competency_ratings.find(
-                                r => r.skill_id === skill.skill
-                              );
-                              
-                              const actualLevel = employeeRating?.actual_level || 0;
-                              const gap = actualLevel - skill.required_level;
-                              
-                              return (
-                                <tr key={skill.id} className="border-b border-almet-bali-hai hover:bg-almet-mystic">
-                                  <td className="px-3 py-2 font-medium text-almet-cloud-burst text-sm">
-                                    {skill.skill_name}
-                                  </td>
-                                  <td className="px-3 py-2 text-center font-semibold text-almet-sapphire">
-                                    {skill.required_level}
-                                  </td>
-                                  <td className="px-3 py-2 text-center">
-                                    <select
-                                      value={actualLevel}
-                                      onChange={(e) => {
-                                        const newRatings = [...employeeFormData.competency_ratings];
-                                        const existingIndex = newRatings.findIndex(
-                                          r => r.skill_id === skill.skill
-                                        );
-                                        
-                                        if (existingIndex >= 0) {
-                                          newRatings[existingIndex].actual_level = parseInt(e.target.value);
-                                        } else {
-                                          newRatings.push({
-                                            skill_id: skill.skill,
-                                            actual_level: parseInt(e.target.value),
-                                            notes: ''
-                                          });
-                                        }
-                                        
-                                        setEmployeeFormData({
-                                          ...employeeFormData, 
-                                          competency_ratings: newRatings
-                                        });
-                                      }}
-                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-center font-semibold focus:border-almet-sapphire focus:outline-none text-sm"
-                                    >
-                                      {coreScales.map(scale => (
-                                        <option key={scale.id} value={scale.scale}>{scale.scale}</option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td className="px-3 py-2 text-center">
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                      gap > 0 ? 'bg-green-100 text-green-700' :
-                                      gap < 0 ? 'bg-red-100 text-red-700' :
-                                      'bg-blue-100 text-blue-700'
-                                    }`}>
-                                      {gap > 0 ? `+${gap}` : gap}
-                                    </span>
-                                  </td>
-                                  <td className="px-3 py-2">
-                                    <textarea
-                                      value={employeeRating?.notes || ''}
-                                      onChange={(e) => {
-                                        const newRatings = [...employeeFormData.competency_ratings];
-                                        const existingIndex = newRatings.findIndex(
-                                          r => r.skill_id === skill.skill
-                                        );
-                                        
-                                        if (existingIndex >= 0) {
-                                          newRatings[existingIndex].notes = e.target.value;
-                                        } else {
-                                          newRatings.push({
-                                            skill_id: skill.skill,
-                                            actual_level: 0,
-                                            notes: e.target.value
-                                          });
-                                        }
-                                        
-                                        setEmployeeFormData({
-                                          ...employeeFormData, 
-                                          competency_ratings: newRatings
-                                        });
-                                      }}
-                                      placeholder="Assessment notes..."
-                                      rows="2"
-                                      className="w-full px-2 py-1 border border-almet-bali-hai rounded text-sm resize-none focus:border-almet-sapphire focus:outline-none"
-                                    />
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </React.Fragment>
-                        ));
-                      })()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-almet-bali-hai">
-              <ActionButton
-                onClick={() => {
-                  setShowEditEmployeeModal(false);
-                  setEditingAssessment(null);
-                  setSelectedEmployeeInfo(null);
-                  setEmployeeFormData({
-                    employee: '',
-                    position_assessment: '',
-                    notes: '',
-                    competency_ratings: []
-                  });
-                }}
-                icon={X}
-                label="Cancel"
-                disabled={isSubmitting}
-                variant="outline"
-                size="md"
-              />
-              <ActionButton
-                onClick={handleUpdateAssessment}
-                icon={Save}
-                label="Update Assessment"
-                loading={isSubmitting}
-                variant="primary"
                 size="md"
               />
             </div>
