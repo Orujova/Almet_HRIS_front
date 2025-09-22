@@ -1,7 +1,16 @@
-// src/components/headcount/ColorModeSelector.jsx - SIMPLE VERSION, USER SELECTS FIRST
+// src/components/headcount/ColorModeSelector.jsx - COMPACT VERSION
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Palette } from "lucide-react";
+import { 
+  Palette, 
+  BarChart3, 
+  Building2, 
+  Globe, 
+  Landmark, 
+  Briefcase, 
+  Target,
+  X
+} from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useReferenceData } from "../../hooks/useReferenceData";
 
@@ -21,13 +30,10 @@ const ColorSelector = ({ onChange }) => {
   const [initialized, setInitialized] = useState(false);
   const [colorSystemReady, setColorSystemReady] = useState(false);
   
-  // Use ref to prevent infinite loops
   const initRef = useRef(false);
   const lastReferenceDataRef = useRef(null);
   
-  // Get reference data from hook
   const referenceDataHook = useReferenceData();
-  
   const {
     departments,
     businessFunctions,
@@ -38,27 +44,16 @@ const ColorSelector = ({ onChange }) => {
     error: refError
   } = referenceDataHook || {};
 
-  // Initialize color system when data is available (but don't set default mode)
+  // Initialize color system
   useEffect(() => {
-
+    if (initRef.current || initialized) return;
     
-    // Prevent multiple initializations
-    if (initRef.current || initialized) {
-     
-      return;
-    }
-    
-    // Check loading state
     const isLoading = typeof refLoading === 'object' 
       ? Object.values(refLoading || {}).some(loading => loading === true)
       : refLoading;
 
-    if (isLoading) {
+    if (isLoading) return;
 
-      return;
-    }
-
-    // Check if we have any meaningful reference data
     const hasAnyData = (
       (positionGroups && positionGroups.length > 0) ||
       (departments && departments.length > 0) ||
@@ -67,15 +62,8 @@ const ColorSelector = ({ onChange }) => {
       (jobFunctions && jobFunctions.length > 0)
     );
 
- 
+    if (!hasAnyData) return;
 
-    // Only proceed if we have actual data
-    if (!hasAnyData) {
-     
-      return;
-    }
-
-    // Check if reference data has actually changed
     const currentDataSignature = JSON.stringify({
       positionGroups: positionGroups?.length || 0,
       departments: departments?.length || 0,
@@ -84,20 +72,13 @@ const ColorSelector = ({ onChange }) => {
       jobFunctions: jobFunctions?.length || 0
     });
 
-    if (lastReferenceDataRef.current === currentDataSignature) {
-  
-      return;
-    }
+    if (lastReferenceDataRef.current === currentDataSignature) return;
 
-    // Mark as initialized and store data signature
     initRef.current = true;
     lastReferenceDataRef.current = currentDataSignature;
     setInitialized(true);
 
-  
-
     try {
-      // Build reference data structure
       const referenceData = {
         positionGroups: positionGroups || [],
         departments: departments || [],
@@ -106,189 +87,134 @@ const ColorSelector = ({ onChange }) => {
         jobFunctions: jobFunctions || []
       };
       
-
-      
-      // Initialize color system WITHOUT setting default mode
       initializeColorSystem(referenceData);
-      
-      // Build available modes from actual data
       const modes = getColorModes();
       setAvailableModes(modes);
       setColorSystemReady(true);
       
-   
-      
     } catch (error) {
-      console.error('COLOR_SELECTOR_SIMPLE: Error during initialization:', error);
+      console.error('COLOR_SELECTOR: Error during initialization:', error);
     }
     
-  }, [
-    refLoading, 
-    positionGroups, 
-    departments, 
-    businessFunctions, 
-    units, 
-    jobFunctions,
-    initialized
-  ]);
+  }, [refLoading, positionGroups, departments, businessFunctions, units, jobFunctions, initialized]);
 
   // Color mode change listener
   useEffect(() => {
-
-    
     const removeListener = addColorModeListener((newMode) => {
-
       setCurrentMode(newMode);
-      if (onChange) {
-        onChange(newMode);
-      }
+      if (onChange) onChange(newMode);
     });
-
-    return () => {
-    
-      removeListener();
-    };
+    return removeListener;
   }, [onChange]);
 
-  // Update available modes when color system is ready
   useEffect(() => {
     if (colorSystemReady) {
       const modes = getColorModes();
       setAvailableModes(modes);
-    
     }
   }, [colorSystemReady]);
 
   const handleModeChange = (newMode) => {
-
-    
-    if (newMode === currentMode) {
-  
-      return;
-    }
+    if (newMode === currentMode) return;
     
     const isAvailable = availableModes.some(mode => mode.value === newMode);
-    
     if (!isAvailable) {
-      console.warn('COLOR_SELECTOR_SIMPLE: Mode not available:', newMode);
+      console.warn('Mode not available:', newMode);
       return;
     }
     
     try {
-    
       setColorMode(newMode);
       setCurrentMode(newMode);
-      
-      if (onChange) {
-        onChange(newMode);
-      }
-      
-
-      
+      if (onChange) onChange(newMode);
     } catch (error) {
-      console.error('COLOR_SELECTOR_SIMPLE: Error changing mode:', error);
+      console.error('Error changing mode:', error);
       const previousMode = getCurrentColorMode();
       setCurrentMode(previousMode);
     }
   };
 
   const handleClearMode = () => {
-
     setColorMode(null);
     setCurrentMode(null);
-    
-    if (onChange) {
-      onChange(null);
-    }
+    if (onChange) onChange(null);
   };
 
-  // Theme styles
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  // Don't render if not ready or no modes
+  if (!colorSystemReady || availableModes.length === 0) return null;
 
-  // Show loading state
   const isLoading = typeof refLoading === 'object' 
     ? Object.values(refLoading || {}).some(loading => loading === true)
     : refLoading;
 
-  // Don't show anything if color system is not ready or no modes available
-  if (!colorSystemReady || availableModes.length === 0) {
-    return null;
-  }
-
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex items-center">
-          <Palette size={14} className="mr-2 text-gray-400 animate-pulse" />
-          <span className={`text-xs ${textSecondary} mr-2`}>Loading color options...</span>
-        </div>
+      <div className="flex items-center gap-2 mb-2">
+        <Palette size={12} className="text-gray-400 animate-pulse" />
+        <span className="text-xs text-gray-500">Loading...</span>
       </div>
     );
   }
 
+  const getModeIcon = (mode) => {
+    const iconProps = { size: 14, className: "flex-shrink-0" };
+    switch(mode) {
+      case 'HIERARCHY': return <BarChart3 {...iconProps} />;
+      case 'DEPARTMENT': return <Building2 {...iconProps} />;
+      case 'BUSINESS_FUNCTION': return <Globe {...iconProps} />;
+      case 'UNIT': return <Landmark {...iconProps} />;
+      case 'JOB_FUNCTION': return <Briefcase {...iconProps} />;
+      case 'GRADE': return <Target {...iconProps} />;
+      default: return <Palette {...iconProps} />;
+    }
+  };
+
   return (
-    <div className="flex flex-col gap-2 mb-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          <Palette size={14} className="mr-2 text-blue-500" />
-          <span className={`text-xs ${textSecondary} mr-2`}>
-            {isColorModeActive() ? 'Color mode active:' : 'Color employees by:'}
-          </span>
-          {refError && Object.values(refError).some(err => err !== null) && (
-            <span className={`text-xs text-orange-600 dark:text-orange-400 mr-2`}>
-              (Limited modes)
-            </span>
-          )}
-        </div>
-        
-        {/* Clear button when color mode is active */}
-        {isColorModeActive() && (
-          <button
-            onClick={handleClearMode}
-            className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-          >
-            Clear Colors
-          </button>
-        )}
+    <div className="flex items-center gap-3 mb-2">
+      <div className="flex items-center gap-1.5">
+        <Palette size={14} className="text-almet-sapphire dark:text-almet-steel-blue flex-shrink-0" />
+        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+          Color by:
+        </span>
       </div>
       
-      <div className={`flex flex-wrap gap-2 rounded-lg border ${borderColor} ${bgCard} p-2`}>
-      
-        
+      <div className="flex items-center gap-1.5 flex-wrap">
         {availableModes.map((mode) => (
           <button
             key={mode.value}
             onClick={() => handleModeChange(mode.value)}
             className={`
-              px-3 py-2 text-xs rounded-md transition-all duration-200 relative
-              flex items-center gap-1.5 min-w-fit
+              inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg 
+              transition-all duration-200 border font-medium
               ${currentMode === mode.value
-                ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-sm ring-2 ring-blue-200 dark:ring-blue-800'
-                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 border border-transparent hover:border-gray-300 dark:hover:border-gray-600'
+                ? 'bg-almet-mystic dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-almet-mystic border-almet-sapphire/30 dark:border-almet-steel-blue/50 shadow-sm'
+                : 'text-gray-600 dark:text-gray-300 hover:bg-almet-mystic/50 dark:hover:bg-almet-cloud-burst/20 border-gray-200 dark:border-gray-700 hover:border-almet-bali-hai/50 dark:hover:border-almet-waterloo/50'
               }
             `}
             title={mode.description}
           >
-            <span className="text-sm">
-              {mode.value === 'HIERARCHY' && '📊'}
-              {mode.value === 'DEPARTMENT' && '🏢'}
-              {mode.value === 'BUSINESS_FUNCTION' && '🌐'}
-              {mode.value === 'UNIT' && '🏛️'}
-              {mode.value === 'JOB_FUNCTION' && '💼'}
-              {mode.value === 'GRADE' && '🎯'}
+            <span className={currentMode === mode.value ? 'text-almet-sapphire dark:text-almet-steel-blue' : 'text-almet-waterloo dark:text-almet-bali-hai'}>
+              {getModeIcon(mode.value)}
             </span>
-            <span className="font-medium">{mode.label}</span>
-            
-            {currentMode === mode.value && (
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-            )}
+            <span>{mode.label}</span>
           </button>
         ))}
+        
+        {/* Clear button */}
+        {isColorModeActive() && (
+          <button
+            onClick={handleClearMode}
+            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg 
+                     text-almet-waterloo dark:text-almet-bali-hai hover:text-red-500 dark:hover:text-red-400 
+                     hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200
+                     border border-gray-200 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800"
+            title="Clear colors"
+          >
+            <X size={12} />
+            <span>Clear</span>
+          </button>
+        )}
       </div>
-      
-
     </div>
   );
 };

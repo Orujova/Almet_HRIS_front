@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 
 const SearchableDropdown = ({ 
-  options, 
+  options = [], 
   value, 
   onChange, 
   placeholder, 
@@ -18,7 +18,8 @@ const SearchableDropdown = ({
   icon = null,
   portal = false,
   dropdownClassName = "",
-  zIndex = "z-50"
+  zIndex = "z-50",
+  disabled = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,11 +33,28 @@ const SearchableDropdown = ({
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
-  const filteredOptions = options.filter(option =>
+  // Normalize options to ensure they have both value and label
+  const normalizedOptions = options.map((option, index) => {
+    if (typeof option === 'string') {
+      return { value: option, label: option, id: `option-${index}-${option}` };
+    }
+    
+    const value = option.value ?? option.id ?? option.name ?? '';
+    const label = option.label ?? option.name ?? option.value ?? option.id ?? '';
+    
+    return {
+      ...option,
+      value,
+      label,
+      id: option.id ?? `option-${index}-${value}`
+    };
+  });
+
+  const filteredOptions = normalizedOptions.filter(option =>
     option.label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedOption = options.find(option => option.value === value);
+  const selectedOption = normalizedOptions.find(option => option.value === value);
 
   // Update button position when dropdown opens
   useEffect(() => {
@@ -52,7 +70,6 @@ const SearchableDropdown = ({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      // Check if click is outside both dropdown and button
       const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
       const isOutsideButton = buttonRef.current && !buttonRef.current.contains(event.target);
       
@@ -64,7 +81,6 @@ const SearchableDropdown = ({
 
     const handleScroll = (event) => {
       if (isOpen && portal) {
-        // Only close if scroll is NOT inside the dropdown
         if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
           setIsOpen(false);
           setSearchTerm("");
@@ -128,7 +144,7 @@ const SearchableDropdown = ({
         ) : (
           filteredOptions.map((option) => (
             <button
-              key={option.value}
+              key={option.id}
               onClick={() => {
                 onChange(option.value);
                 setIsOpen(false);
@@ -182,8 +198,11 @@ const SearchableDropdown = ({
         <button
           ref={buttonRef}
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs text-left flex items-center justify-between transition-all duration-200 hover:border-almet-sapphire/50`}
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
+          className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs text-left flex items-center justify-between transition-all duration-200 ${
+            disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-almet-sapphire/50'
+          }`}
         >
           <div className="flex items-center">
             {icon && <span className="mr-2 text-almet-sapphire">{icon}</span>}
@@ -191,7 +210,7 @@ const SearchableDropdown = ({
               {selectedOption ? selectedOption.label : placeholder}
             </span>
           </div>
-          <ChevronDown size={14} className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          <ChevronDown size={14} className={`transform transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${disabled ? 'opacity-50' : ''}`} />
         </button>
 
         {/* Render dropdown with or without portal */}

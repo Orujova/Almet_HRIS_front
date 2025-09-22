@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Calculator, GitCompare, Eye, CheckCircle, Archive, Plus, Calendar, User, RefreshCw, Search, Filter } from "lucide-react";
+import CustomCheckbox from "@/components/common/CustomCheckbox";
 
 const DraftScenariosCard = ({
   draftScenarios,
@@ -107,11 +108,9 @@ const DraftScenariosCard = ({
                   <h3 className="font-semibold text-sm text-almet-cloud-burst dark:text-white">Current Structure</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">Active grade structure from database</p>
                 </div>
-                <input
-                  type="checkbox"
+                <CustomCheckbox
                   checked={selectedForComparison.includes('current')}
                   onChange={() => toggleScenarioForComparison('current')}
-                  className="w-4 h-4 text-almet-sapphire dark:text-almet-sapphire rounded focus:ring-almet-sapphire dark:focus:ring-almet-sapphire"
                 />
               </div>
 
@@ -198,11 +197,9 @@ const DraftScenariosCard = ({
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {compareMode && (
-                      <input
-                        type="checkbox"
+                      <CustomCheckbox
                         checked={selectedForComparison.includes(scenario.id)}
                         onChange={() => toggleScenarioForComparison(scenario.id)}
-                        className="w-4 h-4 text-almet-sapphire dark:text-almet-sapphire rounded focus:ring-almet-sapphire dark:focus:ring-almet-sapphire"
                       />
                     )}
                     <span className="px-2 py-1 text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 rounded-full font-medium">

@@ -2,46 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Settings, ArrowLeft, Plus, Edit, Trash2, Save, X, 
-  Target, Users, Award, Scale,
-  Loader2
+  Target, Users, Award, Scale, Loader2
 } from 'lucide-react';
-import { useTheme } from '@/components/common/ThemeProvider';
 import { assessmentApi } from '@/services/assessmentApi';
-import SuccessToast from './SuccessToast';
-import ErrorToast from './ErrorToast';
 
-// Ortak Bileşenler
-const ActionButton = ({ onClick, icon: Icon, label, variant = 'primary', loading = false, disabled = false, size = 'sm' }) => {
-  const variants = {
-    primary: 'bg-almet-sapphire hover:bg-almet-astral text-white',
-    secondary: 'bg-almet-bali-hai hover:bg-almet-waterloo text-white',
-    success: 'bg-green-500 hover:bg-green-600 text-white',
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
-    outline: 'border border-almet-sapphire text-almet-sapphire hover:bg-almet-sapphire hover:text-white'
-  };
+// Import common components
+import ActionButton from './ActionButton';
+import { useToast } from '@/components/common/Toast';
+import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
 
-  const sizes = {
-    xs: 'p-1.5',
-    sm: 'px-3 py-1.5 text-xs',
-    md: 'px-4 py-2 text-sm'
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled || loading}
-      className={`
-        inline-flex items-center gap-1.5 rounded-md font-medium
-        transition-colors ${variants[variant]} ${sizes[size]}
-        ${(disabled || loading) ? 'opacity-50 cursor-not-allowed' : ''}
-      `}
-    >
-      {loading ? <Loader2 size={14} className="animate-spin" /> : <Icon size={12} />}
-      {label && <span>{label}</span>}
-    </button>
-  );
-};
-
+// Status Badge Component
 const StatusBadge = ({ isActive }) => (
   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
     isActive 
@@ -52,9 +23,7 @@ const StatusBadge = ({ isActive }) => (
   </span>
 );
 
-
-
-// Ana Tablo Bileşeni
+// Assessment Table Component
 const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
   const getColumns = () => {
     const baseColumns = [
@@ -72,7 +41,7 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
       { 
         key: 'description', 
         label: 'Description', 
-        render: (item) => <span className="text-almet-cloud-burst text-sm">{item.description}</span> 
+        render: (item) => <span className="text-gray-900 text-sm">{item.description}</span> 
       },
       { 
         key: 'status', 
@@ -83,7 +52,7 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
         key: 'created_at', 
         label: 'Created', 
         render: (item) => (
-          <span className="text-xs text-almet-bali-hai">
+          <span className="text-xs text-gray-500">
             {new Date(item.created_at).toLocaleDateString()}
           </span>
         )
@@ -106,7 +75,7 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
         key: 'range', 
         label: 'Range', 
         render: (item) => (
-          <span className="font-medium text-almet-cloud-burst text-sm">
+          <span className="font-medium text-gray-900 text-sm">
             {item.min_percentage}% - {item.max_percentage}%
           </span>
         )
@@ -122,37 +91,39 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-almet-mystic bg-gray-50">
+          <tr className="border-b border-gray-200 bg-gray-50">
             {columns.map((col, idx) => (
-              <th key={idx} className="text-left py-3 px-4 font-medium text-almet-cloud-burst text-xs uppercase tracking-wide">
+              <th key={idx} className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">
                 {col.label}
               </th>
             ))}
-            <th className="text-center py-3 px-4 font-medium text-almet-cloud-burst text-xs uppercase tracking-wide w-20">
+            <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm w-24">
               Actions
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="divide-y divide-gray-100">
           {data.length > 0 ? (
             data.map((item) => (
-              <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+              <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                 {columns.map((col, idx) => (
                   <td key={idx} className="py-3 px-4">
                     {col.render(item)}
                   </td>
                 ))}
                 <td className="py-3 px-4 text-center">
-                  <div className="flex items-center justify-center gap-1">
+                  <div className="flex items-center justify-center gap-2">
                     <ActionButton
                       onClick={() => onEdit(item, type)}
                       icon={Edit}
-                      variant="outline"
+                      label=""
+                      variant="info"
                       size="xs"
                     />
                     <ActionButton
                       onClick={() => onDelete(item.id, type)}
                       icon={Trash2}
+                      label=""
                       variant="danger"
                       size="xs"
                     />
@@ -162,10 +133,10 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
             ))
           ) : (
             <tr>
-              <td colSpan={columns.length + 1} className="text-center py-8">
-                <Scale className="w-10 h-10 mx-auto mb-2 text-almet-bali-hai opacity-50" />
-                <p className="text-almet-bali-hai font-medium text-sm">No {type} scales found</p>
-                <p className="text-almet-bali-hai text-xs mt-0.5">Create your first {type} scale</p>
+              <td colSpan={columns.length + 1} className="text-center py-12">
+                <Scale className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="text-gray-500 font-medium">No {type} scales found</p>
+                <p className="text-gray-400 text-sm mt-1">Create your first {type} scale</p>
               </td>
             </tr>
           )}
@@ -175,38 +146,38 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
   );
 };
 
-// Form Modal Bileşeni
+// Form Modal Component
 const FormModal = ({ show, onClose, title, icon: Icon, children, onSubmit, submitLabel, isSubmitting, canSubmit }) => {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-5 w-full max-w-md shadow-xl">
-        <div className="flex items-center justify-between mb-5">
-          <h3 className="text-base font-semibold text-almet-cloud-burst flex items-center gap-2">
-            <Icon className="w-4 h-4 text-almet-sapphire" />
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Icon className="w-5 h-5 text-almet-sapphire" />
             {title}
           </h3>
           <button
             onClick={onClose}
-            className="p-1 rounded text-almet-bali-hai hover:bg-gray-100 transition-colors"
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
         
-        <div className="space-y-3">
+        <div className="space-y-4">
           {children}
         </div>
         
-        <div className="flex justify-end gap-2 mt-5 pt-3 border-t border-gray-200">
+        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
           <ActionButton
             onClick={onClose}
             icon={X}
             label="Cancel"
             disabled={isSubmitting}
             variant="outline"
-            size="sm"
+            size="md"
           />
           <ActionButton
             onClick={onSubmit}
@@ -215,7 +186,7 @@ const FormModal = ({ show, onClose, title, icon: Icon, children, onSubmit, submi
             disabled={!canSubmit}
             loading={isSubmitting}
             variant="primary"
-            size="sm"
+            size="md"
           />
         </div>
       </div>
@@ -223,10 +194,10 @@ const FormModal = ({ show, onClose, title, icon: Icon, children, onSubmit, submi
   );
 };
 
-// Form Giriş Bileşeni
+// Form Input Component
 const FormInput = ({ label, required, children }) => (
   <div>
-    <label className="block text-xs font-medium text-almet-cloud-burst mb-1.5">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
       {label} {required && <span className="text-red-500">*</span>}
     </label>
     {children}
@@ -234,13 +205,11 @@ const FormInput = ({ label, required, children }) => (
 );
 
 const AssessmentSettings = ({ onBack }) => {
-  const { darkMode } = useTheme();
+  const { showSuccess, showError } = useToast();
   
   // States
   const [activeSection, setActiveSection] = useState('behavioral');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Data states
@@ -253,6 +222,15 @@ const AssessmentSettings = ({ onBack }) => {
   const [showCoreModal, setShowCoreModal] = useState(false);
   const [showLetterGradeModal, setShowLetterGradeModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  
+  // Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null,
+    type: 'default'
+  });
   
   // Form states
   const [behavioralFormData, setBehavioralFormData] = useState({
@@ -275,15 +253,9 @@ const AssessmentSettings = ({ onBack }) => {
     is_active: true
   });
 
-  // Theme classes
-  const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
-  const textPrimary = darkMode ? 'text-white' : 'text-almet-cloud-burst';
-  const textSecondary = darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo';
-
   // Fetch all data
   const fetchData = async () => {
     setIsLoading(true);
-    setError(null);
     
     try {
       const [behavioralRes, coreRes, letterGradesRes] = await Promise.all([
@@ -298,7 +270,7 @@ const AssessmentSettings = ({ onBack }) => {
       
     } catch (err) {
       console.error('Error fetching settings data:', err);
-      setError(err);
+      showError('Failed to load settings data');
     } finally {
       setIsLoading(false);
     }
@@ -311,7 +283,7 @@ const AssessmentSettings = ({ onBack }) => {
   // Handle CRUD operations
   const handleCreateBehavioral = async () => {
     if (!behavioralFormData.scale || !behavioralFormData.description) {
-      setError({ message: 'Please fill all required fields' });
+      showError('Please fill all required fields');
       return;
     }
 
@@ -319,10 +291,10 @@ const AssessmentSettings = ({ onBack }) => {
     try {
       if (editingItem) {
         await assessmentApi.behavioralScales.update(editingItem.id, behavioralFormData);
-        setSuccessMessage('Behavioral scale updated successfully');
+        showSuccess('Behavioral scale updated successfully');
       } else {
         await assessmentApi.behavioralScales.create(behavioralFormData);
-        setSuccessMessage('Behavioral scale created successfully');
+        showSuccess('Behavioral scale created successfully');
       }
       
       await fetchData();
@@ -331,7 +303,7 @@ const AssessmentSettings = ({ onBack }) => {
       setEditingItem(null);
     } catch (err) {
       console.error('Error with behavioral scale:', err);
-      setError(err);
+      showError('Failed to save behavioral scale');
     } finally {
       setIsSubmitting(false);
     }
@@ -339,7 +311,7 @@ const AssessmentSettings = ({ onBack }) => {
 
   const handleCreateCore = async () => {
     if (!coreFormData.scale || !coreFormData.description) {
-      setError({ message: 'Please fill all required fields' });
+      showError('Please fill all required fields');
       return;
     }
 
@@ -347,10 +319,10 @@ const AssessmentSettings = ({ onBack }) => {
     try {
       if (editingItem) {
         await assessmentApi.coreScales.update(editingItem.id, coreFormData);
-        setSuccessMessage('Core scale updated successfully');
+        showSuccess('Core scale updated successfully');
       } else {
         await assessmentApi.coreScales.create(coreFormData);
-        setSuccessMessage('Core scale created successfully');
+        showSuccess('Core scale created successfully');
       }
       
       await fetchData();
@@ -359,7 +331,7 @@ const AssessmentSettings = ({ onBack }) => {
       setEditingItem(null);
     } catch (err) {
       console.error('Error with core scale:', err);
-      setError(err);
+      showError('Failed to save core scale');
     } finally {
       setIsSubmitting(false);
     }
@@ -367,7 +339,7 @@ const AssessmentSettings = ({ onBack }) => {
 
   const handleCreateLetterGrade = async () => {
     if (!letterGradeFormData.letter_grade || !letterGradeFormData.min_percentage || !letterGradeFormData.max_percentage) {
-      setError({ message: 'Please fill all required fields' });
+      showError('Please fill all required fields');
       return;
     }
 
@@ -375,10 +347,10 @@ const AssessmentSettings = ({ onBack }) => {
     try {
       if (editingItem) {
         await assessmentApi.letterGrades.update(editingItem.id, letterGradeFormData);
-        setSuccessMessage('Letter grade updated successfully');
+        showSuccess('Letter grade updated successfully');
       } else {
         await assessmentApi.letterGrades.create(letterGradeFormData);
-        setSuccessMessage('Letter grade created successfully');
+        showSuccess('Letter grade created successfully');
       }
       
       await fetchData();
@@ -387,30 +359,37 @@ const AssessmentSettings = ({ onBack }) => {
       setEditingItem(null);
     } catch (err) {
       console.error('Error with letter grade:', err);
-      setError(err);
+      showError('Failed to save letter grade');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDelete = async (id, type) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
-    
-    try {
-      if (type === 'behavioral') {
-        await assessmentApi.behavioralScales.delete(id);
-      } else if (type === 'core') {
-        await assessmentApi.coreScales.delete(id);
-      } else if (type === 'letter') {
-        await assessmentApi.letterGrades.delete(id);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Item',
+      message: 'Are you sure you want to delete this item? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          if (type === 'behavioral') {
+            await assessmentApi.behavioralScales.delete(id);
+          } else if (type === 'core') {
+            await assessmentApi.coreScales.delete(id);
+          } else if (type === 'letter') {
+            await assessmentApi.letterGrades.delete(id);
+          }
+          
+          await fetchData();
+          showSuccess('Item deleted successfully');
+        } catch (err) {
+          console.error('Delete error:', err);
+          showError('Failed to delete item');
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
       }
-      
-      await fetchData();
-      setSuccessMessage('Item deleted successfully');
-    } catch (err) {
-      console.error('Delete error:', err);
-      setError(err);
-    }
+    });
   };
 
   const handleEdit = (item, type) => {
@@ -441,26 +420,30 @@ const AssessmentSettings = ({ onBack }) => {
     }
   };
 
+  if (isLoading) {
+    return <LoadingSpinner message="Loading assessment settings..." />;
+  }
+
   return (
     <div className="min-h-screen">
-      <div className="mx-auto py-4">
+      <div className="mx-auto py-6 space-y-6">
         {/* Header */}
-        <div className={`${bgCard} rounded-lg mb-4 p-4 shadow-sm border`}>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <ActionButton
                 onClick={onBack}
                 icon={ArrowLeft}
                 label="Back"
                 variant="outline"
-                size="sm"
+                size="md"
               />
               <div>
-                <h1 className={`text-lg font-semibold ${textPrimary} flex items-center gap-2`}>
-                  <Settings className="w-5 h-5 text-almet-sapphire" />
+                <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <Settings className="w-6 h-6 text-almet-sapphire" />
                   Assessment Settings
                 </h1>
-                <p className={`text-xs ${textSecondary} mt-0.5`}>
+                <p className="text-sm text-gray-600 mt-1">
                   Configure assessment scales and grading systems
                 </p>
               </div>
@@ -469,46 +452,46 @@ const AssessmentSettings = ({ onBack }) => {
         </div>
 
         {/* Section Navigation */}
-        <div className={`${bgCard} rounded-lg p-3 mb-4 shadow-sm border`}>
-          <div className="flex space-x-1">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+          <div className="flex p-2 gap-2">
             <button
               onClick={() => setActiveSection('behavioral')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                 activeSection === 'behavioral'
-                  ? 'bg-almet-sapphire text-white'
-                  : 'text-almet-cloud-burst hover:bg-gray-100'
+                  ? 'bg-almet-sapphire text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center gap-1.5">
-                <Users size={14} />
+              <div className="flex items-center justify-center gap-2">
+                <Users size={16} />
                 Behavioral Settings
               </div>
             </button>
             
             <button
               onClick={() => setActiveSection('core')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                 activeSection === 'core'
-                  ? 'bg-almet-sapphire text-white'
-                  : 'text-almet-cloud-burst hover:bg-gray-100'
+                  ? 'bg-almet-sapphire text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center gap-1.5">
-                <Target size={14} />
+              <div className="flex items-center justify-center gap-2">
+                <Target size={16} />
                 Core Settings
               </div>
             </button>
             
             <button
               onClick={() => setActiveSection('grading')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
                 activeSection === 'grading'
-                  ? 'bg-almet-sapphire text-white'
-                  : 'text-almet-cloud-burst hover:bg-gray-100'
+                  ? 'bg-almet-sapphire text-white shadow-md'
+                  : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <div className="flex items-center gap-1.5">
-                <Award size={14} />
+              <div className="flex items-center justify-center gap-2">
+                <Award size={16} />
                 Letter Grading
               </div>
             </button>
@@ -516,64 +499,57 @@ const AssessmentSettings = ({ onBack }) => {
         </div>
 
         {/* Main Content */}
-        {isLoading ? (
-          <div className={`${bgCard} rounded-lg p-6 text-center border shadow-sm`}>
-            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3 text-almet-sapphire" />
-            <p className={`${textSecondary} text-sm`}>Loading settings...</p>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Header with Add Button */}
+          <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              {activeSection === 'behavioral' && <><Users size={18} />Behavioral Competency Scales</>}
+              {activeSection === 'core' && <><Target size={18} />Core Competency Scales</>}
+              {activeSection === 'grading' && <><Award size={18} />Letter Grade Mapping</>}
+            </h3>
+            <ActionButton
+              onClick={() => {
+                if (activeSection === 'behavioral') setShowBehavioralModal(true);
+                else if (activeSection === 'core') setShowCoreModal(true);
+                else if (activeSection === 'grading') setShowLetterGradeModal(true);
+              }}
+              icon={Plus}
+              label="Add New"
+              variant="primary"
+              size="md"
+            />
           </div>
-        ) : (
-          <div className={`${bgCard} rounded-lg shadow-sm border overflow-hidden`}>
-            {/* Header with Add Button */}
-            <div className="bg-gray-50 px-4 py-3 border-b flex items-center justify-between">
-              <h3 className={`text-base font-semibold ${textPrimary} flex items-center gap-2`}>
-                {activeSection === 'behavioral' && <><Users size={16} />Behavioral Competency Scales</>}
-                {activeSection === 'core' && <><Target size={16} />Core Competency Scales</>}
-                {activeSection === 'grading' && <><Award size={16} />Letter Grade Mapping</>}
-              </h3>
-              <ActionButton
-                onClick={() => {
-                  if (activeSection === 'behavioral') setShowBehavioralModal(true);
-                  else if (activeSection === 'core') setShowCoreModal(true);
-                  else if (activeSection === 'grading') setShowLetterGradeModal(true);
-                }}
-                icon={Plus}
-                label="Add New"
-                variant="primary"
-                size="sm"
+
+          {/* Content */}
+          <div className="p-4">
+            {activeSection === 'behavioral' && (
+              <AssessmentTable 
+                data={behavioralScales}
+                type="behavioral"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
-            </div>
+            )}
 
-            {/* Content */}
-            <div className="p-3">
-              {activeSection === 'behavioral' && (
-                <AssessmentTable 
-                  data={behavioralScales}
-                  type="behavioral"
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              )}
+            {activeSection === 'core' && (
+              <AssessmentTable 
+                data={coreScales}
+                type="core"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            )}
 
-              {activeSection === 'core' && (
-                <AssessmentTable 
-                  data={coreScales}
-                  type="core"
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              )}
-
-              {activeSection === 'grading' && (
-                <AssessmentTable 
-                  data={letterGrades}
-                  type="letter"
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              )}
-            </div>
+            {activeSection === 'grading' && (
+              <AssessmentTable 
+                data={letterGrades}
+                type="letter"
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            )}
           </div>
-        )}
+        </div>
 
         {/* Behavioral Scale Modal */}
         <FormModal
@@ -596,7 +572,7 @@ const AssessmentSettings = ({ onBack }) => {
               value={behavioralFormData.scale}
               onChange={(e) => setBehavioralFormData({...behavioralFormData, scale: parseInt(e.target.value) || ''})}
               placeholder="Enter scale number (e.g., 1, 2, 3...)"
-              className="w-full px-3 py-2 border border-gray-300 outline-0 rounded-md text-xs focus:ring-almet-sapphire focus:border-almet-sapphire"
+              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </FormInput>
           
@@ -606,7 +582,7 @@ const AssessmentSettings = ({ onBack }) => {
               onChange={(e) => setBehavioralFormData({...behavioralFormData, description: e.target.value})}
               placeholder="Enter scale description..."
               rows="3"
-              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs resize-none focus:ring-almet-sapphire focus:border-almet-sapphire"
+              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </FormInput>
           
@@ -616,9 +592,9 @@ const AssessmentSettings = ({ onBack }) => {
               id="behavioral-active"
               checked={behavioralFormData.is_active}
               onChange={(e) => setBehavioralFormData({...behavioralFormData, is_active: e.target.checked})}
-              className="h-3 w-3 text-almet-sapphire outline-0 focus:ring-almet-sapphire border-gray-300 rounded"
+              className="h-4 w-4 outline-0 text-almet-sapphire focus:ring-almet-sapphire border-gray-300 rounded"
             />
-            <label htmlFor="behavioral-active" className="ml-2 text-xs text-almet-cloud-burst">
+            <label htmlFor="behavioral-active" className="ml-2 text-sm text-gray-700">
               Active
             </label>
           </div>
@@ -645,7 +621,7 @@ const AssessmentSettings = ({ onBack }) => {
               value={coreFormData.scale}
               onChange={(e) => setCoreFormData({...coreFormData, scale: parseInt(e.target.value) || ''})}
               placeholder="Enter scale number (e.g., 0, 1, 2, 3...)"
-              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs focus:ring-almet-sapphire focus:border-almet-sapphire"
+              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </FormInput>
           
@@ -655,7 +631,7 @@ const AssessmentSettings = ({ onBack }) => {
               onChange={(e) => setCoreFormData({...coreFormData, description: e.target.value})}
               placeholder="Enter scale description..."
               rows="3"
-              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs resize-none focus:ring-almet-sapphire focus:border-almet-sapphire"
+              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </FormInput>
           
@@ -665,9 +641,9 @@ const AssessmentSettings = ({ onBack }) => {
               id="core-active"
               checked={coreFormData.is_active}
               onChange={(e) => setCoreFormData({...coreFormData, is_active: e.target.checked})}
-              className="h-3 w-3 text-almet-sapphire outline-0 focus:ring-almet-sapphire border-gray-300 rounded"
+              className="h-4 w-4 outline-0 text-almet-sapphire focus:ring-almet-sapphire border-gray-300 rounded"
             />
-            <label htmlFor="core-active" className="ml-2 text-xs text-almet-cloud-burst">
+            <label htmlFor="core-active" className="ml-2 text-sm text-gray-700">
               Active
             </label>
           </div>
@@ -694,11 +670,11 @@ const AssessmentSettings = ({ onBack }) => {
               value={letterGradeFormData.letter_grade}
               onChange={(e) => setLetterGradeFormData({...letterGradeFormData, letter_grade: e.target.value.toUpperCase()})}
               placeholder="Enter grade letter (A, B, C, D, E, F)"
-              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs focus:ring-almet-sapphire focus:border-almet-sapphire"
+              className="w-full px-3 py-2 outline-0 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </FormInput>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <FormInput label="Min %" required>
               <input
                 type="number"
@@ -707,7 +683,7 @@ const AssessmentSettings = ({ onBack }) => {
                 placeholder="0"
                 min="0"
                 max="100"
-                className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs focus:ring-almet-sapphire focus:border-almet-sapphire"
+                className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
               />
             </FormInput>
             
@@ -719,7 +695,7 @@ const AssessmentSettings = ({ onBack }) => {
                 placeholder="100"
                 min="0"
                 max="100"
-                className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs focus:ring-almet-sapphire focus:border-almet-sapphire"
+                className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
               />
             </FormInput>
           </div>
@@ -730,7 +706,7 @@ const AssessmentSettings = ({ onBack }) => {
               onChange={(e) => setLetterGradeFormData({...letterGradeFormData, description: e.target.value})}
               placeholder="Enter grade description..."
               rows="3"
-              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-md text-xs resize-none focus:ring-almet-sapphire focus:border-almet-sapphire"
+              className="w-full px-3 py-2 border outline-0 border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </FormInput>
           
@@ -740,29 +716,25 @@ const AssessmentSettings = ({ onBack }) => {
               id="letter-active"
               checked={letterGradeFormData.is_active}
               onChange={(e) => setLetterGradeFormData({...letterGradeFormData, is_active: e.target.checked})}
-              className="h-3 w-3 text-almet-sapphire outline-0 focus:ring-almet-sapphire border-gray-300 rounded"
+              className="h-4 w-4 text-almet-sapphire outline-0 focus:ring-almet-sapphire border-gray-300 rounded"
             />
-            <label htmlFor="letter-active" className="ml-2 text-xs text-almet-cloud-burst">
+            <label htmlFor="letter-active" className="ml-2 text-sm text-gray-700">
               Active
             </label>
           </div>
         </FormModal>
 
-        {/* Success Toast */}
-        {successMessage && (
-          <SuccessToast 
-            message={successMessage} 
-            onClose={() => setSuccessMessage('')} 
-          />
-        )}
-
-        {/* Error Toast */}
-        {error && (
-          <ErrorToast 
-            error={error} 
-            onClose={() => setError(null)} 
-          />
-        )}
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+          onConfirm={confirmModal.onConfirm}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          type={confirmModal.type}
+          confirmText="Delete"
+          cancelText="Cancel"
+        />
       </div>
     </div>
   );

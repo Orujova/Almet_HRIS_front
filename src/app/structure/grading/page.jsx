@@ -1,8 +1,9 @@
-// src/app/structure/grading/page.jsx - Dark mode düzəldilmiş
+// src/app/structure/grading/page.jsx - Dark mode düzəldilmiş with Toast and CustomCheckbox
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
+import { useToast } from "@/components/common/Toast";
 import useGrading from "@/hooks/useGrading";
 
 // Enhanced component imports
@@ -20,7 +21,6 @@ import {
   Plus, 
   Calculator, 
   Archive,
-  TrendingUp,
   Settings
 } from "lucide-react";
 
@@ -41,7 +41,7 @@ const TabNavigation = ({ activeTab, setActiveTab, tabs }) => {
           >
             <tab.icon size={18} />
             {tab.name}
-            {tab.count && (
+            {tab.count !== undefined && tab.count !== null && (
               <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${
                 activeTab === tab.id 
                   ? 'bg-almet-sapphire dark:bg-almet-sapphire text-white' 
@@ -63,16 +63,6 @@ const CurrentStructureTab = ({
   basePositionName, 
   currentScenario 
 }) => {
-  const formatCurrency = (value) => {
-    const numValue = value || 0;
-    return numValue.toLocaleString();
-  };
-
-  const formatPercentage = (value, decimals = 1) => {
-    const numValue = value || 0;
-    return `${(numValue * 100).toFixed(decimals)}%`;
-  };
-
   return (
     <div className="space-y-6">
       <CurrentStructureCard 
@@ -177,7 +167,14 @@ const ArchiveTab = ({ archivedScenarios, handleViewDetails }) => {
 
 const GradingPage = () => {
   const { darkMode } = useTheme();
+  const { showSuccess, showError, showWarning } = useToast();
   const [activeTab, setActiveTab] = useState('current');
+  const [lastDraftCount, setLastDraftCount] = useState(0);
+  const prevLoadingRef = useRef({
+    saving: false,
+    applying: false,
+    archiving: false
+  });
   
   const {
     // Core data
@@ -231,6 +228,52 @@ const GradingPage = () => {
     getHorizontalInputValues
   } = useGrading();
 
+  // Track draft count changes to detect new scenario creation
+  useEffect(() => {
+    if (draftScenarios.length > lastDraftCount && lastDraftCount > 0) {
+      showSuccess("Draft scenario created successfully!");
+    }
+    setLastDraftCount(draftScenarios.length);
+  }, [draftScenarios.length, lastDraftCount, showSuccess]);
+
+  // Track loading state changes to show success toasts
+  useEffect(() => {
+    const prev = prevLoadingRef.current;
+    
+    // Check if saving just completed
+    if (prev.saving && !loading.saving) {
+      showSuccess("Draft scenario saved successfully!");
+    }
+    
+    // Check if applying just completed
+    if (prev.applying && !loading.applying) {
+      showSuccess("Scenario applied as current structure!");
+    }
+    
+    // Check if archiving just completed
+    if (prev.archiving && !loading.archiving) {
+      showSuccess("Scenario archived successfully!");
+    }
+    
+    // Update previous state
+    prevLoadingRef.current = {
+      saving: loading.saving,
+      applying: loading.applying,
+      archiving: loading.archiving
+    };
+  }, [loading.saving, loading.applying, loading.archiving, showSuccess]);
+
+  // Show toast notifications for errors
+  useEffect(() => {
+    if (hasErrors) {
+      Object.entries(errors).forEach(([key, message]) => {
+        if (message) {
+          showError(message);
+        }
+      });
+    }
+  }, [hasErrors, errors, showError]);
+
   // Tab configuration
   const tabs = [
     {
@@ -267,12 +310,45 @@ const GradingPage = () => {
     );
   }
 
-  // Show error if no current data
-  if (errors.currentStructure || !dataAvailability.hasCurrentData) {
+  // Show error if no current data - with helpful UI
+  if (!dataAvailability.hasCurrentData && !isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="min-h-screen bg-gradient-to-br flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-8 max-w-md w-full">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Settings size={32} className="text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-almet-cloud-burst dark:text-white mb-2">
+                No Grading Structure Found
+              </h3>
+              <p className="text-sm text-almet-waterloo dark:text-gray-300 mb-6">
+                No current grading structure exists in the database. Please set up your initial structure to begin.
+              </p>
+              <button
+                onClick={() => {
+                  refreshData();
+                  showWarning("Please create your initial grading structure");
+                }}
+                className="bg-almet-sapphire dark:bg-almet-sapphire text-white px-6 py-3 rounded-lg hover:bg-almet-astral dark:hover:bg-almet-astral transition-colors font-medium flex items-center gap-2 mx-auto"
+              >
+                <Plus size={18} />
+                Set Up Structure
+              </button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Show generic error with retry
+  if (errors.currentStructure) {
     return (
       <DashboardLayout>
         <ErrorDisplay 
-          error={errors.currentStructure || "No grading structure found in database"} 
+          error={errors.currentStructure} 
           onRetry={refreshData}
         />
       </DashboardLayout>
@@ -335,7 +411,7 @@ const GradingPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen bg-gradient-to-br ">
+      <div className="min-h-screen bg-gradient-to-br">
         <div className="p-6 space-y-6 max-w-7xl mx-auto">
           {/* Header */}
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-almet-mystic dark:border-gray-700 p-6">
@@ -373,34 +449,6 @@ const GradingPage = () => {
               handleSaveAsCurrent={handleSaveAsCurrent}
               handleArchiveDraft={handleArchiveDraft}
             />
-          )}
-
-          {/* Enhanced Error Toast */}
-          {hasErrors && (
-            <div className="fixed bottom-6 right-6 bg-red-500 dark:bg-red-600 text-white px-6 py-4 rounded-xl shadow-2xl max-w-md z-50 animate-slide-up border border-red-400 dark:border-red-500">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-red-600 dark:bg-red-700 rounded-full flex items-center justify-center flex-shrink-0">
-                  <span className="text-white font-bold">!</span>
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-semibold text-sm mb-1">System Error Detected</h4>
-                  <div className="text-xs space-y-1 opacity-90">
-                    {Object.entries(errors).map(([key, message]) => (
-                      <div key={key} className="flex items-start gap-1">
-                        <span className="text-red-200 dark:text-red-300">•</span>
-                        <span>{message}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="ml-2 text-xs bg-red-600 dark:bg-red-700 hover:bg-red-700 dark:hover:bg-red-800 px-3 py-1.5 rounded-lg transition-colors font-medium"
-                >
-                  Reload Page
-                </button>
-              </div>
-            </div>
           )}
 
           {/* Enhanced Loading Overlay */}
