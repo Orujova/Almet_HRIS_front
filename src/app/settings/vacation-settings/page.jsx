@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { Calendar, Plus, Edit2, Trash2, Download, Upload, Bell, Users, Settings, Save, X } from 'lucide-react';
+import { Calendar, Plus, Edit2, Trash2, Download, Upload, Bell, Users, Settings, Save, X, Mail } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 
@@ -33,6 +33,32 @@ const mockSettings = {
   notificationFrequency: 2
 };
 
+const mockNotificationTemplates = [
+  {
+    id: 1,
+    requestType: "Vacation Request",
+    stage: "Submitted",
+    subject: "Vacation Request Submitted - Confirmation",
+    body: "Dear {employee_name},\n\nYour vacation request from {start_date} to {end_date} has been successfully submitted and is awaiting approval.\n\nRequest Details:\n- Duration: {duration} days\n- Remaining Balance: {remaining_balance} days\n\nYou will be notified once your request is reviewed.\n\nBest regards,\nHR Team",
+    isActive: true
+  },
+  {
+    id: 2,
+    requestType: "Vacation Request",
+    stage: "Approved",
+    subject: "Vacation Request Approved",
+    body: "Dear {employee_name},\n\nGood news! Your vacation request from {start_date} to {end_date} has been approved.\n\nApproved by: {approver_name}\nApproval Date: {approval_date}\n\nPlease ensure all your tasks are properly handed over before your vacation starts.\n\nBest regards,\nHR Team",
+    isActive: true
+  },
+  {
+    id: 3,
+    requestType: "Vacation Request",
+    stage: "Rejected",
+    subject: "Vacation Request - Action Required",
+    body: "Dear {employee_name},\n\nYour vacation request from {start_date} to {end_date} requires revision.\n\nReason: {rejection_reason}\n\nPlease contact HR or your manager for more details.\n\nBest regards,\nHR Team",
+  }
+];
+
 export default function VacationSettingsPage() {
   const { darkMode } = useTheme();
   const [activeTab, setActiveTab] = useState('calendar');
@@ -40,15 +66,24 @@ export default function VacationSettingsPage() {
   const [leaveTypes, setLeaveTypes] = useState(mockLeaveTypes);
   const [hrReps, setHRReps] = useState(mockHRReps);
   const [settings, setSettings] = useState(mockSettings);
+  const [notificationTemplates, setNotificationTemplates] = useState(mockNotificationTemplates);
   
   // Modals
   const [showNonWorkingDayModal, setShowNonWorkingDayModal] = useState(false);
   const [showLeaveTypeModal, setShowLeaveTypeModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   // Form states
   const [nonWorkingDayForm, setNonWorkingDayForm] = useState({ date: '', name: '', type: 'Holiday' });
   const [leaveTypeForm, setLeaveTypeForm] = useState({ name: '', description: '', maxDays: '', isActive: true });
+  const [notificationForm, setNotificationForm] = useState({ 
+    requestType: 'Vacation Request', 
+    stage: 'Submitted', 
+    subject: '', 
+    body: '',
+    isActive: true 
+  });
 
   const handleAddNonWorkingDay = () => {
     if (editingItem) {
@@ -100,8 +135,30 @@ export default function VacationSettingsPage() {
     setHRReps(hrReps.map(rep => ({ ...rep, isDefault: rep.id === id })));
   };
 
+  const handleAddNotificationTemplate = () => {
+    if (editingItem) {
+      setNotificationTemplates(notificationTemplates.map(template => 
+        template.id === editingItem.id ? { ...notificationForm, id: editingItem.id } : template
+      ));
+    } else {
+      setNotificationTemplates([...notificationTemplates, { ...notificationForm, id: Date.now() }]);
+    }
+    setShowNotificationModal(false);
+    setNotificationForm({ requestType: 'Vacation Request', stage: 'Submitted', subject: '', body: '', isActive: true });
+    setEditingItem(null);
+  };
+
+  const handleEditNotificationTemplate = (template) => {
+    setEditingItem(template);
+    setNotificationForm(template);
+    setShowNotificationModal(true);
+  };
+
+  const handleDeleteNotificationTemplate = (id) => {
+    setNotificationTemplates(notificationTemplates.filter(template => template.id !== id));
+  };
+
   const handleExportTemplate = () => {
-    // CSV template structure
     const csvContent = "Employee Name,Employee ID,Start Balance,Yearly Balance,Year\nJohn Doe,EMP001,0,28,2025\n";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -120,6 +177,10 @@ export default function VacationSettingsPage() {
 
   const handleSaveSettings = () => {
     alert('Settings saved successfully!');
+  };
+
+  const getRequestTypeTemplates = (requestType) => {
+    return notificationTemplates.filter(t => t.requestType === requestType);
   };
 
   return (
@@ -172,6 +233,16 @@ export default function VacationSettingsPage() {
               }`}
             >
               Vacation Balances
+            </button>
+            <button
+              onClick={() => setActiveTab('notifications')}
+              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'notifications'
+                  ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
+                  : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
+              }`}
+            >
+              Notification Templates
             </button>
             <button
               onClick={() => setActiveTab('settings')}
@@ -435,13 +506,84 @@ export default function VacationSettingsPage() {
                 </div>
               </div>
 
-             
-
               <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4">
                 <p className="text-sm text-almet-comet dark:text-yellow-200">
                   <strong>Note:</strong> Start Balance is the remaining balance from previous year. Yearly Balance is the new allocation for current year.
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification Templates Tab */}
+        {activeTab === 'notifications' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Notification Templates</h2>
+              <button
+                onClick={() => {
+                  setEditingItem(null);
+                  setNotificationForm({ requestType: 'Vacation Request', stage: 'Submitted', subject: '', body: '', isActive: true });
+                  setShowNotificationModal(true);
+                }}
+                className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Add Template
+              </button>
+            </div>
+
+        
+
+            {/* Request Type Sections */}
+            <div className="space-y-8">
+              {/* Vacation Request Templates */}
+              <div>
+                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5" />
+                  Vacation Request Templates
+                </h3>
+                <div className="space-y-3">
+                  {getRequestTypeTemplates('Vacation Request').map(template => (
+                    <div key={template.id} className="border border-almet-bali-hai dark:border-almet-comet rounded-lg p-4">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded">
+                              {template.stage}
+                            </span>
+                            {template.isActive ? (
+                              <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs font-medium rounded">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs font-medium rounded">
+                                Inactive
+                              </span>
+                            )}
+                          </div>
+                          <h4 className="font-medium text-almet-cloud-burst dark:text-white">{template.subject}</h4>
+                          <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-2 line-clamp-2">{template.body}</p>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <button
+                            onClick={() => handleEditNotificationTemplate(template)}
+                            className="text-almet-sapphire hover:text-almet-cloud-burst"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteNotificationTemplate(template.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         )}
@@ -696,6 +838,119 @@ export default function VacationSettingsPage() {
                 </button>
                 <button
                   onClick={handleAddLeaveType}
+                  className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors"
+                >
+                  {editingItem ? 'Update' : 'Add'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification Template Modal */}
+        {showNotificationModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl border border-almet-mystic dark:border-almet-comet max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                  {editingItem ? 'Edit Notification Template' : 'Add Notification Template'}
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowNotificationModal(false);
+                    setEditingItem(null);
+                  }}
+                  className="text-almet-waterloo hover:text-almet-cloud-burst"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                      Request Type
+                    </label>
+                    <select
+                      value={notificationForm.requestType}
+                      onChange={(e) => setNotificationForm({...notificationForm, requestType: e.target.value})}
+                      className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="Vacation Request">Vacation Request</option>
+                      <option value="Business Trip">Business Trip</option>
+                      <option value="Remote Work">Remote Work</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                      Stage
+                    </label>
+                    <select
+                      value={notificationForm.stage}
+                      onChange={(e) => setNotificationForm({...notificationForm, stage: e.target.value})}
+                      className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="Submitted">Submitted</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                      <option value="Upcoming Reminder">Upcoming Reminder</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                    Subject
+                  </label>
+                  <input
+                    type="text"
+                    value={notificationForm.subject}
+                    onChange={(e) => setNotificationForm({...notificationForm, subject: e.target.value})}
+                    placeholder="Email subject line"
+                    className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                    Message Body
+                  </label>
+                  <textarea
+                    value={notificationForm.body}
+                    onChange={(e) => setNotificationForm({...notificationForm, body: e.target.value})}
+                    placeholder="Use variables like {employee_name}, {start_date}, {end_date}, etc."
+                    rows={10}
+                    className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={notificationForm.isActive}
+                      onChange={(e) => setNotificationForm({...notificationForm, isActive: e.target.checked})}
+                      className="w-4 h-4 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire"
+                    />
+                    <span className="ml-2 text-sm text-almet-comet dark:text-almet-bali-hai">Active</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowNotificationModal(false);
+                    setEditingItem(null);
+                  }}
+                  className="px-4 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddNotificationTemplate}
                   className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors"
                 >
                   {editingItem ? 'Update' : 'Add'}

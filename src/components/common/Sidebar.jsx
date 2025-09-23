@@ -184,25 +184,26 @@ const Sidebar = ({ collapsed = false }) => {
                 </div>
               )
             ) : (
-              <Link 
-                key={index}
-                href={item.path}
-                className={`flex items-center ${collapsed ? 'justify-center' : 'px-3'} py-1.5 text-xs font-medium rounded-md my-0.5 ${
-                  pathname === item.path 
-                    ? "bg-almet-mystic dark:bg-almet-sapphire text-almet-sapphire dark:text-white" 
-                    : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet"
-                }`}
-                title={collapsed ? item.label : ''}
-              >
-                <span className={`${collapsed ? '' : 'mr-2'} ${
-                  pathname === item.path 
-                    ? "text-almet-sapphire dark:text-white" 
-                    : "text-gray-500 dark:text-gray-400"
-                }`}>
-                  {item.icon}
-                </span>
-                {!collapsed && item.label}
-              </Link>
+             <Link 
+  key={index}
+  href={item.path}
+  className={`flex items-center ${collapsed ? 'justify-center' : 'px-3'} py-1.5 text-xs font-medium rounded-md my-0.5 transition-colors duration-300 ${
+    pathname.startsWith(item.path) 
+      ? "bg-[#5975af] text-white shadow-md" 
+      : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet"
+  }`}
+  title={collapsed ? item.label : ''}
+>
+  <span className={`${collapsed ? '' : 'mr-2'} transition-colors duration-300 ${
+    pathname.startsWith(item.path) 
+      ? "text-white" 
+      : "text-gray-500 dark:text-gray-400"
+  }`}>
+    {item.icon}
+  </span>
+  {!collapsed && item.label}
+</Link>
+
             )
           )}
         </nav>
