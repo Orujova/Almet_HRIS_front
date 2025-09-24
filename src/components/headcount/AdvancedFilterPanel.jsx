@@ -7,10 +7,7 @@ import MultiSelect from "../common/MultiSelect"; // Import common component
 import { useReferenceData } from "../../hooks/useReferenceData";
 import { useEmployees } from "../../hooks/useEmployees";
 
-/**
- * UPDATED with common SearchableDropdown and MultiSelect components
- * Replaces custom MultiSelectDropdown with standardized components
- */
+
 const AdvancedFilterPanel = ({ 
   onApply, 
   onClose, 

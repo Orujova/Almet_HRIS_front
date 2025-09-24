@@ -15,8 +15,7 @@ import {
   XCircle,
   X,
   Briefcase,
-  AlertTriangle,
-  RefreshCw
+  
 } from "lucide-react";
 
 // API Services

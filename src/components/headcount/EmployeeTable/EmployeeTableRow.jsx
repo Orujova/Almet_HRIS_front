@@ -1,8 +1,9 @@
-// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED COLOR INTEGRATION
+// src/components/headcount/EmployeeTable/EmployeeTableRow.jsx - FIXED with CustomCheckbox
 "use client";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useTheme } from "../../common/ThemeProvider";
+import CustomCheckbox from "../../common/CustomCheckbox";
 
 // FIXED: Correct imports from themeStyles
 import { 
@@ -51,17 +52,13 @@ const EmployeeTableRow = ({
     let isComponentMounted = true;
     let removeListener;
     
-  
-    
     try {
       // Primary listener through theme system
       removeListener = addColorModeListener((newMode) => {
         if (!isComponentMounted) {
-
           return;
         }
         
- 
         setCurrentColorMode(newMode);
         setColorUpdateKey(prev => prev + 1);
       });
@@ -72,7 +69,6 @@ const EmployeeTableRow = ({
     // Secondary listener for custom events
     const handleColorModeChange = (event) => {
       if (!isComponentMounted) return;
-  
       setCurrentColorMode(event.detail.mode);
       setColorUpdateKey(prev => prev + 1);
     };
@@ -80,7 +76,6 @@ const EmployeeTableRow = ({
     // Reference data update listener
     const handleReferenceDataUpdate = (event) => {
       if (!isComponentMounted) return;
- 
       setColorUpdateKey(prev => prev + 1);
     };
 
@@ -90,7 +85,6 @@ const EmployeeTableRow = ({
     }
 
     return () => {
-
       isComponentMounted = false;
       if (removeListener && typeof removeListener === 'function') {
         try {
@@ -108,7 +102,6 @@ const EmployeeTableRow = ({
 
   // FIXED: Enhanced getEmployeeColors with comprehensive field fallback and debugging
   const getEmployeeColorsWithFallback = useCallback((employee, darkMode) => {
-  
     // Create normalized employee object with comprehensive field mapping
     const normalizedEmployee = {
       ...employee,
@@ -168,11 +161,8 @@ const EmployeeTableRow = ({
       tags: employee.tags || employee.tag_names || []
     };
     
-
-    
     try {
       const colors = getEmployeeColors(normalizedEmployee, darkMode);
-
       return colors;
     } catch (error) {
       console.error('EmployeeTableRow: Error getting employee colors:', error);
@@ -192,9 +182,7 @@ const EmployeeTableRow = ({
 
   // FIXED: Memoized employee colors with all update dependencies
   const employeeColors = useMemo(() => {
-   
     const colors = getEmployeeColorsWithFallback(employee, darkMode);
-
     return colors;
   }, [employee, darkMode, currentColorMode, colorUpdateKey, getEmployeeColorsWithFallback]);
 
@@ -307,7 +295,6 @@ const EmployeeTableRow = ({
       transition: 'all 0.3s ease-in-out'
     };
     
-
     return style;
   }, [employeeColors.borderColor, isSelected, darkMode, employee?.name]);
 
@@ -319,7 +306,6 @@ const EmployeeTableRow = ({
       transition: 'background 0.3s ease-in-out'
     };
     
-   
     return style;
   }, [employeeColors.borderColor, employee?.name]);
 
@@ -346,11 +332,11 @@ const EmployeeTableRow = ({
       {/* Employee Info - Name & Employee ID */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex items-center">
-          <input
-            type="checkbox"
-            className="h-3 w-3 text-blue-600 rounded focus:ring-blue-500 focus:ring-1 transition-all"
+          {/* FIXED: Use CustomCheckbox instead of native checkbox */}
+          <CustomCheckbox
             checked={isSelected}
             onChange={() => onToggleSelection(employee.id)}
+            className="transition-all"
           />
           <div className="flex items-center ml-2">
             {/* Compact Avatar with Dynamic Colors */}

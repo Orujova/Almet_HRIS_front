@@ -1,10 +1,7 @@
 // src/components/headcount/SortingIndicator.jsx - Column sorting indicator
 import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
-/**
- * Sorting Indicator Component
- * Shows sort direction and order for table columns
- */
+
 const SortingIndicator = ({
   direction = null, // 'asc', 'desc', or null
   sortIndex = null, // Number for multi-sort order

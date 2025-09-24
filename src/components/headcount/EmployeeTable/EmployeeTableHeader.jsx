@@ -1,22 +1,35 @@
-// src/components/headcount/EmployeeTable/EmployeeTableHeader.jsx - Backend Field Mapping Fixed
+// src/components/headcount/EmployeeTable/EmployeeTableHeader.jsx - FIXED Sorting Handler
 "use client";
 import { useTheme } from "../../common/ThemeProvider";
 import { getThemeStyles } from "../utils/themeStyles";
 import SortingIndicator from "../SortingIndicator";
+import CustomCheckbox from "@/components/common/CustomCheckbox";
 
 const EmployeeTableHeader = ({
   selectAll,
   onToggleSelectAll,
   onSort,
   getSortDirection,
+  isSorted,
+  getSortIndex,
 }) => {
   const { darkMode } = useTheme();
   const styles = getThemeStyles(darkMode);
 
-  // Handle sorting with proper event handling for Ctrl+Click multi-sort
-  const handleSort = (field, event) => {
-    event.preventDefault();
-    onSort(field, event);
+  // FIXED: Handle sorting with proper event handling for Ctrl+Click multi-sort
+  const handleSort = (field) => (event) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    
+    // Detect if Ctrl/Cmd key is pressed for multi-sort
+    const ctrlKey = event ? (event.ctrlKey || event.metaKey) : false;
+    
+    // Call onSort with field and ctrl key status
+    if (onSort) {
+      onSort(field, ctrlKey);
+    }
   };
 
   return (
@@ -25,20 +38,22 @@ const EmployeeTableHeader = ({
         {/* Selection Column */}
         <th scope="col" className="px-2 py-2 text-left">
           <div className="flex items-center">
-            <input
-              type="checkbox"
-              className="h-3 w-3 text-blue-600 rounded focus:ring-blue-500"
+            {/* FIXED: Use CustomCheckbox instead of native checkbox */}
+            <CustomCheckbox
               checked={selectAll}
               onChange={onToggleSelectAll}
-              title="Select all employees"
+              className="mr-1"
             />
             <button
               className={`ml-1 text-xs font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-              onClick={(e) => handleSort("full_name", e)}
+              onClick={handleSort("name")}
               title="Sort by employee name (Ctrl+Click for multi-sort)"
             >
               Employee 
-              <SortingIndicator direction={getSortDirection("full_name")} />
+              <SortingIndicator 
+                direction={getSortDirection("name")} 
+                index={getSortIndex ? getSortIndex("name") : undefined}
+              />
             </button>
           </div>
         </th>
@@ -47,11 +62,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("email", e)}
+            onClick={handleSort("email")}
             title="Sort by email (Ctrl+Click for multi-sort)"
           >
             Contact Info
-            <SortingIndicator direction={getSortDirection("email")} />
+            <SortingIndicator 
+              direction={getSortDirection("email")} 
+              index={getSortIndex ? getSortIndex("email") : undefined}
+            />
           </button>
         </th>
 
@@ -59,11 +77,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("business_function_name", e)}
+            onClick={handleSort("business_function_name")}
             title="Sort by business function (Ctrl+Click for multi-sort)"
           >
             Business Function & Department
-            <SortingIndicator direction={getSortDirection("business_function_name")} />
+            <SortingIndicator 
+              direction={getSortDirection("business_function_name")} 
+              index={getSortIndex ? getSortIndex("business_function_name") : undefined}
+            />
           </button>
         </th>
 
@@ -71,11 +92,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("unit_name", e)}
+            onClick={handleSort("unit_name")}
             title="Sort by unit (Ctrl+Click for multi-sort)"
           >
             Unit & Job Function
-            <SortingIndicator direction={getSortDirection("unit_name")} />
+            <SortingIndicator 
+              direction={getSortDirection("unit_name")} 
+              index={getSortIndex ? getSortIndex("unit_name") : undefined}
+            />
           </button>
         </th>
 
@@ -83,11 +107,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("position_group_level", e)}
+            onClick={handleSort("position_group_level")}
             title="Sort by position group level (Ctrl+Click for multi-sort)"
           >
             Position & Grade
-            <SortingIndicator direction={getSortDirection("position_group_level")} />
+            <SortingIndicator 
+              direction={getSortDirection("position_group_level")} 
+              index={getSortIndex ? getSortIndex("position_group_level") : undefined}
+            />
           </button>
         </th>
 
@@ -95,11 +122,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("job_title", e)}
+            onClick={handleSort("job_title")}
             title="Sort by job title (Ctrl+Click for multi-sort)"
           >
             Job Title
-            <SortingIndicator direction={getSortDirection("job_title")} />
+            <SortingIndicator 
+              direction={getSortDirection("job_title")} 
+              index={getSortIndex ? getSortIndex("job_title") : undefined}
+            />
           </button>
         </th>
 
@@ -107,11 +137,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("line_manager_name", e)}
+            onClick={handleSort("line_manager_name")}
             title="Sort by line manager (Ctrl+Click for multi-sort)"
           >
             Line Manager
-            <SortingIndicator direction={getSortDirection("line_manager_name")} />
+            <SortingIndicator 
+              direction={getSortDirection("line_manager_name")} 
+              index={getSortIndex ? getSortIndex("line_manager_name") : undefined}
+            />
           </button>
         </th>
 
@@ -119,11 +152,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-xs font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("start_date", e)}
+            onClick={handleSort("start_date")}
             title="Sort by start date (Ctrl+Click for multi-sort)"
           >
             Employment Dates
-            <SortingIndicator direction={getSortDirection("start_date")} />
+            <SortingIndicator 
+              direction={getSortDirection("start_date")} 
+              index={getSortIndex ? getSortIndex("start_date") : undefined}
+            />
           </button>
         </th>
 
@@ -131,11 +167,14 @@ const EmployeeTableHeader = ({
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
-            onClick={(e) => handleSort("status_name", e)}
+            onClick={handleSort("status_name")}
             title="Sort by status (Ctrl+Click for multi-sort)"
           >
             Status & Tags
-            <SortingIndicator direction={getSortDirection("status_name")} />
+            <SortingIndicator 
+              direction={getSortDirection("status_name")} 
+              index={getSortIndex ? getSortIndex("status_name") : undefined}
+            />
           </button>
         </th>
 

@@ -32,11 +32,7 @@ const EmployeeTable = ({
 
   // FIXED: Generate guaranteed unique keys for each employee
   const generateUniqueKey = (employee, index) => {
-    // Priority order for unique identification:
-    // 1. employee.id (database primary key)
-    // 2. employee.employee_id (HC number)
-    // 3. combination of multiple fields
-    // 4. fallback to index with prefix
+  
     
     if (employee.id) {
       // Check if it's a vacancy (might have special ID format)
