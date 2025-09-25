@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, Search, Target, BarChart3,
-  RefreshCw, AlertCircle, CheckCircle, Building, Users, ListFilter
+  RefreshCw, AlertCircle,  Building, Users, ListFilter
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';

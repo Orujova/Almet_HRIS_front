@@ -110,10 +110,11 @@ const Pagination = ({
       px-4 py-2.5 
       flex flex-col lg:flex-row items-center justify-between gap-3
       backdrop-blur-sm
+      rounded-lg
       ${className}
     `}>
       {/* Results Info - Compact */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 ">
         <div className={`text-xs ${textSecondary}`}>
           <span className={textMuted}>Showing</span>{' '}
           <span className="font-semibold text-almet-sapphire">

@@ -1,7 +1,8 @@
-// src/components/headcount/HeadcountTable.jsx - COMPLETE VERSION
+// src/components/headcount/HeadcountTable.jsx - COMPLETE WITH TOAST INTEGRATION
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
+import { useToast } from "../common/Toast"; // Import the Toast hook
 import { useEmployees } from "../../hooks/useEmployees";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
@@ -27,6 +28,7 @@ import TagManagementModal from "./TagManagementModalsingle";
 
 const HeadcountTable = () => {
   const { darkMode } = useTheme();
+  const { showSuccess, showError, showWarning, showInfo } = useToast(); // Use Toast hook
   
   // ========================================
   // TAB STATE MANAGEMENT
@@ -209,6 +211,7 @@ const HeadcountTable = () => {
       
     } catch (error) {
       console.error('HeadcountTable: Error initializing color system:', error);
+      showError('Failed to initialize color system');
       colorSystemInitRef.current = false;
       setColorSystemInitialized(false);
     }
@@ -221,7 +224,8 @@ const HeadcountTable = () => {
     units,
     jobFunctions,
     employeeTags,
-    colorSystemInitialized
+    colorSystemInitialized,
+    showError
   ]);
 
   // ========================================
@@ -308,7 +312,8 @@ const HeadcountTable = () => {
     setDefaultSortingApplied(false);
     clearSorting();
     setCurrentPage(1);
-  }, [currentColorMode, clearSorting, setCurrentPage]);
+    showInfo(`Color mode changed to ${newMode}`);
+  }, [currentColorMode, clearSorting, setCurrentPage, showInfo]);
 
   // ========================================
   // TAB-SPECIFIC INITIALIZATION
@@ -326,13 +331,14 @@ const HeadcountTable = () => {
         ]);
       } catch (error) {
         console.error('Failed to initialize tab statistics:', error);
+        showError('Failed to load statistics');
       }
     };
 
     if (!initialized.current) {
       initializeAllStats();
     }
-  }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics]);
+  }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics, showError]);
 
   // ========================================
   // COMPLETE API PARAMS BUILDER
@@ -490,6 +496,7 @@ const HeadcountTable = () => {
         
       } catch (error) {
         console.error('Failed to initialize HeadcountTable:', error);
+        showError('Failed to initialize data');
         initialized.current = false;
       }
     };
@@ -517,16 +524,20 @@ const HeadcountTable = () => {
         lastApiParamsRef.current = null;
       }
       
+      showInfo('Refreshing data...');
+      
       await Promise.all([
         fetchStatistics(),
         fetchEmployees(buildApiParams)
       ]);
       
       lastApiParamsRef.current = { ...buildApiParams };
+      showSuccess('Data refreshed successfully');
     } catch (error) {
       console.error('Data refresh failed:', error);
+      showError('Failed to refresh data');
     }
-  }, [fetchStatistics, fetchEmployees, buildApiParams]);
+  }, [fetchStatistics, fetchEmployees, buildApiParams, showInfo, showSuccess, showError]);
 
   // ========================================
   // TAB CHANGE HANDLER
@@ -544,7 +555,9 @@ const HeadcountTable = () => {
     
     // Clear selections
     clearSelection();
-  }, [clearSelection]);
+    
+    showInfo(`Switched to ${tabId} tab`);
+  }, [clearSelection, showInfo]);
 
   // ========================================
   // COMPUTE STATISTICS FOR HEADER
@@ -572,12 +585,14 @@ const HeadcountTable = () => {
       setSorting({ multiple: newSorting });
     }
     setCurrentPage(1);
-  }, [setSorting, clearSorting, setCurrentPage]);
+    showInfo(`Sorting updated: ${newSorting.length} level(s)`);
+  }, [setSorting, clearSorting, setCurrentPage, showInfo]);
 
   const handleClearAllSorting = useCallback(() => {
     clearSorting();
     setCurrentPage(1);
-  }, [clearSorting, setCurrentPage]);
+    showInfo('All sorting cleared');
+  }, [clearSorting, setCurrentPage, showInfo]);
 
   // ========================================
   // COMPLETE FILTER HANDLERS
@@ -622,7 +637,8 @@ const HeadcountTable = () => {
     
     setLocalFilters(prev => ({ ...prev, ...processedFilters }));
     setCurrentPage(1);
-  }, [setCurrentPage]);
+    showInfo('Advanced filters applied');
+  }, [setCurrentPage, showInfo]);
 
   const handleClearFilter = useCallback((key) => {
     setLocalFilters(prev => {
@@ -638,7 +654,8 @@ const HeadcountTable = () => {
     });
     
     setCurrentPage(1);
-  }, [setCurrentPage]);
+    showInfo(`${key} filter cleared`);
+  }, [setCurrentPage, showInfo]);
 
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {
@@ -670,7 +687,8 @@ const HeadcountTable = () => {
     setLocalFilters(clearedFilters);
     clearFilters();
     setCurrentPage(1);
-  }, [clearFilters, setCurrentPage]);
+    showSuccess('All filters cleared');
+  }, [clearFilters, setCurrentPage, showSuccess]);
 
   // ========================================
   // SELECTION HANDLERS
@@ -683,11 +701,13 @@ const HeadcountTable = () => {
   const handleSelectAll = useCallback(() => {
     if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
       clearSelection();
+      showInfo('All employees deselected');
     } else {
       const allIds = formattedEmployees.map(emp => emp.id);
       setSelectedEmployees(allIds);
+      showInfo(`${allIds.length} employees selected`);
     }
-  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees]);
+  }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees, showInfo]);
 
   const handleVisibilityChange = useCallback(async (employeeId, newVisibility) => {
     try {
@@ -698,8 +718,10 @@ const HeadcountTable = () => {
 
       if (newVisibility) {
         await showInOrgChart([employeeId]);
+        showSuccess('Employee made visible in org chart');
       } else {
         await hideFromOrgChart([employeeId]);
+        showSuccess('Employee hidden from org chart');
       }
       
     } catch (error) {
@@ -708,9 +730,9 @@ const HeadcountTable = () => {
         [employeeId]: !newVisibility
       }));
       
-      alert(`Failed to update visibility: ${error.message}`);
+      showError(`Failed to update visibility: ${error.message}`);
     }
-  }, [showInOrgChart, hideFromOrgChart]);
+  }, [showInOrgChart, hideFromOrgChart, showSuccess, showError]);
   
   // ========================================
   // SORTING HANDLERS (Table Column Sorting)
@@ -745,8 +767,8 @@ const HeadcountTable = () => {
  const handleBulkAction = useCallback(async (action, options = {}) => {
   setIsActionMenuOpen(false);
 
-  if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport'].includes(action)) {
-    alert("Please select employees first!");
+  if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport', 'refresh'].includes(action)) {
+    showWarning("Please select employees first!");
     return;
   }
 
@@ -754,6 +776,10 @@ const HeadcountTable = () => {
     let result;
     
     switch (action) {
+      case "refresh":
+        await refreshAllData(true);
+        break;
+
       case "export":
         setIsExportModalOpen(true);
         break;
@@ -765,10 +791,10 @@ const HeadcountTable = () => {
       case "downloadTemplate":
         try {
           result = await downloadEmployeeTemplate();
-          alert('Template downloaded successfully!');
+          showSuccess('Template downloaded successfully!');
         } catch (error) {
           console.error('Template download failed:', error);
-          alert('Template download failed: ' + error.message);
+          showError('Template download failed: ' + error.message);
         }
         break;
 
@@ -778,17 +804,17 @@ const HeadcountTable = () => {
         
         if (confirm(softDeleteMessage)) {
           try {
-
-
+         
             result = await archiveEmployeesService.bulkSoftDeleteEmployees(selectedEmployees);
 
             clearSelection();
             await refreshAllData(true);
+            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} soft deleted successfully`);
 
           } catch (error) {
-            console.error('❌ SOFT DELETE: Operation failed:', error);
+            console.error('⛔ SOFT DELETE: Operation failed:', error);
             const errorMessage = error.message || 'Soft delete operation failed';
-            alert(`Soft delete failed: ${errorMessage}`);
+            showError(`Soft delete failed: ${errorMessage}`);
           }
         }
         break;
@@ -803,8 +829,8 @@ const HeadcountTable = () => {
         if (confirmation === "DELETE") {
           try {
             const notes = "hard delete";
+            showWarning('Processing permanent deletion...');
             
-  
             // Use the dedicated archive service for hard delete with archiving
             result = await archiveEmployeesService.bulkHardDeleteEmployees(
               selectedEmployees, 
@@ -812,43 +838,44 @@ const HeadcountTable = () => {
               true // confirmHardDelete = true
             );
             
-
             clearSelection();
             await refreshAllData(true);
-            
+            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} permanently deleted`);
             
           } catch (error) {
-            console.error('❌ HARD DELETE: Operation failed:', error);
+            console.error('⛔ HARD DELETE: Operation failed:', error);
             const errorMessage = error.message || 'Hard delete operation failed';
-           
+            showError(`Hard delete failed: ${errorMessage}`);
           }
         } else if (confirmation !== null) {
-          alert('Hard delete cancelled. You must type "DELETE" exactly to confirm permanent deletion.');
+          showWarning('Hard delete cancelled. You must type "DELETE" exactly to confirm permanent deletion.');
         }
         break;
 
      
       case "showInOrgChart":
         try {
+    
           await showInOrgChart(selectedEmployees);
           clearSelection();
           await refreshAllData(true);
-          alert(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
+          showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
         } catch (error) {
           console.error('Show in org chart failed:', error);
-          alert('Show in org chart failed: ' + error.message);
+          showError('Show in org chart failed: ' + error.message);
         }
         break;
 
       case "hideFromOrgChart":
         try {
+  
           await hideFromOrgChart(selectedEmployees);
           clearSelection();
           await refreshAllData(true);
-          alert(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
+          showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
         } catch (error) {
           console.error('Hide from org chart failed:', error);
-          alert('Hide from org chart failed: ' + error.message);
+          showError('Hide from org chart failed: ' + error.message);
         }
         break;
 
@@ -859,15 +886,15 @@ const HeadcountTable = () => {
             tag_id: options.tag_id
           };
           
+          showInfo('Adding tags...');
           result = await bulkAddTags(payload.employee_ids, payload.tag_id);
           clearSelection();
           await refreshAllData(true);
-          
-     
+          showSuccess(`Tags added to ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
          
         } catch (error) {
           console.error('Tag addition failed:', error);
-          alert('Tag addition failed: ' + error.message);
+          showError('Tag addition failed: ' + error.message);
         }
         break;
 
@@ -878,12 +905,14 @@ const HeadcountTable = () => {
             tag_id: options.tag_id
           };
           
+    
           result = await bulkRemoveTags(payload.employee_ids, payload.tag_id);
           clearSelection();
           await refreshAllData(true);
+          showSuccess(`Tags removed from ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
 
         } catch (error) {
-          alert('Tag removal failed: ' + error.message);
+          showError('Tag removal failed: ' + error.message);
         }
         break;
 
@@ -893,21 +922,22 @@ const HeadcountTable = () => {
             employee_ids: options.employee_ids || selectedEmployees,
             line_manager_id: options.line_manager_id
           };
-          
+
           result = await bulkAssignLineManager(payload.employee_ids, payload.line_manager_id);
           clearSelection();
           await refreshAllData(true);
           
           const managerName = result?.line_manager_info?.name || 'Line Manager';
-          alert(`${managerName} assigned as line manager to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
+          showSuccess(`${managerName} assigned as line manager to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
         } catch (error) {
           console.error('Line manager assignment failed:', error);
-          alert('Line manager assignment failed: ' + error.message);
+          showError('Line manager assignment failed: ' + error.message);
         }
         break;
 
       case "bulkExtendContracts":
         try {
+     
           result = await bulkExtendContracts({
             employee_ids: selectedEmployees,
             new_contract_type: options.new_contract_type,
@@ -917,20 +947,20 @@ const HeadcountTable = () => {
           
           clearSelection();
           await refreshAllData(true);
-          alert(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
+          showSuccess(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
         } catch (error) {
           console.error('Contract extension failed:', error);
-          alert('Contract extension failed: ' + error.message);
+          showError('Contract extension failed: ' + error.message);
         }
         break;
 
       default:
         console.warn('Unknown bulk action:', action);
-        alert(`"${action}" operation not implemented yet`);
+        showWarning(`"${action}" operation not implemented yet`);
     }
   } catch (error) {
     console.error(`Bulk action ${action} failed:`, error);
-    alert(`${action} failed. Error: ${error.message}`);
+    showError(`${action} failed. Error: ${error.message}`);
   }
 }, [
   selectedEmployees,
@@ -942,7 +972,11 @@ const HeadcountTable = () => {
   bulkExtendContracts,
   downloadEmployeeTemplate,
   showInOrgChart,
-  hideFromOrgChart
+  hideFromOrgChart,
+  showInfo,
+  showSuccess,
+  showError,
+  showWarning
 ]);
 
 
@@ -964,6 +998,7 @@ const HeadcountTable = () => {
 const handleExport = useCallback(async (exportOptions) => {
   try {
     setIsExporting(true);
+
     
     console.log('🎯 COMPLETELY FIXED EXPORT OPTIONS:');
     console.log('   Type:', exportOptions.type);
@@ -1061,12 +1096,12 @@ const handleExport = useCallback(async (exportOptions) => {
       : "all";
     
     const fieldsCount = exportOptions.include_fields?.length || 'default';
-    alert(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
+    showSuccess(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
     
     return result;
 
   } catch (error) {
-    console.error('❌ FIXED Export error:', error);
+    console.error('⛔ FIXED Export error:', error);
     
     let userFriendlyMessage = error.message || "Export failed. Please try again.";
     
@@ -1079,12 +1114,12 @@ const handleExport = useCallback(async (exportOptions) => {
       userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
     }
     
-    alert(`Export failed: ${userFriendlyMessage}`);
+    showError(`Export failed: ${userFriendlyMessage}`);
     throw error;
   } finally {
     setIsExporting(false);
   }
-}, [selectedEmployees, buildApiParams, exportEmployees]);
+}, [selectedEmployees, buildApiParams, exportEmployees, showInfo, showSuccess, showError]);
 
 // Quick export helper
 const handleQuickExport = useCallback(async (exportOptions) => {
@@ -1094,11 +1129,11 @@ const handleQuickExport = useCallback(async (exportOptions) => {
   } catch (error) {
     console.error('Quick export failed:', error);
     const errorMessage = error.message || 'Quick export failed. Please try again.';
-    alert(`Export failed: ${errorMessage}`);
+    showError(`Export failed: ${errorMessage}`);
   } finally {
     setIsExporting(false);
   }
-}, [handleExport]);
+}, [handleExport, showError]);
 
   // ========================================
   // BULK UPLOAD FUNCTIONALITY
@@ -1110,18 +1145,18 @@ const handleQuickExport = useCallback(async (exportOptions) => {
       setIsBulkUploadOpen(false);
       
       if (result?.imported_count) {
-        alert(`Successfully imported ${result.imported_count} employees!`);
+        showSuccess(`Successfully imported ${result.imported_count} employees!`);
       } else if (result?.successful) {
-        alert(`Successfully imported ${result.successful} employees!`);
+        showSuccess(`Successfully imported ${result.successful} employees!`);
       } else {
-        alert('Bulk import completed successfully!');
+        showSuccess('Bulk import completed successfully!');
       }
     } catch (error) {
       console.error('Failed to refresh after import:', error);
       setIsBulkUploadOpen(false);
-      alert('Import completed but failed to refresh data. Please refresh the page.');
+      showError('Import completed but failed to refresh data. Please refresh the page.');
     }
-  }, [refreshAllData]);
+  }, [refreshAllData, showSuccess, showError]);
 
   const handleToggleExportModal = useCallback(() => {
     setIsExportModalOpen(prev => !prev);
@@ -1194,6 +1229,7 @@ const handleQuickExport = useCallback(async (exportOptions) => {
       
     } catch (error) {
       console.error('Error fetching employees for modal:', error);
+      showError('Failed to fetch employees for modal');
       
       if (!allEmployeesForModal && formattedEmployees && formattedEmployees.length > 0) {
         setAllEmployeesForModal(formattedEmployees);
@@ -1206,7 +1242,7 @@ const handleQuickExport = useCallback(async (exportOptions) => {
     } finally {
       setFetchingAllEmployees(false);
     }
-  }, [allEmployeesForModal, fetchEmployees, formattedEmployees]);
+  }, [allEmployeesForModal, fetchEmployees, formattedEmployees, showError]);
 
 
   // ENHANCED: Individual employee delete handler
@@ -1245,14 +1281,15 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
         if (confirm(`Soft delete ${employeeName}?\n\nThis will create a vacant position and allow future restoration.`)) {
           try {
             const reason = prompt("Please provide a reason for soft deletion (optional):");
+         
             
             await archiveEmployeesService.bulkSoftDeleteEmployees([employeeId], reason);
             await refreshAllData(true);
-       
+            showSuccess(`${employeeName} soft deleted successfully`);
             
           } catch (error) {
             console.error('Individual soft delete failed:', error);
-            alert(`Failed to soft delete ${employeeName}: ${error.message}`);
+            showError(`Failed to soft delete ${employeeName}: ${error.message}`);
           }
         }
         break;
@@ -1266,52 +1303,57 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
         if (confirmation === "DELETE") {
           try {
             const notes = prompt("Please provide notes for this deletion (optional but recommended):");
+            showWarning('Processing permanent deletion...');
             
             await archiveEmployeesService.bulkHardDeleteEmployees([employeeId], notes, true);
             await refreshAllData(true);
-       
+            showSuccess(`${empName} permanently deleted`);
             
           } catch (error) {
             console.error('Individual hard delete failed:', error);
-            alert(`Failed to delete ${empName}: ${error.message}`);
+            showError(`Failed to delete ${empName}: ${error.message}`);
           }
         } else if (confirmation !== null) {
-          alert('Deletion cancelled. You must type "DELETE" exactly to confirm.');
+          showWarning('Deletion cancelled. You must type "DELETE" exactly to confirm.');
         }
         break;
 
       case "viewTeam":
-        alert(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
+        showInfo(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
         break;
 
       case "edit":
         break;
 
       case "viewJobDescription":
-        alert(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
+        showInfo(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
         break;
 
       case "competencyMatrix":
-        alert(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
+        showInfo(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
         break;
 
       case "performanceManagement":
-        alert(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
+        showInfo(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
         break;
 
       default:
-        alert(`Action "${action}" is not implemented yet`);
+        showWarning(`Action "${action}" is not implemented yet`);
     }
   } catch (error) {
     console.error(`Failed to perform action ${action}:`, error);
-    alert(`Failed to ${action}: ${error.message}`);
+    showError(`Failed to ${action}: ${error.message}`);
   }
 }, [
   formattedEmployees, 
   refreshAllData, 
   handleVisibilityChange,
   allEmployeesForModal, 
-  fetchAllEmployeesForModal
+  fetchAllEmployeesForModal,
+  showInfo,
+  showSuccess,
+  showError,
+  showWarning
 ]);
 
 
@@ -1329,6 +1371,7 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
         throw new Error('No employee selected for line manager assignment');
       }
       
+
       await bulkAssignLineManager([currentModalEmployee.id], managerId);
       
       setShowLineManagerModal(false);
@@ -1339,19 +1382,21 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
       const manager = allEmployeesForModal?.find(emp => emp.id === managerId);
       const managerName = manager?.name || manager?.employee_name || 'Selected manager';
       
-      alert(`${managerName} assigned as line manager successfully!`);
+      showSuccess(`${managerName} assigned as line manager successfully!`);
       
     } catch (error) {
       console.error('Line manager assignment failed:', error);
-      alert(`Failed to assign line manager: ${error.message}`);
+      showError(`Failed to assign line manager: ${error.message}`);
     }
-  }, [currentModalEmployee, bulkAssignLineManager, refreshAllData, allEmployeesForModal]);
+  }, [currentModalEmployee, bulkAssignLineManager, refreshAllData, allEmployeesForModal, showInfo, showSuccess, showError]);
 
   const handleTagOperation = useCallback(async (operation, tagId) => {
     try {
       if (!currentModalEmployee) {
         throw new Error('No employee selected for tag operation');
       }
+      
+      showInfo(`${operation === 'add' ? 'Adding' : 'Removing'} tag...`);
       
       if (operation === 'add') {
         await bulkAddTags([currentModalEmployee.id], tagId);
@@ -1366,12 +1411,13 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
       
       await refreshAllData();
       
+      showSuccess(`Tag ${operation === 'add' ? 'added' : 'removed'} successfully`);
     
     } catch (error) {
       console.error(`Tag ${operation} failed:`, error);
-      alert(`Failed to ${operation} tag: ${error.message}`);
+      showError(`Failed to ${operation} tag: ${error.message}`);
     }
-  }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, employeeTags]);
+  }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, showInfo, showSuccess, showError]);
 
   const handleLineManagerModalClose = useCallback(() => {
     setShowLineManagerModal(false);
@@ -1823,6 +1869,7 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
               onClick={() => {
                 initialized.current = false;
                 lastApiParamsRef.current = null;
+                showInfo('Reloading application...');
                 window.location.reload();
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"

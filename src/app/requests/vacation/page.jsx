@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, FileText, Download } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, FileText, Download, Check } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 
@@ -144,8 +144,16 @@ export default function VacationRequestsPage() {
     if (activeSection === 'immediate') {
       alert('Request submitted for approval');
     } else {
-      alert('Schedule saved successfully');
+      alert('Schedule saved successfully - no approval needed');
     }
+  };
+
+  const handleExportSchedules = () => {
+    alert('Schedules exported successfully');
+  };
+
+  const handleRegisterSchedule = (scheduleId) => {
+    alert(`Schedule ${scheduleId} registered as completed`);
   };
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
@@ -226,7 +234,7 @@ export default function VacationRequestsPage() {
                     : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
                 }`}
               >
-                Request Immediately
+                Request Immediately (Requires Approval)
               </button>
               <button
                 onClick={() => setActiveSection('scheduling')}
@@ -236,15 +244,22 @@ export default function VacationRequestsPage() {
                     : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
                 }`}
               >
-                Scheduling
+                Scheduling (No Approval Needed)
               </button>
             </div>
 
             {/* Request Form */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
-              <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white mb-6">
-                {activeSection === 'immediate' ? 'Request Immediately' : 'Schedule Vacation'}
-              </h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">
+                  {activeSection === 'immediate' ? 'Request Immediately' : 'Schedule Vacation'}
+                </h2>
+                {activeSection === 'scheduling' && (
+                  <div className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium">
+                    No Approval Required
+                  </div>
+                )}
+              </div>
 
               <form onSubmit={handleSubmit}>
                 {/* Employee Information */}
@@ -428,39 +443,41 @@ export default function VacationRequestsPage() {
                   </div>
                 </div>
 
-                {/* Approval Section */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Approval</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Line Manager
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.lineManager}
-                        onChange={(e) => setFormData({...formData, lineManager: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
+                {/* Approval Section - Only show for immediate requests */}
+                {activeSection === 'immediate' && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Approval</h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                          Line Manager
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.lineManager}
+                          onChange={(e) => setFormData({...formData, lineManager: e.target.value})}
+                          disabled={requester === 'for_me'}
+                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
+                        />
+                      </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        HR Representative
-                      </label>
-                      <select
-                        value={formData.hrRepresentative}
-                        onChange={(e) => setFormData({...formData, hrRepresentative: e.target.value})}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="Sarah Johnson">Sarah Johnson</option>
-                        <option value="Mike Brown">Mike Brown</option>
-                      </select>
+                      <div>
+                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                          HR Representative
+                        </label>
+                        <select
+                          value={formData.hrRepresentative}
+                          onChange={(e) => setFormData({...formData, hrRepresentative: e.target.value})}
+                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
+                        >
+                          <option value="Sarah Johnson">Sarah Johnson</option>
+                          <option value="Mike Brown">Mike Brown</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Overlapping Schedules for Scheduling */}
                 {activeSection === 'scheduling' && formData.startDate && formData.endDate && (
@@ -493,7 +510,7 @@ export default function VacationRequestsPage() {
                     {activeSection === 'immediate' ? (
                       <>
                         <CheckCircle className="w-4 h-4" />
-                        Submit Request
+                        Submit for Approval
                       </>
                     ) : (
                       <>
@@ -508,8 +525,8 @@ export default function VacationRequestsPage() {
               {/* Schedules Tabs */}
               {activeSection === 'scheduling' && (
                 <div className="mt-8 pt-8 border-t border-almet-bali-hai dark:border-almet-comet">
-                  <div className="mb-4 border-b border-almet-bali-hai dark:border-almet-comet">
-                    <div className="flex space-x-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex space-x-8 border-b border-almet-bali-hai dark:border-almet-comet">
                       <button
                         onClick={() => setSchedulesTab('upcoming')}
                         className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
@@ -541,21 +558,19 @@ export default function VacationRequestsPage() {
                         My All Schedules
                       </button>
                     </div>
+                    <button
+                      onClick={handleExportSchedules}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export Schedules
+                    </button>
                   </div>
 
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-almet-bali-hai dark:divide-almet-comet">
                       <thead className="bg-almet-mystic dark:bg-gray-700">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            Employee
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            Leave Type
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            Start Date
-                          </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
                             End Date
                           </th>
@@ -564,6 +579,9 @@ export default function VacationRequestsPage() {
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
                             Status
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -590,6 +608,20 @@ export default function VacationRequestsPage() {
                                 {schedule.status}
                               </span>
                             </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              <div className="flex gap-2">
+                                <button className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue">
+                                  Edit
+                                </button>
+                                <button 
+                                  onClick={() => handleRegisterSchedule(schedule.id)}
+                                  className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                                >
+                                  <Check className="w-3 h-3" />
+                                  Register
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                         {schedulesTab === 'team' && mockScheduledLeaves.map(leave => (
@@ -613,6 +645,55 @@ export default function VacationRequestsPage() {
                               <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral">
                                 {leave.status}
                               </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                              View Only
+                            </td>
+                          </tr>
+                        ))}
+                        {schedulesTab === 'all' && [...mockMySchedules, ...mockScheduledLeaves.map(leave => ({
+                          ...leave,
+                          leaveType: 'Annual Leave',
+                          employeeName: leave.employeeName
+                        }))].map(schedule => (
+                          <tr key={`all-${schedule.id}`}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
+                              {schedule.employeeName || mockUser.name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
+                              {schedule.leaveType}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
+                              {schedule.startDate}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
+                              {schedule.endDate}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
+                              {schedule.days}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral">
+                                {schedule.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                              {(schedule.employeeName === mockUser.name || !schedule.employeeName) ? (
+                                <div className="flex gap-2">
+                                  <button className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue">
+                                    Edit
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRegisterSchedule(schedule.id)}
+                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    Register
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-almet-waterloo dark:text-almet-bali-hai">View Only</span>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -728,7 +809,10 @@ export default function VacationRequestsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">My All Requests & Schedules</h2>
-              <button className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2">
+              <button 
+                onClick={handleExportSchedules}
+                className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2"
+              >
                 <Download className="w-4 h-4" />
                 Export
               </button>
@@ -797,7 +881,11 @@ export default function VacationRequestsPage() {
                             <button className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue">
                               Edit
                             </button>
-                            <button className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">
+                            <button 
+                              onClick={() => handleRegisterSchedule(record.id)}
+                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                            >
+                              <Check className="w-3 h-3" />
                               Register
                             </button>
                           </div>

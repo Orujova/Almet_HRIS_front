@@ -125,9 +125,7 @@ const ActionMenu = ({
           setIsProcessing(true);
 
           const result = await archiveEmployeesService.bulkSoftDeleteEmployees(selectedEmployees);
-          
-  
-          
+
           await refreshAll();
           onClose();
           

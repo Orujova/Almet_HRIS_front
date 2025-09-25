@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountHeader.jsx - Smaller Font Sizes
+// src/components/headcount/HeadcountHeader.jsx - With Settings Button
 import { useState } from "react";
 import { 
   Plus, 
@@ -12,6 +12,7 @@ import {
   Briefcase,
   Archive,
   Building2,
+  Settings
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -50,6 +51,9 @@ const HeadcountHeader = ({
   filteredCount = 0,
   totalEmployees = 0,
   
+  // Settings
+  onOpenSettings,
+  
   // Theme
   darkMode = false
 }) => {
@@ -65,7 +69,7 @@ const HeadcountHeader = ({
   const borderColor = darkMode ? "border-gray-600" : "border-gray-300";
   const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
-  // Tab configurations with clean design
+  // Tab configurations
   const tabs = [
     {
       id: 'employees',
@@ -156,8 +160,18 @@ const HeadcountHeader = ({
               </div>
             </div>
 
-            {/* Main Actions - Only show export/import for employees tab */}
+            {/* Main Actions - Settings + Export/Import */}
             <div className="flex items-center space-x-2">
+              {/* Settings Button */}
+              <button
+                onClick={() => router.push('/structure/settings')}
+                className={`flex items-center px-3 py-2 text-xs border rounded-lg transition-all ${borderColor} ${textSecondary} ${hoverBg} hover:border-almet-sapphire/50 hover:text-almet-sapphire`}
+                title="Configure system settings"
+              >
+                <Settings size={14} className="mr-2" />
+                Settings
+              </button>
+
               {/* Export Button - Only for employees tab */}
               {showEmployeeControls && (
                 <div className="relative">
@@ -185,7 +199,7 @@ const HeadcountHeader = ({
                     )}
                   </button>
 
-                  {/* Enhanced Export Menu */}
+                  {/* Export Menu */}
                   {isExportDropdownOpen && !isExporting && (
                     <div className="absolute right-0 top-full mt-2 w-72 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50">
                       <div className="py-1">
