@@ -354,122 +354,129 @@ const PositionInformationTab = ({
   };
 
   // Update assignment preview based on form data
-  const updateAssignmentPreview = async () => {
-    if (!areAllRequiredFieldsFilled()) {
-      const emptyPreview = {
-        strategy: null,
-        employeeCount: 0,
-        requiresSelection: false,
-        previewMessage: 'Complete all required job information to see assignment preview',
-        employees: [],
-        criteria: {}
-      };
-      
-      setAssignmentPreview(emptyPreview);
-      
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate(null);
-      }
-      return;
+const updateAssignmentPreview = async () => {
+  if (!areAllRequiredFieldsFilled()) {
+    const emptyPreview = {
+      strategy: null,
+      employeeCount: 0,
+      requiresSelection: false,
+      previewMessage: 'Complete all required job information to see assignment preview',
+      employees: [],
+      criteria: {}
+    };
+    
+    setAssignmentPreview(emptyPreview);
+    
+    if (onAssignmentPreviewUpdate) {
+      onAssignmentPreviewUpdate(null);
+    }
+    return;
+  }
+
+  if (!dropdownData.employees || dropdownData.employees.length === 0) {
+    setAssignmentPreview({
+      strategy: null,
+      employeeCount: 0,
+      requiresSelection: false,
+      previewMessage: 'Loading employee data...',
+      employees: [],
+      criteria: {}
+    });
+    return;
+  }
+
+  try {
+    setPreviewLoading(true);
+    setPreviewError(null);
+
+    const businessFunctionId = getBusinessFunctionId(formData.business_function);
+    const departmentId = getDepartmentId(formData.department);
+    const jobFunctionId = getJobFunctionId(formData.job_function);
+    const positionGroupId = getPositionGroupId(formData.position_group);
+    const unitId = formData.unit ? getUnitId(formData.unit) : null;
+
+    const previewCriteria = {
+      job_title: formData.job_title.trim(),
+      business_function: businessFunctionId,
+      department: departmentId,
+      unit: unitId,
+      job_function: jobFunctionId,
+      position_group: positionGroupId,
+      grading_level: formData.grading_level?.trim() || null,
+      max_preview: 50,
+      include_vacancies: true
+    };
+
+    const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
+    
+    // FIXED: Better handling of response arrays with proper fallbacks
+    const employees = Array.isArray(response.employees) ? response.employees : [];
+    const vacancies = Array.isArray(response.vacancies) ? response.vacancies : [];
+    const unifiedList = Array.isArray(response.unified_list) ? response.unified_list : [];
+    
+    // FIXED: More robust array merging
+    let allRecords = [];
+    if (unifiedList.length > 0) {
+      allRecords = unifiedList;
+    } else if (employees.length > 0 || vacancies.length > 0) {
+      allRecords = [...employees, ...vacancies];
     }
 
-    if (!dropdownData.employees || dropdownData.employees.length === 0) {
-      setAssignmentPreview({
-        strategy: null,
-        employeeCount: 0,
-        requiresSelection: false,
-        previewMessage: 'Loading employee data...',
-        employees: [],
-        criteria: {}
+    const newPreview = {
+      strategy: response.assignment_strategy,
+      employeeCount: response.eligible_employees_count || 0,
+      vacancyCount: response.eligible_vacancies_count || 0,
+      totalCount: response.total_eligible_count || allRecords.length,
+      requiresSelection: response.requires_manual_selection || false,
+      previewMessage: response.strategy_message || '',
+      records: allRecords, // FIXED: Use records instead of employees for consistency
+      employees: allRecords, // FIXED: Keep for backward compatibility 
+      criteria: response.criteria || {},
+      nextSteps: response.next_steps || {}
+    };
+
+    setAssignmentPreview(newPreview);
+
+    if (onAssignmentPreviewUpdate) {
+      onAssignmentPreviewUpdate({
+        ...newPreview,
+        employees: allRecords,
+        requiresSelection: response.requires_manual_selection || false,
+        originalResponse: response
       });
-      return;
     }
 
-    try {
-      setPreviewLoading(true);
-      setPreviewError(null);
-
-      const businessFunctionId = getBusinessFunctionId(formData.business_function);
-      const departmentId = getDepartmentId(formData.department);
-      const jobFunctionId = getJobFunctionId(formData.job_function);
-      const positionGroupId = getPositionGroupId(formData.position_group);
-      const unitId = formData.unit ? getUnitId(formData.unit) : null;
-
-      const previewCriteria = {
-        job_title: formData.job_title.trim(),
-        business_function: businessFunctionId,
-        department: departmentId,
-        unit: unitId,
-        job_function: jobFunctionId,
-        position_group: positionGroupId,
-        grading_level: formData.grading_level?.trim() || null,
-        max_preview: 50,
-        include_vacancies: true
-      };
-
-      const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
-      
-      const employees = response.employees || [];
-      const vacancies = response.vacancies || [];
-      const unifiedList = response.unified_list || [];
-      
-      const allRecords = unifiedList.length > 0 ? unifiedList : [...employees, ...vacancies];
-
-      const newPreview = {
-        strategy: response.assignment_strategy,
-        employeeCount: response.eligible_employees_count || 0,
-        vacancyCount: response.eligible_vacancies_count || 0,
-        totalCount: response.total_eligible_count || allRecords.length,
-        requiresSelection: response.requires_manual_selection,
-        previewMessage: response.strategy_message,
-        records: allRecords,
-        criteria: response.criteria || {},
-        nextSteps: response.next_steps || {}
-      };
-
-      setAssignmentPreview(newPreview);
-
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate({
-          ...newPreview,
-          employees: allRecords,
-          requiresSelection: response.requires_manual_selection,
-          originalResponse: response
-        });
-      }
-
-    } catch (error) {
-      console.error('Error fetching assignment preview:', error);
-      
-      let errorMessage = 'Error loading assignment preview';
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      setPreviewError(errorMessage);
-      const errorPreview = {
-        strategy: 'error',
-        employeeCount: 0,
-        requiresSelection: false,
-        previewMessage: errorMessage,
-        employees: [],
-        criteria: {}
-      };
-      
-      setAssignmentPreview(errorPreview);
-
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate(null);
-      }
-    } finally {
-      setPreviewLoading(false);
+  } catch (error) {
+    console.error('Error fetching assignment preview:', error);
+    
+    let errorMessage = 'Error loading assignment preview';
+    if (error.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
     }
-  };
 
+    setPreviewError(errorMessage);
+    const errorPreview = {
+      strategy: 'error',
+      employeeCount: 0,
+      requiresSelection: false,
+      previewMessage: errorMessage,
+      employees: [],
+      criteria: {}
+    };
+    
+    setAssignmentPreview(errorPreview);
+
+    if (onAssignmentPreviewUpdate) {
+      onAssignmentPreviewUpdate(null);
+    }
+  } finally {
+    setPreviewLoading(false);
+  }
+};
   // Watch for changes in ALL required fields + employee data changes
   useEffect(() => {
     if (areAllRequiredFieldsFilled()) {
@@ -608,79 +615,92 @@ const PositionInformationTab = ({
   const counts = getOptionCounts();
 
   // Get assignment preview display
-  const getAssignmentPreviewDisplay = () => {
-    if (previewLoading) {
-      return {
-        icon: Loader,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-        borderColor: 'border-blue-200 dark:border-blue-800',
-        title: 'Checking Employee Matches...',
-        message: 'Loading assignment preview...',
-        showSpinner: true
-      };
-    }
+const getAssignmentPreviewDisplay = () => {
+  if (previewLoading) {
+    return {
+      icon: Loader,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+      borderColor: 'border-blue-200 dark:border-blue-800',
+      title: 'Checking Employee Matches...',
+      message: 'Loading assignment preview...',
+      showSpinner: true
+    };
+  }
 
-    if (previewError) {
-      return {
-        icon: AlertCircle,
-        color: 'text-red-600',
-        bgColor: 'bg-red-50 dark:bg-red-900/20',
-        borderColor: 'border-red-200 dark:border-red-800',
-        title: 'Preview Error',
-        message: previewError
-      };
-    }
+  if (previewError) {
+    return {
+      icon: AlertCircle,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50 dark:bg-red-900/20',
+      borderColor: 'border-red-200 dark:border-red-800',
+      title: 'Preview Error',
+      message: previewError
+    };
+  }
 
-    switch (assignmentPreview.strategy) {
-      case 'auto_assign_single':
-        const employee = assignmentPreview.employees?.[0];
-        const isVacancy = employee?.is_vacancy || employee?.record_type === 'vacancy';
-        
-        return {
-          icon: isVacancy ? UserX : UserCheck,
-          color: isVacancy ? 'text-orange-600' : 'text-green-600',
-          bgColor: isVacancy ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-green-50 dark:bg-green-900/20',
-          borderColor: isVacancy ? 'border-orange-200 dark:border-orange-800' : 'border-green-200 dark:border-green-800',
-          title: isVacancy ? 'Single Vacancy Position Match' : 'Single Employee Match',
-          message: isVacancy ? 'Will assign to vacant position' : 'Will automatically assign to the matching employee',
-          employee: employee,
-          isVacancy: isVacancy
-        };
+  switch (assignmentPreview.strategy) {
+    case 'auto_assign_single':
+      // FIXED: Better handling of employee array access
+      const employees = assignmentPreview.employees || assignmentPreview.records || [];
+      const employee = employees.length > 0 ? employees[0] : null;
       
-      case 'manual_selection_required':
-        return {
-          icon: Users,
-          color: 'text-orange-600',
-          bgColor: 'bg-orange-50 dark:bg-orange-900/20',
-          borderColor: 'border-orange-200 dark:border-orange-800',
-          title: `${assignmentPreview.employeeCount} Matches Found`,
-          message: 'Manual selection will be required during job creation',
-          showPreviewButton: true
-        };
-      
-      case 'no_employees_found':
+      if (!employee) {
         return {
           icon: AlertCircle,
           color: 'text-gray-600',
           bgColor: 'bg-gray-50 dark:bg-gray-900/20',
           borderColor: 'border-gray-200 dark:border-gray-800',
-          title: 'No Matching Records',
-          message: 'Will create as unassigned position'
+          title: 'No Employee Data',
+          message: 'Employee information not available'
         };
+      }
       
-      default:
-        return {
-          icon: Info,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-          borderColor: 'border-blue-200 dark:border-blue-800',
-          title: 'Employee Assignment Preview',
-          message: assignmentPreview.previewMessage || 'Complete all required job information to see assignment preview'
-        };
-    }
-  };
-
+      const isVacancy = employee.is_vacancy || employee.record_type === 'vacancy';
+      
+      return {
+        icon: isVacancy ? UserX : UserCheck,
+        color: isVacancy ? 'text-orange-600' : 'text-green-600',
+        bgColor: isVacancy ? 'bg-orange-50 dark:bg-orange-900/20' : 'bg-green-50 dark:bg-green-900/20',
+        borderColor: isVacancy ? 'border-orange-200 dark:border-orange-800' : 'border-green-200 dark:border-green-800',
+        title: isVacancy ? 'Single Vacancy Position Match' : 'Single Employee Match',
+        message: isVacancy ? 'Will assign to vacant position' : 'Will automatically assign to the matching employee',
+        employee: employee,
+        isVacancy: isVacancy
+      };
+    
+    case 'manual_selection_required':
+      return {
+        icon: Users,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+        borderColor: 'border-orange-200 dark:border-orange-800',
+        title: `${assignmentPreview.employeeCount || 0} Matches Found`,
+        message: 'Manual selection will be required during job creation',
+        showPreviewButton: true
+      };
+    
+    case 'no_employees_found':
+      return {
+        icon: AlertCircle,
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-50 dark:bg-gray-900/20',
+        borderColor: 'border-gray-200 dark:border-gray-800',
+        title: 'No Matching Records',
+        message: 'Will create as unassigned position'
+      };
+    
+    default:
+      return {
+        icon: Info,
+        color: 'text-blue-600',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+        borderColor: 'border-blue-200 dark:border-blue-800',
+        title: 'Employee Assignment Preview',
+        message: assignmentPreview.previewMessage || 'Complete all required job information to see assignment preview'
+      };
+  }
+};
   const assignmentDisplay = getAssignmentPreviewDisplay();
 
   return (
@@ -945,43 +965,57 @@ const PositionInformationTab = ({
               )}
 
               {/* Multiple Employees Preview */}
-              {assignmentDisplay.showPreviewButton && assignmentPreview.employees.length > 0 && (
-                <div className="space-y-2 max-h-32 overflow-y-auto">
-                  {assignmentPreview.employees.slice(0, 10).map((emp, index) => {
-                    const isVacancy = emp.is_vacancy || emp.record_type === 'vacancy';
-                    return (
-                      <div key={emp.id} className={`text-xs ${textSecondary} p-2 ${bgAccent} rounded flex items-center justify-between`}>
-                        <div className="flex-1">
-                          <span className="font-medium">
-                            {isVacancy ? `Vacant Position (${emp.employee_id})` : (emp.full_name || emp.name)}
-                          </span>
-                          <span className={`${textMuted} ml-2`}>({emp.employee_id})</span>
-                          <span className={`${textMuted} ml-2`}>- {emp.job_title}</span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs">
-                          {isVacancy ? (
-                            <>
-                              <UserX size={10} className="text-orange-600" />
-                              <span className="text-orange-600">Vacancy</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle size={10} className="text-green-600" />
-                              <span className="text-green-600">Match</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  
-                  {assignmentPreview.employees.length > 10 && (
-                    <div className={`text-center py-2 ${textMuted} text-xs`}>
-                      ... and {assignmentPreview.employees.length - 10} more records
-                    </div>
-                  )}
-                </div>
+              {/* Multiple Employees Preview */}
+{assignmentDisplay.showPreviewButton && (() => {
+  // FIXED: Better defensive programming for employee array access
+  const employeeList = assignmentPreview.employees || assignmentPreview.records || [];
+  return employeeList.length > 0 && (
+    <div className="space-y-2 max-h-32 overflow-y-auto">
+      {employeeList.slice(0, 10).map((emp, index) => {
+        // FIXED: More robust employee object handling
+        if (!emp || typeof emp !== 'object') {
+          return null;
+        }
+        
+        const isVacancy = emp.is_vacancy || emp.record_type === 'vacancy';
+        const employeeId = emp.employee_id || emp.id || `emp-${index}`;
+        const employeeName = emp.full_name || emp.name || 'Unknown';
+        const jobTitle = emp.job_title || 'No title';
+        
+        return (
+          <div key={employeeId} className={`text-xs ${textSecondary} p-2 ${bgAccent} rounded flex items-center justify-between`}>
+            <div className="flex-1">
+              <span className="font-medium">
+                {isVacancy ? `Vacant Position (${employeeId})` : employeeName}
+              </span>
+              <span className={`${textMuted} ml-2`}>({employeeId})</span>
+              <span className={`${textMuted} ml-2`}>- {jobTitle}</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs">
+              {isVacancy ? (
+                <>
+                  <UserX size={10} className="text-orange-600" />
+                  <span className="text-orange-600">Vacancy</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle size={10} className="text-green-600" />
+                  <span className="text-green-600">Match</span>
+                </>
               )}
+            </div>
+          </div>
+        );
+      }).filter(Boolean)} {/* FIXED: Remove null entries */}
+      
+      {employeeList.length > 10 && (
+        <div className={`text-center py-2 ${textMuted} text-xs`}>
+          ... and {employeeList.length - 10} more records
+        </div>
+      )}
+    </div>
+  );
+})()}
             </div>
           </div>
         </div>
