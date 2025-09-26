@@ -7,7 +7,7 @@ import { useTheme } from "@/components/common/ThemeProvider";
 // Mock data
 const mockUser = {
   id: 1,
-  name: "John Doe",
+  name: "Nizamo Tahirov",
   function: "IT",
   department: "Development",
   division: "Frontend Team",
@@ -75,9 +75,10 @@ export default function BusinessTripPage() {
   const [requester, setRequester] = useState('for_me');
   const [formData, setFormData] = useState({
     employeeName: mockUser.name,
-    function: mockUser.function,
+    businessFunction: mockUser.function,
     department: mockUser.department,
-    division: mockUser.division,
+    unit: mockUser.division,
+    jobFunction: mockUser.function,
     phoneNumber: mockUser.phoneNumber,
     travelType: 'Domestic',
     transportType: 'Airplane',
@@ -248,12 +249,12 @@ export default function BusinessTripPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Function
+                        Business Function
                       </label>
                       <input
                         type="text"
-                        value={formData.function}
-                        onChange={(e) => setFormData({...formData, function: e.target.value})}
+                        value={formData.businessFunction}
+                        onChange={(e) => setFormData({...formData, businessFunction: e.target.value})}
                         disabled={requester === 'for_me'}
                         className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
                       />
@@ -274,12 +275,25 @@ export default function BusinessTripPage() {
 
                     <div>
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Division
+                        Unit
                       </label>
                       <input
                         type="text"
-                        value={formData.division}
-                        onChange={(e) => setFormData({...formData, division: e.target.value})}
+                        value={formData.unit}
+                        onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                        disabled={requester === 'for_me'}
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                        Job Function
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.jobFunction}
+                        onChange={(e) => setFormData({...formData, jobFunction: e.target.value})}
                         disabled={requester === 'for_me'}
                         className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
                       />

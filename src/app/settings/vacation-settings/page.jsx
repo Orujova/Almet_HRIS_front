@@ -82,14 +82,14 @@ export default function VacationSettingsPage() {
 
       // Handle calendar data
       if (calendarData.status === 'fulfilled') {
-        const formattedDays = calendarData.value.non_working_days?.map((date, index) => ({
-          id: index + 1,
-          date,
-          name: getHolidayName(date),
-          type: 'Holiday'
-        })) || [];
-        setNonWorkingDays(formattedDays);
-      }
+  const formattedDays = calendarData.value.non_working_days?.map((dayData, index) => ({
+    id: index + 1,
+    date: typeof dayData === 'string' ? dayData : dayData.date,
+    name: typeof dayData === 'string' ? 'Holiday' : (dayData.name || 'Holiday'),
+    type: typeof dayData === 'string' ? 'Holiday' : (dayData.type || 'Holiday')
+  })) || [];
+  setNonWorkingDays(formattedDays);
+}
 
       // Handle vacation types
       if (typesData.status === 'fulfilled') {
@@ -125,17 +125,6 @@ export default function VacationSettingsPage() {
     }
   };
 
-  const getHolidayName = (date) => {
-    const holidayMap = {
-      '01-01': "New Year's Day",
-      '01-20': 'National Mourning Day',
-      '03-08': "International Women's Day",
-      '03-20': 'Novruz',
-      '03-21': 'Novruz'
-    };
-    const monthDay = date.slice(5);
-    return holidayMap[monthDay] || 'Public Holiday';
-  };
 
   // Non-working days handlers
   const handleAddNonWorkingDay = async () => {
@@ -763,7 +752,7 @@ export default function VacationSettingsPage() {
                               Download Template
                             </button>
                             
-                            <label className="inline-flex text-xs items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors cursor-pointer text-sm font-medium disabled:opacity-50">
+                            <label className="inline-flex text-xs items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors cursor-pointer  font-medium disabled:opacity-50">
                               <Upload className="w-4 h-4" />
                               Upload Balances
                               <input

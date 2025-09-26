@@ -697,12 +697,12 @@ const VacantPositionsTable = () => {
             <p className={textSecondary}>Loading vacant positions...</p>
           </div>
         ) : vacantPositions.length === 0 ? (
-          <div className={`${bgCard} rounded-xl border ${borderLight} p-12 text-center`}>
-            <Briefcase className={`w-16 h-16 ${textMuted} mx-auto mb-4 opacity-50`} />
-            <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>
+          <div className={`${bgCard} rounded-xl border ${borderLight} p-6 text-center`}>
+            <Briefcase className={`w-8 h-8 ${textMuted} mx-auto mb-4 opacity-50`} />
+            <h3 className={`text-sm font-semibold ${textPrimary} mb-2`}>
               No Vacant Positions Found
             </h3>
-            <p className={`${textSecondary} mb-6`}>
+            <p className={`${textSecondary} text-xs`}>
               {activeFilters.length > 0 
                 ? "No positions match your current filters. Try adjusting your search criteria."
                 : "There are no vacant positions at the moment."}
@@ -710,17 +710,12 @@ const VacantPositionsTable = () => {
             {activeFilters.length > 0 ? (
               <button
                 onClick={handleClearFilters}
-                className="px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-steel-blue text-white rounded-lg hover:from-almet-sapphire/90 hover:to-almet-steel-blue/90 transition-all duration-200 text-sm font-medium"
+                className="px-6 py-3 bg-gradient-to-r text-xs from-almet-sapphire to-almet-steel-blue text-white rounded-lg hover:from-almet-sapphire/90 hover:to-almet-steel-blue/90 transition-all duration-200  font-medium"
               >
                 Clear Filters
               </button>
             ) : (
-              <button
-                onClick={handleCreatePosition}
-                className="px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-steel-blue text-white rounded-lg hover:from-almet-sapphire/90 hover:to-almet-steel-blue/90 transition-all duration-200 text-sm font-medium"
-              >
-                Create First Position
-              </button>
+              ""
             )}
           </div>
         ) : (

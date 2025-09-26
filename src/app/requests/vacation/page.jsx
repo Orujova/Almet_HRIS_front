@@ -7,7 +7,7 @@ import { useTheme } from "@/components/common/ThemeProvider";
 // Mock data
 const mockUser = {
   id: 1,
-  name: "John Doe",
+  name: "Nizamo Tahirov",
   businessFunction: "IT",
   department: "Development",
   unit: "Frontend Team",
