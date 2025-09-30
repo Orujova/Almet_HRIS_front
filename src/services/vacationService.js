@@ -129,17 +129,21 @@ export const VacationService = {
     }
   },
 
-  // Employee Search
-  searchEmployees: async (query) => {
-    try {
-      const response = await vacationApi.get('/vacation/employees/search/', { 
-        params: { q: query }
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+// vacationService.js-də
+searchEmployees: async (query) => {
+  try {
+    // Ümumi employee API-dan çəkmək üçün
+    const response = await api.get('/employees/', { 
+      params: { 
+        search: query,
+        page_size: 20 
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 
   // === SCHEDULES ===
   

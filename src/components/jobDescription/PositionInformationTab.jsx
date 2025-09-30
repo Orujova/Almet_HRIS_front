@@ -964,8 +964,7 @@ const getAssignmentPreviewDisplay = () => {
                 </div>
               )}
 
-              {/* Multiple Employees Preview */}
-              {/* Multiple Employees Preview */}
+           
 {assignmentDisplay.showPreviewButton && (() => {
   // FIXED: Better defensive programming for employee array access
   const employeeList = assignmentPreview.employees || assignmentPreview.records || [];

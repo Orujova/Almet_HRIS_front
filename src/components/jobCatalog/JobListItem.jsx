@@ -1,51 +1,57 @@
-// =================================================================
-// src/components/job-catalog/JobListItem.jsx
+// src/components/jobCatalog/JobListItem.jsx
 
 import React from 'react';
-import { Users, Building2, Target, Eye, Edit } from 'lucide-react';
-import { hierarchyColors } from './HierarchyColors';
+import { Users, Building2, Target } from 'lucide-react';
+import { useTheme } from '@/components/common/ThemeProvider';
+import { getHierarchyColor } from './HierarchyColors';
 
 export default function JobListItem({ job, context }) {
   const { setSelectedJob } = context;
-  const colors = hierarchyColors[job.hierarchy] || hierarchyColors['SPECIALIST'];
+  const { darkMode } = useTheme();
+  const colors = getHierarchyColor(job.hierarchy, darkMode);
   
   return (
     <div 
-      className={`bg-white dark:bg-almet-cloud-burst rounded-lg border-l-4 ${colors.border} p-6 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200 dark:border-almet-comet`}
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 hover:shadow-md transition-all duration-200 cursor-pointer border border-gray-200 dark:border-almet-comet"
+      style={{ 
+        borderLeftWidth: '3px', 
+        borderLeftColor: colors.borderColor 
+      }}
       onClick={() => setSelectedJob(job)}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-3">
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm truncate">
-              {job.title}
-            </h3>
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}>
+          {/* Header with badge and title */}
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span 
+              className="px-2 py-0.5 rounded text-[10px] font-medium"
+              style={{
+                backgroundColor: colors.backgroundColor,
+                color: colors.textColor
+              }}
+            >
               {job.hierarchy}
             </span>
+            <h3 className="font-medium text-gray-900 dark:text-white text-xs truncate">
+              {job.title}
+            </h3>
           </div>
-          <div className="flex items-center gap-6 text-xs text-gray-600 dark:text-almet-bali-hai">
+          
+          {/* Job details */}
+          <div className="flex items-center gap-4 text-[10px] text-gray-600 dark:text-almet-bali-hai flex-wrap">
             <span className="flex items-center">
-              <Building2 size={12} className="mr-1" />
-              {job.unit}
+              <Building2 size={10} className="mr-1 flex-shrink-0" />
+              <span className="truncate">{job.unit}</span>
             </span>
             <span className="flex items-center">
-              <Target size={12} className="mr-1" />
-              {job.department}
+              <Target size={10} className="mr-1 flex-shrink-0" />
+              <span className="truncate">{job.department}</span>
             </span>
             <span className="flex items-center">
-              <Users size={12} className="mr-1" />
-              {job.currentEmployees} employees
+              <Users size={10} className="mr-1 flex-shrink-0" />
+              <span>{job.currentEmployees}</span>
             </span>
           </div>
-        </div>
-        <div className="flex items-center gap-2 ml-4">
-          <button className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
-            <Eye size={16} className="text-gray-400 dark:text-almet-bali-hai" />
-          </button>
-          <button className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
-            <Edit size={16} className="text-gray-400 dark:text-almet-bali-hai" />
-          </button>
         </div>
       </div>
     </div>

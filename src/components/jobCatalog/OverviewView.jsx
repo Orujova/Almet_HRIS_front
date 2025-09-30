@@ -1,19 +1,14 @@
-// src/components/job-catalog/OverviewView.jsx
+// src/components/jobCatalog/OverviewView.jsx - With SearchableDropdown
 
 import React from 'react';
 import { 
-  Search, 
-  Filter, 
-  Users, 
-  Briefcase, 
-  Grid,
-  List,
-  Plus,
-  Loader2,
-  AlertCircle
+  Search, Filter, Users, Briefcase, Grid, List, Plus,
+  Loader2, AlertCircle, X
 } from 'lucide-react';
 import JobCard from './JobCard';
 import JobListItem from './JobListItem';
+import SearchableDropdown from '@/components/common/SearchableDropdown';
+import { useTheme } from '@/components/common/ThemeProvider';
 
 export default function OverviewView({ context }) {
   const {
@@ -23,36 +18,40 @@ export default function OverviewView({ context }) {
     selectedFilters, setSelectedFilters,
     filteredJobs, stats, filterOptions,
     loading, errors,
-    clearFilters, openCrudModal
+    clearFilters, openCrudModal,
+    jobCatalogData
   } = context;
+
+  const { darkMode } = useTheme();
+  const hasActiveFilters = Object.values(selectedFilters).some(v => v) || searchTerm;
 
   return (
     <div>
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm border border-gray-200 dark:border-almet-comet">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 shadow-sm border border-gray-200 dark:border-almet-comet">
           <div className="flex items-center">
-            <div className="p-3 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg mr-4">
-              <Briefcase className="h-6 w-6 text-almet-sapphire" />
+            <div className="p-2 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg mr-3">
+              <Briefcase className="h-4 w-4 text-almet-sapphire" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Jobs</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {loading.statistics ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.totalJobs}
+              <p className="text-[10px] text-gray-600 dark:text-almet-bali-hai">Total Jobs</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                {loading.statistics ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.totalJobs}
               </p>
             </div>
           </div>
         </div>
         
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 shadow-sm border border-gray-200 dark:border-almet-comet">
+        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 shadow-sm border border-gray-200 dark:border-almet-comet">
           <div className="flex items-center">
-            <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg mr-4">
-              <Users className="h-6 w-6 text-green-600 dark:text-green-400" />
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
+              <Users className="h-4 w-4 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">Total Employees</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {loading.statistics ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.totalEmployees}
+              <p className="text-[10px] text-gray-600 dark:text-almet-bali-hai">Total Employees</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                {loading.statistics ? <Loader2 className="h-4 w-4 animate-spin" /> : stats.totalEmployees}
               </p>
             </div>
           </div>
@@ -60,32 +59,42 @@ export default function OverviewView({ context }) {
       </div>
 
       {/* Controls */}
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-6 mb-6 shadow-sm border border-gray-200 dark:border-almet-comet">
-        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 mb-4 shadow-sm border border-gray-200 dark:border-almet-comet">
+        <div className="flex flex-col lg:flex-row gap-2 items-start lg:items-center justify-between">
           {/* Search */}
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <div className="relative flex-1 max-w-md w-full">
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 h-3.5 w-3.5" />
             <input
               type="text"
               placeholder="Search jobs..."
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+              className="w-full pl-8 pr-8 py-2 text-xs outline-0 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-colors ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors text-xs font-medium relative ${
                 showFilters ? 'bg-almet-sapphire text-white' : 'bg-gray-100 dark:bg-almet-comet text-gray-700 dark:text-almet-bali-hai hover:bg-gray-200 dark:hover:bg-almet-san-juan'
               }`}
             >
-              <Filter size={16} />
+              <Filter size={12} />
               Filters
-              {Object.values(selectedFilters).some(v => v) && (
-                <span className="bg-red-500 text-white rounded-full w-2 h-2"></span>
+              {hasActiveFilters && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-[9px] font-bold">
+                  {Object.values(selectedFilters).filter(v => v).length + (searchTerm ? 1 : 0)}
+                </span>
               )}
             </button>
 
@@ -93,123 +102,120 @@ export default function OverviewView({ context }) {
             <div className="flex rounded-lg border border-gray-300 dark:border-almet-comet overflow-hidden">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-3 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai hover:bg-gray-50 dark:hover:bg-almet-comet'} transition-colors`}
+                className={`p-2 ${viewMode === 'grid' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai hover:bg-gray-50 dark:hover:bg-almet-comet'} transition-colors`}
+                title="Grid View"
               >
-                <Grid size={16} />
+                <Grid size={12} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-3 ${viewMode === 'list' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai hover:bg-gray-50 dark:hover:bg-almet-comet'} transition-colors`}
+                className={`p-2 ${viewMode === 'list' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai hover:bg-gray-50 dark:hover:bg-almet-comet'} transition-colors`}
+                title="List View"
               >
-                <List size={16} />
+                <List size={12} />
               </button>
             </div>
 
-            <button
-              onClick={() => openCrudModal('business_functions', 'create')}
-              className="flex items-center gap-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Plus size={16} />
-              Add New
-            </button>
+          
           </div>
         </div>
 
-        {/* Filters Panel */}
+        {/* Filters Panel with SearchableDropdown */}
         {showFilters && (
-          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-almet-comet">
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
+              
+              {/* Business Function */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
                   Business Function
                 </label>
-                <select
+                <SearchableDropdown
+                  options={filterOptions.businessFunctions}
                   value={selectedFilters.business_function}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, business_function: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-                >
-                  <option value="">All</option>
-                  {filterOptions.businessFunctions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedFilters(prev => ({ ...prev, business_function: value }))}
+                  placeholder="All"
+                  searchPlaceholder="Search business functions..."
+                  darkMode={darkMode}
+                  className="w-full"
+                />
               </div>
 
+              {/* Department */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
                   Department
                 </label>
-                <select
+                <SearchableDropdown
+                  options={filterOptions.departments}
                   value={selectedFilters.department}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, department: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-                >
-                  <option value="">All</option>
-                  {filterOptions.departments.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedFilters(prev => ({ ...prev, department: value }))}
+                  placeholder="All"
+                  searchPlaceholder="Search departments..."
+                  darkMode={darkMode}
+                  className="w-full"
+                />
               </div>
 
+              {/* Unit */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
                   Unit
                 </label>
-                <select
+                <SearchableDropdown
+                  options={filterOptions.units}
                   value={selectedFilters.unit}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, unit: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-                >
-                  <option value="">All</option>
-                  {filterOptions.units.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedFilters(prev => ({ ...prev, unit: value }))}
+                  placeholder="All"
+                  searchPlaceholder="Search units..."
+                  darkMode={darkMode}
+                  className="w-full"
+                />
               </div>
 
+              {/* Job Function */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
                   Job Function
                 </label>
-                <select
+                <SearchableDropdown
+                  options={filterOptions.jobFunctions}
                   value={selectedFilters.job_function}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, job_function: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-                >
-                  <option value="">All</option>
-                  {filterOptions.jobFunctions.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedFilters(prev => ({ ...prev, job_function: value }))}
+                  placeholder="All"
+                  searchPlaceholder="Search job functions..."
+                  darkMode={darkMode}
+                  className="w-full"
+                />
               </div>
 
+              {/* Position Group */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-almet-bali-hai mb-2">
+                <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
                   Position Group
                 </label>
-                <select
+                <SearchableDropdown
+                  options={filterOptions.positionGroups}
                   value={selectedFilters.position_group}
-                  onChange={(e) => setSelectedFilters(prev => ({ ...prev, position_group: e.target.value }))}
-                  className="w-full p-3 border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-                >
-                  <option value="">All</option>
-                  {filterOptions.positionGroups.map(option => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(value) => setSelectedFilters(prev => ({ ...prev, position_group: value }))}
+                  placeholder="All"
+                  searchPlaceholder="Search position groups..."
+                  darkMode={darkMode}
+                  className="w-full"
+                />
               </div>
             </div>
             
-            {Object.values(selectedFilters).some(v => v) && (
-              <div className="mt-4 flex justify-between items-center">
-                <span className="text-sm text-gray-600 dark:text-almet-bali-hai">
-                  Showing {filteredJobs.length} / {context.jobCatalogData.length} jobs
+            {hasActiveFilters && (
+              <div className="mt-3 flex justify-between items-center text-xs">
+                <span className="text-gray-600 dark:text-almet-bali-hai">
+                  Showing {filteredJobs.length} of {jobCatalogData.length} jobs
                 </span>
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-almet-sapphire dark:text-almet-steel-blue hover:underline"
+                  className="text-almet-sapphire dark:text-almet-steel-blue hover:underline font-medium"
                 >
-                  Clear Filters
+                  Clear all filters
                 </button>
               </div>
             )}
@@ -219,23 +225,23 @@ export default function OverviewView({ context }) {
 
       {/* Error Display */}
       {errors.employees && (
-        <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+        <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
           <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-2" />
-            <span className="text-red-800 dark:text-red-200">{errors.employees}</span>
+            <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0" />
+            <span className="text-red-800 dark:text-red-200 text-xs">{errors.employees}</span>
           </div>
         </div>
       )}
 
       {/* Job Listings */}
       {loading.employees ? (
-        <div className="flex justify-center items-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
-          <span className="ml-2 text-gray-600 dark:text-almet-bali-hai">Loading jobs...</span>
+        <div className="flex justify-center items-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-almet-sapphire" />
+          <span className="ml-2 text-gray-600 dark:text-almet-bali-hai text-xs">Loading jobs...</span>
         </div>
       ) : (
         <>
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4' : 'space-y-4'}>
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3' : 'space-y-2'}>
             {filteredJobs.map(job => (
               viewMode === 'grid' ? (
                 <JobCard key={job.id} job={job} context={context} />
@@ -246,12 +252,20 @@ export default function OverviewView({ context }) {
           </div>
 
           {filteredJobs.length === 0 && (
-            <div className="text-center py-12">
-              <Briefcase className="mx-auto h-12 w-12 text-gray-400 dark:text-almet-bali-hai mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Jobs Found</h3>
-              <p className="text-gray-500 dark:text-almet-bali-hai">
-                Adjust your search criteria or filters.
+            <div className="text-center py-16">
+              <Briefcase className="mx-auto h-10 w-10 text-gray-400 dark:text-almet-bali-hai mb-3" />
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">No Jobs Found</h3>
+              <p className="text-xs text-gray-500 dark:text-almet-bali-hai mb-3">
+                {hasActiveFilters ? 'Try adjusting your filters or search term' : 'No jobs available in the system'}
               </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="text-xs text-almet-sapphire dark:text-almet-steel-blue hover:underline font-medium"
+                >
+                  Clear all filters
+                </button>
+              )}
             </div>
           )}
         </>

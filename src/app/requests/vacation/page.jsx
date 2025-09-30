@@ -1,159 +1,306 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, FileText, Download, Check } from 'lucide-react';
+import { 
+  Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, 
+  FileText, Download, Check, Search, Edit, Trash, UserPlus, User
+} from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-
-// Mock data
-const mockUser = {
-  id: 1,
-  name: "Nizamo Tahirov",
-  businessFunction: "IT",
-  department: "Development",
-  unit: "Frontend Team",
-  jobFunction: "Senior Developer",
-  phoneNumber: "+994501234567",
-  lineManager: "Jane Smith",
-  hrRepresentative: "Sarah Johnson"
-};
-
-const mockBalances = {
-  totalBalance: 28,
-  yearlyBalance: 28,
-  usedDays: 8,
-  remainingBalance: 20,
-  scheduledDays: 5,
-  shouldBePlanned: 15
-};
-
-const mockNonWorkingDays = [
-  "2025-01-01", "2025-01-20", "2025-03-08", "2025-03-20", "2025-03-21",
-  "2025-05-09", "2025-05-28", "2025-06-15", "2025-06-26", "2025-11-09",
-  "2025-11-10", "2025-12-31"
-];
-
-const mockScheduledLeaves = [
-  { id: 1, employeeName: "Alice Brown", startDate: "2025-10-15", endDate: "2025-10-20", days: 4, status: "Scheduled" },
-  { id: 2, employeeName: "Bob Wilson", startDate: "2025-10-18", endDate: "2025-10-25", days: 6, status: "Scheduled" }
-];
-
-const mockMySchedules = [
-  { id: 1, leaveType: "Annual Leave", startDate: "2025-11-10", endDate: "2025-11-15", days: 4, status: "Scheduled" },
-  { id: 2, leaveType: "Annual Leave", startDate: "2025-12-20", endDate: "2025-12-27", days: 6, status: "Scheduled" }
-];
+import { useToast } from "@/components/common/Toast";
+import SearchableDropdown from "@/components/common/SearchableDropdown";
+import { VacationService, VacationHelpers } from '@/services/vacationService';
 
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
+  const { showSuccess, showError, showInfo } = useToast();
+  
   const [activeTab, setActiveTab] = useState('request');
   const [activeSection, setActiveSection] = useState('immediate');
   const [requester, setRequester] = useState('for_me');
+  const [loading, setLoading] = useState(false);
+  const [schedulesTab, setSchedulesTab] = useState('upcoming');
+
+  const [balances, setBalances] = useState(null);
+  const [vacationTypes, setVacationTypes] = useState([]);
+  const [hrRepresentatives, setHrRepresentatives] = useState([]);
+  const [scheduleTabs, setScheduleTabs] = useState({ upcoming: [], peers: [], all: [] });
+  const [pendingRequests, setPendingRequests] = useState({ line_manager_requests: [], hr_requests: [] });
+  const [myAllRecords, setMyAllRecords] = useState([]);
+  const [employeeSearchResults, setEmployeeSearchResults] = useState([]);
+
   const [formData, setFormData] = useState({
-    employeeName: mockUser.name,
-    businessFunction: mockUser.businessFunction,
-    department: mockUser.department,
-    unit: mockUser.unit,
-    jobFunction: mockUser.jobFunction,
-    phoneNumber: mockUser.phoneNumber,
-    leaveType: 'Annual Leave',
-    startDate: '',
-    endDate: '',
+    requester_type: 'for_me',
+    employeeName: '',
+    businessFunction: '',
+    department: '',
+    unit: '',
+    jobFunction: '',
+    phoneNumber: '',
+    vacation_type_id: '',
+    start_date: '',
+    end_date: '',
     dateOfReturn: '',
     numberOfDays: 0,
     comment: '',
-    lineManager: mockUser.lineManager,
-    hrRepresentative: mockUser.hrRepresentative
+    employee_id: null,
+    employee_manual: null,
+    hr_representative_id: null,
+    line_manager: ''
   });
-  const [schedulesTab, setSchedulesTab] = useState('upcoming');
+
+  useEffect(() => {
+    initializeData();
+  }, []);
+
+  const initializeData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchDashboard(),
+        fetchVacationTypes(),
+        fetchHRRepresentatives()
+      ]);
+    } catch (error) {
+      console.error('Initialization error:', error);
+      showError('Failed to load initial data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDashboard = async () => {
+    try {
+      const data = await VacationService.getDashboard();
+      setBalances(data.balance);
+    } catch (error) {
+      console.error('Dashboard fetch error:', error);
+    }
+  };
+
+  const fetchVacationTypes = async () => {
+    try {
+      const data = await VacationService.getVacationTypes();
+      setVacationTypes(data.results || []);
+      if (data.results?.length > 0) {
+        setFormData(prev => ({ ...prev, vacation_type_id: data.results[0].id }));
+      }
+    } catch (error) {
+      console.error('Vacation types fetch error:', error);
+    }
+  };
+
+  const fetchHRRepresentatives = async () => {
+    try {
+      const data = await VacationService.getHRRepresentatives();
+      setHrRepresentatives(data.hr_representatives || []);
+      if (data.current_default) {
+        setFormData(prev => ({ ...prev, hr_representative_id: data.current_default.id }));
+      }
+    } catch (error) {
+      console.error('HR representatives fetch error:', error);
+    }
+  };
+
+  const fetchScheduleTabs = async () => {
+    try {
+      const data = await VacationService.getScheduleTabs();
+      setScheduleTabs(data);
+    } catch (error) {
+      console.error('Schedule tabs fetch error:', error);
+    }
+  };
+
+  const fetchPendingRequests = async () => {
+    try {
+      const data = await VacationService.getPendingRequests();
+      setPendingRequests(data);
+    } catch (error) {
+      console.error('Pending requests fetch error:', error);
+    }
+  };
+
+  const fetchMyAllRecords = async () => {
+    try {
+      const data = await VacationService.getMyAllVacations();
+      setMyAllRecords(data.records || []);
+    } catch (error) {
+      console.error('My records fetch error:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'approval') {
+      fetchPendingRequests();
+    } else if (activeTab === 'all') {
+      fetchMyAllRecords();
+    } else if (activeSection === 'scheduling') {
+      fetchScheduleTabs();
+    }
+  }, [activeTab, activeSection]);
+
+  const handleEmployeeSearch = async (query) => {
+    if (!query || query.length < 2) {
+      setEmployeeSearchResults([]);
+      return;
+    }
+    try {
+      const data = await VacationService.searchEmployees(query);
+      setEmployeeSearchResults(data.results || []);
+    } catch (error) {
+      console.error('Employee search error:', error);
+    }
+  };
+
+  const calculateWorkingDays = async (startDate, endDate) => {
+    if (!startDate || !endDate) return 0;
+    try {
+      const data = await VacationService.calculateWorkingDays({ start_date: startDate, end_date: endDate });
+      return data.working_days || 0;
+    } catch (error) {
+      console.error('Working days calculation error:', error);
+      return 0;
+    }
+  };
+
+  useEffect(() => {
+    const updateWorkingDays = async () => {
+      if (formData.start_date && formData.end_date) {
+        const days = await calculateWorkingDays(formData.start_date, formData.end_date);
+        const endDate = new Date(formData.end_date);
+        endDate.setDate(endDate.getDate() + 1);
+        setFormData(prev => ({ ...prev, numberOfDays: days, dateOfReturn: endDate.toISOString().split('T')[0] }));
+      }
+    };
+    updateWorkingDays();
+  }, [formData.start_date, formData.end_date]);
 
   useEffect(() => {
     if (requester === 'for_me') {
-      setFormData({
-        ...formData,
-        employeeName: mockUser.name,
-        businessFunction: mockUser.businessFunction,
-        department: mockUser.department,
-        unit: mockUser.unit,
-        jobFunction: mockUser.jobFunction,
-        phoneNumber: mockUser.phoneNumber,
-        lineManager: mockUser.lineManager
-      });
+      setFormData(prev => ({ ...prev, requester_type: 'for_me', employee_id: null, employee_manual: null }));
     } else {
-      setFormData({
-        ...formData,
-        employeeName: '',
-        businessFunction: '',
-        department: '',
-        unit: '',
-        jobFunction: '',
-        phoneNumber: ''
-      });
+      setFormData(prev => ({ 
+        ...prev, 
+        requester_type: 'for_my_employee', 
+        employeeName: '', 
+        businessFunction: '', 
+        department: '', 
+        unit: '', 
+        jobFunction: '', 
+        phoneNumber: '', 
+        line_manager: '' 
+      }));
     }
   }, [requester]);
 
-  const calculateWorkingDays = (start, end) => {
-    if (!start || !end) return 0;
-    
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    let count = 0;
-    
-    const currentDate = new Date(startDate);
-    while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split('T')[0];
-      const dayOfWeek = currentDate.getDay();
-      
-      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !mockNonWorkingDays.includes(dateStr)) {
-        count++;
-      }
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-    return count;
-  };
-
-  const calculateReturnDate = (endDate) => {
-    if (!endDate) return '';
-    
-    const date = new Date(endDate);
-    date.setDate(date.getDate() + 1);
-    
-    while (true) {
-      const dateStr = date.toISOString().split('T')[0];
-      const dayOfWeek = date.getDay();
-      
-      if (dayOfWeek !== 0 && dayOfWeek !== 6 && !mockNonWorkingDays.includes(dateStr)) {
-        return dateStr;
-      }
-      date.setDate(date.getDate() + 1);
-    }
-  };
-
-  useEffect(() => {
-    if (formData.startDate && formData.endDate) {
-      const days = calculateWorkingDays(formData.startDate, formData.endDate);
-      const returnDate = calculateReturnDate(formData.endDate);
-      setFormData(prev => ({
-        ...prev,
-        numberOfDays: days,
-        dateOfReturn: returnDate
-      }));
-    }
-  }, [formData.startDate, formData.endDate]);
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (activeSection === 'immediate') {
-      alert('Request submitted for approval');
-    } else {
-      alert('Schedule saved successfully - no approval needed');
+    setLoading(true);
+    try {
+      let requestData = {
+        requester_type: formData.requester_type,
+        vacation_type_id: parseInt(formData.vacation_type_id),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        comment: formData.comment
+      };
+
+      if (formData.requester_type === 'for_my_employee') {
+        if (formData.employee_id) {
+          requestData.employee_id = formData.employee_id;
+        } else {
+          requestData.employee_manual = {
+            name: formData.employeeName,
+            phone: formData.phoneNumber,
+            department: formData.department,
+            business_function: formData.businessFunction,
+            unit: formData.unit,
+            job_function: formData.jobFunction
+          };
+        }
+      }
+
+      if (activeSection === 'immediate') {
+        if (formData.hr_representative_id) {
+          requestData.hr_representative_id = formData.hr_representative_id;
+        }
+        await VacationService.createImmediateRequest(requestData);
+        showSuccess('Request submitted successfully for approval');
+      } else {
+        await VacationService.createSchedule(requestData);
+        showSuccess('Schedule saved successfully - no approval needed');
+        fetchScheduleTabs();
+        fetchDashboard();
+      }
+
+      setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }));
+    } catch (error) {
+      console.error('Submit error:', error);
+      showError(error.response?.data?.message || 'Failed to submit request');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleExportSchedules = () => {
-    alert('Schedules exported successfully');
+  const handleApproveReject = async (requestId, action, comment = '', reason = '') => {
+    try {
+      await VacationService.approveRejectRequest(requestId, {
+        action,
+        comment: action === 'approve' ? comment : undefined,
+        reason: action === 'reject' ? reason : undefined
+      });
+      showSuccess(`Request ${action}d successfully`);
+      fetchPendingRequests();
+    } catch (error) {
+      console.error('Approval error:', error);
+      showError(`Failed to ${action} request`);
+    }
   };
 
-  const handleRegisterSchedule = (scheduleId) => {
-    alert(`Schedule ${scheduleId} registered as completed`);
+  const handleRegisterSchedule = async (scheduleId) => {
+    try {
+      await VacationService.registerSchedule(scheduleId);
+      showSuccess('Schedule registered successfully');
+      fetchScheduleTabs();
+      fetchDashboard();
+    } catch (error) {
+      console.error('Register error:', error);
+      showError('Failed to register schedule');
+    }
+  };
+
+  const handleDeleteSchedule = async (scheduleId) => {
+    if (!confirm('Are you sure you want to delete this schedule?')) return;
+    try {
+      await VacationService.deleteSchedule(scheduleId);
+      showSuccess('Schedule deleted successfully');
+      fetchScheduleTabs();
+      fetchDashboard();
+    } catch (error) {
+      console.error('Delete error:', error);
+      showError('Failed to delete schedule');
+    }
+  };
+
+  const handleExportMyVacations = async () => {
+    try {
+      const blob = await VacationService.exportMyVacations();
+      VacationHelpers.downloadBlobFile(blob, 'my_vacations.xlsx');
+      showSuccess('Export completed successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Export failed');
+    }
+  };
+
+  const handleExportSchedules = async () => {
+    try {
+      const blob = await VacationService.exportAllVacationRecords();
+      VacationHelpers.downloadBlobFile(blob, 'vacation_schedules.xlsx');
+      showSuccess('Export completed successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Export failed');
+    }
   };
 
   const StatCard = ({ title, value, icon: Icon, color }) => (
@@ -161,12 +308,22 @@ export default function VacationRequestsPage() {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">{title}</p>
-          <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
+          <p className={`text-2xl font-bold mt-1 ${color}`}>{value || 0}</p>
         </div>
         <Icon className={`w-8 h-8 ${color}`} />
       </div>
     </div>
   );
+
+  if (loading && !balances) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-almet-sapphire"></div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -176,79 +333,47 @@ export default function VacationRequestsPage() {
           <p className="text-almet-waterloo dark:text-almet-bali-hai">Manage your vacation requests and schedules</p>
         </div>
 
-        {/* Navigation Tabs */}
         <div className="mb-6 border-b border-almet-bali-hai dark:border-almet-comet">
           <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('request')}
-              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'request'
-                  ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                  : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'
-              }`}
-            >
-              Request Submission
-            </button>
-            <button
-              onClick={() => setActiveTab('approval')}
-              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'approval'
-                  ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                  : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'
-              }`}
-            >
-              Approval
-            </button>
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === 'all'
-                  ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                  : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'
-              }`}
-            >
-              My All Requests & Schedules
-            </button>
+            {['request', 'approval', 'all'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)}
+                className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === tab
+                    ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
+                    : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'
+                }`}>
+                {tab === 'request' ? 'Request Submission' : tab === 'approval' ? 'Approval' : 'My All Requests & Schedules'}
+              </button>
+            ))}
           </div>
         </div>
 
         {activeTab === 'request' && (
           <>
-            {/* Balance Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-              <StatCard title="Total Balance" value={mockBalances.totalBalance} icon={Calendar} color="text-almet-sapphire" />
-              <StatCard title="Yearly Balance" value={mockBalances.yearlyBalance} icon={Calendar} color="text-almet-astral" />
-              <StatCard title="Used Days" value={mockBalances.usedDays} icon={CheckCircle} color="text-orange-600" />
-              <StatCard title="Remaining Balance" value={mockBalances.remainingBalance} icon={Clock} color="text-almet-steel-blue" />
-              <StatCard title="Scheduled Days" value={mockBalances.scheduledDays} icon={Users} color="text-almet-san-juan" />
-              <StatCard title="Should be Planned" value={mockBalances.shouldBePlanned} icon={AlertCircle} color="text-red-600" />
-            </div>
+            {balances && (
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+                <StatCard title="Total Balance" value={balances.total_balance} icon={Calendar} color="text-almet-sapphire" />
+                <StatCard title="Yearly Balance" value={balances.yearly_balance} icon={Calendar} color="text-almet-astral" />
+                <StatCard title="Used Days" value={balances.used_days} icon={CheckCircle} color="text-orange-600" />
+                <StatCard title="Remaining Balance" value={balances.remaining_balance} icon={Clock} color="text-almet-steel-blue" />
+                <StatCard title="Scheduled Days" value={balances.scheduled_days} icon={Users} color="text-almet-san-juan" />
+                <StatCard title="Should be Planned" value={balances.should_be_planned} icon={AlertCircle} color="text-red-600" />
+              </div>
+            )}
 
-            {/* Section Toggle */}
             <div className="mb-6 flex space-x-4">
-              <button
-                onClick={() => setActiveSection('immediate')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                  activeSection === 'immediate'
-                    ? 'bg-almet-sapphire text-white hover:bg-almet-cloud-burst'
-                    : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
-                }`}
-              >
-                Request Immediately (Requires Approval)
-              </button>
-              <button
-                onClick={() => setActiveSection('scheduling')}
-                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                  activeSection === 'scheduling'
-                    ? 'bg-almet-sapphire text-white hover:bg-almet-cloud-burst'
-                    : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
-                }`}
-              >
-                Scheduling (No Approval Needed)
-              </button>
+              {['immediate', 'scheduling'].map(section => (
+                <button key={section} onClick={() => setActiveSection(section)}
+                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                    activeSection === section
+                      ? 'bg-almet-sapphire text-white hover:bg-almet-cloud-burst'
+                      : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
+                  }`}>
+                  {section === 'immediate' ? 'Request Immediately (Requires Approval)' : 'Scheduling (No Approval Needed)'}
+                </button>
+              ))}
             </div>
 
-            {/* Request Form */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">
@@ -262,308 +387,174 @@ export default function VacationRequestsPage() {
               </div>
 
               <form onSubmit={handleSubmit}>
-                {/* Employee Information */}
                 <div className="mb-6">
                   <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Employee Information</h3>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Requester
-                      </label>
-                      <select
-                        value={requester}
-                        onChange={(e) => setRequester(e.target.value)}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                      >
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Requester</label>
+                      <select value={requester} onChange={(e) => setRequester(e.target.value)}
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white">
                         <option value="for_me">For Me</option>
-                        <option value="for_employee">For My Employee</option>
+                        <option value="for_my_employee">For My Employee</option>
                       </select>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Employee Name
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.employeeName}
-                        onChange={(e) => setFormData({...formData, employeeName: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Business Function
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.businessFunction}
-                        onChange={(e) => setFormData({...formData, businessFunction: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Department
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.department}
-                        onChange={(e) => setFormData({...formData, department: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Unit
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.unit}
-                        onChange={(e) => setFormData({...formData, unit: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Job Function
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.jobFunction}
-                        onChange={(e) => setFormData({...formData, jobFunction: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        value={formData.phoneNumber}
-                        onChange={(e) => setFormData({...formData, phoneNumber: e.target.value})}
-                        disabled={requester === 'for_me'}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Leave Request Information */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Leave Request Information</h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Leave Type
-                      </label>
-                      <select
-                        value={formData.leaveType}
-                        onChange={(e) => setFormData({...formData, leaveType: e.target.value})}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="Annual Leave">Annual Leave</option>
-                        <option value="Sick Leave">Sick Leave</option>
-                        <option value="Personal Leave">Personal Leave</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.startDate}
-                        onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.endDate}
-                        onChange={(e) => setFormData({...formData, endDate: e.target.value})}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Date of Return
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.dateOfReturn}
-                        disabled
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white bg-almet-mystic dark:bg-gray-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Number of Days
-                      </label>
-                      <input
-                        type="number"
-                        value={formData.numberOfDays}
-                        disabled
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white bg-almet-mystic dark:bg-gray-600"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                        Comment (Optional)
-                      </label>
-                      <textarea
-                        value={formData.comment}
-                        onChange={(e) => setFormData({...formData, comment: e.target.value})}
-                        rows={3}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Approval Section - Only show for immediate requests */}
-                {activeSection === 'immediate' && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Approval</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {requester === 'for_my_employee' && (
                       <div>
+                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Search Employee</label>
+                        <SearchableDropdown
+                          options={employeeSearchResults.map(emp => ({ value: emp.id, label: `${emp.name} (${emp.employee_id})`, ...emp }))}
+                          value={formData.employee_id}
+                          onChange={(value) => {
+                            const selectedEmployee = employeeSearchResults.find(emp => emp.id === value);
+                            if (selectedEmployee) {
+                              setFormData(prev => ({
+                                ...prev,
+                                employee_id: value,
+                                employeeName: selectedEmployee.name,
+                                businessFunction: selectedEmployee.business_function_name || '',
+                                department: selectedEmployee.department_name || '',
+                                unit: selectedEmployee.unit_name || '',
+                                jobFunction: selectedEmployee.job_function || '',
+                                phoneNumber: selectedEmployee.phone || '',
+                                line_manager: selectedEmployee.line_manager || ''
+                              }));
+                            }
+                          }}
+                          placeholder="Select employee"
+                          searchPlaceholder="Search employee..."
+                          onSearchChange={handleEmployeeSearch}
+                          darkMode={darkMode}
+                        />
+                      </div>
+                    )}
+
+                    {['employeeName', 'businessFunction', 'department', 'unit', 'jobFunction', 'phoneNumber'].map(field => (
+                      <div key={field}>
                         <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                          Line Manager
+                          {field === 'employeeName' ? 'Employee Name' : field === 'businessFunction' ? 'Business Function' : 
+                           field === 'department' ? 'Department' : field === 'unit' ? 'Unit' : 
+                           field === 'jobFunction' ? 'Job Function' : 'Phone Number'}
                         </label>
-                        <input
-                          type="text"
-                          value={formData.lineManager}
-                          onChange={(e) => setFormData({...formData, lineManager: e.target.value})}
+                        <input type={field === 'phoneNumber' ? 'tel' : 'text'}
+                          value={formData[field]}
+                          onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))}
                           disabled={requester === 'for_me'}
                           className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
                         />
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                          HR Representative
-                        </label>
-                        <select
-                          value={formData.hrRepresentative}
-                          onChange={(e) => setFormData({...formData, hrRepresentative: e.target.value})}
-                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                        >
-                          <option value="Sarah Johnson">Sarah Johnson</option>
-                          <option value="Mike Brown">Mike Brown</option>
-                        </select>
-                      </div>
+                <div className="mb-6">
+                  <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Leave Request Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Leave Type</label>
+                      <SearchableDropdown
+                        options={vacationTypes.map(type => ({ value: type.id, label: type.name }))}
+                        value={formData.vacation_type_id}
+                        onChange={(value) => setFormData(prev => ({...prev, vacation_type_id: value}))}
+                        placeholder="Select leave type"
+                        darkMode={darkMode}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Start Date</label>
+                      <input type="date" value={formData.start_date}
+                        onChange={(e) => setFormData(prev => ({...prev, start_date: e.target.value}))}
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" required />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">End Date</label>
+                      <input type="date" value={formData.end_date}
+                        onChange={(e) => setFormData(prev => ({...prev, end_date: e.target.value}))}
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" required />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date of Return</label>
+                      <input type="date" value={formData.dateOfReturn} disabled
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Number of Days</label>
+                      <input type="number" value={formData.numberOfDays} disabled
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Comment (Optional)</label>
+                      <textarea value={formData.comment}
+                        onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} rows={3}
+                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" />
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Overlapping Schedules for Scheduling */}
-                {activeSection === 'scheduling' && formData.startDate && formData.endDate && (
+                {activeSection === 'immediate' && (
                   <div className="mb-6">
-                    <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Team Schedule Conflicts</h3>
-                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4">
-                      <p className="text-sm text-almet-comet dark:text-yellow-200 mb-2">
-                        The following team members have overlapping vacation schedules:
-                      </p>
-                      {mockScheduledLeaves.map(leave => (
-                        <div key={leave.id} className="text-sm text-almet-cloud-burst dark:text-yellow-300">
-                          • {leave.employeeName}: {leave.startDate} to {leave.endDate} ({leave.days} days)
-                        </div>
-                      ))}
+                    <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Approval</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Line Manager</label>
+                        <input type="text" value={formData.line_manager}
+                          onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))}
+                          disabled={requester === 'for_me'} placeholder="Line Manager Name"
+                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">HR Representative</label>
+                        <SearchableDropdown
+                          options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))}
+                          value={formData.hr_representative_id}
+                          onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))}
+                          placeholder="Select HR representative"
+                          darkMode={darkMode}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
 
                 <div className="flex justify-end space-x-4">
-                  <button
-                    type="button"
-                    className="px-6 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Cancel
+                  <button type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }))}
+                    className="px-6 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors">
+                    Clear
                   </button>
-                  <button
-                    type="submit"
-                    className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2"
-                  >
-                    {activeSection === 'immediate' ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Submit for Approval
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="w-4 h-4" />
-                        Save Schedule
-                      </>
-                    )}
+                  <button type="submit"
+                    disabled={loading || !formData.start_date || !formData.end_date || !formData.vacation_type_id}
+                    className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> :
+                      activeSection === 'immediate' ? <><CheckCircle className="w-4 h-4" />Submit for Approval</> :
+                      <><Plus className="w-4 h-4" />Save Schedule</>}
                   </button>
                 </div>
               </form>
 
-              {/* Schedules Tabs */}
               {activeSection === 'scheduling' && (
                 <div className="mt-8 pt-8 border-t border-almet-bali-hai dark:border-almet-comet">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex space-x-8 border-b border-almet-bali-hai dark:border-almet-comet">
-                      <button
-                        onClick={() => setSchedulesTab('upcoming')}
-                        className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                          schedulesTab === 'upcoming'
-                            ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                            : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
-                        }`}
-                      >
-                        My Upcoming Schedules
-                      </button>
-                      <button
-                        onClick={() => setSchedulesTab('team')}
-                        className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                          schedulesTab === 'team'
-                            ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                            : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
-                        }`}
-                      >
-                        My Peers and Team Schedule
-                      </button>
-                      <button
-                        onClick={() => setSchedulesTab('all')}
-                        className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                          schedulesTab === 'all'
-                            ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                            : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
-                        }`}
-                      >
-                        My All Schedules
-                      </button>
+                      {['upcoming', 'peers', 'all'].map(tab => (
+                        <button key={tab} onClick={() => setSchedulesTab(tab)}
+                          className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                            schedulesTab === tab
+                              ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
+                              : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
+                          }`}>
+                          {tab === 'upcoming' ? 'My Upcoming Schedules' : tab === 'peers' ? 'My Peers and Team Schedule' : 'All Schedules'}
+                        </button>
+                      ))}
                     </div>
-                    <button
-                      onClick={handleExportSchedules}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-                    >
-                      <Download className="w-4 h-4" />
-                      Export Schedules
+                    <button onClick={handleExportSchedules}
+                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
+                      <Download className="w-4 h-4" />Export Schedules
                     </button>
                   </div>
 
@@ -571,132 +562,53 @@ export default function VacationRequestsPage() {
                     <table className="min-w-full divide-y divide-almet-bali-hai dark:divide-almet-comet">
                       <thead className="bg-almet-mystic dark:bg-gray-700">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            End Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            Days
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            Status
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                            Actions
-                          </th>
+                          {['Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Actions'].map(header => (
+                            <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
+                              {header}
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-bali-hai dark:divide-almet-comet">
-                        {schedulesTab === 'upcoming' && mockMySchedules.map(schedule => (
+                        {scheduleTabs[schedulesTab]?.map(schedule => (
                           <tr key={schedule.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {mockUser.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.leaveType}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.startDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.endDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.days}
-                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.employee_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.vacation_type_name}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.start_date}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.end_date}</td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.number_of_days}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral">
-                                {schedule.status}
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                schedule.status === 'SCHEDULED' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' : 
+                                'bg-gray-100 text-almet-waterloo dark:bg-gray-700 dark:text-almet-bali-hai'}`}>
+                                {schedule.status_display}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              <div className="flex gap-2">
-                                <button className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue">
-                                  Edit
-                                </button>
-                                <button 
-                                  onClick={() => handleRegisterSchedule(schedule.id)}
-                                  className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
-                                >
-                                  <Check className="w-3 h-3" />
-                                  Register
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                        {schedulesTab === 'team' && mockScheduledLeaves.map(leave => (
-                          <tr key={leave.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {leave.employeeName}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              Annual Leave
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {leave.startDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {leave.endDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {leave.days}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral">
-                                {leave.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-waterloo dark:text-almet-bali-hai">
-                              View Only
-                            </td>
-                          </tr>
-                        ))}
-                        {schedulesTab === 'all' && [...mockMySchedules, ...mockScheduledLeaves.map(leave => ({
-                          ...leave,
-                          leaveType: 'Annual Leave',
-                          employeeName: leave.employeeName
-                        }))].map(schedule => (
-                          <tr key={`all-${schedule.id}`}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.employeeName || mockUser.name}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.leaveType}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.startDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.endDate}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                              {schedule.days}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral">
-                                {schedule.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {(schedule.employeeName === mockUser.name || !schedule.employeeName) ? (
+                              {schedule.can_edit && (
                                 <div className="flex gap-2">
-                                  <button className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue">
-                                    Edit
+                                  <button onClick={() => showInfo('Edit functionality coming soon')}
+                                    className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1">
+                                    <Edit className="w-3 h-3" />Edit
                                   </button>
-                                  <button 
-                                    onClick={() => handleRegisterSchedule(schedule.id)}
-                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
-                                  >
-                                    <Check className="w-3 h-3" />
-                                    Register
+                                  <button onClick={() => handleDeleteSchedule(schedule.id)}
+                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1">
+                                    <Trash className="w-3 h-3" />Delete
+                                  </button>
+                                  <button onClick={() => handleRegisterSchedule(schedule.id)}
+                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1">
+                                    <Check className="w-3 h-3" />Register
                                   </button>
                                 </div>
-                              ) : (
-                                <span className="text-almet-waterloo dark:text-almet-bali-hai">View Only</span>
                               )}
                             </td>
                           </tr>
                         ))}
+                        {scheduleTabs[schedulesTab]?.length === 0 && (
+                          <tr>
+                            <td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">No schedules found</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -712,36 +624,75 @@ export default function VacationRequestsPage() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
                 <span className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-3 py-1 rounded-full text-sm font-medium">
-                  3 Pending
+                  {(pendingRequests.line_manager_requests?.length || 0) + (pendingRequests.hr_requests?.length || 0)} Pending
                 </span>
               </div>
+              
               <div className="space-y-4">
-                {[
-                  { id: 1, employee: "Tom Anderson", type: "Annual Leave", start: "2025-10-01", end: "2025-10-05", days: 5, status: "Pending Line Manager" },
-                  { id: 2, employee: "Lisa Martin", type: "Annual Leave", start: "2025-10-10", end: "2025-10-12", days: 3, status: "Pending HR" },
-                  { id: 3, employee: "David Chen", type: "Personal Leave", start: "2025-10-15", end: "2025-10-17", days: 3, status: "Pending Line Manager" }
-                ].map(request => (
+                {pendingRequests.line_manager_requests?.map(request => (
                   <div key={request.id} className="border border-almet-bali-hai dark:border-almet-comet rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-medium text-almet-cloud-burst dark:text-white">{request.employee}</h3>
+                        <h3 className="font-medium text-almet-cloud-burst dark:text-white">{request.employee_name}</h3>
                         <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                          {request.type} • {request.start} to {request.end} ({request.days} days)
+                          {request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)
                         </p>
+                        <p className="text-xs text-almet-comet dark:text-almet-bali-hai mt-1">Status: {request.status_display}</p>
+                        {request.comment && <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Comment: {request.comment}</p>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1">
-                          <CheckCircle className="w-4 h-4" />
-                          Approve
+                        <button onClick={() => handleApproveReject(request.id, 'approve', 'Approved by line manager')}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />Approve
                         </button>
-                        <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1">
-                          <XCircle className="w-4 h-4" />
-                          Reject
+                        <button onClick={() => {
+                            const reason = prompt('Please provide a reason for rejection:');
+                            if (reason) handleApproveReject(request.id, 'reject', '', reason);
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1">
+                          <XCircle className="w-4 h-4" />Reject
                         </button>
                       </div>
                     </div>
                   </div>
                 ))}
+
+                {pendingRequests.hr_requests?.map(request => (
+                  <div key={request.id} className="border border-almet-bali-hai dark:border-almet-comet rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-almet-cloud-burst dark:text-white">
+                          {request.employee_name} <span className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">HR Review</span>
+                        </h3>
+                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                          {request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)
+                        </p>
+                        <p className="text-xs text-almet-comet dark:text-almet-bali-hai mt-1">Status: {request.status_display}</p>
+                        {request.comment && <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Comment: {request.comment}</p>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => handleApproveReject(request.id, 'approve', 'Approved by HR')}
+                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1">
+                          <CheckCircle className="w-4 h-4" />Approve
+                        </button>
+                        <button onClick={() => {
+                            const reason = prompt('Please provide a reason for rejection:');
+                            if (reason) handleApproveReject(request.id, 'reject', '', reason);
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1">
+                          <XCircle className="w-4 h-4" />Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {(pendingRequests.line_manager_requests?.length === 0 && pendingRequests.hr_requests?.length === 0) && (
+                  <div className="text-center py-8">
+                    <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                    <p className="text-almet-waterloo dark:text-almet-bali-hai">No pending approval requests</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -751,53 +702,17 @@ export default function VacationRequestsPage() {
                 <table className="min-w-full divide-y divide-almet-bali-hai dark:divide-almet-comet">
                   <thead className="bg-almet-mystic dark:bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        Employee
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        Leave Type
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        Period
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        Date
-                      </th>
+                      {['Employee', 'Leave Type', 'Period', 'Status', 'Date'].map(header => (
+                        <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
+                          {header}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-bali-hai dark:divide-almet-comet">
-                    {[
-                      { id: 1, employee: "Emma Wilson", type: "Annual Leave", period: "Sep 15-20", status: "Approved", date: "2025-09-10" },
-                      { id: 2, employee: "James Lee", type: "Sick Leave", period: "Sep 05-07", status: "Approved", date: "2025-09-05" },
-                      { id: 3, employee: "Olivia Brown", type: "Annual Leave", period: "Aug 20-25", status: "Rejected", date: "2025-08-15" }
-                    ].map(history => (
-                      <tr key={history.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                          {history.employee}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                          {history.type}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                          {history.period}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            history.status === 'Approved' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                          }`}>
-                            {history.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                          {history.date}
-                        </td>
-                      </tr>
-                    ))}
+                    <tr>
+                      <td colSpan="5" className="px-6 py-8 text-center text-almet-waterloo dark:text-almet-bali-hai">No approval history available</td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -809,95 +724,68 @@ export default function VacationRequestsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">My All Requests & Schedules</h2>
-              <button 
-                onClick={handleExportSchedules}
-                className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Export
+              <button onClick={handleExportMyVacations}
+                className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2">
+                <Download className="w-4 h-4" />Export
               </button>
             </div>
+            
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-almet-bali-hai dark:divide-almet-comet">
                 <thead className="bg-almet-mystic dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                      Leave Type
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                      Start Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                      End Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                      Days
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {['Type', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Actions'].map(header => (
+                      <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
+                        {header}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-bali-hai dark:divide-almet-comet">
-                  {[
-                    { id: 1, type: "Annual Leave", start: "2025-11-10", end: "2025-11-15", days: 4, status: "Scheduled" },
-                    { id: 2, type: "Annual Leave", start: "2025-12-20", end: "2025-12-27", days: 6, status: "Scheduled" },
-                    { id: 3, type: "Annual Leave", start: "2025-09-05", end: "2025-09-10", days: 4, status: "Approved" },
-                    { id: 4, type: "Sick Leave", start: "2025-08-15", end: "2025-08-17", days: 3, status: "Approved" },
-                    { id: 5, type: "Annual Leave", start: "2025-07-01", end: "2025-07-10", days: 8, status: "Completed" }
-                  ].map(record => (
-                    <tr key={record.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                        {record.type}
+                  {myAllRecords.map(record => (
+                    <tr key={`${record.type}-${record.id}`}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          record.type === 'schedule' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
+                          {record.type === 'schedule' ? 'Schedule' : 'Request'}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                        {record.start}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                        {record.end}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">
-                        {record.days}
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.vacation_type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.start_date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.end_date}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.days}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          record.status === 'Scheduled' 
-                            ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral'
-                            : record.status === 'Approved'
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : record.status === 'Completed'
-                            ? 'bg-gray-100 text-almet-waterloo dark:bg-gray-700 dark:text-almet-bali-hai'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
+                          record.status === 'Scheduled' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' :
+                          record.status === 'Pending HR' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                          record.status === 'Pending Line Manager' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
+                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
                           {record.status}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {record.status === 'Scheduled' && (
+                        {record.type === 'schedule' && record.can_edit && (
                           <div className="flex gap-2">
-                            <button className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue">
-                              Edit
+                            <button onClick={() => showInfo('Edit functionality coming soon')}
+                              className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1">
+                              <Edit className="w-3 h-3" />Edit
                             </button>
-                            <button 
-                              onClick={() => handleRegisterSchedule(record.id)}
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
-                            >
-                              <Check className="w-3 h-3" />
-                              Register
+                            <button onClick={() => handleRegisterSchedule(record.id)}
+                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1">
+                              <Check className="w-3 h-3" />Register
                             </button>
                           </div>
                         )}
-                        {record.status !== 'Scheduled' && record.status !== 'Completed' && (
-                          <button className="text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic">
-                            View
-                          </button>
-                        )}
+                        {record.type === 'request' && <span className="text-almet-waterloo dark:text-almet-bali-hai text-xs">View Only</span>}
                       </td>
                     </tr>
                   ))}
+                  {myAllRecords.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">No records found</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
