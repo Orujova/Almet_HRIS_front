@@ -78,7 +78,7 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   };
 
   console.log(account)
-
+ localStorage.setItem("user_email", account.username)
   // User display name
   const getUserDisplayName = () => {
     if (account?.name) return account.name;

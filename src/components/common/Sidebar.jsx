@@ -121,12 +121,12 @@ const Sidebar = ({ collapsed = false }) => {
       type: "section", 
       label: "SETTINGS" 
     },
-    {
-      label: "Access Mng",
-      icon: <KeyRound className="w-4 h-4" />,
-      path: "/settings/access-mng",
-      id: "access-mng",
-    },
+    // {
+    //   label: "Access Mng",
+    //   icon: <KeyRound className="w-4 h-4" />,
+    //   path: "/settings/access-mng",
+    //   id: "access-mng",
+    // },
    
     {
       label: "Role Mng",

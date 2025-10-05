@@ -1,9 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { 
-  Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, 
-  FileText, Download, Check, Search, Edit, Trash, UserPlus, User
-} from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, FileText, Download, Check, Search, Edit, Trash, UserPlus, User } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
@@ -19,7 +16,6 @@ export default function VacationRequestsPage() {
   const [requester, setRequester] = useState('for_me');
   const [loading, setLoading] = useState(false);
   const [schedulesTab, setSchedulesTab] = useState('upcoming');
-
   const [balances, setBalances] = useState(null);
   const [vacationTypes, setVacationTypes] = useState([]);
   const [hrRepresentatives, setHrRepresentatives] = useState([]);
@@ -27,7 +23,10 @@ export default function VacationRequestsPage() {
   const [pendingRequests, setPendingRequests] = useState({ line_manager_requests: [], hr_requests: [] });
   const [myAllRecords, setMyAllRecords] = useState([]);
   const [employeeSearchResults, setEmployeeSearchResults] = useState([]);
-
+  const [formErrors, setFormErrors] = useState({
+  start_date: '',
+  end_date: ''
+});
   const [formData, setFormData] = useState({
     requester_type: 'for_me',
     employeeName: '',
@@ -55,11 +54,7 @@ export default function VacationRequestsPage() {
   const initializeData = async () => {
     setLoading(true);
     try {
-      await Promise.all([
-        fetchDashboard(),
-        fetchVacationTypes(),
-        fetchHRRepresentatives()
-      ]);
+      await Promise.all([fetchDashboard(), fetchVacationTypes(), fetchHRRepresentatives()]);
     } catch (error) {
       console.error('Initialization error:', error);
       showError('Failed to load initial data');
@@ -138,19 +133,63 @@ export default function VacationRequestsPage() {
     }
   }, [activeTab, activeSection]);
 
-  const handleEmployeeSearch = async (query) => {
-    if (!query || query.length < 2) {
-      setEmployeeSearchResults([]);
-      return;
-    }
-    try {
-      const data = await VacationService.searchEmployees(query);
-      setEmployeeSearchResults(data.results || []);
-    } catch (error) {
-      console.error('Employee search error:', error);
-    }
-  };
+ // VacationRequestsPage-də
+const handleEmployeeSearch = async () => {
+  try {
+    const data = await VacationService.searchEmployees();
+    setEmployeeSearchResults(data.results || []);
+  } catch (error) {
+    console.error('Employee search error:', error);
+  }
+};
 
+// Component mount olduqda employee-ləri yüklə
+useEffect(() => {
+  handleEmployeeSearch();
+}, []);
+
+// Start date dəyişdikdə validasiya
+const handleStartDateChange = (e) => {
+  const selectedDate = e.target.value;
+  const today = new Date().toISOString().split('T')[0];
+  
+  if (selectedDate < today) {
+    setFormErrors(prev => ({
+      ...prev,
+      start_date: 'Start date cannot be in the past'
+    }));
+    return;
+  }
+  
+  setFormErrors(prev => ({ ...prev, start_date: '' }));
+  
+  if (formData.end_date && selectedDate > formData.end_date) {
+    setFormErrors(prev => ({
+      ...prev,
+      end_date: 'End date must be greater than or equal to start date'
+    }));
+  } else {
+    setFormErrors(prev => ({ ...prev, end_date: '' }));
+  }
+  
+  setFormData(prev => ({ ...prev, start_date: selectedDate }));
+};
+
+// End date dəyişdikdə validasiya
+const handleEndDateChange = (e) => {
+  const selectedDate = e.target.value;
+  
+  if (formData.start_date && selectedDate < formData.start_date) {
+    setFormErrors(prev => ({
+      ...prev,
+      end_date: 'End date must be greater than or equal to start date'
+    }));
+  } else {
+    setFormErrors(prev => ({ ...prev, end_date: '' }));
+  }
+  
+  setFormData(prev => ({ ...prev, end_date: selectedDate }));
+};
   const calculateWorkingDays = async (startDate, endDate) => {
     if (!startDate || !endDate) return 0;
     try {
@@ -174,10 +213,53 @@ export default function VacationRequestsPage() {
     updateWorkingDays();
   }, [formData.start_date, formData.end_date]);
 
-  useEffect(() => {
+  // VacationRequestsPage.jsx-də useEffect-i yenilə
+useEffect(() => {
+  const loadCurrentUserData = async () => {
     if (requester === 'for_me') {
-      setFormData(prev => ({ ...prev, requester_type: 'for_me', employee_id: null, employee_manual: null }));
+      // localStorage-dən email götür
+      const userEmail = VacationService.getCurrentUserEmail();
+      
+      if (userEmail && employeeSearchResults.length > 0) {
+        // Employee list-də email ilə axtar
+        const currentEmployee = employeeSearchResults.find(emp => 
+          emp.email?.toLowerCase() === userEmail.toLowerCase()
+        );
+        
+        if (currentEmployee) {
+          // Form məlumatlarını doldur
+          setFormData(prev => ({ 
+            ...prev, 
+            requester_type: 'for_me',
+            employee_id: null,
+            employee_manual: null,
+            employeeName: currentEmployee.name || '',
+            businessFunction: currentEmployee.business_function_name || '',
+            department: currentEmployee.department_name || '',
+            unit: currentEmployee.unit_name || '',
+            jobFunction: currentEmployee.job_function_name || '',
+            phoneNumber: currentEmployee.phone || '',
+            line_manager: currentEmployee.line_manager_name || ''
+          }));
+        } else {
+          // Email tapılmadısa, boş saxla
+          setFormData(prev => ({ 
+            ...prev, 
+            requester_type: 'for_me', 
+            employee_id: null, 
+            employee_manual: null,
+            employeeName: '',
+            businessFunction: '',
+            department: '',
+            unit: '',
+            jobFunction: '',
+            phoneNumber: '',
+            line_manager: ''
+          }));
+        }
+      }
     } else {
+      // For employee seçilibsə, təmizlə
       setFormData(prev => ({ 
         ...prev, 
         requester_type: 'for_my_employee', 
@@ -190,10 +272,18 @@ export default function VacationRequestsPage() {
         line_manager: '' 
       }));
     }
-  }, [requester]);
+  };
+  
+  loadCurrentUserData();
+}, [requester, employeeSearchResults]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+     if (formErrors.start_date || formErrors.end_date) {
+    showError('Please fix the date errors before submitting');
+    return;
+  }
     setLoading(true);
     try {
       let requestData = {
@@ -243,11 +333,7 @@ export default function VacationRequestsPage() {
 
   const handleApproveReject = async (requestId, action, comment = '', reason = '') => {
     try {
-      await VacationService.approveRejectRequest(requestId, {
-        action,
-        comment: action === 'approve' ? comment : undefined,
-        reason: action === 'reject' ? reason : undefined
-      });
+      await VacationService.approveRejectRequest(requestId, { action, comment: action === 'approve' ? comment : undefined, reason: action === 'reject' ? reason : undefined });
       showSuccess(`Request ${action}d successfully`);
       fetchPendingRequests();
     } catch (error) {
@@ -336,12 +422,7 @@ export default function VacationRequestsPage() {
         <div className="mb-6 border-b border-almet-bali-hai dark:border-almet-comet">
           <div className="flex space-x-8">
             {['request', 'approval', 'all'].map(tab => (
-              <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab
-                    ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                    : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'
-                }`}>
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'}`}>
                 {tab === 'request' ? 'Request Submission' : tab === 'approval' ? 'Approval' : 'My All Requests & Schedules'}
               </button>
             ))}
@@ -363,12 +444,7 @@ export default function VacationRequestsPage() {
 
             <div className="mb-6 flex space-x-4">
               {['immediate', 'scheduling'].map(section => (
-                <button key={section} onClick={() => setActiveSection(section)}
-                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                    activeSection === section
-                      ? 'bg-almet-sapphire text-white hover:bg-almet-cloud-burst'
-                      : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
-                  }`}>
+                <button key={section} onClick={() => setActiveSection(section)} className={`px-6 py-3 rounded-lg font-medium transition-colors ${activeSection === section ? 'bg-almet-sapphire text-white hover:bg-almet-cloud-burst' : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'}`}>
                   {section === 'immediate' ? 'Request Immediately (Requires Approval)' : 'Scheduling (No Approval Needed)'}
                 </button>
               ))}
@@ -376,14 +452,8 @@ export default function VacationRequestsPage() {
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">
-                  {activeSection === 'immediate' ? 'Request Immediately' : 'Schedule Vacation'}
-                </h2>
-                {activeSection === 'scheduling' && (
-                  <div className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium">
-                    No Approval Required
-                  </div>
-                )}
+                <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">{activeSection === 'immediate' ? 'Request Immediately' : 'Schedule Vacation'}</h2>
+                {activeSection === 'scheduling' && <div className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium">No Approval Required</div>}
               </div>
 
               <form onSubmit={handleSubmit}>
@@ -392,8 +462,7 @@ export default function VacationRequestsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Requester</label>
-                      <select value={requester} onChange={(e) => setRequester(e.target.value)}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white">
+                      <select value={requester} onChange={(e) => setRequester(e.target.value)} className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white">
                         <option value="for_me">For Me</option>
                         <option value="for_my_employee">For My Employee</option>
                       </select>
@@ -403,45 +472,55 @@ export default function VacationRequestsPage() {
                       <div>
                         <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Search Employee</label>
                         <SearchableDropdown
-                          options={employeeSearchResults.map(emp => ({ value: emp.id, label: `${emp.name} (${emp.employee_id})`, ...emp }))}
-                          value={formData.employee_id}
-                          onChange={(value) => {
-                            const selectedEmployee = employeeSearchResults.find(emp => emp.id === value);
-                            if (selectedEmployee) {
-                              setFormData(prev => ({
-                                ...prev,
-                                employee_id: value,
-                                employeeName: selectedEmployee.name,
-                                businessFunction: selectedEmployee.business_function_name || '',
-                                department: selectedEmployee.department_name || '',
-                                unit: selectedEmployee.unit_name || '',
-                                jobFunction: selectedEmployee.job_function || '',
-                                phoneNumber: selectedEmployee.phone || '',
-                                line_manager: selectedEmployee.line_manager || ''
-                              }));
-                            }
-                          }}
-                          placeholder="Select employee"
-                          searchPlaceholder="Search employee..."
-                          onSearchChange={handleEmployeeSearch}
-                          darkMode={darkMode}
-                        />
+  options={employeeSearchResults.map(emp => ({ 
+    value: emp.id, 
+    label: `${emp.name} (${emp.employee_id})`, 
+    ...emp 
+  }))}
+  value={formData.employee_id}
+ onChange={(value) => {
+  const selectedEmployee = employeeSearchResults.find(emp => emp.id === value);
+  if (value === null) {
+    // Seçim kaldırıldığında formu təmizlə
+    setFormData(prev => ({
+      ...prev,
+      employee_id: null,
+      employeeName: '',
+      businessFunction: '',
+      department: '',
+      unit: '',
+      jobFunction: '',
+      phoneNumber: '',
+      line_manager: ''
+    }));
+  } else if (selectedEmployee) {
+    setFormData(prev => ({
+      ...prev,
+      employee_id: value,
+      employeeName: selectedEmployee.name,
+      businessFunction: selectedEmployee.business_function_name || '',
+      department: selectedEmployee.department_name || '',
+      unit: selectedEmployee.unit_name || '',
+      jobFunction: selectedEmployee.job_function_name || '',
+      phoneNumber: selectedEmployee.phone || '',
+      line_manager: selectedEmployee.line_manager_name || ''
+    }));
+  }
+}}
+  placeholder="Select employee"
+  allowUncheck={true}
+  searchPlaceholder="Search employee..."
+  darkMode={darkMode}
+/>
                       </div>
                     )}
 
                     {['employeeName', 'businessFunction', 'department', 'unit', 'jobFunction', 'phoneNumber'].map(field => (
                       <div key={field}>
                         <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                          {field === 'employeeName' ? 'Employee Name' : field === 'businessFunction' ? 'Business Function' : 
-                           field === 'department' ? 'Department' : field === 'unit' ? 'Unit' : 
-                           field === 'jobFunction' ? 'Job Function' : 'Phone Number'}
+                          {field === 'employeeName' ? 'Employee Name' : field === 'businessFunction' ? 'Business Function' : field === 'department' ? 'Department' : field === 'unit' ? 'Unit' : field === 'jobFunction' ? 'Job Function' : 'Phone Number'}
                         </label>
-                        <input type={field === 'phoneNumber' ? 'tel' : 'text'}
-                          value={formData[field]}
-                          onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))}
-                          disabled={requester === 'for_me'}
-                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600"
-                        />
+                        <input type={field === 'phoneNumber' ? 'tel' : 'text'} value={formData[field]} onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} disabled={requester === 'for_me'} className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600" />
                       </div>
                     ))}
                   </div>
@@ -452,46 +531,64 @@ export default function VacationRequestsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Leave Type</label>
-                      <SearchableDropdown
-                        options={vacationTypes.map(type => ({ value: type.id, label: type.name }))}
-                        value={formData.vacation_type_id}
-                        onChange={(value) => setFormData(prev => ({...prev, vacation_type_id: value}))}
-                        placeholder="Select leave type"
-                        darkMode={darkMode}
-                      />
+                      <SearchableDropdown options={vacationTypes.map(type => ({ value: type.id, label: type.name }))} value={formData.vacation_type_id} onChange={(value) => setFormData(prev => ({...prev, vacation_type_id: value}))} placeholder="Select leave type" darkMode={darkMode} />
                     </div>
-
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Start Date</label>
-                      <input type="date" value={formData.start_date}
-                        onChange={(e) => setFormData(prev => ({...prev, start_date: e.target.value}))}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" required />
-                    </div>
+  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+    Start Date
+  </label>
+  <input 
+    type="date" 
+    value={formData.start_date} 
+    onChange={handleStartDateChange}
+    min={new Date().toISOString().split('T')[0]} // Bu gündən əvvəl seçilməsin
+    className={`w-full px-3 py-2 border ${
+      formErrors.start_date 
+        ? 'border-red-500 focus:ring-red-500' 
+        : 'border-almet-bali-hai dark:border-almet-comet focus:ring-almet-sapphire'
+    } rounded-lg focus:ring-2 dark:bg-gray-700 dark:text-white`}
+    required 
+  />
+  {formErrors.start_date && (
+    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+      {formErrors.start_date}
+    </p>
+  )}
+</div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">End Date</label>
-                      <input type="date" value={formData.end_date}
-                        onChange={(e) => setFormData(prev => ({...prev, end_date: e.target.value}))}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" required />
-                    </div>
-
+<div>
+  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+    End Date
+  </label>
+  <input 
+    type="date" 
+    value={formData.end_date} 
+    onChange={handleEndDateChange}
+    min={formData.start_date || new Date().toISOString().split('T')[0]}
+    className={`w-full px-3 py-2 border ${
+      formErrors.end_date 
+        ? 'border-red-500 focus:ring-red-500' 
+        : 'border-almet-bali-hai dark:border-almet-comet focus:ring-almet-sapphire'
+    } rounded-lg focus:ring-2 dark:bg-gray-700 dark:text-white`}
+    required 
+  />
+  {formErrors.end_date && (
+    <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+      {formErrors.end_date}
+    </p>
+  )}
+</div>
                     <div>
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date of Return</label>
-                      <input type="date" value={formData.dateOfReturn} disabled
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" />
+                      <input type="date" value={formData.dateOfReturn} disabled className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" />
                     </div>
-
                     <div>
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Number of Days</label>
-                      <input type="number" value={formData.numberOfDays} disabled
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" />
+                      <input type="number" value={formData.numberOfDays} disabled className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" />
                     </div>
-
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Comment (Optional)</label>
-                      <textarea value={formData.comment}
-                        onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} rows={3}
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" />
+                      <textarea value={formData.comment} onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} rows={3} className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" />
                     </div>
                   </div>
                 </div>
@@ -502,37 +599,20 @@ export default function VacationRequestsPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Line Manager</label>
-                        <input type="text" value={formData.line_manager}
-                          onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))}
-                          disabled={requester === 'for_me'} placeholder="Line Manager Name"
-                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600" />
+                        <input type="text" value={formData.line_manager} onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))} disabled={requester === 'for_me'} placeholder="Line Manager Name" className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">HR Representative</label>
-                        <SearchableDropdown
-                          options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))}
-                          value={formData.hr_representative_id}
-                          onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))}
-                          placeholder="Select HR representative"
-                          darkMode={darkMode}
-                        />
+                        <SearchableDropdown options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))} value={formData.hr_representative_id} onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))} placeholder="Select HR representative" darkMode={darkMode} />
                       </div>
                     </div>
                   </div>
                 )}
 
                 <div className="flex justify-end space-x-4">
-                  <button type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }))}
-                    className="px-6 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors">
-                    Clear
-                  </button>
-                  <button type="submit"
-                    disabled={loading || !formData.start_date || !formData.end_date || !formData.vacation_type_id}
-                    className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                    {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> :
-                      activeSection === 'immediate' ? <><CheckCircle className="w-4 h-4" />Submit for Approval</> :
-                      <><Plus className="w-4 h-4" />Save Schedule</>}
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }))} className="px-6 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors">Clear</button>
+                  <button type="submit" disabled={loading || !formData.start_date || !formData.end_date || !formData.vacation_type_id} className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {loading ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : activeSection === 'immediate' ? <><CheckCircle className="w-4 h-4" />Submit for Approval</> : <><Plus className="w-4 h-4" />Save Schedule</>}
                   </button>
                 </div>
               </form>
@@ -542,20 +622,12 @@ export default function VacationRequestsPage() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex space-x-8 border-b border-almet-bali-hai dark:border-almet-comet">
                       {['upcoming', 'peers', 'all'].map(tab => (
-                        <button key={tab} onClick={() => setSchedulesTab(tab)}
-                          className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                            schedulesTab === tab
-                              ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral'
-                              : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
-                          }`}>
+                        <button key={tab} onClick={() => setSchedulesTab(tab)} className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${schedulesTab === tab ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'}`}>
                           {tab === 'upcoming' ? 'My Upcoming Schedules' : tab === 'peers' ? 'My Peers and Team Schedule' : 'All Schedules'}
                         </button>
                       ))}
                     </div>
-                    <button onClick={handleExportSchedules}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2">
-                      <Download className="w-4 h-4" />Export Schedules
-                    </button>
+                    <button onClick={handleExportSchedules} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"><Download className="w-4 h-4" />Export Schedules</button>
                   </div>
 
                   <div className="overflow-x-auto">
@@ -563,9 +635,7 @@ export default function VacationRequestsPage() {
                       <thead className="bg-almet-mystic dark:bg-gray-700">
                         <tr>
                           {['Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Actions'].map(header => (
-                            <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                              {header}
-                            </th>
+                            <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">{header}</th>
                           ))}
                         </tr>
                       </thead>
@@ -578,36 +648,21 @@ export default function VacationRequestsPage() {
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.end_date}</td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.number_of_days}</td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                schedule.status === 'SCHEDULED' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' : 
-                                'bg-gray-100 text-almet-waterloo dark:bg-gray-700 dark:text-almet-bali-hai'}`}>
-                                {schedule.status_display}
-                              </span>
+                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${schedule.status === 'SCHEDULED' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' : 'bg-gray-100 text-almet-waterloo dark:bg-gray-700 dark:text-almet-bali-hai'}`}>{schedule.status_display}</span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                               {schedule.can_edit && (
                                 <div className="flex gap-2">
-                                  <button onClick={() => showInfo('Edit functionality coming soon')}
-                                    className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1">
-                                    <Edit className="w-3 h-3" />Edit
-                                  </button>
-                                  <button onClick={() => handleDeleteSchedule(schedule.id)}
-                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1">
-                                    <Trash className="w-3 h-3" />Delete
-                                  </button>
-                                  <button onClick={() => handleRegisterSchedule(schedule.id)}
-                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1">
-                                    <Check className="w-3 h-3" />Register
-                                  </button>
+                                  <button onClick={() => showInfo('Edit functionality coming soon')} className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1"><Edit className="w-3 h-3" />Edit</button>
+                                  <button onClick={() => handleDeleteSchedule(schedule.id)} className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"><Trash className="w-3 h-3" />Delete</button>
+                                  <button onClick={() => handleRegisterSchedule(schedule.id)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"><Check className="w-3 h-3" />Register</button>
                                 </div>
                               )}
                             </td>
                           </tr>
                         ))}
                         {scheduleTabs[schedulesTab]?.length === 0 && (
-                          <tr>
-                            <td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">No schedules found</td>
-                          </tr>
+                          <tr><td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">No schedules found</td></tr>
                         )}
                       </tbody>
                     </table>
@@ -634,24 +689,13 @@ export default function VacationRequestsPage() {
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <h3 className="font-medium text-almet-cloud-burst dark:text-white">{request.employee_name}</h3>
-                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                          {request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)
-                        </p>
+                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">{request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)</p>
                         <p className="text-xs text-almet-comet dark:text-almet-bali-hai mt-1">Status: {request.status_display}</p>
                         {request.comment && <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Comment: {request.comment}</p>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleApproveReject(request.id, 'approve', 'Approved by line manager')}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1">
-                          <CheckCircle className="w-4 h-4" />Approve
-                        </button>
-                        <button onClick={() => {
-                            const reason = prompt('Please provide a reason for rejection:');
-                            if (reason) handleApproveReject(request.id, 'reject', '', reason);
-                          }}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1">
-                          <XCircle className="w-4 h-4" />Reject
-                        </button>
+                        <button onClick={() => handleApproveReject(request.id, 'approve', 'Approved by line manager')} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"><CheckCircle className="w-4 h-4" />Approve</button>
+                        <button onClick={() => { const reason = prompt('Please provide a reason for rejection:'); if (reason) handleApproveReject(request.id, 'reject', '', reason); }} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"><XCircle className="w-4 h-4" />Reject</button>
                       </div>
                     </div>
                   </div>
@@ -661,27 +705,14 @@ export default function VacationRequestsPage() {
                   <div key={request.id} className="border border-almet-bali-hai dark:border-almet-comet rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <h3 className="font-medium text-almet-cloud-burst dark:text-white">
-                          {request.employee_name} <span className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">HR Review</span>
-                        </h3>
-                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                          {request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)
-                        </p>
+                        <h3 className="font-medium text-almet-cloud-burst dark:text-white">{request.employee_name} <span className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">HR Review</span></h3>
+                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">{request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)</p>
                         <p className="text-xs text-almet-comet dark:text-almet-bali-hai mt-1">Status: {request.status_display}</p>
                         {request.comment && <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Comment: {request.comment}</p>}
                       </div>
                       <div className="flex items-center gap-2">
-                        <button onClick={() => handleApproveReject(request.id, 'approve', 'Approved by HR')}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1">
-                          <CheckCircle className="w-4 h-4" />Approve
-                        </button>
-                        <button onClick={() => {
-                            const reason = prompt('Please provide a reason for rejection:');
-                            if (reason) handleApproveReject(request.id, 'reject', '', reason);
-                          }}
-                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1">
-                          <XCircle className="w-4 h-4" />Reject
-                        </button>
+                        <button onClick={() => handleApproveReject(request.id, 'approve', 'Approved by HR')} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"><CheckCircle className="w-4 h-4" />Approve</button>
+                        <button onClick={() => { const reason = prompt('Please provide a reason for rejection:'); if (reason) handleApproveReject(request.id, 'reject', '', reason); }} className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"><XCircle className="w-4 h-4" />Reject</button>
                       </div>
                     </div>
                   </div>
@@ -703,16 +734,12 @@ export default function VacationRequestsPage() {
                   <thead className="bg-almet-mystic dark:bg-gray-700">
                     <tr>
                       {['Employee', 'Leave Type', 'Period', 'Status', 'Date'].map(header => (
-                        <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                          {header}
-                        </th>
+                        <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">{header}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-bali-hai dark:divide-almet-comet">
-                    <tr>
-                      <td colSpan="5" className="px-6 py-8 text-center text-almet-waterloo dark:text-almet-bali-hai">No approval history available</td>
-                    </tr>
+                    <tr><td colSpan="5" className="px-6 py-8 text-center text-almet-waterloo dark:text-almet-bali-hai">No approval history available</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -724,10 +751,7 @@ export default function VacationRequestsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">My All Requests & Schedules</h2>
-              <button onClick={handleExportMyVacations}
-                className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2">
-                <Download className="w-4 h-4" />Export
-              </button>
+              <button onClick={handleExportMyVacations} className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2"><Download className="w-4 h-4" />Export</button>
             </div>
             
             <div className="overflow-x-auto">
@@ -735,9 +759,7 @@ export default function VacationRequestsPage() {
                 <thead className="bg-almet-mystic dark:bg-gray-700">
                   <tr>
                     {['Type', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Actions'].map(header => (
-                      <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        {header}
-                      </th>
+                      <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">{header}</th>
                     ))}
                   </tr>
                 </thead>
@@ -745,36 +767,20 @@ export default function VacationRequestsPage() {
                   {myAllRecords.map(record => (
                     <tr key={`${record.type}-${record.id}`}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          record.type === 'schedule' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>
-                          {record.type === 'schedule' ? 'Schedule' : 'Request'}
-                        </span>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${record.type === 'schedule' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'}`}>{record.type === 'schedule' ? 'Schedule' : 'Request'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.vacation_type}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.start_date}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.end_date}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.days}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          record.status === 'Scheduled' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' :
-                          record.status === 'Pending HR' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                          record.status === 'Pending Line Manager' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' :
-                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>
-                          {record.status}
-                        </span>
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${record.status === 'Scheduled' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' : record.status === 'Pending HR' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : record.status === 'Pending Line Manager' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'}`}>{record.status}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         {record.type === 'schedule' && record.can_edit && (
                           <div className="flex gap-2">
-                            <button onClick={() => showInfo('Edit functionality coming soon')}
-                              className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1">
-                              <Edit className="w-3 h-3" />Edit
-                            </button>
-                            <button onClick={() => handleRegisterSchedule(record.id)}
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1">
-                              <Check className="w-3 h-3" />Register
-                            </button>
+                            <button onClick={() => showInfo('Edit functionality coming soon')} className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1"><Edit className="w-3 h-3" />Edit</button>
+                            <button onClick={() => handleRegisterSchedule(record.id)} className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"><Check className="w-3 h-3" />Register</button>
                           </div>
                         )}
                         {record.type === 'request' && <span className="text-almet-waterloo dark:text-almet-bali-hai text-xs">View Only</span>}
@@ -782,9 +788,7 @@ export default function VacationRequestsPage() {
                     </tr>
                   ))}
                   {myAllRecords.length === 0 && (
-                    <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">No records found</td>
-                    </tr>
+                    <tr><td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">No records found</td></tr>
                   )}
                 </tbody>
               </table>

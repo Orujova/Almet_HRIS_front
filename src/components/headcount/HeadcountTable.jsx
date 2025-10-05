@@ -312,7 +312,7 @@ const HeadcountTable = () => {
     setDefaultSortingApplied(false);
     clearSorting();
     setCurrentPage(1);
-    showInfo(`Color mode changed to ${newMode}`);
+    
   }, [currentColorMode, clearSorting, setCurrentPage, showInfo]);
 
   // ========================================

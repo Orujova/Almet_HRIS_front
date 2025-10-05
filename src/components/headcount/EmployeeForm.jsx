@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeForm.jsx - FIXED: Date handling and all errors
+// src/components/headcount/EmployeeForm.jsx - FIXED: Date handling and contract configs from API
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight, Save, X, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
@@ -77,7 +77,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         
         // Tags and Documents - FIXED: Enhanced tag handling
         tag_ids: employee.tags ? employee.tags.map(tag => tag.toString()) : [],
-current_tags: employee.tag_details || [],
+        current_tags: employee.tag_details || [],
         documents: employee.documents || [],
         profile_image: employee.profile_image || employee.profile_image_url || null,
         
@@ -116,7 +116,7 @@ current_tags: employee.tag_details || [],
       end_date: "",
       line_manager: "",
       notes: "",
-      status: "ONBOARDING",
+      status: "",
       is_visible_in_org_chart: true,
       tag_ids: [],
       current_tags: [],
@@ -135,7 +135,8 @@ current_tags: employee.tag_details || [],
     positionGroups: [],
     employeeTags: [],
     lineManagers: [],
-    gradingLevels: []
+    gradingLevels: [],
+    contractConfigs: [] // NEW: Contract configurations from API
   });
 
   // Loading states
@@ -148,6 +149,7 @@ current_tags: employee.tag_details || [],
     employeeTags: false,
     lineManagers: false,
     gradingLevels: false,
+    contractConfigs: false, // NEW: Contract configs loading state
     initialLoad: true
   });
 
@@ -414,6 +416,50 @@ current_tags: employee.tag_details || [],
     }
   }, [isEditMode, formData._grading_loaded]);
 
+  // NEW: Load contract configurations from API
+  const loadContractConfigs = useCallback(async () => {
+    setLoading(prev => ({ ...prev, contractConfigs: true }));
+    try {
+      const response = await apiService.get('/contract-configs/');
+      const data = response.data.results || response.data || [];
+      
+      setReferenceData(prev => ({
+        ...prev,
+        contractConfigs: data
+          .filter(config => config.is_active !== false)
+          .map(config => ({
+            id: config.id,
+            contract_type: config.contract_type,
+            display_name: config.display_name,
+            onboarding_days: config.onboarding_days || 0,
+            probation_days: config.probation_days || 0,
+            total_days_until_active: config.total_days_until_active || 0,
+            enable_auto_transitions: config.enable_auto_transitions,
+            transition_to_inactive_on_end: config.transition_to_inactive_on_end,
+            notify_days_before_end: config.notify_days_before_end || 0,
+            employee_count: config.employee_count || 0,
+            is_active: config.is_active
+          }))
+      }));
+    } catch (error) {
+      console.error('Failed to load contract configs:', error);
+      // Set fallback hardcoded options
+      setReferenceData(prev => ({
+        ...prev,
+        contractConfigs: [
+          { contract_type: "PERMANENT", display_name: "Permanent Contract", is_active: true },
+          { contract_type: "3_MONTHS", display_name: "3 Months Fixed", is_active: true },
+          { contract_type: "6_MONTHS", display_name: "6 Months Fixed", is_active: true },
+          { contract_type: "1_YEAR", display_name: "1 Year Fixed", is_active: true },
+          { contract_type: "2_YEARS", display_name: "2 Years Fixed", is_active: true },
+          { contract_type: "3_YEARS", display_name: "3 Years Fixed", is_active: true }
+        ]
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, contractConfigs: false }));
+    }
+  }, []);
+
   const loadLineManagers = useCallback(async (searchTerm = "") => {
     setLoading(prev => ({ ...prev, lineManagers: true }));
     try {
@@ -469,7 +515,8 @@ current_tags: employee.tag_details || [],
           loadJobFunctions(),
           loadPositionGroups(),
           loadEmployeeTags(),
-          loadLineManagers()
+          loadLineManagers(),
+          loadContractConfigs() // NEW: Load contract configs
         ]);
 
         if (isEditMode && employee && mounted) {
@@ -741,43 +788,41 @@ current_tags: employee.tag_details || [],
   }, []);
 
   // ========================================
-  // FORM SUBMISSION - COMPLETELY FIXED WITH PROPER DATE HANDLING
+  // FORM SUBMISSION - FIXED WITH PROPER DATE HANDLING
   // ========================================
 
-  // FIXED: Date validation and formatting function
-// Replace your formatDateForAPI function around line 600:
-const formatDateForAPI = (dateString) => {
-  if (!dateString) return null;
-  
-  try {
-    // If it's already in YYYY-MM-DD format, validate it's a real date
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-      const date = new Date(dateString + 'T00:00:00');
+  const formatDateForAPI = (dateString) => {
+    if (!dateString) return null;
+    
+    try {
+      // If it's already in YYYY-MM-DD format, validate it's a real date
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const date = new Date(dateString + 'T00:00:00');
+        if (isNaN(date.getTime())) {
+          console.warn(`Invalid date: ${dateString}`);
+          return null;
+        }
+        return dateString;
+      }
+      
+      // Parse and format other date formats
+      const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.warn(`Invalid date: ${dateString}`);
         return null;
       }
-      return dateString;
-    }
-    
-    // Parse and format other date formats
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      console.warn(`Invalid date: ${dateString}`);
+      
+      // Convert to YYYY-MM-DD format with timezone handling
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      
+      return `${year}-${month}-${day}`;
+    } catch (error) {
+      console.error(`Error formatting date ${dateString}:`, error);
       return null;
     }
-    
-    // Convert to YYYY-MM-DD format with timezone handling
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
-    return `${year}-${month}-${day}`;
-  } catch (error) {
-    console.error(`Error formatting date ${dateString}:`, error);
-    return null;
-  }
-};
+  };
 
   const handleSubmit = async () => {
     // Validate required steps
@@ -811,7 +856,6 @@ const formatDateForAPI = (dateString) => {
 
       // Job Information - Required fields  
       formDataObj.append('job_title', formData.job_title);
-     
       formDataObj.append('business_function', formData.business_function);
       formDataObj.append('department', formData.department);
       formDataObj.append('job_function', formData.job_function);
@@ -820,8 +864,7 @@ const formatDateForAPI = (dateString) => {
 
       // FIXED: Boolean field - convert to string as API expects
       const booleanValue = formData.is_visible_in_org_chart === true || formData.is_visible_in_org_chart === 'true';
-formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
-
+      formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
 
       // Optional fields with proper null/empty checks and date formatting
       if (formData.father_name) {
@@ -833,7 +876,6 @@ formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
       if (formData.phone) {
         formDataObj.append('phone', formData.phone);
       }
-    
       if (formData.gender) {
         formDataObj.append('gender', formData.gender);
       }
@@ -849,23 +891,24 @@ formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
       if (formData.line_manager) {
         formDataObj.append('line_manager', formData.line_manager);
       }
-   
-   // In your handleSubmit function, add validation before appending dates:
-const dateFields = [
-  'start_date', 
-  'date_of_birth', 
-  'contract_start_date', 
-  'end_date'
-];
 
-dateFields.forEach(field => {
-  if (formData[field]) {
-    const formattedDate = formatDateForAPI(formData[field]);
-    if (formattedDate) {
-      formDataObj.append(field, formattedDate);
-    }
-  }
-});
+      // Date fields with validation
+      const dateFields = [
+        'start_date', 
+        'date_of_birth', 
+        'contract_start_date', 
+        'end_date'
+      ];
+
+      dateFields.forEach(field => {
+        if (formData[field]) {
+          const formattedDate = formatDateForAPI(formData[field]);
+          if (formattedDate) {
+            formDataObj.append(field, formattedDate);
+          }
+        }
+      });
+
       if (formData.notes) {
         formDataObj.append('notes', formData.notes);
       }
@@ -875,10 +918,10 @@ dateFields.forEach(field => {
 
       // Tags - FIXED: Append each tag ID separately as API expects array
       if (formData.tag_ids && formData.tag_ids.length > 0) {
-  formData.tag_ids.forEach(tagId => {
-    formDataObj.append('tag_ids[]', tagId); // Note the [] suffix
-  });
-}
+        formData.tag_ids.forEach(tagId => {
+          formDataObj.append('tag_ids[]', tagId);
+        });
+      }
 
       // Profile image - FIXED: Handle file upload properly
       if (formData.profile_image && formData.profile_image instanceof File) {
@@ -887,7 +930,6 @@ dateFields.forEach(field => {
 
       // Documents - FIXED: Handle document uploads
       if (formData.documents && formData.documents.length > 0) {
-        // For now, just take the first document as API handles one at a time
         const doc = formData.documents[0];
         if (doc.file instanceof File) {
           formDataObj.append('document', doc.file);
@@ -981,6 +1023,7 @@ dateFields.forEach(field => {
     jobFunctions: referenceData.jobFunctions,
     positionGroups: referenceData.positionGroups,
     gradeOptions: referenceData.gradingLevels,
+    contractConfigs: referenceData.contractConfigs, // NEW: Pass contract configs
     loadingGradingLevels: loading.gradingLevels,
     
     lineManagerOptions: referenceData.lineManagers,
@@ -1096,7 +1139,7 @@ dateFields.forEach(field => {
           )}
 
           {/* Loading reference data */}
-          {(loading.businessFunctions || loading.jobFunctions || loading.positionGroups) && (
+          {(loading.businessFunctions || loading.jobFunctions || loading.positionGroups || loading.contractConfigs) && (
             <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
               <div className="flex items-center">
                 <Loader className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400 mr-2" />

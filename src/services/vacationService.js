@@ -2,16 +2,6 @@ import axios from 'axios';
 
 // Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-
-// Axios instance for vacation API
-const vacationApi = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 30000,
-});
-
 // Token management utility
 const TokenManager = {
   getAccessToken: () => {
@@ -34,6 +24,16 @@ const TokenManager = {
     }
   }
 };
+
+// Axios instance for vacation API
+const vacationApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  timeout: 30000,
+});
+
 
 // Request interceptor to add auth token
 vacationApi.interceptors.request.use(
@@ -130,13 +130,11 @@ export const VacationService = {
   },
 
 // vacationService.js-də
-searchEmployees: async (query) => {
+searchEmployees: async () => {
   try {
-    // Ümumi employee API-dan çəkmək üçün
-    const response = await api.get('/employees/', { 
+    const response = await vacationApi.get('/employees/', { 
       params: { 
-        search: query,
-        page_size: 20 
+        page_size: 100  // Daha çox employee üçün limiti artırın
       }
     });
     return response.data;
@@ -144,7 +142,31 @@ searchEmployees: async (query) => {
     throw error;
   }
 },
-
+ getCurrentUserEmail: () => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem("user_email");
+    }
+    return null;
+  },
+  
+  // Find employee by email
+  findEmployeeByEmail: async (email) => {
+    try {
+      const response = await vacationApi.get('/employees/', { 
+        params: { 
+          page_size: 100,
+          search: email // API-də email search dəstəklənirsə
+        }
+      });
+      // Email ilə uyğun employee tap
+      const employee = response.data.results?.find(emp => 
+        emp.email?.toLowerCase() === email?.toLowerCase()
+      );
+      return employee;
+    } catch (error) {
+      throw error;
+    }
+  },
   // === SCHEDULES ===
   
   // Create Schedule

@@ -19,7 +19,8 @@ const SearchableDropdown = ({
   portal = false,
   dropdownClassName = "",
   zIndex = "z-50",
-  disabled = false
+  disabled = false,
+  allowUncheck = true // Yeni özellik: seçimi kaldırmaya izin ver
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -108,6 +109,17 @@ const SearchableDropdown = ({
     };
   }, [isOpen, portal]);
 
+  const handleOptionClick = (optionValue) => {
+    // Eğer allowUncheck true ise ve aynı değere tıklanıyorsa, seçimi kaldır
+    if (allowUncheck && value === optionValue) {
+      onChange(null); // veya onChange('') veya onChange(undefined)
+    } else {
+      onChange(optionValue);
+    }
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
   const dropdownContent = isOpen && (
     <div 
       className={`${portal ? 'fixed' : 'absolute'} ${zIndex} w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-60 overflow-hidden ${dropdownClassName}`}
@@ -145,11 +157,7 @@ const SearchableDropdown = ({
           filteredOptions.map((option) => (
             <button
               key={option.id}
-              onClick={() => {
-                onChange(option.value);
-                setIsOpen(false);
-                setSearchTerm("");
-              }}
+              onClick={() => handleOptionClick(option.value)}
               className={`w-full px-3 py-2 text-left ${hoverBg} ${textPrimary} text-xs transition-colors duration-150 ${
                 value === option.value ? 'bg-almet-sapphire/10 text-almet-sapphire' : ''
               }`}
