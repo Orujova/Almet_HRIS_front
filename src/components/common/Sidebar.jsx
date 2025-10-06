@@ -138,13 +138,7 @@ const Sidebar = ({ collapsed = false }) => {
       icon: <Package className="w-4 h-4" />,
       path: "/settings/asset-mng",
       id: "asset-mng",
-    },
-     {
-      label: "Vacation Settings",
-      icon: <TicketsPlane className="w-4 h-4" />,
-      path: "/settings/vacation-settings",
-      id: "vacation-settings",
-    },
+    }
   ];
 
   return (

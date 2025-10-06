@@ -1,15 +1,17 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, Download, Check, Edit, Trash, Lock, Settings, X } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, Download, Check, Edit, Trash, Lock, Settings, X, FileText } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import { VacationService, VacationHelpers } from '@/services/vacationService';
+import { useRouter } from 'next/navigation';
 
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showInfo } = useToast();
+  const router = useRouter();
   
   const [activeTab, setActiveTab] = useState('request');
   const [activeSection, setActiveSection] = useState('immediate');
@@ -17,7 +19,6 @@ export default function VacationRequestsPage() {
   const [loading, setLoading] = useState(false);
   const [schedulesTab, setSchedulesTab] = useState('upcoming');
   
-  // Data states
   const [balances, setBalances] = useState(null);
   const [vacationTypes, setVacationTypes] = useState([]);
   const [hrRepresentatives, setHrRepresentatives] = useState([]);
@@ -27,7 +28,6 @@ export default function VacationRequestsPage() {
   const [employeeSearchResults, setEmployeeSearchResults] = useState([]);
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
   
-  // Settings state
   const [vacationSettings, setVacationSettings] = useState({
     allow_negative_balance: false,
     max_schedule_edits: 3,
@@ -35,21 +35,21 @@ export default function VacationRequestsPage() {
     notification_frequency: 2
   });
   
-  // Edit modal state
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [canExportAll, setCanExportAll] = useState(false);
-const [canExportTeam, setCanExportTeam] = useState(false);
+  const [canExportTeam, setCanExportTeam] = useState(false);
 
-useEffect(() => {
-  if (userPermissions.permissions) {
-    const hasExportAll = userPermissions.permissions.includes('vacation.request.export_all');
-    const hasExportTeam = userPermissions.permissions.includes('vacation.request.export_team');
-    
-    setCanExportAll(userPermissions.is_admin || hasExportAll);
-    setCanExportTeam(hasExportTeam);
-  }
-}, [userPermissions]);
+  useEffect(() => {
+    if (userPermissions.permissions) {
+      const hasExportAll = userPermissions.permissions.includes('vacation.request.export_all');
+      const hasExportTeam = userPermissions.permissions.includes('vacation.request.export_team');
+      
+      setCanExportAll(userPermissions.is_admin || hasExportAll);
+      setCanExportTeam(hasExportTeam);
+    }
+  }, [userPermissions]);
+
   const [formErrors, setFormErrors] = useState({
     start_date: '',
     end_date: ''
@@ -158,20 +158,13 @@ useEffect(() => {
   };
 
   const fetchPendingRequests = async () => {
-  try {
-    const data = await VacationService.getPendingRequests();
-    
-    // Əgər admin isə, bütün pending request-ləri göstər
-    if (userPermissions.is_admin) {
-      // Admin üçün həm LM həm də HR pending-ləri birləşdir
+    try {
+      const data = await VacationService.getPendingRequests();
       setPendingRequests(data);
-    } else {
-      setPendingRequests(data);
+    } catch (error) {
+      console.error('Pending requests fetch error:', error);
     }
-  } catch (error) {
-    console.error('Pending requests fetch error:', error);
-  }
-};
+  };
 
   const fetchMyAllRecords = async () => {
     try {
@@ -222,7 +215,7 @@ useEffect(() => {
     if (formData.end_date && selectedDate > formData.end_date) {
       setFormErrors(prev => ({
         ...prev,
-        end_date: 'End date must be greater than or equal to start date'
+        end_date: 'End date must be after start date'
       }));
     } else {
       setFormErrors(prev => ({ ...prev, end_date: '' }));
@@ -237,7 +230,7 @@ useEffect(() => {
     if (formData.start_date && selectedDate < formData.start_date) {
       setFormErrors(prev => ({
         ...prev,
-        end_date: 'End date must be greater than or equal to start date'
+        end_date: 'End date must be after start date'
       }));
     } else {
       setFormErrors(prev => ({ ...prev, end_date: '' }));
@@ -331,101 +324,96 @@ useEffect(() => {
     loadCurrentUserData();
   }, [requester, employeeSearchResults]);
 
+  const handleExportAllRecords = async () => {
+    try {
+      const blob = await VacationService.exportAllVacationRecords();
+      const filename = canExportAll 
+        ? 'all_vacation_records.xlsx' 
+        : 'team_vacation_records.xlsx';
+      VacationHelpers.downloadBlobFile(blob, filename);
+      showSuccess('Export completed successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      showError('Export failed');
+    }
+  };
 
-const handleExportAllRecords = async () => {
-  try {
-    const blob = await VacationService.exportAllVacationRecords();
-    const filename = canExportAll 
-      ? 'all_vacation_records.xlsx' 
-      : 'team_vacation_records.xlsx';
-    VacationHelpers.downloadBlobFile(blob, filename);
-    showSuccess('Export completed successfully');
-  } catch (error) {
-    console.error('Export error:', error);
-    showError('Export failed');
-  }
-};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (formErrors.start_date || formErrors.end_date) {
-    showError('Please fix the date errors before submitting');
-    return;
-  }
-
-  // Check balance vs settings
-  if (!vacationSettings.allow_negative_balance && balances) {
-    if (formData.numberOfDays > balances.remaining_balance) {
-      showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining. Negative balance is not allowed.`);
+    if (formErrors.start_date || formErrors.end_date) {
+      showError('Please fix the date errors before submitting');
       return;
     }
-  }
 
-  setLoading(true);
-  try {
-    let requestData = {
-      requester_type: formData.requester_type,
-      vacation_type_id: parseInt(formData.vacation_type_id),
-      start_date: formData.start_date,
-      end_date: formData.end_date,
-      comment: formData.comment
-    };
+    if (!vacationSettings.allow_negative_balance && balances) {
+      if (formData.numberOfDays > balances.remaining_balance) {
+        showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
+        return;
+      }
+    }
 
-    if (formData.requester_type === 'for_my_employee') {
-      if (formData.employee_id) {
-        requestData.employee_id = formData.employee_id;
+    setLoading(true);
+    try {
+      let requestData = {
+        requester_type: formData.requester_type,
+        vacation_type_id: parseInt(formData.vacation_type_id),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        comment: formData.comment
+      };
+
+      if (formData.requester_type === 'for_my_employee') {
+        if (formData.employee_id) {
+          requestData.employee_id = formData.employee_id;
+        } else {
+          requestData.employee_manual = {
+            name: formData.employeeName,
+            phone: formData.phoneNumber,
+            department: formData.department,
+            business_function: formData.businessFunction,
+            unit: formData.unit,
+            job_function: formData.jobFunction
+          };
+        }
+      }
+
+      let response;
+      
+      if (activeSection === 'immediate') {
+        if (formData.hr_representative_id) {
+          requestData.hr_representative_id = formData.hr_representative_id;
+        }
+        response = await VacationService.createImmediateRequest(requestData);
+        showSuccess('Request submitted successfully');
       } else {
-        requestData.employee_manual = {
-          name: formData.employeeName,
-          phone: formData.phoneNumber,
-          department: formData.department,
-          business_function: formData.businessFunction,
-          unit: formData.unit,
-          job_function: formData.jobFunction
-        };
+        response = await VacationService.createSchedule(requestData);
+        showSuccess('Schedule saved successfully');
+        fetchScheduleTabs();
       }
-    }
 
-    let response;
-    
-    if (activeSection === 'immediate') {
-      if (formData.hr_representative_id) {
-        requestData.hr_representative_id = formData.hr_representative_id;
+      if (response.balance) {
+        setBalances(response.balance);
+      } else {
+        await fetchDashboard();
       }
-      response = await VacationService.createImmediateRequest(requestData);
-      showSuccess('Request submitted successfully for approval');
-    } else {
-      response = await VacationService.createSchedule(requestData);
-      showSuccess('Schedule saved successfully - no approval needed');
-      fetchScheduleTabs();
-    }
 
-    // ✅ UPDATE BALANCE from response
-    if (response.balance) {
-      setBalances(response.balance);
-    } else {
-      // Fallback: manual refresh
-      await fetchDashboard();
+      setFormData(prev => ({ 
+        ...prev, 
+        start_date: '', 
+        end_date: '', 
+        dateOfReturn: '', 
+        numberOfDays: 0, 
+        comment: '' 
+      }));
+    } catch (error) {
+      console.error('Submit error:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
+      showError(errorMsg);
+    } finally {
+      setLoading(false);
     }
-
-    // Clear form
-    setFormData(prev => ({ 
-      ...prev, 
-      start_date: '', 
-      end_date: '', 
-      dateOfReturn: '', 
-      numberOfDays: 0, 
-      comment: '' 
-    }));
-  } catch (error) {
-    console.error('Submit error:', error);
-    const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit request';
-    showError(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleEditSchedule = (schedule) => {
     setEditingSchedule({
@@ -465,7 +453,7 @@ const handleSubmit = async (e) => {
       fetchMyAllRecords();
     } catch (error) {
       console.error('Edit error:', error);
-      showError(error.response?.data?.error || 'Failed to update schedule');
+      showError(error.response?.data?.error || 'Failed to update');
     } finally {
       setLoading(false);
     }
@@ -482,8 +470,7 @@ const handleSubmit = async (e) => {
       fetchPendingRequests();
     } catch (error) {
       console.error('Approval error:', error);
-      const errorMsg = error.response?.data?.error || `Failed to ${action} request`;
-      showError(errorMsg);
+      showError(error.response?.data?.error || `Failed to ${action}`);
     }
   };
 
@@ -518,7 +505,7 @@ const handleSubmit = async (e) => {
     try {
       const blob = await VacationService.exportMyVacations();
       VacationHelpers.downloadBlobFile(blob, 'my_vacations.xlsx');
-      showSuccess('Export completed successfully');
+      showSuccess('Export completed');
     } catch (error) {
       console.error('Export error:', error);
       showError('Export failed');
@@ -528,8 +515,8 @@ const handleSubmit = async (e) => {
   const handleExportSchedules = async () => {
     try {
       const blob = await VacationService.exportAllVacationRecords();
-      VacationHelpers.downloadBlobFile(blob, 'vacation_schedules.xlsx');
-      showSuccess('Export completed successfully');
+      VacationHelpers.downloadBlobFile(blob, 'schedules.xlsx');
+      showSuccess('Export completed');
     } catch (error) {
       console.error('Export error:', error);
       showError('Export failed');
@@ -542,14 +529,17 @@ const handleSubmit = async (e) => {
     return true;
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-almet-mystic dark:border-almet-comet hover:shadow-lg transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">{title}</p>
-          <p className={`text-2xl font-bold mt-1 ${color}`}>{value || 0}</p>
+  const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30 p-3 hover:border-almet-sapphire/50 dark:hover:border-almet-astral/50 transition-all duration-200">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">{title}</p>
+          <p className={`text-xl font-semibold ${color}`}>{value || 0}</p>
+          {subtitle && <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-0.5">{subtitle}</p>}
         </div>
-        <Icon className={`w-8 h-8 ${color}`} />
+        <div className={`p-2 rounded-lg ${color.replace('text-', 'bg-')}/10`}>
+          <Icon className={`w-4 h-4 ${color}`} />
+        </div>
       </div>
     </div>
   );
@@ -558,7 +548,7 @@ const handleSubmit = async (e) => {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-almet-sapphire"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-3 border-almet-sapphire border-t-transparent"></div>
         </div>
       </DashboardLayout>
     );
@@ -566,123 +556,183 @@ const handleSubmit = async (e) => {
 
   return (
     <DashboardLayout>
-      <div className="p-6">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
+      <div className="p-4 lg:p-6 max-w-[1400px] mx-auto">
+        
+        <div className="mb-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold text-almet-cloud-burst dark:text-white mb-2">Vacation Management</h1>
-            <p className="text-almet-waterloo dark:text-almet-bali-hai">Manage your vacation requests and schedules</p>
+            <h1 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">Vacation Management</h1>
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Manage requests and schedules</p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
             {userPermissions.is_admin && (
-              <div className="flex items-center gap-2 bg-purple-100 dark:bg-purple-900 px-4 py-2 rounded-lg">
-                <Lock className="w-4 h-4 text-purple-600 dark:text-purple-300" />
-                <span className="text-sm font-medium text-purple-600 dark:text-purple-300">Admin Access</span>
-              </div>
+              <>
+                <button
+                  onClick={() => router.push('/requests/vacation/vacation-settings')}
+                  className="flex items-center gap-1.5 bg-almet-sapphire hover:bg-almet-cloud-burst text-white px-3 py-1.5 rounded-md transition-all shadow-sm"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  <span className="text-xs font-medium">Settings</span>
+                </button>
+                
+                <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 px-2.5 py-1.5 rounded-md">
+                  <Lock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Admin Access</span>
+                </div>
+              </>
             )}
             
-            <div className="bg-blue-50 dark:bg-blue-900/20 px-4 py-2 rounded-lg">
-              <div className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-300">
+            <div className="bg-almet-mystic dark:bg-almet-comet/20 border border-almet-bali-hai/30 dark:border-almet-comet px-2.5 py-1.5 rounded-md">
+              <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
                 <Settings className="w-3 h-3" />
-                <span>Edits: {vacationSettings.max_schedule_edits}x</span>
-                <span className="mx-1">•</span>
-                <span>Negative: {vacationSettings.allow_negative_balance ? 'Yes' : 'No'}</span>
+                <span>Max Edits: {vacationSettings.max_schedule_edits}</span>
+                <span className="mx-0.5">•</span>
+                <span>{vacationSettings.allow_negative_balance ? 'Negative OK' : 'No Negative'}</span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-almet-bali-hai dark:border-almet-comet">
+        <div className="mb-5 border-b border-almet-mystic dark:border-almet-comet">
           <div className="flex space-x-8">
-            {['request', 'approval', 'all'].map(tab => (
+            {[
+              { key: 'request', label: 'Request', icon: FileText },
+              { key: 'approval', label: 'Approval', icon: CheckCircle },
+              { key: 'all', label: 'My Records', icon: Calendar }
+            ].map(tab => (
               <button 
-                key={tab} 
-                onClick={() => setActiveTab(tab)} 
-                className={`pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab 
+                key={tab.key} 
+                onClick={() => setActiveTab(tab.key)} 
+                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === tab.key 
                     ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' 
-                    : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-almet-mystic'
+                    : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-white'
                 }`}
               >
-                {tab === 'request' ? 'Request Submission' : tab === 'approval' ? 'Approval' : 'My All Requests & Schedules'}
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
               </button>
             ))}
           </div>
         </div>
 
         {activeTab === 'request' && (
-          <>
-            {/* Balance Cards */}
+          <div className="space-y-5">
+            
             {balances && (
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-                <StatCard title="Total Balance" value={balances.total_balance} icon={Calendar} color="text-almet-sapphire" />
-                <StatCard title="Yearly Balance" value={balances.yearly_balance} icon={Calendar} color="text-almet-astral" />
-                <StatCard title="Used Days" value={balances.used_days} icon={CheckCircle} color="text-orange-600" />
-                <StatCard title="Remaining Balance" value={balances.remaining_balance} icon={Clock} color="text-almet-steel-blue" />
-                <StatCard title="Scheduled Days" value={balances.scheduled_days} icon={Users} color="text-almet-san-juan" />
-                <StatCard title="Should be Planned" value={balances.should_be_planned} icon={AlertCircle} color="text-red-600" />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <StatCard 
+                  title="Total Balance" 
+                  value={balances.total_balance} 
+                  icon={Calendar} 
+                  color="text-almet-sapphire" 
+                />
+                <StatCard 
+                  title="Yearly Balance" 
+                  value={balances.yearly_balance} 
+                  icon={Calendar} 
+                  color="text-almet-astral" 
+                />
+                <StatCard 
+                  title="Used Days" 
+                  value={balances.used_days} 
+                  icon={CheckCircle} 
+                  color="text-orange-600" 
+                />
+                <StatCard 
+                  title="Remaining" 
+                  value={balances.remaining_balance} 
+                  icon={Clock} 
+                  color="text-green-600" 
+                  subtitle="Available now"
+                />
+                <StatCard 
+                  title="Scheduled" 
+                  value={balances.scheduled_days} 
+                  icon={Users} 
+                  color="text-almet-steel-blue" 
+                  subtitle="Future plans"
+                />
+                <StatCard 
+                  title="To Plan" 
+                  value={balances.should_be_planned} 
+                  icon={AlertCircle} 
+                  color="text-red-600" 
+                  subtitle="Must schedule"
+                />
               </div>
             )}
 
-            {/* Balance Warning */}
             {!vacationSettings.allow_negative_balance && balances && balances.remaining_balance < 5 && (
-              <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+              <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-600 rounded-r-lg p-3">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
                   <div>
-                    <h3 className="font-medium text-yellow-800 dark:text-yellow-200">Low Balance Warning</h3>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                      You have only {balances.remaining_balance} days remaining. 
-                      {balances.remaining_balance <= 0 && ' You cannot create new requests as negative balance is not allowed.'}
+                    <h3 className="text-sm font-semibold text-amber-900 dark:text-amber-200">Low Balance Warning</h3>
+                    <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                      You have only <strong>{balances.remaining_balance} days</strong> remaining. 
+                      {balances.remaining_balance <= 0 && ' Negative balance is not allowed.'}
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Section Buttons */}
-            <div className="mb-6 flex space-x-4">
-              {['immediate', 'scheduling'].map(section => (
-                <button 
-                  key={section} 
-                  onClick={() => setActiveSection(section)} 
-                  className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                    activeSection === section 
-                      ? 'bg-almet-sapphire text-white hover:bg-almet-cloud-burst' 
-                      : 'bg-white text-almet-cloud-burst border border-almet-bali-hai hover:bg-almet-mystic dark:bg-gray-700 dark:text-almet-mystic dark:border-almet-comet'
-                  }`}
-                >
-                  {section === 'immediate' ? 'Request Immediately (Requires Approval)' : 'Scheduling (No Approval Needed)'}
-                </button>
-              ))}
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setActiveSection('immediate')}
+                className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                  activeSection === 'immediate' 
+                    ? 'bg-almet-sapphire text-white shadow-md' 
+                    : 'bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white border border-almet-mystic dark:border-almet-comet hover:border-almet-sapphire dark:hover:border-almet-astral'
+                }`}
+              >
+                <CheckCircle className="w-4 h-4" />
+                Request (Approval Required)
+              </button>
+              <button 
+                onClick={() => setActiveSection('scheduling')}
+                className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
+                  activeSection === 'scheduling' 
+                    ? 'bg-almet-sapphire text-white shadow-md' 
+                    : 'bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white border border-almet-mystic dark:border-almet-comet hover:border-almet-sapphire dark:hover:border-almet-astral'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                Schedule (No Approval)
+              </button>
             </div>
 
-            {/* Form */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">
-                  {activeSection === 'immediate' ? 'Request Immediately' : 'Schedule Vacation'}
-                </h2>
-                {activeSection === 'scheduling' && (
-                  <div className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded-full text-sm font-medium">
-                    No Approval Required
-                  </div>
-                )}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
+                    {activeSection === 'immediate' ? 'Submit Request' : 'Create Schedule'}
+                  </h2>
+                  {activeSection === 'scheduling' && (
+                    <span className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                      <Check className="w-3 h-3" />
+                      No Approval
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <form onSubmit={handleSubmit}>
-                {/* Employee Information */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Employee Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-5">
+                <div className="grid lg:grid-cols-2 gap-6">
+                  
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Users className="w-4 h-4 text-almet-sapphire" />
+                      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Employee Information</h3>
+                    </div>
+                    
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Requester</label>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Requester</label>
                       <select 
                         value={requester} 
                         onChange={(e) => setRequester(e.target.value)} 
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white transition-all"
                       >
                         <option value="for_me">For Me</option>
                         <option value="for_my_employee">For My Employee</option>
@@ -691,10 +741,10 @@ const handleSubmit = async (e) => {
 
                     {requester === 'for_my_employee' && (
                       <div>
-                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Search Employee</label>
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Search Employee</label>
                         <SearchableDropdown
                           options={employeeSearchResults.map(emp => ({ 
-                            value: emp.id, 
+                            value:emp.id, 
                             label: `${emp.name} (${emp.employee_id})`, 
                             ...emp 
                           }))}
@@ -729,267 +779,282 @@ const handleSubmit = async (e) => {
                           }}
                           placeholder="Select employee"
                           allowUncheck={true}
-                          searchPlaceholder="Search employee..."
+                          searchPlaceholder="Search..."
                           darkMode={darkMode}
                         />
                       </div>
                     )}
 
-                    {['employeeName', 'businessFunction', 'department', 'unit', 'jobFunction', 'phoneNumber'].map(field => (
+                    <div className="grid grid-cols-2 gap-3">
+                      {['employeeName', 'phoneNumber'].map(field => (
+                        <div key={field}>
+                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                            {field === 'employeeName' ? 'Name' : 'Phone'}
+                          </label>
+                          <input 
+                            type={field === 'phoneNumber' ? 'tel' : 'text'} 
+                            value={formData[field]} 
+                            onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} 
+                            disabled={requester === 'for_me'} 
+                            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {['businessFunction', 'department', 'unit', 'jobFunction'].map(field => (
                       <div key={field}>
-                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                          {field === 'employeeName' ? 'Employee Name' : 
-                           field === 'businessFunction' ? 'Business Function' : 
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                          {field === 'businessFunction' ? 'Business Function' : 
                            field === 'department' ? 'Department' : 
-                           field === 'unit' ? 'Unit' : 
-                           field === 'jobFunction' ? 'Job Function' : 'Phone Number'}
+                           field === 'unit' ? 'Unit' : 'Job Function'}
                         </label>
                         <input 
-                          type={field === 'phoneNumber' ? 'tel' : 'text'} 
+                          type="text" 
                           value={formData[field]} 
                           onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} 
                           disabled={requester === 'for_me'} 
-                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600" 
+                          className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
                         />
                       </div>
                     ))}
                   </div>
-                </div>
 
-                {/* Leave Request Information */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Leave Request Information</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="w-4 h-4 text-almet-sapphire" />
+                      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Leave Information</h3>
+                    </div>
+
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Leave Type</label>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Leave Type</label>
                       <SearchableDropdown 
                         options={vacationTypes.map(type => ({ value: type.id, label: type.name }))} 
                         value={formData.vacation_type_id} 
                         onChange={(value) => setFormData(prev => ({...prev, vacation_type_id: value}))} 
-                        placeholder="Select leave type" 
+                        placeholder="Select type" 
                         darkMode={darkMode} 
                       />
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Start Date</label>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Start Date</label>
                       <input 
                         type="date" 
                         value={formData.start_date} 
                         onChange={handleStartDateChange}
                         min={new Date().toISOString().split('T')[0]}
-                        className={`w-full px-3 py-2 border ${
-                          formErrors.end_date 
+                        className={`w-full px-3 py-2.5 text-sm border outline-0 rounded-lg focus:ring-1 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all ${
+                          formErrors.start_date 
                             ? 'border-red-500 focus:ring-red-500' 
-                            : 'border-almet-bali-hai dark:border-almet-comet focus:ring-almet-sapphire'
-                        } rounded-lg focus:ring-2 dark:bg-gray-700 dark:text-white`}
+                            : 'border-almet-bali-hai/40 dark:border-almet-comet focus:ring-almet-sapphire'
+                        }`}
                         required 
                       />
-                      {formErrors.end_date && (
-                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                          {formErrors.end_date}
-                        </p>
+                      {formErrors.start_date && (
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.start_date}</p>
                       )}
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">End Date</label>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">End Date</label>
                       <input 
                         type="date" 
                         value={formData.end_date} 
                         onChange={handleEndDateChange}
                         min={formData.start_date || new Date().toISOString().split('T')[0]}
-                        className={`w-full px-3 py-2 border ${
+                        className={`w-full px-3 py-2.5 text-sm outline-0 border rounded-lg focus:ring-1 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all ${
                           formErrors.end_date 
                             ? 'border-red-500 focus:ring-red-500' 
-                            : 'border-almet-bali-hai dark:border-almet-comet focus:ring-almet-sapphire'
-                        } rounded-lg focus:ring-2 dark:bg-gray-700 dark:text-white`}
+                            : 'border-almet-bali-hai/40 dark:border-almet-comet focus:ring-almet-sapphire'
+                        }`}
                         required 
                       />
                       {formErrors.end_date && (
-                        <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                          {formErrors.end_date}
-                        </p>
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{formErrors.end_date}</p>
                       )}
                     </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date of Return</label>
-                      <input 
-                        type="date" 
-                        value={formData.dateOfReturn} 
-                        disabled 
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" 
-                      />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Return Date</label>
+                        <input 
+                          type="date" 
+                          value={formData.dateOfReturn} 
+                          disabled 
+                          className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5"> Number of days</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            value={formData.numberOfDays} 
+                            disabled 
+                            className="w-full px-3 py-2.5 text-sm outline-0 border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white font-semibold" 
+                          />
+                          <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-almet-waterloo" />
+                        </div>
+                      </div>
                     </div>
                     
                     <div>
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Number of Days</label>
-                      <input 
-                        type="number" 
-                        value={formData.numberOfDays} 
-                        disabled 
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg dark:text-white bg-almet-mystic dark:bg-gray-600" 
-                      />
-                    </div>
-                    
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Comment (Optional)</label>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Comment (Optional)</label>
                       <textarea 
                         value={formData.comment} 
                         onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} 
                         rows={3} 
-                        className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white" 
+                        placeholder="Add any additional notes..."
+                        className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none" 
                       />
                     </div>
+
+                    {activeSection === 'immediate' && (
+                      <>
+                        <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 pt-4 mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle className="w-4 h-4 text-almet-sapphire" />
+                            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Approval Required</h3>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Line Manager</label>
+                          <input 
+                            type="text" 
+                            value={formData.line_manager} 
+                            onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))} 
+                            disabled={requester === 'for_me'} 
+                            placeholder="Line Manager Name" 
+                            className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">HR Representative</label>
+                          <SearchableDropdown 
+                            options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))} 
+                            value={formData.hr_representative_id} 
+                            onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))} 
+                            placeholder="Select HR" 
+                            darkMode={darkMode} 
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
-                {/* Approval Section (only for immediate) */}
-                {activeSection === 'immediate' && (
-                  <div className="mb-6">
-                    <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-4">Approval</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Line Manager</label>
-                        <input 
-                          type="text" 
-                          value={formData.line_manager} 
-                          onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))} 
-                          disabled={requester === 'for_me'} 
-                          placeholder="Line Manager Name" 
-                          className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic dark:disabled:bg-gray-600" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">HR Representative</label>
-                        <SearchableDropdown 
-                          options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))} 
-                          value={formData.hr_representative_id} 
-                          onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))} 
-                          placeholder="Select HR representative" 
-                          darkMode={darkMode} 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Form Actions */}
-                <div className="flex justify-end space-x-4">
+                <div className="flex justify-end gap-3 mt-6 pt-5 border-t border-almet-mystic/30 dark:border-almet-comet/30">
                   <button 
                     type="button" 
                     onClick={() => setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }))} 
-                    className="px-6 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors"
+                    className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
                   >
                     Clear
                   </button>
                   <button 
-                    type="submit" 
+                    type="button"
+                    onClick={handleSubmit}
                     disabled={loading || !formData.start_date || !formData.end_date || !formData.vacation_type_id} 
-                    className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                   >
                     {loading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    ) : activeSection === 'immediate' ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        Submit for Approval
-                      </>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
                     ) : (
                       <>
-                        <Plus className="w-4 h-4" />
-                        Save Schedule
+                        <CheckCircle className="w-4 h-4" />
+                        {activeSection === 'immediate' ? 'Submit Request' : 'Save Schedule'}
                       </>
                     )}
                   </button>
                 </div>
-              </form>
+              </div>
 
-              {/* Schedule Tabs (only for scheduling section) */}
               {activeSection === 'scheduling' && (
-                <div className="mt-8 pt-8 border-t border-almet-bali-hai dark:border-almet-comet">
+                <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-5 bg-almet-mystic/10 dark:bg-gray-900/20">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex space-x-8 border-b border-almet-bali-hai dark:border-almet-comet">
+                    <div className="flex space-x-6">
                       {['upcoming', 'peers', 'all'].map(tab => (
                         <button 
                           key={tab} 
                           onClick={() => setSchedulesTab(tab)} 
-                          className={`pb-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                          className={`pb-2 px-1 border-b-2 font-medium text-xs transition-all ${
                             schedulesTab === tab 
                               ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' 
                               : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai'
                           }`}
                         >
-                          {tab === 'upcoming' ? 'My Upcoming Schedules' : tab === 'peers' ? 'My Peers and Team Schedule' : 'All Schedules'}
+                          {tab === 'upcoming' ? 'My Upcoming' : tab === 'peers' ? 'Team Schedule' : 'All Schedules'}
                         </button>
                       ))}
                     </div>
                     <button 
                       onClick={handleExportSchedules} 
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                      className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
                     >
-                      <Download className="w-4 h-4" />
-                      Export Schedules
+                      <Download className="w-3 h-3" />
+                      Export
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-almet-bali-hai dark:divide-almet-comet">
-                      <thead className="bg-almet-mystic dark:bg-gray-700">
+                  <div className="overflow-x-auto rounded-lg border border-almet-mystic/30 dark:border-almet-comet">
+                    <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+                      <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
                         <tr>
-                          {['Employee Name', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Actions'].map(header => (
-                            <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                              {header}
+                          {['Employee', 'Type', 'Start', 'End', 'Days', 'Status', 'Actions'].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                              {h}
                             </th>
                           ))}
                         </tr>
                       </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-bali-hai dark:divide-almet-comet">
+                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                         {scheduleTabs[schedulesTab]?.map(schedule => (
-                          <tr key={schedule.id}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.employee_name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.vacation_type_name}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.start_date}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.end_date}</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{schedule.number_of_days}</td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          <tr key={schedule.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
+                            <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{schedule.employee_name}</td>
+                            <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{schedule.vacation_type_name}</td>
+                            <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{schedule.start_date}</td>
+                            <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{schedule.end_date}</td>
+                            <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{schedule.number_of_days}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
                                 schedule.status === 'SCHEDULED' 
-                                  ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' 
-                                  : 'bg-gray-100 text-almet-waterloo dark:bg-gray-700 dark:text-almet-bali-hai'
+                                  ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' 
+                                  : 'bg-gray-50 text-almet-waterloo dark:bg-gray-700 dark:text-almet-bali-hai'
                               }`}>
                                 {schedule.status_display}
                               </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <td className="px-4 py-3 text-xs">
                               {canEditSchedule(schedule) ? (
                                 <div className="flex gap-2">
                                   <button 
                                     onClick={() => handleEditSchedule(schedule)} 
-                                    className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1"
+                                    className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
                                   >
                                     <Edit className="w-3 h-3" />
                                     Edit ({schedule.edit_count}/{vacationSettings.max_schedule_edits})
                                   </button>
                                   <button 
                                     onClick={() => handleDeleteSchedule(schedule.id)} 
-                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 flex items-center gap-1"
+                                    className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1"
                                   >
                                     <Trash className="w-3 h-3" />
-                                    Delete
                                   </button>
                                   <button 
                                     onClick={() => handleRegisterSchedule(schedule.id)} 
-                                    className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                                    className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
                                   >
                                     <Check className="w-3 h-3" />
                                     Register
                                   </button>
                                 </div>
                               ) : (
-                                <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                                  {schedule.status === 'SCHEDULED' ? 'Max edits reached' : 'Cannot edit'}
+                                <span className="text-almet-waterloo/50 dark:text-almet-bali-hai/50 text-xs">
+                                  {schedule.status === 'SCHEDULED' ? 'Max edits reached' : 'N/A'}
                                 </span>
                               )}
                             </td>
@@ -997,7 +1062,7 @@ const handleSubmit = async (e) => {
                         ))}
                         {scheduleTabs[schedulesTab]?.length === 0 && (
                           <tr>
-                            <td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">
+                            <td colSpan="7" className="px-4 py-8 text-center text-sm text-almet-waterloo dark:text-almet-bali-hai">
                               No schedules found
                             </td>
                           </tr>
@@ -1008,245 +1073,233 @@ const handleSubmit = async (e) => {
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
 
-       {activeTab === 'approval' && (
-  <div className="space-y-6">
-    {/* Admin warning banner */}
-    {userPermissions.is_admin && (
-      <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Lock className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-purple-800 dark:text-purple-200">Admin Mode Active</h3>
-            <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-              You can approve/reject requests as both Line Manager and HR representative.
-            </p>
-          </div>
-        </div>
-      </div>
-    )}
-
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
-        <span className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 px-3 py-1 rounded-full text-sm font-medium">
-          {(pendingRequests.line_manager_requests?.length || 0) + (pendingRequests.hr_requests?.length || 0)} Pending
-        </span>
-      </div>
-      
-      <div className="space-y-4">
-        {/* Line Manager Requests */}
-        {pendingRequests.line_manager_requests?.length > 0 && (
-          <>
-            <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-3">
-              Line Manager Approvals
-              {userPermissions.is_admin && (
-                <span className="text-xs ml-2 text-purple-600 dark:text-purple-400">(Admin can approve)</span>
-              )}
-            </h3>
-            {pendingRequests.line_manager_requests?.map(request => (
-              <div key={request.id} className="border border-almet-bali-hai dark:border-almet-comet rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-almet-cloud-burst dark:text-white">{request.employee_name}</h3>
-                      {userPermissions.is_admin && (
-                        <span className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded text-purple-600 dark:text-purple-300">
-                          Admin Override
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      {request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)
+        {activeTab === 'approval' && (
+          <div className="space-y-4">
+            {userPermissions.is_admin && (
+              <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 dark:border-purple-600 rounded-r-lg p-4">
+                <div className="flex items-start gap-3">
+                  <Lock className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-200">Admin Mode Active</h3>
+                    <p className="text-xs text-purple-800 dark:text-purple-300 mt-1">
+                      You can approve/reject requests as both Line Manager and HR representative.
                     </p>
-                    <p className="text-xs text-almet-comet dark:text-almet-bali-hai mt-1">Status: {request.status_display}</p>
-                    {request.comment && (
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Comment: {request.comment}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handleApproveReject(request.id, 'approve', 'Approved by ' + (userPermissions.is_admin ? 'Admin (as Line Manager)' : 'Line Manager'))} 
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Approve
-                    </button>
-                    <button 
-                      onClick={() => { 
-                        const reason = prompt('Please provide a reason for rejection:'); 
-                        if (reason) handleApproveReject(request.id, 'reject', '', reason); 
-                      }} 
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject
-                    </button>
                   </div>
                 </div>
               </div>
-            ))}
-          </>
-        )}
+            )}
 
-        {/* HR Requests */}
-        {pendingRequests.hr_requests?.length > 0 && (
-          <>
-            <h3 className="text-lg font-medium text-almet-cloud-burst dark:text-white mb-3 mt-6">
-              HR Approvals
-              {userPermissions.is_admin && (
-                <span className="text-xs ml-2 text-purple-600 dark:text-purple-400">(Admin can approve)</span>
-              )}
-            </h3>
-            {pendingRequests.hr_requests?.map(request => (
-              <div key={request.id} className="border border-almet-bali-hai dark:border-almet-comet rounded-lg p-4 bg-blue-50 dark:bg-blue-900/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-almet-cloud-burst dark:text-white">{request.employee_name}</h3>
-                      <span className="text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">HR Review</span>
-                      {userPermissions.is_admin && (
-                        <span className="text-xs bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded text-purple-600 dark:text-purple-300">
-                          Admin Override
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      {request.vacation_type_name} • {request.start_date} to {request.end_date} ({request.number_of_days} days)
-                    </p>
-                    <p className="text-xs text-almet-comet dark:text-almet-bali-hai mt-1">Status: {request.status_display}</p>
-                    {request.comment && (
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Comment: {request.comment}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handleApproveReject(request.id, 'approve', 'Approved by ' + (userPermissions.is_admin ? 'Admin (as HR)' : 'HR'))} 
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      Approve
-                    </button>
-                    <button 
-                      onClick={() => { 
-                        const reason = prompt('Please provide a reason for rejection:'); 
-                        if (reason) handleApproveReject(request.id, 'reject', '', reason); 
-                      }} 
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-1"
-                    >
-                      <XCircle className="w-4 h-4" />
-                      Reject
-                    </button>
-                  </div>
-                </div>
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
+                <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
+                <span className="bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1 rounded-full text-xs font-semibold">
+                  {(pendingRequests.line_manager_requests?.length || 0) + (pendingRequests.hr_requests?.length || 0)} Pending
+                </span>
               </div>
-            ))}
-          </>
-        )}
+              
+              <div className="p-5 space-y-5">
+                {pendingRequests.line_manager_requests?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-almet-sapphire" />
+                      Line Manager Approvals
+                    </h3>
+                    <div className="space-y-3">
+                      {pendingRequests.line_manager_requests?.map(request => (
+                        <div key={request.id} className="border border-almet-mystic/40 dark:border-almet-comet rounded-lg p-4 hover:border-almet-sapphire/50 dark:hover:border-almet-astral/50 transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
+                              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                                {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
+                              </p>
+                              {request.comment && (
+                                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleApproveReject(request.id, 'approve', 'Approved')} 
+                                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Approve
+                              </button>
+                              <button 
+                                onClick={() => { 
+                                  const reason = prompt('Rejection reason:'); 
+                                  if (reason) handleApproveReject(request.id, 'reject', '', reason); 
+                                }} 
+                                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-        {(pendingRequests.line_manager_requests?.length === 0 && pendingRequests.hr_requests?.length === 0) && (
-          <div className="text-center py-8">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <p className="text-almet-waterloo dark:text-almet-bali-hai">No pending approval requests</p>
+                {pendingRequests.hr_requests?.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-almet-astral" />
+                      HR Approvals
+                    </h3>
+                    <div className="space-y-3">
+                      {pendingRequests.hr_requests?.map(request => (
+                        <div key={request.id} className="border border-blue-200/60 dark:border-blue-800/40 rounded-lg p-4 bg-blue-50/30 dark:bg-blue-900/10 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
+                                <span className="text-xs bg-blue-100 dark:bg-blue-800/50 px-2 py-0.5 rounded font-medium text-blue-700 dark:text-blue-300">HR Review</span>
+                              </div>
+                              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                                {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
+                              </p>
+                              {request.comment && (
+                                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleApproveReject(request.id, 'approve', 'Approved by HR')} 
+                                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Approve
+                              </button>
+                              <button 
+                                onClick={() => { 
+                                  const reason = prompt('Rejection reason:'); 
+                                  if (reason) handleApproveReject(request.id, 'reject', '', reason); 
+                                }} 
+                                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(pendingRequests.line_manager_requests?.length === 0 && pendingRequests.hr_requests?.length === 0) && (
+                  <div className="text-center py-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 mb-4">
+                      <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                    </div>
+                    <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">No pending approval requests</p>
+                    <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">All requests have been processed</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
-      </div>
-    </div>
-  </div>
-)}
-        {/* My All Records Tab */}
+
         {activeTab === 'all' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border border-almet-mystic dark:border-almet-comet">
-            <div className="flex gap-2">
-        {/* Hamı öz vacation-unu export edə bilər */}
-        <button 
-          onClick={handleExportMyVacations} 
-          className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2"
-        >
-          <Download className="w-4 h-4" />
-          Export My Vacations
-        </button>
-        
-        {/* Yalnız Admin/HR/Line Manager bütün data export edə bilər */}
-        {(canExportAll || canExportTeam) && (
-          <button 
-            onClick={handleExportAllRecords} 
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            {canExportAll ? 'Export All Records' : 'Export Team Records'}
-          </button>
-        )}
-      </div>
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">My All Records</h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={handleExportMyVacations} 
+                  className="px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <Download className="w-3 h-3" />
+                  My Vacations
+                </button>
+                
+                {(canExportAll || canExportTeam) && (
+                  <button 
+                    onClick={handleExportAllRecords} 
+                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Download className="w-3 h-3" />
+                    {canExportAll ? 'All Records' : 'Team Records'}
+                  </button>
+                )}
+              </div>
+            </div>
             
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-almet-bali-hai dark:divide-almet-comet">
-                <thead className="bg-almet-mystic dark:bg-gray-700">
+              <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+                <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
                   <tr>
-                    {['Type', 'Leave Type', 'Start Date', 'End Date', 'Days', 'Status', 'Actions'].map(header => (
-                      <th key={header} className="px-6 py-3 text-left text-xs font-medium text-almet-comet dark:text-almet-bali-hai uppercase tracking-wider">
-                        {header}
+                    {['Type', 'Leave', 'Start', 'End', 'Days', 'Status', 'Actions'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                        {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-bali-hai dark:divide-almet-comet">
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                   {myAllRecords.map(record => (
-                    <tr key={`${record.type}-${record.id}`}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <tr key={`${record.type}-${record.id}`} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3 text-xs">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
                           record.type === 'schedule' 
-                            ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                            ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' 
+                            : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                         }`}>
                           {record.type === 'schedule' ? 'Schedule' : 'Request'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.vacation_type}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.start_date}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.end_date}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-almet-cloud-burst dark:text-white">{record.days}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          record.status === 'Scheduled' ? 'bg-blue-100 text-almet-sapphire dark:bg-blue-900 dark:text-almet-astral' : 
-                          record.status === 'Pending HR' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 
-                          record.status === 'Pending Line Manager' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' : 
-                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.vacation_type}</td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.start_date}</td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.end_date}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{record.days}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                          record.status === 'Scheduled' ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' : 
+                          record.status === 'Pending HR' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 
+                          record.status === 'Pending Line Manager' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 
+                          'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                         }`}>
                           {record.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {record.type === 'schedule' && record.can_edit && (
+                      <td className="px-4 py-3 text-xs">
+                        {record.type === 'schedule' && record.can_edit ? (
                           <div className="flex gap-2">
                             <button 
                               onClick={() => handleEditSchedule(record)} 
-                              className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral dark:hover:text-almet-steel-blue flex items-center gap-1"
+                              className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
                             >
                               <Edit className="w-3 h-3" />
                               Edit
                             </button>
                             <button 
                               onClick={() => handleRegisterSchedule(record.id)} 
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 flex items-center gap-1"
+                              className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
                             >
                               <Check className="w-3 h-3" />
                               Register
                             </button>
                           </div>
-                        )}
-                        {record.type === 'request' && (
-                          <span className="text-almet-waterloo dark:text-almet-bali-hai text-xs">View Only</span>
+                        ) : (
+                          <span className="text-almet-waterloo/50 dark:text-almet-bali-hai/50">View Only</span>
                         )}
                       </td>
                     </tr>
                   ))}
                   {myAllRecords.length === 0 && (
                     <tr>
-                      <td colSpan="7" className="px-6 py-4 text-center text-almet-waterloo dark:text-almet-bali-hai">
-                        No records found
+                      <td colSpan="7" className="px-4 py-12 text-center">
+                        <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
+                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No records found</p>
+                        <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Your vacation history will appear here</p>
                       </td>
                     </tr>
                   )}
@@ -1257,104 +1310,103 @@ const handleSubmit = async (e) => {
         )}
       </div>
 
-      {/* Edit Schedule Modal */}
       {editModalOpen && editingSchedule && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">
-                  Edit Schedule (Edit {editingSchedule.edit_count + 1}/{vacationSettings.max_schedule_edits})
-                </h2>
-                <button
-                  onClick={() => {
-                    setEditModalOpen(false);
-                    setEditingSchedule(null);
-                  }}
-                  className="text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-almet-mystic/50 dark:border-almet-comet">
+            <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between z-10">
+              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                <Edit className="w-4 h-4 text-almet-sapphire" />
+                Edit Schedule (Edit {editingSchedule.edit_count + 1}/{vacationSettings.max_schedule_edits})
+              </h2>
+              <button
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditingSchedule(null);
+                }}
+                className="text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white transition-colors p-1 rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  Leave Type
+                </label>
+                <SearchableDropdown
+                  options={vacationTypes.map(type => ({ value: type.id, label: type.name }))}
+                  value={editingSchedule.vacation_type_id}
+                  onChange={(value) => setEditingSchedule(prev => ({...prev, vacation_type_id: value}))}
+                  placeholder="Select type"
+                  darkMode={darkMode}
+                />
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                    Leave Type
-                  </label>
-                  <SearchableDropdown
-                    options={vacationTypes.map(type => ({ value: type.id, label: type.name }))}
-                    value={editingSchedule.vacation_type_id}
-                    onChange={(value) => setEditingSchedule(prev => ({...prev, vacation_type_id: value}))}
-                    placeholder="Select leave type"
-                    darkMode={darkMode}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                    Start Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editingSchedule.start_date}
-                    onChange={(e) => setEditingSchedule(prev => ({...prev, start_date: e.target.value}))}
-                    min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                    End Date
-                  </label>
-                  <input
-                    type="date"
-                    value={editingSchedule.end_date}
-                    onChange={(e) => setEditingSchedule(prev => ({...prev, end_date: e.target.value}))}
-                    min={editingSchedule.start_date}
-                    className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                    Comment (Optional)
-                  </label>
-                  <textarea
-                    value={editingSchedule.comment}
-                    onChange={(e) => setEditingSchedule(prev => ({...prev, comment: e.target.value}))}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={editingSchedule.start_date}
+                  onChange={(e) => setEditingSchedule(prev => ({...prev, start_date: e.target.value}))}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
               </div>
 
-              <div className="flex justify-end gap-4 mt-6">
-                <button
-                  onClick={() => {
-                    setEditModalOpen(false);
-                    setEditingSchedule(null);
-                  }}
-                  className="px-6 py-2 border border-almet-bali-hai dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-almet-mystic hover:bg-almet-mystic dark:hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  disabled={loading}
-                  className="px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Save Changes
-                    </>
-                  )}
-                </button>
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={editingSchedule.end_date}
+                  onChange={(e) => setEditingSchedule(prev => ({...prev, end_date: e.target.value}))}
+                  min={editingSchedule.start_date}
+                  className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
+                />
               </div>
+
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  Comment (Optional)
+                </label>
+                <textarea
+                  value={editingSchedule.comment}
+                  onChange={(e) => setEditingSchedule(prev => ({...prev, comment: e.target.value}))}
+                  rows={3}
+                  placeholder="Add any notes..."
+                  className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-almet-mystic/30 dark:bg-gray-900/30 border-t border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setEditModalOpen(false);
+                  setEditingSchedule(null);
+                }}
+                className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-white dark:hover:bg-gray-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                disabled={loading}
+                className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4" />
+                    Save Changes
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
