@@ -74,6 +74,38 @@ export const VacationService = {
     }
   },
 
+  
+
+   // === USER PERMISSIONS ===
+  getMyPermissions: async () => {
+    try {
+      const response = await vacationApi.get('/vacation/my-permissions/');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // === SETTINGS - ADD THESE ===
+  // Get all settings combined
+  getAllSettings: async () => {
+    try {
+      const [general, calendar, hrReps] = await Promise.all([
+        vacationApi.get('/vacation/settings/'),
+        vacationApi.get('/vacation/production-calendar/'),
+        vacationApi.get('/vacation/hr-representatives/')
+      ]);
+      
+      return {
+        general: general.data,
+        calendar: calendar.data,
+        hrRepresentatives: hrReps.data
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
   // All Vacation Records
   getAllVacationRecords: async (params = {}) => {
     try {
@@ -543,6 +575,45 @@ export const VacationHelpers = {
       requester_type: data.requester_type,
       employee_id: data.employee_id || undefined,
       employee_manual: data.employee_manual || undefined,
+      vacation_type_id: data.vacation_type_id,
+      start_date: data.start_date,
+      end_date: data.end_date,
+      comment: data.comment || ''
+    };
+  },
+
+  // Check if user can edit schedule based on settings
+  canEditSchedule: (schedule, maxEdits) => {
+    if (schedule.status !== 'SCHEDULED') return false;
+    if (schedule.edit_count >= maxEdits) return false;
+    return true;
+  },
+
+  // Check if request can be created with current balance
+  canCreateRequest: (balance, requestDays, allowNegativeBalance) => {
+    if (allowNegativeBalance) return true;
+    return balance.remaining_balance >= requestDays;
+  },
+
+  isAdmin: (userPermissions) => {
+    return userPermissions?.is_admin === true;
+  },
+
+  // Check if user can approve as line manager or HR
+  canApprove: (userPermissions) => {
+    if (userPermissions?.is_admin) return true;
+    
+    const approvalPermissions = [
+      'vacation.request.approve_as_line_manager',
+      'vacation.request.approve_as_hr'
+    ];
+    
+    return userPermissions?.permissions?.some(p => approvalPermissions.includes(p));
+  },
+
+  // Format schedule edit data
+  formatScheduleEditData: (data) => {
+    return {
       vacation_type_id: data.vacation_type_id,
       start_date: data.start_date,
       end_date: data.end_date,
