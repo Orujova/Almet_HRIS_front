@@ -1,12 +1,21 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Plane, Car, Hotel, Plus, Trash2, Send, CheckCircle, XCircle, Clock, MapPin, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, Edit, X, Save } from 'lucide-react';
+import { Plane, ChevronDown ,ChevronUp ,Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import { BusinessTripService, BusinessTripHelpers } from '@/services/businessTripService';
 import { useRouter } from 'next/navigation';
+
+// Import components
+import { StatCard } from '@/components/business-trip/StatCard';
+import { EmployeeSection } from '@/components/business-trip/EmployeeSection';
+import { TravelSection } from '@/components/business-trip/TravelSection';
+import { ScheduleSection } from '@/components/business-trip/ScheduleSection';
+import { HotelSection } from '@/components/business-trip/HotelSection';
+import { ApprovalModal } from '@/components/business-trip/ApprovalModal';
+import { RejectionModal } from '@/components/business-trip/RejectionModal';
 
 export default function BusinessTripPage() {
   const { darkMode } = useTheme();
@@ -16,6 +25,7 @@ export default function BusinessTripPage() {
   const [activeTab, setActiveTab] = useState('request');
   const [requester, setRequester] = useState('for_me');
   const [loading, setLoading] = useState(false);
+  const [expandedSection, setExpandedSection] = useState('employee');
   
   // User & Permissions
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
@@ -37,9 +47,14 @@ export default function BusinessTripPage() {
   const [financeApprovers, setFinanceApprovers] = useState([]);
   const [userDefaults, setUserDefaults] = useState(null);
   
+  // Default Approvers
+  const [defaultFinanceApprover, setDefaultFinanceApprover] = useState(null);
+  const [defaultHrRepresentative, setDefaultHrRepresentative] = useState(null);
+  
   // Trip Requests
   const [myRequests, setMyRequests] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
+  const [filteredRequests, setFilteredRequests] = useState([]);
   
   // Pending Approvals
   const [pendingApprovals, setPendingApprovals] = useState({
@@ -48,9 +63,30 @@ export default function BusinessTripPage() {
     hr_requests: [],
     total_pending: 0
   });
+
+  // Approval History
+  const [approvalHistory, setApprovalHistory] = useState([]);
+  const [filteredHistory, setFilteredHistory] = useState([]);
   
   // Employee Search
   const [employeeSearchResults, setEmployeeSearchResults] = useState([]);
+  
+  // Filters
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: '',
+    employee: '',
+    department: '',
+    dateFrom: '',
+    dateTo: ''
+  });
+
+  const [historyFilters, setHistoryFilters] = useState({
+    action: '',
+    employee: '',
+    dateFrom: '',
+    dateTo: ''
+  });
   
   // Form Data
   const [formData, setFormData] = useState({
@@ -90,6 +126,11 @@ export default function BusinessTripPage() {
   const [approvalNote, setApprovalNote] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
 
+  // Approver Selection
+  const [showApproverSelection, setShowApproverSelection] = useState(false);
+  const [selectedFinanceApprover, setSelectedFinanceApprover] = useState(null);
+  const [selectedHrRepresentative, setSelectedHrRepresentative] = useState(null);
+
   useEffect(() => {
     initializeData();
   }, []);
@@ -104,7 +145,9 @@ export default function BusinessTripPage() {
         fetchUserPermissions(),
         fetchDashboard(),
         fetchAllOptions(),
-        fetchEmployees()
+        fetchEmployees(),
+        fetchHRRepresentatives(),
+        fetchFinanceApprovers()
       ]);
     } catch (error) {
       console.error('Initialization error:', error);
@@ -149,6 +192,18 @@ export default function BusinessTripPage() {
       if (data.trip_purposes?.length > 0) {
         setFormData(prev => ({ ...prev, purpose_id: data.trip_purposes[0].id }));
       }
+
+      // Set default approvers from user_defaults
+      if (data.user_defaults?.default_finance_approver?.id) {
+        setDefaultFinanceApprover(data.user_defaults.default_finance_approver);
+        setSelectedFinanceApprover(data.user_defaults.default_finance_approver.id);
+        setFormData(prev => ({ ...prev, finance_approver_id: data.user_defaults.default_finance_approver.id }));
+      }
+      if (data.user_defaults?.default_hr_representative?.id) {
+        setDefaultHrRepresentative(data.user_defaults.default_hr_representative);
+        setSelectedHrRepresentative(data.user_defaults.default_hr_representative.id);
+        setFormData(prev => ({ ...prev, hr_representative_id: data.user_defaults.default_hr_representative.id }));
+      }
     } catch (error) {
       console.error('Options fetch error:', error);
     }
@@ -160,6 +215,38 @@ export default function BusinessTripPage() {
       setEmployeeSearchResults(data.results || []);
     } catch (error) {
       console.error('Employee search error:', error);
+    }
+  };
+
+  const fetchHRRepresentatives = async () => {
+    try {
+      const data = await BusinessTripService.getHRRepresentatives();
+      setHrRepresentatives(data.hr_representatives || []);
+      
+      // Set current default if available
+      if (data.current_default?.id && !defaultHrRepresentative) {
+        setDefaultHrRepresentative(data.current_default);
+        setSelectedHrRepresentative(data.current_default.id);
+        setFormData(prev => ({ ...prev, hr_representative_id: data.current_default.id }));
+      }
+    } catch (error) {
+      console.error('HR representatives fetch error:', error);
+    }
+  };
+
+  const fetchFinanceApprovers = async () => {
+    try {
+      const data = await BusinessTripService.getFinanceApprovers();
+      setFinanceApprovers(data.finance_approvers || []);
+      
+      // Set current default if available
+      if (data.current_default?.id && !defaultFinanceApprover) {
+        setDefaultFinanceApprover(data.current_default);
+        setSelectedFinanceApprover(data.current_default.id);
+        setFormData(prev => ({ ...prev, finance_approver_id: data.current_default.id }));
+      }
+    } catch (error) {
+      console.error('Finance approvers fetch error:', error);
     }
   };
 
@@ -176,6 +263,7 @@ export default function BusinessTripPage() {
     try {
       const data = await BusinessTripService.getAllTripRequests();
       setAllRequests(data.requests || []);
+      setFilteredRequests(data.requests || []);
     } catch (error) {
       console.error('All requests fetch error:', error);
     }
@@ -190,6 +278,16 @@ export default function BusinessTripPage() {
     }
   };
 
+  const fetchApprovalHistory = async () => {
+    try {
+      const data = await BusinessTripService.getApprovalHistory();
+      setApprovalHistory(data.history || []);
+      setFilteredHistory(data.history || []);
+    } catch (error) {
+      console.error('Approval history fetch error:', error);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'request') {
       fetchMyRequests();
@@ -197,6 +295,8 @@ export default function BusinessTripPage() {
       fetchPendingApprovals();
     } else if (activeTab === 'all') {
       fetchAllRequests();
+    } else if (activeTab === 'history') {
+      fetchApprovalHistory();
     }
   }, [activeTab]);
 
@@ -216,6 +316,16 @@ export default function BusinessTripPage() {
           phoneNumber: userDefaults.phone_number || '',
           lineManager: userDefaults.line_manager?.name || ''
         }));
+        
+        // Reset to default approvers when switching to "for_me"
+        if (defaultFinanceApprover?.id) {
+          setSelectedFinanceApprover(defaultFinanceApprover.id);
+          setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
+        }
+        if (defaultHrRepresentative?.id) {
+          setSelectedHrRepresentative(defaultHrRepresentative.id);
+          setFormData(prev => ({ ...prev, hr_representative_id: defaultHrRepresentative.id }));
+        }
       } else if (requester === 'for_my_employee') {
         setFormData(prev => ({
           ...prev,
@@ -230,11 +340,89 @@ export default function BusinessTripPage() {
           phoneNumber: '',
           lineManager: ''
         }));
+        
+        // Keep default approvers for employee requests too
+        if (defaultFinanceApprover?.id && !selectedFinanceApprover) {
+          setSelectedFinanceApprover(defaultFinanceApprover.id);
+          setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
+        }
+        if (defaultHrRepresentative?.id && !selectedHrRepresentative) {
+          setSelectedHrRepresentative(defaultHrRepresentative.id);
+          setFormData(prev => ({ ...prev, hr_representative_id: defaultHrRepresentative.id }));
+        }
       }
     };
     
     loadCurrentUserData();
   }, [requester, userDefaults]);
+
+  // Apply filters for All Requests
+  useEffect(() => {
+    let filtered = [...allRequests];
+
+    if (filters.status) {
+      filtered = filtered.filter(req => req.status === filters.status);
+    }
+    if (filters.employee) {
+      filtered = filtered.filter(req => 
+        req.employee_name.toLowerCase().includes(filters.employee.toLowerCase())
+      );
+    }
+    if (filters.department) {
+      filtered = filtered.filter(req => 
+        req.department_name?.toLowerCase().includes(filters.department.toLowerCase())
+      );
+    }
+    if (filters.dateFrom) {
+      filtered = filtered.filter(req => req.start_date >= filters.dateFrom);
+    }
+    if (filters.dateTo) {
+      filtered = filtered.filter(req => req.end_date <= filters.dateTo);
+    }
+
+    setFilteredRequests(filtered);
+  }, [filters, allRequests]);
+
+  // Apply filters for Approval History
+  useEffect(() => {
+    let filtered = [...approvalHistory];
+
+    if (historyFilters.action) {
+      filtered = filtered.filter(item => item.action === historyFilters.action);
+    }
+    if (historyFilters.employee) {
+      filtered = filtered.filter(item => 
+        item.employee_name.toLowerCase().includes(historyFilters.employee.toLowerCase())
+      );
+    }
+    if (historyFilters.dateFrom) {
+      filtered = filtered.filter(item => item.date >= historyFilters.dateFrom);
+    }
+    if (historyFilters.dateTo) {
+      filtered = filtered.filter(item => item.date <= historyFilters.dateTo);
+    }
+
+    setFilteredHistory(filtered);
+  }, [historyFilters, approvalHistory]);
+
+  const clearFilters = () => {
+    setFilters({
+      status: '',
+      employee: '',
+      department: '',
+      dateFrom: '',
+      dateTo: ''
+    });
+  };
+
+  const clearHistoryFilters = () => {
+    setHistoryFilters({
+      action: '',
+      employee: '',
+      dateFrom: '',
+      dateTo: ''
+    });
+  };
 
   const handleAddSchedule = () => {
     setSchedules([...schedules, { id: Date.now(), date: '', from_location: '', to_location: '', notes: '' }]);
@@ -262,6 +450,16 @@ export default function BusinessTripPage() {
 
   const handleHotelChange = (id, field, value) => {
     setHotels(hotels.map(h => h.id === id ? { ...h, [field]: value } : h));
+  };
+
+  const handleFinanceApproverChange = (value) => {
+    setSelectedFinanceApprover(value);
+    setFormData(prev => ({ ...prev, finance_approver_id: value }));
+  };
+
+  const handleHrRepresentativeChange = (value) => {
+    setSelectedHrRepresentative(value);
+    setFormData(prev => ({ ...prev, hr_representative_id: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -308,16 +506,18 @@ export default function BusinessTripPage() {
         }
       }
 
-      if (formData.finance_approver_id) {
-        requestData.finance_approver_id = formData.finance_approver_id;
+      // Add selected approvers (default or custom)
+      if (selectedFinanceApprover) {
+        requestData.finance_approver_id = selectedFinanceApprover;
       }
-      if (formData.hr_representative_id) {
-        requestData.hr_representative_id = formData.hr_representative_id;
+      if (selectedHrRepresentative) {
+        requestData.hr_representative_id = selectedHrRepresentative;
       }
 
       await BusinessTripService.createTripRequest(requestData);
       showSuccess('Trip request submitted successfully');
       
+      // Reset form but keep defaults
       setFormData(prev => ({
         ...prev,
         start_date: '',
@@ -326,6 +526,18 @@ export default function BusinessTripPage() {
       }));
       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
+      
+      // Reset approvers to defaults
+      if (defaultFinanceApprover?.id) {
+        setSelectedFinanceApprover(defaultFinanceApprover.id);
+        setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
+      }
+      if (defaultHrRepresentative?.id) {
+        setSelectedHrRepresentative(defaultHrRepresentative.id);
+        setFormData(prev => ({ ...prev, hr_representative_id: defaultHrRepresentative.id }));
+      }
+      
+      setShowApproverSelection(false);
       
       fetchDashboard();
       fetchMyRequests();
@@ -416,19 +628,14 @@ export default function BusinessTripPage() {
     }
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30 p-3 hover:border-almet-sapphire/50 dark:hover:border-almet-astral/50 transition-all duration-200">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">{title}</p>
-          <p className={`text-xl font-semibold ${color}`}>{value || 0}</p>
-        </div>
-        <div className={`p-2 rounded-lg ${color.replace('text-', 'bg-')}/10`}>
-          <Icon className={`w-4 h-4 ${color}`} />
-        </div>
-      </div>
-    </div>
-  );
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  // Check permissions
+  const canViewSettings = BusinessTripHelpers.canViewSettings(userPermissions);
+  const canExportAll = BusinessTripHelpers.canExportAll(userPermissions);
+  const canApprove = BusinessTripHelpers.canApprove(userPermissions);
 
   if (loading && !dashboardStats) {
     return (
@@ -445,50 +652,50 @@ export default function BusinessTripPage() {
       <div className="p-4 lg:p-6 max-w-[1400px] mx-auto">
         
         {/* Header */}
-        <div className="mb-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">Business Trip Management</h1>
             <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Manage business trip requests and approvals</p>
           </div>
           
           <div className="flex items-center gap-2 flex-wrap">
-            {userPermissions.is_admin && (
-              <>
-                <button
-                  onClick={() => router.push('/requests/business-trip/settings')}
-                  className="flex items-center gap-1.5 bg-almet-sapphire hover:bg-almet-cloud-burst text-white px-3 py-1.5 rounded-md transition-all shadow-sm text-xs font-medium"
-                >
-                  <Settings className="w-3.5 h-3.5" />
-                  Settings
-                </button>
-                
-                <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 px-2.5 py-1.5 rounded-md">
-                  <Lock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Admin Access</span>
-                </div>
-              </>
+            {canViewSettings && (
+              <button
+                onClick={() => router.push('/requests/business-trip/settings')}
+                className="flex items-center gap-1.5 bg-almet-sapphire hover:bg-almet-cloud-burst text-white px-3 py-2 rounded-lg transition-all shadow-sm text-xs font-medium"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                Settings
+              </button>
+            )}
+{userPermissions.is_admin && (
+              <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 px-3 py-2 rounded-lg">
+                <Lock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Admin</span>
+              </div>
             )}
           </div>
         </div>
 
         {/* Navigation Tabs */}
-        <div className="mb-5 border-b border-almet-mystic dark:border-almet-comet">
-          <div className="flex space-x-8">
+        <div className="mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 p-1 inline-flex shadow-sm">
             {[
-              { key: 'request', label: 'Request Submission', icon: FileText },
-              { key: 'approval', label: 'Approval', icon: CheckCircle },
+              { key: 'request', label: 'Request', icon: FileText },
+              { key: 'approval', label: 'Approval', icon: CheckCircle, show: canApprove },
+              { key: 'history', label: 'History', icon: History, show: canApprove },
               { key: 'all', label: 'All Requests', icon: Calendar }
-            ].map(tab => (
+            ].filter(tab => tab.show !== false).map(tab => (
               <button 
                 key={tab.key} 
                 onClick={() => setActiveTab(tab.key)} 
-                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                className={`px-4 py-2 rounded-lg font-medium text-xs transition-all duration-200 flex items-center gap-2 ${
                   activeTab === tab.key 
-                    ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' 
-                    : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-white'
+                    ? 'bg-almet-sapphire text-white shadow-sm' 
+                    : 'text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700/30'
                 }`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-3.5 h-3.5" />
                 {tab.label}
               </button>
             ))}
@@ -500,393 +707,226 @@ export default function BusinessTripPage() {
           <div className="space-y-5">
             
             {/* Statistics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatCard title="Pending Requests" value={dashboardStats.pending_requests} icon={Clock} color="text-orange-600" />
-              <StatCard title="Approved Trips" value={dashboardStats.approved_trips} icon={CheckCircle} color="text-green-600" />
-              <StatCard title="Total Days This Year" value={dashboardStats.total_days_this_year} icon={Calendar} color="text-almet-sapphire" />
-              <StatCard title="Upcoming Trips" value={dashboardStats.upcoming_trips} icon={Plane} color="text-almet-astral" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <StatCard title="Pending" value={dashboardStats.pending_requests} icon={Clock} color="text-orange-600" bgColor="bg-orange-50 dark:bg-orange-900/10" />
+              <StatCard title="Approved" value={dashboardStats.approved_trips} icon={CheckCircle} color="text-green-600" bgColor="bg-green-50 dark:bg-green-900/10" />
+              <StatCard title="Days (Year)" value={dashboardStats.total_days_this_year} icon={Calendar} color="text-almet-sapphire" bgColor="bg-blue-50 dark:bg-blue-900/10" />
+              <StatCard title="Upcoming" value={dashboardStats.upcoming_trips} icon={Plane} color="text-almet-astral" bgColor="bg-sky-50 dark:bg-sky-900/10" />
             </div>
 
             {/* Request Form */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
-                <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">New Business Trip Request</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+                <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">New Trip Request</h2>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-5">
-                <div className="grid lg:grid-cols-2 gap-6">
-                  
-                  {/* Employee Information */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Users className="w-4 h-4 text-almet-sapphire" />
-                      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Employee Information</h3>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Requester</label>
-                      <select 
-                        value={requester} 
-                        onChange={(e) => setRequester(e.target.value)} 
-                        className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white transition-all"
-                      >
-                        <option value="for_me">For Me</option>
-                        <option value="for_my_employee">For My Employee</option>
-                      </select>
+              <form onSubmit={handleSubmit} className="p-6">
+                
+                {/* Requester Type */}
+                <div className="mb-6">
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Request Type</label>
+                  <select 
+                    value={requester} 
+                    onChange={(e) => setRequester(e.target.value)} 
+                    className="w-full lg:w-auto px-4 py-2.5 outline-0 text-xs font-medium border border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 focus:border-almet-sapphire dark:bg-gray-700 dark:text-white transition-all"
+                  >
+                    <option value="for_me">For Myself</option>
+                    <option value="for_my_employee">For My Employee</option>
+                  </select>
+                </div>
+
+                {/* Employee Information Section */}
+                <EmployeeSection
+                  isExpanded={expandedSection === 'employee'}
+                  onToggle={() => toggleSection('employee')}
+                  requester={requester}
+                  formData={formData}
+                  setFormData={setFormData}
+                  employeeSearchResults={employeeSearchResults}
+                  darkMode={darkMode}
+                />
+
+                {/* Travel Information Section */}
+                <TravelSection
+                  isExpanded={expandedSection === 'travel'}
+                  onToggle={() => toggleSection('travel')}
+                  formData={formData}
+                  setFormData={setFormData}
+                  travelTypes={travelTypes}
+                  transportTypes={transportTypes}
+                  tripPurposes={tripPurposes}
+                  darkMode={darkMode}
+                />
+
+                {/* Schedule Details Section */}
+                <ScheduleSection
+                  isExpanded={expandedSection === 'schedule'}
+                  onToggle={() => toggleSection('schedule')}
+                  schedules={schedules}
+                  onAdd={handleAddSchedule}
+                  onRemove={handleRemoveSchedule}
+                  onChange={handleScheduleChange}
+                />
+
+                {/* Hotel Details Section */}
+                <HotelSection
+                  isExpanded={expandedSection === 'hotel'}
+                  onToggle={() => toggleSection('hotel')}
+                  hotels={hotels}
+                  onAdd={handleAddHotel}
+                  onRemove={handleRemoveHotel}
+                  onChange={handleHotelChange}
+                />
+
+                {/* Approvers Section - Always Visible with Defaults */}
+                <div className="mb-6 px-4 py-3 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-900/10 border border-blue-200/60 dark:border-blue-800/40 rounded-xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                      <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      Approvers Selection
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowApproverSelection(!showApproverSelection)}
+                      className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium flex items-center gap-1.5"
+                    >
+                      {showApproverSelection ? 'Hide Details' : 'Show Details'}
+                      {showApproverSelection ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  {/* Default Approvers Display */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                    <div className="bg-white flex gap-8  dark:bg-gray-800/50 p-2 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                        Finance Approver :
+                      </label>
+                      <div className="text-xs font-semibold text-almet-cloud-burst dark:text-white">
+                        {selectedFinanceApprover ? 
+                          financeApprovers.find(f => f.id === selectedFinanceApprover)?.name || 'Not selected'
+                          : 'Not selected'}
+                      </div>
+                      {/* {defaultFinanceApprover && selectedFinanceApprover === defaultFinanceApprover.id && (
+                        <span className="inline-block mt-1.5 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">
+                          Default
+                        </span>
+                      )} */}
                     </div>
 
-                    {requester === 'for_my_employee' && (
+                    <div className="bg-white  flex gap-8  dark:bg-gray-800/50 p-2 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                        HR Representative :
+                      </label>
+                      <div className="text-xs font-semibold text-almet-cloud-burst dark:text-white">
+                        {selectedHrRepresentative ? 
+                          hrRepresentatives.find(h => h.id === selectedHrRepresentative)?.name || 'Not selected'
+                          : 'Not selected'}
+                      </div>
+                      {/* {defaultHrRepresentative && selectedHrRepresentative === defaultHrRepresentative.id && (
+                        <span className="inline-block mt-1.5 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">
+                          Default
+                        </span>
+                      )} */}
+                    </div>
+                  </div>
+
+                  {/* Detailed Selection */}
+                  {showApproverSelection && (
+                    <div className="pt-3 border-t border-blue-200/60 dark:border-blue-800/40 space-y-4">
                       <div>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Search Employee</label>
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                          Change Finance Approver (Optional)
+                        </label>
                         <SearchableDropdown
-                          options={employeeSearchResults.map(emp => ({ 
-                            value: emp.id, 
-                            label: `${emp.name} (${emp.employee_id})`, 
-                            ...emp 
+                          options={financeApprovers.map(approver => ({ 
+                            value: approver.id, 
+                            label: `${approver.name}${approver.id === defaultFinanceApprover?.id ? ' (Default)' : ''}` 
                           }))}
-                          value={formData.employee_id}
-                          onChange={(value) => {
-                            const selectedEmployee = employeeSearchResults.find(emp => emp.id === value);
-                            if (value === null) {
-                              setFormData(prev => ({
-                                ...prev,
-                                employee_id: null,
-                                employeeName: '',
-                                businessFunction: '',
-                                department: '',
-                                unit: '',
-                                jobFunction: '',
-                                phoneNumber: '',
-                                lineManager: ''
-                              }));
-                            } else if (selectedEmployee) {
-                              setFormData(prev => ({
-                                ...prev,
-                                employee_id: value,
-                                employeeName: selectedEmployee.name,
-                                businessFunction: selectedEmployee.business_function_name || '',
-                                department: selectedEmployee.department_name || '',
-                                unit: selectedEmployee.unit_name || '',
-                                jobFunction: selectedEmployee.job_function_name || '',
-                                phoneNumber: selectedEmployee.phone || '',
-                                lineManager: selectedEmployee.line_manager_name || ''
-                              }));
-                            }
-                          }}
-                          placeholder="Select employee"
-                          allowUncheck={true}
-                          searchPlaceholder="Search..."
+                          value={selectedFinanceApprover}
+                          onChange={handleFinanceApproverChange}
+                          placeholder="Select finance approver"
+                          allowUncheck={false}
                           darkMode={darkMode}
                         />
+                        {selectedFinanceApprover && selectedFinanceApprover !== defaultFinanceApprover?.id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (defaultFinanceApprover?.id) {
+                                handleFinanceApproverChange(defaultFinanceApprover.id);
+                              }
+                            }}
+                            className="mt-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                          >
+                            ← Reset to default
+                          </button>
+                        )}
                       </div>
-                    )}
-
-                    <div className="grid grid-cols-2 gap-3">
+                      
                       <div>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Name</label>
-                        <input 
-                          type="text" 
-                          value={formData.employeeName} 
-                          onChange={(e) => setFormData(prev => ({...prev, employeeName: e.target.value}))} 
-                          disabled={requester === 'for_me'} 
-                          className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Phone</label>
-                        <input 
-                          type="tel" 
-                          value={formData.phoneNumber} 
-                          onChange={(e) => setFormData(prev => ({...prev, phoneNumber: e.target.value}))} 
-                          disabled={requester === 'for_me'} 
-                          className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
-                        />
-                      </div>
-                    </div>
-
-                    {['businessFunction', 'department', 'unit', 'jobFunction'].map(field => (
-                      <div key={field}>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                          {field === 'businessFunction' ? 'Business Function' : 
-                           field === 'department' ? 'Department' : 
-                           field === 'unit' ? 'Unit' : 'Job Function'}
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                          Change HR Representative (Optional)
                         </label>
-                        <input 
-                          type="text" 
-                          value={formData[field]} 
-                          onChange={(e) => setFormData(prev => ({...prev, [field]: e.target.value}))} 
-                          disabled={requester === 'for_me'} 
-                          className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                        <SearchableDropdown
+                          options={hrRepresentatives.map(rep => ({ 
+                            value: rep.id, 
+                            label: `${rep.name}${rep.id === defaultHrRepresentative?.id ? ' (Default)' : ''}` 
+                          }))}
+                          value={selectedHrRepresentative}
+                          onChange={handleHrRepresentativeChange}
+                          placeholder="Select HR representative"
+                          allowUncheck={false}
+                          darkMode={darkMode}
                         />
+                        {selectedHrRepresentative && selectedHrRepresentative !== defaultHrRepresentative?.id && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (defaultHrRepresentative?.id) {
+                                handleHrRepresentativeChange(defaultHrRepresentative.id);
+                              }
+                            }}
+                            className="mt-2 text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                          >
+                            ← Reset to default
+                          </button>
+                        )}
                       </div>
-                    ))}
-
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Line Manager</label>
-                      <input 
-                        type="text" 
-                        value={formData.lineManager} 
-                        onChange={(e) => setFormData(prev => ({...prev, lineManager: e.target.value}))} 
-                        disabled={requester === 'for_me'} 
-                        className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
-                      />
+                      
+                    
                     </div>
-                  </div>
-
-                  {/* Travel Information */}
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Plane className="w-4 h-4 text-almet-sapphire" />
-                      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Travel Information</h3>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Type of Travel</label>
-                      <SearchableDropdown 
-                        options={travelTypes.map(type => ({ value: type.id, label: type.name }))} 
-                        value={formData.travel_type_id} 
-                        onChange={(value) => setFormData(prev => ({...prev, travel_type_id: value}))} 
-                        placeholder="Select travel type" 
-                        darkMode={darkMode} 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Transport Type</label>
-                      <SearchableDropdown 
-                        options={transportTypes.map(type => ({ value: type.id, label: type.name }))} 
-                        value={formData.transport_type_id} 
-                        onChange={(value) => setFormData(prev => ({...prev, transport_type_id: value}))} 
-                        placeholder="Select transport type" 
-                        darkMode={darkMode} 
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Purpose</label>
-                      <SearchableDropdown 
-                        options={tripPurposes.map(purpose => ({ value: purpose.id, label: purpose.name }))} 
-                        value={formData.purpose_id} 
-                        onChange={(value) => setFormData(prev => ({...prev, purpose_id: value}))} 
-                        placeholder="Select purpose" 
-                        darkMode={darkMode} 
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Start Date</label>
-                        <input 
-                          type="date" 
-                          value={formData.start_date} 
-                          onChange={(e) => setFormData(prev => ({...prev, start_date: e.target.value}))}
-                          min={new Date().toISOString().split('T')[0]}
-                          className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
-                          required 
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">End Date</label>
-                        <input 
-                          type="date" 
-                          value={formData.end_date} 
-                          onChange={(e) => setFormData(prev => ({...prev, end_date: e.target.value}))}
-                          min={formData.start_date || new Date().toISOString().split('T')[0]}
-                          className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
-                          required 
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Comment (Optional)</label>
-                      <textarea 
-                        value={formData.comment} 
-                        onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} 
-                        rows={3} 
-                        placeholder="Add any additional notes..."
-                        className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none" 
-                      />
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                {/* Schedule Details */}
-                <div className="mt-6 pt-6 border-t border-almet-mystic/30 dark:border-almet-comet/30">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-almet-sapphire" />
-                      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Schedule Details</h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddSchedule}
-                      className="px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Schedule
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {schedules.map((schedule) => (
-                      <div key={schedule.id} className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end p-3 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Date *</label>
-                          <input
-                            type="date"
-                            value={schedule.date}
-                            onChange={(e) => handleScheduleChange(schedule.id, 'date', e.target.value)}
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">From *</label>
-                          <input
-                            type="text"
-                            value={schedule.from_location}
-                            onChange={(e) => handleScheduleChange(schedule.id, 'from_location', e.target.value)}
-                            placeholder="Location"
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">To *</label>
-                          <input
-                            type="text"
-                            value={schedule.to_location}
-                            onChange={(e) => handleScheduleChange(schedule.id, 'to_location', e.target.value)}
-                            placeholder="Location"
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Notes</label>
-                          <input
-                            type="text"
-                            value={schedule.notes}
-                            onChange={(e) => handleScheduleChange(schedule.id, 'notes', e.target.value)}
-                            placeholder="Optional"
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          {schedules.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSchedule(schedule.id)}
-                              className="px-3 py-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Hotel Details */}
-                <div className="mt-6 pt-6 border-t border-almet-mystic/30 dark:border-almet-comet/30">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <Hotel className="w-4 h-4 text-almet-sapphire" />
-                      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Hotel Details (Optional)</h3>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddHotel}
-                      className="px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-1.5 shadow-sm"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Add Hotel
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    {hotels.map((hotel) => (
-                      <div key={hotel.id} className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end p-3 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Hotel Name</label>
-                          <input
-                            type="text"
-                            value={hotel.hotel_name}
-                            onChange={(e) => handleHotelChange(hotel.id, 'hotel_name', e.target.value)}
-                            placeholder="Hotel name"
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Check-in</label>
-                          <input
-                            type="date"
-                            value={hotel.check_in_date}
-                            onChange={(e) => handleHotelChange(hotel.id, 'check_in_date', e.target.value)}
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Check-out</label>
-                          <input
-                            type="date"
-                            value={hotel.check_out_date}
-                            onChange={(e) => handleHotelChange(hotel.id, 'check_out_date', e.target.value)}
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Location</label>
-                          <input
-                            type="text"
-                            value={hotel.location}
-                            onChange={(e) => handleHotelChange(hotel.id, 'location', e.target.value)}
-                            placeholder="City/Area"
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Notes</label>
-                          <input
-                            type="text"
-                            value={hotel.notes}
-                            onChange={(e) => handleHotelChange(hotel.id, 'notes', e.target.value)}
-                            placeholder="Optional"
-                            className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          {hotels.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveHotel(hotel.id)}
-                              className="px-3 py-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <div className="flex justify-end gap-3 mt-6 pt-5 border-t border-almet-mystic/30 dark:border-almet-comet/30">
+                {/* Submit Buttons */}
+                <div className="flex justify-end gap-3 pt-5 border-t border-almet-mystic/30 dark:border-almet-comet/30">
                   <button 
                     type="button" 
                     onClick={() => {
                       setFormData(prev => ({ ...prev, start_date: '', end_date: '', comment: '' }));
                       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
                       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
+                      
+                      // Reset to defaults
+                      if (defaultFinanceApprover?.id) {
+                        setSelectedFinanceApprover(defaultFinanceApprover.id);
+                        setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
+                      }
+                      if (defaultHrRepresentative?.id) {
+                        setSelectedHrRepresentative(defaultHrRepresentative.id);
+                        setFormData(prev => ({ ...prev, hr_representative_id: defaultHrRepresentative.id }));
+                      }
+                      
+                      setShowApproverSelection(false);
                     }}
-                    className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+                    className="px-5 py-2.5 text-xs font-medium border border-almet-mystic dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
                   >
-                    Clear
+                    Clear Form
                   </button>
                   <button 
                     type="submit"
                     disabled={loading || !formData.start_date || !formData.end_date || !formData.travel_type_id || !formData.transport_type_id || !formData.purpose_id} 
-                    className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
+                    className="px-6 py-2.5 text-xs font-medium bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
                   >
                     {loading ? (
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
@@ -902,12 +942,12 @@ export default function BusinessTripPage() {
             </div>
 
             {/* My Requests List */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">My Requests</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">My Requests</h2>
                 <button 
                   onClick={handleExportMyTrips} 
-                  className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
+                  className="px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm font-medium"
                 >
                   <Download className="w-3 h-3" />
                   Export
@@ -915,19 +955,19 @@ export default function BusinessTripPage() {
               </div>
               
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
-                  <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
+                <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
                     <tr>
-                      {['Request ID', 'Type', 'Destination', 'Start Date', 'End Date', 'Days', 'Status'].map(h => (
+                      {['Request ID', 'Type', 'Destination', 'Start', 'End', 'Days', 'Status', 'Approvers'].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
                     {myRequests.map(request => (
-                      <tr key={request.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
+                      <tr key={request.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
                         <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
@@ -938,21 +978,35 @@ export default function BusinessTripPage() {
                         <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                            request.status === 'APPROVED' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                            request.status.includes('PENDING') ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                            request.status.includes('REJECTED') ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                            'bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                            request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                            request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                            request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
                           }`}>
                             {request.status_display}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          <div className="flex flex-col gap-1">
+                            {request.line_manager_name && (
+                              <span className="text-xs">LM: {request.line_manager_name}</span>
+                            )}
+                            {request.finance_approver_name && (
+                              <span className="text-xs">Finance: {request.finance_approver_name}</span>
+                            )}
+                            {request.hr_representative_name && (
+                              <span className="text-xs">HR: {request.hr_representative_name}</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
                     {myRequests.length === 0 && (
                       <tr>
-                        <td colSpan="7" className="px-4 py-12 text-center">
+                        <td colSpan="8" className="px-4 py-12 text-center">
                           <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
-                          <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No requests found</p>
+                          <p className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai">No requests yet</p>
+                          <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Your submitted requests will appear here</p>
                         </td>
                       </tr>
                     )}
@@ -965,13 +1019,15 @@ export default function BusinessTripPage() {
 
         {/* Approval Tab */}
         {activeTab === 'approval' && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {userPermissions.is_admin && (
-              <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 dark:border-purple-600 rounded-r-lg p-4">
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 rounded-xl p-4">
                 <div className="flex items-start gap-3">
-                  <Lock className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                  <div className="p-2 bg-purple-100 dark:bg-purple-800/30 rounded-lg">
+                    <Lock className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-200">Admin Mode Active</h3>
+                    <h3 className="text-xs font-semibold text-purple-900 dark:text-purple-200">Admin Mode Active</h3>
                     <p className="text-xs text-purple-800 dark:text-purple-300 mt-1">
                       You can approve/reject requests as Line Manager, Finance, and HR.
                     </p>
@@ -980,33 +1036,35 @@ export default function BusinessTripPage() {
               </div>
             )}
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-                <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
-                <span className="bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1 rounded-full text-xs font-semibold">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
+                <span className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1 rounded-full text-xs font-semibold">
                   {pendingApprovals.total_pending} Pending
                 </span>
               </div>
               
-              <div className="p-5 space-y-5">
+              <div className="p-6 space-y-6">
                 {/* Line Manager Requests */}
                 {pendingApprovals.line_manager_requests?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-almet-sapphire" />
+                    <h3 className="text-xs font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                      <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                      </div>
                       Line Manager Approvals
                     </h3>
                     <div className="space-y-3">
                       {pendingApprovals.line_manager_requests.map(request => (
-                        <div key={request.id} className="border border-almet-mystic/40 dark:border-almet-comet rounded-lg p-4 hover:border-almet-sapphire/50 dark:hover:border-almet-astral/50 transition-all">
-                          <div className="flex items-start justify-between gap-4">
+                        <div key={request.id} className="border border-blue-200/60 dark:border-blue-800/40 rounded-xl p-4 bg-blue-50/30 dark:bg-blue-900/10 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div className="flex-1">
-                              <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
-                              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                              <h4 className="text-xs font-semibold text-almet-cloud-burst dark:text-white mb-1">{request.employee_name}</h4>
+                              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
                                 {request.travel_type_name} • {request.transport_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
                               </p>
                               {request.comment && (
-                                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
+                                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic bg-white/50 dark:bg-gray-800/50 p-2 rounded">"{request.comment}"</p>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
@@ -1038,20 +1096,22 @@ export default function BusinessTripPage() {
                   </div>
                 )}
 
-                        {/* Finance Requests */}
+                {/* Finance Requests */}
                 {pendingApprovals.finance_requests?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-green-600" />
+                    <h3 className="text-xs font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                      <div className="p-1.5 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                        <DollarSign className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                      </div>
                       Finance Approvals
                     </h3>
                     <div className="space-y-3">
                       {pendingApprovals.finance_requests.map(request => (
-                        <div key={request.id} className="border border-green-200/60 dark:border-green-800/40 rounded-lg p-4 bg-green-50/30 dark:bg-green-900/10 hover:border-green-300 dark:hover:border-green-700 transition-all">
-                          <div className="flex items-start justify-between gap-4">
+                        <div key={request.id} className="border border-green-200/60 dark:border-green-800/40 rounded-xl p-4 bg-green-50/30 dark:bg-green-900/10 hover:border-green-300 dark:hover:border-green-700 transition-all">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
+                                <h4 className="text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
                                 <span className="text-xs bg-green-100 dark:bg-green-800/50 px-2 py-0.5 rounded font-medium text-green-700 dark:text-green-300">Finance Review</span>
                               </div>
                               <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
@@ -1090,18 +1150,20 @@ export default function BusinessTripPage() {
                 {/* HR Requests */}
                 {pendingApprovals.hr_requests?.length > 0 && (
                   <div>
-                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                      <Settings className="w-4 h-4 text-almet-astral" />
+                    <h3 className="text-xs font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                      <div className="p-1.5 bg-sky-100 dark:bg-sky-900/30 rounded-lg">
+                        <Settings className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400" />
+                      </div>
                       HR Approvals
                     </h3>
                     <div className="space-y-3">
                       {pendingApprovals.hr_requests.map(request => (
-                        <div key={request.id} className="border border-blue-200/60 dark:border-blue-800/40 rounded-lg p-4 bg-blue-50/30 dark:bg-blue-900/10 hover:border-blue-300 dark:hover:border-blue-700 transition-all">
-                          <div className="flex items-start justify-between gap-4">
+                        <div key={request.id} className="border border-sky-200/60 dark:border-sky-800/40 rounded-xl p-4 bg-sky-50/30 dark:bg-sky-900/10 hover:border-sky-300 dark:hover:border-sky-700 transition-all">
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
-                                <span className="text-xs bg-blue-100 dark:bg-blue-800/50 px-2 py-0.5 rounded font-medium text-blue-700 dark:text-blue-300">HR Review</span>
+                                <h4 className="text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
+                                <span className="text-xs bg-sky-100 dark:bg-sky-800/50 px-2 py-0.5 rounded font-medium text-sky-700 dark:text-sky-300">HR Review</span>
                               </div>
                               <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
                                 {request.travel_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
@@ -1141,7 +1203,7 @@ export default function BusinessTripPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 mb-4">
                       <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
                     </div>
-                    <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">No pending approval requests</p>
+                    <p className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai">No pending approval requests</p>
                     <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">All requests have been processed</p>
                   </div>
                 )}
@@ -1150,227 +1212,358 @@ export default function BusinessTripPage() {
           </div>
         )}
 
+        {/* Approval History Tab */}
+        {activeTab === 'history' && (
+          <div className="space-y-5">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Approval History</h2>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">View your past approval decisions</p>
+                </div>
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all shadow-sm font-medium"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  {showFilters ? 'Hide' : 'Show'} Filters
+                </button>
+              </div>
+
+              {/* Filters */}
+              {showFilters && (
+                <div className="px-6 py-4 bg-almet-mystic/10 dark:bg-gray-900/20 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Action</label>
+                      <select
+                        value={historyFilters.action}
+                        onChange={(e) => setHistoryFilters(prev => ({ ...prev, action: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="">All Actions</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Employee</label>
+                      <input
+                        type="text"
+                        value={historyFilters.employee}
+                        onChange={(e) => setHistoryFilters(prev => ({ ...prev, employee: e.target.value }))}
+                        placeholder="Search employee"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date From</label>
+                      <input
+                        type="date"
+                        value={historyFilters.dateFrom}
+                        onChange={(e) => setHistoryFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date To</label>
+                      <input
+                        type="date"
+                        value={historyFilters.dateTo}
+                        onChange={(e) => setHistoryFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={clearHistoryFilters}
+                      className="px-3 py-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded-lg transition-all flex items-center gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
+                    <tr>
+                      {['Request ID', 'Employee', 'Travel Type', 'Dates', 'Status', 'Action', 'Date', 'Comment'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
+                    {filteredHistory.map((item, index) => (
+                      <tr key={`${item.request_id}-${index}`} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
+                        <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{item.request_id}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.employee_name}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.travel_type}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.destination}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                            item.status.includes('Approved') 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                              : item.status.includes('Rejected')
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          }`}>
+                            {item.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                            item.action === 'Approved' 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                          }`}>
+                            {item.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          {new Date(item.date).toLocaleString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai italic">
+                          {item.comment || '-'}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredHistory.length === 0 && (
+                      <tr>
+                        <td colSpan="8" className="px-4 py-12 text-center">
+                          <History className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
+                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">No approval history found</p>
+                          <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Your approval decisions will appear here</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
         {/* All Requests Tab */}
         {activeTab === 'all' && (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">All Requests</h2>
-              {userPermissions.is_admin && (
-                <button 
-                  onClick={handleExportAllTrips} 
-                  className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
-                >
-                  <Download className="w-3 h-3" />
-                  Export All
-                </button>
-              )}
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
-                <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
-                  <tr>
-                    {['Request ID', 'Employee', 'Department', 'Type', 'Destination', 'Start', 'End', 'Days', 'Status', 'Amount'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-                  {allRequests.map(request => (
-                    <tr key={request.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
-                      <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.employee_name}</td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.department_name}</td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        {request.schedules?.[0]?.to_location || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.start_date}</td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
-                      <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                          request.status === 'APPROVED' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                          request.status.includes('PENDING') ? 'bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                          request.status.includes('REJECTED') ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                          'bg-gray-50 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
-                        }`}>
-                          {request.status_display}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        {request.finance_amount ? `${request.finance_amount} AZN` : '-'}
-                      </td>
-                    </tr>
-                  ))}
-                  {allRequests.length === 0 && (
-                    <tr>
-                      <td colSpan="10" className="px-4 py-12 text-center">
-                        <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
-                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No requests found</p>
-                      </td>
-                    </tr>
+          <div className="space-y-5">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">All Requests</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all shadow-sm font-medium"
+                  >
+                    <Filter className="w-3.5 h-3.5" />
+                    {showFilters ? 'Hide' : 'Show'} Filters
+                  </button>
+                  {canExportAll && (
+                    <button 
+                      onClick={handleExportAllTrips} 
+                      className="px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm font-medium"
+                    >
+                      <Download className="w-3 h-3" />
+                      Export All
+                    </button>
                   )}
-                </tbody>
-              </table>
+                </div>
+              </div>
+
+              {/* Filters */}
+              {showFilters && (
+                <div className="px-6 py-4 bg-almet-mystic/10 dark:bg-gray-900/20 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Status</label>
+                      <select
+                        value={filters.status}
+                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      >
+                        <option value="">All Status</option>
+                        <option value="SUBMITTED">Submitted</option>
+                        <option value="PENDING_LINE_MANAGER">Pending Line Manager</option>
+                        <option value="PENDING_FINANCE">Pending Finance</option>
+                        <option value="PENDING_HR">Pending HR</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED_LINE_MANAGER">Rejected by Line Manager</option>
+                        <option value="REJECTED_FINANCE">Rejected by Finance</option>
+                        <option value="REJECTED_HR">Rejected by HR</option>
+                        <option value="CANCELLED">Cancelled</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Employee</label>
+                      <input
+                        type="text"
+                        value={filters.employee}
+                        onChange={(e) => setFilters(prev => ({ ...prev, employee: e.target.value }))}
+                        placeholder="Search employee"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Department</label>
+                      <input
+                        type="text"
+                        value={filters.department}
+                        onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))}
+                        placeholder="Search department"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date From</label>
+                      <input
+                        type="date"
+                        value={filters.dateFrom}
+                        onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date To</label>
+                      <input
+                        type="date"
+                        value={filters.dateTo}
+                        onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      onClick={clearFilters}
+                      className="px-3 py-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded-lg transition-all flex items-center gap-1.5"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Clear Filters
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
+                    <tr>
+                      {['Request ID', 'Employee', 'Department', 'Type', 'Destination', 'Start', 'End', 'Days', 'Status', 'Amount', 'Approvers'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
+                    {filteredRequests.map(request => (
+                      <tr key={request.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
+                        <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.employee_name}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.department_name}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          {request.schedules?.[0]?.to_location || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.start_date}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
+                        <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                            request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                            request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                            request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                            'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                          }`}>
+                            {request.status_display}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          {request.finance_amount ? `${request.finance_amount} AZN` : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          <div className="flex flex-col gap-1">
+                            {request.line_manager_name && (
+                              <span className="text-xs">LM: {request.line_manager_name}</span>
+                            )}
+                            {request.finance_approver_name && (
+                              <span className="text-xs">Finance: {request.finance_approver_name}</span>
+                            )}
+                            {request.hr_representative_name && (
+                              <span className="text-xs">HR: {request.hr_representative_name}</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredRequests.length === 0 && (
+                      <tr>
+                        <td colSpan="11" className="px-4 py-12 text-center">
+                          <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
+                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">No requests found</p>
+                          <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Try adjusting your filters</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Approval Modal */}
-      {showApprovalModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
-            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                Approve Business Trip Request
-              </h2>
-              <button
-                onClick={() => {
-                  setShowApprovalModal(false);
-                  setApprovalAmount('');
-                  setApprovalNote('');
-                  setSelectedRequest(null);
-                }}
-                className="text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white transition-colors p-1 rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Modals */}
+      <ApprovalModal
+        show={showApprovalModal}
+        onClose={() => {
+          setShowApprovalModal(false);
+          setApprovalAmount('');
+          setApprovalNote('');
+          setSelectedRequest(null);
+        }}
+        selectedRequest={selectedRequest}
+        approvalAmount={approvalAmount}
+        setApprovalAmount={setApprovalAmount}
+        approvalNote={approvalNote}
+        setApprovalNote={setApprovalNote}
+        onApprove={handleApprove}
+        loading={loading}
+      />
 
-            <div className="p-5 space-y-4">
-              {selectedRequest.status === 'PENDING_FINANCE' && (
-                <div>
-                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                    Trip Amount (AZN) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={approvalAmount}
-                    onChange={(e) => setApprovalAmount(e.target.value)}
-                    placeholder="Enter amount"
-                    className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                  Note (Optional)
-                </label>
-                <textarea
-                  value={approvalNote}
-                  onChange={(e) => setApprovalNote(e.target.value)}
-                  placeholder="Add any notes"
-                  rows={3}
-                  className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowApprovalModal(false);
-                  setApprovalAmount('');
-                  setApprovalNote('');
-                  setSelectedRequest(null);
-                }}
-                className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleApprove}
-                disabled={loading}
-                className="px-6 py-2.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Confirm Approval
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Rejection Modal */}
-      {showRejectionModal && selectedRequest && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
-            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-red-600" />
-                Reject Business Trip Request
-              </h2>
-              <button
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setRejectionReason('');
-                  setSelectedRequest(null);
-                }}
-                className="text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white transition-colors p-1 rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5">
-              <div>
-                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                  Reason for Rejection *
-                </label>
-                <textarea
-                  value={rejectionReason}
-                  onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="Please provide a reason for rejection"
-                  rows={4}
-                  className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowRejectionModal(false);
-                  setRejectionReason('');
-                  setSelectedRequest(null);
-                }}
-                className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReject}
-                disabled={loading}
-                className="px-6 py-2.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                ) : (
-                  <>
-                    <XCircle className="w-4 h-4" />
-                    Confirm Rejection
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RejectionModal
+        show={showRejectionModal}
+        onClose={() => {
+          setShowRejectionModal(false);
+          setRejectionReason('');
+          setSelectedRequest(null);
+        }}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
+        onReject={handleReject}
+        loading={loading}
+      />
     </DashboardLayout>
   );
 }
-
-        
+            
+            

@@ -54,13 +54,11 @@ export default function RoleAccessManagementPage() {
   // Modal states
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [showBulkPermissionsModal, setShowBulkPermissionsModal] = useState(false);
   const [showBulkRoleAssignModal, setShowBulkRoleAssignModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
-  const [selectedRoleForPermissions, setSelectedRoleForPermissions] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [itemToRevoke, setItemToRevoke] = useState(null);
   
@@ -68,8 +66,6 @@ export default function RoleAccessManagementPage() {
   const [roleForm, setRoleForm] = useState({ name: "", is_active: true });
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
-  const [selectedPermissions, setSelectedPermissions] = useState([]);
-  const [originalPermissions, setOriginalPermissions] = useState([]);
   const [bulkSelectedRoles, setBulkSelectedRoles] = useState([]);
   const [bulkPermissionsAction, setBulkPermissionsAction] = useState("add");
   const [bulkPermissionsSelected, setBulkPermissionsSelected] = useState([]);
@@ -226,16 +222,22 @@ export default function RoleAccessManagementPage() {
     setLoading(true);
     try {
       const permissionsMap = {};
+      const allExistingPermissions = new Set();
+      
       for (const roleId of selectedRoleBoxes) {
         const rolePerms = await roleAccessService.roles.getPermissions(roleId);
         const permsArray = Array.isArray(rolePerms) ? rolePerms : (rolePerms.permissions || []);
-        permissionsMap[roleId] = permsArray.map(p => p.id);
+        const permIds = permsArray.map(p => p.id);
+        permissionsMap[roleId] = permIds;
+        permIds.forEach(id => allExistingPermissions.add(id));
       }
       
       setRolePermissionsMap(permissionsMap);
       setBulkSelectedRoles(selectedRoleBoxes);
       setBulkPermissionsAction(action);
-      setBulkPermissionsSelected([]);
+      
+      // Always pre-select existing permissions for both add and remove actions
+      setBulkPermissionsSelected(Array.from(allExistingPermissions));
       
       const allCategories = {};
       Object.keys(permissions).forEach(cat => {
@@ -441,6 +443,56 @@ export default function RoleAccessManagementPage() {
     }));
   };
 
+  // Select all permissions in bulk modal
+  const handleSelectAllPermissions = () => {
+    const filteredCategories = getFilteredPermissionsByCategory();
+    const allPermIds = [];
+    Object.values(filteredCategories).forEach(perms => {
+      perms.forEach(p => allPermIds.push(p.id));
+    });
+    setBulkPermissionsSelected(allPermIds);
+  };
+
+  // Deselect all permissions in bulk modal
+  const handleDeselectAllPermissions = () => {
+    setBulkPermissionsSelected([]);
+  };
+
+  // Check if all permissions are selected
+  const areAllPermissionsSelected = () => {
+    const filteredCategories = getFilteredPermissionsByCategory();
+    const allPermIds = [];
+    Object.values(filteredCategories).forEach(perms => {
+      perms.forEach(p => allPermIds.push(p.id));
+    });
+    return allPermIds.length > 0 && allPermIds.every(id => bulkPermissionsSelected.includes(id));
+  };
+
+  // Select/Deselect all in a category
+  const handleSelectAllInCategory = (category) => {
+    const filteredCategories = getFilteredPermissionsByCategory();
+    const categoryPerms = filteredCategories[category] || [];
+    const categoryPermIds = categoryPerms.map(p => p.id);
+    
+    const allSelected = categoryPermIds.every(id => bulkPermissionsSelected.includes(id));
+    
+    if (allSelected) {
+      // Deselect all in category
+      setBulkPermissionsSelected(prev => prev.filter(id => !categoryPermIds.includes(id)));
+    } else {
+      // Select all in category
+      setBulkPermissionsSelected(prev => {
+        const newSelected = [...prev];
+        categoryPermIds.forEach(id => {
+          if (!newSelected.includes(id)) {
+            newSelected.push(id);
+          }
+        });
+        return newSelected;
+      });
+    }
+  };
+
   const tabs = [
     { id: "roles", label: "Roles", icon: Shield },
     { id: "permissions", label: "Permissions", icon: Key },
@@ -490,9 +542,9 @@ export default function RoleAccessManagementPage() {
   return (
     <DashboardLayout>
       <div className="container mx-auto p-3 max-w-full">
-        {/* Header - Daha kompakt */}
+        {/* Header */}
         <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm mb-3`}>
-          <div className="px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+          <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
             <h1 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               Role & Access Management
             </h1>
@@ -501,7 +553,7 @@ export default function RoleAccessManagementPage() {
             </p>
           </div>
 
-          {/* Tabs - Daha kiçik */}
+          {/* Tabs */}
           <div className="flex gap-1 px-4">
             {tabs.map((tab) => {
               const Icon = tab.icon;
@@ -527,7 +579,7 @@ export default function RoleAccessManagementPage() {
           </div>
         </div>
 
-        {/* Action Bar - Daha kompakt */}
+        {/* Action Bar */}
         <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm mb-3 px-4 py-2.5`}>
           <div className="flex items-center justify-between gap-3">
             {/* Search */}
@@ -548,7 +600,7 @@ export default function RoleAccessManagementPage() {
               </div>
             )}
 
-            {/* Action Buttons - Kiçik düymələr */}
+            {/* Action Buttons */}
             <div className="flex gap-2 ml-auto">
               {activeTab === "roles" && (
                 <>
@@ -559,14 +611,14 @@ export default function RoleAccessManagementPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        Add ({selectedRoleBoxes.length})
+                        Add Permissions ({selectedRoleBoxes.length})
                       </button>
                       <button
                         onClick={() => handleBulkPermissionsForSelected("remove")}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Remove ({selectedRoleBoxes.length})
+                        Remove Permissions ({selectedRoleBoxes.length})
                       </button>
                     </>
                   )}
@@ -599,14 +651,14 @@ export default function RoleAccessManagementPage() {
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        Assign ({selectedEmployeeRows.length})
+                        Assign Roles ({selectedEmployeeRows.length})
                       </button>
                       <button
                         onClick={handleBulkRevokeRoles}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Revoke ({selectedEmployeeRows.length})
+                        Revoke Roles ({selectedEmployeeRows.length})
                       </button>
                     </>
                   )}
@@ -625,7 +677,7 @@ export default function RoleAccessManagementPage() {
 
         {/* Content */}
         <div>
-          {/* Roles Tab - Daha kompakt kartlar */}
+          {/* Roles Tab */}
           {activeTab === "roles" && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -656,8 +708,6 @@ export default function RoleAccessManagementPage() {
                           <Shield className="w-3.5 h-3.5" />
                         </div>
                         <div>
-                          
-
                           <h3 className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                             {role.name}
                           </h3>
@@ -675,35 +725,31 @@ export default function RoleAccessManagementPage() {
                               {role.is_active ? 'Active' : 'Inactive'}
                             </span>
                           </div>
-
-                  
                         </div>
                       </div>
 
-                      <div>
-                                 <div className="flex gap-1.5">
-                      <button 
-                        onClick={() => openEditModal(role)}
-                        className={`p-1.5 rounded transition-colors ${
-                          darkMode 
-                            ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
-                            : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
-                        }`}
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      {!role.is_system_role && (
+                      <div className="flex gap-1.5">
                         <button 
-                          onClick={() => {
-                            setItemToDelete(role.id);
-                            setShowDeleteConfirm(true);
-                          }}
-                          className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                          onClick={() => openEditModal(role)}
+                          className={`p-1.5 rounded transition-colors ${
+                            darkMode 
+                              ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
+                              : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
+                          }`}
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                      )}
-                    </div>
+                        {!role.is_system_role && (
+                          <button 
+                            onClick={() => {
+                              setItemToDelete(role.id);
+                              setShowDeleteConfirm(true);
+                            }}
+                            className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -725,13 +771,11 @@ export default function RoleAccessManagementPage() {
                         </p>
                       </div>
                     </div>
-
-                   
                   </div>
                 ))}
               </div>
               
-              {/* Pagination - Daha kiçik */}
+              {/* Pagination */}
               {rolesTotal > 10 && (
                 <div className="flex items-center justify-between mt-3">
                   <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
@@ -783,7 +827,7 @@ export default function RoleAccessManagementPage() {
             </>
           )}
 
-          {/* Permissions Tab - Daha kompakt */}
+          {/* Permissions Tab */}
           {activeTab === "permissions" && (
             <>
               <div className="space-y-2.5">
@@ -907,7 +951,7 @@ export default function RoleAccessManagementPage() {
             </>
           )}
 
-          {/* Assignments Tab - Daha kompakt cədvəl */}
+          {/* Assignments Tab */}
           {activeTab === "assignments" && (
             <>
               <div className={`rounded-lg border shadow-sm ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
@@ -1065,13 +1109,13 @@ export default function RoleAccessManagementPage() {
         </div>
       </div>
 
-      {/* Create/Edit Role Modal - Kiçik */}
+      {/* Create/Edit Role Modal */}
       {showRoleModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`w-full max-w-md rounded-lg shadow-xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className="flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 {editingRole ? 'Edit Role' : 'Create New Role'}
               </h2>
@@ -1118,7 +1162,7 @@ export default function RoleAccessManagementPage() {
                 </label>
               </div>
             </div>
-            <div className="flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowRoleModal(false);
@@ -1150,7 +1194,7 @@ export default function RoleAccessManagementPage() {
           <div className={`w-full max-w-md rounded-lg shadow-xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className="flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Assign Role to Employees
               </h2>
@@ -1199,7 +1243,7 @@ export default function RoleAccessManagementPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowAssignModal(false);
@@ -1219,19 +1263,20 @@ export default function RoleAccessManagementPage() {
                 disabled={selectedEmployees.length === 0 || !selectedRole}
                 className="flex-1 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Assign ({bulkRolesToAssign.length})
+                Assign ({selectedEmployees.length})
               </button>
             </div>
           </div>
         </div>
       )}
-{/* Bulk Role Assign Modal */}
+
+      {/* Bulk Role Assign Modal */}
       {showBulkRoleAssignModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`w-full max-w-md rounded-lg shadow-xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className="flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Assign Roles to Selected Employees
               </h2>
@@ -1267,7 +1312,7 @@ export default function RoleAccessManagementPage() {
                 darkMode={darkMode}
               />
             </div>
-            <div className="flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowBulkRoleAssignModal(false);
@@ -1286,19 +1331,20 @@ export default function RoleAccessManagementPage() {
                 disabled={bulkRolesToAssign.length === 0}
                 className="flex-1 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Assign ({selectedEmployees.length})
+                Assign ({bulkRolesToAssign.length})
               </button>
             </div>
           </div>
         </div>
       )}
-      {/* Bulk Permissions Modal - Kompakt */}
+
+      {/* Bulk Permissions Modal */}
       {showBulkPermissionsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className={`w-full max-w-4xl max-h-[85vh] rounded-lg shadow-xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           } flex flex-col`}>
-            <div className="flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <div>
                 <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   Bulk Permissions Management
@@ -1322,7 +1368,7 @@ export default function RoleAccessManagementPage() {
               </button>
             </div>
             
-            <div className="p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex items-center gap-3">
                 <div className="flex-1">
                   <label className={`block text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -1350,6 +1396,19 @@ export default function RoleAccessManagementPage() {
                           console.error("Error loading role permissions:", error);
                         }
                       }
+                      
+                      // Update selected permissions when roles change
+                      if (newSelected.length > 0) {
+                        const allExistingPerms = new Set();
+                        newSelected.forEach(roleId => {
+                          const rolePerms = rolePermissionsMap[roleId] || [];
+                          rolePerms.forEach(permId => allExistingPerms.add(permId));
+                        });
+                        
+                        if (bulkPermissionsAction === 'add') {
+                          setBulkPermissionsSelected(Array.from(allExistingPerms));
+                        }
+                      }
                     }}
                     placeholder="Select roles..."
                     fieldName="roles"
@@ -1358,7 +1417,18 @@ export default function RoleAccessManagementPage() {
                 </div>
                 <div className="flex gap-1.5">
                   <button
-                    onClick={() => setBulkPermissionsAction("add")}
+                    onClick={() => {
+                      setBulkPermissionsAction("add");
+                      // When switching to add mode, pre-select existing permissions
+                      if (bulkSelectedRoles.length > 0) {
+                        const allExistingPerms = new Set();
+                        bulkSelectedRoles.forEach(roleId => {
+                          const rolePerms = rolePermissionsMap[roleId] || [];
+                          rolePerms.forEach(permId => allExistingPerms.add(permId));
+                        });
+                        setBulkPermissionsSelected(Array.from(allExistingPerms));
+                      }
+                    }}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       bulkPermissionsAction === "add"
                         ? 'bg-green-600 text-white'
@@ -1370,7 +1440,10 @@ export default function RoleAccessManagementPage() {
                     Add
                   </button>
                   <button
-                    onClick={() => setBulkPermissionsAction("remove")}
+                    onClick={() => {
+                      setBulkPermissionsAction("remove");
+                      setBulkPermissionsSelected([]);
+                    }}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       bulkPermissionsAction === "remove"
                         ? 'bg-red-600 text-white'
@@ -1386,9 +1459,36 @@ export default function RoleAccessManagementPage() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
-              <h3 className={`font-medium text-xs mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Select Permissions to {bulkPermissionsAction === 'add' ? 'Add' : 'Remove'}
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Select Permissions to {bulkPermissionsAction === 'add' ? 'Add' : 'Remove'}
+                </h3>
+                {bulkSelectedRoles.length > 0 && Object.keys(filteredBulkCategories).length > 0 && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSelectAllPermissions}
+                      className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+                        bulkPermissionsAction === "add"
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+                          : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
+                      }`}
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={handleDeselectAllPermissions}
+                      className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+                        darkMode
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Deselect All
+                    </button>
+                  </div>
+                )}
+              </div>
+              
               {bulkSelectedRoles.length === 0 ? (
                 <div className={`text-center py-8 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Please select at least one role to continue
@@ -1397,6 +1497,8 @@ export default function RoleAccessManagementPage() {
                 <div className="space-y-2">
                   {Object.entries(filteredBulkCategories).map(([category, perms]) => {
                     const selectedCount = perms.filter(p => bulkPermissionsSelected.includes(p.id)).length;
+                    const allCategorySelected = perms.every(p => bulkPermissionsSelected.includes(p.id));
+                    
                     return (
                       <div
                         key={category}
@@ -1404,26 +1506,35 @@ export default function RoleAccessManagementPage() {
                           darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'
                         }`}
                       >
-                        <button
-                          onClick={() => toggleBulkCategory(category)}
+                        <div
                           className={`w-full p-2.5 flex items-center justify-between transition-colors ${
                             darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
                           }`}
                         >
-                          <div className="flex items-center gap-2">
-                            <h4 className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {category}
-                            </h4>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                              bulkPermissionsAction === "add"
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
-                            }`}>
-                              {selectedCount}/{perms.length}
-                            </span>
+                          <div className="flex items-center gap-2 flex-1">
+                            <CustomCheckbox
+                              checked={allCategorySelected && perms.length > 0}
+                              indeterminate={selectedCount > 0 && selectedCount < perms.length}
+                              onChange={() => handleSelectAllInCategory(category)}
+                            />
+                            <button
+                              onClick={() => toggleBulkCategory(category)}
+                              className="flex items-center gap-2 flex-1"
+                            >
+                              <h4 className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {category}
+                              </h4>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                bulkPermissionsAction === "add"
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              }`}>
+                                {selectedCount}/{perms.length}
+                              </span>
+                            </button>
                           </div>
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedBulkCategories[category] ? 'rotate-180' : ''}`} />
-                        </button>
+                        </div>
                         
                         {expandedBulkCategories[category] && (
                           <div className="p-2.5 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto">
@@ -1472,7 +1583,7 @@ export default function RoleAccessManagementPage() {
               )}
             </div>
 
-            <div className="flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}">
+            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowBulkPermissionsModal(false);
@@ -1538,5 +1649,3 @@ export default function RoleAccessManagementPage() {
     </DashboardLayout>
   );
 }
-
-      

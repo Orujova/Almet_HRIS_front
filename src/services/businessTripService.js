@@ -482,16 +482,25 @@ export const BusinessTripHelpers = {
     return statusMap[status] || status;
   },
 
-  // Check if user is admin
-  isAdmin: (userPermissions) => {
-    return userPermissions?.is_admin === true;
+  // Check permissions
+  hasPermission: (userPermissions, permissionKey) => {
+    if (userPermissions?.is_admin) return true;
+    return userPermissions?.permissions?.includes(permissionKey) || false;
+  },
+
+  // Check if user can view settings
+  canViewSettings: (userPermissions) => {
+    return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.settings.view');
+  },
+
+  // Check if user can export all trips
+  canExportAll: (userPermissions) => {
+    return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.export_all');
   },
 
   // Check if user can approve
   canApprove: (userPermissions) => {
-    if (userPermissions?.is_admin) return true;
-    
-    return userPermissions?.permissions?.includes('business_trips.request.approve');
+    return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.approve');
   },
 
   // Check if user can cancel trip
@@ -500,7 +509,7 @@ export const BusinessTripHelpers = {
     if (trip.status !== 'APPROVED') return false;
     if (trip.employee_id === currentUserId) return true;
     
-    return userPermissions?.permissions?.includes('business_trips.request.cancel');
+    return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.cancel');
   },
 
   // Calculate trip duration
