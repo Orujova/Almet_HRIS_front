@@ -126,7 +126,7 @@ export default function RoleAccessManagementPage() {
         setPermissions(permsData.categories || {});
         const allCategories = {};
         Object.keys(permsData.categories || {}).forEach(cat => {
-          allCategories[cat] = true;
+          allCategories[cat] = false;
         });
         setExpandedCategories(allCategories);
       } else if (activeTab === "assignments") {
@@ -622,13 +622,7 @@ export default function RoleAccessManagementPage() {
                       </button>
                     </>
                   )}
-                  <button
-                    onClick={handleOpenBulkPermissions}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-almet-steel-blue hover:bg-almet-astral text-white rounded-lg transition-colors"
-                  >
-                    <Settings className="w-3.5 h-3.5" />
-                    Bulk Permissions
-                  </button>
+                 
                   <button
                     onClick={() => {
                       setEditingRole(null);
@@ -680,6 +674,23 @@ export default function RoleAccessManagementPage() {
           {/* Roles Tab */}
           {activeTab === "roles" && (
             <>
+              {/* Select All Checkbox */}
+              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm mb-3 px-4 py-2 flex items-center gap-2`}>
+                <CustomCheckbox
+                  checked={selectedRoleBoxes.length === filteredRoles.length && filteredRoles.length > 0}
+                  onChange={() => {
+                    if (selectedRoleBoxes.length === filteredRoles.length) {
+                      setSelectedRoleBoxes([]);
+                    } else {
+                      setSelectedRoleBoxes(filteredRoles.map(r => r.id));
+                    }
+                  }}
+                />
+                <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Select All Roles {selectedRoleBoxes.length > 0 && `(${selectedRoleBoxes.length} selected)`}
+                </span>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {filteredRoles.map((role) => (
                   <div
@@ -1404,10 +1415,7 @@ export default function RoleAccessManagementPage() {
                           const rolePerms = rolePermissionsMap[roleId] || [];
                           rolePerms.forEach(permId => allExistingPerms.add(permId));
                         });
-                        
-                        if (bulkPermissionsAction === 'add') {
-                          setBulkPermissionsSelected(Array.from(allExistingPerms));
-                        }
+                        setBulkPermissionsSelected(Array.from(allExistingPerms));
                       }
                     }}
                     placeholder="Select roles..."
@@ -1442,7 +1450,15 @@ export default function RoleAccessManagementPage() {
                   <button
                     onClick={() => {
                       setBulkPermissionsAction("remove");
-                      setBulkPermissionsSelected([]);
+                      // When switching to remove mode, keep existing permissions selected
+                      if (bulkSelectedRoles.length > 0) {
+                        const allExistingPerms = new Set();
+                        bulkSelectedRoles.forEach(roleId => {
+                          const rolePerms = rolePermissionsMap[roleId] || [];
+                          rolePerms.forEach(permId => allExistingPerms.add(permId));
+                        });
+                        setBulkPermissionsSelected(Array.from(allExistingPerms));
+                      }
                     }}
                     className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                       bulkPermissionsAction === "remove"
