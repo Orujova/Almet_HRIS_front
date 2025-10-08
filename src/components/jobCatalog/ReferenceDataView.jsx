@@ -1,4 +1,4 @@
-// src/components/jobCatalog/ReferenceDataView.jsx - COMPLETE
+// src/components/jobCatalog/ReferenceDataView.jsx - With Pagination & ConfirmationModal
 
 import React, { useState, useMemo } from 'react';
 import { 
@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { getHierarchyColor } from './HierarchyColors';
+import Pagination from '@/components/common/Pagination';
+import ConfirmationModal from '@/components/common/ConfirmationModal';
 
 export default function ReferenceDataView({ context }) {
   const {
@@ -22,6 +24,17 @@ export default function ReferenceDataView({ context }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
   const [showInactive, setShowInactive] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(15);
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    item: null,
+    type: null
+  });
 
   // Calculate employee counts
   const getEmployeeCountsByType = useMemo(() => {
@@ -181,6 +194,22 @@ export default function ReferenceDataView({ context }) {
     return data;
   }, [activeTab, searchTerm, showInactive, sortConfig, businessFunctions, departments, units, jobFunctions, positionGroups, getEmployeeCountsByType]);
 
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm, showInactive]);
+
+  // Pagination
+  const totalPages = Math.ceil(processedData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = processedData.slice(startIndex, endIndex);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleSort = (key) => {
     setSortConfig(prev => ({
       key,
@@ -210,6 +239,30 @@ export default function ReferenceDataView({ context }) {
     );
   };
 
+  // Delete handlers
+  const openDeleteConfirmation = (type, item) => {
+    setConfirmModal({
+      isOpen: true,
+      item,
+      type
+    });
+  };
+
+  const closeDeleteConfirmation = () => {
+    setConfirmModal({
+      isOpen: false,
+      item: null,
+      type: null
+    });
+  };
+
+  const confirmDelete = async () => {
+    if (confirmModal.item && confirmModal.type) {
+      await handleDelete(confirmModal.type, confirmModal.item);
+      closeDeleteConfirmation();
+    }
+  };
+
   const renderHierarchyView = () => {
     if (activeTab !== 'position_groups') return null;
 
@@ -217,7 +270,7 @@ export default function ReferenceDataView({ context }) {
       <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet p-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Hierarchy Structure</h3>
         <div className="space-y-2">
-          {processedData
+          {paginatedData
             .sort((a, b) => (a.hierarchy_level || 0) - (b.hierarchy_level || 0))
             .map((pg, index) => {
               const colors = getHierarchyColor(pg.name || pg.label, darkMode);
@@ -270,7 +323,7 @@ export default function ReferenceDataView({ context }) {
                         <Edit size={10} className="text-blue-600 dark:text-blue-400" />
                       </button>
                       <button
-                        onClick={() => handleDelete(activeTab, pg)}
+                        onClick={() => openDeleteConfirmation(activeTab, pg)}
                         className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
                         title="Delete"
                         disabled={loading.crud}
@@ -283,6 +336,20 @@ export default function ReferenceDataView({ context }) {
               );
             })}
         </div>
+        
+        {/* Pagination for Hierarchy View */}
+        {processedData.length > itemsPerPage && (
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={processedData.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              darkMode={darkMode}
+            />
+          </div>
+        )}
       </div>
     );
   };
@@ -326,118 +393,134 @@ export default function ReferenceDataView({ context }) {
     }
 
     return (
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 dark:bg-almet-san-juan">
-              <tr>
-                {config.columns.map((column) => (
-                  <th 
-                    key={column.key}
-                    className={`px-3 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-almet-bali-hai uppercase ${
-                      column.align === 'center' ? 'text-center' : ''
-                    } ${column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet' : ''}`}
-                    onClick={column.sortable ? () => handleSort(column.key) : undefined}
-                  >
-                    <div className="flex items-center justify-center gap-1">
-                      {column.label}
-                      {column.sortable && getSortIcon(column.key)}
-                    </div>
-                  </th>
-                ))}
-                <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 dark:text-almet-bali-hai uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-almet-cloud-burst divide-y divide-gray-200 dark:divide-almet-comet">
-              {processedData.map((item, index) => (
-                <tr key={item.id || index} className="hover:bg-gray-50 dark:hover:bg-almet-san-juan transition-colors">
+      <>
+        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-almet-san-juan">
+                <tr>
                   {config.columns.map((column) => (
-                    <td key={column.key} className={`px-3 py-2.5 whitespace-nowrap text-xs ${
-                      column.align === 'center' ? 'text-center' : ''
-                    }`}>
-                      {column.key === 'name' && (
-                        <div className="flex items-center gap-2">
-                          {activeTab === 'position_groups' && (
-                            <span 
-                              className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0"
-                              style={{ backgroundColor: getHierarchyColor(item.name || item.label, darkMode).borderColor }}
-                            >
-                              {item.hierarchy_level}
-                            </span>
-                          )}
-                          <div>
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {item.display_name || item.label || item.name}
-                            </div>
-                            {item.code && (
-                              <div className="text-[10px] text-gray-500 dark:text-almet-bali-hai">
-                                {item.code}
-                              </div>
-                            )} 
-                          </div>
-                        </div>
-                      )}
-                      {column.key === 'employee_count' && (
-                        <div className="text-center">
-                          <div className="text-sm font-bold text-gray-900 dark:text-white">
-                            {item.real_employee_count || 0}
-                          </div>
-                        </div>
-                      )}
-                      {column.key === 'department_count' && (
-                        <div className="text-center font-medium text-gray-600 dark:text-almet-bali-hai">
-                          {item.department_count || 0}
-                        </div>
-                      )}
-                      {column.key === 'unit_count' && (
-                        <div className="text-center font-medium text-gray-600 dark:text-almet-bali-hai">
-                          {item.unit_count || 0}
-                        </div>
-                      )}
-                      {column.key === 'hierarchy_level' && (
-                        <div className="text-center font-bold text-almet-sapphire">
-                          {item.hierarchy_level}
-                        </div>
-                      )}
-                      {column.key === 'is_active' && (
-                        <div className="text-center">
-                          {renderStatusBadge(item.is_active !== false)}
-                        </div>
-                      )}
-                      {!['name', 'employee_count', 'department_count', 'unit_count', 'hierarchy_level', 'is_active'].includes(column.key) && (
-                        <div className="text-gray-900 dark:text-white">
-                          {item[column.key] || '—'}
-                        </div>
-                      )}
-                    </td>
+                    <th 
+                      key={column.key}
+                      className={`px-3 py-2 text-left text-[10px] font-medium text-gray-500 dark:text-almet-bali-hai uppercase ${
+                        column.align === 'center' ? 'text-center' : ''
+                      } ${column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet' : ''}`}
+                      onClick={column.sortable ? () => handleSort(column.key) : undefined}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        {column.label}
+                        {column.sortable && getSortIcon(column.key)}
+                      </div>
+                    </th>
                   ))}
-                  <td className="px-3 py-2.5 whitespace-nowrap text-right text-xs">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => openCrudModal(activeTab, 'edit', item)}
-                        className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit size={11} className="text-blue-600 dark:text-blue-400" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(activeTab, item)}
-                        className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                        title="Delete"
-                        disabled={loading.crud}
-                      >
-                        <Trash2 size={11} className="text-red-600 dark:text-red-400" />
-                      </button>
-                    </div>
-                  </td>
+                  <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 dark:text-almet-bali-hai uppercase">
+                    Actions
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white dark:bg-almet-cloud-burst divide-y divide-gray-200 dark:divide-almet-comet">
+                {paginatedData.map((item, index) => (
+                  <tr key={item.id || index} className="hover:bg-gray-50 dark:hover:bg-almet-san-juan transition-colors">
+                    {config.columns.map((column) => (
+                      <td key={column.key} className={`px-3 py-2.5 whitespace-nowrap text-xs ${
+                        column.align === 'center' ? 'text-center' : ''
+                      }`}>
+                        {column.key === 'name' && (
+                          <div className="flex items-center gap-2">
+                            {activeTab === 'position_groups' && (
+                              <span 
+                                className="w-5 h-5 rounded-full text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0"
+                                style={{ backgroundColor: getHierarchyColor(item.name || item.label, darkMode).borderColor }}
+                              >
+                                {item.hierarchy_level}
+                              </span>
+                            )}
+                            <div>
+                              <div className="font-medium text-gray-900 dark:text-white">
+                                {item.display_name || item.label || item.name}
+                              </div>
+                              {item.code && (
+                                <div className="text-[10px] text-gray-500 dark:text-almet-bali-hai">
+                                  {item.code}
+                                </div>
+                              )} 
+                            </div>
+                          </div>
+                        )}
+                        {column.key === 'employee_count' && (
+                          <div className="text-center">
+                            <div className="text-sm font-bold text-gray-900 dark:text-white">
+                              {item.real_employee_count || 0}
+                            </div>
+                          </div>
+                        )}
+                        {column.key === 'department_count' && (
+                          <div className="text-center font-medium text-gray-600 dark:text-almet-bali-hai">
+                            {item.department_count || 0}
+                          </div>
+                        )}
+                        {column.key === 'unit_count' && (
+                          <div className="text-center font-medium text-gray-600 dark:text-almet-bali-hai">
+                            {item.unit_count || 0}
+                          </div>
+                        )}
+                        {column.key === 'hierarchy_level' && (
+                          <div className="text-center font-bold text-almet-sapphire">
+                            {item.hierarchy_level}
+                          </div>
+                        )}
+                        {column.key === 'is_active' && (
+                          <div className="text-center">
+                            {renderStatusBadge(item.is_active !== false)}
+                          </div>
+                        )}
+                        {!['name', 'employee_count', 'department_count', 'unit_count', 'hierarchy_level', 'is_active'].includes(column.key) && (
+                          <div className="text-gray-900 dark:text-white">
+                            {item[column.key] || '—'}
+                          </div>
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-3 py-2.5 whitespace-nowrap text-right text-xs">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => openCrudModal(activeTab, 'edit', item)}
+                          className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          title="Edit"
+                        >
+                          <Edit size={11} className="text-blue-600 dark:text-blue-400" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteConfirmation(activeTab, item)}
+                          className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+                          title="Delete"
+                          disabled={loading.crud}
+                        >
+                          <Trash2 size={11} className="text-red-600 dark:text-red-400" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+
+        {/* Pagination */}
+        {processedData.length > itemsPerPage && (
+          <div className="mt-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={processedData.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              darkMode={darkMode}
+            />
+          </div>
+        )}
+      </>
     );
   };
 
@@ -653,6 +736,20 @@ export default function ReferenceDataView({ context }) {
           </div>
         </div>
       )}
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        onClose={closeDeleteConfirmation}
+        onConfirm={confirmDelete}
+        title="Delete Confirmation"
+        message={`Are you sure you want to delete "${confirmModal.item?.name || confirmModal.item?.label}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+        loading={loading.crud}
+        darkMode={darkMode}
+      />
     </div>
   );
 }

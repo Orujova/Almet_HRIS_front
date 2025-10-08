@@ -1,13 +1,14 @@
-// src/components/jobCatalog/OverviewView.jsx - With SearchableDropdown
+// src/components/jobCatalog/OverviewView.jsx - With Pagination
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
-  Search, Filter, Users, Briefcase, Grid, List, Plus,
+  Search, Filter, Users, Briefcase, Grid, List,
   Loader2, AlertCircle, X
 } from 'lucide-react';
 import JobCard from './JobCard';
 import JobListItem from './JobListItem';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
+import Pagination from '@/components/common/Pagination';
 import { useTheme } from '@/components/common/ThemeProvider';
 
 export default function OverviewView({ context }) {
@@ -18,12 +19,33 @@ export default function OverviewView({ context }) {
     selectedFilters, setSelectedFilters,
     filteredJobs, stats, filterOptions,
     loading, errors,
-    clearFilters, openCrudModal,
+    clearFilters,
     jobCatalogData
   } = context;
 
   const { darkMode } = useTheme();
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20); // 20 items per page
+  
   const hasActiveFilters = Object.values(selectedFilters).some(v => v) || searchTerm;
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedJobs = filteredJobs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedFilters]);
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div>
@@ -115,12 +137,10 @@ export default function OverviewView({ context }) {
                 <List size={12} />
               </button>
             </div>
-
-          
           </div>
         </div>
 
-        {/* Filters Panel with SearchableDropdown */}
+        {/* Filters Panel */}
         {showFilters && (
           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
@@ -241,8 +261,15 @@ export default function OverviewView({ context }) {
         </div>
       ) : (
         <>
-          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3' : 'space-y-2'}>
-            {filteredJobs.map(job => (
+          {/* Results Info */}
+          {filteredJobs.length > 0 && (
+            <div className="mb-3 text-xs text-gray-600 dark:text-almet-bali-hai">
+              Showing {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} of {filteredJobs.length} jobs
+            </div>
+          )}
+
+          <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4' : 'space-y-2 mb-4'}>
+            {paginatedJobs.map(job => (
               viewMode === 'grid' ? (
                 <JobCard key={job.id} job={job} context={context} />
               ) : (
@@ -251,6 +278,19 @@ export default function OverviewView({ context }) {
             ))}
           </div>
 
+          {/* Pagination */}
+          {filteredJobs.length > itemsPerPage && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredJobs.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              darkMode={darkMode}
+            />
+          )}
+
+          {/* No Results */}
           {filteredJobs.length === 0 && (
             <div className="text-center py-16">
               <Briefcase className="mx-auto h-10 w-10 text-gray-400 dark:text-almet-bali-hai mb-3" />

@@ -1,4 +1,4 @@
-// src/components/jobCatalog/JobCatalogPage.jsx - COMPLETE FULL VERSION
+// src/app/structure/job-catalog/page.jsx - With Loading & Error States
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -7,8 +7,8 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { referenceDataAPI } from '@/store/api/referenceDataAPI';
 import { employeeAPI } from '@/store/api/employeeAPI';
-import { AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/common/Toast';
+import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
 
 // CRITICAL: Import setPositionGroups from HierarchyColors
 import { setPositionGroups } from '@/components/jobCatalog/HierarchyColors';
@@ -63,6 +63,7 @@ export default function JobCatalogPage() {
   
   // Loading states
   const [loading, setLoading] = useState({
+    initial: true, // NEW: for initial page load
     employees: false,
     statistics: false,
     referenceData: false,
@@ -85,7 +86,8 @@ export default function JobCatalogPage() {
   }, []);
 
   const loadInitialData = async () => {
-    setLoading(prev => ({ ...prev, referenceData: true, statistics: true }));
+    setLoading(prev => ({ ...prev, initial: true, referenceData: true, statistics: true }));
+    setErrors({});
     
     try {
       // Load all reference data and statistics in parallel
@@ -116,7 +118,6 @@ export default function JobCatalogPage() {
       setStatistics(statisticsRes.data || statisticsRes);
 
       // CRITICAL: Initialize color system with position groups
-      // This must be called to assign unique colors to each position
       setPositionGroups(positionGroupsData);
       console.log('✅ Color system initialized with', positionGroupsData.length, 'position groups');
 
@@ -124,12 +125,17 @@ export default function JobCatalogPage() {
       await loadEmployees();
       
     } catch (error) {
-      setErrors(prev => ({ ...prev, initial: 'Failed to load initial data' }));
-      showError('Failed to load initial data');
+      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to load initial data';
+      setErrors(prev => ({ ...prev, initial: errorMsg }));
       console.error('❌ Error loading initial data:', error);
     } finally {
-      setLoading(prev => ({ ...prev, referenceData: false, statistics: false }));
+      setLoading(prev => ({ ...prev, initial: false, referenceData: false, statistics: false }));
     }
+  };
+
+  // Retry function for error state
+  const retryLoad = () => {
+    loadInitialData();
   };
 
   // ============================================
@@ -192,10 +198,12 @@ export default function JobCatalogPage() {
 
   // Reload employees when filters change (with debounce)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadEmployees();
-    }, 300);
-    return () => clearTimeout(timer);
+    if (!loading.initial) {
+      const timer = setTimeout(() => {
+        loadEmployees();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
   }, [searchTerm, selectedFilters]);
 
   // ============================================
@@ -319,7 +327,7 @@ export default function JobCatalogPage() {
       closeCrudModal();
       
     } catch (error) {
-      const errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace('_', ' ')}`;
+      const errorMsg = error?.response?.data?.message || `Failed to ${crudModalMode} ${crudModalType.replace('_', ' ')}`;
       setErrors(prev => ({ ...prev, crud: errorMsg }));
       showError(errorMsg);
       console.error('❌ CRUD operation error:', error);
@@ -329,11 +337,6 @@ export default function JobCatalogPage() {
   };
 
   const handleDelete = async (type, item) => {
-    // Confirmation dialog
-    if (!confirm(`Are you sure you want to delete "${item.name || item.label}"?`)) {
-      return;
-    }
-
     setLoading(prev => ({ ...prev, crud: true }));
 
     try {
@@ -365,7 +368,7 @@ export default function JobCatalogPage() {
       showSuccess(`Successfully deleted ${type.replace('_', ' ')}`);
       
     } catch (error) {
-      const errorMsg = `Failed to delete ${type.replace('_', ' ')}`;
+      const errorMsg = error?.response?.data?.message || `Failed to delete ${type.replace('_', ' ')}`;
       setErrors(prev => ({ ...prev, crud: errorMsg }));
       showError(errorMsg);
       console.error('❌ Delete error:', error);
@@ -444,7 +447,6 @@ export default function JobCatalogPage() {
       // Business function filter
       const matchesBusinessFunction = !selectedFilters.business_function || 
         job.businessFunction === selectedFilters.business_function ||
-        // Match by ID if businessFunctions array has it
         businessFunctions.find(bf => 
           (bf.value === selectedFilters.business_function || bf.id === selectedFilters.business_function) && 
           (bf.label === job.businessFunction || bf.name === job.businessFunction)
@@ -603,6 +605,16 @@ export default function JobCatalogPage() {
   // RENDER
   // ============================================
   
+  // Show loading spinner during initial load
+  if (loading.initial) {
+    return <LoadingSpinner message="Loading Job Catalog..." />;
+  }
+
+  // Show error display if initial load failed
+  if (errors.initial) {
+    return <ErrorDisplay error={errors.initial} onRetry={retryLoad} />;
+  }
+
   return (
     <DashboardLayout>
       <div className="p-3 sm:p-4 bg-almet-mystic dark:bg-gray-900 min-h-screen">
@@ -616,16 +628,6 @@ export default function JobCatalogPage() {
             Comprehensive job catalog with reference data management
           </p>
         </div>
-
-        {/* Error Display */}
-        {errors.initial && (
-          <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <div className="flex items-center">
-              <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400 mr-2 flex-shrink-0" />
-              <span className="text-red-800 dark:text-red-200 text-xs">{errors.initial}</span>
-            </div>
-          </div>
-        )}
 
         {/* Navigation Tabs */}
         <NavigationTabs 

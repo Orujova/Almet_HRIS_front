@@ -45,7 +45,7 @@ export default function CrudModal({ context }) {
               />
             </div>
             <div className="mb-3">
-              <label className={labelClass}>Code</label>
+              <label className={labelClass}>Code *</label>
               <input
                 type="text"
                 value={formData.code || ''}
