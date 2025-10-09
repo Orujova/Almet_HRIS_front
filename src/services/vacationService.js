@@ -347,68 +347,7 @@ searchEmployees: async () => {
     }
   },
 
-  // === NOTIFICATION TEMPLATES ===
-  
-  // Get Notification Templates
-  getNotificationTemplates: async (params = {}) => {
-    try {
-      const response = await vacationApi.get('/vacation/notification-templates/', { params });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Create Notification Template
-  createNotificationTemplate: async (data) => {
-    try {
-      const response = await vacationApi.post('/vacation/notification-templates/', data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Get Notification Template by ID
-  getNotificationTemplate: async (id) => {
-    try {
-      const response = await vacationApi.get(`/vacation/notification-templates/${id}/`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Update Notification Template
-  updateNotificationTemplate: async (id, data) => {
-    try {
-      const response = await vacationApi.put(`/vacation/notification-templates/${id}/`, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Partial Update Notification Template
-  partialUpdateNotificationTemplate: async (id, data) => {
-    try {
-      const response = await vacationApi.patch(`/vacation/notification-templates/${id}/`, data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Delete Notification Template
-  deleteNotificationTemplate: async (id) => {
-    try {
-      const response = await vacationApi.delete(`/vacation/notification-templates/${id}/`);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
+ 
   // === SETTINGS ===
   
   // Get General Settings

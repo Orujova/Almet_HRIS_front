@@ -1,4 +1,4 @@
-// components/jobDescription/EmployeeSelectionModal.jsx - FIXED: Proper Vacancy ID Handling
+// components/jobDescription/EmployeeSelectionModal.jsx - UPDATED: With Pre-selection Logic
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -15,7 +15,7 @@ import {
   Target,
   Phone,
   Mail,
-  UserX // For vacancy icon
+  UserX
 } from 'lucide-react';
 import CustomCheckbox from '../common/CustomCheckbox';
 
@@ -26,7 +26,8 @@ const EmployeeSelectionModal = ({
   jobCriteria = {},
   onEmployeeSelect,
   loading = false,
-  darkMode = false
+  darkMode = false,
+  preSelectedEmployeeIds = [] // ADDED: Pre-selected employees
 }) => {
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,17 +42,30 @@ const EmployeeSelectionModal = ({
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
 
-  // Reset selections when modal opens/closes
+  // UPDATED: Initialize with pre-selected employees when modal opens
   useEffect(() => {
     if (isOpen) {
-      setSelectedEmployees([]);
+      // If preSelectedEmployeeIds is provided and has values, use it
+      if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
+        console.log('🎯 Pre-selecting employees:', preSelectedEmployeeIds);
+        setSelectedEmployees(preSelectedEmployeeIds);
+        
+        // Check if all employees are selected
+        setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
+      } else {
+        // ENHANCED: Auto-select all by default if no pre-selection provided
+        const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
+        console.log('✅ Auto-selecting all eligible employees:', allEmployeeIds.length);
+        setSelectedEmployees(allEmployeeIds);
+        setSelectAll(allEmployeeIds.length > 0);
+      }
+      
       setSearchTerm('');
-      setSelectAll(false);
       setExpandedEmployee(null);
     }
-  }, [isOpen]);
+  }, [isOpen, eligibleEmployees, preSelectedEmployeeIds]);
 
-  // Filter employees based on search - FIXED: Handle both employees and vacancies
+  // Filter employees based on search
   const filteredEmployees = eligibleEmployees.filter(emp => {
     const isVacancy = emp.is_vacancy || emp.record_type === 'vacancy';
     const name = isVacancy ? `Vacant Position (${emp.employee_id})` : (emp.full_name || emp.name || '');
@@ -66,9 +80,8 @@ const EmployeeSelectionModal = ({
     return searchableText.includes(searchTerm.toLowerCase());
   });
 
-  // FIXED: Handle individual employee selection using correct ID
+  // Handle individual employee selection
   const handleEmployeeToggle = (employeeRecord) => {
-    // CRITICAL: Use the database ID (not employee_id) for both employees and vacancies
     const recordId = employeeRecord.id;
     
     setSelectedEmployees(prev => {
@@ -84,13 +97,12 @@ const EmployeeSelectionModal = ({
     });
   };
 
-  // Handle select all toggle - FIXED: Use correct IDs
+  // Handle select all toggle
   const handleSelectAll = () => {
     if (selectAll || selectedEmployees.length === filteredEmployees.length) {
       setSelectedEmployees([]);
       setSelectAll(false);
     } else {
-      // CRITICAL: Use database IDs for all records
       setSelectedEmployees(filteredEmployees.map(emp => emp.id));
       setSelectAll(true);
     }
@@ -101,22 +113,20 @@ const EmployeeSelectionModal = ({
     setExpandedEmployee(prev => prev === employeeId ? null : employeeId);
   };
 
-  // FIXED: Handle final selection with proper ID mapping
+  // Handle final selection
   const handleConfirmSelection = () => {
     if (selectedEmployees.length === 0) {
       alert('Please select at least one employee or vacancy');
       return;
     }
 
-    // Get the full employee/vacancy data for selected records
     const selectedEmployeeData = eligibleEmployees.filter(emp => 
       selectedEmployees.includes(emp.id)
     );
 
-    console.log('FIXED: Confirming selection with database IDs:', selectedEmployees);
-    console.log('FIXED: Selected employee/vacancy data:', selectedEmployeeData);
+    console.log('✅ Confirming selection with database IDs:', selectedEmployees);
+    console.log('📋 Selected employee/vacancy data:', selectedEmployeeData);
     
-    // Pass the database IDs (not employee_ids) to parent
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
   };
 
@@ -153,7 +163,11 @@ const EmployeeSelectionModal = ({
               </h2>
               <p className={`${textSecondary} text-xs`}>
                 {eligibleEmployees.length} records match your job criteria. 
-                Select which employees and vacant positions should receive job descriptions.
+                {selectedEmployees.length > 0 && (
+                  <span className="text-almet-sapphire font-medium ml-1">
+                    ({selectedEmployees.length} pre-selected)
+                  </span>
+                )}
               </p>
             </div>
             <button
@@ -217,6 +231,19 @@ const EmployeeSelectionModal = ({
           </div>
         </div>
 
+        {/* ADDED: Pre-selection Info Banner */}
+        {selectedEmployees.length > 0 && (
+          <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2 text-xs">
+              <CheckCircle size={14} className="text-blue-600" />
+              <span className="text-blue-800 dark:text-blue-300">
+                <span className="font-semibold">{selectedEmployees.length}</span> record{selectedEmployees.length > 1 ? 's' : ''} pre-selected based on matching criteria. 
+                You can modify the selection below.
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Search and Controls */}
         <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -247,7 +274,7 @@ const EmployeeSelectionModal = ({
               </div>
 
               <div className={`text-sm ${textSecondary}`}>
-                {selectedEmployees.length} selected
+                <span className="font-semibold text-almet-sapphire">{selectedEmployees.length}</span> selected
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-// pages/structure/job-descriptions/index.js - UPDATED: Using Common Components and Enhanced Navigation
+// pages/structure/job-descriptions/index.js - COMPLETE VERSION with Bulk Upload & Pagination
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,14 +14,15 @@ import {
   Send,
   X,
   Users,
-  AlertCircle
+  AlertCircle,
+  FileSpreadsheet // ADDED for Bulk Upload
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
-// UPDATED: Import common components
 import { ToastProvider, useToast } from '@/components/common/Toast';
 import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
+import Pagination from '@/components/common/Pagination'; // ADDED
 
 import jobDescriptionService from '@/services/jobDescriptionService';
 import competencyApi from '@/services/competencyApi';
@@ -31,12 +32,13 @@ import JobDescriptionList from '@/components/jobDescription/JobDescriptionList';
 import JobDescriptionForm from '@/components/jobDescription/JobDescriptionForm';
 import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
+import BulkUploadModal from '@/components/jobDescription/BulkUploadModal'; // ADDED
 import StatCard from '@/components/jobDescription/StatCard';
 
 const JobDescriptionPageContent = () => {
   const { darkMode } = useTheme();
   const router = useRouter();
-  const { showSuccess, showError, showWarning, showInfo } = useToast(); // UPDATED: Use toast hook
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
   
   // Theme-dependent classes using Almet colors
   const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
@@ -53,6 +55,13 @@ const JobDescriptionPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   
+  // ADDED: Bulk Upload state
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  
+  // ADDED: Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
   // Enhanced submission workflow state
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionComments, setSubmissionComments] = useState('');
@@ -60,7 +69,7 @@ const JobDescriptionPageContent = () => {
   const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
 
-  // UPDATED: Confirmation modal states
+  // Confirmation modal states
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: 'default',
@@ -152,6 +161,11 @@ const JobDescriptionPageContent = () => {
     dropdownData.employees
   ]);
 
+  // ADDED: Reset to first page when search/filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedDepartment]);
+
   // Filter employees based on selected job criteria (for display only)
   const filterMatchingEmployees = () => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
@@ -219,7 +233,7 @@ const JobDescriptionPageContent = () => {
       ]);
     } catch (error) {
       console.error('Error fetching initial data:', error);
-      showError('Error loading initial data'); // UPDATED: Use toast
+      showError('Error loading initial data');
     } finally {
       setLoading(false);
     }
@@ -302,7 +316,7 @@ const JobDescriptionPageContent = () => {
 
     } catch (error) {
       console.error('Error fetching dropdown data:', error);
-      showError('Error loading employee data'); // UPDATED: Use toast
+      showError('Error loading employee data');
     }
   };
 
@@ -342,14 +356,23 @@ const JobDescriptionPageContent = () => {
     });
   }, [jobDescriptions, searchTerm, selectedDepartment]);
 
+  // ADDED: Pagination logic
+  const paginatedJobs = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredJobs.slice(startIndex, endIndex);
+  }, [filteredJobs, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
+
   const handleDownloadSinglePDF = async (jobId) => {
     try {
       setActionLoading(true);
       await jobDescriptionService.downloadJobDescriptionPDF(jobId);
-      showSuccess('PDF downloaded successfully'); // UPDATED: Use toast
+      showSuccess('PDF downloaded successfully');
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
-      showError('Error downloading PDF. Please try again.'); // UPDATED: Use toast
+      showError('Error downloading PDF. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -360,6 +383,28 @@ const JobDescriptionPageContent = () => {
     setCreatedJobsData({ id: jobId, isExisting: true });
     setIsExistingJobSubmission(true);
     setShowSubmissionModal(true);
+  };
+
+  // ADDED: Bulk upload complete handler
+  const handleBulkUploadComplete = async (result) => {
+    console.log('✅ Bulk upload completed:', result);
+    
+    // Refresh data
+    await fetchJobDescriptions();
+    await fetchStats();
+    
+    // Show success message
+    const message = result.successful > 0 
+      ? `Successfully created ${result.successful} job description${result.successful > 1 ? 's' : ''}!`
+      : 'Bulk upload completed';
+    
+    showSuccess(message);
+    
+    // Close modal after a short delay
+    setTimeout(() => {
+      setShowBulkUploadModal(false);
+      setActiveView('list'); // Navigate to list view
+    }, 2000);
   };
 
   // Enhanced submission handling for multiple jobs
@@ -375,7 +420,7 @@ const JobDescriptionPageContent = () => {
           submit_to_line_manager: true
         });
         
-        showSuccess('Job description submitted for approval successfully!'); // UPDATED: Use toast
+        showSuccess('Job description submitted for approval successfully!');
       } else {
         const jobsToSubmit = createdJobsData.created_job_descriptions || [{ id: createdJobsData.id }];
         
@@ -390,7 +435,7 @@ const JobDescriptionPageContent = () => {
           ? `${jobsToSubmit.length} job descriptions submitted for approval successfully!`
           : 'Job description submitted for approval successfully!';
         
-        showSuccess(message); // UPDATED: Use toast
+        showSuccess(message);
       }
       
       await fetchJobDescriptions();
@@ -401,11 +446,10 @@ const JobDescriptionPageContent = () => {
       setIsExistingJobSubmission(false);
       resetForm();
       
-      // UPDATED: Navigate to list view after submission
       setActiveView('list');
     } catch (error) {
       console.error('Error submitting for approval:', error);
-      showError('Error submitting for approval. Please try again.'); // UPDATED: Use toast
+      showError('Error submitting for approval. Please try again.');
     } finally {
       setSubmissionLoading(false);
     }
@@ -417,7 +461,7 @@ const JobDescriptionPageContent = () => {
       ? `${createdJobsData.summary.total_job_descriptions_created} job descriptions saved as drafts successfully!`
       : 'Job description saved as draft successfully!';
     
-    showSuccess(message); // UPDATED: Use toast
+    showSuccess(message);
     
     await fetchJobDescriptions();
     await fetchStats();
@@ -428,92 +472,12 @@ const JobDescriptionPageContent = () => {
     setIsExistingJobSubmission(false);
     resetForm();
     
-    // UPDATED: Navigate to list view after keeping as draft
     setActiveView('list');
   };
 
   // Enhanced resetForm function with complete cleanup
   const resetForm = () => {
-  setFormData({
-    job_title: '',
-    job_purpose: '',
-    business_function: '',
-    department: '',
-    unit: '',
-    job_function: '',
-    position_group: '',
-    grading_level: '',
-    criticalDuties: [''],
-    positionMainKpis: [''],
-    jobDuties: [''],
-    requirements: [''],
-    required_skills_data: [],
-    behavioral_competencies_data: [],
-    business_resources_ids: [],
-    access_rights_ids: [],
-    company_benefits_ids: []
-  });
-  
-  setEditingJob(null);
-  setSelectedSkillGroup('');
-  setSelectedBehavioralGroup('');
-  setSelectedPositionGroup('');
-  setAvailableSkills([]);
-  setAvailableCompetencies([]);
-  setMatchingEmployees([]);
-  
-  // CRITICAL FIX: Edit'ten çıkışta employee selection'ı sıfırlama
-  // Sadece yeni job creation'a dönerken sıfırla
-  if (!editingJob) {
-    // setSelectedEmployeeIds([]);
-    // setEligibleEmployees([]);
-    // setJobCriteria({});
-  }
-};
-  // UPDATED: Enhanced tab navigation with confirmation
-  const handleTabNavigation = (targetView) => {
-  if (targetView === 'create') {
-    if (activeView === 'list' || editingJob) {
-      resetForm();
-    }
-    setActiveView('create');
-  } else if (targetView === 'list') {
-    const hasFormData = formData.job_title?.trim() || 
-                       formData.job_purpose?.trim() || 
-                       formData.criticalDuties?.some(d => d?.trim()) ||
-                       formData.required_skills_data?.length > 0;
-    
-    if (hasFormData && !editingJob) {
-      setConfirmModal({
-        isOpen: true,
-        type: 'warning',
-        title: 'Unsaved Changes',
-        message: 'You have unsaved changes. Are you sure you want to leave? All changes will be lost.',
-        onConfirm: () => {
-          setConfirmModal({ ...confirmModal, isOpen: false });
-          resetForm();
-          setActiveView('list');
-        }
-      });
-      return;
-    }
-    
-    // CRITICAL FIX: List'e dönerken employee selection'ı da sıfırla
-    resetForm();
-    // setSelectedEmployeeIds([]);
-    // setEligibleEmployees([]);
-    // setJobCriteria({});
-    setActiveView('list');
-  }
-};
-
-  // UPDATED: Enhanced handleEdit with proper cleanup
-  const handleEdit = async (job) => {
-    try {
-      setActionLoading(true);
-      // resetForm();
-      
-        setFormData({
+    setFormData({
       job_title: '',
       job_purpose: '',
       business_function: '',
@@ -533,12 +497,78 @@ const JobDescriptionPageContent = () => {
       company_benefits_ids: []
     });
     
-    // Skill/competency state'ini reset et
+    setEditingJob(null);
     setSelectedSkillGroup('');
     setSelectedBehavioralGroup('');
     setSelectedPositionGroup('');
     setAvailableSkills([]);
     setAvailableCompetencies([]);
+    setMatchingEmployees([]);
+  };
+
+  // Enhanced tab navigation with confirmation
+  const handleTabNavigation = (targetView) => {
+    if (targetView === 'create') {
+      if (activeView === 'list' || editingJob) {
+        resetForm();
+      }
+      setActiveView('create');
+    } else if (targetView === 'list') {
+      const hasFormData = formData.job_title?.trim() || 
+                         formData.job_purpose?.trim() || 
+                         formData.criticalDuties?.some(d => d?.trim()) ||
+                         formData.required_skills_data?.length > 0;
+      
+      if (hasFormData && !editingJob) {
+        setConfirmModal({
+          isOpen: true,
+          type: 'warning',
+          title: 'Unsaved Changes',
+          message: 'You have unsaved changes. Are you sure you want to leave? All changes will be lost.',
+          onConfirm: () => {
+            setConfirmModal({ ...confirmModal, isOpen: false });
+            resetForm();
+            setActiveView('list');
+          }
+        });
+        return;
+      }
+      
+      resetForm();
+      setActiveView('list');
+    }
+  };
+
+  // Enhanced handleEdit with proper cleanup
+  const handleEdit = async (job) => {
+    try {
+      setActionLoading(true);
+      
+      setFormData({
+        job_title: '',
+        job_purpose: '',
+        business_function: '',
+        department: '',
+        unit: '',
+        job_function: '',
+        position_group: '',
+        grading_level: '',
+        criticalDuties: [''],
+        positionMainKpis: [''],
+        jobDuties: [''],
+        requirements: [''],
+        required_skills_data: [],
+        behavioral_competencies_data: [],
+        business_resources_ids: [],
+        access_rights_ids: [],
+        company_benefits_ids: []
+      });
+      
+      setSelectedSkillGroup('');
+      setSelectedBehavioralGroup('');
+      setSelectedPositionGroup('');
+      setAvailableSkills([]);
+      setAvailableCompetencies([]);
 
       const fullJob = await jobDescriptionService.getJobDescription(job.id);
       const transformedData = jobDescriptionService.transformJobDescriptionResponse(fullJob);
@@ -616,13 +646,13 @@ const JobDescriptionPageContent = () => {
       
     } catch (error) {
       console.error('Error loading job for edit:', error);
-      showError('Error loading job description. Please try again.'); // UPDATED: Use toast
+      showError('Error loading job description. Please try again.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // UPDATED: Enhanced delete with confirmation modal
+  // Enhanced delete with confirmation modal
   const handleDelete = async (id) => {
     setConfirmModal({
       isOpen: true,
@@ -638,11 +668,11 @@ const JobDescriptionPageContent = () => {
           await fetchStats();
           
           setConfirmModal({ ...confirmModal, isOpen: false, loading: false });
-          showSuccess('Job description deleted successfully!'); // UPDATED: Use toast
+          showSuccess('Job description deleted successfully!');
         } catch (error) {
           console.error('Error deleting job description:', error);
           setConfirmModal({ ...confirmModal, loading: false });
-          showError('Error deleting job description. Please try again.'); // UPDATED: Use toast
+          showError('Error deleting job description. Please try again.');
         }
       }
     });
@@ -655,7 +685,7 @@ const JobDescriptionPageContent = () => {
       setSelectedJob(fullJob);
     } catch (error) {
       console.error('Error loading job for view:', error);
-      showError('Error loading job description details. Please try again.'); // UPDATED: Use toast
+      showError('Error loading job description details. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -668,7 +698,7 @@ const JobDescriptionPageContent = () => {
     setShowSubmissionModal(true);
   };
 
-  // UPDATED: Close confirmation modal
+  // Close confirmation modal
   const closeConfirmModal = () => {
     if (!confirmModal.loading) {
       setConfirmModal({ ...confirmModal, isOpen: false });
@@ -688,13 +718,26 @@ const JobDescriptionPageContent = () => {
                 <h1 className={`text-xl lg:text-2xl font-bold ${textPrimary} mb-2`}>
                   Job Descriptions
                 </h1>
-                <p className={`${textSecondary} text-sm lg:text-base leading-relaxed`}>
-                  Create job descriptions with intelligent employee assignment based on your organizational structure and employee data
+                <p className={`${textSecondary} text-xs lg:text-base leading-relaxed`}>
+                  Create job descriptions  based on your organizational structure and employee data
                 </p>
               </div>
               
               {/* Action Buttons Container */}
               <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
+                {/* ADDED: Bulk Upload Button */}
+                <button
+                  onClick={() => setShowBulkUploadModal(true)}
+                  className={`flex items-center justify-center gap-2 px-5 py-3 
+                    bg-emerald-500 hover:bg-emerald-600 text-white
+                    border border-transparent rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md`}
+                  title="Bulk Upload Job Descriptions"
+                >
+                  <FileSpreadsheet size={16} />
+                  <span className="hidden sm:inline">Bulk Upload</span>
+                  <span className="sm:hidden">Upload</span>
+                </button>
+
                 {/* Settings Button */}
                 <button
                   onClick={() => router.push('/structure/job-descriptions/JobDescriptionSettings/')}
@@ -786,7 +829,7 @@ const JobDescriptionPageContent = () => {
                       {tab.count}
                     </span>
                   )}
-                </button>
+                  </button>
               ))}
             </div>
           </div>
@@ -796,7 +839,7 @@ const JobDescriptionPageContent = () => {
             {activeView === 'list' ? (
               <div className="space-y-4">
                 <JobDescriptionList
-                  filteredJobs={filteredJobs}
+                  filteredJobs={paginatedJobs} 
                   searchTerm={searchTerm}
                   selectedDepartment={selectedDepartment}
                   dropdownData={dropdownData}
@@ -810,6 +853,18 @@ const JobDescriptionPageContent = () => {
                   actionLoading={actionLoading}
                   darkMode={darkMode}
                 />
+                
+                {/* ADDED: Pagination Component */}
+                {totalPages > 1 && (
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={filteredJobs.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={(page) => setCurrentPage(page)}
+                    darkMode={darkMode}
+                  />
+                )}
               </div>
             ) : (
               <div className="space-y-4">
@@ -871,7 +926,17 @@ const JobDescriptionPageContent = () => {
             />
           )}
 
-          {/* UPDATED: Confirmation Modal */}
+          {/* ADDED: Bulk Upload Modal */}
+          {showBulkUploadModal && (
+            <BulkUploadModal
+              isOpen={showBulkUploadModal}
+              onClose={() => setShowBulkUploadModal(false)}
+              onUploadComplete={handleBulkUploadComplete}
+              darkMode={darkMode}
+            />
+          )}
+
+          {/* Confirmation Modal */}
           <ConfirmationModal
             isOpen={confirmModal.isOpen}
             onClose={closeConfirmModal}
@@ -888,7 +953,7 @@ const JobDescriptionPageContent = () => {
   );
 };
 
-// UPDATED: Wrap with ToastProvider
+// Wrap with ToastProvider
 const JobDescriptionPage = () => {
   return (
     <ToastProvider>

@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Plane, ChevronDown ,ChevronUp ,Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X } from 'lucide-react';
+import { Plane, ChevronDown, ChevronUp, Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
+import Pagination from "@/components/common/Pagination";
 import { BusinessTripService, BusinessTripHelpers } from '@/services/businessTripService';
 import { useRouter } from 'next/navigation';
 
@@ -26,6 +27,12 @@ export default function BusinessTripPage() {
   const [requester, setRequester] = useState('for_me');
   const [loading, setLoading] = useState(false);
   const [expandedSection, setExpandedSection] = useState('employee');
+  
+  // Pagination states
+  const [myRequestsPage, setMyRequestsPage] = useState(1);
+  const [allRequestsPage, setAllRequestsPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const itemsPerPage = 10;
   
   // User & Permissions
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
@@ -131,6 +138,17 @@ export default function BusinessTripPage() {
   const [selectedFinanceApprover, setSelectedFinanceApprover] = useState(null);
   const [selectedHrRepresentative, setSelectedHrRepresentative] = useState(null);
 
+  // Pagination helpers
+  const getPaginatedData = (data, page) => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (dataLength) => {
+    return Math.ceil(dataLength / itemsPerPage);
+  };
+
   useEffect(() => {
     initializeData();
   }, []);
@@ -193,7 +211,6 @@ export default function BusinessTripPage() {
         setFormData(prev => ({ ...prev, purpose_id: data.trip_purposes[0].id }));
       }
 
-      // Set default approvers from user_defaults
       if (data.user_defaults?.default_finance_approver?.id) {
         setDefaultFinanceApprover(data.user_defaults.default_finance_approver);
         setSelectedFinanceApprover(data.user_defaults.default_finance_approver.id);
@@ -223,7 +240,6 @@ export default function BusinessTripPage() {
       const data = await BusinessTripService.getHRRepresentatives();
       setHrRepresentatives(data.hr_representatives || []);
       
-      // Set current default if available
       if (data.current_default?.id && !defaultHrRepresentative) {
         setDefaultHrRepresentative(data.current_default);
         setSelectedHrRepresentative(data.current_default.id);
@@ -239,7 +255,6 @@ export default function BusinessTripPage() {
       const data = await BusinessTripService.getFinanceApprovers();
       setFinanceApprovers(data.finance_approvers || []);
       
-      // Set current default if available
       if (data.current_default?.id && !defaultFinanceApprover) {
         setDefaultFinanceApprover(data.current_default);
         setSelectedFinanceApprover(data.current_default.id);
@@ -254,6 +269,7 @@ export default function BusinessTripPage() {
     try {
       const data = await BusinessTripService.getMyTripRequests();
       setMyRequests(data.requests || []);
+      setMyRequestsPage(1);
     } catch (error) {
       console.error('My requests fetch error:', error);
     }
@@ -264,6 +280,7 @@ export default function BusinessTripPage() {
       const data = await BusinessTripService.getAllTripRequests();
       setAllRequests(data.requests || []);
       setFilteredRequests(data.requests || []);
+      setAllRequestsPage(1);
     } catch (error) {
       console.error('All requests fetch error:', error);
     }
@@ -283,6 +300,7 @@ export default function BusinessTripPage() {
       const data = await BusinessTripService.getApprovalHistory();
       setApprovalHistory(data.history || []);
       setFilteredHistory(data.history || []);
+      setHistoryPage(1);
     } catch (error) {
       console.error('Approval history fetch error:', error);
     }
@@ -317,7 +335,6 @@ export default function BusinessTripPage() {
           lineManager: userDefaults.line_manager?.name || ''
         }));
         
-        // Reset to default approvers when switching to "for_me"
         if (defaultFinanceApprover?.id) {
           setSelectedFinanceApprover(defaultFinanceApprover.id);
           setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
@@ -341,7 +358,6 @@ export default function BusinessTripPage() {
           lineManager: ''
         }));
         
-        // Keep default approvers for employee requests too
         if (defaultFinanceApprover?.id && !selectedFinanceApprover) {
           setSelectedFinanceApprover(defaultFinanceApprover.id);
           setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
@@ -356,7 +372,6 @@ export default function BusinessTripPage() {
     loadCurrentUserData();
   }, [requester, userDefaults]);
 
-  // Apply filters for All Requests
   useEffect(() => {
     let filtered = [...allRequests];
 
@@ -381,9 +396,9 @@ export default function BusinessTripPage() {
     }
 
     setFilteredRequests(filtered);
+    setAllRequestsPage(1);
   }, [filters, allRequests]);
 
-  // Apply filters for Approval History
   useEffect(() => {
     let filtered = [...approvalHistory];
 
@@ -403,6 +418,7 @@ export default function BusinessTripPage() {
     }
 
     setFilteredHistory(filtered);
+    setHistoryPage(1);
   }, [historyFilters, approvalHistory]);
 
   const clearFilters = () => {
@@ -506,7 +522,6 @@ export default function BusinessTripPage() {
         }
       }
 
-      // Add selected approvers (default or custom)
       if (selectedFinanceApprover) {
         requestData.finance_approver_id = selectedFinanceApprover;
       }
@@ -517,7 +532,6 @@ export default function BusinessTripPage() {
       await BusinessTripService.createTripRequest(requestData);
       showSuccess('Trip request submitted successfully');
       
-      // Reset form but keep defaults
       setFormData(prev => ({
         ...prev,
         start_date: '',
@@ -527,7 +541,6 @@ export default function BusinessTripPage() {
       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
       
-      // Reset approvers to defaults
       if (defaultFinanceApprover?.id) {
         setSelectedFinanceApprover(defaultFinanceApprover.id);
         setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
@@ -632,7 +645,6 @@ export default function BusinessTripPage() {
     setExpandedSection(expandedSection === section ? null : section);
   };
 
-  // Check permissions
   const canViewSettings = BusinessTripHelpers.canViewSettings(userPermissions);
   const canExportAll = BusinessTripHelpers.canExportAll(userPermissions);
   const canApprove = BusinessTripHelpers.canApprove(userPermissions);
@@ -646,6 +658,11 @@ export default function BusinessTripPage() {
       </DashboardLayout>
     );
   }
+
+  // Get paginated data
+  const paginatedMyRequests = getPaginatedData(myRequests, myRequestsPage);
+  const paginatedAllRequests = getPaginatedData(filteredRequests, allRequestsPage);
+  const paginatedHistory = getPaginatedData(filteredHistory, historyPage);
 
   return (
     <DashboardLayout>
@@ -668,7 +685,7 @@ export default function BusinessTripPage() {
                 Settings
               </button>
             )}
-{userPermissions.is_admin && (
+            {userPermissions.is_admin && (
               <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 px-3 py-2 rounded-lg">
                 <Lock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
                 <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Admin</span>
@@ -778,7 +795,7 @@ export default function BusinessTripPage() {
                   onChange={handleHotelChange}
                 />
 
-                {/* Approvers Section - Always Visible with Defaults */}
+                {/* Approvers Section */}
                 <div className="mb-6 px-4 py-3 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-900/10 border border-blue-200/60 dark:border-blue-800/40 rounded-xl">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
@@ -797,7 +814,7 @@ export default function BusinessTripPage() {
 
                   {/* Default Approvers Display */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                    <div className="bg-white flex gap-8  dark:bg-gray-800/50 p-2 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+                    <div className="bg-white flex gap-8 dark:bg-gray-800/50 p-2 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
                       <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
                         Finance Approver :
                       </label>
@@ -806,14 +823,9 @@ export default function BusinessTripPage() {
                           financeApprovers.find(f => f.id === selectedFinanceApprover)?.name || 'Not selected'
                           : 'Not selected'}
                       </div>
-                      {/* {defaultFinanceApprover && selectedFinanceApprover === defaultFinanceApprover.id && (
-                        <span className="inline-block mt-1.5 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">
-                          Default
-                        </span>
-                      )} */}
                     </div>
 
-                    <div className="bg-white  flex gap-8  dark:bg-gray-800/50 p-2 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+                    <div className="bg-white flex gap-8 dark:bg-gray-800/50 p-2 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
                       <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
                         HR Representative :
                       </label>
@@ -822,11 +834,6 @@ export default function BusinessTripPage() {
                           hrRepresentatives.find(h => h.id === selectedHrRepresentative)?.name || 'Not selected'
                           : 'Not selected'}
                       </div>
-                      {/* {defaultHrRepresentative && selectedHrRepresentative === defaultHrRepresentative.id && (
-                        <span className="inline-block mt-1.5 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full font-medium">
-                          Default
-                        </span>
-                      )} */}
                     </div>
                   </div>
 
@@ -892,8 +899,6 @@ export default function BusinessTripPage() {
                           </button>
                         )}
                       </div>
-                      
-                    
                     </div>
                   )}
                 </div>
@@ -907,7 +912,6 @@ export default function BusinessTripPage() {
                       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
                       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
                       
-                      // Reset to defaults
                       if (defaultFinanceApprover?.id) {
                         setSelectedFinanceApprover(defaultFinanceApprover.id);
                         setFormData(prev => ({ ...prev, finance_approver_id: defaultFinanceApprover.id }));
@@ -941,7 +945,7 @@ export default function BusinessTripPage() {
               </form>
             </div>
 
-            {/* My Requests List */}
+            {/* My Requests List with Pagination */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
               <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">My Requests</h2>
@@ -966,7 +970,7 @@ export default function BusinessTripPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
-                    {myRequests.map(request => (
+                    {paginatedMyRequests.map(request => (
                       <tr key={request.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
                         <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
@@ -1001,7 +1005,7 @@ export default function BusinessTripPage() {
                         </td>
                       </tr>
                     ))}
-                    {myRequests.length === 0 && (
+                    {paginatedMyRequests.length === 0 && (
                       <tr>
                         <td colSpan="8" className="px-4 py-12 text-center">
                           <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
@@ -1013,6 +1017,20 @@ export default function BusinessTripPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination for My Requests */}
+              {myRequests.length > itemsPerPage && (
+                <div className="p-4 border-t border-almet-mystic/20 dark:border-almet-comet/20">
+                  <Pagination
+                    currentPage={myRequestsPage}
+                    totalPages={getTotalPages(myRequests.length)}
+                    totalItems={myRequests.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setMyRequestsPage}
+                    darkMode={darkMode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1212,7 +1230,7 @@ export default function BusinessTripPage() {
           </div>
         )}
 
-        {/* Approval History Tab */}
+        {/* Approval History Tab with Pagination */}
         {activeTab === 'history' && (
           <div className="space-y-5">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
@@ -1303,7 +1321,7 @@ export default function BusinessTripPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
-                    {filteredHistory.map((item, index) => (
+                    {paginatedHistory.map((item, index) => (
                       <tr key={`${item.request_id}-${index}`} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
                         <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{item.request_id}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.employee_name}</td>
@@ -1343,7 +1361,7 @@ export default function BusinessTripPage() {
                         </td>
                       </tr>
                     ))}
-                    {filteredHistory.length === 0 && (
+                    {paginatedHistory.length === 0 && (
                       <tr>
                         <td colSpan="8" className="px-4 py-12 text-center">
                           <History className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
@@ -1355,10 +1373,25 @@ export default function BusinessTripPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination for History */}
+              {filteredHistory.length > itemsPerPage && (
+                <div className="p-4 border-t border-almet-mystic/20 dark:border-almet-comet/20">
+                  <Pagination
+                    currentPage={historyPage}
+                    totalPages={getTotalPages(filteredHistory.length)}
+                    totalItems={filteredHistory.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setHistoryPage}
+                    darkMode={darkMode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
-        {/* All Requests Tab */}
+
+        {/* All Requests Tab with Pagination */}
         {activeTab === 'all' && (
           <div className="space-y-5">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
@@ -1475,7 +1508,7 @@ export default function BusinessTripPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
-                    {filteredRequests.map(request => (
+                    {paginatedAllRequests.map(request => (
                       <tr key={request.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
                         <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.employee_name}</td>
@@ -1515,7 +1548,7 @@ export default function BusinessTripPage() {
                         </td>
                       </tr>
                     ))}
-                    {filteredRequests.length === 0 && (
+                    {paginatedAllRequests.length === 0 && (
                       <tr>
                         <td colSpan="11" className="px-4 py-12 text-center">
                           <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
@@ -1527,6 +1560,20 @@ export default function BusinessTripPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination for All Requests */}
+              {filteredRequests.length > itemsPerPage && (
+                <div className="p-4 border-t border-almet-mystic/20 dark:border-almet-comet/20">
+                  <Pagination
+                    currentPage={allRequestsPage}
+                    totalPages={getTotalPages(filteredRequests.length)}
+                    totalItems={filteredRequests.length}
+                    itemsPerPage={itemsPerPage}
+                    onPageChange={setAllRequestsPage}
+                    darkMode={darkMode}
+                  />
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -1565,5 +1612,3 @@ export default function BusinessTripPage() {
     </DashboardLayout>
   );
 }
-            
-            
