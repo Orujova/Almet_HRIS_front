@@ -1,4 +1,4 @@
-// src/auth/AuthContext.jsx - COMPLETELY FIXED VERSION
+// src/auth/AuthContext.jsx - SERVER COMPATIBLE VERSION
 "use client";
 
 import {
@@ -18,7 +18,9 @@ import { useRouter } from "next/navigation";
 import { msalConfig, loginRequest, graphRequest } from "./authConfig";
 
 const AuthContext = createContext();
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// ✅ CRITICAL: Use environment variable for backend URL
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 export function AuthProvider({ children }) {
   const [msalInstance, setMsalInstance] = useState(null);
@@ -29,19 +31,16 @@ export function AuthProvider({ children }) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const router = useRouter();
   
-  // ⭐ Track if we're currently processing authentication
   const isProcessingAuth = useRef(false);
 
-  // ⭐ ENHANCED: Synchronous storage operations with retry
+  // ✅ Storage operations with better error handling
   const setStorageItem = useCallback((key, value) => {
     try {
       localStorage.setItem(key, value);
-      
-      // ⭐ Verify it was written
       const verification = localStorage.getItem(key);
+      
       if (verification !== value) {
         console.error(`❌ Storage verification failed for ${key}`);
-        // Retry once
         localStorage.setItem(key, value);
       }
       
@@ -56,7 +55,6 @@ export function AuthProvider({ children }) {
   const getStorageItem = useCallback((key) => {
     try {
       const value = localStorage.getItem(key);
-      console.log(`📖 Read ${key}:`, value ? 'EXISTS' : 'MISSING');
       return value;
     } catch (error) {
       console.error(`❌ Read error for ${key}:`, error);
@@ -73,30 +71,42 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // ⭐ ENHANCED: Backend validation with retry
+  // ✅ Backend validation with retry and better error handling
   const validateTokenWithBackend = async (token, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        console.log(`🔍 Validating token (attempt ${attempt + 1}/${retries + 1})...`);
+        console.log(`🔍 Validating token with backend (attempt ${attempt + 1}/${retries + 1})...`);
+        console.log(`🔗 Backend URL: ${BACKEND_URL}`);
         
         const response = await axios.get(`${BACKEND_URL}/me/`, {
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 5000,
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000, // 10 seconds
         });
         
-        console.log("✅ Token valid");
+        console.log("✅ Token valid, user data:", response.data);
         return response.data;
       } catch (error) {
+        console.error(`❌ Validation attempt ${attempt + 1} failed:`, error.message);
+        
+        if (error.response) {
+          console.error("Response status:", error.response.status);
+          console.error("Response data:", error.response.data);
+        }
+        
         if (attempt === retries) {
           throw error;
         }
-        console.warn(`⚠️ Validation attempt ${attempt + 1} failed, retrying...`);
+        
+        console.warn(`⚠️ Retrying in 1 second...`);
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
   };
 
-  // ⭐ ENHANCED: Clear authentication
+  // ✅ Clear authentication
   const clearAuth = useCallback(async () => {
     console.log("🧹 Clearing authentication...");
     
@@ -120,18 +130,23 @@ export function AuthProvider({ children }) {
     }
   }, [msalInstance, removeStorageItem]);
 
-  // ⭐ ENHANCED: Send tokens to backend with verification
+  // ✅ CRITICAL: Send tokens to backend with Graph token
   const authenticateWithBackend = async (idToken, graphToken, msalAccount) => {
     try {
       console.log("📤 Sending tokens to backend...");
-      console.log("  - ID Token length:", idToken.length);
+      console.log(`🔗 Backend URL: ${BACKEND_URL}`);
+      console.log("  - ID Token length:", idToken?.length || 0);
       console.log("  - Graph Token:", graphToken ? "✓" : "✗");
       
+      if (!idToken) {
+        throw new Error("No ID token available");
+      }
+
       const backendResponse = await axios.post(
         `${BACKEND_URL}/auth/microsoft/`,
         {
           id_token: idToken,
-          graph_access_token: graphToken,
+          graph_access_token: graphToken || null, // ✅ Always send, even if null
         },
         {
           headers: { 
@@ -148,7 +163,11 @@ export function AuthProvider({ children }) {
         const accessToken = backendResponse.data.access;
         const refreshToken = backendResponse.data.refresh;
         
-        // ⭐ CRITICAL: Store tokens synchronously and verify
+        if (!accessToken || !refreshToken) {
+          throw new Error("Backend didn't return tokens");
+        }
+        
+        // ✅ Store tokens
         const accessStored = setStorageItem("accessToken", accessToken);
         const refreshStored = setStorageItem("refreshToken", refreshToken);
         
@@ -156,13 +175,15 @@ export function AuthProvider({ children }) {
           throw new Error("Failed to store authentication tokens");
         }
         
+        // ✅ Store Graph token
         if (graphToken) {
           setStorageItem("graphAccessToken", graphToken);
           const expiryTime = new Date(Date.now() + 3600 * 1000).toISOString();
           setStorageItem("graphTokenExpiry", expiryTime);
+          console.log("✅ Graph token stored");
         }
         
-        // ⭐ CRITICAL: Verify tokens were actually stored
+        // ✅ Verify storage
         const verifyAccess = getStorageItem("accessToken");
         const verifyRefresh = getStorageItem("refreshToken");
         
@@ -188,16 +209,19 @@ export function AuthProvider({ children }) {
       if (error.response) {
         console.error("  - Status:", error.response.status);
         console.error("  - Data:", error.response.data);
+        console.error("  - Headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("  - No response received from server");
+        console.error("  - Request:", error.request);
       }
       
       throw error;
     }
   };
 
-  // ⭐ ENHANCED: MSAL initialization with proper handling
+  // ✅ MSAL initialization
   useEffect(() => {
     const initializeMsal = async () => {
-      // ⭐ Prevent multiple initializations
       if (isProcessingAuth.current) {
         console.log("⏳ Authentication already in progress");
         return;
@@ -207,17 +231,19 @@ export function AuthProvider({ children }) {
       
       try {
         console.log("🚀 Starting MSAL initialization...");
+        console.log(`🔗 Backend URL: ${BACKEND_URL}`);
+        console.log(`🔗 Redirect URI: ${msalConfig.auth.redirectUri}`);
         
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
         
         console.log("✅ MSAL initialized");
 
-        // ⭐ Handle redirect response FIRST
+        // ✅ Handle redirect response
         const redirectResponse = await msalApp.handleRedirectPromise();
         
         if (redirectResponse && redirectResponse.account) {
-          console.log("🔄 Processing redirect response:", redirectResponse.account.username);
+          console.log("📄 Processing redirect response:", redirectResponse.account.username);
           
           try {
             // Get ID Token
@@ -232,7 +258,7 @@ export function AuthProvider({ children }) {
               account: redirectResponse.account,
             });
 
-            console.log("📧 Tokens acquired after redirect");
+            console.log("🔑 Tokens acquired after redirect");
 
             // Authenticate with backend
             await authenticateWithBackend(
@@ -257,7 +283,7 @@ export function AuthProvider({ children }) {
           }
         }
 
-        // ⭐ No redirect response - check existing session
+        // ✅ Check existing session
         setMsalInstance(msalApp);
         setInitialized(true);
         
@@ -269,16 +295,14 @@ export function AuthProvider({ children }) {
           const token = getStorageItem("accessToken");
           
           if (token) {
-            console.log("🔑 Found stored token");
+            console.log("🔒 Found stored token");
             try {
               await validateTokenWithBackend(token);
               setAccount(accounts[0]);
               console.log("✅ Session restored successfully");
             } catch (error) {
-              console.warn("⚠️ Token validation failed:", error.message);
-              console.log("🔄 Attempting to acquire new token...");
+              console.warn("⚠️ Token validation failed, acquiring fresh tokens...");
               
-              // ⭐ Try to get fresh tokens
               try {
                 const tokenResponse = await msalApp.acquireTokenSilent({
                   ...loginRequest,
@@ -303,14 +327,7 @@ export function AuthProvider({ children }) {
               }
             }
           } else {
-            console.log("⚠️ No stored token found, clearing MSAL account");
-            await clearAuth();
-          }
-        } else {
-          console.log("👋 No existing accounts found");
-          const token = getStorageItem("accessToken");
-          if (token) {
-            console.log("⚠️ Inconsistent state: token exists but no MSAL account");
+            console.log("⚠️ No stored token, clearing session");
             await clearAuth();
           }
         }
@@ -325,9 +342,9 @@ export function AuthProvider({ children }) {
     };
 
     initializeMsal();
-  }, []); // ⭐ Empty dependency array - only run once
+  }, []);
 
-  // ⭐ ENHANCED: Login function
+  // ✅ Login function
   const login = useCallback(async () => {
     if (isLoggingIn || isProcessingAuth.current) {
       console.log("⏳ Login already in progress");
@@ -350,7 +367,7 @@ export function AuthProvider({ children }) {
       const existingAccounts = msalInstance.getAllAccounts();
       
       if (existingAccounts.length > 0) {
-        console.log("👤 Found existing account, attempting silent login...");
+        console.log("👤 Attempting silent login...");
         
         try {
           const tokenResponse = await msalInstance.acquireTokenSilent({
@@ -363,7 +380,7 @@ export function AuthProvider({ children }) {
             account: existingAccounts[0],
           });
 
-          console.log("🔑 Silent tokens acquired");
+          console.log("🔒 Silent tokens acquired");
 
           await authenticateWithBackend(
             tokenResponse.idToken,
@@ -376,23 +393,13 @@ export function AuthProvider({ children }) {
           return;
           
         } catch (silentError) {
-          console.log("⚠️ Silent token acquisition failed:", silentError.message);
-          
-          if (
-            silentError instanceof InteractionRequiredAuthError ||
-            silentError.errorCode === 'consent_required' ||
-            silentError.errorCode === 'interaction_required' ||
-            silentError.errorCode === 'login_required'
-          ) {
-            console.log("🔄 Interactive login required");
-          } else {
-            throw silentError;
-          }
+          console.log("⚠️ Silent login failed, proceeding to interactive login");
         }
       }
 
-      // ⭐ Redirect login
-      console.log("🔄 Starting redirect login...");
+      // ✅ Redirect login
+      console.log("📄 Starting redirect login...");
+      console.log(`🔗 Redirect URI: ${window.location.origin}`);
       
       await msalInstance.loginRedirect({
         ...loginRequest,
@@ -418,16 +425,15 @@ export function AuthProvider({ children }) {
       setLoading(false);
       isProcessingAuth.current = false;
     }
-  }, [msalInstance, initialized, router, isLoggingIn, authenticateWithBackend, setStorageItem, getStorageItem]);
+  }, [msalInstance, initialized, router, isLoggingIn, authenticateWithBackend]);
 
-  // ⭐ ENHANCED: Logout function
+  // ✅ Logout function
   const logout = useCallback(async () => {
     if (!msalInstance || !initialized) return;
 
     try {
       console.log("🚪 Logging out...");
       
-      // Backend logout
       try {
         const token = getStorageItem("accessToken");
         if (token) {
@@ -440,10 +446,8 @@ export function AuthProvider({ children }) {
         console.warn("Backend logout failed:", logoutError);
       }
 
-      // Clear storage
       await clearAuth();
 
-      // MSAL redirect logout
       const accounts = msalInstance.getAllAccounts();
       if (accounts.length > 0) {
         await msalInstance.logoutRedirect({
@@ -458,8 +462,6 @@ export function AuthProvider({ children }) {
       
     } catch (error) {
       console.error("❌ Logout error:", error);
-      setAuthError("Logout failed");
-      
       await clearAuth();
       router.push("/login");
     }
