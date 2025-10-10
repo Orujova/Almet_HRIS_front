@@ -98,32 +98,77 @@ export function AuthProvider({ children }) {
 
   // Send tokens to backend
   const authenticateWithBackend = async (idToken, graphToken, msalAccount) => {
-    const backendResponse = await axios.post(
-      `${BACKEND_URL}/auth/microsoft/`,
-      {
-        id_token: idToken,
-        graph_access_token: graphToken,
-      },
-      {
-        headers: { 'Content-Type': 'application/json' },
-        timeout: 10000,
-      }
-    );
-
-    if (backendResponse.data.success) {
-      setStorageItem("accessToken", backendResponse.data.access);
-      setStorageItem("refreshToken", backendResponse.data.refresh);
-      setStorageItem("graphAccessToken", graphToken);
+    try {
+      console.log("📤 Sending tokens to backend...");
+      console.log("  - ID Token length:", idToken.length);
+      console.log("  - Graph Token:", graphToken ? "✓" : "✗");
       
-      setAccount({
-        ...msalAccount,
-        ...backendResponse.data.user,
-      });
+      const backendResponse = await axios.post(
+        `${BACKEND_URL}/auth/microsoft/`,
+        {
+          id_token: idToken,
+          graph_access_token: graphToken,
+        },
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          timeout: 15000, // ⭐ Increased timeout for server
+        }
+      );
 
-      return true;
+      console.log("📥 Backend response:", backendResponse.data);
+
+      if (backendResponse.data.success) {
+        // ⭐ Store tokens with verification
+        const accessToken = backendResponse.data.access;
+        const refreshToken = backendResponse.data.refresh;
+        
+        setStorageItem("accessToken", accessToken);
+        setStorageItem("refreshToken", refreshToken);
+        
+        if (graphToken) {
+          setStorageItem("graphAccessToken", graphToken);
+          const expiryTime = new Date(Date.now() + 3600 * 1000).toISOString();
+          setStorageItem("graphTokenExpiry", expiryTime);
+        }
+        
+        // ⭐ Verify tokens were stored
+        const storedToken = localStorage.getItem("accessToken");
+        if (!storedToken) {
+          throw new Error("Token storage failed");
+        }
+        
+        console.log("✅ Tokens stored successfully");
+        
+        setAccount({
+          ...msalAccount,
+          ...backendResponse.data.user,
+        });
+
+        return true;
+      }
+
+      throw new Error(backendResponse.data.error || "Backend authentication failed");
+      
+    } catch (error) {
+      console.error("❌ Backend authentication error:", error);
+      
+      // ⭐ Enhanced error logging for debugging
+      if (error.response) {
+        console.error("  - Status:", error.response.status);
+        console.error("  - Data:", error.response.data);
+        console.error("  - Headers:", error.response.headers);
+      } else if (error.request) {
+        console.error("  - No response received");
+        console.error("  - Request:", error.request);
+      } else {
+        console.error("  - Error:", error.message);
+      }
+      
+      throw error;
     }
-
-    throw new Error(backendResponse.data.error || "Backend autentifikasiyası uğursuz");
   };
 
   // ⭐ MSAL-ı başlat və redirect cavabını işlə
