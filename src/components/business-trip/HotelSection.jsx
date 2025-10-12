@@ -16,7 +16,7 @@ export const HotelSection = ({
     <div className="mb-6">
       <div className="flex items-center justify-between mb-4">
         <SectionHeader 
-          title="Hotel Details (Optional)" 
+          title="Hotel Details " 
           icon={Hotel} 
           isExpanded={isExpanded}
           onClick={onToggle}
