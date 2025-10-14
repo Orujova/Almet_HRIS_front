@@ -820,7 +820,8 @@ const ArchiveEmployeesTable = () => {
                 placeholder="Select departments..."
                 searchPlaceholder="Search departments..."
                 darkMode={darkMode}
-                multiple={true}
+        
+                     allowUncheck={true}
                 icon={<Building size={14} />}
               />
             </div>
@@ -837,7 +838,8 @@ const ArchiveEmployeesTable = () => {
                 placeholder="Select business functions..."
                 searchPlaceholder="Search business functions..."
                 darkMode={darkMode}
-                multiple={true}
+           
+                     allowUncheck={true}
                 icon={<Briefcase size={14} />}
               />
             </div>

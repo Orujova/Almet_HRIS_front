@@ -431,6 +431,7 @@ const ConvertToEmployeeModal = ({
                     placeholder="Select Gender"
                     searchPlaceholder="Search gender..."
                     darkMode={darkMode}
+                     allowUncheck={true}
                     dropdownClassName="z-[9999] fixed"
                     portal={true}
                   />
@@ -537,6 +538,7 @@ const ConvertToEmployeeModal = ({
                       placeholder="Select Contract Duration"
                       searchPlaceholder="Search contract types..."
                       darkMode={darkMode}
+                       allowUncheck={true}
                       dropdownClassName="z-[9999] fixed"
                       portal={true}
                     />
@@ -649,6 +651,7 @@ const ConvertToEmployeeModal = ({
                       placeholder="Select Document Type"
                       searchPlaceholder="Search document types..."
                       darkMode={darkMode}
+                       allowUncheck={true}
                       dropdownClassName="z-[9999] fixed"
                       portal={true}
                     />

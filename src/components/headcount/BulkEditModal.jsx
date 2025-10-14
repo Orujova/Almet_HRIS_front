@@ -235,12 +235,7 @@ const BulkEditModal = ({
       return;
     }
 
-    const selectedManagerName = selectedManager?.label || 'Unknown Manager';
-    const confirmMessage = `Are you sure you want to assign "${selectedManagerName}" as line manager for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?`;
-    
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+ 
 
     setIsProcessing(true);
     
@@ -418,6 +413,7 @@ const BulkEditModal = ({
                   className="w-full"
                   disabled={isProcessing}
                   portal={true}
+                   allowUncheck={true}
                   zIndex="z-[60]"
                 />
               )}

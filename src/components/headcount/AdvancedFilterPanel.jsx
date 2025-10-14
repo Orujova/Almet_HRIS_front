@@ -707,6 +707,7 @@ const AdvancedFilterPanel = ({
                   onChange={(value) => handleInputChange('gender', value)}
                   placeholder="Select gender..."
                   darkMode={darkMode}
+                       allowUncheck={true}
                 />
               </div>
 
@@ -818,6 +819,7 @@ const AdvancedFilterPanel = ({
                   onChange={(value) => handleInputChange('is_visible_in_org_chart', value)}
                   placeholder="Select visibility..."
                   darkMode={darkMode}
+                       allowUncheck={true}
                 />
               </div>
 

@@ -299,6 +299,84 @@ searchEmployees: async () => {
   }
 },
 
+// Add these methods to VacationService in vacationService.js
+
+// === ATTACHMENTS ===
+
+// Get Request Details (includes attachments)
+getRequestDetail: async (id) => {
+  try {
+    const response = await vacationApi.get(`/vacation/requests/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Get Schedule Details
+getScheduleDetail: async (id) => {
+  try {
+    const response = await vacationApi.get(`/vacation/vacation-schedules/${id}/detail/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Get Request Attachments
+getRequestAttachments: async (requestId) => {
+  try {
+    const response = await vacationApi.get(`/vacation/vacation-requests/${requestId}/attachments/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Bulk Upload Attachments to Request
+bulkUploadAttachments: async (requestId, files) => {
+  try {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    
+    const response = await vacationApi.post(
+      `/vacation/vacation-requests/${requestId}/attachments/bulk-upload/`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Get Attachment Details
+getAttachmentDetails: async (attachmentId) => {
+  try {
+    const response = await vacationApi.get(`/vacation/vacation-attachments/${attachmentId}/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Delete Attachment
+deleteAttachment: async (attachmentId) => {
+  try {
+    const response = await vacationApi.delete(`/vacation/vacation-attachments/${attachmentId}/delete/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+
   // Approve/Reject Request
   approveRejectRequest: async (id, data) => {
     try {
@@ -531,15 +609,7 @@ searchEmployees: async () => {
     }
   },
 
-  // Reset Employee Balance
-  resetEmployeeBalance: async (data) => {
-    try {
-      const response = await vacationApi.put('/vacation/balances/reset/', data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+ 
 };
 
 // Helper functions for common operations
@@ -609,7 +679,57 @@ export const VacationHelpers = {
       hr_representative_id: data.hr_representative_id || undefined
     };
   },
+// Validate file before upload
+validateFile: (file) => {
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+  const ALLOWED_TYPES = [
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ];
 
+  if (file.size > MAX_SIZE) {
+    return {
+      valid: false,
+      error: `"${file.name}" exceeds 10MB limit`
+    };
+  }
+
+  const extension = '.' + file.name.split('.').pop().toLowerCase();
+  const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
+  
+  if (!ALLOWED_TYPES.includes(file.type) && !allowedExtensions.includes(extension)) {
+    return {
+      valid: false,
+      error: `"${file.name}" has unsupported format`
+    };
+  }
+
+  return { valid: true };
+},
+
+// Format file size
+formatFileSize: (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+},
+
+// Get file icon type
+getFileIcon: (fileType) => {
+  if (fileType.includes('image')) return 'image';
+  if (fileType.includes('pdf')) return 'pdf';
+  if (fileType.includes('word') || fileType.includes('document')) return 'doc';
+  if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'xls';
+  return 'file';
+},
   // Download blob file
   downloadBlobFile: (blob, filename) => {
     const url = window.URL.createObjectURL(blob);

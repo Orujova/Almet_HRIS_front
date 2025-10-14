@@ -347,6 +347,7 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
                   placeholder="Select employee"
                   searchPlaceholder="Search employees..."
                   darkMode={darkMode}
+                       allowUncheck={true}
                 />
               )}
             </div>
@@ -376,6 +377,7 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
                 placeholder="Select condition"
                 searchPlaceholder="Search conditions..."
                 darkMode={darkMode}
+                     allowUncheck={true}
               />
             </div>
 

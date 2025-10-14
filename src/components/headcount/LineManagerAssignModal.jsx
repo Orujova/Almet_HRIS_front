@@ -273,6 +273,7 @@ const LineManagerModal = ({
                   darkMode={darkMode}
                   className="w-full"
                   portal={true}
+                   allowUncheck={true}
                   zIndex="z-[60]"
                 />
               )}

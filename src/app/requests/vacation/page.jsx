@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Upload, Download, Check, Edit, Trash, Lock, Settings, X, FileText } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Download, Check, Edit, Trash, Lock, Settings, X, FileText, Upload, Paperclip, Eye, Filter } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
@@ -9,6 +9,9 @@ import { VacationService, VacationHelpers } from '@/services/vacationService';
 import { useRouter } from 'next/navigation';
 import { ApprovalModal } from '@/components/business-trip/ApprovalModal';
 import { RejectionModal } from '@/components/business-trip/RejectionModal';
+import { AttachmentsModal } from '@/components/vacation/AttachmentsModal';
+import { RequestDetailModal } from '@/components/vacation/RequestDetailModal';
+import { ScheduleDetailModal } from '@/components/vacation/ScheduleDetailModal';
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showInfo } = useToast();
@@ -19,21 +22,52 @@ export default function VacationRequestsPage() {
   const [requester, setRequester] = useState('for_me');
   const [loading, setLoading] = useState(false);
   const [schedulesTab, setSchedulesTab] = useState('upcoming');
-  const [showApprovalModal, setShowApprovalModal] = useState(false);
-const [showRejectionModal, setShowRejectionModal] = useState(false);
-const [selectedRequest, setSelectedRequest] = useState(null);
-const [approvalComment, setApprovalComment] = useState('');
-const [rejectionReason, setRejectionReason] = useState('');
+  
   const [balances, setBalances] = useState(null);
   const [vacationTypes, setVacationTypes] = useState([]);
   const [hrRepresentatives, setHrRepresentatives] = useState([]);
   const [scheduleTabs, setScheduleTabs] = useState({ upcoming: [], peers: [], all: [] });
   const [pendingRequests, setPendingRequests] = useState({ line_manager_requests: [], hr_requests: [] });
+  const [approvalHistory, setApprovalHistory] = useState([]);
   const [myAllRecords, setMyAllRecords] = useState([]);
+  const [allVacationRecords, setAllVacationRecords] = useState([]);
   const [employeeSearchResults, setEmployeeSearchResults] = useState([]);
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
+  
+  // Modal states
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [showRejectionModal, setShowRejectionModal] = useState(false);
+  const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [selectedRequestNumber, setSelectedRequestNumber] = useState(null);
+  const [approvalComment, setApprovalComment] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
+  
+  // File upload states
   const [selectedFiles, setSelectedFiles] = useState([]);
-const [fileErrors, setFileErrors] = useState('');
+  const [fileErrors, setFileErrors] = useState('');
+  const [showScheduleDetailModal, setShowScheduleDetailModal] = useState(false);
+const [selectedScheduleId, setSelectedScheduleId] = useState(null);
+
+// Handler function:
+const handleViewScheduleDetail = (scheduleId) => {
+  setSelectedScheduleId(scheduleId);
+  setShowScheduleDetailModal(true);
+};
+  // Filter states for all records
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: '',
+    vacation_type_id: '',
+    department_id: '',
+    start_date: '',
+    end_date: '',
+    employee_name: '',
+    year: ''
+  });
+  
   const [vacationSettings, setVacationSettings] = useState({
     allow_negative_balance: false,
     max_schedule_edits: 3,
@@ -45,16 +79,7 @@ const [fileErrors, setFileErrors] = useState('');
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [canExportAll, setCanExportAll] = useState(false);
   const [canExportTeam, setCanExportTeam] = useState(false);
-
-  useEffect(() => {
-    if (userPermissions.permissions) {
-      const hasExportAll = userPermissions.permissions.includes('vacation.request.export_all');
-      const hasExportTeam = userPermissions.permissions.includes('vacation.request.export_team');
-      
-      setCanExportAll(userPermissions.is_admin || hasExportAll);
-      setCanExportTeam(hasExportTeam);
-    }
-  }, [userPermissions]);
+  const [canApprove, setCanApprove] = useState(false);
 
   const [formErrors, setFormErrors] = useState({
     start_date: '',
@@ -81,9 +106,36 @@ const [fileErrors, setFileErrors] = useState('');
     line_manager: ''
   });
 
+  // File constants
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const ALLOWED_FILE_TYPES = [
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ];
+  const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
+
   useEffect(() => {
     initializeData();
   }, []);
+
+  useEffect(() => {
+    if (userPermissions.permissions) {
+      const hasExportAll = userPermissions.permissions.includes('vacation.request.export_all');
+      const hasExportTeam = userPermissions.permissions.includes('vacation.request.export_team');
+      const hasApproveLineManager = userPermissions.permissions.includes('vacation.request.approve_as_line_manager');
+      const hasApproveHR = userPermissions.permissions.includes('vacation.request.approve_as_hr');
+      
+      setCanExportAll(userPermissions.is_admin || hasExportAll);
+      setCanExportTeam(hasExportTeam);
+      setCanApprove(userPermissions.is_admin || hasApproveLineManager || hasApproveHR);
+    }
+  }, [userPermissions]);
 
   const initializeData = async () => {
     setLoading(true);
@@ -112,74 +164,6 @@ const [fileErrors, setFileErrors] = useState('');
     }
   };
 
-// 2. File validation constants
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_FILE_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-];
-
-const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
-
-// 3. File handling functions
-const validateFile = (file) => {
-  if (file.size > MAX_FILE_SIZE) {
-    return `File "${file.name}" exceeds 10MB limit`;
-  }
-  
-  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-    const extension = '.' + file.name.split('.').pop().toLowerCase();
-    if (!ALLOWED_EXTENSIONS.includes(extension)) {
-      return `File "${file.name}" has unsupported format. Allowed: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX`;
-    }
-  }
-  
-  return null;
-};
-
-const handleFileSelect = (e) => {
-  const files = Array.from(e.target.files);
-  const newFiles = [];
-  const errors = [];
-  
-  for (const file of files) {
-    const error = validateFile(file);
-    if (error) {
-      errors.push(error);
-    } else {
-      newFiles.push(file);
-    }
-  }
-  
-  if (errors.length > 0) {
-    setFileErrors(errors.join('. '));
-    showError('Some files could not be added');
-  } else {
-    setFileErrors('');
-  }
-  
-  setSelectedFiles(prev => [...prev, ...newFiles]);
-  e.target.value = ''; // Reset input
-};
-
-const removeFile = (index) => {
-  setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-  setFileErrors('');
-};
-
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-};
   const fetchVacationSettings = async () => {
     try {
       const data = await VacationService.getGeneralSettings();
@@ -240,20 +224,45 @@ const formatFileSize = (bytes) => {
     }
   };
 
+  const fetchApprovalHistory = async () => {
+    try {
+      const data = await VacationService.getApprovalHistory();
+      setApprovalHistory(data.history || []);
+    } catch (error) {
+      console.error('Approval history fetch error:', error);
+    }
+  };
+
   const fetchMyAllRecords = async () => {
     try {
       const data = await VacationService.getMyAllVacations();
-      setMyAllRecords(data.records || []);
+      const mappedRecords = data.records?.map(record => ({
+        ...record,
+        attachments_count: record.attachments?.length || 0
+      })) || [];
+      setMyAllRecords(mappedRecords);
     } catch (error) {
       console.error('My records fetch error:', error);
+    }
+  };
+
+  const fetchAllVacationRecords = async () => {
+    try {
+      const data = await VacationService.getAllVacationRecords(filters);
+      setAllVacationRecords(data.records || []);
+    } catch (error) {
+      console.error('All records fetch error:', error);
     }
   };
 
   useEffect(() => {
     if (activeTab === 'approval') {
       fetchPendingRequests();
+      fetchApprovalHistory();
     } else if (activeTab === 'all') {
       fetchMyAllRecords();
+    } else if (activeTab === 'records') {
+      fetchAllVacationRecords();
     } else if (activeSection === 'scheduling') {
       fetchScheduleTabs();
     }
@@ -271,6 +280,60 @@ const formatFileSize = (bytes) => {
   useEffect(() => {
     handleEmployeeSearch();
   }, []);
+
+  // File handling functions
+  const validateFile = (file) => {
+    if (file.size > MAX_FILE_SIZE) {
+      return `File "${file.name}" exceeds 10MB limit`;
+    }
+    
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      const extension = '.' + file.name.split('.').pop().toLowerCase();
+      if (!ALLOWED_EXTENSIONS.includes(extension)) {
+        return `File "${file.name}" has unsupported format. Allowed: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX`;
+      }
+    }
+    
+    return null;
+  };
+
+  const handleFileSelect = (e) => {
+    const files = Array.from(e.target.files);
+    const newFiles = [];
+    const errors = [];
+    
+    for (const file of files) {
+      const error = validateFile(file);
+      if (error) {
+        errors.push(error);
+      } else {
+        newFiles.push(file);
+      }
+    }
+    
+    if (errors.length > 0) {
+      setFileErrors(errors.join('. '));
+      showError('Some files could not be added');
+    } else {
+      setFileErrors('');
+    }
+    
+    setSelectedFiles(prev => [...prev, ...newFiles]);
+    e.target.value = '';
+  };
+
+  const removeFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setFileErrors('');
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
 
   const handleStartDateChange = (e) => {
     const selectedDate = e.target.value;
@@ -400,7 +463,7 @@ const formatFileSize = (bytes) => {
 
   const handleExportAllRecords = async () => {
     try {
-      const blob = await VacationService.exportAllVacationRecords();
+      const blob = await VacationService.exportAllVacationRecords(filters);
       const filename = canExportAll 
         ? 'all_vacation_records.xlsx' 
         : 'team_vacation_records.xlsx';
@@ -412,85 +475,84 @@ const formatFileSize = (bytes) => {
     }
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  if (formErrors.start_date || formErrors.end_date) {
-    showError('Please fix the date errors before submitting');
-    return;
-  }
-
-  if (!vacationSettings.allow_negative_balance && balances) {
-    if (formData.numberOfDays > balances.remaining_balance) {
-      showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
+    if (formErrors.start_date || formErrors.end_date) {
+      showError('Please fix the date errors before submitting');
       return;
     }
-  }
 
-  setLoading(true);
-  try {
-    let requestData = {
-      requester_type: formData.requester_type,
-      vacation_type_id: parseInt(formData.vacation_type_id),
-      start_date: formData.start_date,
-      end_date: formData.end_date,
-      comment: formData.comment
-    };
+    if (!vacationSettings.allow_negative_balance && balances) {
+      if (formData.numberOfDays > balances.remaining_balance) {
+        showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
+        return;
+      }
+    }
 
-    if (formData.requester_type === 'for_my_employee') {
-      if (formData.employee_id) {
-        requestData.employee_id = formData.employee_id;
+    setLoading(true);
+    try {
+      let requestData = {
+        requester_type: formData.requester_type,
+        vacation_type_id: parseInt(formData.vacation_type_id),
+        start_date: formData.start_date,
+        end_date: formData.end_date,
+        comment: formData.comment
+      };
+
+      if (formData.requester_type === 'for_my_employee') {
+        if (formData.employee_id) {
+          requestData.employee_id = formData.employee_id;
+        } else {
+          requestData.employee_manual = {
+            name: formData.employeeName,
+            phone: formData.phoneNumber,
+            department: formData.department,
+            business_function: formData.businessFunction,
+            unit: formData.unit,
+            job_function: formData.jobFunction
+          };
+        }
+      }
+
+      let response;
+      
+      if (activeSection === 'immediate') {
+        if (formData.hr_representative_id) {
+          requestData.hr_representative_id = formData.hr_representative_id;
+        }
+        response = await VacationService.createImmediateRequest(requestData, selectedFiles);
+        showSuccess('Request submitted successfully');
+        setSelectedFiles([]);
       } else {
-        requestData.employee_manual = {
-          name: formData.employeeName,
-          phone: formData.phoneNumber,
-          department: formData.department,
-          business_function: formData.businessFunction,
-          unit: formData.unit,
-          job_function: formData.jobFunction
-        };
+        response = await VacationService.createSchedule(requestData);
+        showSuccess('Schedule saved successfully');
+        fetchScheduleTabs();
       }
-    }
 
-    let response;
-    
-    if (activeSection === 'immediate') {
-      if (formData.hr_representative_id) {
-        requestData.hr_representative_id = formData.hr_representative_id;
+      if (response.balance) {
+        setBalances(response.balance);
+      } else {
+        await fetchDashboard();
       }
-      // Pass files to the service
-      response = await VacationService.createImmediateRequest(requestData, selectedFiles);
-      showSuccess('Request submitted successfully');
-      setSelectedFiles([]); // Clear files after successful submission
-    } else {
-      response = await VacationService.createSchedule(requestData);
-      showSuccess('Schedule saved successfully');
-      fetchScheduleTabs();
-    }
 
-    if (response.balance) {
-      setBalances(response.balance);
-    } else {
-      await fetchDashboard();
+      setFormData(prev => ({ 
+        ...prev, 
+        start_date: '', 
+        end_date: '', 
+        dateOfReturn: '', 
+        numberOfDays: 0, 
+        comment: '' 
+      }));
+      setFileErrors('');
+    } catch (error) {
+      console.error('Submit error:', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
+      showError(errorMsg);
+    } finally {
+      setLoading(false);
     }
-
-    setFormData(prev => ({ 
-      ...prev, 
-      start_date: '', 
-      end_date: '', 
-      dateOfReturn: '', 
-      numberOfDays: 0, 
-      comment: '' 
-    }));
-    setFileErrors('');
-  } catch (error) {
-    console.error('Submit error:', error);
-    const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
-    showError(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleEditSchedule = (schedule) => {
     setEditingSchedule({
@@ -536,66 +598,80 @@ const formatFileSize = (bytes) => {
     }
   };
 
+  // Modal handlers
   const handleOpenApprovalModal = (request) => {
-  setSelectedRequest(request);
-  setApprovalComment('');
-  setShowApprovalModal(true);
-};
-
-const handleOpenRejectionModal = (request) => {
-  setSelectedRequest(request);
-  setRejectionReason('');
-  setShowRejectionModal(true);
-};
-
-const handleConfirmApproval = async () => {
-  if (!selectedRequest) return;
-  
-  setLoading(true);
-  try {
-    await VacationService.approveRejectRequest(selectedRequest.id, { 
-      action: 'approve',
-      comment: approvalComment || 'Approved'
-    });
-    showSuccess('Request approved successfully');
-    setShowApprovalModal(false);
-    setSelectedRequest(null);
+    setSelectedRequest(request);
     setApprovalComment('');
-    fetchPendingRequests();
-  } catch (error) {
-    console.error('Approval error:', error);
-    showError(error.response?.data?.error || 'Failed to approve');
-  } finally {
-    setLoading(false);
-  }
-};
+    setShowApprovalModal(true);
+  };
 
-const handleConfirmRejection = async () => {
-  if (!selectedRequest) return;
-  
-  if (!rejectionReason.trim()) {
-    showError('Rejection reason is required');
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    await VacationService.approveRejectRequest(selectedRequest.id, { 
-      action: 'reject',
-      reason: rejectionReason
-    });
-    showSuccess('Request rejected successfully');
-    setShowRejectionModal(false);
-    setSelectedRequest(null);
+  const handleOpenRejectionModal = (request) => {
+    setSelectedRequest(request);
     setRejectionReason('');
-    fetchPendingRequests();
-  } catch (error) {
-    console.error('Rejection error:', error);
-    showError(error.response?.data?.error || 'Failed to reject');
-  } finally {
-    setLoading(false);
-  }
-};
+    setShowRejectionModal(true);
+  };
+
+  const handleConfirmApproval = async () => {
+    if (!selectedRequest) return;
+    
+    setLoading(true);
+    try {
+      await VacationService.approveRejectRequest(selectedRequest.id, { 
+        action: 'approve',
+        comment: approvalComment || 'Approved'
+      });
+      showSuccess('Request approved successfully');
+      setShowApprovalModal(false);
+      setSelectedRequest(null);
+      setApprovalComment('');
+      fetchPendingRequests();
+      fetchApprovalHistory();
+    } catch (error) {
+      console.error('Approval error:', error);
+      showError(error.response?.data?.error || 'Failed to approve');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmRejection = async () => {
+    if (!selectedRequest) return;
+    
+    if (!rejectionReason.trim()) {
+      showError('Rejection reason is required');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      await VacationService.approveRejectRequest(selectedRequest.id, { 
+        action: 'reject',
+        reason: rejectionReason
+      });
+      showSuccess('Request rejected successfully');
+      setShowRejectionModal(false);
+      setSelectedRequest(null);
+      setRejectionReason('');
+      fetchPendingRequests();
+      fetchApprovalHistory();
+    } catch (error) {
+      console.error('Rejection error:', error);
+      showError(error.response?.data?.error || 'Failed to reject');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewDetails = (requestId) => {
+    setSelectedRequestId(requestId);
+    setShowDetailModal(true);
+  };
+
+  const handleViewAttachments = (requestId, requestNumber) => {
+    setSelectedRequestId(requestId);
+    setSelectedRequestNumber(requestNumber);
+    setShowAttachmentsModal(true);
+  };
 
   const handleRegisterSchedule = async (scheduleId) => {
     try {
@@ -720,8 +796,9 @@ const handleConfirmRejection = async () => {
           <div className="flex space-x-8">
             {[
               { key: 'request', label: 'Request', icon: FileText },
-              { key: 'approval', label: 'Approval', icon: CheckCircle },
-              { key: 'all', label: 'My Records', icon: Calendar }
+              ...(canApprove ? [{ key: 'approval', label: 'Approval', icon: CheckCircle }] : []),
+              { key: 'all', label: 'My Records', icon: Calendar },
+              ...(canExportAll || canExportTeam ? [{ key: 'records', label: 'All Records', icon: Users }] : [])
             ].map(tab => (
               <button 
                 key={tab.key} 
@@ -1010,7 +1087,7 @@ const handleConfirmRejection = async () => {
                       </div>
                       
                       <div>
-                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5"> Number of days</label>
+                        <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Number of days</label>
                         <div className="relative">
                           <input 
                             type="number" 
@@ -1035,80 +1112,116 @@ const handleConfirmRejection = async () => {
                     </div>
 
                     {activeSection === 'immediate' && (
-  <div>
-    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-      Attachments (Optional)
-    </label>
-    <div className="space-y-2">
-      <div className="relative">
-        <input
-          type="file"
-          id="file-upload"
-          multiple
-          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-        <label
-          htmlFor="file-upload"
-          className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm border-2 border-dashed border-almet-bali-hai/40 dark:border-almet-comet rounded-lg hover:border-almet-sapphire dark:hover:border-almet-astral hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-all cursor-pointer"
-        >
-          <Upload className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
-          <span className="text-almet-waterloo dark:text-almet-bali-hai">
-            Click to upload or drag files here
-          </span>
-        </label>
-      </div>
-      
-      <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70">
-        Supported formats: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX (Max 10MB each)
-      </p>
-      
-      {fileErrors && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2">
-          <p className="text-xs text-red-600 dark:text-red-400">{fileErrors}</p>
-        </div>
-      )}
-      
-      {selectedFiles.length > 0 && (
-        <div className="space-y-2">
-          {selectedFiles.map((file, index) => (
-            <div
-              key={index}
-              className="flex items-center justify-between gap-3 p-2.5 bg-almet-mystic/20 dark:bg-gray-700/30 border border-almet-mystic/40 dark:border-almet-comet rounded-lg"
-            >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <FileText className="w-4 h-4 text-almet-sapphire flex-shrink-0" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium text-almet-cloud-burst dark:text-white truncate">
-                    {file.name}
-                  </p>
-                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                    {formatFileSize(file.size)}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => removeFile(index)}
-                className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  </div>
-)}
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                            Attachments (Optional)
+                          </label>
+                          <div className="space-y-2">
+                            <div className="relative">
+                              <input
+                                type="file"
+                                id="file-upload"
+                                multiple
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                              />
+                              <label
+                                htmlFor="file-upload"
+                                className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm border-2 border-dashed border-almet-bali-hai/40 dark:border-almet-comet rounded-lg hover:border-almet-sapphire dark:hover:border-almet-astral hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-all cursor-pointer"
+                              >
+                                <Upload className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
+                                <span className="text-almet-waterloo dark:text-almet-bali-hai">
+                                  Click to upload or drag files here
+                                </span>
+                              </label>
+                            </div>
+                            
+                            <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70">
+                              Supported formats: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX (Max 10MB each)
+                            </p>
+                            
+                            {fileErrors && (
+                              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2">
+                                <p className="text-xs text-red-600 dark:text-red-400">{fileErrors}</p>
+                              </div>
+                            )}
+                            
+                            {selectedFiles.length > 0 && (
+                              <div className="space-y-2">
+                                {selectedFiles.map((file, index) => (
+                                  <div
+                                    key={index}
+                                    className="flex items-center justify-between gap-3 p-2.5 bg-almet-mystic/20 dark:bg-gray-700/30 border border-almet-mystic/40 dark:border-almet-comet rounded-lg"
+                                  >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <FileText className="w-4 h-4 text-almet-sapphire flex-shrink-0" />
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-medium text-almet-cloud-burst dark:text-white truncate">
+                                          {file.name}
+                                        </p>
+                                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                                          {formatFileSize(file.size)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeFile(index)}
+                                      className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 pt-4 mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle className="w-4 h-4 text-almet-sapphire" />
+                            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Approval Required</h3>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Line Manager</label>
+                          <input 
+                            type="text" 
+                            value={formData.line_manager} 
+                            onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))} 
+                            disabled={requester === 'for_me'} 
+                            placeholder="Line Manager Name" 
+                            className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">HR Representative</label>
+                          <SearchableDropdown 
+                            options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))} 
+                            value={formData.hr_representative_id} 
+                            onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))} 
+                            placeholder="Select HR" 
+                            darkMode={darkMode} 
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-6 pt-5 border-t border-almet-mystic/30 dark:border-almet-comet/30">
                   <button 
                     type="button" 
-                    onClick={() => setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }))} 
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }));
+                      setSelectedFiles([]);
+                      setFileErrors('');
+                    }} 
                     className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
                   >
                     Clear
@@ -1190,17 +1303,17 @@ const handleConfirmRejection = async () => {
                               {canEditSchedule(schedule) ? (
                                 <div className="flex gap-2">
                                   <button 
+                                    onClick={() => handleDeleteSchedule(schedule.id)} 
+                                    className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1"
+                                  >
+                                    <Trash className="w-3 h-3" />
+                                  </button>
+                                  <button 
                                     onClick={() => handleEditSchedule(schedule)} 
                                     className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
                                   >
                                     <Edit className="w-3 h-3" />
                                     Edit ({schedule.edit_count}/{vacationSettings.max_schedule_edits})
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeleteSchedule(schedule.id)} 
-                                    className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1"
-                                  >
-                                    <Trash className="w-3 h-3" />
                                   </button>
                                   <button 
                                     onClick={() => handleRegisterSchedule(schedule.id)} 
@@ -1279,21 +1392,28 @@ const handleConfirmRejection = async () => {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-  <button 
-    onClick={() => handleOpenApprovalModal(request)}
-    className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-  >
-    <CheckCircle className="w-3.5 h-3.5" />
-    Approve
-  </button>
-  <button 
-    onClick={() => handleOpenRejectionModal(request)}
-    className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-  >
-    <XCircle className="w-3.5 h-3.5" />
-    Reject
-  </button>
-</div>
+                              <button 
+                                onClick={() => handleViewDetails(request.id)}
+                                className="px-3 py-2 text-xs bg-almet-sapphire/10 text-almet-sapphire rounded-lg hover:bg-almet-sapphire/20 transition-all flex items-center gap-1.5 font-medium"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Details
+                              </button>
+                              <button 
+                                onClick={() => handleOpenApprovalModal(request)} 
+                                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Approve
+                              </button>
+                              <button 
+                                onClick={() => handleOpenRejectionModal(request)} 
+                                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                Reject
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1323,22 +1443,29 @@ const handleConfirmRejection = async () => {
                                 <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
                               )}
                             </div>
-                      <div className="flex items-center gap-2">
-  <button 
-    onClick={() => handleOpenApprovalModal(request)}
-    className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-  >
-    <CheckCircle className="w-3.5 h-3.5" />
-    Approve
-  </button>
-  <button 
-    onClick={() => handleOpenRejectionModal(request)}
-    className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-  >
-    <XCircle className="w-3.5 h-3.5" />
-    Reject
-  </button>
-</div>
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleViewDetails(request.id)}
+                                className="px-3 py-2 text-xs bg-almet-sapphire/10 text-almet-sapphire rounded-lg hover:bg-almet-sapphire/20 transition-all flex items-center gap-1.5 font-medium"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                Details
+                              </button>
+                              <button 
+                                onClick={() => handleOpenApprovalModal(request)} 
+                                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <CheckCircle className="w-3.5 h-3.5" />
+                                Approve
+                              </button>
+                              <button 
+                                onClick={() => handleOpenRejectionModal(request)} 
+                                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                              >
+                                <XCircle className="w-3.5 h-3.5" />
+                                Reject
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -1355,6 +1482,60 @@ const handleConfirmRejection = async () => {
                     <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">All requests have been processed</p>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Approval History */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
+                <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">Approval History</h2>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+                  <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
+                    <tr>
+                      {['Request ID', 'Employee', 'Type', 'Period', 'Days', 'Action', 'Comment', 'Date'].map(h => (
+                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                    {approvalHistory.map((item, index) => (
+                      <tr key={index} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
+                        <td className="px-4 py-3 text-xs font-medium text-almet-sapphire">{item.request_id}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.employee_name}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.vacation_type}</td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{item.start_date} - {item.end_date}</td>
+                        <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{item.days}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                            item.action === 'Approved' 
+                              ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
+                              : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                          }`}>
+                            {item.action}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai italic max-w-xs truncate">
+                          {item.comment || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                          {new Date(item.date).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                    {approvalHistory.length === 0 && (
+                      <tr>
+                        <td colSpan="8" className="px-4 py-12 text-center text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                          No approval history found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1389,7 +1570,7 @@ const handleConfirmRejection = async () => {
               <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
                 <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
                   <tr>
-                    {['Type', 'Leave', 'Start', 'End', 'Days', 'Status', 'Actions'].map(h => (
+                    {['Type', 'Leave', 'Start', 'End', 'Days', 'Status', 'Attachments', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                         {h}
                       </th>
@@ -1414,41 +1595,76 @@ const handleConfirmRejection = async () => {
                       <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{record.days}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                          record.status === 'Scheduled' ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' : 
+                          record.status === 'Scheduled' || record.status === 'Registered' ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' : 
                           record.status === 'Pending HR' ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 
                           record.status === 'Pending Line Manager' ? 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' : 
-                          'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          record.status === 'Approved' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                          'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                         }`}>
                           {record.status}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        {record.type === 'schedule' && record.can_edit ? (
-                          <div className="flex gap-2">
-                            <button 
-                              onClick={() => handleEditSchedule(record)} 
-                              className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
-                            >
-                              <Edit className="w-3 h-3" />
-                              Edit
-                            </button>
-                            <button 
-                              onClick={() => handleRegisterSchedule(record.id)} 
-                              className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
-                            >
-                              <Check className="w-3 h-3" />
-                              Register
-                            </button>
-                          </div>
+                        {record.type === 'request' && record.has_attachments ? (
+                          <button
+                            onClick={() => handleViewAttachments(record.request_id, record.request_id)}
+                            className="flex items-center gap-1 text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral font-medium"
+                          >
+                            <Paperclip className="w-3 h-3" />
+                            {/* {record.attachments_count} */}
+                          </button>
                         ) : (
-                          <span className="text-almet-waterloo/50 dark:text-almet-bali-hai/50">View Only</span>
+                          <span className="text-almet-waterloo/50 dark:text-almet-bali-hai/50">-</span>
                         )}
                       </td>
+                     <td className="px-4 py-3 text-xs">
+  {record.type === 'request' ? (
+    <button 
+      onClick={() => handleViewDetails(record.id)}
+      className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+    >
+      <Eye className="w-3 h-3" />
+      View
+    </button>
+  ) : record.can_edit ? (
+    <div className="flex gap-2">
+      <button 
+        onClick={() => handleViewScheduleDetail(record.id)} 
+        className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+      >
+        <Eye className="w-3 h-3" />
+        View
+      </button>
+      <button 
+        onClick={() => handleEditSchedule(record)} 
+        className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+      >
+        <Edit className="w-3 h-3" />
+        Edit
+      </button>
+      <button 
+        onClick={() => handleRegisterSchedule(record.id)} 
+        className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
+      >
+        <Check className="w-3 h-3" />
+        Register
+      </button>
+    </div>
+  ) : (
+    <button 
+      onClick={() => handleViewScheduleDetail(record.id)}
+      className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+    >
+      <Eye className="w-3 h-3" />
+      View
+    </button>
+  )}
+</td>
                     </tr>
                   ))}
                   {myAllRecords.length === 0 && (
                     <tr>
-                      <td colSpan="7" className="px-4 py-12 text-center">
+                      <td colSpan="8" className="px-4 py-12 text-center">
                         <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
                         <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No records found</p>
                         <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Your vacation history will appear here</p>
@@ -1460,8 +1676,195 @@ const handleConfirmRejection = async () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'records' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">All Vacation Records</h2>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="px-3 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
+                >
+                  <Filter className="w-3 h-3" />
+                  Filters
+                </button>
+                <button 
+                  onClick={handleExportAllRecords} 
+                  className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <Download className="w-3 h-3" />
+                  Export
+                </button>
+              </div>
+            </div>
+
+            {showFilters && (
+              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-5 bg-almet-mystic/10 dark:bg-gray-900/20">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Employee Name</label>
+                    <input 
+                      type="text" 
+                      value={filters.employee_name}
+                      onChange={(e) => setFilters(prev => ({...prev, employee_name: e.target.value}))}
+                      placeholder="Search name"
+                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Start Date</label>
+                    <input 
+                      type="date" 
+                      value={filters.start_date}
+                      onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">End Date</label>
+                    <input 
+                      type="date" 
+                      value={filters.end_date}
+                      onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Year</label>
+                    <input 
+                      type="number" 
+                      value={filters.year}
+                      onChange={(e) => setFilters(prev => ({...prev, year: e.target.value}))}
+                      placeholder="2025"
+                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button 
+                    onClick={fetchAllVacationRecords}
+                    className="px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all"
+                  >
+                    Apply Filters
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setFilters({ status: '', vacation_type_id: '', department_id: '', start_date: '', end_date: '', employee_name: '', year: '' });
+                      fetchAllVacationRecords();
+                    }}
+                    className="px-4 py-2 text-xs border border-almet-mystic dark:border-almet-comet text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+                <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
+                  <tr>
+                    {['Request ID', 'Employee', 'Type', 'Period', 'Days', 'Status', 'Attachments', 'Actions'].map(h => (
+                      <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                  {allVacationRecords.map(record => (
+                    <tr key={`${record.type}-${record.id}`} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
+                      <td className="px-4 py-3 text-xs font-medium text-almet-sapphire">{record.request_id}</td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.employee_name}</td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.vacation_type}</td>
+                      <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.start_date} - {record.end_date}</td>
+                      <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{record.days}</td>
+                      <td className="px-4 py-3">
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                          record.status === 'Scheduled' || record.status === 'Registered' ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' : 
+                          record.status.includes('Pending') ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300' : 
+                          record.status === 'Approved' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                          'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                        }`}>
+                          {record.status}
+                        </span>
+                      </td>
+                                            <td className="px-4 py-3 text-xs">
+                        {record.type === 'request' && record.has_attachments ? (
+                          <button
+                            onClick={() => handleViewAttachments(record.request_id, record.request_id)}
+                            className="flex items-center gap-1 text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral font-medium"
+                          >
+                            <Paperclip className="w-3 h-3" />
+                            {record.attachments_count}
+                          </button>
+                        ) : (
+                          <span className="text-almet-waterloo/50 dark:text-almet-bali-hai/50">-</span>
+                        )}
+                      </td>
+                     <td className="px-4 py-3 text-xs">
+  {record.type === 'request' ? (
+    <button 
+      onClick={() => handleViewDetails(record.id)}
+      className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+    >
+      <Eye className="w-3 h-3" />
+      View
+    </button>
+  ) : record.can_edit ? (
+    <div className="flex gap-2">
+      <button 
+        onClick={() => handleViewScheduleDetail(record.id)} 
+        className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+      >
+        <Eye className="w-3 h-3" />
+        View
+      </button>
+      <button 
+        onClick={() => handleEditSchedule(record)} 
+        className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+      >
+        <Edit className="w-3 h-3" />
+        Edit
+      </button>
+      <button 
+        onClick={() => handleRegisterSchedule(record.id)} 
+        className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
+      >
+        <Check className="w-3 h-3" />
+        Register
+      </button>
+    </div>
+  ) : (
+    <button 
+      onClick={() => handleViewScheduleDetail(record.id)}
+      className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+    >
+      <Eye className="w-3 h-3" />
+      View
+    </button>
+  )}
+</td>
+                    </tr>
+                  ))}
+                  {allVacationRecords.length === 0 && (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-12 text-center">
+                        <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
+                        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No records found</p>
+                        <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Try adjusting your filters</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
+      {/* Edit Schedule Modal */}
       {editModalOpen && editingSchedule && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-almet-mystic/50 dark:border-almet-comet">
@@ -1563,6 +1966,80 @@ const handleConfirmRejection = async () => {
           </div>
         </div>
       )}
+
+      {/* Approval Modal */}
+      <ApprovalModal
+        show={showApprovalModal}
+        onClose={() => {
+          setShowApprovalModal(false);
+          setSelectedRequest(null);
+          setApprovalComment('');
+        }}
+        selectedRequest={selectedRequest}
+        approvalAmount=""
+        setApprovalAmount={() => {}}
+        approvalNote={approvalComment}
+        setApprovalNote={setApprovalComment}
+        onApprove={handleConfirmApproval}
+        loading={loading}
+      />
+
+      {/* Rejection Modal */}
+      <RejectionModal
+        show={showRejectionModal}
+        onClose={() => {
+          setShowRejectionModal(false);
+          setSelectedRequest(null);
+          setRejectionReason('');
+        }}
+        rejectionReason={rejectionReason}
+        setRejectionReason={setRejectionReason}
+        onReject={handleConfirmRejection}
+        loading={loading}
+      />
+
+      {/* Attachments Modal */}
+      <AttachmentsModal
+        show={showAttachmentsModal}
+        onClose={() => {
+          setShowAttachmentsModal(false);
+          setSelectedRequestId(null);
+          setSelectedRequestNumber(null);
+        }}
+        requestId={selectedRequestNumber}
+        requestNumber={selectedRequestNumber}
+        canUpload={false}
+        canDelete={false}
+        onUpdate={() => {
+          if (activeTab === 'all') {
+            fetchMyAllRecords();
+          }
+        }}
+      />
+
+      {/* Request Detail Modal */}
+      <RequestDetailModal
+        show={showDetailModal}
+        onClose={() => {
+          setShowDetailModal(false);
+          setSelectedRequestId(null);
+        }}
+        requestId={selectedRequestId}
+        onAttachmentsClick={(requestId, requestNumber) => {
+          setShowDetailModal(false);
+          handleViewAttachments(requestId, requestNumber);
+        }}
+      />
+      <ScheduleDetailModal
+  show={showScheduleDetailModal}
+  onClose={() => {
+    setShowScheduleDetailModal(false);
+    setSelectedScheduleId(null);
+  }}
+  scheduleId={selectedScheduleId}
+/>
     </DashboardLayout>
   );
-}
+}                                  
+
+                            

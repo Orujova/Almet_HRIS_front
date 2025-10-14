@@ -421,7 +421,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
   const apiParamsChanged = useMemo(() => {
   if (!lastApiParamsRef.current) {
-    console.log('🆕 First API call');
+
     return true;
   }
   
@@ -485,7 +485,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     try {
       initialized.current = true;
       clearErrors();
-      console.log('✅ Component initialized with filters:', localFilters.business_function);
+  
       
       // ✅ Don't call fetchEmployees here - let the DATA FETCHING useEffect handle it
       await fetchStatistics();
@@ -501,14 +501,10 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 }, [businessFunctionFilter, businessFunctions, localFilters.business_function, fetchStatistics, clearErrors, showError]);
 
  useEffect(() => {
-  console.log('🔄 Checking if fetch needed:', {
-    initialized: initialized.current,
-    apiParamsChanged,
-    buildApiParams
-  });
+
   
   if (initialized.current && apiParamsChanged) {
-    console.log('🚀 Fetching with new params:', buildApiParams);
+
     debouncedFetchEmployees(buildApiParams);
   }
 }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
@@ -519,7 +515,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         lastApiParamsRef.current = null;
       }
       
-      showInfo('Refreshing data...');
+    
       
       await Promise.all([
         fetchStatistics(),
@@ -527,7 +523,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       ]);
       
       lastApiParamsRef.current = { ...buildApiParams };
-      showSuccess('Data refreshed successfully');
+     
     } catch (error) {
       console.error('Data refresh failed:', error);
       showError('Failed to refresh data');
@@ -542,7 +538,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setIsExportModalOpen(false);
     setIsBulkUploadOpen(false);
     clearSelection();
-    showInfo(`Switched to ${tabId} tab`);
+
   }, [clearSelection, showInfo]);
 
   const combinedStatistics = useMemo(() => ({
@@ -799,7 +795,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         break;
 
       // ENHANCED: Proper hard delete with archiving
-      case "delete":
+   
       case "hardDelete":
         const hardDeleteMessage = `⚠️ WARNING: PERMANENT DELETION\n\nAre you sure you want to permanently delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Permanently remove employees from the system\n- Create archive records for audit purposes\n- CANNOT be undone\n\nType "DELETE" to confirm this permanent action.`;
         
@@ -907,7 +903,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           await refreshAllData(true);
           
           const managerName = result?.line_manager_info?.name || 'Line Manager';
-          showSuccess(`${managerName} assigned as line manager to ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
+
         } catch (error) {
           console.error('Line manager assignment failed:', error);
           showError('Line manager assignment failed: ' + error.message);

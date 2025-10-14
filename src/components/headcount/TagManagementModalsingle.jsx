@@ -462,6 +462,7 @@ const TagManagementModal = ({
                   placeholder={`Choose tag (${dropdownOptions.length} available)`}
                   searchPlaceholder="Search tags..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   icon={<Hash size={12} />}
                   portal={true}
                   className="text-sm"

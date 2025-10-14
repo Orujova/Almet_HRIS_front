@@ -769,7 +769,7 @@ const handleCrudSubmit = async (e) => {
         )}
 
         {/* Modals */}
-        <CrudModal context={contextValue} />
+        <CrudModal context={contextValue}   darkMode={darkMode} />
         <JobDetailModal context={contextValue} />
         
       </div>

@@ -490,6 +490,7 @@ const employeeOptions = employees?.filter(emp =>
                     searchPlaceholder="Search position groups..."
                     error={!!errors.position_group}
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<Star size={12} />}
                     loading={false}
                     allowClear={true}
@@ -515,6 +516,7 @@ const employeeOptions = employees?.filter(emp =>
                     searchPlaceholder="Search grading levels..."
                     error={!!errors.grading_level}
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<Briefcase size={12} />}
                     disabled={!formData.position_group}
                     loading={cascadingLoading.gradingLevels}
@@ -576,6 +578,7 @@ const employeeOptions = employees?.filter(emp =>
                     placeholder="Select Manager (Optional)"
                     searchPlaceholder="Search employees..."
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<Users size={12} />}
                     loading={false}
                     allowClear={true}
@@ -606,6 +609,7 @@ const employeeOptions = employees?.filter(emp =>
                     searchPlaceholder="Search business functions..."
                     error={!!errors.business_function}
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<Building size={12} />}
                     loading={false}
                     allowClear={true}
@@ -631,6 +635,7 @@ const employeeOptions = employees?.filter(emp =>
                     searchPlaceholder="Search departments..."
                     error={!!errors.department}
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<MapPin size={12} />}
                     disabled={!formData.business_function}
                     loading={cascadingLoading.departments}
@@ -656,6 +661,7 @@ const employeeOptions = employees?.filter(emp =>
                     placeholder="Select Unit (Optional)"
                     searchPlaceholder="Search units..."
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<Building size={12} />}
                     disabled={!formData.department}
                     loading={cascadingLoading.units}
@@ -676,6 +682,7 @@ const employeeOptions = employees?.filter(emp =>
                     searchPlaceholder="Search job functions..."
                     error={!!errors.job_function}
                     darkMode={darkMode}
+                     allowUncheck={true}
                     icon={<Briefcase size={12} />}
                     loading={false}
                     allowClear={true}

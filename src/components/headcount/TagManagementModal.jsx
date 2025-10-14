@@ -384,6 +384,7 @@ const TagManagementModal = ({
                   placeholder="Search and select a tag..."
                   searchPlaceholder="Search tags..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   className="w-full"
                   disabled={isProcessing}
                   portal={true}

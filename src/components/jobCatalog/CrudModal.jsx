@@ -1,9 +1,10 @@
-// src/components/jobCatalog/CrudModal.jsx - FIXED
+// src/components/jobCatalog/CrudModal.jsx - SearchableDropdown ilə
 
 import React from 'react';
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
+import SearchableDropdown from '../common/SearchableDropdown';
 
-export default function CrudModal({ context }) {
+export default function CrudModal({ context, darkMode }) {
   const {
     showCrudModal, crudModalType, crudModalMode, selectedItem,
     formData, setFormData, loading, errors,
@@ -73,17 +74,17 @@ export default function CrudModal({ context }) {
             </div>
             <div className="mb-3">
               <label className={labelClass}>Business Function *</label>
-              <select
+              <SearchableDropdown
+                options={businessFunctions}
                 value={formData.business_function || ''}
-                onChange={(e) => setFormData({...formData, business_function: e.target.value})}
-                className={inputClass}
-                required
-              >
-                <option value="">Select Business Function</option>
-                {businessFunctions.map(bf => (
-                  <option key={bf.value} value={bf.value}>{bf.label}</option>
-                ))}
-              </select>
+                onChange={(value) => setFormData({...formData, business_function: value})}
+                placeholder="Select Business Function"
+                searchPlaceholder="Search business functions..."
+            allowUncheck={true}
+                          darkMode={darkMode}
+                portal={true}
+            
+              />
             </div>
           </>
         );
@@ -104,17 +105,17 @@ export default function CrudModal({ context }) {
             </div>
             <div className="mb-3">
               <label className={labelClass}>Department *</label>
-              <select
+              <SearchableDropdown
+                options={departments}
                 value={formData.department || ''}
-                onChange={(e) => setFormData({...formData, department: e.target.value})}
-                className={inputClass}
-                required
-              >
-                <option value="">Select Department</option>
-                {departments.map(dept => (
-                  <option key={dept.value} value={dept.value}>{dept.label}</option>
-                ))}
-              </select>
+                onChange={(value) => setFormData({...formData, department: value})}
+                placeholder="Select Department"
+                searchPlaceholder="Search departments..."
+            allowUncheck={true}
+                          darkMode={darkMode}
+                portal={true}
+               
+              />
             </div>
           </>
         );

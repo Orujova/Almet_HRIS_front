@@ -573,6 +573,7 @@ const VacantPositionsTable = () => {
                   placeholder="All Business Functions"
                   searchPlaceholder="Search business functions..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   loading={loading.referenceData}
                   allowClear={true}
                 />
@@ -590,6 +591,7 @@ const VacantPositionsTable = () => {
                   placeholder="All Departments"
                   searchPlaceholder="Search departments..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   loading={loading.referenceData}
                   allowClear={true}
                 />
@@ -607,6 +609,7 @@ const VacantPositionsTable = () => {
                   placeholder="All Position Groups"
                   searchPlaceholder="Search position groups..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   loading={loading.referenceData}
                   allowClear={true}
                 />
@@ -624,6 +627,7 @@ const VacantPositionsTable = () => {
                   placeholder="All Job Functions"
                   searchPlaceholder="Search job functions..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   loading={loading.referenceData}
                   allowClear={true}
                 />
@@ -641,6 +645,7 @@ const VacantPositionsTable = () => {
                   placeholder="All Units"
                   searchPlaceholder="Search units..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   loading={loading.referenceData}
                   allowClear={true}
                 />
@@ -658,6 +663,7 @@ const VacantPositionsTable = () => {
                   placeholder="All Positions"
                   searchPlaceholder="Search headcount..."
                   darkMode={darkMode}
+                   allowUncheck={true}
                   allowClear={true}
                 />
               </div>

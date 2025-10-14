@@ -722,6 +722,7 @@ const getAssignmentPreviewDisplay = () => {
             placeholder={counts.jobTitles > 0 ? "Select job title from records" : "Enter job title"}
             className={validationErrors.job_title ? 'border-red-500' : ''}
             darkMode={darkMode}
+             allowUncheck={true}
           />
           {validationErrors.job_title && (
             <p className="text-red-500 text-xs mt-1">{validationErrors.job_title}</p>
@@ -743,6 +744,7 @@ const getAssignmentPreviewDisplay = () => {
             placeholder={counts.businessFunctions > 0 ? "Select Business Function" : "No business functions available"}
             className={validationErrors.business_function ? 'border-red-500' : ''}
             darkMode={darkMode}
+             allowUncheck={true}
           />
           {validationErrors.business_function && (
             <p className="text-red-500 text-xs mt-1">{validationErrors.business_function}</p>

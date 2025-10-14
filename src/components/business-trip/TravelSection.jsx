@@ -35,6 +35,7 @@ export const TravelSection = ({
                 onChange={(value) => setFormData(prev => ({...prev, travel_type_id: value}))} 
                 placeholder="Select travel type" 
                 darkMode={darkMode} 
+                     allowUncheck={true}
               />
             </div>
 
@@ -46,6 +47,7 @@ export const TravelSection = ({
                 onChange={(value) => setFormData(prev => ({...prev, transport_type_id: value}))} 
                 placeholder="Select transport type" 
                 darkMode={darkMode} 
+                     allowUncheck={true}
               />
             </div>
           </div>
@@ -58,6 +60,7 @@ export const TravelSection = ({
               onChange={(value) => setFormData(prev => ({...prev, purpose_id: value}))} 
               placeholder="Select purpose" 
               darkMode={darkMode} 
+                   allowUncheck={true}
             />
           </div>
 
