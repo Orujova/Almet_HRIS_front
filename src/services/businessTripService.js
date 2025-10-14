@@ -316,14 +316,76 @@ export const BusinessTripService = {
   },
 
   // === REQUESTS ===
-  createTripRequest: async (data) => {
-    try {
-      const response = await businessTripApi.post('/business-trips/requests/create/', data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+  // === ATTACHMENTS === (REQUESTS section-dan sonra əlavə edin)
+getRequestAttachments: async (requestId) => {
+  try {
+    const response = await businessTripApi.get(`/business-trips/requests/${requestId}/attachments/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+bulkUploadAttachments: async (requestId, files) => {
+  try {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    
+    const response = await businessTripApi.post(
+      `/business-trips/requests/${requestId}/attachments/bulk-upload/`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+getAttachmentDetails: async (attachmentId) => {
+  try {
+    const response = await businessTripApi.get(`/business-trips/attachments/${attachmentId}/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+deleteAttachment: async (attachmentId) => {
+  try {
+    const response = await businessTripApi.delete(`/business-trips/attachments/${attachmentId}/delete/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+getTripRequestDetail: async (requestId) => {
+  try {
+    const response = await businessTripApi.get(`/business-trips/requests/${requestId}/`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+createTripRequestWithFiles: async (formData) => {
+  try {
+    const response = await businessTripApi.post('/business-trips/requests/create/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 
   getMyTripRequests: async () => {
     try {
@@ -427,24 +489,97 @@ export const BusinessTripService = {
 
 // Helper functions
 export const BusinessTripHelpers = {
-  // Format trip request data
-  formatTripRequestData: (data) => {
-    return {
-      requester_type: data.requester_type,
-      employee_id: data.employee_id || undefined,
-      employee_manual: data.employee_manual || undefined,
-      travel_type_id: data.travel_type_id,
-      transport_type_id: data.transport_type_id,
-      purpose_id: data.purpose_id,
-      start_date: data.start_date,
-      end_date: data.end_date,
-      comment: data.comment || '',
-      schedules: data.schedules || [],
-      hotels: data.hotels || [],
-      finance_approver_id: data.finance_approver_id || undefined,
-      hr_representative_id: data.hr_representative_id || undefined
-    };
-  },
+  // Format trip request with files
+formatTripRequestWithFiles: (data, files) => {
+  const formData = new FormData();
+  
+  formData.append('requester_type', data.requester_type);
+  
+  if (data.employee_id) {
+    formData.append('employee_id', data.employee_id);
+  }
+  
+  formData.append('travel_type_id', data.travel_type_id);
+  formData.append('transport_type_id', data.transport_type_id);
+  formData.append('purpose_id', data.purpose_id);
+  formData.append('start_date', data.start_date);
+  formData.append('end_date', data.end_date);
+  
+  if (data.comment) {
+    formData.append('comment', data.comment);
+  }
+  
+  formData.append('schedules', JSON.stringify(data.schedules || []));
+  
+  if (data.hotels && data.hotels.length > 0) {
+    formData.append('hotels', JSON.stringify(data.hotels));
+  }
+  
+  if (data.finance_approver_id) {
+    formData.append('finance_approver_id', data.finance_approver_id);
+  }
+  
+  if (data.hr_representative_id) {
+    formData.append('hr_representative_id', data.hr_representative_id);
+  }
+  
+  if (data.employee_manual) {
+    Object.keys(data.employee_manual).forEach(key => {
+      formData.append(`employee_manual[${key}]`, data.employee_manual[key]);
+    });
+  }
+  
+  if (files && files.length > 0) {
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+  }
+  
+  return formData;
+},
+
+// Validate file
+validateFile: (file) => {
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  const allowedTypes = [
+    'application/pdf',
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ];
+
+  if (file.size > maxSize) {
+    return { valid: false, error: `File ${file.name} exceeds 10MB limit` };
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    return { valid: false, error: `File ${file.name} has unsupported format` };
+  }
+
+  return { valid: true };
+},
+
+// Format file size
+formatFileSize: (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+},
+
+// Get file icon
+getFileIcon: (fileType) => {
+  if (fileType.includes('pdf')) return 'pdf';
+  if (fileType.includes('image')) return 'image';
+  if (fileType.includes('word') || fileType.includes('document')) return 'doc';
+  if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'xls';
+  return 'file';
+},
 
   // Download blob file
   downloadBlobFile: (blob, filename) => {

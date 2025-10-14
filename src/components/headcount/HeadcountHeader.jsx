@@ -75,7 +75,7 @@ const HeadcountHeader = ({
       id: 'employees',
       label: 'Employees',
       icon: Users,
-      count: statistics.total_employees || 0,
+      // count: statistics.total_employees || 0,
       color: 'almet-sapphire',
       bgColor: 'bg-almet-sapphire/10',
       borderColor: 'border-almet-sapphire/30',
@@ -85,7 +85,7 @@ const HeadcountHeader = ({
       id: 'vacant',
       label: 'Vacant',
       icon: Briefcase,
-      count: vacantPositionsStats.total_vacant_positions || 0,
+      // count: vacantPositionsStats.total_vacant_positions || 0,
       color: 'orange-600',
       bgColor: 'bg-orange-50 dark:bg-orange-900/20',
       borderColor: 'border-orange-200 dark:border-orange-700',
@@ -95,7 +95,7 @@ const HeadcountHeader = ({
       id: 'archive',
       label: 'Archive',
       icon: Archive,
-      count: archiveStats.total_archived || 0,
+      // count: archiveStats.total_archived || 0,
       color: 'gray-600',
       bgColor: 'bg-gray-50 dark:bg-gray-700/20',
       borderColor: 'border-gray-200 dark:border-gray-600',
@@ -336,13 +336,13 @@ const HeadcountHeader = ({
                   >
                     <Icon size={14} className="mr-2" />
                     <span>{tab.label}</span>
-                    <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-semibold ${
+                    {/* <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-semibold ${
                       isActive
                         ? `bg-white/20 ${tab.textColor}`
                         : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                     }`}>
                       {tab.count.toLocaleString()}
-                    </span>
+                    </span> */}
                   </button>
                 );
               })}

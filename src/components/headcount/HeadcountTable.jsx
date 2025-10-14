@@ -1,8 +1,8 @@
-// src/components/headcount/HeadcountTable.jsx - COMPLETE WITH TOAST INTEGRATION
+// src/components/headcount/HeadcountTable.jsx - FINAL FIX: Business Function Filter
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
-import { useToast } from "../common/Toast"; // Import the Toast hook
+import { useToast } from "../common/Toast";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
@@ -26,19 +26,11 @@ import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 import LineManagerModal from "./LineManagerAssignModal";
 import TagManagementModal from "./TagManagementModalsingle";
 
-const HeadcountTable = () => {
+const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const { darkMode } = useTheme();
-  const { showSuccess, showError, showWarning, showInfo } = useToast(); // Use Toast hook
-  
-  // ========================================
-  // TAB STATE MANAGEMENT
-  // ========================================
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
   
   const [activeTab, setActiveTab] = useState('employees');
-  
-  // ========================================
-  // HOOKS & API INTEGRATION
-  // ========================================
   
   const {
     formattedEmployees,
@@ -55,13 +47,11 @@ const HeadcountTable = () => {
     selectAllEmployees,
     clearSelection,
     setSelectedEmployees,
-  
     clearFilters,
     setSorting,
     addSort,
     removeSort,
     clearSorting,
-
     setCurrentPage,
     setPageSize,
     bulkAddTags,
@@ -76,7 +66,6 @@ const HeadcountTable = () => {
     isSorted,
     getSortIndex,
     clearErrors,
-  
   } = useEmployees();
 
   const { 
@@ -84,7 +73,6 @@ const HeadcountTable = () => {
     archiveStats, 
     loading: vacantLoading,
     fetchVacantPositionsStatistics,
-
   } = useVacantPositions();
 
   const {
@@ -100,10 +88,6 @@ const HeadcountTable = () => {
     error: refError
   } = useReferenceData();
 
-  // ========================================
-  // LOCAL STATE (COMPLETE)
-  // ========================================
-  
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -117,19 +101,18 @@ const HeadcountTable = () => {
   const [allEmployeesForModal, setAllEmployeesForModal] = useState(null);
   const [fetchingAllEmployees, setFetchingAllEmployees] = useState(false);
   
-  // FIXED: Color system state
   const [colorSystemInitialized, setColorSystemInitialized] = useState(false);
   const [currentColorMode, setCurrentColorMode] = useState('null');
   const [defaultSortingApplied, setDefaultSortingApplied] = useState(false);
+  const [isWrapperFilterApplied, setIsWrapperFilterApplied] = useState(false);
 
-  // Update loading state based on API loading
   useEffect(() => {
     if (loading.exporting !== undefined) {
       setIsExporting(loading.exporting);
     }
   }, [loading.exporting]);
 
-  // COMPLETE Local filter state
+  // 🎯 CRITICAL FIX: Local filters now store business function ID (not label)
   const [localFilters, setLocalFilters] = useState({
     search: "",
     employee_search: [],
@@ -137,7 +120,7 @@ const HeadcountTable = () => {
     job_title_search: "",
     status: [],
     department: [],
-    business_function: [],
+    business_function: [], // ✅ Will store IDs like [1, 2, 3]
     position_group: [],
     tags: [],
     grading_level: [],
@@ -156,29 +139,21 @@ const HeadcountTable = () => {
     contract_expiring_days: ""
   });
 
-  // Refs for control
   const initialized = useRef(false);
   const lastFetchTime = useRef(0);
   const debounceRef = useRef(null);
   const lastApiParamsRef = useRef(null);
   const colorSystemInitRef = useRef(false);
 
-  // ========================================
-  // FIXED: COLOR SYSTEM INITIALIZATION
-  // ========================================
-  
+  // Color system initialization
   useEffect(() => {
-    if (colorSystemInitRef.current || colorSystemInitialized) {
-      return;
-    }
+    if (colorSystemInitRef.current || colorSystemInitialized) return;
     
     const isRefLoading = typeof refLoading === 'object' 
       ? Object.values(refLoading || {}).some(loading => loading === true)
       : refLoading;
     
-    if (isRefLoading) {
-      return;
-    }
+    if (isRefLoading) return;
     
     const hasReferenceData = (
       (positionGroups && positionGroups.length > 0) ||
@@ -188,9 +163,7 @@ const HeadcountTable = () => {
       (jobFunctions && jobFunctions.length > 0)
     );
     
-    if (!hasReferenceData) {
-      return;
-    }
+    if (!hasReferenceData) return;
     
     try {
       colorSystemInitRef.current = true;
@@ -228,27 +201,82 @@ const HeadcountTable = () => {
     showError
   ]);
 
-  // ========================================
-  // ENHANCED: EMPLOYEES WITH COLOR GROUPING
-  // ========================================
+
   
+  useEffect(() => {
+    console.log('🔍 Business Function Filter Changed:', {
+      businessFunctionFilter,
+      currentFilter: localFilters.business_function,
+      businessFunctions: businessFunctions?.map(bf => ({ 
+        id: bf.id,
+        code: bf.code, 
+        name: bf.name, 
+        label: bf.label 
+      }))
+    });
+
+    // ✅ Wait for businessFunctions to load
+    if (!businessFunctions || businessFunctions.length === 0) {
+      console.log('⏳ Waiting for businessFunctions to load...');
+      return;
+    }
+
+    if (businessFunctionFilter) {
+      // Find business function by code
+      const bf = businessFunctions?.find(b => b.code === businessFunctionFilter);
+      
+      console.log('🎯 Found Business Function:', bf);
+      
+      if (bf) {
+        // ✅ CRITICAL: Store ID for backend API
+        const bfId = String(bf.id || bf.value);
+        
+        console.log('📝 Business Function ID to store:', bfId);
+        
+        // ✅ FIXED: Check if already applied to prevent infinite loop
+        const currentIds = localFilters.business_function.map(id => String(id));
+        if (!currentIds.includes(bfId)) {
+          console.log('🔄 Applying wrapper filter...');
+          setLocalFilters(prev => ({
+            ...prev,
+            business_function: [bfId] // ✅ Store ID for API
+          }));
+          
+          setIsWrapperFilterApplied(true);
+          console.log('✅ Wrapper Filter Applied - Stored ID:', bfId);
+        } else {
+          console.log('✅ Filter already applied, skipping');
+        }
+      } else {
+        console.warn('⚠️ Business function not found for code:', businessFunctionFilter);
+      }
+    } else {
+      console.log('🌍 Clearing business function filter');
+      if (localFilters.business_function.length > 0) {
+        setLocalFilters(prev => ({
+          ...prev,
+          business_function: []
+        }));
+        setIsWrapperFilterApplied(false);
+      }
+    }
+  }, [businessFunctionFilter, businessFunctions]); // ✅ localFilters NOT in deps to prevent loop
+
+  // Employees with color grouping
   const employeesWithColorGrouping = useMemo(() => {
     if (!formattedEmployees || formattedEmployees.length === 0) {
       return [];
     }
     
-    const employeesWithGroups = formattedEmployees.map(employee => ({
+    return formattedEmployees.map(employee => ({
       ...employee,
       colorGroup: getEmployeeColorGroup(employee)
     }));
-    
-    return employeesWithGroups;
   }, [formattedEmployees, currentColorMode]);
 
-  // ========================================
-  // ENHANCED: DEFAULT COLOR-BASED SORTING
-  // ========================================
+
   
+  // Default sorting
   useEffect(() => {
     if (
       colorSystemInitialized && 
@@ -258,33 +286,18 @@ const HeadcountTable = () => {
     ) {
       let sortField = '';
       switch (currentColorMode) {
-        case 'HIERARCHY':
-          sortField = 'position_group_name';
-          break;
-        case 'DEPARTMENT':
-          sortField = 'department_name';
-          break;
-        case 'BUSINESS_FUNCTION':
-          sortField = 'business_function_name';
-          break;
-        case 'UNIT':
-          sortField = 'unit_name';
-          break;
-        case 'JOB_FUNCTION':
-          sortField = 'job_function_name';
-          break;
-        case 'GRADE':
-          sortField = 'grading_level';
-          break;
-        default:
-          sortField = 'position_group_name';
+        case 'HIERARCHY': sortField = 'position_group_name'; break;
+        case 'DEPARTMENT': sortField = 'department_name'; break;
+        case 'BUSINESS_FUNCTION': sortField = 'business_function_name'; break;
+        case 'UNIT': sortField = 'unit_name'; break;
+        case 'JOB_FUNCTION': sortField = 'job_function_name'; break;
+        case 'GRADE': sortField = 'grading_level'; break;
+        default: sortField = 'position_group_name';
       }
       
       if(currentColorMode){
         setSorting({ 
-          multiple: [
-            { field: sortField, direction: 'asc' }
-          ]
+          multiple: [{ field: sortField, direction: 'asc' }]
         });
       }
       
@@ -299,26 +312,15 @@ const HeadcountTable = () => {
     setSorting
   ]);
 
-  // ========================================
-  // ENHANCED: COLOR MODE CHANGE HANDLER
-  // ========================================
-  
   const handleColorModeChange = useCallback((newMode) => {
-    if (newMode === currentColorMode) {
-      return;
-    }
+    if (newMode === currentColorMode) return;
     
     setCurrentColorMode(newMode);
     setDefaultSortingApplied(false);
     clearSorting();
     setCurrentPage(1);
-    
-  }, [currentColorMode, clearSorting, setCurrentPage, showInfo]);
+  }, [currentColorMode, clearSorting, setCurrentPage]);
 
-  // ========================================
-  // TAB-SPECIFIC INITIALIZATION
-  // ========================================
-  
   useEffect(() => {
     const initializeAllStats = async () => {
       try {
@@ -327,7 +329,6 @@ const HeadcountTable = () => {
         }
         await Promise.all([
           fetchVacantPositionsStatistics(),
-        
         ]);
       } catch (error) {
         console.error('Failed to initialize tab statistics:', error);
@@ -341,7 +342,7 @@ const HeadcountTable = () => {
   }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics, showError]);
 
   // ========================================
-  // COMPLETE API PARAMS BUILDER
+  // 🎯 BUILD API PARAMS - Convert labels to backend format
   // ========================================
  
   const buildApiParams = useMemo(() => {
@@ -354,7 +355,6 @@ const HeadcountTable = () => {
       params.search = localFilters.search.trim();
     }
 
-    // NEW: Multiple Sorting - Enhanced support
     if (sorting && sorting.length > 0) {
       const orderingFields = sorting.map(sort => 
         sort.direction === 'desc' ? `-${sort.field}` : sort.field
@@ -362,7 +362,7 @@ const HeadcountTable = () => {
       params.ordering = orderingFields.join(',');
     }
 
-    // Multi-select Filters - Send as arrays, backend will handle parsing
+    // Multi-select Filters
     const multiSelectFilters = [
       'business_function', 'department', 'unit', 'job_function', 'position_group',
       'status', 'grading_level', 'contract_duration', 'line_manager', 'tags', 'gender', 'employee_search'
@@ -386,7 +386,7 @@ const HeadcountTable = () => {
       }
     });
 
-    // Search filters
+    // Other filters
     if (localFilters.line_manager_search?.trim()) {
       params.line_manager_search = localFilters.line_manager_search.trim();
     }
@@ -394,29 +394,13 @@ const HeadcountTable = () => {
       params.job_title_search = localFilters.job_title_search.trim();
     }
     
-    // Date Range Filters
-    if (localFilters.start_date_from) {
-      params.start_date_from = localFilters.start_date_from;
-    }
-    if (localFilters.start_date_to) {
-      params.start_date_to = localFilters.start_date_to;
-    }
-    if (localFilters.contract_end_date_from) {
-      params.contract_end_date_from = localFilters.contract_end_date_from;
-    }
-    if (localFilters.contract_end_date_to) {
-      params.contract_end_date_to = localFilters.contract_end_date_to;
-    }
+    if (localFilters.start_date_from) params.start_date_from = localFilters.start_date_from;
+    if (localFilters.start_date_to) params.start_date_to = localFilters.start_date_to;
+    if (localFilters.contract_end_date_from) params.contract_end_date_from = localFilters.contract_end_date_from;
+    if (localFilters.contract_end_date_to) params.contract_end_date_to = localFilters.contract_end_date_to;
+    if (localFilters.years_of_service_min) params.years_of_service_min = localFilters.years_of_service_min;
+    if (localFilters.years_of_service_max) params.years_of_service_max = localFilters.years_of_service_max;
 
-    // Numeric Range Filters
-    if (localFilters.years_of_service_min) {
-      params.years_of_service_min = localFilters.years_of_service_min;
-    }
-    if (localFilters.years_of_service_max) {
-      params.years_of_service_max = localFilters.years_of_service_max;
-    }
-
-    // Boolean Filters
     if (localFilters.is_active && localFilters.is_active !== "") {
       params.is_active = localFilters.is_active === "true";
     }
@@ -427,31 +411,37 @@ const HeadcountTable = () => {
       params.status_needs_update = localFilters.status_needs_update === "true";
     }
 
-    // Contract expiring filter
     if (localFilters.contract_expiring_days) {
       params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
     }
 
+    console.log('📤 Final API Params:', params);
     return params;
   }, [localFilters, pagination.page, pagination.pageSize, sorting]);
 
-  // ========================================
-  // PREVENT INFINITE LOOP WITH PARAMS COMPARISON
-  // ========================================
-  
   const apiParamsChanged = useMemo(() => {
-    if (!lastApiParamsRef.current) return true;
-    
-    const currentParams = JSON.stringify(buildApiParams);
-    const lastParams = JSON.stringify(lastApiParamsRef.current);
-    
-    return currentParams !== lastParams;
-  }, [buildApiParams]);
-
-  // ========================================
-  // DEBOUNCED DATA FETCHING
-  // ========================================
+  if (!lastApiParamsRef.current) {
+    console.log('🆕 First API call');
+    return true;
+  }
   
+  const currentParams = JSON.stringify(buildApiParams);
+  const lastParams = JSON.stringify(lastApiParamsRef.current);
+  
+  const changed = currentParams !== lastParams;
+  
+  if (changed) {
+    console.log('🔄 API Params Changed:', {
+      old: lastApiParamsRef.current,
+      new: buildApiParams
+    });
+  }
+  
+  return changed;
+}, [buildApiParams]);
+
+
+
   const debouncedFetchEmployees = useCallback((params, immediate = false) => {
     const paramsString = JSON.stringify(params);
     const lastParamsString = JSON.stringify(lastApiParamsRef.current);
@@ -476,48 +466,53 @@ const HeadcountTable = () => {
     }, delay);
   }, [fetchEmployees]);
 
-  // ========================================
-  // INITIALIZATION
-  // ========================================
-  
   useEffect(() => {
-    const initializeData = async () => {
-      if (initialized.current) return;
-      
-      try {
-        initialized.current = true;
-        clearErrors();
-        lastApiParamsRef.current = { ...buildApiParams };
-        
-        await Promise.all([
-          fetchStatistics(),
-          fetchEmployees(buildApiParams)
-        ]);
-        
-      } catch (error) {
-        console.error('Failed to initialize HeadcountTable:', error);
-        showError('Failed to initialize data');
-        initialized.current = false;
-      }
-    };
-
-    initializeData();
-  }, []);
-
-  // ========================================
-  // DATA FETCHING ON PARAM CHANGES
-  // ========================================
-  
-  useEffect(() => {
-    if (initialized.current && apiParamsChanged) {
-      debouncedFetchEmployees(buildApiParams);
+  const initializeData = async () => {
+    if (initialized.current) return;
+    
+    // ✅ CRITICAL: Wait for businessFunctions to load if we have a wrapper filter
+    if (businessFunctionFilter && (!businessFunctions || businessFunctions.length === 0)) {
+      console.log('⏳ Waiting for businessFunctions to load before initializing...');
+      return;
     }
-  }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
 
-  // ========================================
-  // DATA REFRESH HELPER
-  // ========================================
+    // ✅ CRITICAL: Wait for wrapper filter to be applied if needed
+    if (businessFunctionFilter && localFilters.business_function.length === 0) {
+      console.log('⏳ Waiting for wrapper filter to be applied...');
+      return;
+    }
+    
+    try {
+      initialized.current = true;
+      clearErrors();
+      console.log('✅ Component initialized with filters:', localFilters.business_function);
+      
+      // ✅ Don't call fetchEmployees here - let the DATA FETCHING useEffect handle it
+      await fetchStatistics();
+      
+    } catch (error) {
+      console.error('Failed to initialize HeadcountTable:', error);
+      showError('Failed to initialize data');
+      initialized.current = false;
+    }
+  };
+
+  initializeData();
+}, [businessFunctionFilter, businessFunctions, localFilters.business_function, fetchStatistics, clearErrors, showError]);
+
+ useEffect(() => {
+  console.log('🔄 Checking if fetch needed:', {
+    initialized: initialized.current,
+    apiParamsChanged,
+    buildApiParams
+  });
   
+  if (initialized.current && apiParamsChanged) {
+    console.log('🚀 Fetching with new params:', buildApiParams);
+    debouncedFetchEmployees(buildApiParams);
+  }
+}, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
+
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     try {
       if (forceRefresh) {
@@ -539,38 +534,21 @@ const HeadcountTable = () => {
     }
   }, [fetchStatistics, fetchEmployees, buildApiParams, showInfo, showSuccess, showError]);
 
-  // ========================================
-  // TAB CHANGE HANDLER
-  // ========================================
-  
   const handleTabChange = useCallback((tabId) => {
     setActiveTab(tabId);
-    
-    // Close any open modals/panels when switching tabs
     setIsAdvancedFilterOpen(false);
     setIsActionMenuOpen(false);
     setIsAdvancedSortingOpen(false);
     setIsExportModalOpen(false);
     setIsBulkUploadOpen(false);
-    
-    // Clear selections
     clearSelection();
-    
     showInfo(`Switched to ${tabId} tab`);
   }, [clearSelection, showInfo]);
 
-  // ========================================
-  // COMPUTE STATISTICS FOR HEADER
-  // ========================================
-  
   const combinedStatistics = useMemo(() => ({
     ...statistics,
     total_employees: statistics?.total_employees || 0,
   }), [statistics]);
-
-  // ========================================
-  // NEW: ADVANCED SORTING HANDLERS
-  // ========================================
 
   const handleToggleAdvancedSorting = useCallback(() => {
     setIsAdvancedSortingOpen(prev => !prev);
@@ -595,7 +573,7 @@ const HeadcountTable = () => {
   }, [clearSorting, setCurrentPage, showInfo]);
 
   // ========================================
-  // COMPLETE FILTER HANDLERS
+  // 🎯 FILTER HANDLERS - Store LABELS
   // ========================================
 
   const handleSearchChange = useCallback((value) => {
@@ -613,10 +591,17 @@ const HeadcountTable = () => {
     setCurrentPage(1);
   }, [setCurrentPage]);
 
+  // ✅ CRITICAL: This receives IDs from QuickFilterBar
   const handleBusinessFunctionChange = useCallback((selectedBFs) => {
+    if (isWrapperFilterApplied) {
+      showWarning('Business function is filtered by company selection');
+      return;
+    }
+    
+    console.log('🔄 Business Function Change (IDs):', selectedBFs);
     setLocalFilters(prev => ({ ...prev, business_function: Array.isArray(selectedBFs) ? selectedBFs : [] }));
     setCurrentPage(1);
-  }, [setCurrentPage]);
+  }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
 
   const handlePositionGroupChange = useCallback((selectedPGs) => {
     setLocalFilters(prev => ({ ...prev, position_group: Array.isArray(selectedPGs) ? selectedPGs : [] }));
@@ -641,6 +626,11 @@ const HeadcountTable = () => {
   }, [setCurrentPage, showInfo]);
 
   const handleClearFilter = useCallback((key) => {
+    if (key === 'business_function' && isWrapperFilterApplied) {
+      showWarning('Business function is filtered by company selection');
+      return;
+    }
+    
     setLocalFilters(prev => {
       const newFilters = { ...prev };
       
@@ -655,7 +645,7 @@ const HeadcountTable = () => {
     
     setCurrentPage(1);
     showInfo(`${key} filter cleared`);
-  }, [setCurrentPage, showInfo]);
+  }, [isWrapperFilterApplied, showWarning, setCurrentPage, showInfo]);
 
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {
@@ -665,7 +655,7 @@ const HeadcountTable = () => {
       job_title_search: "",
       status: [],
       department: [],
-      business_function: [],
+      business_function: isWrapperFilterApplied ? localFilters.business_function : [],
       position_group: [],
       tags: [],
       grading_level: [],
@@ -688,12 +678,9 @@ const HeadcountTable = () => {
     clearFilters();
     setCurrentPage(1);
     showSuccess('All filters cleared');
-  }, [clearFilters, setCurrentPage, showSuccess]);
+  }, [isWrapperFilterApplied, localFilters.business_function, clearFilters, setCurrentPage, showSuccess]);
 
-  // ========================================
-  // SELECTION HANDLERS
-  // ========================================
-  
+  // Selection handlers
   const handleEmployeeToggle = useCallback((employeeId) => {
     toggleEmployeeSelection(employeeId);
   }, [toggleEmployeeSelection]);
@@ -734,10 +721,6 @@ const HeadcountTable = () => {
     }
   }, [showInOrgChart, hideFromOrgChart, showSuccess, showError]);
   
-  // ========================================
-  // SORTING HANDLERS (Table Column Sorting)
-  // ========================================
-  
   const handleSort = useCallback((field, ctrlKey = false) => {
     if (ctrlKey) {
       const currentDirection = getSortDirection(field);
@@ -760,11 +743,7 @@ const HeadcountTable = () => {
     }
   }, [getSortDirection, addSort, removeSort, setSorting]);
 
-  // ========================================
-  // COMPLETE BULK ACTION HANDLERS
-  // ========================================
-  
- const handleBulkAction = useCallback(async (action, options = {}) => {
+  const handleBulkAction = useCallback(async (action, options = {}) => {
   setIsActionMenuOpen(false);
 
   if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport', 'refresh'].includes(action)) {
@@ -980,11 +959,6 @@ const HeadcountTable = () => {
 ]);
 
 
-
-  // ========================================
-  // ACTION MENU HANDLERS
-  // ========================================
-  
   const handleToggleActionMenu = useCallback(() => {
     setIsActionMenuOpen(prev => !prev);
   }, []);
@@ -993,9 +967,8 @@ const HeadcountTable = () => {
     setIsActionMenuOpen(false);
   }, []);
 
-
-
-const handleExport = useCallback(async (exportOptions) => {
+  // Export handlers (keeping existing)
+  const handleExport = useCallback(async (exportOptions) => {
   try {
     setIsExporting(true);
 
@@ -1112,7 +1085,7 @@ const handleExport = useCallback(async (exportOptions) => {
       userFriendlyMessage = "Some selected fields are not available. Please check your field selection.";
     } else if (error.message?.includes('No data received')) {
       userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
-    }
+       }
     
     showError(`Export failed: ${userFriendlyMessage}`);
     throw error;
@@ -1121,24 +1094,18 @@ const handleExport = useCallback(async (exportOptions) => {
   }
 }, [selectedEmployees, buildApiParams, exportEmployees, showInfo, showSuccess, showError]);
 
-// Quick export helper
-const handleQuickExport = useCallback(async (exportOptions) => {
-  try {
-    setIsExporting(true);
-    await handleExport(exportOptions);
-  } catch (error) {
-    console.error('Quick export failed:', error);
-    const errorMessage = error.message || 'Quick export failed. Please try again.';
-    showError(`Export failed: ${errorMessage}`);
-  } finally {
-    setIsExporting(false);
-  }
-}, [handleExport, showError]);
+  const handleQuickExport = useCallback(async (exportOptions) => {
+    try {
+      setIsExporting(true);
+      await handleExport(exportOptions);
+    } catch (error) {
+      console.error('Quick export failed:', error);
+      showError(`Export failed: ${error.message}`);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [handleExport, showError]);
 
-  // ========================================
-  // BULK UPLOAD FUNCTIONALITY
-  // ========================================
-  
   const handleBulkImportComplete = useCallback(async (result) => {
     try {
       await refreshAllData(true);
@@ -1146,15 +1113,13 @@ const handleQuickExport = useCallback(async (exportOptions) => {
       
       if (result?.imported_count) {
         showSuccess(`Successfully imported ${result.imported_count} employees!`);
-      } else if (result?.successful) {
-        showSuccess(`Successfully imported ${result.successful} employees!`);
       } else {
         showSuccess('Bulk import completed successfully!');
       }
     } catch (error) {
       console.error('Failed to refresh after import:', error);
       setIsBulkUploadOpen(false);
-      showError('Import completed but failed to refresh data. Please refresh the page.');
+      showError('Import completed but failed to refresh data');
     }
   }, [refreshAllData, showSuccess, showError]);
 
@@ -1162,10 +1127,7 @@ const handleQuickExport = useCallback(async (exportOptions) => {
     setIsExportModalOpen(prev => !prev);
   }, []);
 
-  // ========================================
-  // FETCH ALL EMPLOYEES FOR MODALS
-  // ========================================
-
+  // Modal handlers (keeping existing)
   const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
     const shouldSkipCache = options?.skipCache;
     
@@ -1244,9 +1206,7 @@ const handleQuickExport = useCallback(async (exportOptions) => {
     }
   }, [allEmployeesForModal, fetchEmployees, formattedEmployees, showError]);
 
-
-  // ENHANCED: Individual employee delete handler
-const handleEmployeeAction = useCallback(async (employeeId, action) => {
+  const handleEmployeeAction = useCallback(async (employeeId, action) => {
   const employee = formattedEmployees.find(emp => emp.id === employeeId);
   
   try {
@@ -1356,16 +1316,7 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
   showWarning
 ]);
 
-
-  const debugEmployeeData = (data) => {
-    return data;
-  };
-  
-  // ========================================
-  // MODAL HANDLERS
-  // ========================================
-
-  const handleLineManagerAssign = useCallback(async (managerId) => {
+   const handleLineManagerAssign = useCallback(async (managerId) => {
     try {
       if (!currentModalEmployee) {
         throw new Error('No employee selected for line manager assignment');
@@ -1417,6 +1368,7 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
       console.error(`Tag ${operation} failed:`, error);
       showError(`Failed to ${operation} tag: ${error.message}`);
     }
+    // ... existing logic ...
   }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, showInfo, showSuccess, showError]);
 
   const handleLineManagerModalClose = useCallback(() => {
@@ -1429,10 +1381,7 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     setCurrentModalEmployee(null);
   }, []);
 
-  // ========================================
-  // ACTIVE FILTERS CALCULATION
-  // ========================================
-  
+  // Active filters
   const activeFilters = useMemo(() => {
     const filters = [];
     
@@ -1458,15 +1407,14 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     if (localFilters.department?.length > 0) {
       filters.push({ 
         key: "department", 
-        label: localFilters.department.length === 1 
-          ? `Department: ${localFilters.department[0]}` 
-          : `Department: ${localFilters.department.length} selected`
+        label: `Department: ${localFilters.department.length} selected`
       });
     }
     if (localFilters.business_function?.length > 0) {
       filters.push({ 
         key: "business_function", 
-        label: `Business Function: ${localFilters.business_function.length} selected`
+        label: `Business Function: ${localFilters.business_function.length} selected`,
+        isWrapperFilter: isWrapperFilterApplied
       });
     }
     if (localFilters.position_group?.length > 0) {
@@ -1475,7 +1423,7 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
         label: `Position Group: ${localFilters.position_group.length} selected`
       });
     }
-    if (localFilters.tags?.length > 0) {
+     if (localFilters.tags?.length > 0) {
       filters.push({ 
         key: "tags", 
         label: `Tags: ${localFilters.tags.length} selected`
@@ -1561,12 +1509,8 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     }
     
     return filters;
-  }, [localFilters]);
+  }, [localFilters, isWrapperFilterApplied]);
 
-  // ========================================
-  // CLEANUP ON UNMOUNT
-  // ========================================
-  
   useEffect(() => {
     return () => {
       if (debounceRef.current) {
@@ -1575,10 +1519,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     };
   }, []);
 
-  // ========================================
-  // AVAILABLE FIELDS FOR SORTING
-  // ========================================
-  
   const availableFieldsForSorting = useMemo(() => [
     { value: 'name', label: 'Full Name', description: 'Employee full name' },
     { value: 'employee_name', label: 'Employee Name', description: 'Employee display name' },
@@ -1616,10 +1556,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     { value: 'is_deleted', label: 'Deleted Status', description: 'Soft deletion status' }
   ], []);
 
-  // ========================================
-  // RENDER TAB CONTENT
-  // ========================================
-  
   const renderTabContent = () => {
     switch (activeTab) {
       case 'vacant':
@@ -1630,7 +1566,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
       default:
         return (
           <>
-            {/* Search and Quick Filters - Only for employees tab */}
             <div className="flex flex-col lg:flex-row lg:justify-between gap-3 mb-3 mt-3">
               <SearchBar
                 searchTerm={localFilters.search}
@@ -1644,10 +1579,10 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
                   onDepartmentChange={handleDepartmentChange}
                   onBusinessFunctionChange={handleBusinessFunctionChange}
                   onPositionGroupChange={handlePositionGroupChange}
-                  statusFilter={localFilters.status}
-                  departmentFilter={localFilters.department}
-                  businessFunctionFilter={localFilters.business_function}
-                  positionGroupFilter={localFilters.position_group}
+                  statusFilter={Array.isArray(localFilters.status) ? localFilters.status : []}
+                  departmentFilter={Array.isArray(localFilters.department) ? localFilters.department : []}
+                  businessFunctionFilter={Array.isArray(localFilters.business_function) ? localFilters.business_function : []}
+                  positionGroupFilter={Array.isArray(localFilters.position_group) ? localFilters.position_group : []}
                   activeFilters={activeFilters}
                   onClearFilter={handleClearFilter}
                   onClearAllFilters={handleClearAllFilters}
@@ -1657,14 +1592,12 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
               </div>
             </div>
 
-            {/* Color Selector - Only for employees tab */}
             {colorSystemInitialized && (
               <div className="flex justify-between items-center mb-3">
                 <ColorSelector onChange={handleColorModeChange} />
               </div>
             )}
 
-            {/* Advanced Filters Panel - Only for employees tab */}
             {isAdvancedFilterOpen && (
               <AdvancedFilterPanel
                 onApply={handleApplyAdvancedFilters}
@@ -1673,7 +1606,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
               />
             )}
 
-            {/* Advanced Sorting Panel - Only for employees tab */}
             {isAdvancedSortingOpen && (
               <div className="mb-4 relative z-40">
                 <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-6">
@@ -1696,9 +1628,32 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
                 </div>
               </div>
             )}
-
-            {/* Filter Summary */}
+{/* 
             {activeFilters.length > 0 && (
+              <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center flex-wrap gap-2">
+                    <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+                      {activeFilters.length} filter{activeFilters.length !== 1 ? 's' : ''} active
+                      {isWrapperFilterApplied && (
+                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-800 px-2 py-0.5 rounded">
+                          Company Filter Active
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleClearAllFilters}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                  >
+                    Clear All{isWrapperFilterApplied ? ' (except company)' : ''}
+                  </button>
+                </div>
+              </div>
+            )} */}
+
+                {/* Filter Summary */}
+            {/* {activeFilters.length > 0 && (
               <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center flex-wrap gap-2">
@@ -1732,9 +1687,8 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
-            {/* Loading Indicator */}
             {loading.employees && (
               <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <div className="flex items-center">
@@ -1746,7 +1700,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
               </div>
             )}
 
-            {/* Employee Table */}
             <EmployeeTable
               employees={employeesWithColorGrouping}
               loading={loading.employees}
@@ -1766,7 +1719,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
               darkMode={darkMode}
             />
 
-            {/* Pagination - Only for employees tab */}
             <div className="mt-6">
               <Pagination
                 currentPage={pagination.page || pagination.currentPage}
@@ -1792,35 +1744,22 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     }
   };
 
-  // ========================================
-  // HEADER PROPS
-  // ========================================
-
   const headerProps = useMemo(() => ({
-    // Tab Management
     activeTab,
     onTabChange: handleTabChange,
-    
-    // Statistics for all tabs
     statistics: combinedStatistics,
     vacantPositionsStats: vacantPositionsStats || {},
     archiveStats: archiveStats || {},
-    
-    // Employee-specific props (only active when activeTab === 'employees')
     onToggleAdvancedFilter: () => setIsAdvancedFilterOpen(!isAdvancedFilterOpen),
     onToggleActionMenu: handleToggleActionMenu,
     isActionMenuOpen,
     selectedEmployees: activeTab === 'employees' ? selectedEmployees : [],
     onBulkImportComplete: handleBulkImportComplete,
     onBulkImport: () => setIsBulkUploadOpen(true),
-    
-    // Advanced Sorting props
     onToggleAdvancedSorting: handleToggleAdvancedSorting,
     isAdvancedSortingOpen,
     currentSorting: sorting || [],
     onClearAllSorting: handleClearAllSorting,
-    
-    // Export props
     onQuickExport: handleQuickExport,
     onToggleExportModal: handleToggleExportModal,
     isExporting: loading.exporting || false,
@@ -1852,10 +1791,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     darkMode
   ]);
 
-  // ========================================
-  // ERROR HANDLING
-  // ========================================
-
   if (error?.employees && activeTab === 'employees') {
     return (
       <div className="container mx-auto pt-3 max-w-full">
@@ -1882,17 +1817,11 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
     );
   }
 
-  // ========================================
-  // MAIN RENDER
-  // ========================================
-
   return (
     <div className="container mx-auto pt-3 max-w-full">
-      {/* Header with Tab Navigation */}
       <div className="relative">
         <HeadcountHeader {...headerProps} />
 
-        {/* Action Menu - Only for employees tab */}
         {isActionMenuOpen && activeTab === 'employees' && (
           <div className="absolute right-6 top-20 z-50">
             <ActionMenu 
@@ -1908,15 +1837,12 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
         )}
       </div>
 
-      {/* Tab Content */}
       <div className="mt-4">
         {renderTabContent()}
       </div>
 
-      {/* Employee-specific modals - Only show when activeTab === 'employees' */}
       {activeTab === 'employees' && (
         <>
-          {/* Export Modal */}
           {isExportModalOpen && (
             <ExportModal
               isOpen={isExportModalOpen}
@@ -1929,7 +1855,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
             />
           )}
 
-          {/* Bulk Upload Modal */}
           {isBulkUploadOpen && (
             <BulkUploadForm
               onClose={() => setIsBulkUploadOpen(false)}
@@ -1938,7 +1863,6 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
             />
           )}
 
-          {/* Line Manager Modal */}
           {showLineManagerModal && currentModalEmployee && (
             <LineManagerModal
               isOpen={showLineManagerModal}
@@ -1948,12 +1872,11 @@ const handleEmployeeAction = useCallback(async (employeeId, action) => {
               loading={loading.bulkAssignLineManager}
               darkMode={darkMode}
               onFetchAllEmployees={fetchAllEmployeesForModal}
-              allEmployeesData={debugEmployeeData(allEmployeesForModal)}
+              allEmployeesData={allEmployeesForModal}
               fetchingEmployees={fetchingAllEmployees}
             />
           )}
 
-          {/* Tag Management Modal */}
           {showTagModal && currentModalEmployee && (
             <TagManagementModal
               isOpen={showTagModal}

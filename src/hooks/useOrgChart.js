@@ -189,12 +189,12 @@ export const useOrgChart = () => {
     return () => clearTimeout(timeoutId);
   }, [actions]);
 
-  // FIXED: Safe active filters check
+
   const hasActiveFilters = useCallback(() => {
     return Object.keys(activeFilters || {}).length > 0;
   }, [activeFilters]);
 
-  // FIXED: Memoized filter options with safe data handling
+
   const filterOptions = useMemo(() => {
     const businessFunctionCounts = {};
     const departmentCounts = {};
@@ -267,7 +267,7 @@ export const useOrgChart = () => {
     orgChart
   ]);
 
-  // FIXED: Safe export to PNG with error handling
+
   const exportToPNG = useCallback(async () => {
     try {
       const html2canvas = (await import('html2canvas')).default;
@@ -292,7 +292,7 @@ export const useOrgChart = () => {
     }
   }, []);
 
-  // FIXED: Safe fullscreen toggle with error handling
+  
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
@@ -314,7 +314,7 @@ export const useOrgChart = () => {
     }
   }, [actions, isFullscreen]);
 
-  // FIXED: Safe data loading with error handling
+  
   useEffect(() => {
     if (Array.isArray(orgChart) && orgChart.length === 0 && !loading.orgChart && !errors.orgChart) {
       console.log('Initializing org chart data...');
@@ -323,7 +323,7 @@ export const useOrgChart = () => {
     }
   }, [orgChart, loading.orgChart, errors.orgChart, actions]);
 
-  // FIXED: Safe auto-expansion with better fallback strategies
+
   useEffect(() => {
     if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
       console.log('Auto-expanding initial nodes for', orgChart.length, 'employees');

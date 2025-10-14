@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Plane, ChevronDown, ChevronUp, Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X } from 'lucide-react';
+import { Plane, ChevronDown, ChevronUp, Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X, Paperclip } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
@@ -17,7 +17,9 @@ import { ScheduleSection } from '@/components/business-trip/ScheduleSection';
 import { HotelSection } from '@/components/business-trip/HotelSection';
 import { ApprovalModal } from '@/components/business-trip/ApprovalModal';
 import { RejectionModal } from '@/components/business-trip/RejectionModal';
-
+import { FileUploadSection } from '@/components/business-trip/FileUploadSection';
+import { AttachmentsModal } from '@/components/business-trip/AttachmentsModal';
+import { RequestDetailModal } from '@/components/business-trip/RequestDetailModal';
 export default function BusinessTripPage() {
   const { darkMode } = useTheme();
   const { showSuccess, showError } = useToast();
@@ -37,7 +39,9 @@ export default function BusinessTripPage() {
   // User & Permissions
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
   const [currentUserEmail, setCurrentUserEmail] = useState('');
-  
+  // Request Detail Modal
+const [showRequestDetailModal, setShowRequestDetailModal] = useState(false);
+const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
   // Dashboard Stats
   const [dashboardStats, setDashboardStats] = useState({
     pending_requests: 0,
@@ -125,6 +129,9 @@ export default function BusinessTripPage() {
     { id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }
   ]);
   
+  // File attachments
+  const [attachmentFiles, setAttachmentFiles] = useState([]);
+  
   // Approval Modals
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
@@ -132,6 +139,10 @@ export default function BusinessTripPage() {
   const [approvalAmount, setApprovalAmount] = useState('');
   const [approvalNote, setApprovalNote] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
+
+  // Attachments Modal
+  const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
+  const [selectedRequestForAttachments, setSelectedRequestForAttachments] = useState(null);
 
   // Approver Selection
   const [showApproverSelection, setShowApproverSelection] = useState(false);
@@ -148,7 +159,10 @@ export default function BusinessTripPage() {
   const getTotalPages = (dataLength) => {
     return Math.ceil(dataLength / itemsPerPage);
   };
-
+const handleOpenRequestDetail = (request) => {
+  setSelectedRequestForDetail(request.id);
+  setShowRequestDetailModal(true);
+};
   useEffect(() => {
     initializeData();
   }, []);
@@ -468,6 +482,14 @@ export default function BusinessTripPage() {
     setHotels(hotels.map(h => h.id === id ? { ...h, [field]: value } : h));
   };
 
+  const handleFileAdd = (newFiles) => {
+    setAttachmentFiles(prev => [...prev, ...newFiles]);
+  };
+
+  const handleFileRemove = (index) => {
+    setAttachmentFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleFinanceApproverChange = (value) => {
     setSelectedFinanceApprover(value);
     setFormData(prev => ({ ...prev, finance_approver_id: value }));
@@ -476,6 +498,11 @@ export default function BusinessTripPage() {
   const handleHrRepresentativeChange = (value) => {
     setSelectedHrRepresentative(value);
     setFormData(prev => ({ ...prev, hr_representative_id: value }));
+  };
+
+  const handleOpenAttachments = (request) => {
+    setSelectedRequestForAttachments(request);
+    setShowAttachmentsModal(true);
   };
 
   const handleSubmit = async (e) => {
@@ -529,7 +556,12 @@ export default function BusinessTripPage() {
         requestData.hr_representative_id = selectedHrRepresentative;
       }
 
-      await BusinessTripService.createTripRequest(requestData);
+
+        const formDataWithFiles = BusinessTripHelpers.formatTripRequestWithFiles(requestData, attachmentFiles);
+        await BusinessTripService.createTripRequestWithFiles(formDataWithFiles);
+  
+     
+
       showSuccess('Trip request submitted successfully');
       
       setFormData(prev => ({
@@ -540,6 +572,7 @@ export default function BusinessTripPage() {
       }));
       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
+      setAttachmentFiles([]);
       
       if (defaultFinanceApprover?.id) {
         setSelectedFinanceApprover(defaultFinanceApprover.id);
@@ -795,6 +828,16 @@ export default function BusinessTripPage() {
                   onChange={handleHotelChange}
                 />
 
+                {/* File Upload Section */}
+                <FileUploadSection
+                  isExpanded={expandedSection === 'attachments'}
+                  onToggle={() => toggleSection('attachments')}
+                  files={attachmentFiles}
+                  onFileAdd={handleFileAdd}
+                  onFileRemove={handleFileRemove}
+                  darkMode={darkMode}
+                />
+
                 {/* Approvers Section */}
                 <div className="mb-6 px-4 py-3 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-900/10 border border-blue-200/60 dark:border-blue-800/40 rounded-xl">
                   <div className="flex items-center justify-between mb-4">
@@ -911,6 +954,7 @@ export default function BusinessTripPage() {
                       setFormData(prev => ({ ...prev, start_date: '', end_date: '', comment: '' }));
                       setSchedules([{ id: 1, date: '', from_location: '', to_location: '', notes: '' }]);
                       setHotels([{ id: 1, hotel_name: '', check_in_date: '', check_out_date: '', location: '', notes: '' }]);
+                      setAttachmentFiles([]);
                       
                       if (defaultFinanceApprover?.id) {
                         setSelectedFinanceApprover(defaultFinanceApprover.id);
@@ -962,7 +1006,7 @@ export default function BusinessTripPage() {
                 <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                   <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
                     <tr>
-                      {['Request ID', 'Type', 'Destination', 'Start', 'End', 'Days', 'Status', 'Approvers'].map(h => (
+                      {['Request ID', 'Type', 'Destination', 'Start', 'End', 'Days', 'Status', 'Files', 'Actions'].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                           {h}
                         </th>
@@ -990,24 +1034,35 @@ export default function BusinessTripPage() {
                             {request.status_display}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          <div className="flex flex-col gap-1">
-                            {request.line_manager_name && (
-                              <span className="text-xs">LM: {request.line_manager_name}</span>
-                            )}
-                            {request.finance_approver_name && (
-                              <span className="text-xs">Finance: {request.finance_approver_name}</span>
-                            )}
-                            {request.hr_representative_name && (
-                              <span className="text-xs">HR: {request.hr_representative_name}</span>
-                            )}
-                          </div>
+                   
+   <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleOpenAttachments(request)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-almet-sapphire hover:bg-almet-sapphire/10 dark:hover:bg-almet-sapphire/20 rounded-lg transition-all"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                            <span>{request.attachments_count || 0}</span>
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          {/* <button
+                            onClick={() => handleOpenAttachments(request)}
+                            className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
+                          >
+                            View
+                          </button> */}
+                              <button
+      onClick={() => handleOpenRequestDetail(request)}
+      className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
+    >
+      View Details
+    </button>
                         </td>
                       </tr>
                     ))}
                     {paginatedMyRequests.length === 0 && (
                       <tr>
-                        <td colSpan="8" className="px-4 py-12 text-center">
+                        <td colSpan="9" className="px-4 py-12 text-center">
                           <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
                           <p className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai">No requests yet</p>
                           <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Your submitted requests will appear here</p>
@@ -1500,7 +1555,7 @@ export default function BusinessTripPage() {
                 <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                   <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
                     <tr>
-                      {['Request ID', 'Employee', 'Department', 'Type', 'Destination', 'Start', 'End', 'Days', 'Status', 'Amount', 'Approvers'].map(h => (
+                      {['Request ID', 'Employee', 'Department', 'Type',  'Start', 'End', 'Days', 'Status', 'Amount', 'Files', 'Actions'].map(h => (
                         <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                           {h}
                         </th>
@@ -1514,9 +1569,7 @@ export default function BusinessTripPage() {
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.employee_name}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.department_name}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          {request.schedules?.[0]?.to_location || '-'}
-                        </td>
+                      
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.start_date}</td>
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
                         <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
@@ -1533,24 +1586,34 @@ export default function BusinessTripPage() {
                         <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
                           {request.finance_amount ? `${request.finance_amount} AZN` : '-'}
                         </td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          <div className="flex flex-col gap-1">
-                            {request.line_manager_name && (
-                              <span className="text-xs">LM: {request.line_manager_name}</span>
-                            )}
-                            {request.finance_approver_name && (
-                              <span className="text-xs">Finance: {request.finance_approver_name}</span>
-                            )}
-                            {request.hr_representative_name && (
-                              <span className="text-xs">HR: {request.hr_representative_name}</span>
-                            )}
-                          </div>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => handleOpenAttachments(request)}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-almet-sapphire hover:bg-almet-sapphire/10 dark:hover:bg-almet-sapphire/20 rounded-lg transition-all"
+                          >
+                            <Paperclip className="w-3.5 h-3.5" />
+                            <span>{request.attachments_count || 0}</span>
+                          </button>
+                        </td>
+                            <td className="px-4 py-3">
+                          {/* <button
+                            onClick={() => handleOpenAttachments(request)}
+                            className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
+                          >
+                            View
+                          </button> */}
+                              <button
+      onClick={() => handleOpenRequestDetail(request)}
+      className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
+    >
+      View Details
+    </button>
                         </td>
                       </tr>
                     ))}
                     {paginatedAllRequests.length === 0 && (
                       <tr>
-                        <td colSpan="11" className="px-4 py-12 text-center">
+                        <td colSpan="12" className="px-4 py-12 text-center">
                           <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
                           <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">No requests found</p>
                           <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Try adjusting your filters</p>
@@ -1609,6 +1672,34 @@ export default function BusinessTripPage() {
         onReject={handleReject}
         loading={loading}
       />
+
+      <AttachmentsModal
+        show={showAttachmentsModal}
+        onClose={() => {
+          setShowAttachmentsModal(false);
+          setSelectedRequestForAttachments(null);
+        }}
+        requestId={selectedRequestForAttachments?.request_id}
+        requestNumber={selectedRequestForAttachments?.request_id}
+        canUpload={selectedRequestForAttachments?.status !== 'APPROVED' && selectedRequestForAttachments?.status !== 'CANCELLED'}
+        canDelete={userPermissions.is_admin || selectedRequestForAttachments?.employee_email === currentUserEmail}
+        onUpdate={() => {
+          fetchMyRequests();
+          fetchAllRequests();
+        }}
+      />
+
+      {/* Request Detail Modal */}
+<RequestDetailModal
+  show={showRequestDetailModal}
+  onClose={() => {
+    setShowRequestDetailModal(false);
+    setSelectedRequestForDetail(null);
+  }}
+  requestId={selectedRequestForDetail}
+  onOpenAttachments={handleOpenAttachments}
+  darkMode={darkMode}
+/>
     </DashboardLayout>
   );
 }

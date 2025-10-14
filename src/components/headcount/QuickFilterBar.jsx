@@ -1,12 +1,10 @@
-// src/components/headcount/QuickFilterBar.jsx - FIXED: Dropdown positioning, Department checkbox, Better design
+// COPY this entire file to: src/components/headcount/QuickFilterBar.jsx
+
 import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { ChevronDown, X, Check, Filter, AlertCircle, RefreshCw, Users, Search } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useReferenceData } from "../../hooks/useReferenceData";
 
-/**
- * QuickFilterBar - Fixed dropdown positioning and department selection
- */
 const QuickFilterBar = ({
   onStatusChange,
   onDepartmentChange,
@@ -34,8 +32,6 @@ const QuickFilterBar = ({
     loading = {},
     error = {},
     getFormattedEmployeeStatuses,
-    getFormattedDepartments,
-    getFormattedBusinessFunctions,
     getFormattedPositionGroups,
     hasEmployeeStatuses,
     hasDepartments,
@@ -47,6 +43,7 @@ const QuickFilterBar = ({
     fetchPositionGroups
   } = useReferenceData();
 
+  // Initialize data
   useEffect(() => {
     const initializeData = async () => {
       const tasks = [];
@@ -54,15 +51,12 @@ const QuickFilterBar = ({
       if (!hasEmployeeStatuses() && !loading.employeeStatuses && !error.employeeStatuses) {
         tasks.push({ name: 'employeeStatuses', action: () => fetchEmployeeStatuses?.() });
       }
-      
       if (!hasDepartments() && !loading.departments && !error.departments) {
         tasks.push({ name: 'departments', action: () => fetchDepartments?.() });
       }
-      
       if (!hasBusinessFunctions() && !loading.businessFunctions && !error.businessFunctions) {
         tasks.push({ name: 'businessFunctions', action: () => fetchBusinessFunctions?.() });
       }
-      
       if (!hasPositionGroups() && !loading.positionGroups && !error.positionGroups) {
         tasks.push({ name: 'positionGroups', action: () => fetchPositionGroups?.() });
       }
@@ -84,20 +78,12 @@ const QuickFilterBar = ({
     fetchEmployeeStatuses, fetchDepartments, fetchBusinessFunctions, fetchPositionGroups
   ]);
 
-  const isStatusLoading = loading.employeeStatuses;
-  const isDepartmentLoading = loading.departments;
-  const isBusinessFunctionLoading = loading.businessFunctions;
-  const isPositionGroupLoading = loading.positionGroups;
-
-  const hasStatusError = !!error.employeeStatuses;
-  const hasDepartmentError = !!error.departments;
-  const hasBusinessFunctionError = !!error.businessFunctions;
-  const hasPositionGroupError = !!error.positionGroups;
-
+  // Status options
   const statusOptions = useMemo(() => {
     return getFormattedEmployeeStatuses() || [];
   }, [employeeStatuses, getFormattedEmployeeStatuses]);
 
+  // Department options (grouped)
   const departmentOptions = useMemo(() => {
     if (!Array.isArray(departments)) return [];
 
@@ -135,15 +121,34 @@ const QuickFilterBar = ({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [departments]);
 
+  // ✅ Business Function options - USE ID AS VALUE
   const businessFunctionOptions = useMemo(() => {
-    return getFormattedBusinessFunctions() || [];
-  }, [businessFunctions, getFormattedBusinessFunctions]);
+    if (!Array.isArray(businessFunctions)) return [];
+    
+    console.log('🔧 Creating BF options from:', businessFunctions);
+    
+    return businessFunctions
+      .filter(bf => bf && bf.is_active !== false)
+      .map(bf => {
+        const option = {
+          value: bf.id || bf.value, // ✅ ID for selection
+          label: bf.name || bf.label,
+          name: bf.name || bf.label, // Keep name for backend
+          code: bf.code,
+          employee_count: bf.employee_count || 0
+        };
+        console.log('  BF Option:', option);
+        return option;
+      })
+      .sort((a, b) => (a.label || '').localeCompare(b.label || ''));
+  }, [businessFunctions]);
 
+  // Position Group options
   const positionGroupOptions = useMemo(() => {
     return getFormattedPositionGroups() || [];
   }, [positionGroups, getFormattedPositionGroups]);
 
-  // FIXED: Department selection - map names to all matching IDs
+  // Department selection handler
   const getSelectedDepartmentNames = useMemo(() => {
     if (!Array.isArray(departmentFilter) || departmentFilter.length === 0) return [];
     
@@ -159,15 +164,12 @@ const QuickFilterBar = ({
   }, [departmentFilter, departments]);
 
   const handleDepartmentChange = useCallback((selectedDepartmentNames) => {
-    console.log('Department change:', selectedDepartmentNames);
-    
     if (!Array.isArray(selectedDepartmentNames)) {
       onDepartmentChange?.([]);
       return;
     }
 
     const allDepartmentIds = [];
-    
     selectedDepartmentNames.forEach(deptName => {
       const matchingDepartments = departments.filter(dept => 
         (dept.name || dept.label || dept.display_name) === deptName && 
@@ -181,10 +183,10 @@ const QuickFilterBar = ({
       });
     });
 
-    console.log('Mapped to IDs:', allDepartmentIds);
     onDepartmentChange?.(allDepartmentIds);
   }, [departments, onDepartmentChange]);
 
+  // Retry handlers
   const handleRetryStatus = useCallback(async () => {
     const retryCount = retryAttempts.status || 0;
     if (retryCount >= 3) return;
@@ -244,6 +246,12 @@ const QuickFilterBar = ({
     }
   }, [onStatusChange, onDepartmentChange, onBusinessFunctionChange, onPositionGroupChange, onClearAllFilters]);
 
+  // Debug current filter values
+  console.log('🎯 QuickFilterBar Props:', {
+    businessFunctionFilter,
+    businessFunctionOptions: businessFunctionOptions.map(o => ({ value: o.value, label: o.label }))
+  });
+
   return (
     <div className="flex items-center gap-3 flex-wrap">
       <MultiSelectDropdown
@@ -253,8 +261,8 @@ const QuickFilterBar = ({
         onChange={onStatusChange}
         dropdownKey="status"
         placeholder="All Statuses"
-        isLoading={isStatusLoading}
-        hasError={hasStatusError}
+        isLoading={loading.employeeStatuses}
+        hasError={!!error.employeeStatuses}
         showColors={true}
         icon={Users}
         onRetry={handleRetryStatus}
@@ -269,8 +277,8 @@ const QuickFilterBar = ({
         onChange={handleDepartmentChange}
         dropdownKey="department"
         placeholder="All Departments"
-        isLoading={isDepartmentLoading}
-        hasError={hasDepartmentError}
+        isLoading={loading.departments}
+        hasError={!!error.departments}
         icon={Filter}
         onRetry={handleRetryDepartments}
         darkMode={darkMode}
@@ -286,8 +294,8 @@ const QuickFilterBar = ({
           onChange={onBusinessFunctionChange}
           dropdownKey="businessFunction"
           placeholder="All Functions"
-          isLoading={isBusinessFunctionLoading}
-          hasError={hasBusinessFunctionError}
+          isLoading={loading.businessFunctions}
+          hasError={!!error.businessFunctions}
           showCodes={true}
           icon={Filter}
           onRetry={handleRetryBusinessFunctions}
@@ -304,8 +312,8 @@ const QuickFilterBar = ({
           onChange={onPositionGroupChange}
           dropdownKey="positionGroup"
           placeholder="All Positions"
-          isLoading={isPositionGroupLoading}
-          hasError={hasPositionGroupError}
+          isLoading={loading.positionGroups}
+          hasError={!!error.positionGroups}
           icon={Users}
           onRetry={handleRetryPositionGroups}
           darkMode={darkMode}
@@ -334,9 +342,7 @@ const QuickFilterBar = ({
   );
 };
 
-/**
- * FIXED MultiSelectDropdown - Better design, proper positioning
- */
+// MultiSelectDropdown Component
 const MultiSelectDropdown = ({
   label,
   options = [],
@@ -371,6 +377,12 @@ const MultiSelectDropdown = ({
   const selectedCount = safeSelected.length;
   const disabled = isLoading || hasError;
 
+  // Debug
+  console.log(`🔍 ${label} Dropdown:`, {
+    selectedValues: safeSelected,
+    options: safeOptions.map(o => o.value)
+  });
+
   const filteredOptions = safeOptions.filter(option => {
     if (!option || !searchTerm) return true;
     const label = (option.label || option.name || '').toLowerCase();
@@ -397,7 +409,9 @@ const MultiSelectDropdown = ({
     if (selectedCount === 0) return placeholder;
     if (selectedCount === 1) {
       const selected = safeOptions.find(opt => 
-        safeSelected.includes(opt.value) || safeSelected.includes(opt.label)
+        safeSelected.includes(opt.value) || 
+        safeSelected.includes(String(opt.value)) ||
+        safeSelected.includes(Number(opt.value))
       );
       return selected?.label || `1 selected`;
     }
@@ -410,8 +424,9 @@ const MultiSelectDropdown = ({
   };
 
   const handleOptionToggle = (value) => {
-    console.log('Toggle:', { value, current: safeSelected });
+    console.log('🎯 Toggle option:', { value, type: typeof value, currentSelected: safeSelected });
     
+    // ✅ Check if selected (handle different types)
     const isCurrentlySelected = safeSelected.some(v => 
       v === value || 
       String(v) === String(value) || 
@@ -428,6 +443,8 @@ const MultiSelectDropdown = ({
     } else {
       newSelection = [...safeSelected, value];
     }
+    
+    console.log('✅ New selection:', newSelection);
     
     if (onChange) {
       onChange(newSelection);
@@ -453,17 +470,19 @@ const MultiSelectDropdown = ({
     }
   };
 
+  // ✅ FIXED: Check if item is selected
   const isItemSelected = (value) => {
-    return safeSelected.some(v => 
+    const selected = safeSelected.some(v => 
       v === value || 
       String(v) === String(value) || 
       Number(v) === Number(value)
     );
+    console.log(`  Checking ${value}:`, selected);
+    return selected;
   };
 
   return (
     <div className="relative inline-block" ref={dropdownRef}>
-      {/* Trigger Button - Cleaner design */}
       <button
         type="button"
         onClick={handleToggle}
@@ -491,7 +510,6 @@ const MultiSelectDropdown = ({
         />
       </button>
 
-      {/* FIXED: Dropdown - Better positioning with left/right auto adjustment */}
       {isOpen && (
         <div 
           className={`
@@ -508,7 +526,6 @@ const MultiSelectDropdown = ({
             )) : 0
           }}
         >
-          {/* Header - Cleaner */}
           <div className={`px-3 py-2.5 border-b ${borderColor} flex items-center justify-between`}>
             <span className={`text-sm font-semibold ${textPrimary}`}>{label}</span>
             <div className="flex items-center gap-2">
@@ -533,7 +550,6 @@ const MultiSelectDropdown = ({
             </div>
           </div>
 
-          {/* Search - Only show if many options */}
           {safeOptions.length > 5 && (
             <div className="p-2 border-b border-gray-200 dark:border-gray-700">
               <div className="relative">
@@ -549,7 +565,6 @@ const MultiSelectDropdown = ({
             </div>
           )}
 
-          {/* Options List */}
           <div className="max-h-[280px] overflow-y-auto overscroll-contain">
             {hasError ? (
               <div className="p-4 text-center">
@@ -586,7 +601,6 @@ const MultiSelectDropdown = ({
                         ${isSelected ? 'bg-almet-sapphire/5' : ''}
                       `}
                     >
-                      {/* Checkbox - Better design */}
                       <div className={`
                         w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0
                         transition-all duration-150
@@ -617,11 +631,11 @@ const MultiSelectDropdown = ({
                           )}
                         </div>
                         
-                        {showEmployeeCount && option.employee_count !== undefined && (
+                        {/* {showEmployeeCount && option.employee_count !== undefined && (
                           <span className={`text-xs ${textMuted}`}>
                             {option.employee_count} {option.employee_count === 1 ? 'employee' : 'employees'}
                           </span>
-                        )}
+                        )} */}
                       </div>
                     </button>
                   );
