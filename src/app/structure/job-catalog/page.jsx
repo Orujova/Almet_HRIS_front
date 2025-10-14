@@ -210,37 +210,57 @@ export default function JobCatalogPage() {
   // CRUD OPERATIONS
   // ============================================
   
-  const openCrudModal = (type, mode = 'create', item = null) => {
-    setCrudModalType(type);
-    setCrudModalMode(mode);
-    setSelectedItem(item);
+  // Replace the openCrudModal function in page.jsx with this
+
+const openCrudModal = (type, mode = 'create', item = null) => {
+  setCrudModalType(type);
+  setCrudModalMode(mode);
+  setSelectedItem(item);
+  
+  if (mode === 'edit' && item) {
+    // Populate form with existing data for editing
+    const formDataInit = {
+      name: item.name || item.label || '',
+      code: item.code || '',
+      description: item.description || '',
+      is_active: item.is_active !== false,
+      business_function: item.business_function || item.business_function_id || '',
+      department: item.department || item.department_id || '',
+      hierarchy_level: item.hierarchy_level || ''
+    };
     
-    if (mode === 'edit' && item) {
-      // Populate form with existing data
-      const formDataInit = {
-        name: item.name || item.label || '',
-        code: item.code || '',
-        description: item.description || '',
-        is_active: item.is_active !== false,
-        business_function: item.business_function || item.business_function_id || '',
-        department: item.department || item.department_id || '',
-        hierarchy_level: item.hierarchy_level || ''
-      };
-      setFormData(formDataInit);
-    } else {
-      // Reset form for create mode
-      setFormData({
-        name: '',
-        code: '',
-        description: '',
-        is_active: true,
-        business_function: '',
-        department: '',
-        hierarchy_level: ''
-      });
+    // Remove any undefined or empty string values
+    Object.keys(formDataInit).forEach(key => {
+      if (formDataInit[key] === '' || formDataInit[key] === undefined) {
+        delete formDataInit[key];
+      }
+    });
+    
+    setFormData(formDataInit);
+  } else {
+    // Reset form for create mode - NO ID fields
+    const cleanFormData = {
+      name: '',
+      code: '',
+      description: '',
+      is_active: true
+    };
+    
+    // Add type-specific fields
+    if (type === 'departments') {
+      cleanFormData.business_function = '';
+    } else if (type === 'units') {
+      cleanFormData.department = '';
+    } else if (type === 'position_groups') {
+      cleanFormData.hierarchy_level = '';
     }
-    setShowCrudModal(true);
-  };
+    
+    setFormData(cleanFormData);
+  }
+  
+  setShowCrudModal(true);
+  setErrors(prev => ({ ...prev, crud: null }));
+};
 
   const closeCrudModal = () => {
     setShowCrudModal(false);
@@ -252,89 +272,122 @@ export default function JobCatalogPage() {
   };
 
   const handleCrudSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(prev => ({ ...prev, crud: true }));
-    setErrors(prev => ({ ...prev, crud: null }));
+  e.preventDefault();
+  setLoading(prev => ({ ...prev, crud: true }));
+  setErrors(prev => ({ ...prev, crud: null }));
 
-    try {
-      let response;
-      
-      // Handle different entity types
-      switch (crudModalType) {
-        case 'business_functions':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createBusinessFunction(formData);
-          } else {
-            response = await referenceDataAPI.updateBusinessFunction(
-              selectedItem.value || selectedItem.id, 
-              formData
-            );
-          }
-          break;
-          
-        case 'departments':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createDepartment(formData);
-          } else {
-            response = await referenceDataAPI.updateDepartment(
-              selectedItem.value || selectedItem.id, 
-              formData
-            );
-          }
-          break;
-          
-        case 'units':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createUnit(formData);
-          } else {
-            response = await referenceDataAPI.updateUnit(
-              selectedItem.value || selectedItem.id, 
-              formData
-            );
-          }
-          break;
-          
-        case 'job_functions':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createJobFunction(formData);
-          } else {
-            response = await referenceDataAPI.updateJobFunction(
-              selectedItem.value || selectedItem.id, 
-              formData
-            );
-          }
-          break;
-          
-        case 'position_groups':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createPositionGroup(formData);
-          } else {
-            response = await referenceDataAPI.updatePositionGroup(
-              selectedItem.value || selectedItem.id, 
-              formData
-            );
-          }
-          break;
-      }
-
-      // Reload all data after successful operation
-      await loadInitialData();
-      
-      // Show success message
-      const entityName = crudModalType.replace('_', ' ');
-      showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
-      
-      closeCrudModal();
-      
-    } catch (error) {
-      const errorMsg = error?.response?.data?.message || `Failed to ${crudModalMode} ${crudModalType.replace('_', ' ')}`;
-      setErrors(prev => ({ ...prev, crud: errorMsg }));
-      showError(errorMsg);
-      console.error('❌ CRUD operation error:', error);
-    } finally {
-      setLoading(prev => ({ ...prev, crud: false }));
+  try {
+    let response;
+    
+    // Prepare data - CRITICAL: Remove ID for create operations
+    const submitData = { ...formData };
+    
+    // Remove ID fields that should not be sent
+    if (crudModalMode === 'create') {
+      delete submitData.id;
+      delete submitData.value;
     }
-  };
+    
+    // Get the item ID for update operations
+    const itemId = selectedItem?.value || selectedItem?.id;
+    
+    // Handle different entity types
+    switch (crudModalType) {
+      case 'business_functions':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createBusinessFunction(submitData);
+        } else {
+          if (!itemId) throw new Error('Item ID is missing for update');
+          response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
+        }
+        break;
+        
+      case 'departments':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createDepartment(submitData);
+        } else {
+          if (!itemId) throw new Error('Item ID is missing for update');
+          response = await referenceDataAPI.updateDepartment(itemId, submitData);
+        }
+        break;
+        
+      case 'units':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createUnit(submitData);
+        } else {
+          if (!itemId) throw new Error('Item ID is missing for update');
+          response = await referenceDataAPI.updateUnit(itemId, submitData);
+        }
+        break;
+        
+      case 'job_functions':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createJobFunction(submitData);
+        } else {
+          if (!itemId) throw new Error('Item ID is missing for update');
+          response = await referenceDataAPI.updateJobFunction(itemId, submitData);
+        }
+        break;
+        
+      case 'position_groups':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createPositionGroup(submitData);
+        } else {
+          if (!itemId) throw new Error('Item ID is missing for update');
+          response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
+        }
+        break;
+        
+      default:
+        throw new Error(`Unknown CRUD type: ${crudModalType}`);
+    }
+
+    // Reload all data after successful operation
+    await loadInitialData();
+    
+    // Show success message
+    const entityName = crudModalType.replace(/_/g, ' ');
+    showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
+    
+    closeCrudModal();
+    
+  } catch (error) {
+    console.error('❌ CRUD operation error:', error);
+    
+    // Enhanced error handling
+    let errorMsg = 'An error occurred';
+    
+    if (error?.response?.data) {
+      // Django error response
+      const errorData = error.response.data;
+      if (typeof errorData === 'string') {
+        errorMsg = errorData;
+      } else if (errorData.message) {
+        errorMsg = errorData.message;
+      } else if (errorData.detail) {
+        errorMsg = errorData.detail;
+      } else if (errorData.non_field_errors) {
+        errorMsg = errorData.non_field_errors.join(', ');
+      } else {
+        // Extract field-specific errors
+        const fieldErrors = Object.entries(errorData)
+          .filter(([key]) => key !== 'message' && key !== 'detail')
+          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+          .join('; ');
+        errorMsg = fieldErrors || `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+      }
+    } else if (error?.message) {
+      errorMsg = error.message;
+    } else {
+      errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+    }
+    
+    setErrors(prev => ({ ...prev, crud: errorMsg }));
+    showError(errorMsg);
+  } finally {
+    setLoading(prev => ({ ...prev, crud: false }));
+  }
+};
 
   const handleDelete = async (type, item) => {
     setLoading(prev => ({ ...prev, crud: true }));

@@ -1,4 +1,4 @@
-// src/components/jobCatalog/CrudModal.jsx
+// src/components/jobCatalog/CrudModal.jsx - FIXED
 
 import React from 'react';
 import { X, Save, Loader2, AlertCircle } from 'lucide-react';
