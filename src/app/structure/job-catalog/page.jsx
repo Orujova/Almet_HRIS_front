@@ -206,12 +206,7 @@ export default function JobCatalogPage() {
     }
   }, [searchTerm, selectedFilters]);
 
-  // ============================================
-  // CRUD OPERATIONS
-  // ============================================
-  
-// src/app/structure/job-catalog/page.jsx
-// Replace ONLY the openCrudModal and handleCrudSubmit functions with these fixed versions
+
 
 // ============================================
 // FIXED CRUD OPERATIONS
@@ -452,6 +447,14 @@ const handleCrudSubmit = async (e) => {
   }
 };
 
+ const closeCrudModal = () => {
+    setShowCrudModal(false);
+    setCrudModalType('');
+    setCrudModalMode('create');
+    setSelectedItem(null);
+    setFormData({});
+    setErrors(prev => ({ ...prev, crud: null }));
+  };
 
   const handleDelete = async (type, item) => {
     setLoading(prev => ({ ...prev, crud: true }));
