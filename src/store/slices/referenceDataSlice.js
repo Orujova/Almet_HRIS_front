@@ -1197,7 +1197,7 @@ export const selectDepartmentsForDropdown = createSelector(
       business_function_code: dept.business_function_code,
       employee_count: dept.employee_count || 0,
       unit_count: dept.unit_count || 0,
-      head_of_department: dept.head_of_department,
+  
       is_active: dept.is_active !== false,
       _isOptimistic: dept._isOptimistic || false
     }));

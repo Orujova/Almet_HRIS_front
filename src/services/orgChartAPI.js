@@ -298,7 +298,7 @@ export const orgChartAPI = {
       'top_level_only': { show_top_level_only: true },
       'active_status': { status: ['ACTIVE'] },
       'executives': { position_group: ['VC', 'DIRECTOR'] },
-      'department_heads': { position_group: ['HEAD_OF_DEPARTMENT'] },
+    
       'specialists': { position_group: ['SENIOR_SPECIALIST', 'SPECIALIST', 'JUNIOR_SPECIALIST'] }
     };
 

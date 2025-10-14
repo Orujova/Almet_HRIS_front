@@ -172,7 +172,7 @@ export const useOrgChart = () => {
       'managers_only': { managers_only: true },
       'top_level_only': { show_top_level_only: true },
       'executives': { position_group: ['VC', 'DIRECTOR', 'Vice Chairman'] },
-      'department_heads': { position_group: ['HEAD_OF_DEPARTMENT'] },
+    
       'specialists': { position_group: ['SENIOR_SPECIALIST', 'SPECIALIST', 'JUNIOR_SPECIALIST'] }
     };
 

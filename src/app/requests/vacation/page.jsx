@@ -1,13 +1,14 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Plus, Download, Check, Edit, Trash, Lock, Settings, X, FileText } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Upload, Download, Check, Edit, Trash, Lock, Settings, X, FileText } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import { VacationService, VacationHelpers } from '@/services/vacationService';
 import { useRouter } from 'next/navigation';
-
+import { ApprovalModal } from '@/components/business-trip/ApprovalModal';
+import { RejectionModal } from '@/components/business-trip/RejectionModal';
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showInfo } = useToast();
@@ -18,7 +19,11 @@ export default function VacationRequestsPage() {
   const [requester, setRequester] = useState('for_me');
   const [loading, setLoading] = useState(false);
   const [schedulesTab, setSchedulesTab] = useState('upcoming');
-  
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+const [showRejectionModal, setShowRejectionModal] = useState(false);
+const [selectedRequest, setSelectedRequest] = useState(null);
+const [approvalComment, setApprovalComment] = useState('');
+const [rejectionReason, setRejectionReason] = useState('');
   const [balances, setBalances] = useState(null);
   const [vacationTypes, setVacationTypes] = useState([]);
   const [hrRepresentatives, setHrRepresentatives] = useState([]);
@@ -27,7 +32,8 @@ export default function VacationRequestsPage() {
   const [myAllRecords, setMyAllRecords] = useState([]);
   const [employeeSearchResults, setEmployeeSearchResults] = useState([]);
   const [userPermissions, setUserPermissions] = useState({ is_admin: false, permissions: [] });
-  
+  const [selectedFiles, setSelectedFiles] = useState([]);
+const [fileErrors, setFileErrors] = useState('');
   const [vacationSettings, setVacationSettings] = useState({
     allow_negative_balance: false,
     max_schedule_edits: 3,
@@ -106,6 +112,74 @@ export default function VacationRequestsPage() {
     }
   };
 
+// 2. File validation constants
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_FILE_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+];
+
+const ALLOWED_EXTENSIONS = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
+
+// 3. File handling functions
+const validateFile = (file) => {
+  if (file.size > MAX_FILE_SIZE) {
+    return `File "${file.name}" exceeds 10MB limit`;
+  }
+  
+  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+    const extension = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(extension)) {
+      return `File "${file.name}" has unsupported format. Allowed: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX`;
+    }
+  }
+  
+  return null;
+};
+
+const handleFileSelect = (e) => {
+  const files = Array.from(e.target.files);
+  const newFiles = [];
+  const errors = [];
+  
+  for (const file of files) {
+    const error = validateFile(file);
+    if (error) {
+      errors.push(error);
+    } else {
+      newFiles.push(file);
+    }
+  }
+  
+  if (errors.length > 0) {
+    setFileErrors(errors.join('. '));
+    showError('Some files could not be added');
+  } else {
+    setFileErrors('');
+  }
+  
+  setSelectedFiles(prev => [...prev, ...newFiles]);
+  e.target.value = ''; // Reset input
+};
+
+const removeFile = (index) => {
+  setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  setFileErrors('');
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+};
   const fetchVacationSettings = async () => {
     try {
       const data = await VacationService.getGeneralSettings();
@@ -338,82 +412,85 @@ export default function VacationRequestsPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (formErrors.start_date || formErrors.end_date) {
-      showError('Please fix the date errors before submitting');
+  if (formErrors.start_date || formErrors.end_date) {
+    showError('Please fix the date errors before submitting');
+    return;
+  }
+
+  if (!vacationSettings.allow_negative_balance && balances) {
+    if (formData.numberOfDays > balances.remaining_balance) {
+      showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
       return;
     }
+  }
 
-    if (!vacationSettings.allow_negative_balance && balances) {
-      if (formData.numberOfDays > balances.remaining_balance) {
-        showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
-        return;
+  setLoading(true);
+  try {
+    let requestData = {
+      requester_type: formData.requester_type,
+      vacation_type_id: parseInt(formData.vacation_type_id),
+      start_date: formData.start_date,
+      end_date: formData.end_date,
+      comment: formData.comment
+    };
+
+    if (formData.requester_type === 'for_my_employee') {
+      if (formData.employee_id) {
+        requestData.employee_id = formData.employee_id;
+      } else {
+        requestData.employee_manual = {
+          name: formData.employeeName,
+          phone: formData.phoneNumber,
+          department: formData.department,
+          business_function: formData.businessFunction,
+          unit: formData.unit,
+          job_function: formData.jobFunction
+        };
       }
     }
 
-    setLoading(true);
-    try {
-      let requestData = {
-        requester_type: formData.requester_type,
-        vacation_type_id: parseInt(formData.vacation_type_id),
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        comment: formData.comment
-      };
-
-      if (formData.requester_type === 'for_my_employee') {
-        if (formData.employee_id) {
-          requestData.employee_id = formData.employee_id;
-        } else {
-          requestData.employee_manual = {
-            name: formData.employeeName,
-            phone: formData.phoneNumber,
-            department: formData.department,
-            business_function: formData.businessFunction,
-            unit: formData.unit,
-            job_function: formData.jobFunction
-          };
-        }
+    let response;
+    
+    if (activeSection === 'immediate') {
+      if (formData.hr_representative_id) {
+        requestData.hr_representative_id = formData.hr_representative_id;
       }
-
-      let response;
-      
-      if (activeSection === 'immediate') {
-        if (formData.hr_representative_id) {
-          requestData.hr_representative_id = formData.hr_representative_id;
-        }
-        response = await VacationService.createImmediateRequest(requestData);
-        showSuccess('Request submitted successfully');
-      } else {
-        response = await VacationService.createSchedule(requestData);
-        showSuccess('Schedule saved successfully');
-        fetchScheduleTabs();
-      }
-
-      if (response.balance) {
-        setBalances(response.balance);
-      } else {
-        await fetchDashboard();
-      }
-
-      setFormData(prev => ({ 
-        ...prev, 
-        start_date: '', 
-        end_date: '', 
-        dateOfReturn: '', 
-        numberOfDays: 0, 
-        comment: '' 
-      }));
-    } catch (error) {
-      console.error('Submit error:', error);
-      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
-      showError(errorMsg);
-    } finally {
-      setLoading(false);
+      // Pass files to the service
+      response = await VacationService.createImmediateRequest(requestData, selectedFiles);
+      showSuccess('Request submitted successfully');
+      setSelectedFiles([]); // Clear files after successful submission
+    } else {
+      response = await VacationService.createSchedule(requestData);
+      showSuccess('Schedule saved successfully');
+      fetchScheduleTabs();
     }
-  };
+
+    if (response.balance) {
+      setBalances(response.balance);
+    } else {
+      await fetchDashboard();
+    }
+
+    setFormData(prev => ({ 
+      ...prev, 
+      start_date: '', 
+      end_date: '', 
+      dateOfReturn: '', 
+      numberOfDays: 0, 
+      comment: '' 
+    }));
+    setFileErrors('');
+  } catch (error) {
+    console.error('Submit error:', error);
+    const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
+    showError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEditSchedule = (schedule) => {
     setEditingSchedule({
@@ -459,20 +536,66 @@ export default function VacationRequestsPage() {
     }
   };
 
-  const handleApproveReject = async (requestId, action, comment = '', reason = '') => {
-    try {
-      await VacationService.approveRejectRequest(requestId, { 
-        action, 
-        comment: action === 'approve' ? comment : undefined, 
-        reason: action === 'reject' ? reason : undefined 
-      });
-      showSuccess(`Request ${action}d successfully`);
-      fetchPendingRequests();
-    } catch (error) {
-      console.error('Approval error:', error);
-      showError(error.response?.data?.error || `Failed to ${action}`);
-    }
-  };
+  const handleOpenApprovalModal = (request) => {
+  setSelectedRequest(request);
+  setApprovalComment('');
+  setShowApprovalModal(true);
+};
+
+const handleOpenRejectionModal = (request) => {
+  setSelectedRequest(request);
+  setRejectionReason('');
+  setShowRejectionModal(true);
+};
+
+const handleConfirmApproval = async () => {
+  if (!selectedRequest) return;
+  
+  setLoading(true);
+  try {
+    await VacationService.approveRejectRequest(selectedRequest.id, { 
+      action: 'approve',
+      comment: approvalComment || 'Approved'
+    });
+    showSuccess('Request approved successfully');
+    setShowApprovalModal(false);
+    setSelectedRequest(null);
+    setApprovalComment('');
+    fetchPendingRequests();
+  } catch (error) {
+    console.error('Approval error:', error);
+    showError(error.response?.data?.error || 'Failed to approve');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleConfirmRejection = async () => {
+  if (!selectedRequest) return;
+  
+  if (!rejectionReason.trim()) {
+    showError('Rejection reason is required');
+    return;
+  }
+  
+  setLoading(true);
+  try {
+    await VacationService.approveRejectRequest(selectedRequest.id, { 
+      action: 'reject',
+      reason: rejectionReason
+    });
+    showSuccess('Request rejected successfully');
+    setShowRejectionModal(false);
+    setSelectedRequest(null);
+    setRejectionReason('');
+    fetchPendingRequests();
+  } catch (error) {
+    console.error('Rejection error:', error);
+    showError(error.response?.data?.error || 'Failed to reject');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleRegisterSchedule = async (scheduleId) => {
     try {
@@ -912,38 +1035,73 @@ export default function VacationRequestsPage() {
                     </div>
 
                     {activeSection === 'immediate' && (
-                      <>
-                        <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 pt-4 mt-2">
-                          <div className="flex items-center gap-2 mb-3">
-                            <CheckCircle className="w-4 h-4 text-almet-sapphire" />
-                            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Approval Required</h3>
-                          </div>
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Line Manager</label>
-                          <input 
-                            type="text" 
-                            value={formData.line_manager} 
-                            onChange={(e) => setFormData(prev => ({...prev, line_manager: e.target.value}))} 
-                            disabled={requester === 'for_me'} 
-                            placeholder="Line Manager Name" 
-                            className="w-full px-3 py-2.5 outline-0 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white disabled:bg-almet-mystic/30 dark:disabled:bg-gray-600" 
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">HR Representative</label>
-                          <SearchableDropdown 
-                            options={hrRepresentatives.map(hr => ({ value: hr.id, label: `${hr.name} (${hr.department})` }))} 
-                            value={formData.hr_representative_id} 
-                            onChange={(value) => setFormData(prev => ({...prev, hr_representative_id: value}))} 
-                            placeholder="Select HR" 
-                            darkMode={darkMode} 
-                          />
-                        </div>
-                      </>
-                    )}
+  <div>
+    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+      Attachments (Optional)
+    </label>
+    <div className="space-y-2">
+      <div className="relative">
+        <input
+          type="file"
+          id="file-upload"
+          multiple
+          accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+        <label
+          htmlFor="file-upload"
+          className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm border-2 border-dashed border-almet-bali-hai/40 dark:border-almet-comet rounded-lg hover:border-almet-sapphire dark:hover:border-almet-astral hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-all cursor-pointer"
+        >
+          <Upload className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
+          <span className="text-almet-waterloo dark:text-almet-bali-hai">
+            Click to upload or drag files here
+          </span>
+        </label>
+      </div>
+      
+      <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70">
+        Supported formats: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX (Max 10MB each)
+      </p>
+      
+      {fileErrors && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2">
+          <p className="text-xs text-red-600 dark:text-red-400">{fileErrors}</p>
+        </div>
+      )}
+      
+      {selectedFiles.length > 0 && (
+        <div className="space-y-2">
+          {selectedFiles.map((file, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-3 p-2.5 bg-almet-mystic/20 dark:bg-gray-700/30 border border-almet-mystic/40 dark:border-almet-comet rounded-lg"
+            >
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <FileText className="w-4 h-4 text-almet-sapphire flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-almet-cloud-burst dark:text-white truncate">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                    {formatFileSize(file.size)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => removeFile(index)}
+                className="p-1.5 text-red-600 hover:text-red-800 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
                   </div>
                 </div>
 
@@ -1121,24 +1279,21 @@ export default function VacationRequestsPage() {
                               )}
                             </div>
                             <div className="flex items-center gap-2">
-                              <button 
-                                onClick={() => handleApproveReject(request.id, 'approve', 'Approved')} 
-                                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                Approve
-                              </button>
-                              <button 
-                                onClick={() => { 
-                                  const reason = prompt('Rejection reason:'); 
-                                  if (reason) handleApproveReject(request.id, 'reject', '', reason); 
-                                }} 
-                                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                              >
-                                <XCircle className="w-3.5 h-3.5" />
-                                Reject
-                              </button>
-                            </div>
+  <button 
+    onClick={() => handleOpenApprovalModal(request)}
+    className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+  >
+    <CheckCircle className="w-3.5 h-3.5" />
+    Approve
+  </button>
+  <button 
+    onClick={() => handleOpenRejectionModal(request)}
+    className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+  >
+    <XCircle className="w-3.5 h-3.5" />
+    Reject
+  </button>
+</div>
                           </div>
                         </div>
                       ))}
@@ -1168,25 +1323,22 @@ export default function VacationRequestsPage() {
                                 <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                onClick={() => handleApproveReject(request.id, 'approve', 'Approved by HR')} 
-                                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                              >
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                Approve
-                              </button>
-                              <button 
-                                onClick={() => { 
-                                  const reason = prompt('Rejection reason:'); 
-                                  if (reason) handleApproveReject(request.id, 'reject', '', reason); 
-                                }} 
-                                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
-                              >
-                                <XCircle className="w-3.5 h-3.5" />
-                                Reject
-                              </button>
-                            </div>
+                      <div className="flex items-center gap-2">
+  <button 
+    onClick={() => handleOpenApprovalModal(request)}
+    className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+  >
+    <CheckCircle className="w-3.5 h-3.5" />
+    Approve
+  </button>
+  <button 
+    onClick={() => handleOpenRejectionModal(request)}
+    className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+  >
+    <XCircle className="w-3.5 h-3.5" />
+    Reject
+  </button>
+</div>
                           </div>
                         </div>
                       ))}

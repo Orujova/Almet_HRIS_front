@@ -254,14 +254,50 @@ searchEmployees: async () => {
   // === REQUESTS ===
   
   // Create Immediate Request
-  createImmediateRequest: async (data) => {
-    try {
-      const response = await vacationApi.post('/vacation/requests/immediate/', data);
-      return response.data;
-    } catch (error) {
-      throw error;
+  createImmediateRequest: async (data, files = []) => {
+  try {
+    const formData = new FormData();
+    
+    // Append all form fields
+    formData.append('requester_type', data.requester_type);
+    formData.append('vacation_type_id', data.vacation_type_id);
+    formData.append('start_date', data.start_date);
+    formData.append('end_date', data.end_date);
+    
+    if (data.comment) {
+      formData.append('comment', data.comment);
     }
-  },
+    
+    if (data.requester_type === 'for_my_employee') {
+      if (data.employee_id) {
+        formData.append('employee_id', data.employee_id);
+      } else if (data.employee_manual) {
+        formData.append('employee_manual', JSON.stringify(data.employee_manual));
+      }
+    }
+    
+    if (data.hr_representative_id) {
+      formData.append('hr_representative_id', data.hr_representative_id);
+    }
+    
+    // Append files (max 10MB each, multiple files allowed)
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+    }
+    
+    const response = await vacationApi.post('/vacation/requests/immediate/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 
   // Approve/Reject Request
   approveRejectRequest: async (id, data) => {
