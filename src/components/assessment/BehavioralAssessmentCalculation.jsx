@@ -14,7 +14,6 @@ import ActionButton from './ActionButton';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 import CollapsibleGroup from './CollapsibleGroup';
 import { useToast } from '@/components/common/Toast';
-import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 
 const BehavioralAssessmentCalculation = () => {
@@ -726,8 +725,8 @@ const BehavioralAssessmentCalculation = () => {
 
       {/* Create Position Modal */}
       {showCreatePositionModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 p-4">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh]  shadow-xl">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <Building className="w-5 h-5 text-almet-sapphire" />
@@ -742,11 +741,15 @@ const BehavioralAssessmentCalculation = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Position Group <span className="text-red-500">*</span></label>
-                  <SearchableDropdown options={positionGroups} value={positionFormData.position_group} onChange={(value) => setPositionFormData({...positionFormData, position_group: value, job_title: ''})} placeholder="Select Position Group" />
+                  <SearchableDropdown options={positionGroups} value={positionFormData.position_group} onChange={(value) => setPositionFormData({...positionFormData, position_group: value, job_title: ''})} placeholder="Select Position Group"  portal={true}
+                   allowUncheck={true}
+                  zIndex="z-[60]" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                  <SearchableDropdown options={filteredJobTitles} value={positionFormData.job_title} onChange={(value) => setPositionFormData({...positionFormData, job_title: value})} placeholder="Select or type job title" disabled={!positionFormData.position_group} />
+                  <SearchableDropdown options={filteredJobTitles} value={positionFormData.job_title} onChange={(value) => setPositionFormData({...positionFormData, job_title: value})} placeholder="Select or type job title" disabled={!positionFormData.position_group}  portal={true}
+                   allowUncheck={true}
+                  zIndex="z-[60]" />
                 </div>
               </div>
     

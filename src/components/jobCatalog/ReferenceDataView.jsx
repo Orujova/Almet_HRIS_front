@@ -1,4 +1,4 @@
-// src/components/jobCatalog/ReferenceDataView.jsx - With Pagination & ConfirmationModal
+// src/components/jobCatalog/ReferenceDataView.jsx - With Complete Persistence
 
 import React, { useState, useMemo } from 'react';
 import { 
@@ -19,11 +19,30 @@ export default function ReferenceDataView({ context }) {
 
   const { darkMode } = useTheme();
   
-  const [activeTab, setActiveTab] = useState('business_functions');
-  const [viewMode, setViewMode] = useState('table');
+  // State with localStorage persistence
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_referenceTab') || 'business_functions';
+    }
+    return 'business_functions';
+  });
+  
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_referenceViewMode') || 'table';
+    }
+    return 'table';
+  });
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
-  const [showInactive, setShowInactive] = useState(false);
+  
+  const [showInactive, setShowInactive] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_showInactive') === 'true';
+    }
+    return false;
+  });
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,6 +54,25 @@ export default function ReferenceDataView({ context }) {
     item: null,
     type: null
   });
+
+  // Save preferences to localStorage
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_referenceTab', activeTab);
+    }
+  }, [activeTab]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_referenceViewMode', viewMode);
+    }
+  }, [viewMode]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_showInactive', showInactive.toString());
+    }
+  }, [showInactive]);
 
   // Calculate employee counts
   const getEmployeeCountsByType = useMemo(() => {

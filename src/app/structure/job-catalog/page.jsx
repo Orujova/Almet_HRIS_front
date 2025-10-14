@@ -1,4 +1,4 @@
-// src/app/structure/job-catalog/page.jsx - With Loading & Error States
+// src/app/structure/job-catalog/page.jsx - With Complete Persistence
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -9,8 +9,6 @@ import { referenceDataAPI } from '@/store/api/referenceDataAPI';
 import { employeeAPI } from '@/store/api/employeeAPI';
 import { useToast } from '@/components/common/Toast';
 import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
-
-// CRITICAL: Import setPositionGroups from HierarchyColors
 import { setPositionGroups } from '@/components/jobCatalog/HierarchyColors';
 
 // Import all components
@@ -27,14 +25,38 @@ export default function JobCatalogPage() {
   const { showSuccess, showError } = useToast();
   
   // ============================================
-  // STATE MANAGEMENT
+  // STATE MANAGEMENT WITH PERSISTENCE
   // ============================================
   
-  // View states
-  const [activeView, setActiveView] = useState('overview');
-  const [viewMode, setViewMode] = useState('grid');
-  const [matrixView, setMatrixView] = useState('department');
-  const [showFilters, setShowFilters] = useState(false);
+  // View states - localStorage-dən oxu
+  const [activeView, setActiveView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_activeView') || 'overview';
+    }
+    return 'overview';
+  });
+  
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_viewMode') || 'grid';
+    }
+    return 'grid';
+  });
+  
+  const [matrixView, setMatrixView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_matrixView') || 'department';
+    }
+    return 'department';
+  });
+  
+  const [showFilters, setShowFilters] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('jobCatalog_showFilters') === 'true';
+    }
+    return false;
+  });
+  
   const [selectedJob, setSelectedJob] = useState(null);
   const [showCrudModal, setShowCrudModal] = useState(false);
   const [crudModalType, setCrudModalType] = useState('');
@@ -51,7 +73,7 @@ export default function JobCatalogPage() {
   const [positionGroupsState, setPositionGroupsState] = useState([]);
   const [hierarchyData, setHierarchyData] = useState(null);
   
-  // Filter states
+  // Filter states - persistence optional (user might want fresh filters on reload)
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState({
     business_function: '',
@@ -63,7 +85,7 @@ export default function JobCatalogPage() {
   
   // Loading states
   const [loading, setLoading] = useState({
-    initial: true, // NEW: for initial page load
+    initial: true,
     employees: false,
     statistics: false,
     referenceData: false,
@@ -78,6 +100,34 @@ export default function JobCatalogPage() {
   const [formData, setFormData] = useState({});
 
   // ============================================
+  // SAVE PREFERENCES TO LOCALSTORAGE
+  // ============================================
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_activeView', activeView);
+    }
+  }, [activeView]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_viewMode', viewMode);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_matrixView', matrixView);
+    }
+  }, [matrixView]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('jobCatalog_showFilters', showFilters.toString());
+    }
+  }, [showFilters]);
+
+  // ============================================
   // INITIAL DATA LOADING
   // ============================================
   
@@ -90,7 +140,6 @@ export default function JobCatalogPage() {
     setErrors({});
     
     try {
-      // Load all reference data and statistics in parallel
       const [
         businessFunctionsRes,
         departmentsRes,
@@ -109,7 +158,6 @@ export default function JobCatalogPage() {
 
       const positionGroupsData = positionGroupsRes.data || [];
       
-      // Set all data
       setBusinessFunctions(businessFunctionsRes.data || []);
       setDepartments(departmentsRes.data?.results || departmentsRes.data || []);
       setUnits(unitsRes.data || []);
@@ -117,11 +165,9 @@ export default function JobCatalogPage() {
       setPositionGroupsState(positionGroupsData);
       setStatistics(statisticsRes.data || statisticsRes);
 
-      // CRITICAL: Initialize color system with position groups
       setPositionGroups(positionGroupsData);
       console.log('✅ Color system initialized with', positionGroupsData.length, 'position groups');
 
-      // Load employees after reference data is set
       await loadEmployees();
       
     } catch (error) {
@@ -133,7 +179,6 @@ export default function JobCatalogPage() {
     }
   };
 
-  // Retry function for error state
   const retryLoad = () => {
     loadInitialData();
   };
@@ -146,14 +191,12 @@ export default function JobCatalogPage() {
     setLoading(prev => ({ ...prev, employees: true }));
     
     try {
-      // Build parameters
       const params = {
         search: searchTerm,
         ...selectedFilters,
         ...additionalParams
       };
       
-      // Remove empty parameters
       Object.keys(params).forEach(key => {
         if (!params[key]) delete params[key];
       });
@@ -172,7 +215,7 @@ export default function JobCatalogPage() {
   };
 
   // ============================================
-  // HIERARCHY DATA LOADING (for matrix view)
+  // HIERARCHY DATA LOADING
   // ============================================
   
   const loadHierarchyData = async () => {
@@ -189,14 +232,12 @@ export default function JobCatalogPage() {
     }
   };
 
-  // Load hierarchy data when matrix view is accessed
   useEffect(() => {
     if (activeView === 'matrix' && !hierarchyData) {
       loadHierarchyData();
     }
   }, [activeView, hierarchyData]);
 
-  // Reload employees when filters change (with debounce)
   useEffect(() => {
     if (!loading.initial) {
       const timer = setTimeout(() => {
@@ -206,248 +247,213 @@ export default function JobCatalogPage() {
     }
   }, [searchTerm, selectedFilters]);
 
+  // ============================================
+  // CRUD OPERATIONS
+  // ============================================
 
-
-// ============================================
-// FIXED CRUD OPERATIONS
-// ============================================
-
-const openCrudModal = (type, mode = 'create', item = null) => {
-  console.log('🔧 Opening CRUD Modal:', { type, mode, item });
-  
-  setCrudModalType(type);
-  setCrudModalMode(mode);
-  setSelectedItem(item);
-  
-  if (mode === 'edit' && item) {
-    // Populate form with existing data for editing
-    const formDataInit = {};
+  const openCrudModal = (type, mode = 'create', item = null) => {
+    console.log('🔧 Opening CRUD Modal:', { type, mode, item });
     
-    // Only include fields that should be editable
-    if (item.name || item.label) formDataInit.name = item.name || item.label;
-    if (item.code) formDataInit.code = item.code;
-    if (item.description) formDataInit.description = item.description;
-    if (item.is_active !== undefined) formDataInit.is_active = item.is_active;
+    setCrudModalType(type);
+    setCrudModalMode(mode);
+    setSelectedItem(item);
     
-    // Type-specific fields
-    if (type === 'departments' && (item.business_function || item.business_function_id)) {
-      formDataInit.business_function = item.business_function || item.business_function_id;
-    }
-    if (type === 'units' && (item.department || item.department_id)) {
-      formDataInit.department = item.department || item.department_id;
-    }
-    if (type === 'position_groups' && item.hierarchy_level) {
-      formDataInit.hierarchy_level = item.hierarchy_level;
-    }
-    
-    console.log('✏️ Edit mode - form data:', formDataInit);
-    setFormData(formDataInit);
-  } else {
-    // Reset form for create mode - ONLY editable fields
-    const cleanFormData = {
-      name: '',
-      is_active: true
-    };
-    
-    // Add type-specific fields
-    if (type === 'business_functions') {
-      cleanFormData.code = '';
-    }
-    if (type === 'departments') {
-      cleanFormData.business_function = '';
-    }
-    if (type === 'units') {
-      cleanFormData.department = '';
-    }
-    if (type === 'position_groups') {
-      cleanFormData.hierarchy_level = 1;
-    }
-    
-    console.log('➕ Create mode - form data:', cleanFormData);
-    setFormData(cleanFormData);
-  }
-  
-  setShowCrudModal(true);
-  setErrors(prev => ({ ...prev, crud: null }));
-};
-
-const handleCrudSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(prev => ({ ...prev, crud: true }));
-  setErrors(prev => ({ ...prev, crud: null }));
-
-  try {
-    // Prepare clean data - ONLY include fields that should be submitted
-    const submitData = {};
-    
-    // Common fields
-    if (formData.name) submitData.name = formData.name.trim();
-    if (formData.code !== undefined) submitData.code = formData.code.trim();
-    if (formData.description !== undefined) submitData.description = formData.description.trim();
-    submitData.is_active = formData.is_active !== false;
-    
-    // Type-specific fields
-    if (crudModalType === 'departments' && formData.business_function) {
-      submitData.business_function = formData.business_function;
-    }
-    if (crudModalType === 'units' && formData.department) {
-      submitData.department = formData.department;
-    }
-    if (crudModalType === 'position_groups' && formData.hierarchy_level) {
-      submitData.hierarchy_level = parseInt(formData.hierarchy_level);
-    }
-    
-    // CRITICAL: Remove any ID-related fields that might have snuck in
-    delete submitData.id;
-    delete submitData.value;
-    delete submitData.pk;
-    delete submitData.uuid;
-    
-    console.log('📤 Submitting data:', { 
-      mode: crudModalMode, 
-      type: crudModalType, 
-      data: submitData 
-    });
-    
-    let response;
-    
-    // Get the item ID for update operations
-    const itemId = selectedItem?.value || selectedItem?.id;
-    
-    if (crudModalMode === 'edit' && !itemId) {
-      throw new Error('Item ID is missing for update operation');
-    }
-    
-    // Handle different entity types
-    switch (crudModalType) {
-      case 'business_functions':
-        if (crudModalMode === 'create') {
-          console.log('🔨 Creating business function...');
-          response = await referenceDataAPI.createBusinessFunction(submitData);
-        } else {
-          console.log('🔨 Updating business function:', itemId);
-          response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
-        }
-        break;
-        
-      case 'departments':
-        if (crudModalMode === 'create') {
-          console.log('🔨 Creating department...');
-          response = await referenceDataAPI.createDepartment(submitData);
-        } else {
-          console.log('🔨 Updating department:', itemId);
-          response = await referenceDataAPI.updateDepartment(itemId, submitData);
-        }
-        break;
-        
-      case 'units':
-        if (crudModalMode === 'create') {
-          console.log('🔨 Creating unit...');
-          response = await referenceDataAPI.createUnit(submitData);
-        } else {
-          console.log('🔨 Updating unit:', itemId);
-          response = await referenceDataAPI.updateUnit(itemId, submitData);
-        }
-        break;
-        
-      case 'job_functions':
-        if (crudModalMode === 'create') {
-          console.log('🔨 Creating job function...');
-          response = await referenceDataAPI.createJobFunction(submitData);
-        } else {
-          console.log('🔨 Updating job function:', itemId);
-          response = await referenceDataAPI.updateJobFunction(itemId, submitData);
-        }
-        break;
-        
-      case 'position_groups':
-        if (crudModalMode === 'create') {
-          console.log('🔨 Creating position group...');
-          response = await referenceDataAPI.createPositionGroup(submitData);
-        } else {
-          console.log('🔨 Updating position group:', itemId);
-          response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
-        }
-        break;
-        
-      default:
-        throw new Error(`Unknown CRUD type: ${crudModalType}`);
-    }
-
-    console.log('✅ CRUD operation successful:', response);
-
-    // Reload all data after successful operation
-    await loadInitialData();
-    
-    // Show success message
-    const entityName = crudModalType.replace(/_/g, ' ');
-    showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
-    
-    closeCrudModal();
-    
-  } catch (error) {
-    console.error('❌ CRUD operation error:', error);
-    console.error('Error details:', {
-      response: error?.response?.data,
-      status: error?.response?.status,
-      message: error?.message
-    });
-    
-    // Enhanced error handling
-    let errorMsg = 'An error occurred';
-    
-    if (error?.response?.data) {
-      const errorData = error.response.data;
+    if (mode === 'edit' && item) {
+      const formDataInit = {};
       
-      // Handle HTML error responses (like Django error pages)
-      if (typeof errorData === 'string' && errorData.includes('<!DOCTYPE html>')) {
-        errorMsg = 'Server error occurred. Please check server logs.';
-        
-        // Try to extract the error from HTML
-        const titleMatch = errorData.match(/<title>(.*?)<\/title>/);
-        if (titleMatch && titleMatch[1]) {
-          errorMsg = titleMatch[1].replace(/\s+at\s+\/.*$/, '').trim();
-        }
-      } else if (typeof errorData === 'string') {
-        errorMsg = errorData;
-      } else if (errorData.message) {
-        errorMsg = errorData.message;
-      } else if (errorData.detail) {
-        errorMsg = errorData.detail;
-      } else if (errorData.non_field_errors) {
-        errorMsg = Array.isArray(errorData.non_field_errors) 
-          ? errorData.non_field_errors.join(', ')
-          : errorData.non_field_errors;
-      } else {
-        // Extract field-specific errors
-        const fieldErrors = Object.entries(errorData)
-          .filter(([key]) => !['message', 'detail', 'status'].includes(key))
-          .map(([field, errors]) => {
-            const errorText = Array.isArray(errors) ? errors.join(', ') : errors;
-            return `${field}: ${errorText}`;
-          })
-          .join('; ');
-        
-        if (fieldErrors) {
-          errorMsg = fieldErrors;
-        } else {
-          errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
-        }
+      if (item.name || item.label) formDataInit.name = item.name || item.label;
+      if (item.code) formDataInit.code = item.code;
+      if (item.description) formDataInit.description = item.description;
+      if (item.is_active !== undefined) formDataInit.is_active = item.is_active;
+      
+      if (type === 'departments' && (item.business_function || item.business_function_id)) {
+        formDataInit.business_function = item.business_function || item.business_function_id;
       }
-    } else if (error?.message) {
-      errorMsg = error.message;
+      if (type === 'units' && (item.department || item.department_id)) {
+        formDataInit.department = item.department || item.department_id;
+      }
+      if (type === 'position_groups' && item.hierarchy_level) {
+        formDataInit.hierarchy_level = item.hierarchy_level;
+      }
+      
+      console.log('✏️ Edit mode - form data:', formDataInit);
+      setFormData(formDataInit);
     } else {
-      errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+      const cleanFormData = {
+        name: '',
+        is_active: true
+      };
+      
+      if (type === 'business_functions') {
+        cleanFormData.code = '';
+      }
+      if (type === 'departments') {
+        cleanFormData.business_function = '';
+      }
+      if (type === 'units') {
+        cleanFormData.department = '';
+      }
+      if (type === 'position_groups') {
+        cleanFormData.hierarchy_level = 1;
+      }
+      
+      console.log('➕ Create mode - form data:', cleanFormData);
+      setFormData(cleanFormData);
     }
     
-    setErrors(prev => ({ ...prev, crud: errorMsg }));
-    showError(errorMsg);
-  } finally {
-    setLoading(prev => ({ ...prev, crud: false }));
-  }
-};
+    setShowCrudModal(true);
+    setErrors(prev => ({ ...prev, crud: null }));
+  };
 
- const closeCrudModal = () => {
+  const handleCrudSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(prev => ({ ...prev, crud: true }));
+    setErrors(prev => ({ ...prev, crud: null }));
+
+    try {
+      const submitData = {};
+      
+      if (formData.name) submitData.name = formData.name.trim();
+      if (formData.code !== undefined) submitData.code = formData.code.trim();
+      if (formData.description !== undefined) submitData.description = formData.description.trim();
+      submitData.is_active = formData.is_active !== false;
+      
+      if (crudModalType === 'departments' && formData.business_function) {
+        submitData.business_function = formData.business_function;
+      }
+      if (crudModalType === 'units' && formData.department) {
+        submitData.department = formData.department;
+      }
+      if (crudModalType === 'position_groups' && formData.hierarchy_level) {
+        submitData.hierarchy_level = parseInt(formData.hierarchy_level);
+      }
+      
+      delete submitData.id;
+      delete submitData.value;
+      delete submitData.pk;
+      delete submitData.uuid;
+      
+      console.log('📤 Submitting data:', { 
+        mode: crudModalMode, 
+        type: crudModalType, 
+        data: submitData 
+      });
+      
+      let response;
+      const itemId = selectedItem?.value || selectedItem?.id;
+      
+      if (crudModalMode === 'edit' && !itemId) {
+        throw new Error('Item ID is missing for update operation');
+      }
+      
+      switch (crudModalType) {
+        case 'business_functions':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createBusinessFunction(submitData);
+          } else {
+            response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
+          }
+          break;
+          
+        case 'departments':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createDepartment(submitData);
+          } else {
+            response = await referenceDataAPI.updateDepartment(itemId, submitData);
+          }
+          break;
+          
+        case 'units':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createUnit(submitData);
+          } else {
+            response = await referenceDataAPI.updateUnit(itemId, submitData);
+          }
+          break;
+          
+        case 'job_functions':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createJobFunction(submitData);
+          } else {
+            response = await referenceDataAPI.updateJobFunction(itemId, submitData);
+          }
+          break;
+          
+        case 'position_groups':
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createPositionGroup(submitData);
+          } else {
+            response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
+          }
+          break;
+          
+        default:
+          throw new Error(`Unknown CRUD type: ${crudModalType}`);
+      }
+
+      console.log('✅ CRUD operation successful:', response);
+
+      await loadInitialData();
+      
+      const entityName = crudModalType.replace(/_/g, ' ');
+      showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
+      
+      closeCrudModal();
+      
+    } catch (error) {
+      console.error('❌ CRUD operation error:', error);
+      
+      let errorMsg = 'An error occurred';
+      
+      if (error?.response?.data) {
+        const errorData = error.response.data;
+        
+        if (typeof errorData === 'string' && errorData.includes('<!DOCTYPE html>')) {
+          errorMsg = 'Server error occurred. Please check server logs.';
+          
+          const titleMatch = errorData.match(/<title>(.*?)<\/title>/);
+          if (titleMatch && titleMatch[1]) {
+            errorMsg = titleMatch[1].replace(/\s+at\s+\/.*$/, '').trim();
+          }
+        } else if (typeof errorData === 'string') {
+          errorMsg = errorData;
+        } else if (errorData.message) {
+          errorMsg = errorData.message;
+        } else if (errorData.detail) {
+          errorMsg = errorData.detail;
+        } else if (errorData.non_field_errors) {
+          errorMsg = Array.isArray(errorData.non_field_errors) 
+            ? errorData.non_field_errors.join(', ')
+            : errorData.non_field_errors;
+        } else {
+          const fieldErrors = Object.entries(errorData)
+            .filter(([key]) => !['message', 'detail', 'status'].includes(key))
+            .map(([field, errors]) => {
+              const errorText = Array.isArray(errors) ? errors.join(', ') : errors;
+              return `${field}: ${errorText}`;
+            })
+            .join('; ');
+          
+          if (fieldErrors) {
+            errorMsg = fieldErrors;
+          } else {
+            errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+          }
+        }
+      } else if (error?.message) {
+        errorMsg = error.message;
+      } else {
+        errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+      }
+      
+      setErrors(prev => ({ ...prev, crud: errorMsg }));
+      showError(errorMsg);
+    } finally {
+      setLoading(prev => ({ ...prev, crud: false }));
+    }
+  };
+
+  const closeCrudModal = () => {
     setShowCrudModal(false);
     setCrudModalType('');
     setCrudModalMode('create');
@@ -462,7 +468,6 @@ const handleCrudSubmit = async (e) => {
     try {
       const id = item.id || item.value;
       
-      // Delete based on type
       switch (type) {
         case 'business_functions':
           await referenceDataAPI.deleteBusinessFunction(id);
@@ -481,10 +486,7 @@ const handleCrudSubmit = async (e) => {
           break;
       }
 
-      // Reload data
       await loadInitialData();
-      
-      // Show success message
       showSuccess(`Successfully deleted ${type.replace('_', ' ')}`);
       
     } catch (error) {
@@ -509,20 +511,16 @@ const handleCrudSubmit = async (e) => {
   // DATA PROCESSING & COMPUTED VALUES
   // ============================================
   
-  // Process employees into job catalog format
   const jobCatalogData = useMemo(() => {
     const jobMap = new Map();
     
     employees.forEach(employee => {
-      // Create unique key for each job position
       const key = `${employee.business_function_name}-${employee.department_name}-${employee.job_function_name}-${employee.position_group_name}-${employee.job_title}-${employee.unit_name}`;
       
       if (jobMap.has(key)) {
-        // Job already exists, increment employee count
         jobMap.get(key).currentEmployees += 1;
         jobMap.get(key).employees.push(employee);
       } else {
-        // Create new job entry
         jobMap.set(key, {
           id: key,
           businessFunction: employee.business_function_name || 'N/A',
@@ -541,7 +539,6 @@ const handleCrudSubmit = async (e) => {
     return Array.from(jobMap.values());
   }, [employees]);
 
-  // Filter options for dropdowns
   const filterOptions = useMemo(() => {
     return {
       businessFunctions: businessFunctions || [],
@@ -552,10 +549,8 @@ const handleCrudSubmit = async (e) => {
     };
   }, [businessFunctions, departments, units, jobFunctions, positionGroupsState]);
 
-  // Filtered jobs based on search term AND filters
   const filteredJobs = useMemo(() => {
     return jobCatalogData.filter(job => {
-      // Search term filter
       const matchesSearch = !searchTerm || 
         job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.department.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -564,7 +559,6 @@ const handleCrudSubmit = async (e) => {
         job.jobFunction.toLowerCase().includes(searchTerm.toLowerCase()) ||
         job.hierarchy.toLowerCase().includes(searchTerm.toLowerCase());
 
-      // Business function filter
       const matchesBusinessFunction = !selectedFilters.business_function || 
         job.businessFunction === selectedFilters.business_function ||
         businessFunctions.find(bf => 
@@ -572,7 +566,6 @@ const handleCrudSubmit = async (e) => {
           (bf.label === job.businessFunction || bf.name === job.businessFunction)
         );
 
-      // Department filter
       const matchesDepartment = !selectedFilters.department || 
         job.department === selectedFilters.department ||
         departments.find(d => 
@@ -580,7 +573,6 @@ const handleCrudSubmit = async (e) => {
           (d.label === job.department || d.name === job.department)
         );
 
-      // Unit filter
       const matchesUnit = !selectedFilters.unit || 
         job.unit === selectedFilters.unit ||
         units.find(u => 
@@ -588,7 +580,6 @@ const handleCrudSubmit = async (e) => {
           (u.label === job.unit || u.name === job.unit)
         );
 
-      // Job function filter
       const matchesJobFunction = !selectedFilters.job_function || 
         job.jobFunction === selectedFilters.job_function ||
         jobFunctions.find(jf => 
@@ -596,7 +587,6 @@ const handleCrudSubmit = async (e) => {
           (jf.label === job.jobFunction || jf.name === job.jobFunction)
         );
 
-      // Position group filter
       const matchesPositionGroup = !selectedFilters.position_group || 
         job.hierarchy === selectedFilters.position_group ||
         positionGroupsState.find(pg => 
@@ -609,7 +599,6 @@ const handleCrudSubmit = async (e) => {
     });
   }, [jobCatalogData, searchTerm, selectedFilters, businessFunctions, departments, units, jobFunctions, positionGroupsState]);
 
-  // Statistics
   const stats = useMemo(() => {
     if (!statistics) return { totalJobs: 0, totalEmployees: 0 };
     
@@ -619,26 +608,22 @@ const handleCrudSubmit = async (e) => {
     };
   }, [statistics, jobCatalogData]);
 
-  // Matrix data for hierarchy view
   const matrixData = useMemo(() => {
     if (!hierarchyData) return {};
     
     const matrix = {};
     
-    // Determine columns based on matrix view type
     const columns = matrixView === 'department' 
       ? departments.map(d => d.label || d.name)
       : matrixView === 'function' 
       ? jobFunctions.map(jf => jf.label || jf.name)
       : businessFunctions.map(bf => bf.label || bf.name);
     
-    // Build matrix structure
     positionGroupsState.forEach(pg => {
       const hierarchyName = pg.label || pg.name;
       matrix[hierarchyName] = {};
       
       columns.forEach(col => {
-        // Filter jobs for this cell
         const jobs = jobCatalogData.filter(job => {
           if (matrixView === 'department') {
             return job.hierarchy === hierarchyName && job.department === col;
@@ -655,7 +640,6 @@ const handleCrudSubmit = async (e) => {
     return matrix;
   }, [hierarchyData, matrixView, jobCatalogData, departments, jobFunctions, businessFunctions, positionGroupsState]);
 
-  // Clear all filters
   const clearFilters = () => {
     setSelectedFilters({
       business_function: '',
@@ -668,7 +652,7 @@ const handleCrudSubmit = async (e) => {
   };
 
   // ============================================
-  // CONTEXT VALUE (passed to child components)
+  // CONTEXT VALUE
   // ============================================
   
   const contextValue = {
@@ -725,12 +709,10 @@ const handleCrudSubmit = async (e) => {
   // RENDER
   // ============================================
   
-  // Show loading spinner during initial load
   if (loading.initial) {
     return <LoadingSpinner message="Loading Job Catalog..." />;
   }
 
-  // Show error display if initial load failed
   if (errors.initial) {
     return <ErrorDisplay error={errors.initial} onRetry={retryLoad} />;
   }
@@ -769,7 +751,7 @@ const handleCrudSubmit = async (e) => {
         )}
 
         {/* Modals */}
-        <CrudModal context={contextValue}   darkMode={darkMode} />
+        <CrudModal context={contextValue} />
         <JobDetailModal context={contextValue} />
         
       </div>
