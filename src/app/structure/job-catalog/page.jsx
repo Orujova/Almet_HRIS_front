@@ -210,51 +210,58 @@ export default function JobCatalogPage() {
   // CRUD OPERATIONS
   // ============================================
   
-  // Replace the openCrudModal function in page.jsx with this
-
 const openCrudModal = (type, mode = 'create', item = null) => {
+  console.log('🔧 Opening CRUD Modal:', { type, mode, item });
+  
   setCrudModalType(type);
   setCrudModalMode(mode);
   setSelectedItem(item);
   
   if (mode === 'edit' && item) {
     // Populate form with existing data for editing
-    const formDataInit = {
-      name: item.name || item.label || '',
-      code: item.code || '',
-      description: item.description || '',
-      is_active: item.is_active !== false,
-      business_function: item.business_function || item.business_function_id || '',
-      department: item.department || item.department_id || '',
-      hierarchy_level: item.hierarchy_level || ''
-    };
+    const formDataInit = {};
     
-    // Remove any undefined or empty string values
-    Object.keys(formDataInit).forEach(key => {
-      if (formDataInit[key] === '' || formDataInit[key] === undefined) {
-        delete formDataInit[key];
-      }
-    });
+    // Only include fields that should be editable
+    if (item.name || item.label) formDataInit.name = item.name || item.label;
+    if (item.code) formDataInit.code = item.code;
+    if (item.description) formDataInit.description = item.description;
+    if (item.is_active !== undefined) formDataInit.is_active = item.is_active;
     
+    // Type-specific fields
+    if (type === 'departments' && (item.business_function || item.business_function_id)) {
+      formDataInit.business_function = item.business_function || item.business_function_id;
+    }
+    if (type === 'units' && (item.department || item.department_id)) {
+      formDataInit.department = item.department || item.department_id;
+    }
+    if (type === 'position_groups' && item.hierarchy_level) {
+      formDataInit.hierarchy_level = item.hierarchy_level;
+    }
+    
+    console.log('✏️ Edit mode - form data:', formDataInit);
     setFormData(formDataInit);
   } else {
-    // Reset form for create mode - NO ID fields
+    // Reset form for create mode - ONLY editable fields
     const cleanFormData = {
       name: '',
-      code: '',
-      description: '',
       is_active: true
     };
     
     // Add type-specific fields
+    if (type === 'business_functions') {
+      cleanFormData.code = '';
+    }
     if (type === 'departments') {
       cleanFormData.business_function = '';
-    } else if (type === 'units') {
+    }
+    if (type === 'units') {
       cleanFormData.department = '';
-    } else if (type === 'position_groups') {
-      cleanFormData.hierarchy_level = '';
+    }
+    if (type === 'position_groups') {
+      cleanFormData.hierarchy_level = 1;
     }
     
+    console.log('➕ Create mode - form data:', cleanFormData);
     setFormData(cleanFormData);
   }
   
@@ -262,78 +269,102 @@ const openCrudModal = (type, mode = 'create', item = null) => {
   setErrors(prev => ({ ...prev, crud: null }));
 };
 
-  const closeCrudModal = () => {
-    setShowCrudModal(false);
-    setCrudModalType('');
-    setCrudModalMode('create');
-    setSelectedItem(null);
-    setFormData({});
-    setErrors(prev => ({ ...prev, crud: null }));
-  };
-
-  const handleCrudSubmit = async (e) => {
+// Fixed handleCrudSubmit function
+const handleCrudSubmit = async (e) => {
   e.preventDefault();
   setLoading(prev => ({ ...prev, crud: true }));
   setErrors(prev => ({ ...prev, crud: null }));
 
   try {
-    let response;
+    // Prepare clean data - ONLY include fields that should be submitted
+    const submitData = {};
     
-    // Prepare data - CRITICAL: Remove ID for create operations
-    const submitData = { ...formData };
+    // Common fields
+    if (formData.name) submitData.name = formData.name.trim();
+    if (formData.code !== undefined) submitData.code = formData.code.trim();
+    if (formData.description !== undefined) submitData.description = formData.description.trim();
+    submitData.is_active = formData.is_active !== false;
     
-    // Remove ID fields that should not be sent
-    if (crudModalMode === 'create') {
-      delete submitData.id;
-      delete submitData.value;
+    // Type-specific fields
+    if (crudModalType === 'departments' && formData.business_function) {
+      submitData.business_function = formData.business_function;
     }
+    if (crudModalType === 'units' && formData.department) {
+      submitData.department = formData.department;
+    }
+    if (crudModalType === 'position_groups' && formData.hierarchy_level) {
+      submitData.hierarchy_level = parseInt(formData.hierarchy_level);
+    }
+    
+    // CRITICAL: Remove any ID-related fields that might have snuck in
+    delete submitData.id;
+    delete submitData.value;
+    delete submitData.pk;
+    delete submitData.uuid;
+    
+    console.log('📤 Submitting data:', { 
+      mode: crudModalMode, 
+      type: crudModalType, 
+      data: submitData 
+    });
+    
+    let response;
     
     // Get the item ID for update operations
     const itemId = selectedItem?.value || selectedItem?.id;
+    
+    if (crudModalMode === 'edit' && !itemId) {
+      throw new Error('Item ID is missing for update operation');
+    }
     
     // Handle different entity types
     switch (crudModalType) {
       case 'business_functions':
         if (crudModalMode === 'create') {
+          console.log('🔨 Creating business function...');
           response = await referenceDataAPI.createBusinessFunction(submitData);
         } else {
-          if (!itemId) throw new Error('Item ID is missing for update');
+          console.log('🔨 Updating business function:', itemId);
           response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
         }
         break;
         
       case 'departments':
         if (crudModalMode === 'create') {
+          console.log('🔨 Creating department...');
           response = await referenceDataAPI.createDepartment(submitData);
         } else {
-          if (!itemId) throw new Error('Item ID is missing for update');
+          console.log('🔨 Updating department:', itemId);
           response = await referenceDataAPI.updateDepartment(itemId, submitData);
         }
         break;
         
       case 'units':
         if (crudModalMode === 'create') {
+          console.log('🔨 Creating unit...');
           response = await referenceDataAPI.createUnit(submitData);
         } else {
-          if (!itemId) throw new Error('Item ID is missing for update');
+          console.log('🔨 Updating unit:', itemId);
           response = await referenceDataAPI.updateUnit(itemId, submitData);
         }
         break;
         
       case 'job_functions':
         if (crudModalMode === 'create') {
+          console.log('🔨 Creating job function...');
           response = await referenceDataAPI.createJobFunction(submitData);
         } else {
-          if (!itemId) throw new Error('Item ID is missing for update');
+          console.log('🔨 Updating job function:', itemId);
           response = await referenceDataAPI.updateJobFunction(itemId, submitData);
         }
         break;
         
       case 'position_groups':
         if (crudModalMode === 'create') {
+          console.log('🔨 Creating position group...');
           response = await referenceDataAPI.createPositionGroup(submitData);
         } else {
-          if (!itemId) throw new Error('Item ID is missing for update');
+          console.log('🔨 Updating position group:', itemId);
           response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
         }
         break;
@@ -341,6 +372,8 @@ const openCrudModal = (type, mode = 'create', item = null) => {
       default:
         throw new Error(`Unknown CRUD type: ${crudModalType}`);
     }
+
+    console.log('✅ CRUD operation successful:', response);
 
     // Reload all data after successful operation
     await loadInitialData();
@@ -353,28 +386,52 @@ const openCrudModal = (type, mode = 'create', item = null) => {
     
   } catch (error) {
     console.error('❌ CRUD operation error:', error);
+    console.error('Error details:', {
+      response: error?.response?.data,
+      status: error?.response?.status,
+      message: error?.message
+    });
     
     // Enhanced error handling
     let errorMsg = 'An error occurred';
     
     if (error?.response?.data) {
-      // Django error response
       const errorData = error.response.data;
-      if (typeof errorData === 'string') {
+      
+      // Handle HTML error responses (like Django error pages)
+      if (typeof errorData === 'string' && errorData.includes('<!DOCTYPE html>')) {
+        errorMsg = 'Server error occurred. Please check server logs.';
+        
+        // Try to extract the error from HTML
+        const titleMatch = errorData.match(/<title>(.*?)<\/title>/);
+        if (titleMatch && titleMatch[1]) {
+          errorMsg = titleMatch[1].replace(/\s+at\s+\/.*$/, '').trim();
+        }
+      } else if (typeof errorData === 'string') {
         errorMsg = errorData;
       } else if (errorData.message) {
         errorMsg = errorData.message;
       } else if (errorData.detail) {
         errorMsg = errorData.detail;
       } else if (errorData.non_field_errors) {
-        errorMsg = errorData.non_field_errors.join(', ');
+        errorMsg = Array.isArray(errorData.non_field_errors) 
+          ? errorData.non_field_errors.join(', ')
+          : errorData.non_field_errors;
       } else {
         // Extract field-specific errors
         const fieldErrors = Object.entries(errorData)
-          .filter(([key]) => key !== 'message' && key !== 'detail')
-          .map(([field, errors]) => `${field}: ${Array.isArray(errors) ? errors.join(', ') : errors}`)
+          .filter(([key]) => !['message', 'detail', 'status'].includes(key))
+          .map(([field, errors]) => {
+            const errorText = Array.isArray(errors) ? errors.join(', ') : errors;
+            return `${field}: ${errorText}`;
+          })
           .join('; ');
-        errorMsg = fieldErrors || `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+        
+        if (fieldErrors) {
+          errorMsg = fieldErrors;
+        } else {
+          errorMsg = `Failed to ${crudModalMode} ${crudModalType.replace(/_/g, ' ')}`;
+        }
       }
     } else if (error?.message) {
       errorMsg = error.message;
@@ -388,6 +445,17 @@ const openCrudModal = (type, mode = 'create', item = null) => {
     setLoading(prev => ({ ...prev, crud: false }));
   }
 };
+
+  const closeCrudModal = () => {
+    setShowCrudModal(false);
+    setCrudModalType('');
+    setCrudModalMode('create');
+    setSelectedItem(null);
+    setFormData({});
+    setErrors(prev => ({ ...prev, crud: null }));
+  };
+
+
 
   const handleDelete = async (type, item) => {
     setLoading(prev => ({ ...prev, crud: true }));
