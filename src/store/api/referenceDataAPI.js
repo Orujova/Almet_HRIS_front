@@ -81,7 +81,7 @@ export const referenceDataAPI = {
           department_name: item.department_name,
           business_function_name: item.business_function_name,
           employee_count: item.employee_count,
-          unit_head: item.unit_head,
+       
           is_active: item.is_active
         }))
       };

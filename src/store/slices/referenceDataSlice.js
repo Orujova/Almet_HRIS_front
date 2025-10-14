@@ -1237,7 +1237,7 @@ export const selectUnitsForDropdown = createSelector(
       department_name: unit.department_name,
       business_function_name: unit.business_function_name,
       employee_count: unit.employee_count || 0,
-      unit_head: unit.unit_head,
+    
       is_active: unit.is_active !== false,
       _isOptimistic: unit._isOptimistic || false
     }));
