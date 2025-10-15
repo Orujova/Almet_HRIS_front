@@ -1018,6 +1018,17 @@ const handleViewScheduleDetail = (scheduleId) => {
                         />
                       </div>
                     ))}
+
+                        <div>
+                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Comment (Optional)</label>
+                      <textarea 
+                        value={formData.comment} 
+                        onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} 
+                        rows={3} 
+                        placeholder="Add any additional notes..."
+                        className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none" 
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -1100,16 +1111,7 @@ const handleViewScheduleDetail = (scheduleId) => {
                       </div>
                     </div>
                     
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Comment (Optional)</label>
-                      <textarea 
-                        value={formData.comment} 
-                        onChange={(e) => setFormData(prev => ({...prev, comment: e.target.value}))} 
-                        rows={3} 
-                        placeholder="Add any additional notes..."
-                        className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none" 
-                      />
-                    </div>
+                
 
                     {activeSection === 'immediate' && (
                       <>

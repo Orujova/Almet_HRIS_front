@@ -1,9 +1,8 @@
+// src/services/notificationService.js - UPDATED WITH SENT/RECEIVED
 import axios from 'axios';
 
-// Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// Token management utility
 const TokenManager = {
   getAccessToken: () => {
     if (typeof window !== 'undefined') {
@@ -26,7 +25,6 @@ const TokenManager = {
   }
 };
 
-// Axios instance for notification API
 const notificationApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -35,7 +33,6 @@ const notificationApi = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor to add auth token
 notificationApi.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
@@ -49,7 +46,6 @@ notificationApi.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
 notificationApi.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -63,16 +59,35 @@ notificationApi.interceptors.response.use(
   }
 );
 
-// Notification Service
 const NotificationService = {
   /**
-   * Get notification history with optional filters
+   * 📬 Get Outlook emails with sent/received separation
    * @param {Object} params - Filter parameters
-   * @param {string} params.status - Filter by status
-   * @param {string} params.recipient_email - Filter by recipient email
-   * @param {string} params.related_model - Filter by related model
-   * @param {number} params.days - Last N days
-   * @returns {Promise} Notification history data
+   * @param {string} params.module - 'business_trip', 'vacation', or 'all'
+   * @param {string} params.email_type - 'received', 'sent', or 'all'
+   * @param {number} params.top - Number of emails (max 50)
+   * @returns {Promise} Email data with received_emails, sent_emails, all_emails
+   */
+  getOutlookEmails: async (params = { module: 'all', email_type: 'all', top: 50 }) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      if (params.module) queryParams.append('module', params.module);
+      if (params.email_type) queryParams.append('email_type', params.email_type);
+      if (params.top) queryParams.append('top', Math.min(params.top, 50));
+
+      const response = await notificationApi.get(
+        `/notifications/outlook/emails/?${queryParams.toString()}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching Outlook emails:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get notification history
    */
   getNotificationHistory: async (params = {}) => {
     try {
@@ -94,33 +109,7 @@ const NotificationService = {
   },
 
   /**
-   * Get Outlook emails filtered by module
-   * @param {Object} params - Filter parameters
-   * @param {string} params.module - Filter by module: 'business_trip', 'vacation', or 'all'
-   * @param {number} params.top - Number of emails to retrieve (max 50)
-   * @returns {Promise} Outlook emails data
-   */
-  getOutlookEmails: async (params = { module: 'all', top: 50 }) => {
-    try {
-      const queryParams = new URLSearchParams();
-      
-      if (params.module) queryParams.append('module', params.module);
-      if (params.top) queryParams.append('top', Math.min(params.top, 50));
-
-      const response = await notificationApi.get(
-        `/notifications/outlook/emails/?${queryParams.toString()}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching Outlook emails:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Mark a specific email as read
-   * @param {string} messageId - Email message ID
-   * @returns {Promise} Success response
+   * Mark email as read
    */
   markEmailAsRead: async (messageId) => {
     try {
@@ -136,9 +125,7 @@ const NotificationService = {
   },
 
   /**
-   * Mark a specific email as unread
-   * @param {string} messageId - Email message ID
-   * @returns {Promise} Success response
+   * Mark email as unread
    */
   markEmailAsUnread: async (messageId) => {
     try {
@@ -154,15 +141,15 @@ const NotificationService = {
   },
 
   /**
-   * Mark all emails as read by module
-   * @param {string} module - Module name: 'business_trip', 'vacation', or 'all'
-   * @returns {Promise} Batch result
+   * Mark all emails as read by module and email type
+   * @param {string} module - 'business_trip', 'vacation', or 'all'
+   * @param {string} email_type - 'received', 'sent', or 'all'
    */
-  markAllEmailsAsRead: async (module = 'all') => {
+  markAllEmailsAsRead: async (module = 'all', email_type = 'all') => {
     try {
       const response = await notificationApi.post(
         '/notifications/outlook/mark-all-read/',
-        { module }
+        { module, email_type }
       );
       return response.data;
     } catch (error) {
@@ -172,18 +159,20 @@ const NotificationService = {
   },
 
   /**
-   * Get unread notification count
-   * @param {string} module - Optional module filter
-   * @returns {Promise<number>} Unread count
+   * Get unread count by email type
+   * @param {string} module - Module filter
+   * @param {string} email_type - 'received', 'sent', or 'all'
    */
-  getUnreadCount: async (module = 'all') => {
+  getUnreadCount: async (module = 'all', email_type = 'all') => {
     try {
       const response = await notificationApi.get(
-        `/notifications/outlook/emails/?module=${module}&top=50`
+        `/notifications/outlook/emails/?module=${module}&email_type=${email_type}&top=50`
       );
       
-      if (response.data.success && response.data.emails) {
-        return response.data.emails.filter(email => !email.is_read).length;
+      if (response.data.success) {
+        // Count unread from the appropriate email list
+        const emails = response.data.all_emails || [];
+        return emails.filter(email => !email.is_read).length;
       }
       return 0;
     } catch (error) {
@@ -194,28 +183,22 @@ const NotificationService = {
 
   /**
    * Get notification statistics
-   * @returns {Promise} Notification statistics
    */
   getNotificationStats: async () => {
     try {
-      const [history, emails] = await Promise.all([
-        NotificationService.getNotificationHistory({ days: 7 }),
-        NotificationService.getOutlookEmails({ module: 'all', top: 50 })
-      ]);
+      const emails = await NotificationService.getOutlookEmails({ 
+        module: 'all', 
+        email_type: 'all',
+        top: 50 
+      });
 
-      const failedCount = history.notifications?.filter(
-        n => n.status === 'FAILED'
-      ).length || 0;
-
-      const unreadCount = emails.emails?.filter(
-        e => !e.is_read
-      ).length || 0;
+      const unreadCount = emails.all_emails?.filter(e => !e.is_read).length || 0;
 
       return {
-        totalNotifications: history.count || 0,
-        failedNotifications: failedCount,
-        unreadEmails: unreadCount,
-        totalEmails: emails.count || 0
+        totalEmails: emails.counts?.total || 0,
+        receivedEmails: emails.counts?.received || 0,
+        sentEmails: emails.counts?.sent || 0,
+        unreadEmails: unreadCount
       };
     } catch (error) {
       console.error('Error getting notification stats:', error);
