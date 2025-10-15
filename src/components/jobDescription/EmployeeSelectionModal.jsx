@@ -42,28 +42,31 @@ const EmployeeSelectionModal = ({
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
 
-  // UPDATED: Initialize with pre-selected employees when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      // If preSelectedEmployeeIds is provided and has values, use it
-      if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
-        console.log('🎯 Pre-selecting employees:', preSelectedEmployeeIds);
-        setSelectedEmployees(preSelectedEmployeeIds);
-        
-        // Check if all employees are selected
-        setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
-      } else {
-        // ENHANCED: Auto-select all by default if no pre-selection provided
-        const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
-        console.log('✅ Auto-selecting all eligible employees:', allEmployeeIds.length);
-        setSelectedEmployees(allEmployeeIds);
-        setSelectAll(allEmployeeIds.length > 0);
-      }
-      
-      setSearchTerm('');
-      setExpandedEmployee(null);
+  // Add a ref to track initialization
+const [isInitialized, setIsInitialized] = useState(false);
+
+useEffect(() => {
+  if (isOpen && !isInitialized) {
+    // First time opening - initialize selection
+    if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
+      console.log('🎯 Pre-selecting employees:', preSelectedEmployeeIds);
+      setSelectedEmployees(preSelectedEmployeeIds);
+      setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
+    } else {
+      const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
+      console.log('✅ Auto-selecting all eligible employees:', allEmployeeIds.length);
+      setSelectedEmployees(allEmployeeIds);
+      setSelectAll(allEmployeeIds.length > 0);
     }
-  }, [isOpen, eligibleEmployees, preSelectedEmployeeIds]);
+    
+    setSearchTerm('');
+    setExpandedEmployee(null);
+    setIsInitialized(true);
+  } else if (!isOpen && isInitialized) {
+    // Reset when modal closes
+    setIsInitialized(false);
+  }
+}, [isOpen, preSelectedEmployeeIds, eligibleEmployees.length]); // Only depend on length, not the array itself
 
   // Filter employees based on search
   const filteredEmployees = eligibleEmployees.filter(emp => {

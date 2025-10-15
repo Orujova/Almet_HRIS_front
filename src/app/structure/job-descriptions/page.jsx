@@ -68,7 +68,10 @@ const JobDescriptionPageContent = () => {
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
-
+ const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
+  const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
+  const [availableSkills, setAvailableSkills] = useState([]);
+  const [availableCompetencies, setAvailableCompetencies] = useState([]);
   // Confirmation modal states
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -116,10 +119,7 @@ const JobDescriptionPageContent = () => {
   });
 
   // Enhanced competency selection state
-  const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
-  const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
-  const [availableSkills, setAvailableSkills] = useState([]);
-  const [availableCompetencies, setAvailableCompetencies] = useState([]);
+
   const [selectedPositionGroup, setSelectedPositionGroup] = useState('');
 
   // Employee matching state for display only
@@ -564,9 +564,7 @@ const JobDescriptionPageContent = () => {
         company_benefits_ids: []
       });
       
-      setSelectedSkillGroup('');
-      setSelectedBehavioralGroup('');
-      setSelectedPositionGroup('');
+      // REMOVED: Reset single group selections - not needed anymore
       setAvailableSkills([]);
       setAvailableCompetencies([]);
 
@@ -580,67 +578,8 @@ const JobDescriptionPageContent = () => {
         setSelectedPositionGroup(transformedData.position_group);
       }
       
-      // Skill Group Selection
-      if (transformedData.required_skills_data && transformedData.required_skills_data.length > 0) {
-        const findSkillGroup = async () => {
-          const firstSkillId = transformedData.required_skills_data[0];
-          
-          for (const skillGroup of dropdownData.skillGroups) {
-            try {
-              const skills = await competencyApi.skillGroups.getSkills(skillGroup.id);
-              const skillArray = Array.isArray(skills) ? skills : (skills.skills || skills.results || []);
-              
-              const hasSkill = skillArray.some(skill => 
-                String(skill.id) === String(firstSkillId) || 
-                skill.id === parseInt(firstSkillId)
-              );
-              
-              if (hasSkill) {
-                setSelectedSkillGroup(skillGroup.id);
-                setAvailableSkills(skillArray);
-                break;
-              }
-            } catch (error) {
-              console.warn('Failed to fetch skills for group:', skillGroup.id, error);
-            }
-          }
-        };
-        
-        if (dropdownData.skillGroups && dropdownData.skillGroups.length > 0) {
-          findSkillGroup();
-        }
-      }
-      
-      // Behavioral Group Selection
-      if (transformedData.behavioral_competencies_data && transformedData.behavioral_competencies_data.length > 0) {
-        const findBehavioralGroup = async () => {
-          const firstCompetencyId = transformedData.behavioral_competencies_data[0];
-          
-          for (const behavioralGroup of dropdownData.behavioralGroups) {
-            try {
-              const competencies = await competencyApi.behavioralGroups.getCompetencies(behavioralGroup.id);
-              const competencyArray = Array.isArray(competencies) ? competencies : (competencies.competencies || competencies.results || []);
-              
-              const hasCompetency = competencyArray.some(comp => 
-                String(comp.id) === String(firstCompetencyId) || 
-                comp.id === parseInt(firstCompetencyId)
-              );
-              
-              if (hasCompetency) {
-                setSelectedBehavioralGroup(behavioralGroup.id);
-                setAvailableCompetencies(competencyArray);
-                break;
-              }
-            } catch (error) {
-              console.warn('Failed to fetch competencies for group:', behavioralGroup.id, error);
-            }
-          }
-        };
-        
-        if (dropdownData.behavioralGroups && dropdownData.behavioralGroups.length > 0) {
-          findBehavioralGroup();
-        }
-      }
+      // NOTE: Skill and competency group selection will be handled 
+      // automatically in JobResponsibilitiesTab based on selected skills/competencies
       
       setActiveView('create');
       
@@ -854,7 +793,6 @@ const JobDescriptionPageContent = () => {
                   darkMode={darkMode}
                 />
                 
-                {/* ADDED: Pagination Component */}
                 {totalPages > 1 && (
                   <Pagination
                     currentPage={currentPage}

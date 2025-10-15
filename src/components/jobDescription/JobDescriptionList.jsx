@@ -1,4 +1,4 @@
-// components/jobDescription/JobDescriptionList.jsx - Enhanced with Edit Restrictions
+// components/jobDescription/JobDescriptionList.jsx - FIXED: Allow editing after submission
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, 
@@ -21,7 +21,7 @@ import {
   Building,
   User,
   Briefcase,
-  Lock // Added for disabled edit icon
+  Lock
 } from 'lucide-react';
 
 const JobDescriptionList = ({
@@ -121,15 +121,22 @@ const JobDescriptionList = ({
     }
   };
 
-  // BUSINESS RULE 1: Check if job can be edited (only DRAFT status)
+  // FIXED: Allow editing for more statuses
   const canEditJob = (job) => {
-    return job.status === 'DRAFT';
+    // Can edit if:
+    // 1. DRAFT
+    // 2. PENDING_LINE_MANAGER (before line manager approves)
+    // 3. PENDING_EMPLOYEE (before employee approves)  
+    // 4. REVISION_REQUIRED (needs changes)
+    
+    const editableStatuses = ['DRAFT', 'PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE', 'REVISION_REQUIRED'];
+    return editableStatuses.includes(job.status);
   };
 
-  // BUSINESS RULE 2: Check if job can be submitted (no other submitted jobs for same employee)
+  // UPDATED: More specific submission rules
   const canSubmitJob = (job) => {
-    // First check if it's in draft status
-    if (job.status !== 'DRAFT') {
+    // Can submit if in DRAFT or REVISION_REQUIRED
+    if (!['DRAFT', 'REVISION_REQUIRED'].includes(job.status)) {
       return false;
     }
 
@@ -144,13 +151,13 @@ const JobDescriptionList = ({
       return true;
     }
 
-    // Check if there are other submitted jobs for the same employee
-    const otherSubmittedJobs = filteredJobs.filter(otherJob => {
+    // Check if there are other APPROVED jobs for the same employee
+    const otherApprovedJobs = filteredJobs.filter(otherJob => {
       // Skip the current job
       if (otherJob.id === job.id) return false;
 
-      // Check if it's submitted (not draft)
-      if (otherJob.status === 'DRAFT') return false;
+      // Check if it's approved
+      if (otherJob.status !== 'APPROVED') return false;
 
       // Get employee ID from other job
       const otherEmployeeId = otherJob.assigned_employee?.id || 
@@ -162,21 +169,41 @@ const JobDescriptionList = ({
       return String(employeeId) === String(otherEmployeeId);
     });
 
-    return otherSubmittedJobs.length === 0;
+    return otherApprovedJobs.length === 0;
   };
 
-  // Get tooltip message for disabled actions
+  // UPDATED: Better tooltip messages
   const getEditTooltip = (job) => {
     if (!canEditJob(job)) {
-      return `Cannot edit job with status: ${job.status}. Only DRAFT jobs can be edited.`;
+      if (job.status === 'APPROVED') {
+        return `Cannot edit approved job. Status: ${job.status}`;
+      }
+      if (job.status === 'REJECTED') {
+        return `Job was rejected. Create a new job description instead.`;
+      }
+      return `Cannot edit job with status: ${job.status}`;
     }
+    
+    if (job.status === 'PENDING_LINE_MANAGER') {
+      return "Edit (will be re-submitted for approval after changes)";
+    }
+    if (job.status === 'PENDING_EMPLOYEE') {
+      return "Edit (will be re-submitted for approval after changes)";
+    }
+    if (job.status === 'REVISION_REQUIRED') {
+      return "Edit (revisions requested - resubmit after changes)";
+    }
+    
     return "Edit Job";
   };
 
   const getSubmitTooltip = (job) => {
     if (!canSubmitJob(job)) {
-      if (job.status !== 'DRAFT') {
-        return `Cannot submit job with status: ${job.status}.`;
+      if (job.status === 'APPROVED') {
+        return `Job is already approved`;
+      }
+      if (!['DRAFT', 'REVISION_REQUIRED'].includes(job.status)) {
+        return `Cannot submit job with status: ${job.status}`;
       }
       
       const employeeId = job.assigned_employee?.id || 
@@ -185,15 +212,14 @@ const JobDescriptionList = ({
                         job.employee_info?.employee_id;
       
       if (employeeId) {
-        return `Cannot submit: Another job description for this employee is already submitted.`;
+        return `Cannot submit: Another approved job description exists for this employee`;
       }
     }
-    return "Submit for Approval";
+    return job.status === 'REVISION_REQUIRED' ? "Resubmit for Approval" : "Submit for Approval";
   };
 
   // Helper functions for employee info
   const getEmployeeInfo = (job) => {
-    // Check employee_info from API response
     if (job.employee_info && job.employee_info.name) {
       return {
         type: 'assigned',
@@ -205,7 +231,6 @@ const JobDescriptionList = ({
       };
     }
     
-    // Check assigned_employee
     if (job.assigned_employee?.full_name) {
       return {
         type: 'assigned',
@@ -215,7 +240,6 @@ const JobDescriptionList = ({
       };
     }
     
-    // Vacant position
     return {
       type: 'vacant',
       name: 'Vacant Position',
@@ -322,7 +346,6 @@ const JobDescriptionList = ({
               <div className={`absolute top-full left-0 right-0 mt-2 ${bgCard} border ${borderColor} rounded-xl 
                 shadow-lg max-h-64 overflow-hidden z-20`}>
                 
-                {/* Search input for departments */}
                 <div className="p-2 border-b border-gray-200 dark:border-almet-comet">
                   <div className="relative">
                     <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={12} />
@@ -490,8 +513,8 @@ const JobDescriptionList = ({
                             <Download size={14} />
                           </button>
                           
-                          {/* ENHANCED: Submit button with business rule check */}
-                          {job.status === 'DRAFT' && (
+                          {/* UPDATED: Submit button - show for DRAFT and REVISION_REQUIRED */}
+                          {['DRAFT', 'REVISION_REQUIRED'].includes(job.status) && (
                             <button
                               onClick={(e) => canSubmit ? handleDirectSubmissionClick(job.id, e) : e.stopPropagation()}
                               disabled={actionLoading || !canSubmit}
@@ -506,7 +529,7 @@ const JobDescriptionList = ({
                             </button>
                           )}
                           
-                          {/* ENHANCED: Edit button with business rule check */}
+                          {/* UPDATED: Edit button - expanded statuses */}
                           <button
                             onClick={(e) => canEdit ? handleEditClick(job, e) : e.stopPropagation()}
                             disabled={actionLoading || !canEdit}
@@ -555,7 +578,6 @@ const JobDescriptionList = ({
                         </div>
                       </div>
                       
-                      {/* Additional Info */}
                       <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className={`font-semibold ${textMuted} min-w-[70px]`}>Reports to:</span>
@@ -567,14 +589,30 @@ const JobDescriptionList = ({
                       </div>
                     </div>
 
-                 
+                    {/* UPDATED: Business Rule Warnings */}
+                    {!canEdit && job.status === 'APPROVED' && (
+                      <div className="mt-3 p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-green-800 dark:text-green-400">
+                          <CheckCircle size={12} />
+                          <span>Job is approved - cannot be edited</span>
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Business Rule Warnings */}
-                    {!canEdit && job.status !== 'DRAFT' && (
+                    {!canEdit && job.status === 'REJECTED' && (
+                      <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-red-800 dark:text-red-400">
+                          <XCircle size={12} />
+                          <span>Job was rejected - create a new job description</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {canEdit && ['PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE'].includes(job.status) && (
                       <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
                         <div className="flex items-center gap-2 text-xs text-yellow-800 dark:text-yellow-400">
-                          <Lock size={12} />
-                          <span>Editing disabled - Job is {job.status.toLowerCase()}</span>
+                          <AlertCircle size={12} />
+                          <span>Editing will reset approval process</span>
                         </div>
                       </div>
                     )}
@@ -583,7 +621,7 @@ const JobDescriptionList = ({
                       <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                         <div className="flex items-center gap-2 text-xs text-orange-800 dark:text-orange-400">
                           <AlertCircle size={12} />
-                          <span>Submission blocked - Employee has another submitted job description</span>
+                          <span>Submission blocked - Employee has another approved job description</span>
                         </div>
                       </div>
                     )}
