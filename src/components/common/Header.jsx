@@ -1,8 +1,6 @@
 // src/components/common/Header.jsx
 "use client";
 import { 
-  Bell, 
-  Search, 
   Moon, 
   Sun, 
   Menu, 
@@ -17,13 +15,13 @@ import {
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useAuth } from "@/auth/AuthContext";
+import NotificationDropdown from "./NotificationDropdown";
 
 const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   const { darkMode, toggleTheme } = useTheme();
   const { account, logout } = useAuth();
   const [currentTime, setCurrentTime] = useState("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [notifications] = useState(3); // Example notification count
   const userMenuRef = useRef(null);
 
   // Function to update time
@@ -77,8 +75,11 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     return 'U';
   };
 
-  console.log(account)
- localStorage.setItem("user_email", account.username)
+  // Store user email in localStorage
+  if (account?.username && typeof window !== 'undefined') {
+    localStorage.setItem("user_email", account.username);
+  }
+
   // User display name
   const getUserDisplayName = () => {
     if (account?.name) return account.name;
@@ -90,8 +91,8 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   };
 
   return (
-    <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet h-11  px-3 flex items-center justify-between shadow-sm">
-      {/* Left side with menu button and search */}
+    <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet h-11 px-3 flex items-center justify-between shadow-sm">
+      {/* Left side with menu button */}
       <div className="flex items-center space-x-3">
         <button
           onClick={toggleSidebar}
@@ -104,8 +105,6 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
             isSidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />
           )}
         </button>
-     
-        
       </div>
 
       {/* Right Side Elements */}
@@ -115,15 +114,8 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
           {currentTime}
         </div>
 
-        {/* Notifications */}
-        <button className="relative p-1.5 rounded-lg text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
-          <Bell size={16} />
-          {notifications > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-medium">
-              {notifications > 9 ? '9+' : notifications}
-            </span>
-          )}
-        </button>
+        {/* Notifications Dropdown */}
+        <NotificationDropdown />
 
         {/* Theme Toggle */}
         <button 
