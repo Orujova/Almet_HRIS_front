@@ -251,10 +251,9 @@ const ScenarioDetailModal = ({
               </div>
             </div>
           ) : selectedScenario ? (
-            // Single Scenario Detail View
             <div className="space-y-4">
               {/* Scenario Overview */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="text-center p-4 bg-almet-mystic dark:bg-gray-700 rounded-lg border border-almet-bali-hai/20 dark:border-gray-600">
                   <div className="text-lg font-bold text-almet-sapphire dark:text-almet-sapphire mb-1">
                     {formatCurrency(selectedScenario.data?.baseValue1 || selectedScenario.baseValue1)}
@@ -276,15 +275,7 @@ const ScenarioDetailModal = ({
                   <div className="text-xs font-medium text-almet-cloud-burst dark:text-white">Horizontal Average</div>
                   <div className="text-xs text-almet-waterloo dark:text-gray-300">Global intervals</div>
                 </div>
-                {selectedScenario.metrics && (
-                  <div className="text-center p-4 bg-almet-mystic dark:bg-gray-700 rounded-lg border border-almet-bali-hai/20 dark:border-gray-600">
-                    <div className="text-lg font-bold text-almet-sapphire dark:text-almet-sapphire mb-1">
-                      {formatCurrency(selectedScenario.metrics.totalBudgetImpact)}
-                    </div>
-                    <div className="text-xs font-medium text-almet-cloud-burst dark:text-white">Budget Impact</div>
-                    <div className="text-xs text-almet-waterloo dark:text-gray-300">Total cost</div>
-                  </div>
-                )}
+               
               </div>
 
               {/* Global Intervals Display */}

@@ -31,6 +31,21 @@ export const fetchCurrentScenario = createAsyncThunk(
   }
 );
 
+export const compareScenarios = createAsyncThunk(
+  'grading/compareScenarios',
+  async (scenarioIds, { rejectWithValue }) => {
+    try {
+      console.log('📊 Fetching comparison data for scenarios:', scenarioIds);
+      const response = await gradingApi.compareScenarios(scenarioIds);
+      console.log('✅ Comparison data received:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error comparing scenarios:', error);
+      return rejectWithValue(error.response?.data?.error || error.message);
+    }
+  }
+);
+
 export const fetchScenarios = createAsyncThunk(
   'grading/fetchScenarios',
   async ({ status }, { rejectWithValue }) => {
@@ -182,7 +197,7 @@ const initialState = {
   currentStructure: null,
   currentScenario: null,
   positionGroups: [],
-  
+   comparisonData: null,
   // Scenario inputs with proper defaults
   scenarioInputs: {
     baseValue1: '',
@@ -207,6 +222,7 @@ const initialState = {
   // Loading states for all operations
   loading: {
     currentStructure: false,
+     comparing: false,
     currentScenario: false,
     positionGroups: false,
     draftScenarios: false,
@@ -334,7 +350,20 @@ const gradingSlice = createSlice({
         state.loading.currentStructure = false;
         state.errors.currentStructure = action.payload;
       });
-
+    builder
+    .addCase(compareScenarios.pending, (state) => {
+      state.loading.comparing = true;
+      delete state.errors.comparing;
+    })
+    .addCase(compareScenarios.fulfilled, (state, action) => {
+      state.loading.comparing = false;
+      state.comparisonData = action.payload.comparison;
+      console.log('✅ Comparison data stored in state');
+    })
+    .addCase(compareScenarios.rejected, (state, action) => {
+      state.loading.comparing = false;
+      state.errors.comparing = action.payload;
+    });
     // Current Scenario
     builder
       .addCase(fetchCurrentScenario.pending, (state) => {
@@ -533,7 +562,7 @@ export const selectHasErrors = createSelector(
   [selectErrors],
   (errors) => Object.keys(errors).length > 0
 );
-
+export const selectComparisonData = (state) => state.grading.comparisonData;
 export const selectBestDraftScenario = createSelector(
   [selectDraftScenarios],
   (draftScenarios) => {

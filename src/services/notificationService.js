@@ -86,27 +86,7 @@ const NotificationService = {
     }
   },
 
-  /**
-   * Get notification history
-   */
-  getNotificationHistory: async (params = {}) => {
-    try {
-      const queryParams = new URLSearchParams();
-      
-      if (params.status) queryParams.append('status', params.status);
-      if (params.recipient_email) queryParams.append('recipient_email', params.recipient_email);
-      if (params.related_model) queryParams.append('related_model', params.related_model);
-      if (params.days) queryParams.append('days', params.days);
 
-      const response = await notificationApi.get(
-        `/notifications/history/?${queryParams.toString()}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching notification history:', error);
-      throw error;
-    }
-  },
 
   /**
    * Mark email as read

@@ -1,4 +1,4 @@
-// src/app/structure/grading/page.jsx - Dark mode düzəldilmiş with Toast and CustomCheckbox
+// src/app/structure/grading/page.jsx - FULL UPDATED VERSION
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -6,13 +6,14 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
 import useGrading from "@/hooks/useGrading";
 
-// Enhanced component imports
+// Komponentləri import et
 import GradingHeader from "@/components/grading/GradingHeader";
 import CurrentStructureCard from "@/components/grading/CurrentStructureCard";
 import CreateScenarioCard from "@/components/grading/CreateScenarioCard";
 import DraftScenariosCard from "@/components/grading/DraftScenariosCard";
 import ArchivedScenariosCard from "@/components/grading/ArchivedScenariosCard";
 import ScenarioDetailModal from "@/components/grading/ScenarioDetailModal";
+import ComparisonModal from "@/components/grading/ComparisonModal";
 import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
 
 // Icons
@@ -85,7 +86,9 @@ const CreateScenarioTab = ({
   handleBaseValueChange,
   handleVerticalChange,
   handleGlobalHorizontalChange,
-  handleSaveDraft
+  handleSaveDraft,
+  scenarioName,
+  onScenarioNameChange
 }) => {
   return (
     <div className="space-y-6">
@@ -101,6 +104,8 @@ const CreateScenarioTab = ({
         handleVerticalChange={handleVerticalChange}
         handleGlobalHorizontalChange={handleGlobalHorizontalChange}
         handleSaveDraft={handleSaveDraft}
+        scenarioName={scenarioName}
+        onScenarioNameChange={onScenarioNameChange}
       />
     </div>
   );
@@ -118,7 +123,7 @@ const DraftScenariosTab = ({
   handleArchiveDraft,
   toggleCompareMode,
   toggleScenarioForComparison,
-  startComparison
+  handleStartComparison
 }) => {
   return (
     <div className="space-y-6">
@@ -133,7 +138,7 @@ const DraftScenariosTab = ({
         handleArchiveDraft={handleArchiveDraft}
         toggleCompareMode={toggleCompareMode}
         toggleScenarioForComparison={toggleScenarioForComparison}
-        startComparison={startComparison}
+        handleStartComparison={handleStartComparison}
       />
     </div>
   );
@@ -170,6 +175,9 @@ const GradingPage = () => {
   const { showSuccess, showError, showWarning } = useToast();
   const [activeTab, setActiveTab] = useState('current');
   const [lastDraftCount, setLastDraftCount] = useState(0);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
+  const [scenarioName, setScenarioName] = useState('');
+  
   const prevLoadingRef = useRef({
     saving: false,
     applying: false,
@@ -218,17 +226,59 @@ const GradingPage = () => {
     handleViewDetails,
     toggleCompareMode,
     toggleScenarioForComparison,
-    startComparison,
     getScenarioForComparison,
     calculateGrades,
     refreshData,
     
     // Comparison helpers
     getVerticalInputValue,
-    getHorizontalInputValues
+    getHorizontalInputValues,
+    comparisonData,
+    handleCompareScenarios
   } = useGrading();
 
-  // Track draft count changes to detect new scenario creation
+  // In page.jsx - Update handleStartComparison function
+
+const handleStartComparison = async () => {
+  try {
+    console.log('🔄 Starting comparison with scenarios:', selectedForComparison);
+    
+    if (selectedForComparison.length < 1) {
+      showWarning('Please select at least 1 scenario to compare with current structure');
+      return null;
+    }
+    
+    // Always include 'current' in comparison
+    const scenariosToCompare = ['current', ...selectedForComparison];
+    
+    console.log('📊 Comparing scenarios:', scenariosToCompare);
+    
+    // Fetch comparison data
+    const result = await handleCompareScenarios(scenariosToCompare);
+    
+    if (result && result.comparison) {
+      console.log('✅ Comparison data received:', result.comparison);
+      setIsComparisonModalOpen(true);
+      return result;
+    } else {
+      showError('Failed to load comparison data');
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Comparison error:', error);
+    showError('Error loading comparison data');
+    return null;
+  }
+};
+
+  const handleSaveDraftWithName = async () => {
+    const result = await handleSaveDraft(scenarioName);
+    if (result) {
+      setScenarioName(''); // Clear name after successful save
+    }
+  };
+
+  // Track draft count changes
   useEffect(() => {
     if (draftScenarios.length > lastDraftCount && lastDraftCount > 0) {
       showSuccess("Draft scenario created successfully!");
@@ -236,26 +286,22 @@ const GradingPage = () => {
     setLastDraftCount(draftScenarios.length);
   }, [draftScenarios.length, lastDraftCount, showSuccess]);
 
-  // Track loading state changes to show success toasts
+  // Track loading state changes
   useEffect(() => {
     const prev = prevLoadingRef.current;
     
-    // Check if saving just completed
     if (prev.saving && !loading.saving) {
       showSuccess("Draft scenario saved successfully!");
     }
     
-    // Check if applying just completed
     if (prev.applying && !loading.applying) {
       showSuccess("Scenario applied as current structure!");
     }
     
-    // Check if archiving just completed
     if (prev.archiving && !loading.archiving) {
       showSuccess("Scenario archived successfully!");
     }
     
-    // Update previous state
     prevLoadingRef.current = {
       saving: loading.saving,
       applying: loading.applying,
@@ -263,11 +309,11 @@ const GradingPage = () => {
     };
   }, [loading.saving, loading.applying, loading.archiving, showSuccess]);
 
-  // Show toast notifications for errors
+  // Show toast for errors
   useEffect(() => {
     if (hasErrors) {
       Object.entries(errors).forEach(([key, message]) => {
-        if (message) {
+        if (message && key !== 'comparing') {
           showError(message);
         }
       });
@@ -310,7 +356,7 @@ const GradingPage = () => {
     );
   }
 
-  // Show error if no current data - with helpful UI
+  // Show error if no current data
   if (!dataAvailability.hasCurrentData && !isLoading) {
     return (
       <DashboardLayout>
@@ -378,7 +424,9 @@ const GradingPage = () => {
             handleBaseValueChange={handleBaseValueChange}
             handleVerticalChange={handleVerticalChange}
             handleGlobalHorizontalChange={handleGlobalHorizontalChange}
-            handleSaveDraft={handleSaveDraft}
+            handleSaveDraft={handleSaveDraftWithName}
+            scenarioName={scenarioName}
+            onScenarioNameChange={setScenarioName}
           />
         );
       case 'drafts':
@@ -394,7 +442,7 @@ const GradingPage = () => {
             handleArchiveDraft={handleArchiveDraft}
             toggleCompareMode={toggleCompareMode}
             toggleScenarioForComparison={toggleScenarioForComparison}
-            startComparison={startComparison}
+            handleStartComparison={handleStartComparison}
           />
         );
       case 'archive':
@@ -432,7 +480,7 @@ const GradingPage = () => {
             </div>
           </div>
 
-          {/* Enhanced Detail Modal */}
+          {/* Detail Modal */}
           {isDetailOpen && (
             <ScenarioDetailModal 
               isOpen={isDetailOpen}
@@ -451,7 +499,20 @@ const GradingPage = () => {
             />
           )}
 
-          {/* Enhanced Loading Overlay */}
+          {/* Comparison Modal */}
+          {isComparisonModalOpen && comparisonData && (
+            <ComparisonModal 
+              isOpen={isComparisonModalOpen}
+              onClose={() => setIsComparisonModalOpen(false)}
+              comparisonData={comparisonData}
+              scenarios={[
+                ...(selectedForComparison.includes('current') ? [{ id: 'current', name: 'Current Structure' }] : []),
+                ...draftScenarios.filter(s => selectedForComparison.includes(s.id))
+              ]}
+            />
+          )}
+
+          {/* Loading Overlay */}
           {(loading.saving || loading.applying || loading.archiving) && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 backdrop-blur-sm">
               <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-2xl border border-almet-mystic dark:border-gray-700 max-w-sm mx-4">

@@ -7,7 +7,12 @@ export const gradingApi = {
   
     return api.get('/grading/systems/current_structure/');
   },
-
+compareScenarios: (scenarioIds) => {
+  console.log('🔄 Comparing scenarios:', scenarioIds);
+  return api.post('/grading/scenarios/compare_scenarios/', {
+    scenario_ids: scenarioIds
+  });
+},
   // Current Scenario - NEW
   getCurrentScenario: () => {
 

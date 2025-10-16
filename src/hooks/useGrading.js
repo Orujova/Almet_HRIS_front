@@ -33,9 +33,11 @@ import {
   selectErrors,
   selectBestDraftScenario,
   selectValidationSummary,
-  selectInputSummary
+  selectInputSummary,
+  compareScenarios,
+  selectComparisonData
 } from '@/store/slices/gradingSlice';
-import { gradingApi } from '@/services/gradingApi';
+
 
 const useGrading = () => {
   const dispatch = useDispatch();
@@ -130,7 +132,26 @@ const useGrading = () => {
 
     return () => clearTimeout(timer);
   }, [dispatch, errors.baseValue1]);
-
+  const comparisonData = useSelector(selectComparisonData);  // YENİ
+  
+  // Comparison function - YENİ
+  const handleCompareScenarios = useCallback(async (scenarioIds) => {
+    try {
+      console.log('🔄 Starting comparison for:', scenarioIds);
+      const response = await dispatch(compareScenarios(scenarioIds));
+      
+      if (response.type.endsWith('/fulfilled')) {
+        console.log('✅ Comparison successful');
+        return response.payload;
+      } else {
+        console.error('❌ Comparison failed:', response.payload);
+        return null;
+      }
+    } catch (error) {
+      console.error('❌ Error in comparison:', error);
+      return null;
+    }
+  }, [dispatch]);
   const handleVerticalChange = useCallback((gradeName, value) => {
    
     const errorKey = `vertical-${gradeName}`;
@@ -308,47 +329,57 @@ const useGrading = () => {
     }
   }, [dispatch, scenarioInputs, lastCalculationInputs, clearCalculatedOutputs]);
 
-  // Save/Apply/Archive handlers (eyni qalır)
-  const handleSaveDraft = useCallback(async () => {
-    try {
+
+const handleSaveDraft = useCallback(async (customName = '') => {
+  try {
+    console.log('💾 Saving draft scenario with name:', customName);
     
-      
-      if (!validationSummary.canSave) {
-        console.error('❌ Cannot save draft - validation failed');
-        dispatch(setError({ field: 'saving', message: 'Please fix validation errors before saving' }));
-        return;
-      }
-
-      const draftData = {
-        name: `Scenario ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`,
-        description: 'Auto-generated scenario with global horizontal intervals',
-        baseValue1: parseFloat(scenarioInputs.baseValue1),
-        gradeOrder: scenarioInputs.gradeOrder,
-        grades: scenarioInputs.grades,
-        globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals || {
-          LD_to_LQ: 0,
-          LQ_to_M: 0,
-          M_to_UQ: 0,
-          UQ_to_UD: 0
-        },
-        calculatedOutputs: calculatedOutputs
-      };
-
-    
-
-      const response = await dispatch(saveDraftScenario(draftData));
-      
-      if (response.type.endsWith('/fulfilled')) {
-       
-        dispatch(initializeScenarioInputs(currentData));
-        clearCalculatedOutputs();
-      } else {
-        console.error('❌ Failed to save draft:', response.payload);
-      }
-    } catch (error) {
-      console.error('❌ Error saving draft:', error);
+    if (!validationSummary.canSave) {
+      console.error('❌ Cannot save draft - validation failed');
+      dispatch(setError({ field: 'saving', message: 'Please fix validation errors before saving' }));
+      return null;
     }
-  }, [dispatch, validationSummary.canSave, scenarioInputs, calculatedOutputs, currentData, clearCalculatedOutputs]);
+
+    // Use custom name or generate auto name
+    const scenarioName = customName && customName.trim() 
+      ? customName.trim() 
+      : `Scenario ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`;
+
+    const draftData = {
+      name: scenarioName,
+      description: customName && customName.trim() 
+        ? 'Custom scenario' 
+        : 'Auto-generated scenario with global horizontal intervals',
+      baseValue1: parseFloat(scenarioInputs.baseValue1),
+      gradeOrder: scenarioInputs.gradeOrder,
+      grades: scenarioInputs.grades,
+      globalHorizontalIntervals: scenarioInputs.globalHorizontalIntervals || {
+        LD_to_LQ: 0,
+        LQ_to_M: 0,
+        M_to_UQ: 0,
+        UQ_to_UD: 0
+      },
+      calculatedOutputs: calculatedOutputs
+    };
+
+    console.log('📦 Draft data prepared:', draftData);
+
+    const response = await dispatch(saveDraftScenario(draftData));
+    
+    if (response.type.endsWith('/fulfilled')) {
+      console.log('✅ Draft saved successfully');
+      dispatch(initializeScenarioInputs(currentData));
+      clearCalculatedOutputs();
+      return response.payload;
+    } else {
+      console.error('❌ Failed to save draft:', response.payload);
+      return null;
+    }
+  } catch (error) {
+    console.error('❌ Error saving draft:', error);
+    return null;
+  }
+}, [dispatch, validationSummary.canSave, scenarioInputs, calculatedOutputs, currentData, clearCalculatedOutputs]);
 
   const handleSaveAsCurrent = useCallback(async (scenarioId) => {
     try {
@@ -405,16 +436,21 @@ const useGrading = () => {
   }, [dispatch]);
 
   // Comparison functions
-  const toggleCompareMode = useCallback(() => {
-    setCompareMode(prev => {
-      const newMode = !prev;
+  // In useGrading.js - Update toggleCompareMode
 
-      if (!newMode) {
-        setSelectedForComparison([]);
-      }
-      return newMode;
-    });
-  }, []);
+const toggleCompareMode = useCallback(() => {
+  setCompareMode(prev => {
+    const newMode = !prev;
+    console.log(`🔄 Compare mode: ${newMode ? 'ON' : 'OFF'}`);
+
+    if (!newMode) {
+      // Exiting compare mode - clear selections
+      setSelectedForComparison([]);
+    }
+    // Note: No longer auto-selecting 'current' since it's always included
+    return newMode;
+  });
+}, []);
 
   const toggleScenarioForComparison = useCallback((scenarioId) => {
     setSelectedForComparison(prev => {
@@ -741,7 +777,8 @@ const useGrading = () => {
     // ✅ FIXED: Comparison helper functions - Current Scenario istifadə edir
     getVerticalInputValue,
     getHorizontalInputValues,
-    
+    comparisonData,           // YENİ
+    handleCompareScenarios,
     // Utility functions
     clearErrors: () => dispatch(clearErrors()),
     setError: (field, message) => dispatch(setError({ field, message }))

@@ -1,3 +1,4 @@
+// src/components/grading/DraftScenariosCard.jsx - FULL UPDATED (No separate current checkbox)
 import React, { useState } from "react";
 import { Calculator, GitCompare, Eye, CheckCircle, Archive, Plus, Calendar, User, RefreshCw, Search, Filter } from "lucide-react";
 import CustomCheckbox from "@/components/common/CustomCheckbox";
@@ -13,7 +14,7 @@ const DraftScenariosCard = ({
   handleArchiveDraft,
   toggleCompareMode,
   toggleScenarioForComparison,
-  startComparison
+  handleStartComparison
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("created_at");
@@ -66,13 +67,25 @@ const DraftScenariosCard = ({
             </h3>
           </div>
           <div className="flex gap-2">
-            {compareMode && selectedForComparison.length >= 2 && (
+            {compareMode && selectedForComparison.length >= 1 && (
               <button
-                onClick={startComparison}
-                className="bg-green-600 dark:bg-green-500 text-white px-3 py-1 text-xs rounded flex items-center gap-1 hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
+                onClick={async () => {
+                  await handleStartComparison();
+                }}
+                disabled={loading.comparing}
+                className="bg-green-600 dark:bg-green-500 text-white px-3 py-1 text-xs rounded flex items-center gap-1 hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Eye size={12} />
-                Compare ({selectedForComparison.length})
+                {loading.comparing ? (
+                  <>
+                    <RefreshCw size={12} className="animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    <Eye size={12} />
+                    Compare with Current ({selectedForComparison.length})
+                  </>
+                )}
               </button>
             )}
             <button
@@ -91,48 +104,18 @@ const DraftScenariosCard = ({
       </div>
 
       <div className="p-6">
-        {/* Current Structure for comparison */}
+        {/* Info message when in compare mode */}
         {compareMode && (
-          <div className="mb-6">
-            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3">Include Current Structure:</h3>
-            <div 
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${
-                selectedForComparison.includes('current')
-                  ? "border-almet-sapphire dark:border-almet-sapphire bg-blue-50 dark:bg-blue-900/20 shadow-md"
-                  : "border-gray-200 dark:border-gray-600 hover:shadow-md hover:border-gray-300 dark:hover:border-gray-500"
-              }`}
-              onClick={() => toggleScenarioForComparison('current')}
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="font-semibold text-sm text-almet-cloud-burst dark:text-white">Current Structure</h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Active grade structure from database</p>
-                </div>
-                <CustomCheckbox
-                  checked={selectedForComparison.includes('current')}
-                  onChange={() => toggleScenarioForComparison('current')}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                    {formatPercentage(currentData?.verticalAvg)}
-                  </div>
-                  <div className="text-xs text-almet-waterloo dark:text-gray-300">Vertical</div>
-                </div>
-                <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                    {formatPercentage(currentData?.horizontalAvg)}
-                  </div>
-                  <div className="text-xs text-almet-waterloo dark:text-gray-300">Horizontal</div>
-                </div>
-                <div className="text-center p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                  <div className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                    {formatCurrency(currentData?.baseValue1)}
-                  </div>
-                  <div className="text-xs text-almet-waterloo dark:text-gray-300">Base Value</div>
-                </div>
+          <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-start gap-3">
+              <GitCompare size={16} className="text-blue-600 dark:text-blue-400 mt-0.5" />
+              <div className="flex-1">
+                <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                  Comparison Mode Active
+                </h4>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  Select draft scenarios below to compare with the current structure. Current structure is automatically included in all comparisons.
+                </p>
               </div>
             </div>
           </div>
