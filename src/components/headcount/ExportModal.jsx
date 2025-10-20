@@ -362,7 +362,7 @@ const ExportModal = ({
                     <span className={`text-sm font-medium ${textPrimary}`}>
                       Filtered Results
                     </span>
-                    <span className={`text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300`}>
+                    <span className={`text-xs px-2 py-1 rounded-full bg-sky-100 dark:bg-sky-900/20 text-sky-800 dark:text-sky-300`}>
                       {filteredCount || 0} employees
                     </span>
                   </div>

@@ -71,9 +71,9 @@ const EmployeeStatusBadge = ({
         icon: UserX
       },
       'pending': {
-        bg: darkMode ? 'bg-blue-900/20' : 'bg-blue-50',
-        text: darkMode ? 'text-blue-300' : 'text-blue-700',
-        border: darkMode ? 'border-blue-700/30' : 'border-blue-200/60',
+        bg: darkMode ? 'bg-sky-900/20' : 'bg-sky-50',
+        text: darkMode ? 'text-sky-300' : 'text-sky-700',
+        border: darkMode ? 'border-sky-700/30' : 'border-sky-200/60',
         icon: Clock
       },
       'sick leave': {

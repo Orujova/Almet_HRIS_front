@@ -1,4 +1,4 @@
-// src/app/news/page.jsx - Company News Page (Final)
+// src/app/news/page.jsx - Company News Page with Target Groups (Complete)
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -6,12 +6,23 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { 
   Plus, Search, Calendar, Eye, Edit, Trash2, TrendingUp, 
-  Clock, X, FileText, CheckCircle, Loader2, Pin, PinOff
+  Clock, X, FileText, CheckCircle, Loader2, Pin, PinOff, Users, Target, Mail, Settings
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import NewsFormModal from '@/components/news/NewsFormModal';
 import { useToast } from '@/components/common/Toast';
+import TargetGroupManagement from '@/components/news/TargetGroupManagement';
+
+// Sample Target Groups
+const targetGroups = [
+  { id: 1, name: 'Leadership Team', memberCount: 15 },
+  { id: 2, name: 'Technology Division', memberCount: 45 },
+  { id: 3, name: 'Sales Force', memberCount: 32 },
+  { id: 4, name: 'Marketing Team', memberCount: 28 },
+  { id: 5, name: 'All Employees', memberCount: 250 },
+  { id: 6, name: 'Management Team', memberCount: 20 }
+];
 
 export default function CompanyNewsPage() {
   const { darkMode } = useTheme();
@@ -29,6 +40,7 @@ export default function CompanyNewsPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingNews, setEditingNews] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null });
+  const [showTargetGroupManagement, setShowTargetGroupManagement] = useState(false);
 
   // Categories
   const categories = [
@@ -58,7 +70,9 @@ export default function CompanyNewsPage() {
           imagePreview: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800',
           views: 1245,
           isPinned: true,
-          tags: ['Performance', 'Growth', 'Q4']
+          tags: ['Performance', 'Growth', 'Q4'],
+          targetGroups: [1, 5], // Leadership Team, All Employees
+          notifyMembers: true
         },
         {
           id: 2,
@@ -71,7 +85,9 @@ export default function CompanyNewsPage() {
           imagePreview: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
           views: 892,
           isPinned: false,
-          tags: ['Event', 'Team Building']
+          tags: ['Event', 'Team Building'],
+          targetGroups: [5], // All Employees
+          notifyMembers: true
         },
         {
           id: 3,
@@ -84,7 +100,9 @@ export default function CompanyNewsPage() {
           imagePreview: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800',
           views: 2341,
           isPinned: false,
-          tags: ['Expansion', 'Office', 'Dubai']
+          tags: ['Expansion', 'Office', 'Dubai'],
+          targetGroups: [1, 6, 5], // Leadership, Management, All Employees
+          notifyMembers: false
         },
         {
           id: 4,
@@ -97,7 +115,9 @@ export default function CompanyNewsPage() {
           imagePreview: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800',
           views: 567,
           isPinned: false,
-          tags: ['Achievement', 'Recognition', 'Employee']
+          tags: ['Achievement', 'Recognition', 'Employee'],
+          targetGroups: [5], // All Employees
+          notifyMembers: true
         },
         {
           id: 5,
@@ -110,7 +130,9 @@ export default function CompanyNewsPage() {
           imagePreview: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800',
           views: 1876,
           isPinned: true,
-          tags: ['Benefits', 'HR', 'Wellbeing']
+          tags: ['Benefits', 'HR', 'Wellbeing'],
+          targetGroups: [5], // All Employees
+          notifyMembers: true
         },
         {
           id: 6,
@@ -123,12 +145,19 @@ export default function CompanyNewsPage() {
           imagePreview: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
           views: 734,
           isPinned: false,
-          tags: ['Technology', 'Innovation', 'AI']
+          tags: ['Technology', 'Innovation', 'AI'],
+          targetGroups: [2, 4], // Technology, Marketing
+          notifyMembers: false
         }
       ]);
       setLoading(false);
     }, 1000);
   };
+
+  // Əgər Target Group Management açıqsa, onu göstər
+  if (showTargetGroupManagement) {
+    return <TargetGroupManagement onBack={() => setShowTargetGroupManagement(false)} />;
+  }
 
   // Filter and sort news
   const filteredNews = news.filter(item => {
@@ -232,6 +261,13 @@ export default function CompanyNewsPage() {
     showSuccess(item.isPinned ? 'News unpinned' : 'News pinned');
   };
 
+  const getTargetGroupInfo = (groupIds) => {
+    if (!groupIds || groupIds.length === 0) return { groups: [], totalMembers: 0 };
+    const groups = targetGroups.filter(g => groupIds.includes(g.id));
+    const totalMembers = groups.reduce((sum, g) => sum + g.memberCount, 0);
+    return { groups, totalMembers };
+  };
+
   return (
     <DashboardLayout>
       <div className="p-4 bg-almet-mystic dark:bg-gray-900 min-h-screen">
@@ -247,13 +283,22 @@ export default function CompanyNewsPage() {
                 Stay updated with the latest announcements and events
               </p>
             </div>
-            <button 
-              onClick={handleCreateNews}
-              className="flex items-center gap-2 px-4 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors font-medium text-sm shadow-sm"
-            >
-              <Plus size={18} />
-              Create News
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowTargetGroupManagement(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-almet-cloud-burst border border-gray-300 dark:border-almet-comet text-gray-700 dark:text-almet-bali-hai rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet transition-colors font-medium text-sm shadow-sm"
+              >
+                <Users size={18} />
+                Manage Target Groups
+              </button>
+              <button 
+                onClick={handleCreateNews}
+                className="flex items-center gap-2 px-4 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors font-medium text-sm shadow-sm"
+              >
+                <Plus size={18} />
+                Create News
+              </button>
+            </div>
           </div>
         </div>
 
@@ -438,6 +483,42 @@ export default function CompanyNewsPage() {
                         {item.excerpt}
                       </p>
 
+                      {/* Target Groups */}
+                      {item.targetGroups && item.targetGroups.length > 0 && (
+                        <div className="mb-3">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-almet-bali-hai">
+                              <Target size={12} />
+                              <span className="font-medium">Sent to:</span>
+                            </div>
+                            {item.targetGroups.slice(0, 2).map(groupId => {
+                              const group = targetGroups.find(g => g.id === groupId);
+                              return group ? (
+                                <span
+                                  key={groupId}
+                                  className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium"
+                                >
+                                  {group.name}
+                                </span>
+                              ) : null;
+                            })}
+                            {item.targetGroups.length > 2 && (
+                              <span className="text-xs text-gray-500 dark:text-almet-bali-hai">
+                                +{item.targetGroups.length - 2} more
+                              </span>
+                            )}
+                            {item.notifyMembers && (
+                              <div className="flex items-center gap-1 ml-auto">
+                                <Mail size={12} className="text-green-600 dark:text-green-400" />
+                                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                                  Notified
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Tags */}
                       <div className="flex flex-wrap gap-1 mb-3">
                         {item.tags.slice(0, 3).map((tag, idx) => (
@@ -566,6 +647,55 @@ export default function CompanyNewsPage() {
                 <p className="text-gray-700 dark:text-almet-bali-hai leading-relaxed mb-4 whitespace-pre-line">
                   {selectedNews.content}
                 </p>
+
+                {/* Target Groups Section */}
+                {selectedNews.targetGroups && selectedNews.targetGroups.length > 0 && (
+                  <div className="mb-4 p-4 bg-gray-50 dark:bg-almet-san-juan rounded-lg border border-gray-200 dark:border-almet-comet">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Target className="text-almet-sapphire" size={18} />
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Target Groups
+                      </h3>
+                      {selectedNews.notifyMembers && (
+                        <div className="flex items-center gap-1 ml-auto">
+                          <Mail size={14} className="text-green-600 dark:text-green-400" />
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            Email Sent
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedNews.targetGroups.map(groupId => {
+                        const group = targetGroups.find(g => g.id === groupId);
+                        return group ? (
+                          <div
+                            key={groupId}
+                            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet"
+                          >
+                            <Users size={14} className="text-gray-600 dark:text-almet-bali-hai" />
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {group.name}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-almet-bali-hai">
+                              ({group.memberCount} members)
+                            </span>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
+                      <p className="text-xs text-gray-600 dark:text-almet-bali-hai">
+                        Total Recipients: <span className="font-semibold text-gray-900 dark:text-white">
+                          {selectedNews.targetGroups.reduce((sum, groupId) => {
+                            const group = targetGroups.find(g => g.id === groupId);
+                            return sum + (group?.memberCount || 0);
+                          }, 0)} employees
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-almet-comet">

@@ -61,7 +61,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
       case 'PENDING_LINE_MANAGER':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
       case 'PENDING_EMPLOYEE':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400';
       case 'APPROVED':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'REJECTED':
@@ -292,7 +292,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                   ) : safeJobData.manual_employee_name ? (
                     <div className="flex flex-col items-end">
                       <div className="flex items-center gap-2">
-                        <UserCheck size={12} className="text-blue-600" />
+                        <UserCheck size={12} className="text-sky-600" />
                         <span className={`${textPrimary} text-sm font-medium`}>
                           {safeJobData.manual_employee_name}
                         </span>
@@ -390,7 +390,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           skillItem.is_mandatory 
                             ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' 
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400'
                         }`}>
                           {skillItem.is_mandatory ? 'Required' : 'Optional'}
                         </span>
@@ -424,7 +424,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                         <span className={`text-xs px-2 py-1 rounded-full ${
                           compItem.is_mandatory 
                             ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' 
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                            : 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400'
                         }`}>
                           {compItem.is_mandatory ? 'Required' : 'Optional'}
                         </span>

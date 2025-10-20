@@ -236,10 +236,10 @@ useEffect(() => {
 
         {/* ADDED: Pre-selection Info Banner */}
         {selectedEmployees.length > 0 && (
-          <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+          <div className="px-4 py-2 bg-sky-50 dark:bg-sky-900/20 border-b border-sky-200 dark:border-sky-800">
             <div className="flex items-center gap-2 text-xs">
-              <CheckCircle size={14} className="text-blue-600" />
-              <span className="text-blue-800 dark:text-blue-300">
+              <CheckCircle size={14} className="text-sky-600" />
+              <span className="text-sky-800 dark:text-sky-300">
                 <span className="font-semibold">{selectedEmployees.length}</span> record{selectedEmployees.length > 1 ? 's' : ''} pre-selected based on matching criteria. 
                 You can modify the selection below.
               </span>
@@ -316,7 +316,7 @@ useEffect(() => {
                   <div 
                     key={employee.id}
                     className={`border ${borderColor} rounded-lg overflow-hidden transition-all duration-200 ${
-                      isSelected ? 'border-almet-sapphire bg-blue-50 dark:bg-blue-900/10' : ''
+                      isSelected ? 'border-almet-sapphire bg-sky-50 dark:bg-sky-900/10' : ''
                     }`}
                   >
                     {/* Employee/Vacancy Summary */}

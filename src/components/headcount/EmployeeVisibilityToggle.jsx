@@ -145,8 +145,8 @@ const EmployeeVisibilityToggle = ({
               className={`
                 px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200
                 ${darkMode 
-                  ? 'bg-blue-600/80 text-white hover:bg-blue-600 hover:scale-105' 
-                  : 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105'
+                  ? 'bg-sky-600/80 text-white hover:bg-sky-600 hover:scale-105' 
+                  : 'bg-sky-500 text-white hover:bg-sky-600 hover:scale-105'
                 }
               `}
             >

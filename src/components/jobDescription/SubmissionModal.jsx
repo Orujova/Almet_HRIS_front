@@ -43,8 +43,8 @@ const SubmissionModal = ({
         title: 'Submit Job Description for Approval',
         description: 'Submit this job description to start the approval workflow.',
         icon: Send,
-        iconColor: 'text-blue-600',
-        iconBgColor: 'bg-blue-50 dark:bg-blue-900/30'
+        iconColor: 'text-sky-600',
+        iconBgColor: 'bg-sky-50 dark:bg-sky-900/30'
       };
     }
     
@@ -195,7 +195,7 @@ const SubmissionModal = ({
             <div className="space-y-4 text-xs">
               <div className="flex items-start gap-3">
                 <div className="flex-shrink-0 mt-1">
-                  <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold">
+                  <div className="w-5 h-5 bg-sky-100 dark:bg-sky-900/30 text-sky-600 rounded-full flex items-center justify-center text-xs font-bold">
                     1
                   </div>
                 </div>
@@ -237,12 +237,12 @@ const SubmissionModal = ({
 
           {/* Assignment Summary for Multiple Jobs */}
           {isMultipleJobs && (
-            <div className={`p-4 border border-blue-200 dark:border-blue-800 rounded-lg bg-blue-50 dark:bg-blue-900/20`}>
-              <h4 className={`text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2`}>
+            <div className={`p-4 border border-sky-200 dark:border-sky-800 rounded-lg bg-sky-50 dark:bg-sky-900/20`}>
+              <h4 className={`text-sm font-semibold text-sky-800 dark:text-sky-300 mb-3 flex items-center gap-2`}>
                 <Users size={14} />
                 Assignment Summary
               </h4>
-              <div className="text-xs text-blue-700 dark:text-blue-400 space-y-2">
+              <div className="text-xs text-sky-700 dark:text-sky-400 space-y-2">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={12} />
                   <span><span className="font-medium">{jobCount} job descriptions</span> created for different employees</span>
@@ -287,7 +287,7 @@ const SubmissionModal = ({
               </div>
               
               <div className="flex items-center gap-3 text-xs">
-                <div className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 rounded-full flex items-center justify-center font-bold">
+                <div className="flex-shrink-0 w-6 h-6 bg-sky-100 dark:bg-sky-900/30 text-sky-600 rounded-full flex items-center justify-center font-bold">
                   2
                 </div>
                 <div>

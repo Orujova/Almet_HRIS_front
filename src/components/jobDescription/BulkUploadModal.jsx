@@ -189,7 +189,7 @@ const BulkUploadModal = ({
           {/* Download Template Section */}
           <div className={`p-3 ${bgAccent} rounded-lg border ${borderColor}`}>
             <div className="flex items-start gap-3">
-              <Info size={18} className="text-blue-600 mt-0.5 flex-shrink-0" />
+              <Info size={18} className="text-sky-600 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
                 <h3 className={`text-xs font-semibold ${textPrimary} mb-2`}>
                   Step 1: Download Template

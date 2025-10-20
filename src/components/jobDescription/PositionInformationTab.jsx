@@ -619,9 +619,9 @@ const getAssignmentPreviewDisplay = () => {
   if (previewLoading) {
     return {
       icon: Loader,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-      borderColor: 'border-blue-200 dark:border-blue-800',
+      color: 'text-sky-600',
+      bgColor: 'bg-sky-50 dark:bg-sky-900/20',
+      borderColor: 'border-sky-200 dark:border-sky-800',
       title: 'Checking Employee Matches...',
       message: 'Loading assignment preview...',
       showSpinner: true
@@ -693,9 +693,9 @@ const getAssignmentPreviewDisplay = () => {
     default:
       return {
         icon: Info,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-50 dark:bg-blue-900/20',
-        borderColor: 'border-blue-200 dark:border-blue-800',
+        color: 'text-sky-600',
+        bgColor: 'bg-sky-50 dark:bg-sky-900/20',
+        borderColor: 'border-sky-200 dark:border-sky-800',
         title: 'Employee Assignment Preview',
         message: assignmentPreview.previewMessage || 'Complete all required job information to see assignment preview'
       };
@@ -1026,7 +1026,7 @@ const getAssignmentPreviewDisplay = () => {
       {!shouldShowPreview && (
         <div className={`p-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border border-gray-200 dark:border-gray-800`}>
           <div className="flex items-start gap-3">
-            <Info size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+            <Info size={16} className="text-sky-600 mt-0.5 flex-shrink-0" />
             <div>
               <h4 className={`text-sm font-semibold ${textPrimary} mb-1`}>
                 Complete Required Fields

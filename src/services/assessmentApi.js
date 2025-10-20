@@ -362,7 +362,31 @@ export const positionBehavioralApi = {
       throw error;
     }
   },
+   // YENİ: Get grade levels for position group
+  getGradeLevels: async (positionGroupId) => {
+    try {
+      const response = await api.get(
+        `/assessments/position-behavioral/get_grade_levels/?position_group_id=${positionGroupId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching grade levels:', error);
+      throw error;
+    }
+  },
 
+  // YENİ: Get job titles for position group and grade level
+  getJobTitles: async (positionGroupId, gradeLevel) => {
+    try {
+      const response = await api.get(
+        `/assessments/position-behavioral/get_job_titles/?position_group_id=${positionGroupId}&grade_level=${gradeLevel}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching job titles:', error);
+      throw error;
+    }
+  },
   getForEmployee: async (employeeId) => {
     try {
       const response = await api.get(`/assessments/position-behavioral/get_for_employee/?employee_id=${employeeId}`);

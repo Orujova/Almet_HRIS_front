@@ -281,7 +281,7 @@ const handleStartComparison = async () => {
   // Track draft count changes
   useEffect(() => {
     if (draftScenarios.length > lastDraftCount && lastDraftCount > 0) {
-      showSuccess("Draft scenario created successfully!");
+  
     }
     setLastDraftCount(draftScenarios.length);
   }, [draftScenarios.length, lastDraftCount, showSuccess]);

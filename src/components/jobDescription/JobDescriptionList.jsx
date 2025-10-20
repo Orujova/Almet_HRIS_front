@@ -91,7 +91,7 @@ const JobDescriptionList = ({
       case 'PENDING_LINE_MANAGER':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
       case 'PENDING_EMPLOYEE':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-400';
       case 'APPROVED':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'REJECTED':
@@ -520,7 +520,7 @@ const JobDescriptionList = ({
                               disabled={actionLoading || !canSubmit}
                               className={`p-2 rounded-lg transition-colors duration-200 ${
                                 canSubmit 
-                                  ? 'text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30' 
+                                  ? 'text-sky-600 hover:bg-sky-100 dark:hover:bg-sky-900/30' 
                                   : 'text-gray-400 cursor-not-allowed opacity-50'
                               } disabled:opacity-50`}
                               title={getSubmitTooltip(job)}

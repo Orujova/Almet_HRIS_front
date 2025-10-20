@@ -355,10 +355,10 @@ export default function ReferenceDataView({ context }) {
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => openCrudModal(activeTab, 'edit', pg)}
-                        className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                        className="p-1 rounded hover:bg-sky-50 dark:hover:bg-sky-900/30 transition-colors"
                         title="Edit"
                       >
-                        <Edit size={10} className="text-blue-600 dark:text-blue-400" />
+                        <Edit size={10} className="text-sky-600 dark:text-sky-400" />
                       </button>
                       <button
                         onClick={() => openDeleteConfirmation(activeTab, pg)}
@@ -523,10 +523,10 @@ export default function ReferenceDataView({ context }) {
                       <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => openCrudModal(activeTab, 'edit', item)}
-                          className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                          className="p-1 rounded hover:bg-sky-50 dark:hover:bg-sky-900/30 transition-colors"
                           title="Edit"
                         >
-                          <Edit size={11} className="text-blue-600 dark:text-blue-400" />
+                          <Edit size={11} className="text-sky-600 dark:text-sky-400" />
                         </button>
                         <button
                           onClick={() => openDeleteConfirmation(activeTab, item)}

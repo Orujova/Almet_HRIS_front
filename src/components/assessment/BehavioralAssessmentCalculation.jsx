@@ -1,17 +1,17 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { 
   Plus, Users, Target, Search, Eye, Edit, Trash2, 
   Download, AlertCircle, CheckCircle, Loader2, X, Save, 
-  User, Building, RefreshCw, Info
+  User, Building, RefreshCw, Info, ChevronDown
 } from 'lucide-react';
 import { assessmentApi } from '@/services/assessmentApi';
 import { competencyApi } from '@/services/competencyApi';
-
-// Import common components
 import StatusBadge from './StatusBadge';
 import ActionButton from './ActionButton';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
+import MultiSelect from '@/components/common/MultiSelect';
 import CollapsibleGroup from './CollapsibleGroup';
 import { useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -47,7 +47,7 @@ const BehavioralAssessmentCalculation = () => {
     type: 'default'
   });
   
-  // Collapsible states for create modals
+  // Collapsible states
   const [expandedGroups, setExpandedGroups] = useState({});
   
   // Data States
@@ -58,11 +58,19 @@ const BehavioralAssessmentCalculation = () => {
   const [behavioralScales, setBehavioralScales] = useState([]);
   const [letterGrades, setLetterGrades] = useState([]);
   const [behavioralGroups, setBehavioralGroups] = useState([]);
-  const [uniqueJobTitles, setUniqueJobTitles] = useState([]);
+  
+  // Grade Level and Job Title States
+  const [gradeLevels, setGradeLevels] = useState([]);
+  const [jobTitles, setJobTitles] = useState([]);
+  const [editGradeLevels, setEditGradeLevels] = useState([]);
+  const [editJobTitles, setEditJobTitles] = useState([]);
+  const [selectedGradeLevels, setSelectedGradeLevels] = useState([]);
+  const [editSelectedGradeLevels, setEditSelectedGradeLevels] = useState([]);
   
   // Form States
   const [positionFormData, setPositionFormData] = useState({
     position_group: '',
+    grade_levels: [],
     job_title: '',
     competency_ratings: []
   });
@@ -70,6 +78,7 @@ const BehavioralAssessmentCalculation = () => {
   const [editPositionFormData, setEditPositionFormData] = useState({
     id: '',
     position_group: '',
+    grade_levels: [],
     job_title: '',
     competency_ratings: []
   });
@@ -90,49 +99,12 @@ const BehavioralAssessmentCalculation = () => {
     action_type: 'save_draft'
   });
 
-  // Position-Job Title Relationship States
-  const [filteredJobTitles, setFilteredJobTitles] = useState([]);
-  const [editFilteredJobTitles, setEditFilteredJobTitles] = useState([]);
-
-  // Helper function to filter job titles based on position group
-  const getJobTitlesForPositionGroup = (positionGroupId) => {
-    if (!positionGroupId) return uniqueJobTitles;
-    
-    const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
-    const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
-    
-    return jobTitlesInGroup.map((title, index) => ({ 
-      value: title,
-      name: title,
-      uniqueId: `${positionGroupId}-${title}-${index}`
-    }));
-  };
-
-  // Update filtered job titles when position group changes
-  useEffect(() => {
-    const filtered = getJobTitlesForPositionGroup(positionFormData.position_group);
-    setFilteredJobTitles(filtered);
-    
-    if (positionFormData.job_title && !filtered.find(jt => jt.value === positionFormData.job_title)) {
-      setPositionFormData(prev => ({ ...prev, job_title: '' }));
-    }
-  }, [positionFormData.position_group, employees, uniqueJobTitles]);
-
-  useEffect(() => {
-    const filtered = getJobTitlesForPositionGroup(editPositionFormData.position_group);
-    setEditFilteredJobTitles(filtered);
-    
-    if (editPositionFormData.job_title && !filtered.find(jt => jt.value === editPositionFormData.job_title)) {
-      setEditPositionFormData(prev => ({ ...prev, job_title: '' }));
-    }
-  }, [editPositionFormData.position_group, employees, uniqueJobTitles]);
-
   // Grade Badge Component
   const GradeBadge = ({ grade, percentage }) => {
     const getGradeColor = (grade) => {
       switch (grade) {
         case 'A': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-        case 'B': return 'bg-blue-50 text-blue-700 border-blue-200';
+        case 'B': return 'bg-sky-50 text-sky-700 border-sky-200';
         case 'C': return 'bg-amber-50 text-amber-700 border-amber-200';
         case 'D': return 'bg-orange-50 text-orange-700 border-orange-200';
         case 'E': return 'bg-purple-50 text-purple-700 border-purple-200';
@@ -152,70 +124,185 @@ const BehavioralAssessmentCalculation = () => {
     );
   };
 
-  // Fetch all data
-  const fetchData = async () => {
-    setIsLoading(true);
-    
-    try {
-      const [
-        positionAssessmentsRes, 
-        employeeAssessmentsRes, 
-        employeesRes, 
-        positionGroupsRes,
-        behavioralScalesRes,
-        letterGradesRes,
-        behavioralGroupsRes
-      ] = await Promise.all([
-        assessmentApi.positionBehavioral.getAll(),
-        assessmentApi.employeeBehavioral.getAll(),
-        assessmentApi.employees.getAll(),
-        assessmentApi.positionGroups.getAll(),
-        assessmentApi.behavioralScales.getAll(),
-        assessmentApi.letterGrades.getAll(),
-        competencyApi.behavioralGroups.getAll()
-      ]);
-      
-      setPositionAssessments(positionAssessmentsRes.results || []);
-      setEmployeeAssessments(employeeAssessmentsRes.results || []);
-      const employeesList = employeesRes.results || [];
-      setEmployees(employeesList);
-      setPositionGroups(positionGroupsRes.results || []);
-      setBehavioralScales(behavioralScalesRes.results || []);
-      setLetterGrades(letterGradesRes.results || []);
-      
-      // Extract unique job titles
-      const jobTitles = [...new Set(employeesList.map(emp => emp.job_title).filter(Boolean))];
-      setUniqueJobTitles(jobTitles.map(title => ({ name: title, value: title })));
+  // Handle Position Group Change for Create Form
+  const handlePositionGroupChange = async (positionGroupId) => {
+    if (!positionGroupId) {
+      setGradeLevels([]);
+      setJobTitles([]);
+      setSelectedGradeLevels([]);
+      setPositionFormData(prev => ({ ...prev, position_group: '', grade_levels: [], job_title: '' }));
+      return;
+    }
 
-      // Fetch behavioral groups with competencies
-      const behavioralGroupsList = behavioralGroupsRes.results || [];
-      const groupsWithCompetencies = await Promise.all(
-        behavioralGroupsList.map(async (group) => {
-          try {
-            const groupDetails = await competencyApi.behavioralGroups.getById(group.id);
-            return {
-              ...group,
-              competencies: groupDetails.competencies || []
-            };
-          } catch (err) {
-            console.error(`Error fetching competencies for group ${group.id}:`, err);
-            return { ...group, competencies: [] };
-          }
-        })
-      );
-      setBehavioralGroups(groupsWithCompetencies);
+    setPositionFormData(prev => ({ ...prev, position_group: positionGroupId, grade_levels: [], job_title: '' }));
+    setJobTitles([]);
+    setSelectedGradeLevels([]);
+
+    try {
+      const response = await assessmentApi.positionBehavioral.getGradeLevels(positionGroupId);
+      const levels = response.grade_levels.map(level => ({ 
+        id: level, 
+        name: `Grade ${level}`, 
+        value: level 
+      }));
+      setGradeLevels(levels);
       
+      // Auto-select all grade levels
+      const allLevels = response.grade_levels;
+      setSelectedGradeLevels(allLevels);
+      setPositionFormData(prev => ({ ...prev, grade_levels: allLevels }));
+      
+      // Load job titles for all grades
+      if (allLevels.length > 0) {
+        await loadJobTitlesForMultipleGrades(positionGroupId, allLevels);
+      }
     } catch (err) {
-      showError('Failed to load assessment data');
-      console.error('Error fetching data:', err);
-    } finally {
-      setIsLoading(false);
+      console.error('Failed to fetch grade levels:', err);
+      showError('Failed to load grade levels');
+      setGradeLevels([]);
     }
   };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Handle MultiSelect change for grade levels
+  const handleGradeLevelMultiSelectChange = (fieldName, value) => {
+    setSelectedGradeLevels(prev => {
+      const newSelection = prev.includes(value)
+        ? prev.filter(g => g !== value)
+        : [...prev, value];
+      
+      setPositionFormData(prevForm => ({
+        ...prevForm,
+        grade_levels: newSelection
+      }));
+      
+      if (newSelection.length > 0) {
+        loadJobTitlesForMultipleGrades(positionFormData.position_group, newSelection);
+      } else {
+        setJobTitles([]);
+        setPositionFormData(prevForm => ({ ...prevForm, job_title: '' }));
+      }
+      
+      return newSelection;
+    });
+  };
+
+  // Load Job Titles for Multiple Grades
+  const loadJobTitlesForMultipleGrades = async (positionGroupId, gradeLevels) => {
+    if (!positionGroupId || gradeLevels.length === 0) {
+      setJobTitles([]);
+      return;
+    }
+
+    try {
+      const allJobTitlesPromises = gradeLevels.map(gradeLevel =>
+        assessmentApi.positionBehavioral.getJobTitles(positionGroupId, gradeLevel)
+      );
+      
+      const responses = await Promise.all(allJobTitlesPromises);
+      
+      const allJobTitles = new Set();
+      responses.forEach(response => {
+        response.job_titles.forEach(title => allJobTitles.add(title));
+      });
+      
+      const titles = Array.from(allJobTitles).map(title => ({ 
+        id: title, 
+        name: title, 
+        value: title 
+      }));
+      
+      setJobTitles(titles);
+    } catch (err) {
+      console.error('Failed to fetch job titles:', err);
+      showError('Failed to load job titles');
+      setJobTitles([]);
+    }
+  };
+
+  // Handle Position Group Change for Edit Form
+  const handleEditPositionGroupChange = async (positionGroupId) => {
+    if (!positionGroupId) {
+      setEditGradeLevels([]);
+      setEditJobTitles([]);
+      setEditSelectedGradeLevels([]);
+      setEditPositionFormData(prev => ({ ...prev, position_group: '', grade_levels: [], job_title: '' }));
+      return;
+    }
+
+    setEditPositionFormData(prev => ({ ...prev, position_group: positionGroupId, grade_levels: [], job_title: '' }));
+    setEditJobTitles([]);
+    setEditSelectedGradeLevels([]);
+
+    try {
+      const response = await assessmentApi.positionBehavioral.getGradeLevels(positionGroupId);
+      const levels = response.grade_levels.map(level => ({ 
+        id: level, 
+        name: `Grade ${level}`, 
+        value: level 
+      }));
+      setEditGradeLevels(levels);
+    } catch (err) {
+      console.error('Failed to fetch grade levels:', err);
+      showError('Failed to load grade levels');
+      setEditGradeLevels([]);
+    }
+  };
+
+  // Handle MultiSelect change for edit grade levels
+  const handleEditGradeLevelMultiSelectChange = (fieldName, value) => {
+    setEditSelectedGradeLevels(prev => {
+      const newSelection = prev.includes(value)
+        ? prev.filter(g => g !== value)
+        : [...prev, value];
+      
+      setEditPositionFormData(prevForm => ({
+        ...prevForm,
+        grade_levels: newSelection
+      }));
+      
+      if (newSelection.length > 0) {
+        loadEditJobTitlesForMultipleGrades(editPositionFormData.position_group, newSelection);
+      } else {
+        setEditJobTitles([]);
+        setEditPositionFormData(prevForm => ({ ...prevForm, job_title: '' }));
+      }
+      
+      return newSelection;
+    });
+  };
+
+  // Load Job Titles for Multiple Grades (Edit)
+  const loadEditJobTitlesForMultipleGrades = async (positionGroupId, gradeLevels) => {
+    if (!positionGroupId || gradeLevels.length === 0) {
+      setEditJobTitles([]);
+      return;
+    }
+
+    try {
+      const allJobTitlesPromises = gradeLevels.map(gradeLevel =>
+        assessmentApi.positionBehavioral.getJobTitles(positionGroupId, gradeLevel)
+      );
+      
+      const responses = await Promise.all(allJobTitlesPromises);
+      
+      const allJobTitles = new Set();
+      responses.forEach(response => {
+        response.job_titles.forEach(title => allJobTitles.add(title));
+      });
+      
+      const titles = Array.from(allJobTitles).map(title => ({ 
+        id: title, 
+        name: title, 
+        value: title 
+      }));
+      
+      setEditJobTitles(titles);
+    } catch (err) {
+      console.error('Failed to fetch job titles:', err);
+      showError('Failed to load job titles');
+      setEditJobTitles([]);
+    }
+  };
 
   // Auto-select position assessment for employee
   const handleEmployeeChange = async (employeeId) => {
@@ -225,7 +312,6 @@ const BehavioralAssessmentCalculation = () => {
 
     setSelectedEmployeeInfo(selectedEmployee);
     
-    // Check for existing assessment
     const existingAssessment = employeeAssessments.find(
       assessment => assessment.employee === employeeId
     );
@@ -282,6 +368,65 @@ const BehavioralAssessmentCalculation = () => {
     }
   };
 
+  // Fetch all data
+  const fetchData = async () => {
+    setIsLoading(true);
+    
+    try {
+      const [
+        positionAssessmentsRes, 
+        employeeAssessmentsRes, 
+        employeesRes, 
+        positionGroupsRes,
+        behavioralScalesRes,
+        letterGradesRes,
+        behavioralGroupsRes
+      ] = await Promise.all([
+        assessmentApi.positionBehavioral.getAll(),
+        assessmentApi.employeeBehavioral.getAll(),
+        assessmentApi.employees.getAll(),
+        assessmentApi.positionGroups.getAll(),
+        assessmentApi.behavioralScales.getAll(),
+        assessmentApi.letterGrades.getAll(),
+        competencyApi.behavioralGroups.getAll()
+      ]);
+      
+      setPositionAssessments(positionAssessmentsRes.results || []);
+      setEmployeeAssessments(employeeAssessmentsRes.results || []);
+      setEmployees(employeesRes.results || []);
+      setPositionGroups(positionGroupsRes.results || []);
+      setBehavioralScales(behavioralScalesRes.results || []);
+      setLetterGrades(letterGradesRes.results || []);
+
+      const behavioralGroupsList = behavioralGroupsRes.results || [];
+      const groupsWithCompetencies = await Promise.all(
+        behavioralGroupsList.map(async (group) => {
+          try {
+            const groupDetails = await competencyApi.behavioralGroups.getById(group.id);
+            return {
+              ...group,
+              competencies: groupDetails.competencies || []
+            };
+          } catch (err) {
+            console.error(`Error fetching competencies for group ${group.id}:`, err);
+            return { ...group, competencies: [] };
+          }
+        })
+      );
+      setBehavioralGroups(groupsWithCompetencies);
+      
+    } catch (err) {
+      showError('Failed to load assessment data');
+      console.error('Error fetching data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   // CRUD Operations
   const handleEditPositionAssessment = async (assessment) => {
     try {
@@ -290,12 +435,23 @@ const BehavioralAssessmentCalculation = () => {
       setEditPositionFormData({
         id: assessment.id,
         position_group: assessment.position_group,
+        grade_levels: assessment.grade_levels || [],
         job_title: assessment.job_title,
         competency_ratings: detailedAssessment.competency_ratings?.map(rating => ({
           behavioral_competency_id: rating.behavioral_competency,
           required_level: rating.required_level
         })) || []
       });
+      
+      setEditSelectedGradeLevels(assessment.grade_levels || []);
+      
+      if (assessment.position_group) {
+        await handleEditPositionGroupChange(assessment.position_group);
+        if (assessment.grade_levels && assessment.grade_levels.length > 0) {
+          setEditSelectedGradeLevels(assessment.grade_levels);
+          await loadEditJobTitlesForMultipleGrades(assessment.position_group, assessment.grade_levels);
+        }
+      }
       
       setShowEditPositionModal(true);
     } catch (err) {
@@ -329,8 +485,8 @@ const BehavioralAssessmentCalculation = () => {
   };
 
   const handleCreatePositionAssessment = async () => {
-    if (!positionFormData.position_group || !positionFormData.job_title) {
-      showError('Please fill all required fields');
+    if (!positionFormData.position_group || positionFormData.grade_levels.length === 0 || !positionFormData.job_title) {
+      showError('Please fill all required fields and select at least one grade level');
       return;
     }
 
@@ -345,7 +501,10 @@ const BehavioralAssessmentCalculation = () => {
     try {
       await assessmentApi.positionBehavioral.create(positionFormData);
       setShowCreatePositionModal(false);
-      setPositionFormData({ position_group: '', job_title: '', competency_ratings: [] });
+      setPositionFormData({ position_group: '', grade_levels: [], job_title: '', competency_ratings: [] });
+      setGradeLevels([]);
+      setJobTitles([]);
+      setSelectedGradeLevels([]);
       setPositionDuplicateError(null);
       showSuccess('Position assessment template created successfully');
       await fetchData();
@@ -354,8 +513,9 @@ const BehavioralAssessmentCalculation = () => {
       
       if (err.response?.data?.non_field_errors) {
         setPositionDuplicateError({
-          message: 'A template for this Position Group and Job Title combination already exists. Please use a different combination or edit the existing template.',
+          message: 'A template for this Position Group and Job Title combination already exists.',
           positionGroup: positionGroups.find(pg => pg.id === positionFormData.position_group)?.name,
+          gradeLevels: positionFormData.grade_levels.join(', '),
           jobTitle: positionFormData.job_title
         });
       } else {
@@ -367,8 +527,8 @@ const BehavioralAssessmentCalculation = () => {
   };
 
   const handleUpdatePositionAssessment = async () => {
-    if (!editPositionFormData.position_group || !editPositionFormData.job_title) {
-      showError('Please fill all required fields');
+    if (!editPositionFormData.position_group || editPositionFormData.grade_levels.length === 0 || !editPositionFormData.job_title) {
+      showError('Please fill all required fields and select at least one grade level');
       return;
     }
 
@@ -381,13 +541,17 @@ const BehavioralAssessmentCalculation = () => {
     try {
       const updateData = {
         position_group: editPositionFormData.position_group,
+        grade_levels: editPositionFormData.grade_levels,
         job_title: editPositionFormData.job_title,
         competency_ratings: editPositionFormData.competency_ratings
       };
       
       await assessmentApi.positionBehavioral.update(editPositionFormData.id, updateData);
       setShowEditPositionModal(false);
-      setEditPositionFormData({ id: '', position_group: '', job_title: '', competency_ratings: [] });
+      setEditPositionFormData({ id: '', position_group: '', grade_levels: [], job_title: '', competency_ratings: [] });
+      setEditGradeLevels([]);
+      setEditJobTitles([]);
+      setEditSelectedGradeLevels([]);
       showSuccess('Position assessment template updated successfully');
       await fetchData();
     } catch (err) {
@@ -634,6 +798,7 @@ const BehavioralAssessmentCalculation = () => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position Group</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Grade Levels</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Job Title</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Competencies</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Created</th>
@@ -645,6 +810,19 @@ const BehavioralAssessmentCalculation = () => {
                   filteredPositionAssessments.map((assessment) => (
                     <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{assessment.position_group_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">
+                        <div className="flex flex-wrap gap-1">
+                          {assessment.grade_levels && assessment.grade_levels.length > 0 ? (
+                            assessment.grade_levels.map((level, idx) => (
+                              <span key={idx} className="inline-flex px-2 py-0.5 bg-sky-100 text-sky-700 rounded-md text-xs font-medium">
+                                {level}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-gray-400">No grades</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-sm text-gray-700">{assessment.job_title}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">{assessment.competency_ratings?.length || 0} competencies</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.created_at).toLocaleDateString()}</td>
@@ -659,7 +837,7 @@ const BehavioralAssessmentCalculation = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="text-center py-12">
+                    <td colSpan="6" className="text-center py-12">
                       <Building className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                       <p className="text-gray-600 font-medium text-sm">No position templates found</p>
                       <p className="text-gray-400 text-xs mt-1">Create your first position assessment template</p>
@@ -699,7 +877,7 @@ const BehavioralAssessmentCalculation = () => {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1 flex-wrap">
                           <ActionButton onClick={() => { setSelectedAssessment(assessment); setShowViewModal(true); }} icon={Eye} label="" variant="outline" size="xs" />
-                            {assessment.status === 'DRAFT' && <ActionButton onClick={() => handleEditAssessment(assessment)} icon={Edit} label="" variant="info" size="xs" />}
+                          {assessment.status === 'DRAFT' && <ActionButton onClick={() => handleEditAssessment(assessment)} icon={Edit} label="" variant="info" size="xs" />}
                           <ActionButton onClick={() => handleExport(assessment.id)} icon={Download} label="" variant="secondary" size="xs" />
                           {assessment.status === 'DRAFT' && <ActionButton onClick={() => handleSubmitAssessment(assessment.id)} icon={CheckCircle} label="" variant="success" size="xs" />}
                           {assessment.status === 'COMPLETED' && <ActionButton onClick={() => handleReopenAssessment(assessment.id)} icon={RefreshCw} label="" variant="warning" size="xs" />}
@@ -726,30 +904,73 @@ const BehavioralAssessmentCalculation = () => {
       {/* Create Position Modal */}
       {showCreatePositionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 p-4">
-          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh]  shadow-xl">
+          <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] shadow-xl">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
               <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <Building className="w-5 h-5 text-almet-sapphire" />
                 Create Position Template
               </h3>
-              <button onClick={() => { setShowCreatePositionModal(false); setPositionDuplicateError(null); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              <button onClick={() => { setShowCreatePositionModal(false); setPositionDuplicateError(null); setGradeLevels([]); setJobTitles([]); setSelectedGradeLevels([]); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                 <X size={20} />
               </button>
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Position Group <span className="text-red-500">*</span></label>
-                  <SearchableDropdown options={positionGroups} value={positionFormData.position_group} onChange={(value) => setPositionFormData({...positionFormData, position_group: value, job_title: ''})} placeholder="Select Position Group"  portal={true}
-                   allowUncheck={true}
-                  zIndex="z-[60]" />
+                  <SearchableDropdown 
+                    options={positionGroups} 
+                    value={positionFormData.position_group} 
+                    onChange={handlePositionGroupChange}
+                    placeholder="Select Position Group"
+                    portal={true}
+                    allowUncheck={true}
+                    zIndex="z-[60]" 
+                  />
                 </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Grade Levels <span className="text-red-500">*</span></label>
+                  {!positionFormData.position_group ? (
+                    <div className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400 bg-gray-50">
+                      Select Position Group first
+                    </div>
+                  ) : gradeLevels.length === 0 ? (
+                    <div className="px-3 py-2 border border-amber-300 rounded-md text-sm text-amber-600 bg-amber-50">
+                      No grade levels found
+                    </div>
+                  ) : (
+                    <MultiSelect
+                      options={gradeLevels}
+                      selected={selectedGradeLevels}
+                      onChange={handleGradeLevelMultiSelectChange}
+                      placeholder="Select Grade Levels"
+                      fieldName="grade_levels"
+                    />
+                  )}
+                  {selectedGradeLevels.length > 0 && (
+                    <p className="text-xs text-emerald-600 mt-1">
+                      ✓ {selectedGradeLevels.length} grade{selectedGradeLevels.length > 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </div>
+                
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                  <SearchableDropdown options={filteredJobTitles} value={positionFormData.job_title} onChange={(value) => setPositionFormData({...positionFormData, job_title: value})} placeholder="Select or type job title" disabled={!positionFormData.position_group}  portal={true}
-                   allowUncheck={true}
-                  zIndex="z-[60]" />
+                  <SearchableDropdown 
+                    options={jobTitles} 
+                    value={positionFormData.job_title} 
+                    onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
+                    placeholder="Select Job Title"
+                    disabled={selectedGradeLevels.length === 0}
+                    portal={true}
+                    allowUncheck={true}
+                    zIndex="z-[60]" 
+                  />
+                  {selectedGradeLevels.length > 0 && jobTitles.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">No job titles found for selected grades</p>
+                  )}
                 </div>
               </div>
     
@@ -762,8 +983,22 @@ const BehavioralAssessmentCalculation = () => {
                       <p className="text-xs text-red-700 mt-1">{positionDuplicateError.message}</p>
                       <div className="mt-2 text-xs text-red-600">
                         <strong>Position Group:</strong> {positionDuplicateError.positionGroup}<br />
+                        <strong>Grade Levels:</strong> {positionDuplicateError.gradeLevels}<br />
                         <strong>Job Title:</strong> {positionDuplicateError.jobTitle}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {positionFormData.position_group && selectedGradeLevels.length > 0 && positionFormData.job_title && (
+                <div className="mb-4 p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                  <div className="flex gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-sky-600 flex-shrink-0" />
+                    <div className="space-y-0.5 text-xs flex items-center justify-center gap-6 text-sky-800">
+                      <div>• Position: {positionGroups.find(pg => pg.id === positionFormData.position_group)?.name}</div>
+                      <div>• Grade Levels: {selectedGradeLevels.sort().join(', ')}</div>
+                      <div>• Job Title: {positionFormData.job_title}</div>
                     </div>
                   </div>
                 </div>
@@ -778,13 +1013,13 @@ const BehavioralAssessmentCalculation = () => {
               </div>
 
               {showScalesInfo && (
-                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <h5 className="text-xs font-medium text-blue-900 mb-2">Behavioral Assessment Scales:</h5>
+                <div className="mb-4 bg-sky-50 border border-sky-200 rounded-lg p-3">
+                  <h5 className="text-xs font-medium text-sky-900 mb-2">Behavioral Assessment Scales:</h5>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                     {behavioralScales.map(scale => (
-                      <div key={scale.id} className="bg-white p-2 rounded-md border border-blue-100">
-                        <div className="text-xs font-semibold text-blue-900 mb-1">Level {scale.scale}</div>
-                        <div className="text-xs text-blue-700">{scale.description}</div>
+                      <div key={scale.id} className="bg-white p-2 rounded-md border border-sky-100">
+                        <div className="text-xs font-semibold text-sky-900 mb-1">Level {scale.scale}</div>
+                        <div className="text-xs text-sky-700">{scale.description}</div>
                       </div>
                     ))}
                   </div>
@@ -824,13 +1059,12 @@ const BehavioralAssessmentCalculation = () => {
             </div>
 
             <div className="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
-              <ActionButton onClick={() => { setShowCreatePositionModal(false); setPositionDuplicateError(null); }} icon={X} label="Cancel" variant="outline" size="md" />
-              <ActionButton onClick={handleCreatePositionAssessment} icon={Save} label="Create Template" variant="primary" size="md" loading={isSubmitting} disabled={!positionFormData.position_group || !positionFormData.job_title || positionFormData.competency_ratings.length === 0} />
+              <ActionButton onClick={() => { setShowCreatePositionModal(false); setPositionDuplicateError(null); setGradeLevels([]); setJobTitles([]); setSelectedGradeLevels([]); }} icon={X} label="Cancel" variant="outline" size="md" />
+              <ActionButton onClick={handleCreatePositionAssessment} icon={Save} label="Create Template" variant="primary" size="md" loading={isSubmitting} disabled={!positionFormData.position_group || selectedGradeLevels.length === 0 || !positionFormData.job_title || positionFormData.competency_ratings.length === 0} />
             </div>
           </div>
         </div>
       )}
-
       {/* Edit Position Modal */}
       {showEditPositionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -840,22 +1074,67 @@ const BehavioralAssessmentCalculation = () => {
                 <Edit className="w-5 h-5 text-almet-sapphire" />
                 Edit Position Template
               </h3>
-              <button onClick={() => { setShowEditPositionModal(false); setEditPositionFormData({ id: '', position_group: '', job_title: '', competency_ratings: [] }); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+              <button onClick={() => { setShowEditPositionModal(false); setEditPositionFormData({ id: '', position_group: '', grade_levels: [], job_title: '', competency_ratings: [] }); setEditGradeLevels([]); setEditJobTitles([]); setEditSelectedGradeLevels([]); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
                 <X size={20} />
               </button>
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Position Group <span className="text-red-500">*</span></label>
-                  <SearchableDropdown options={positionGroups} portal={true}
-                  zIndex="z-[60]" value={editPositionFormData.position_group} onChange={(value) => setEditPositionFormData({...editPositionFormData, position_group: value, job_title: ''})} placeholder="Select Position Group" />
+                  <SearchableDropdown 
+                    options={positionGroups} 
+                    portal={true}
+                    zIndex="z-[60]" 
+                    value={editPositionFormData.position_group} 
+                    onChange={handleEditPositionGroupChange}
+                    placeholder="Select Position Group" 
+                    allowUncheck={true}
+                  />
                 </div>
+                
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Grade Levels <span className="text-red-500">*</span></label>
+                  {!editPositionFormData.position_group ? (
+                    <div className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400 bg-gray-50">
+                      Select Position Group first
+                    </div>
+                  ) : editGradeLevels.length === 0 ? (
+                    <div className="px-3 py-2 border border-amber-300 rounded-md text-sm text-amber-600 bg-amber-50">
+                      No grade levels found
+                    </div>
+                  ) : (
+                    <MultiSelect
+                      options={editGradeLevels}
+                      selected={editSelectedGradeLevels}
+                      onChange={handleEditGradeLevelMultiSelectChange}
+                      placeholder="Select Grade Levels"
+                      fieldName="grade_levels"
+                    />
+                  )}
+                  {editSelectedGradeLevels.length > 0 && (
+                    <p className="text-xs text-emerald-600 mt-1">
+                      ✓ {editSelectedGradeLevels.length} grade{editSelectedGradeLevels.length > 1 ? 's' : ''} selected
+                    </p>
+                  )}
+                </div>
+                
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">Job Title <span className="text-red-500">*</span></label>
-                  <SearchableDropdown options={editFilteredJobTitles}  portal={true}
-                  zIndex="z-[60]" value={editPositionFormData.job_title} onChange={(value) => setEditPositionFormData({...editPositionFormData, job_title: value})} placeholder="Select or type job title" disabled={!editPositionFormData.position_group} />
+                  <SearchableDropdown 
+                    options={editJobTitles} 
+                    portal={true}
+                    zIndex="z-[60]" 
+                    value={editPositionFormData.job_title} 
+                    onChange={(value) => setEditPositionFormData({...editPositionFormData, job_title: value})}
+                    placeholder="Select Job Title" 
+                    disabled={editSelectedGradeLevels.length === 0}
+                    allowUncheck={true}
+                  />
+                  {editSelectedGradeLevels.length > 0 && editJobTitles.length === 0 && (
+                    <p className="text-xs text-amber-600 mt-1">No job titles found for selected grades</p>
+                  )}
                 </div>
               </div>
 
@@ -886,8 +1165,8 @@ const BehavioralAssessmentCalculation = () => {
             </div>
 
             <div className="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
-              <ActionButton onClick={() => { setShowEditPositionModal(false); setEditPositionFormData({ id: '', position_group: '', job_title: '', competency_ratings: [] }); }} icon={X} label="Cancel" variant="outline" size="md" />
-              <ActionButton onClick={handleUpdatePositionAssessment} icon={Save} label="Update Template" variant="primary" size="md" loading={isSubmitting} disabled={!editPositionFormData.position_group || !editPositionFormData.job_title || editPositionFormData.competency_ratings.length === 0} />
+              <ActionButton onClick={() => { setShowEditPositionModal(false); setEditPositionFormData({ id: '', position_group: '', grade_levels: [], job_title: '', competency_ratings: [] }); setEditGradeLevels([]); setEditJobTitles([]); setEditSelectedGradeLevels([]); }} icon={X} label="Cancel" variant="outline" size="md" />
+              <ActionButton onClick={handleUpdatePositionAssessment} icon={Save} label="Update Template" variant="primary" size="md" loading={isSubmitting} disabled={!editPositionFormData.position_group || editSelectedGradeLevels.length === 0 || !editPositionFormData.job_title || editPositionFormData.competency_ratings.length === 0} />
             </div>
           </div>
         </div>
@@ -910,23 +1189,27 @@ const BehavioralAssessmentCalculation = () => {
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
               <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">Select Employee <span className="text-red-500">*</span></label>
-                <SearchableDropdown options={employees} portal={true} zIndex="z-[60]" value={employeeFormData.employee} onChange={handleEmployeeChange} placeholder="Select Employee" />
+                <SearchableDropdown options={employees} portal={true} zIndex="z-[60]" value={employeeFormData.employee} onChange={handleEmployeeChange} placeholder="Select Employee" allowUncheck={true} />
               </div>
 
               {selectedEmployeeInfo && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="mb-4 p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                      <div className="text-xs font-medium text-blue-700">Employee</div>
-                      <div className="text-sm font-semibold text-blue-900">{selectedEmployeeInfo.name}</div>
+                      <div className="text-xs font-medium text-sky-700">Employee</div>
+                      <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.name}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-blue-700">Job Title</div>
-                      <div className="text-sm font-semibold text-blue-900">{selectedEmployeeInfo.job_title}</div>
+                      <div className="text-xs font-medium text-sky-700">Job Title</div>
+                      <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.job_title}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-blue-700">Position Group</div>
-                      <div className="text-sm font-semibold text-blue-900">{selectedEmployeeInfo.position_group}</div>
+                      <div className="text-xs font-medium text-sky-700">Grade Level</div>
+                      <div className="text-sm font-semibold text-sky-900">Grade {selectedEmployeeInfo.grade_level}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-sky-700">Position Group</div>
+                      <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.position_group_name}</div>
                     </div>
                   </div>
                 </div>
@@ -957,13 +1240,13 @@ const BehavioralAssessmentCalculation = () => {
                   </div>
 
                   {showScalesInfo && (
-                    <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
-                      <h5 className="text-xs font-medium text-blue-900 mb-2">Behavioral Assessment Scales:</h5>
+                    <div className="mb-4 bg-sky-50 border border-sky-200 rounded-lg p-3">
+                      <h5 className="text-xs font-medium text-sky-900 mb-2">Behavioral Assessment Scales:</h5>
                       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                         {behavioralScales.map(scale => (
-                          <div key={scale.id} className="bg-white p-2 rounded-md border border-blue-100">
-                            <div className="text-xs font-semibold text-blue-900 mb-1">Level {scale.scale}</div>
-                            <div className="text-xs text-blue-700">{scale.description}</div>
+                          <div key={scale.id} className="bg-white p-2 rounded-md border border-sky-100">
+                            <div className="text-xs font-semibold text-sky-900 mb-1">Level {scale.scale}</div>
+                            <div className="text-xs text-sky-700">{scale.description}</div>
                           </div>
                         ))}
                       </div>
@@ -1021,7 +1304,7 @@ const BehavioralAssessmentCalculation = () => {
                                         </select>
                                       </td>
                                       <td className="px-3 py-2 text-center">
-                                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${gap > 0 ? 'bg-emerald-50 text-emerald-700' : gap < 0 ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${gap > 0 ? 'bg-emerald-50 text-emerald-700' : gap < 0 ? 'bg-red-50 text-red-700' : 'bg-sky-50 text-sky-700'}`}>
                                           {gap > 0 ? `+${gap}` : gap}
                                         </span>
                                       </td>
@@ -1075,19 +1358,23 @@ const BehavioralAssessmentCalculation = () => {
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
               {selectedEmployeeInfo && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="mb-4 p-3 bg-sky-50 border border-sky-200 rounded-lg">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                      <div className="text-xs font-medium text-blue-700">Employee</div>
-                      <div className="text-sm font-semibold text-blue-900">{selectedEmployeeInfo.name}</div>
+                      <div className="text-xs font-medium text-sky-700">Employee</div>
+                      <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.name}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-blue-700">Job Title</div>
-                      <div className="text-sm font-semibold text-blue-900">{selectedEmployeeInfo.job_title}</div>
+                      <div className="text-xs font-medium text-sky-700">Job Title</div>
+                      <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.job_title}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-blue-700">Position Group</div>
-                      <div className="text-sm font-semibold text-blue-900">{selectedEmployeeInfo.position_group_name}</div>
+                      <div className="text-xs font-medium text-sky-700">Grade Level</div>
+                      <div className="text-sm font-semibold text-sky-900">Grade {selectedEmployeeInfo.grade_level}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-sky-700">Position Group</div>
+                      <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.position_group_name}</div>
                     </div>
                   </div>
                 </div>
@@ -1130,7 +1417,7 @@ const BehavioralAssessmentCalculation = () => {
                               return (
                                 <tr key={competency.id} className="hover:bg-gray-50">
                                   <td className="px-3 py-2 text-sm text-gray-900">{competency.competency_name}</td>
-                                  <td className="px-3  py-2 text-center">
+                                  <td className="px-3 py-2 text-center">
                                     <span className="inline-flex px-2 py-0.5 bg-almet-sapphire text-white rounded-md text-xs font-medium">{competency.required_level}</span>
                                   </td>
                                   <td className="px-3 py-2 text-center">
@@ -1144,7 +1431,7 @@ const BehavioralAssessmentCalculation = () => {
                                     </select>
                                   </td>
                                   <td className="px-3 py-2 text-center">
-                                    <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${gap > 0 ? 'bg-emerald-50 text-emerald-700' : gap < 0 ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                                    <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${gap > 0 ? 'bg-emerald-50 text-emerald-700' : gap < 0 ? 'bg-red-50 text-red-700' : 'bg-sky-50 text-sky-700'}`}>
                                       {gap > 0 ? `+${gap}` : gap}
                                     </span>
                                   </td>
@@ -1199,12 +1486,24 @@ const BehavioralAssessmentCalculation = () => {
                       <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.position_group_name}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-gray-600">Job Title</div>
-                      <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.job_title}</div>
+                      <div className="text-xs font-medium text-gray-600">Grade Levels</div>
+                      <div className="text-sm font-medium text-gray-900 mt-1">
+                        {selectedAssessment.grade_levels && selectedAssessment.grade_levels.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedAssessment.grade_levels.map((level, idx) => (
+                              <span key={idx} className="inline-flex px-2 py-0.5 bg-sky-100 text-sky-700 rounded-md text-xs font-medium">
+                                {level}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          'No grades'
+                        )}
+                      </div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-gray-600">Created By</div>
-                      <div className="text-sm text-gray-700 mt-1">{selectedAssessment.created_by_name}</div>
+                      <div className="text-xs font-medium text-gray-600">Job Title</div>
+                      <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.job_title}</div>
                     </div>
                     <div>
                       <div className="text-xs font-medium text-gray-600">Created Date</div>
@@ -1325,7 +1624,7 @@ const BehavioralAssessmentCalculation = () => {
                                   <span className="inline-flex px-2 py-0.5 bg-gray-500 text-white rounded-md text-xs font-medium">{rating.actual_level}</span>
                                 </td>
                                 <td className="px-3 py-2 text-center">
-                                  <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${gap > 0 ? 'bg-emerald-50 text-emerald-700' : gap < 0 ? 'bg-red-50 text-red-700' : 'bg-blue-50 text-blue-700'}`}>
+                                  <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${gap > 0 ? 'bg-emerald-50 text-emerald-700' : gap < 0 ? 'bg-red-50 text-red-700' : 'bg-sky-50 text-sky-700'}`}>
                                     {gap > 0 ? `+${gap}` : gap}
                                   </span>
                                 </td>
@@ -1366,4 +1665,4 @@ const BehavioralAssessmentCalculation = () => {
   );
 };
 
-export default BehavioralAssessmentCalculation;
+export default BehavioralAssessmentCalculation; 
