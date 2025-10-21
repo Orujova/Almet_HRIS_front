@@ -397,21 +397,7 @@ const isItemSelected = (itemId, selectedIds) => {
 
   return (
     <div className="space-y-6">
-      {/* Info Banner */}
-      <div className={`p-4 border border-sky-200 dark:border-sky-800 rounded-lg bg-sky-50 dark:bg-sky-900/20`}>
-        <div className="flex items-start gap-3">
-          <Info size={18} className="text-sky-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h4 className={`text-sm font-semibold text-sky-800 dark:text-sky-300 mb-1`}>
-              Resources and Benefits Selection
-            </h4>
-            <p className={`text-xs text-sky-700 dark:text-sky-400`}>
-              Select the resources, access rights, and benefits applicable to this position. 
-              You can select parent items to automatically include all nested items, or choose specific items individually.
-            </p>
-          </div>
-        </div>
-      </div>
+    
 
       {/* Three Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -455,39 +441,6 @@ const isItemSelected = (itemId, selectedIds) => {
         })}
       </div>
 
-      {/* Summary Section */}
-      {(getSelectedCount('business_resources_ids') > 0 || 
-        getSelectedCount('access_rights_ids') > 0 || 
-        getSelectedCount('company_benefits_ids') > 0) && (
-        <div className={`p-4 border ${borderColor} rounded-lg ${bgAccent}`}>
-          <h4 className={`text-sm font-semibold ${textPrimary} mb-3`}>
-            Selection Summary
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div className="flex items-center gap-2">
-              <Package size={14} className="text-almet-sapphire" />
-              <span className={textSecondary}>Resources:</span>
-              <span className={`font-semibold ${textPrimary}`}>
-                {getSelectedCount('business_resources_ids')}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Shield size={14} className="text-almet-sapphire" />
-              <span className={textSecondary}>Access Rights:</span>
-              <span className={`font-semibold ${textPrimary}`}>
-                {getSelectedCount('access_rights_ids')}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Gift size={14} className="text-almet-sapphire" />
-              <span className={textSecondary}>Benefits:</span>
-              <span className={`font-semibold ${textPrimary}`}>
-                {getSelectedCount('company_benefits_ids')}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

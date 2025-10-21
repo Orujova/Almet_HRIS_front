@@ -564,24 +564,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               </div>
             </CollapsibleSection>
 
-            {/* Metadata */}
-            <div className={`p-4 ${bgAccent} rounded-lg border-l-4 border-almet-sapphire`}>
-              <h5 className={`font-semibold ${textPrimary} mb-2 text-sm`}>Document Information</h5>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div>
-                  <span className={`font-medium ${textMuted}`}>Created:</span>
-                  <span className={`${textSecondary} ml-2`}>
-                    {safeJobData.created_at ? new Date(safeJobData.created_at).toLocaleDateString() : 'N/A'}
-                  </span>
-                </div>
-                <div>
-                  <span className={`font-medium ${textMuted}`}>Last Updated:</span>
-                  <span className={`${textSecondary} ml-2`}>
-                    {safeJobData.updated_at ? new Date(safeJobData.updated_at).toLocaleDateString() : 'N/A'}
-                  </span>
-                </div>
-              </div>
-            </div>
+           
           </div>
         </div>
       </div>

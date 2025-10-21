@@ -891,86 +891,88 @@ const handleSubmit = async (e) => {
   };
 
   const getSubmissionInfo = () => {
-    if (editingJob) {
-      // UPDATED: Show warning if editing job in approval process
-      if (wasInApprovalProcess) {
-        return {
-          title: 'Update Job Description (Approval Reset)',
-          description: 'Updating this job will reset its approval status to DRAFT. It will need to be resubmitted for approval.',
-          employeeCount: 0,
-          type: 'edit',
-          needsSelection: false,
-          warning: true
-        };
-      }
-      
+  if (editingJob) {
+    if (wasInApprovalProcess) {
       return {
-        title: 'Ready to Update Job Description',
-        description: 'Click "Update Job Description" to save your changes.',
+        title: 'Update Job Description (Approval Reset)',
+        description: 'Updating this job will reset its approval status to DRAFT. It will need to be resubmitted for approval.',
         employeeCount: 0,
         type: 'edit',
-        needsSelection: false
+        needsSelection: false,
+        warning: true
       };
     }
     
-    if (!assignmentPreview) {
+    return {
+      title: 'Ready to Update Job Description',
+      description: 'Click "Update Job Description" to save your changes.',
+      employeeCount: 0,
+      type: 'edit',
+      needsSelection: false
+    };
+  }
+  
+  if (!assignmentPreview) {
+    return {
+      title: 'Ready to Create Job Description',
+      description: 'Click "Save & Continue" to create the job description.',
+      employeeCount: 0,
+      type: 'single'
+    };
+  }
+
+  switch (assignmentPreview.strategy) {
+    case 'auto_assign_single':
+      const record = assignmentPreview.employees?.[0];
+      const isVacancy = record?.is_vacancy || record?.record_type === 'vacancy';
+      const displayName = isVacancy ? 
+        `Vacant Position (${record.employee_id})` : 
+        (record?.full_name || record?.name);
+      
+      return {
+        title: isVacancy ? 'Ready to Create & Assign to Vacancy' : 'Ready to Create & Auto-Assign',
+        description: `Job will be automatically assigned to ${displayName}.`,
+        employeeCount: 1,
+        type: isVacancy ? 'auto_vacancy' : 'auto_single',
+        employee: record,
+        isVacancy: isVacancy,
+        needsSelection: false // ✅ FIXED: Never needs selection for auto-assign
+      };
+    
+    case 'manual_selection_required':
+      const selectedCount = selectedEmployeeIds.length;
+      return {
+        title: selectedCount > 0 
+          ? `Ready to Create ${selectedCount} Job Description${selectedCount > 1 ? 's' : ''}` 
+          : 'Record Selection Required',
+        description: selectedCount > 0 
+          ? `Will create job descriptions for ${selectedCount} selected record${selectedCount > 1 ? 's' : ''}.`
+          : `${assignmentPreview.employeeCount} records match your criteria. Please select employees/vacancies before proceeding.`,
+        employeeCount: selectedCount,
+        totalAvailable: assignmentPreview.employeeCount,
+        type: 'manual_multiple',
+        needsSelection: selectedCount === 0 // ✅ FIXED: Only needs selection if nothing selected
+      };
+    
+    case 'no_employees_found':
+      return {
+        title: 'Ready to Create Unassigned Position',
+        description: 'Job will be created without assignment to any employee or vacancy.',
+        employeeCount: 0,
+        type: 'unassigned',
+        needsSelection: false // ✅ FIXED: Doesn't need selection
+      };
+    
+    default:
       return {
         title: 'Ready to Create Job Description',
         description: 'Click "Save & Continue" to create the job description.',
         employeeCount: 0,
-        type: 'single'
+        type: 'unknown',
+        needsSelection: false // ✅ FIXED: Default to not needing selection
       };
-    }
-
-    switch (assignmentPreview.strategy) {
-      case 'auto_assign_single':
-        const record = assignmentPreview.employees?.[0];
-        const isVacancy = record?.is_vacancy || record?.record_type === 'vacancy';
-        const displayName = isVacancy ? 
-          `Vacant Position (${record.employee_id})` : 
-          (record?.full_name || record?.name);
-        
-        return {
-          title: isVacancy ? 'Ready to Create & Assign to Vacancy' : 'Ready to Create & Auto-Assign',
-          description: `Job will be automatically assigned to ${displayName}.`,
-          employeeCount: 1,
-          type: isVacancy ? 'auto_vacancy' : 'auto_single',
-          employee: record,
-          isVacancy: isVacancy
-        };
-      
-      case 'manual_selection_required':
-        const selectedCount = selectedEmployeeIds.length;
-        return {
-          title: selectedCount > 0 
-            ? `Ready to Create ${selectedCount} Job Description${selectedCount > 1 ? 's' : ''}` 
-            : 'Record Selection Required',
-          description: selectedCount > 0 
-            ? `Will create job descriptions for ${selectedCount} selected record${selectedCount > 1 ? 's' : ''}.`
-            : `${assignmentPreview.employeeCount} records match your criteria. Please select employees/vacancies before proceeding.`,
-          employeeCount: selectedCount,
-          totalAvailable: assignmentPreview.employeeCount,
-          type: 'manual_multiple',
-          needsSelection: selectedCount === 0
-        };
-      
-      case 'no_employees_found':
-        return {
-          title: 'Ready to Create Unassigned Position',
-          description: 'Job will be created without assignment to any employee or vacancy.',
-          employeeCount: 0,
-          type: 'unassigned'
-        };
-      
-      default:
-        return {
-          title: 'Ready to Create Job Description',
-          description: 'Click "Save & Continue" to create the job description.',
-          employeeCount: 0,
-          type: 'unknown'
-        };
-    }
-  };
+  }
+};
 
   const submissionInfo = getSubmissionInfo();
 
@@ -1194,16 +1196,16 @@ const handleSubmit = async (e) => {
                   </button>
                 ) : (
                   <button
-                    type="button"
-                    onClick={handleExplicitSave}
-                    disabled={isSubmitting || (submissionInfo.needsSelection && !editingJob)}
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
-                      transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
-                  >
-                    {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    <Save size={14} />
-                    {editingJob ? 'Update Job Description' : 'Save & Continue'}
-                  </button>
+  type="button"
+  onClick={handleExplicitSave}
+  disabled={isSubmitting || (submissionInfo.needsSelection && !editingJob)} // ✅ This now works correctly
+  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
+    transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+>
+  {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+  <Save size={14} />
+  {editingJob ? 'Update Job Description' : 'Save & Continue'}
+</button>
                 )}
               </div>
             </div>

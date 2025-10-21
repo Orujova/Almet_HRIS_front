@@ -639,26 +639,7 @@ const JobResponsibilitiesTab = ({
         })}
       </div>
 
-      {/* Summary of selected skills and competencies */}
-      {(formData.required_skills_data.length > 0 || formData.behavioral_competencies_data.length > 0) && (
-        <div className={`p-3 ${bgAccent} rounded-lg border ${borderColor}`}>
-          <h4 className={`text-sm font-semibold ${textPrimary} mb-2`}>Selection Summary</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
-              <span className={`font-medium ${textSecondary}`}>Technical Skills:</span>
-              <span className={`ml-2 ${textPrimary} font-semibold`}>
-                {formData.required_skills_data.length} selected
-              </span>
-            </div>
-            <div>
-              <span className={`font-medium ${textSecondary}`}>Behavioral Competencies:</span>
-              <span className={`ml-2 ${textPrimary} font-semibold`}>
-                {formData.behavioral_competencies_data.length} selected
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+    
     </div>
   );
 };
