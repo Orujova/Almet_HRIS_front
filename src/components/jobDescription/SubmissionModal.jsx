@@ -74,11 +74,11 @@ const SubmissionModal = ({
       <div className={`${bgModal} rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-xl`}>
         
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
+        <div className="px-4 py-3 border-b border-gray-200 dark:border-almet-comet">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-lg ${modalInfo.iconBgColor}`}>
-                <modalInfo.icon size={20} className={modalInfo.iconColor} />
+                <modalInfo.icon size={16} className={modalInfo.iconColor} />
               </div>
               <div>
                 <h2 className={`text-base font-bold ${textPrimary}`}>
@@ -235,33 +235,7 @@ const SubmissionModal = ({
             </div>
           </div>
 
-          {/* Assignment Summary for Multiple Jobs */}
-          {isMultipleJobs && (
-            <div className={`p-4 border border-sky-200 dark:border-sky-800 rounded-lg bg-sky-50 dark:bg-sky-900/20`}>
-              <h4 className={`text-sm font-semibold text-sky-800 dark:text-sky-300 mb-3 flex items-center gap-2`}>
-                <Users size={14} />
-                Assignment Summary
-              </h4>
-              <div className="text-xs text-sky-700 dark:text-sky-400 space-y-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={12} />
-                  <span><span className="font-medium">{jobCount} job descriptions</span> created for different employees</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={12} />
-                  <span>Each employee automatically assigned to their line manager</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={12} />
-                  <span>All job descriptions share the same job title and requirements</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={12} />
-                  <span>Employee assignments based on organizational criteria matching</span>
-                </div>
-              </div>
-            </div>
-          )}
+         
 
           {/* Workflow Preview */}
           <div className={`p-4 border ${borderColor} rounded-lg ${bgAccent}`}>

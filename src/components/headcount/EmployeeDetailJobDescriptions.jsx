@@ -116,11 +116,11 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const fetchJobDescriptions = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching job descriptions for employee:', employeeId);
+      
       
       // Always fetch employee's own job descriptions
       const myJobsResponse = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
-      console.log('📋 My jobs response:', myJobsResponse);
+    
       setMyJobDescriptions(Array.isArray(myJobsResponse) ? myJobsResponse : []);
       
       // If manager, also fetch team job descriptions
@@ -1157,10 +1157,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                             <span className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
                               {skill.skill_detail?.name || skill.name}
                             </span>
-                            <span className={`text-[10px] ${textMuted} font-semibold`}>
-                              {skill.proficiency_level}
-                              {skill.is_mandatory && <span className="text-red-500 ml-1">*</span>}
-                            </span>
+    
                           </div>
                         ))}
                       </div>

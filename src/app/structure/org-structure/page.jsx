@@ -69,7 +69,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
     const handleToggleExpanded = useCallback((e) => {
         e.stopPropagation();
         e.preventDefault();
-        console.log('Toggle clicked for:', employee.employee_id, 'Current expanded:', isExpanded);
+       
         data.onToggleExpanded(employee.employee_id);
     }, [employee.employee_id, isExpanded, data.onToggleExpanded]);
     
@@ -498,7 +498,7 @@ const OrgChart = () => {
 
     // Fixed hierarchy building with better expansion logic
     const buildOrgHierarchy = useCallback((employees, expandedNodeIds) => {
-        console.log('Building hierarchy from', employees?.length, 'employees, expanded:', expandedNodeIds?.length);
+       
         
         if (!Array.isArray(employees) || employees.length === 0) {
             return { visibleNodes: [], edges: [] };
@@ -532,7 +532,7 @@ const OrgChart = () => {
             }
         });
 
-        console.log('Root employees found:', rootEmployees.length);
+    
 
         // Fallback strategies if no roots found
         if (rootEmployees.length === 0) {
@@ -545,7 +545,7 @@ const OrgChart = () => {
 
             if (rootEmployees.length === 0) {
                 cleanEmployees.slice(0, 3).forEach(emp => rootEmployees.push(employeeMap.get(emp.employee_id)));
-                console.log('Fallback: Using first 3 employees as roots');
+              
             }
         }
 
@@ -563,7 +563,7 @@ const OrgChart = () => {
                 
                 // FIXED: If this node is expanded AND has children, show ALL children
                 if (expandedSet.has(employee.employee_id) && employee.children.length > 0) {
-                    console.log(`Expanding ${employee.name} (${employee.employee_id}) - showing ${employee.children.length} children`);
+                   
                     employee.children.forEach(child => {
                         markVisible(child, true);  // Show all direct children
                     });
@@ -576,7 +576,7 @@ const OrgChart = () => {
             markVisible(root, true);
         });
 
-        console.log('Visible employees calculated:', visibleEmployees.length);
+     
 
         // Create React Flow nodes with navigation support
         const nodes = visibleEmployees.map(emp => ({
@@ -587,7 +587,7 @@ const OrgChart = () => {
                 employee: emp,
                 isExpanded: expandedSet.has(emp.employee_id),
                 onToggleExpanded: (employeeId) => {
-                    console.log('Toggle requested for:', employeeId);
+                   
                     toggleExpandedNode(employeeId);
                 },
                 onSelectEmployee: setSelectedEmployee,
@@ -617,7 +617,7 @@ const OrgChart = () => {
                 }
             }));
 
-        console.log('Hierarchy complete:', { nodes: nodes.length, edges: edges.length });
+      
         return { visibleNodes: nodes, edges };
     }, [toggleExpandedNode, setSelectedEmployee, navigateToEmployee]);
 
@@ -666,7 +666,7 @@ const OrgChart = () => {
                 // Cleanup
                 URL.revokeObjectURL(url);
                 
-                console.log('Screenshot downloaded successfully');
+          
             }
         }, 'image/png', 0.9);
 
@@ -804,11 +804,7 @@ const fallbackScreenshot = useCallback(async () => {
 
         // Process data when filteredOrgChart or expandedNodes change
         useEffect(() => {
-            console.log('FlowComponent effect triggered:', {
-                hasData: !!filteredOrgChart,
-                dataLength: filteredOrgChart?.length || 0,
-                expandedCount: expandedNodes?.length || 0
-            });
+           
 
             if (Array.isArray(filteredOrgChart) && filteredOrgChart.length > 0) {
                 const hierarchy = buildOrgHierarchy(filteredOrgChart, expandedNodes || []);
@@ -820,14 +816,14 @@ const fallbackScreenshot = useCallback(async () => {
                         layoutDirection
                     );
                     
-                    console.log('Setting nodes and edges:', layoutedNodes.length, layoutedEdges.length);
+              
                     setNodes(layoutedNodes);
                     setEdges(layoutedEdges);
                     
                     // Fit view after layout
                     setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 100);
                 } else {
-                    console.log('No visible nodes to display');
+                 
                     setNodes([]);
                     setEdges([]);
                 }
@@ -838,7 +834,7 @@ const fallbackScreenshot = useCallback(async () => {
         }, [filteredOrgChart, expandedNodes, layoutDirection, buildOrgHierarchy, getLayoutedElements, setNodes, setEdges, fitView]);
 
         const onLayout = useCallback((direction) => {
-            console.log('Layout change requested:', direction);
+        
             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
                 nodes,
                 edges,
@@ -852,20 +848,20 @@ const fallbackScreenshot = useCallback(async () => {
 
         // Fixed expand/collapse handlers
         const handleExpandAll = useCallback(() => {
-            console.log('Expand All clicked - expanding all employees');
+         
             if (orgChart && orgChart.length > 0) {
                 // Get all employees who have direct reports
                 const managersWithReports = orgChart
                     .filter(emp => emp.direct_reports && emp.direct_reports > 0)
                     .map(emp => emp.employee_id);
                 
-                console.log('Expanding managers:', managersWithReports.length);
+              
                 setExpandedNodes(managersWithReports);
             }
         }, [orgChart, setExpandedNodes]);
 
         const handleCollapseAll = useCallback(() => {
-            console.log('Collapse All clicked - collapsing to roots only');
+            
             // Find root employees and keep only them expanded
             if (orgChart && orgChart.length > 0) {
                 const rootEmployees = orgChart.filter(emp => 
@@ -878,12 +874,11 @@ const fallbackScreenshot = useCallback(async () => {
                     const fallbackRoots = orgChart
                         .filter(emp => (emp.direct_reports || 0) === maxReports)
                         .map(emp => emp.employee_id);
-                    
-                    console.log('Collapsing to fallback roots:', fallbackRoots);
+                
                     setExpandedNodes(fallbackRoots);
                 } else {
                     const rootIds = rootEmployees.map(emp => emp.employee_id);
-                    console.log('Collapsing to root employees:', rootIds);
+                 
                     setExpandedNodes(rootIds);
                 }
             }
@@ -1044,7 +1039,7 @@ const fallbackScreenshot = useCallback(async () => {
     // Auto-expand initial nodes when org chart loads
     useEffect(() => {
         if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
-            console.log('Auto-expanding initial nodes for', orgChart.length, 'employees');
+           
             
             // Find root employees using multiple strategies
             let rootEmployees = [];
@@ -1053,7 +1048,7 @@ const fallbackScreenshot = useCallback(async () => {
             rootEmployees = orgChart.filter(emp => 
                 !emp.line_manager_id && !emp.manager_id && !emp.parent_id
             );
-            console.log('Strategy 1 - No manager ID:', rootEmployees.length);
+         
             
             // Strategy 2: Find by minimum level_to_ceo
             if (rootEmployees.length === 0) {
@@ -1061,7 +1056,7 @@ const fallbackScreenshot = useCallback(async () => {
                 if (levels.length > 0) {
                     const minLevel = Math.min(...levels);
                     rootEmployees = orgChart.filter(emp => emp.level_to_ceo === minLevel);
-                    console.log(`Strategy 2 - Min level ${minLevel}:`, rootEmployees.length);
+                   
                 }
             }
             
@@ -1092,12 +1087,12 @@ const fallbackScreenshot = useCallback(async () => {
             // Strategy 5: Use first few employees as fallback
             if (rootEmployees.length === 0) {
                 rootEmployees = orgChart.slice(0, Math.min(3, orgChart.length));
-                console.log('Strategy 5 - Fallback to first 3:', rootEmployees.length);
+               
             }
             
             // Set initial expanded nodes
             const initialExpanded = rootEmployees.map(emp => emp.employee_id);
-            console.log('Setting initial expanded nodes:', initialExpanded);
+    
             setExpandedNodes(initialExpanded);
         }
     }, [orgChart, expandedNodes, setExpandedNodes]);

@@ -94,7 +94,7 @@ const JobDescriptionForm = ({
   }, [editingJob]);
 
   const handleAssignmentPreviewUpdate = (previewData) => {
-    console.log('📋 Assignment preview updated:', previewData);
+  
     
     setAssignmentPreview(previewData);
     
@@ -113,24 +113,18 @@ const JobDescriptionForm = ({
     if (previewData && previewData.strategy === 'auto_assign_single') {
       const records = previewData.records || previewData.employees || [];
       
-      console.log('🎯 Auto-assignment detected. Records:', records.length);
+
       
       if (records.length === 1) {
         const record = records[0];
         const recordId = record.id;
-        
-        console.log('✅ Auto-selecting record:', {
-          employee_id: record.employee_id,
-          database_id: record.id,
-          name: record.full_name || record.name,
-          type: record.is_vacancy ? 'VACANCY' : 'EMPLOYEE'
-        });
+  
         
         setSelectedEmployeeIds([recordId]);
         setEligibleEmployees(records);
         setJobCriteria(previewData.criteria || {});
         
-        console.log('🔧 Selected employee IDs set to:', [recordId]);
+     
       }
     }
     
@@ -138,8 +132,7 @@ const JobDescriptionForm = ({
       const records = previewData.records || previewData.employees || [];
       const criteria = previewData.criteria || {};
       
-      console.log('🔍 Manual selection required. Available records:', records.length);
-      console.log('🎯 Job criteria:', criteria);
+
       
       setEligibleEmployees(records);
       setJobCriteria(criteria);
@@ -147,7 +140,7 @@ const JobDescriptionForm = ({
   };
 
   const handleEmployeeSelection = (employeeIds, employeeData) => {
-    console.log('👥 Records selected:', employeeIds, employeeData);
+   
     
     if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
       console.warn('⚠️ Invalid employee/vacancy selection data');
@@ -157,16 +150,11 @@ const JobDescriptionForm = ({
     setSelectedEmployeeIds(employeeIds);
     setShowEmployeeSelectionModal(false);
     
-    console.log('✅ Record selection completed. Selected database IDs:', employeeIds);
+
     
     employeeData.forEach((record, index) => {
       const isVacancy = record.is_vacancy || record.record_type === 'vacancy';
-      console.log(`📋 Selected record ${index + 1}:`, {
-        databaseId: record.id,
-        employeeId: record.employee_id,
-        name: isVacancy ? `Vacant Position (${record.employee_id})` : (record.full_name || record.name),
-        type: isVacancy ? 'vacancy' : 'employee'
-      });
+     
     });
   };
 
@@ -310,7 +298,7 @@ const JobDescriptionForm = ({
   const findExactConstraintMatch = (requiredCriteria, debugLabel = '') => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
     
-    console.log(`🎯 ${debugLabel} - Looking for EXACT match:`, requiredCriteria);
+
     
     const exactMatches = dropdownData.employees.filter(emp => {
       let matches = true;
@@ -326,18 +314,14 @@ const JobDescriptionForm = ({
     });
     
     if (exactMatches.length === 0) {
-      console.log(`  ❌ NO EXACT MATCHES found for ${debugLabel}`);
-      
-      console.log(`  📊 Available combinations:`);
+
       const availableCombos = new Set();
       dropdownData.employees.forEach(emp => {
         const combo = `BF: ${emp.business_function_name} + Dept: ${emp.department_name} (ID: ${emp.department_id})`;
         availableCombos.add(combo);
       });
       
-      Array.from(availableCombos).slice(0, 10).forEach(combo => {
-        console.log(`    - ${combo}`);
-      });
+ 
       
       return null;
     }
@@ -376,7 +360,7 @@ const JobDescriptionForm = ({
     }
     
     if (!formData.business_function) {
-      console.log('❌ getDepartmentId: Business function MUST be selected first');
+     
       return null;
     }
     
@@ -387,7 +371,7 @@ const JobDescriptionForm = ({
     
     if (employee) {
       const id = employee.department_id || employee.department;
-      console.log(`✅ SUCCESS: Found valid combination! Department ID = ${id}`);
+    
       return id;
     }
     
@@ -398,7 +382,7 @@ const JobDescriptionForm = ({
     if (!name) return null;
     
     if (!formData.business_function || !formData.department) {
-      console.log('❌ getUnitId: Business function AND department must be selected first');
+     
       return null;
     }
     
@@ -466,12 +450,12 @@ const JobDescriptionForm = ({
       return id;
     }
     
-    console.log(`❌ INVALID: Position group "${name}" doesn't exist in the selected organizational path`);
+
     return null;
   };
 
   const handleCancel = () => {
-    console.log('❌ Cancel button clicked');
+  
     
     const hasFormData = formData.job_title?.trim() || 
                        formData.job_purpose?.trim() || 
@@ -498,257 +482,379 @@ const JobDescriptionForm = ({
     onCancel();
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+
+
+const buildResourcesPayload = (selectedIds, resourceType, dropdownData) => {
+
+  
+  if (!selectedIds || selectedIds.length === 0) {
+    console.log(`⚠️ No ${resourceType} selected`);
+    return {};
+  }
+
+  // Get the appropriate data source
+  let dataSource = [];
+  let parentIdField = '';
+  
+  if (resourceType === 'business_resources') {
+    dataSource = dropdownData.businessResources || [];
+    parentIdField = 'resource_id';
+  } else if (resourceType === 'access_rights') {
+    dataSource = dropdownData.accessMatrix || [];
+    parentIdField = 'access_matrix_id';
+  } else {
+    dataSource = dropdownData.companyBenefits || [];
+    parentIdField = 'benefit_id';
+  }
+
+
+
+  // Parse all selected IDs to integers
+  const selectedIdsParsed = selectedIds
+    .map(id => parseInt(id))
+    .filter(id => !isNaN(id));
+  
+
+  
+  // Separate parent IDs from child IDs
+  const parentIds = new Set();
+  const childIdsByParent = {};
+  const explicitlySelectedParents = new Set();
+  
+  selectedIdsParsed.forEach(selectedId => {
+    // ✅ CRITICAL FIX: Check if this ID is a child FIRST (priority over parent)
+    let foundAsChild = false;
     
-    if (!validateForm()) {
-      const errorKeys = Object.keys(validationErrors);
-      if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
-        setActiveTab('position');
-      } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
-        setActiveTab('responsibilities');
-      } else {
-        setActiveTab('conditions');
-      }
-      
-      const errorMessage = Object.values(validationErrors).join('\n');
-      alert('Please fix the following errors:\n\n' + errorMessage);
-      return;
-    }
-
-    if (!editingJob) {
-      if (assignmentPreview?.requiresSelection || assignmentPreview?.strategy === 'manual_selection_required') {
-        if (selectedEmployeeIds.length === 0) {
-          if (eligibleEmployees.length > 0) {
-            setShowEmployeeSelectionModal(true);
-            return;
-          } else {
-            alert('Multiple employees match your criteria, but employee data is not available. Please try refreshing the preview.');
-            return;
-          }
-        }
-      }
-    }
-
-    try {
-      setIsSubmitting(true);
-
-      const businessFunctionId = getBusinessFunctionId(formData.business_function);
-      const departmentId = getDepartmentId(formData.department);
-      const jobFunctionId = getJobFunctionId(formData.job_function);
-      const positionGroupId = getPositionGroupId(formData.position_group);
-      const unitId = formData.unit ? getUnitId(formData.unit) : null;
-
-      const missingIds = [];
-      if (!businessFunctionId) missingIds.push(`Business Function "${formData.business_function}"`);
-      if (!departmentId) missingIds.push(`Department "${formData.department}"`);
-      if (!jobFunctionId) missingIds.push(`Job Function "${formData.job_function}"`);
-      if (!positionGroupId) missingIds.push(`Position Group "${formData.position_group}"`);
-
-      if (missingIds.length > 0) {
-        const errorMessage = `Cannot find IDs for: ${missingIds.join(', ')}. This might indicate a data synchronization issue.`;
-        console.error('❌ ID mapping failed:', errorMessage);
-        alert(errorMessage);
-        return;
-      }
-
-      const apiData = {
-        job_title: formData.job_title.trim(),
-        job_purpose: formData.job_purpose.trim(),
-        business_function: businessFunctionId,
-        department: departmentId,
-        job_function: jobFunctionId,
-        position_group: positionGroupId,
-        
-        ...(formData.grading_level && formData.grading_level.trim() && { 
-          grading_level: formData.grading_level.trim() 
-        }),
-        
-        ...(unitId && { unit: unitId }),
-        
-        sections: [],
-        
-        required_skills_data: (formData.required_skills_data || [])
-          .filter(skillId => skillId && !isNaN(parseInt(skillId)))
-          .map(skillId => ({
-            skill_id: parseInt(skillId),
-            proficiency_level: "INTERMEDIATE",
-            is_mandatory: true
-          })),
-        
-        behavioral_competencies_data: (formData.behavioral_competencies_data || [])
-          .filter(competencyId => competencyId && !isNaN(parseInt(competencyId)))
-          .map(competencyId => ({
-            competency_id: parseInt(competencyId),
-            proficiency_level: "INTERMEDIATE", 
-            is_mandatory: true
-          })),
-        
-        business_resources_ids: await convertNamesToIds(formData.business_resources_ids, 'business_resources'),
-        access_rights_ids: await convertNamesToIds(formData.access_rights_ids, 'access_rights'),
-        company_benefits_ids: await convertNamesToIds(formData.company_benefits_ids, 'company_benefits'),
+    for (const parentItem of dataSource) {
+      if (parentItem.items && Array.isArray(parentItem.items)) {
+        const childItem = parentItem.items.find(item => item.id === selectedId);
+        if (childItem) {
+   
+          parentIds.add(parentItem.id);
           
-        ...(!editingJob && selectedEmployeeIds.length > 0 && { 
-          selected_employee_ids: selectedEmployeeIds
-            .map(id => parseInt(id))
-            .filter(id => !isNaN(id))
-        })
-      };
-
-      console.log('🔧 FIXED: API data with database IDs:', {
-        selected_employee_ids: apiData.selected_employee_ids,
-        selectedEmployeeIds: selectedEmployeeIds
-      });
-
-      const sectionTypes = [
-        { 
-          type: 'CRITICAL_DUTIES', 
-          title: 'Critical Duties and Responsibilities', 
-          content: formData.criticalDuties || [],
-          order: 1
-        },
-        { 
-          type: 'MAIN_KPIS', 
-          title: 'Key Performance Indicators', 
-          content: formData.positionMainKpis || [],
-          order: 2 
-        },
-        { 
-          type: 'JOB_DUTIES', 
-          title: 'Job Duties', 
-          content: formData.jobDuties || [],
-          order: 3
-        },
-        { 
-          type: 'REQUIREMENTS', 
-          title: 'Requirements and Qualifications', 
-          content: formData.requirements || [],
-          order: 4
-        }
-      ];
-
-      sectionTypes.forEach((section) => {
-        if (section.content && Array.isArray(section.content) && section.content.length > 0) {
-          const validContent = section.content.filter(item => item && item.trim() !== '');
-          if (validContent.length > 0) {
-            const formattedContent = validContent
-              .map((item, index) => `${index + 1}. ${item.trim()}`)
-              .join('\n');
-              
-            apiData.sections.push({
-              section_type: section.type,
-              title: section.title,
-              content: formattedContent,
-              order: section.order
-            });
+          if (!childIdsByParent[parentItem.id]) {
+            childIdsByParent[parentItem.id] = [];
           }
+          childIdsByParent[parentItem.id].push(selectedId);
+          foundAsChild = true;
+          break;
         }
-      });
-
-      if (editingJob) {
-        // ADDED: Include reset_approval_status flag if job was in approval process
-        if (wasInApprovalProcess) {
-          apiData.reset_approval_status = true;
-          console.log('🔄 Resetting approval status - job was in approval process');
-        }
-        
-        console.log('✏️ Updating existing job - ignoring employee selection');
-        await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
-        
-        // UPDATED: Show different message based on whether approval was reset
-        if (wasInApprovalProcess) {
-          alert('Job description updated successfully! Approval process has been reset to DRAFT status.');
-        } else {
-          alert('Job description updated successfully!');
-        }
-        
-        onUpdate();
-      } else {
-        const createdJob = await jobDescriptionService.createJobDescription(apiData);
-        console.log('✅ Job(s) created successfully:', createdJob);
-        onSubmit(createdJob);
       }
-    } catch (error) {
-      if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
-        console.log('📋 Server requires employee selection, showing modal with server data');
+    }
+    
+    // If not found as child, check if it's a parent
+    if (!foundAsChild) {
+      const parent = dataSource.find(p => p.id === selectedId);
+      
+      if (parent) {
+      
+        parentIds.add(selectedId);
+        explicitlySelectedParents.add(selectedId);
         
-        const serverEmployees = error.response.data.eligible_employees || [];
-        const serverCriteria = error.response.data.criteria || {};
-        
-        if (serverEmployees.length > 0) {
-          setEligibleEmployees(serverEmployees);
-          setJobCriteria(serverCriteria);
+        if (!childIdsByParent[selectedId]) {
+          childIdsByParent[selectedId] = [];
+        }
+      } else {
+        console.log(`⚠️ WARNING: ${selectedId} not found as parent or child!`);
+      }
+    }
+  });
+
+
+
+  // ✅ ALWAYS use with_items format for consistency
+  const withItems = Array.from(parentIds).map(parentId => {
+    const children = childIdsByParent[parentId] || [];
+    const wasExplicitlySelected = explicitlySelectedParents.has(parentId);
+    
+    if (children.length > 0) {
+
+      return {
+        [parentIdField]: parentId,
+        item_ids: children
+      };
+    } else if (wasExplicitlySelected) {
+ 
+      return {
+        [parentIdField]: parentId,
+        item_ids: []
+      };
+    }
+    
+    return null;
+  }).filter(Boolean);
+
+
+
+  if (resourceType === 'business_resources') {
+    return { business_resources_with_items: withItems };
+  } else if (resourceType === 'access_rights') {
+    return { access_rights_with_items: withItems };
+  } else {
+    return { company_benefits_with_items: withItems };
+  }
+};
+  
+
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  if (!validateForm()) {
+    const errorKeys = Object.keys(validationErrors);
+    if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
+      setActiveTab('position');
+    } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
+      setActiveTab('responsibilities');
+    } else {
+      setActiveTab('conditions');
+    }
+    
+    const errorMessage = Object.values(validationErrors).join('\n');
+    alert('Please fix the following errors:\n\n' + errorMessage);
+    return;
+  }
+
+  if (!editingJob) {
+    if (assignmentPreview?.requiresSelection || assignmentPreview?.strategy === 'manual_selection_required') {
+      if (selectedEmployeeIds.length === 0) {
+        if (eligibleEmployees.length > 0) {
           setShowEmployeeSelectionModal(true);
+          return;
+        } else {
+          alert('Multiple employees match your criteria, but employee data is not available. Please try refreshing the preview.');
           return;
         }
       }
-      
-      let errorMessage = 'Error saving job description: ';
-      
-      if (error.response?.data) {
-        if (typeof error.response.data === 'string') {
-          errorMessage += error.response.data;
-        } else if (typeof error.response.data === 'object') {
-          const errorDetails = [];
-          Object.keys(error.response.data).forEach(field => {
-            const fieldErrors = Array.isArray(error.response.data[field]) 
-              ? error.response.data[field].join(', ')
-              : error.response.data[field];
-            errorDetails.push(`${field}: ${fieldErrors}`);
-          });
-          errorMessage += errorDetails.join('\n');
-        }
-      } else {
-        errorMessage += error.message || 'Please try again.';
-      }
-      
-      console.error('📋 Full error details:', errorMessage);
-      alert(errorMessage);
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+  }
 
-  const convertNamesToIds = async (nameArray, resourceType) => {
-    if (!Array.isArray(nameArray) || nameArray.length === 0) return [];
+  try {
+    setIsSubmitting(true);
+
+    // Get IDs and ensure they are integers
+    const businessFunctionId = parseInt(getBusinessFunctionId(formData.business_function));
+    const departmentId = parseInt(getDepartmentId(formData.department));
+    const jobFunctionId = parseInt(getJobFunctionId(formData.job_function));
+    const positionGroupId = parseInt(getPositionGroupId(formData.position_group));
+    const unitId = formData.unit ? parseInt(getUnitId(formData.unit)) : null;
+
+ 
+
+    // Validate that we got all required IDs and they are valid integers
+    const missingIds = [];
+    if (!businessFunctionId || isNaN(businessFunctionId)) {
+      missingIds.push(`Business Function "${formData.business_function}"`);
+    }
+    if (!departmentId || isNaN(departmentId)) {
+      missingIds.push(`Department "${formData.department}"`);
+    }
+    if (!jobFunctionId || isNaN(jobFunctionId)) {
+      missingIds.push(`Job Function "${formData.job_function}"`);
+    }
+    if (!positionGroupId || isNaN(positionGroupId)) {
+      missingIds.push(`Position Group "${formData.position_group}"`);
+    }
+
+    if (missingIds.length > 0) {
+      const errorMessage = `Cannot find valid IDs for: ${missingIds.join(', ')}. This might indicate a data synchronization issue.`;
+      console.error('❌ ID mapping failed:', errorMessage);
+      alert(errorMessage);
+      return;
+    }
+
+    // 🔥 Build complete payload WITHOUT using cleanJobDescriptionData
+    const apiData = {
+      job_title: formData.job_title.trim(),
+      job_purpose: formData.job_purpose.trim(),
+      business_function: businessFunctionId,
+      department: departmentId,
+      job_function: jobFunctionId,
+      position_group: positionGroupId,
+      
+      ...(formData.grading_level && formData.grading_level.trim() && { 
+        grading_level: formData.grading_level.trim() 
+      }),
+      
+      ...(unitId && !isNaN(unitId) && { unit: unitId }),
+      
+      sections: [],
+      
+      // Skills - ensure integers
+      required_skills_data: (formData.required_skills_data || [])
+        .map(skillId => parseInt(skillId))
+        .filter(skillId => !isNaN(skillId))
+        .map(skillId => ({
+          skill_id: skillId,
+          proficiency_level: "INTERMEDIATE",
+          is_mandatory: true
+        })),
+      
+      // Competencies - ensure integers
+      behavioral_competencies_data: (formData.behavioral_competencies_data || [])
+        .map(competencyId => parseInt(competencyId))
+        .filter(competencyId => !isNaN(competencyId))
+        .map(competencyId => ({
+          competency_id: competencyId,
+          proficiency_level: "INTERMEDIATE", 
+          is_mandatory: true
+        })),
+      
+      // Employee selection (only for create mode)
+      ...(!editingJob && selectedEmployeeIds.length > 0 && { 
+        selected_employee_ids: selectedEmployeeIds
+          .map(id => parseInt(id))
+          .filter(id => !isNaN(id))
+      })
+    };
+
+
+
+    // Build each payload
+    const resourcesPayload = buildResourcesPayload(
+      formData.business_resources_ids, 
+      'business_resources', 
+      dropdownData
+    );
     
-    const ids = [];
+    const accessPayload = buildResourcesPayload(
+      formData.access_rights_ids, 
+      'access_rights', 
+      dropdownData
+    );
     
-    for (const name of nameArray) {
-      if (!isNaN(parseInt(name))) {
-        ids.push(parseInt(name));
-        continue;
+    const benefitsPayload = buildResourcesPayload(
+      formData.company_benefits_ids, 
+      'company_benefits', 
+      dropdownData
+    );
+
+  
+
+    // 🔥 CRITICAL: Merge payloads DIRECTLY into apiData
+    Object.assign(apiData, resourcesPayload, accessPayload, benefitsPayload);
+
+
+
+    // Build sections
+    const sectionTypes = [
+      { 
+        type: 'CRITICAL_DUTIES', 
+        title: 'Critical Duties and Responsibilities', 
+        content: formData.criticalDuties || [],
+        order: 1
+      },
+      { 
+        type: 'MAIN_KPIS', 
+        title: 'Key Performance Indicators', 
+        content: formData.positionMainKpis || [],
+        order: 2 
+      },
+      { 
+        type: 'JOB_DUTIES', 
+        title: 'Job Duties', 
+        content: formData.jobDuties || [],
+        order: 3
+      },
+      { 
+        type: 'REQUIREMENTS', 
+        title: 'Requirements and Qualifications', 
+        content: formData.requirements || [],
+        order: 4
+      }
+    ];
+
+    sectionTypes.forEach((section) => {
+      if (section.content && Array.isArray(section.content) && section.content.length > 0) {
+        const validContent = section.content.filter(item => item && item.trim() !== '');
+        if (validContent.length > 0) {
+          const formattedContent = validContent
+            .map((item, index) => `${index + 1}. ${item.trim()}`)
+            .join('\n');
+            
+          apiData.sections.push({
+            section_type: section.type,
+            title: section.title,
+            content: formattedContent,
+            order: section.order
+          });
+        }
+      }
+    });
+
+ 
+
+    // Handle edit vs create
+    if (editingJob) {
+      if (wasInApprovalProcess) {
+        apiData.reset_approval_status = true;
+        console.log('🔄 Resetting approval status - job was in approval process');
       }
       
-      let foundId = null;
-      switch (resourceType) {
-        case 'business_resources':
-          const resource = dropdownData.businessResources?.find(r => r.name === name);
-          foundId = resource?.id;
-          break;
-        case 'access_rights':
-          const access = dropdownData.accessMatrix?.find(a => a.name === name);
-          foundId = access?.id;
-          break;
-        case 'company_benefits':
-          const benefit = dropdownData.companyBenefits?.find(b => b.name === name);
-          foundId = benefit?.id;
-          break;
-      }
+
+      await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
       
-      if (foundId) {
-        ids.push(parseInt(foundId));
+      if (wasInApprovalProcess) {
+        alert('Job description updated successfully! Approval process has been reset to DRAFT status.');
       } else {
-        console.warn(`Could not find ID for ${resourceType} name: ${name}`);
+        alert('Job description updated successfully!');
+      }
+      
+      onUpdate();
+    } else {
+   
+      
+   
+      const createdJob = await jobDescriptionService.createJobDescription(apiData);
+
+      onSubmit(createdJob);
+    }
+  } catch (error) {
+    if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
+ 
+      
+      const serverEmployees = error.response.data.eligible_employees || [];
+      const serverCriteria = error.response.data.criteria || {};
+      
+      if (serverEmployees.length > 0) {
+        setEligibleEmployees(serverEmployees);
+        setJobCriteria(serverCriteria);
+        setShowEmployeeSelectionModal(true);
+        return;
       }
     }
     
-    return ids;
-  };
+    let errorMessage = 'Error saving job description: ';
+    
+    if (error.response?.data) {
+      if (typeof error.response.data === 'string') {
+        errorMessage += error.response.data;
+      } else if (typeof error.response.data === 'object') {
+        const errorDetails = [];
+        Object.keys(error.response.data).forEach(field => {
+          const fieldErrors = Array.isArray(error.response.data[field]) 
+            ? error.response.data[field].join(', ')
+            : error.response.data[field];
+          errorDetails.push(`${field}: ${fieldErrors}`);
+        });
+        errorMessage += errorDetails.join('\n');
+      }
+    } else {
+      errorMessage += error.message || 'Please try again.';
+    }
+    
+   
+    alert(errorMessage);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
 
   const handleExplicitSave = async () => {
-    console.log('💾 Explicit save button clicked');
+
     
     const syntheticEvent = {
       preventDefault: () => {},

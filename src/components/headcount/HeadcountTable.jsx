@@ -183,7 +183,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       setCurrentColorMode(initialMode);
       
     } catch (error) {
-      console.error('HeadcountTable: Error initializing color system:', error);
+   
       showError('Failed to initialize color system');
       colorSystemInitRef.current = false;
       setColorSystemInitialized(false);
@@ -204,16 +204,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
   
   useEffect(() => {
-    console.log('🔍 Business Function Filter Changed:', {
-      businessFunctionFilter,
-      currentFilter: localFilters.business_function,
-      businessFunctions: businessFunctions?.map(bf => ({ 
-        id: bf.id,
-        code: bf.code, 
-        name: bf.name, 
-        label: bf.label 
-      }))
-    });
+   
 
     // ✅ Wait for businessFunctions to load
     if (!businessFunctions || businessFunctions.length === 0) {
@@ -225,25 +216,25 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       // Find business function by code
       const bf = businessFunctions?.find(b => b.code === businessFunctionFilter);
       
-      console.log('🎯 Found Business Function:', bf);
+     
       
       if (bf) {
         // ✅ CRITICAL: Store ID for backend API
         const bfId = String(bf.id || bf.value);
         
-        console.log('📝 Business Function ID to store:', bfId);
+       
         
         // ✅ FIXED: Check if already applied to prevent infinite loop
         const currentIds = localFilters.business_function.map(id => String(id));
         if (!currentIds.includes(bfId)) {
-          console.log('🔄 Applying wrapper filter...');
+   
           setLocalFilters(prev => ({
             ...prev,
             business_function: [bfId] // ✅ Store ID for API
           }));
           
           setIsWrapperFilterApplied(true);
-          console.log('✅ Wrapper Filter Applied - Stored ID:', bfId);
+        
         } else {
           console.log('✅ Filter already applied, skipping');
         }
@@ -251,7 +242,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         console.warn('⚠️ Business function not found for code:', businessFunctionFilter);
       }
     } else {
-      console.log('🌍 Clearing business function filter');
+  
       if (localFilters.business_function.length > 0) {
         setLocalFilters(prev => ({
           ...prev,
@@ -415,7 +406,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
     }
 
-    console.log('📤 Final API Params:', params);
+  
     return params;
   }, [localFilters, pagination.page, pagination.pageSize, sorting]);
 
@@ -430,12 +421,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   
   const changed = currentParams !== lastParams;
   
-  if (changed) {
-    console.log('🔄 API Params Changed:', {
-      old: lastApiParamsRef.current,
-      new: buildApiParams
-    });
-  }
+
   
   return changed;
 }, [buildApiParams]);
@@ -594,7 +580,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       return;
     }
     
-    console.log('🔄 Business Function Change (IDs):', selectedBFs);
+
     setLocalFilters(prev => ({ ...prev, business_function: Array.isArray(selectedBFs) ? selectedBFs : [] }));
     setCurrentPage(1);
   }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
@@ -969,12 +955,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setIsExporting(true);
 
     
-    console.log('🎯 COMPLETELY FIXED EXPORT OPTIONS:');
-    console.log('   Type:', exportOptions.type);
-    console.log('   Format:', exportOptions.format);
-    console.log('   Include fields:', exportOptions.include_fields);
-    console.log('   Selected employees:', selectedEmployees);
-    
     // COMPLETELY FIXED: Build backend API request
     let apiEndpoint;
     let apiPayload;
@@ -999,7 +979,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           apiPayload.include_fields = exportOptions.include_fields;
         }
         
-        console.log('📋 FIXED: Selected employees export payload:', apiPayload);
+ 
         break;
 
       case "filtered":
@@ -1023,8 +1003,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         // Add filters as query parameters for filtered export
         queryParams = filterParams;
         
-        console.log('🔍 FIXED: Filtered export payload:', apiPayload);
-        console.log('🔍 FIXED: Filter params:', queryParams);
+
         break;
 
       case "all":
@@ -1038,18 +1017,14 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
           apiPayload.include_fields = exportOptions.include_fields;
         }
-        
-        console.log('🌍 FIXED: All employees export payload:', apiPayload);
+
         break;
 
       default:
         throw new Error(`Unknown export type: ${exportOptions.type}`);
     }
 
-    console.log('🚀 FIXED: Final API call details:');
-    console.log('  Endpoint:', apiEndpoint);
-    console.log('  Payload:', apiPayload);
-    console.log('  Query Params:', queryParams);
+
     
     // Call the backend API
     const result = await exportEmployees(exportOptions.format || 'excel', {
@@ -1095,7 +1070,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       setIsExporting(true);
       await handleExport(exportOptions);
     } catch (error) {
-      console.error('Quick export failed:', error);
+   
       showError(`Export failed: ${error.message}`);
     } finally {
       setIsExporting(false);
@@ -1113,7 +1088,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         showSuccess('Bulk import completed successfully!');
       }
     } catch (error) {
-      console.error('Failed to refresh after import:', error);
+    
       setIsBulkUploadOpen(false);
       showError('Import completed but failed to refresh data');
     }
@@ -1266,7 +1241,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
             showSuccess(`${empName} permanently deleted`);
             
           } catch (error) {
-            console.error('Individual hard delete failed:', error);
+       
             showError(`Failed to delete ${empName}: ${error.message}`);
           }
         } else if (confirmation !== null) {
@@ -1297,7 +1272,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         showWarning(`Action "${action}" is not implemented yet`);
     }
   } catch (error) {
-    console.error(`Failed to perform action ${action}:`, error);
+
     showError(`Failed to ${action}: ${error.message}`);
   }
 }, [

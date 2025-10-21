@@ -56,11 +56,11 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
   // ========================================
   const downloadTemplate = useCallback(async () => {
     try {
-      console.log('📄 Starting template download...');
+
       setIsProcessing(true);
       
       const result = await downloadEmployeeTemplate();
-      console.log('✅ Template download completed:', result);
+
       
       // The downloadEmployeeTemplate function should handle the actual file download
       // If it doesn't, we can show a success message
@@ -117,7 +117,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
   
   // Validate selected file
   const handleFileValidation = useCallback((file) => {
-    console.log('📁 Validating file:', file.name, file.type, file.size);
+
     
     // Reset previous state
     setUploadResults(null);
@@ -141,7 +141,6 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
       return;
     }
 
-    console.log('✅ File validation passed');
     setUploadedFile(file);
   }, []);
 
@@ -153,13 +152,13 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
   const processUpload = useCallback(async () => {
     if (!uploadedFile || isProcessing) return;
 
-    console.log('🔄 Processing upload:', uploadedFile.name);
+
     setIsProcessing(true);
     
     try {
       // Use the bulkUploadEmployees hook function
       const result = await bulkUploadEmployees(uploadedFile);
-      console.log('✅ Upload processing result:', result);
+
       
       // Extract results from the API response
       const uploadData = result.payload || result.data || result;
@@ -176,7 +175,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
 
       // If there are no validation errors and we have valid rows, we can proceed directly
       if (uploadData.successful > 0 && (!uploadData.errors || uploadData.errors.length === 0)) {
-        console.log('✅ Upload completed successfully with no validation errors');
+       
         
         // Call completion callback
         if (onImportComplete) {
@@ -221,15 +220,12 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
   const confirmImport = useCallback(async () => {
     if (!uploadResults || uploadResults.validRows === 0) return;
 
-    console.log('✅ Confirming import of', uploadResults.validRows, 'employees');
+   
 
     try {
       setIsProcessing(true);
 
-      // For some APIs, the upload might be a two-step process
-      // In this case, we might need a separate confirmation endpoint
-      // For now, we'll assume the upload was already processed
-      
+     
       // Call completion callback
       if (onImportComplete) {
         onImportComplete({
@@ -256,7 +252,7 @@ const BulkUploadForm = ({ onClose, onImportComplete }) => {
   
   // Reset form
   const resetForm = useCallback(() => {
-    console.log('🔄 Resetting form');
+  
     setUploadedFile(null);
     setUploadResults(null);
     setValidationErrors([]);

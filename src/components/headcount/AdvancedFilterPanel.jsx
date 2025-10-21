@@ -117,7 +117,7 @@ const AdvancedFilterPanel = ({
   // INITIALIZE REFERENCE DATA
   // ========================================
   const initializeReferenceData = useCallback(async () => {
-    console.log('🔄 ADVANCED FILTER: Initializing all reference data...');
+
     
     const promises = [
       fetchBusinessFunctions?.(),
@@ -152,7 +152,7 @@ const AdvancedFilterPanel = ({
   // ========================================
   const applyFilters = useCallback((filtersToApply) => {
     const targetFilters = filtersToApply || filters;
-    console.log('🔧 FINAL: Applying advanced filters:', targetFilters);
+   
     
     const cleanedFilters = {};
     
@@ -184,7 +184,7 @@ const AdvancedFilterPanel = ({
       }
     });
 
-    console.log('✅ FINAL: Cleaned filters for backend:', cleanedFilters);
+   
     onApply(cleanedFilters);
   }, [onApply]);
 
@@ -410,7 +410,7 @@ const AdvancedFilterPanel = ({
   // ========================================
   
   const handleInputChange = useCallback((name, value) => {
-    console.log(`🔧 Filter change: ${name} = `, value);
+    
     
     setFilters(prevFilters => {
       const newFilters = {
@@ -460,7 +460,7 @@ const AdvancedFilterPanel = ({
 
   // Handle MultiSelect component changes (expects fieldName, value format)
   const handleMultiSelectChangeAdapter = useCallback((fieldName, value) => {
-    console.log('🔧 MultiSelect adapter change:', { fieldName, value });
+ 
     
     setFilters(prevFilters => {
       // Get current selected values
@@ -492,7 +492,7 @@ const AdvancedFilterPanel = ({
 
   // Clear all filters
   const handleClearAll = useCallback(() => {
-    console.log('🧹 Clearing ALL advanced filters');
+    
     
     const clearedFilters = {
       search: "",

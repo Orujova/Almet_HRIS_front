@@ -25,7 +25,7 @@ export const fetchCurrentScenario = createAsyncThunk(
   
       return gradingApi.formatScenarioForFrontend(response.data);
     } catch (error) {
-      console.error('❌ Error fetching current scenario:', error);
+    
       return rejectWithValue(error.response?.data?.error || error.message);
     }
   }
@@ -35,12 +35,12 @@ export const compareScenarios = createAsyncThunk(
   'grading/compareScenarios',
   async (scenarioIds, { rejectWithValue }) => {
     try {
-      console.log('📊 Fetching comparison data for scenarios:', scenarioIds);
+    
       const response = await gradingApi.compareScenarios(scenarioIds);
-      console.log('✅ Comparison data received:', response.data);
+    
       return response.data;
     } catch (error) {
-      console.error('❌ Error comparing scenarios:', error);
+  
       return rejectWithValue(error.response?.data?.error || error.message);
     }
   }
@@ -444,7 +444,7 @@ const gradingSlice = createSlice({
         } else if (status === 'ARCHIVED') {
           state.loading.archivedScenarios = false;
           state.archivedScenarios = scenarios;
-          console.log('✅ Archived scenarios loaded:', scenarios.length, 'scenarios');
+        
         }
       })
       .addCase(fetchScenarios.rejected, (state, action) => {

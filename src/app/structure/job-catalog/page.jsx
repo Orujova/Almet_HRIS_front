@@ -166,7 +166,7 @@ export default function JobCatalogPage() {
       setStatistics(statisticsRes.data || statisticsRes);
 
       setPositionGroups(positionGroupsData);
-      console.log('✅ Color system initialized with', positionGroupsData.length, 'position groups');
+    
 
       await loadEmployees();
       
@@ -204,7 +204,7 @@ export default function JobCatalogPage() {
       const response = await employeeAPI.getAll(params);
       const employeeData = response.data?.results || response.results || [];
       setEmployees(employeeData);
-      console.log('✅ Loaded', employeeData.length, 'employees');
+
       
     } catch (error) {
       setErrors(prev => ({ ...prev, employees: 'Failed to load employees' }));
@@ -252,7 +252,7 @@ export default function JobCatalogPage() {
   // ============================================
 
   const openCrudModal = (type, mode = 'create', item = null) => {
-    console.log('🔧 Opening CRUD Modal:', { type, mode, item });
+
     
     setCrudModalType(type);
     setCrudModalMode(mode);
@@ -276,7 +276,7 @@ export default function JobCatalogPage() {
         formDataInit.hierarchy_level = item.hierarchy_level;
       }
       
-      console.log('✏️ Edit mode - form data:', formDataInit);
+ 
       setFormData(formDataInit);
     } else {
       const cleanFormData = {
@@ -297,7 +297,7 @@ export default function JobCatalogPage() {
         cleanFormData.hierarchy_level = 1;
       }
       
-      console.log('➕ Create mode - form data:', cleanFormData);
+  
       setFormData(cleanFormData);
     }
     
@@ -333,11 +333,7 @@ export default function JobCatalogPage() {
       delete submitData.pk;
       delete submitData.uuid;
       
-      console.log('📤 Submitting data:', { 
-        mode: crudModalMode, 
-        type: crudModalType, 
-        data: submitData 
-      });
+
       
       let response;
       const itemId = selectedItem?.value || selectedItem?.id;
@@ -391,7 +387,7 @@ export default function JobCatalogPage() {
           throw new Error(`Unknown CRUD type: ${crudModalType}`);
       }
 
-      console.log('✅ CRUD operation successful:', response);
+ 
 
       await loadInitialData();
       
@@ -401,7 +397,7 @@ export default function JobCatalogPage() {
       closeCrudModal();
       
     } catch (error) {
-      console.error('❌ CRUD operation error:', error);
+  
       
       let errorMsg = 'An error occurred';
       

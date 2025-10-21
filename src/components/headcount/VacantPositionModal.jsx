@@ -175,8 +175,7 @@ const VacantPositionModal = ({
           }
 
         } else {
-          // Create mode
-          console.log('=== CREATE MODE INITIALIZATION ===');
+    
           if (isMounted) {
             setFormData({
               business_function: '',

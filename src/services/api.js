@@ -479,15 +479,14 @@ exportEmployees: async (format = 'excel', params = {}) => {
       queryParams = { ...params._filterParams };
       delete queryParams.page;
       delete queryParams.page_size;
-      console.log('🔍 Filter params:', queryParams);
+   
     }
     
     // Build query string
     const queryString = buildQueryParams(queryParams);
     const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
     
-    console.log('🔗 API endpoint:', endpoint);
-    console.log('📦 POST payload:', JSON.stringify(payload, null, 2));
+
     
     // Make request
     const response = await api.post(endpoint, payload, {
@@ -498,11 +497,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
       }
     });
     
-    console.log('📨 Response received:', {
-      status: response.status,
-      contentType: response.headers['content-type'],
-      size: response.data.size
-    });
+   
     
     // Handle file download
     if (response && response.data && response.data.size > 0) {
@@ -531,7 +526,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      console.log('✅ Export completed:', filename);
+
       return {
         success: true,
         filename: filename,

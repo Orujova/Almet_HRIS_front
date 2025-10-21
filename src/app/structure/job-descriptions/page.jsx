@@ -1,4 +1,4 @@
-// pages/structure/job-descriptions/index.js - COMPLETE VERSION with Bulk Upload & Pagination
+// pages/structure/job-descriptions/page.jsx - FIXED: ID Conversion & Complete
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
@@ -15,14 +15,14 @@ import {
   X,
   Users,
   AlertCircle,
-  FileSpreadsheet // ADDED for Bulk Upload
+  FileSpreadsheet
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { ToastProvider, useToast } from '@/components/common/Toast';
 import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
-import Pagination from '@/components/common/Pagination'; // ADDED
+import Pagination from '@/components/common/Pagination';
 
 import jobDescriptionService from '@/services/jobDescriptionService';
 import competencyApi from '@/services/competencyApi';
@@ -32,7 +32,7 @@ import JobDescriptionList from '@/components/jobDescription/JobDescriptionList';
 import JobDescriptionForm from '@/components/jobDescription/JobDescriptionForm';
 import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
-import BulkUploadModal from '@/components/jobDescription/BulkUploadModal'; // ADDED
+import BulkUploadModal from '@/components/jobDescription/BulkUploadModal';
 import StatCard from '@/components/jobDescription/StatCard';
 
 const JobDescriptionPageContent = () => {
@@ -40,7 +40,7 @@ const JobDescriptionPageContent = () => {
   const router = useRouter();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   
-  // Theme-dependent classes using Almet colors
+  // Theme classes
   const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
@@ -55,23 +55,25 @@ const JobDescriptionPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   
-  // ADDED: Bulk Upload state
+  // Bulk Upload state
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   
-  // ADDED: Pagination state
+  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // Enhanced submission workflow state
+  // Submission workflow state
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionComments, setSubmissionComments] = useState('');
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
- const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
+  
+  const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
   const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
   const [availableSkills, setAvailableSkills] = useState([]);
   const [availableCompetencies, setAvailableCompetencies] = useState([]);
+  
   // Confirmation modal states
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -86,7 +88,7 @@ const JobDescriptionPageContent = () => {
   const [jobDescriptions, setJobDescriptions] = useState([]);
   const [stats, setStats] = useState({});
   
-  // Enhanced dropdown data with proper structure
+  // Enhanced dropdown data
   const [dropdownData, setDropdownData] = useState({
     employees: [],
     employeeMap: new Map(),
@@ -97,7 +99,7 @@ const JobDescriptionPageContent = () => {
     companyBenefits: []
   });
 
-  // Enhanced form state with proper initialization
+  // Form state
   const [formData, setFormData] = useState({
     job_title: '',
     job_purpose: '',
@@ -118,11 +120,7 @@ const JobDescriptionPageContent = () => {
     company_benefits_ids: []
   });
 
-  // Enhanced competency selection state
-
   const [selectedPositionGroup, setSelectedPositionGroup] = useState('');
-
-  // Employee matching state for display only
   const [matchingEmployees, setMatchingEmployees] = useState([]);
 
   useEffect(() => {
@@ -147,7 +145,7 @@ const JobDescriptionPageContent = () => {
     }
   }, [selectedBehavioralGroup]);
 
-  // Filter matching employees for display based on job criteria
+  // Filter matching employees
   useEffect(() => {
     filterMatchingEmployees();
   }, [
@@ -161,12 +159,11 @@ const JobDescriptionPageContent = () => {
     dropdownData.employees
   ]);
 
-  // ADDED: Reset to first page when search/filter changes
+  // Reset to first page when search/filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, selectedDepartment]);
 
-  // Filter employees based on selected job criteria (for display only)
   const filterMatchingEmployees = () => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
       setMatchingEmployees([]);
@@ -342,7 +339,7 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // Filter jobs based on search and department
+  // Filter jobs
   const filteredJobs = useMemo(() => {
     return jobDescriptions.filter(job => {
       const matchesSearch = !searchTerm || 
@@ -356,7 +353,7 @@ const JobDescriptionPageContent = () => {
     });
   }, [jobDescriptions, searchTerm, selectedDepartment]);
 
-  // ADDED: Pagination logic
+  // Pagination
   const paginatedJobs = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
@@ -378,36 +375,30 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // Handle direct submission for approval (for existing draft jobs)
   const handleDirectSubmissionForApproval = async (jobId) => {
     setCreatedJobsData({ id: jobId, isExisting: true });
     setIsExistingJobSubmission(true);
     setShowSubmissionModal(true);
   };
 
-  // ADDED: Bulk upload complete handler
   const handleBulkUploadComplete = async (result) => {
-    console.log('✅ Bulk upload completed:', result);
+
     
-    // Refresh data
     await fetchJobDescriptions();
     await fetchStats();
     
-    // Show success message
     const message = result.successful > 0 
       ? `Successfully created ${result.successful} job description${result.successful > 1 ? 's' : ''}!`
       : 'Bulk upload completed';
     
     showSuccess(message);
     
-    // Close modal after a short delay
     setTimeout(() => {
       setShowBulkUploadModal(false);
-      setActiveView('list'); // Navigate to list view
+      setActiveView('list');
     }, 2000);
   };
 
-  // Enhanced submission handling for multiple jobs
   const handleSubmitForApproval = async () => {
     if (!createdJobsData) return;
 
@@ -455,7 +446,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // Enhanced keep as draft handling
   const handleKeepAsDraft = async () => {
     const message = createdJobsData?.summary?.total_job_descriptions_created > 1 
       ? `${createdJobsData.summary.total_job_descriptions_created} job descriptions saved as drafts successfully!`
@@ -475,7 +465,6 @@ const JobDescriptionPageContent = () => {
     setActiveView('list');
   };
 
-  // Enhanced resetForm function with complete cleanup
   const resetForm = () => {
     setFormData({
       job_title: '',
@@ -506,7 +495,6 @@ const JobDescriptionPageContent = () => {
     setMatchingEmployees([]);
   };
 
-  // Enhanced tab navigation with confirmation
   const handleTabNavigation = (targetView) => {
     if (targetView === 'create') {
       if (activeView === 'list' || editingJob) {
@@ -539,7 +527,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // Enhanced handleEdit with proper cleanup
   const handleEdit = async (job) => {
     try {
       setActionLoading(true);
@@ -564,7 +551,6 @@ const JobDescriptionPageContent = () => {
         company_benefits_ids: []
       });
       
-      // REMOVED: Reset single group selections - not needed anymore
       setAvailableSkills([]);
       setAvailableCompetencies([]);
 
@@ -578,9 +564,6 @@ const JobDescriptionPageContent = () => {
         setSelectedPositionGroup(transformedData.position_group);
       }
       
-      // NOTE: Skill and competency group selection will be handled 
-      // automatically in JobResponsibilitiesTab based on selected skills/competencies
-      
       setActiveView('create');
       
     } catch (error) {
@@ -591,7 +574,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // Enhanced delete with confirmation modal
   const handleDelete = async (id) => {
     setConfirmModal({
       isOpen: true,
@@ -630,14 +612,12 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // Enhanced job creation handling
   const handleJobSubmit = (createdJob) => {
     setCreatedJobsData(createdJob);
     setIsExistingJobSubmission(false);
     setShowSubmissionModal(true);
   };
 
-  // Close confirmation modal
   const closeConfirmModal = () => {
     if (!confirmModal.loading) {
       setConfirmModal({ ...confirmModal, isOpen: false });
@@ -649,7 +629,7 @@ const JobDescriptionPageContent = () => {
       <div className={`min-h-screen ${bgApp} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto p-4 lg:p-6">
           
-          {/* Enhanced Header Section */}
+          {/* Header Section */}
           <div className="mb-8">
             {/* Title and Action Buttons */}
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 mb-8">
@@ -658,13 +638,13 @@ const JobDescriptionPageContent = () => {
                   Job Descriptions
                 </h1>
                 <p className={`${textSecondary} text-xs lg:text-base leading-relaxed`}>
-                  Create job descriptions  based on your organizational structure and employee data
+                  Create job descriptions based on your organizational structure and employee data
                 </p>
               </div>
               
               {/* Action Buttons Container */}
               <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
-                {/* ADDED: Bulk Upload Button */}
+                {/* Bulk Upload Button */}
                 <button
                   onClick={() => setShowBulkUploadModal(true)}
                   className={`flex items-center justify-center gap-2 px-5 py-3 
@@ -694,7 +674,7 @@ const JobDescriptionPageContent = () => {
               </div>
             </div>
 
-            {/* Enhanced Stats Cards Grid */}
+            {/* Stats Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
               <StatCard 
                 title="Total Jobs" 
@@ -730,7 +710,7 @@ const JobDescriptionPageContent = () => {
               />
             </div>
 
-            {/* Enhanced Navigation Tabs */}
+            {/* Navigation Tabs */}
             <div className={`flex items-center justify-between p-1 
               ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'} rounded-lg shadow-inner`}>
               {[
@@ -768,7 +748,7 @@ const JobDescriptionPageContent = () => {
                       {tab.count}
                     </span>
                   )}
-                  </button>
+                </button>
               ))}
             </div>
           </div>
@@ -844,7 +824,7 @@ const JobDescriptionPageContent = () => {
             />
           )}
 
-          {/* Enhanced Submission Modal */}
+          {/* Submission Modal */}
           {showSubmissionModal && (
             <SubmissionModal
               createdJobsData={createdJobsData}
@@ -864,7 +844,7 @@ const JobDescriptionPageContent = () => {
             />
           )}
 
-          {/* ADDED: Bulk Upload Modal */}
+          {/* Bulk Upload Modal */}
           {showBulkUploadModal && (
             <BulkUploadModal
               isOpen={showBulkUploadModal}

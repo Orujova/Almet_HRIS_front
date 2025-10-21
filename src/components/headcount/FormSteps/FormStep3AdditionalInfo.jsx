@@ -104,7 +104,7 @@ const FormStep3AdditionalInfo = ({
   // FIXED: Handle single tag selection change
   const handleTagSelectionChange = (e) => {
     const selectedTagId = e.target.value;
-    console.log('🏷️ Tag selection changed:', selectedTagId);
+   
     handleInputChange({
       target: { 
         name: 'tag_id', // Changed from tag_ids to tag_id for single select

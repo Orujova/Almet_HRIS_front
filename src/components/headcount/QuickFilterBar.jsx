@@ -125,7 +125,7 @@ const QuickFilterBar = ({
   const businessFunctionOptions = useMemo(() => {
     if (!Array.isArray(businessFunctions)) return [];
     
-    console.log('🔧 Creating BF options from:', businessFunctions);
+    
     
     return businessFunctions
       .filter(bf => bf && bf.is_active !== false)
@@ -137,7 +137,7 @@ const QuickFilterBar = ({
           code: bf.code,
           employee_count: bf.employee_count || 0
         };
-        console.log('  BF Option:', option);
+  
         return option;
       })
       .sort((a, b) => (a.label || '').localeCompare(b.label || ''));
@@ -246,11 +246,7 @@ const QuickFilterBar = ({
     }
   }, [onStatusChange, onDepartmentChange, onBusinessFunctionChange, onPositionGroupChange, onClearAllFilters]);
 
-  // Debug current filter values
-  console.log('🎯 QuickFilterBar Props:', {
-    businessFunctionFilter,
-    businessFunctionOptions: businessFunctionOptions.map(o => ({ value: o.value, label: o.label }))
-  });
+
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -377,11 +373,7 @@ const MultiSelectDropdown = ({
   const selectedCount = safeSelected.length;
   const disabled = isLoading || hasError;
 
-  // Debug
-  console.log(`🔍 ${label} Dropdown:`, {
-    selectedValues: safeSelected,
-    options: safeOptions.map(o => o.value)
-  });
+ 
 
   const filteredOptions = safeOptions.filter(option => {
     if (!option || !searchTerm) return true;
@@ -424,7 +416,7 @@ const MultiSelectDropdown = ({
   };
 
   const handleOptionToggle = (value) => {
-    console.log('🎯 Toggle option:', { value, type: typeof value, currentSelected: safeSelected });
+   
     
     // ✅ Check if selected (handle different types)
     const isCurrentlySelected = safeSelected.some(v => 
@@ -444,7 +436,7 @@ const MultiSelectDropdown = ({
       newSelection = [...safeSelected, value];
     }
     
-    console.log('✅ New selection:', newSelection);
+   
     
     if (onChange) {
       onChange(newSelection);
@@ -477,7 +469,7 @@ const MultiSelectDropdown = ({
       String(v) === String(value) || 
       Number(v) === Number(value)
     );
-    console.log(`  Checking ${value}:`, selected);
+  
     return selected;
   };
 

@@ -57,7 +57,7 @@ export const employeeAPI = {
           .map(val => String(val).trim())
           .filter(val => val.length > 0);
         
-        console.log(`✅ ${filterName} processed array:`, cleanValues);
+   
         return cleanValues.length > 0 ? cleanValues : null;
       } else if (typeof value === 'string') {
         // Handle comma-separated string values
@@ -69,7 +69,7 @@ export const employeeAPI = {
           return splitValues.length > 0 ? splitValues : null;
         } else {
           const trimmed = value.trim();
-          console.log(`✅ ${filterName} processed single string:`, trimmed);
+     
           return trimmed ? [trimmed] : null;
         }
       }

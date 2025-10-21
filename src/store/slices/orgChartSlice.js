@@ -461,7 +461,7 @@ const orgChartSlice = createSlice({
         
         // FIXED: Use cleaned data from thunk
         const orgChartData = action.payload.org_chart || [];
-        console.log('Cleaned org chart data loaded:', orgChartData.length, 'employees');
+    
         state.orgChart = orgChartData;
         
         // Update pagination if present
@@ -490,7 +490,7 @@ const orgChartSlice = createSlice({
           }
         });
         
-        console.log('Simple hierarchy built - roots:', roots.length, 'total employees:', Object.keys(employeeMap).length);
+     
         
         state.hierarchy = { 
           roots: roots, 
@@ -514,7 +514,7 @@ const orgChartSlice = createSlice({
           
           // Remove duplicates
           state.ui.expandedNodes = [...new Set(initialExpanded)];
-          console.log('Initial expanded nodes set:', state.ui.expandedNodes.length);
+        
         }
       })
       .addCase(fetchOrgChart.rejected, (state, action) => {
@@ -839,7 +839,7 @@ export const selectPagination = createSelector(
 export const selectFilteredOrgChart = createSelector(
   [selectOrgChart, selectActiveFilters],
   (orgChart, activeFilters) => {
-    console.log('Filtering orgChart:', orgChart?.length, 'employees with filters:', Object.keys(activeFilters));
+  
     
     if (!Array.isArray(orgChart) || Object.keys(activeFilters).length === 0) {
       return orgChart;
@@ -952,7 +952,7 @@ export const selectFilteredOrgChart = createSelector(
       return true;
     });
     
-    console.log('Filtered result:', filtered.length, 'employees');
+
     return filtered;
   }
 );
@@ -961,11 +961,7 @@ export const selectFilteredOrgChart = createSelector(
 export const selectOrgChartForReactFlow = createSelector(
   [selectFilteredOrgChart, selectExpandedNodes],
   (filteredChart, expandedNodes) => {
-    console.log('selectOrgChartForReactFlow input:', {
-      filteredChartLength: filteredChart?.length || 0,
-      expandedNodesLength: expandedNodes?.length || 0,
-      expandedNodes: expandedNodes
-    });
+  
     
     if (!Array.isArray(filteredChart) || filteredChart.length === 0) {
       console.log('No filtered chart data available');
@@ -977,7 +973,7 @@ export const selectOrgChartForReactFlow = createSelector(
     
     // Find root employees
     const rootEmployees = filteredChart.filter(emp => !emp.line_manager_id);
-    console.log('Root employees found:', rootEmployees.length);
+
     
     // If no expanded nodes and we have roots, expand them
     if (expandedNodes?.length === 0 && rootEmployees.length > 0) {
@@ -1010,7 +1006,7 @@ export const selectOrgChartForReactFlow = createSelector(
       });
     });
     
-    console.log('Visible employees:', visibleEmployees.length);
+  
     
     // Create React Flow nodes
     const nodes = visibleEmployees.map(emp => ({
@@ -1046,10 +1042,7 @@ export const selectOrgChartForReactFlow = createSelector(
       }));
     
     const result = { nodes, edges };
-    console.log('ReactFlow data generated:', {
-      nodes: result.nodes.length,
-      edges: result.edges.length
-    });
+   
     
     return result;
   }

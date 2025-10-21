@@ -1,4 +1,4 @@
-// services/jobDescriptionService.js - Complete API Integration with All Methods
+// services/jobDescriptionService.js - COMPLETE API Integration with Item Management
 import axios from 'axios';
 
 // Base URL
@@ -98,14 +98,6 @@ class JobDescriptionService {
       errors.push('position_group is required');
     }
     
-    // Employee validation - either assigned_employee OR manual employee info
-    const hasAssignedEmployee = data.assigned_employee;
-    const hasManualEmployee = data.manual_employee_name?.trim();
-    
-    if (!hasAssignedEmployee && !hasManualEmployee) {
-      console.log('ℹ️ No employee assigned - this will be a vacant position');
-    }
-    
     // Unit validation - only if unit is provided, it should be valid
     if (data.unit && !data.department) {
       errors.push('department is required when unit is specified');
@@ -137,12 +129,7 @@ class JobDescriptionService {
         if (!skill.skill_id) {
           errors.push(`Required skill ${index + 1}: skill_id is required`);
         }
-        if (!skill.proficiency_level) {
-          errors.push(`Required skill ${index + 1}: proficiency_level is required`);
-        }
-        if (typeof skill.is_mandatory !== 'boolean') {
-          errors.push(`Required skill ${index + 1}: is_mandatory must be boolean`);
-        }
+       
       });
     }
     
@@ -152,80 +139,112 @@ class JobDescriptionService {
         if (!comp.competency_id) {
           errors.push(`Behavioral competency ${index + 1}: competency_id is required`);
         }
-        if (!comp.proficiency_level) {
-          errors.push(`Behavioral competency ${index + 1}: proficiency_level is required`);
-        }
-        if (typeof comp.is_mandatory !== 'boolean') {
-          errors.push(`Behavioral competency ${index + 1}: is_mandatory must be boolean`);
-        }
+       
       });
     }
     
     return errors;
   }
   
-  cleanJobDescriptionData(data) {
-    const cleaned = {
-      // Required string fields
-      job_title: data.job_title?.trim() || '',
-      job_purpose: data.job_purpose?.trim() || '',
-      
-      // Required ID fields
-      business_function: parseInt(data.business_function) || null,
-      department: parseInt(data.department) || null,
-      job_function: parseInt(data.job_function) || null,
-      position_group: parseInt(data.position_group) || null,
-      
-      // Optional ID fields
-      grading_level: data.grading_level?.trim() || null,
-  
-     
-      
-      // NEW: Employee selection support
-      selected_employee_ids: Array.isArray(data.selected_employee_ids) 
-        ? data.selected_employee_ids.map(id => parseInt(id)).filter(id => !isNaN(id))
-        : [],
-      
+  // FIXED cleanJobDescriptionData in jobDescriptionService.js
+// Replace the existing cleanJobDescriptionData function with this version
 
-      
-      // Arrays
-      sections: Array.isArray(data.sections) ? data.sections : [],
-      required_skills_data: Array.isArray(data.required_skills_data) ? data.required_skills_data : [],
-      behavioral_competencies_data: Array.isArray(data.behavioral_competencies_data) ? data.behavioral_competencies_data : [],
-      business_resources_ids: Array.isArray(data.business_resources_ids) ? data.business_resources_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
-      access_rights_ids: Array.isArray(data.access_rights_ids) ? data.access_rights_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : [],
-      company_benefits_ids: Array.isArray(data.company_benefits_ids) ? data.company_benefits_ids.map(id => parseInt(id)).filter(id => !isNaN(id)) : []
-    };
+cleanJobDescriptionData(data) {
+  const cleaned = {
+    // Required string fields
+    job_title: data.job_title?.trim() || '',
+    job_purpose: data.job_purpose?.trim() || '',
     
-    // Only include unit if it has a valid value
-    if (data.unit && parseInt(data.unit)) {
-      cleaned.unit = parseInt(data.unit);
-    }
+    // Required ID fields
+    business_function: parseInt(data.business_function) || null,
+    department: parseInt(data.department) || null,
+    job_function: parseInt(data.job_function) || null,
+    position_group: parseInt(data.position_group) || null,
     
-    // Clean sections
-    cleaned.sections = cleaned.sections.map((section, index) => ({
-      section_type: section.section_type?.trim() || '',
-      title: section.title?.trim() || '',
-      content: section.content?.trim() || '',
-      order: typeof section.order === 'number' ? section.order : index + 1
-    })).filter(section => section.section_type && section.title && section.content);
+    // Optional ID fields
+    grading_level: data.grading_level?.trim() || null,
     
-    // Clean skills data
-    cleaned.required_skills_data = cleaned.required_skills_data.map(skill => ({
-      skill_id: parseInt(skill.skill_id),
-      proficiency_level: skill.proficiency_level?.trim() || 'INTERMEDIATE',
-      is_mandatory: Boolean(skill.is_mandatory)
-    })).filter(skill => skill.skill_id && !isNaN(skill.skill_id));
+    // Employee selection support
+    selected_employee_ids: Array.isArray(data.selected_employee_ids) 
+      ? data.selected_employee_ids.map(id => parseInt(id)).filter(id => !isNaN(id))
+      : [],
     
-    // Clean competencies data
-    cleaned.behavioral_competencies_data = cleaned.behavioral_competencies_data.map(comp => ({
-      competency_id: parseInt(comp.competency_id),
-      proficiency_level: comp.proficiency_level?.trim() || 'INTERMEDIATE',
-      is_mandatory: Boolean(comp.is_mandatory)
-    })).filter(comp => comp.competency_id && !isNaN(comp.competency_id));
-    
-    return cleaned;
+    // Arrays
+    sections: Array.isArray(data.sections) ? data.sections : [],
+    required_skills_data: Array.isArray(data.required_skills_data) ? data.required_skills_data : [],
+    behavioral_competencies_data: Array.isArray(data.behavioral_competencies_data) ? data.behavioral_competencies_data : []
+  };
+  
+  // Only include unit if it has a valid value
+  if (data.unit && parseInt(data.unit)) {
+    cleaned.unit = parseInt(data.unit);
   }
+  
+  // Clean sections
+  cleaned.sections = cleaned.sections.map((section, index) => ({
+    section_type: section.section_type?.trim() || '',
+    title: section.title?.trim() || '',
+    content: section.content?.trim() || '',
+    order: typeof section.order === 'number' ? section.order : index + 1
+  })).filter(section => section.section_type && section.title && section.content);
+  
+  // Clean skills data
+  cleaned.required_skills_data = cleaned.required_skills_data.map(skill => ({
+    skill_id: parseInt(skill.skill_id),
+  })).filter(skill => skill.skill_id && !isNaN(skill.skill_id));
+  
+  // Clean competencies data
+  cleaned.behavioral_competencies_data = cleaned.behavioral_competencies_data.map(comp => ({
+    competency_id: parseInt(comp.competency_id),
+  })).filter(comp => comp.competency_id && !isNaN(comp.competency_id));
+  
+  // ✅ FIX: Handle both _ids and _with_items formats for resources
+  // Business Resources
+  if (data.business_resources_with_items && Array.isArray(data.business_resources_with_items)) {
+    cleaned.business_resources_with_items = data.business_resources_with_items.map(item => ({
+      resource_id: parseInt(item.resource_id),
+      item_ids: Array.isArray(item.item_ids) 
+        ? item.item_ids.map(id => parseInt(id)).filter(id => !isNaN(id))
+        : []
+    })).filter(item => !isNaN(item.resource_id));
+  } else if (data.business_resources_ids && Array.isArray(data.business_resources_ids)) {
+    cleaned.business_resources_ids = data.business_resources_ids
+      .map(id => parseInt(id))
+      .filter(id => !isNaN(id));
+  }
+  
+  // Access Rights
+  if (data.access_rights_with_items && Array.isArray(data.access_rights_with_items)) {
+    cleaned.access_rights_with_items = data.access_rights_with_items.map(item => ({
+      access_matrix_id: parseInt(item.access_matrix_id),
+      item_ids: Array.isArray(item.item_ids) 
+        ? item.item_ids.map(id => parseInt(id)).filter(id => !isNaN(id))
+        : []
+    })).filter(item => !isNaN(item.access_matrix_id));
+  } else if (data.access_rights_ids && Array.isArray(data.access_rights_ids)) {
+    cleaned.access_rights_ids = data.access_rights_ids
+      .map(id => parseInt(id))
+      .filter(id => !isNaN(id));
+  }
+  
+  // Company Benefits
+  if (data.company_benefits_with_items && Array.isArray(data.company_benefits_with_items)) {
+    cleaned.company_benefits_with_items = data.company_benefits_with_items.map(item => ({
+      benefit_id: parseInt(item.benefit_id),
+      item_ids: Array.isArray(item.item_ids) 
+        ? item.item_ids.map(id => parseInt(id)).filter(id => !isNaN(id))
+        : []
+    })).filter(item => !isNaN(item.benefit_id));
+  } else if (data.company_benefits_ids && Array.isArray(data.company_benefits_ids)) {
+    cleaned.company_benefits_ids = data.company_benefits_ids
+      .map(id => parseInt(id))
+      .filter(id => !isNaN(id));
+  }
+  
+
+  
+  return cleaned;
+}
 
   // ========================================
   // JOB DESCRIPTIONS MAIN ENDPOINTS
@@ -248,112 +267,102 @@ class JobDescriptionService {
     }
   }
 
-async downloadBulkUploadTemplate() {
-  try {
-    console.log('📄 Downloading bulk upload template...');
-    const response = await api.get('/job-descriptions/download_template/', {
-      responseType: 'blob'
-    });
-    
-    // Create blob link to download
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    
-    // Extract filename from response headers or use default
-    const contentDisposition = response.headers['content-disposition'];
-    let filename = 'Job_Description_Bulk_Upload_Template.xlsx';
-    
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1];
-      }
-    }
-    
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    
-    console.log('✅ Template downloaded successfully');
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error downloading bulk upload template:', error);
-    throw error;
-  }
-}
-
-
-async bulkUploadJobDescriptions(file, options = {}) {
-  try {
-    console.log('📤 Starting bulk upload:', {
-      filename: file.name,
-      size: file.size,
-      type: file.type,
-      options
-    });
-    
-    // Validate file
-    if (!file) {
-      throw new Error('File is required for bulk upload');
-    }
-    
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel'
-    ];
-    
-    if (!allowedTypes.includes(file.type)) {
-      throw new Error('Invalid file type. Please upload an Excel file (.xlsx or .xls)');
-    }
-    
-    // Create FormData
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('validate_only', options.validate_only ?? false);
-    formData.append('auto_assign_employees', options.auto_assign_employees ?? true);
-    formData.append('skip_duplicates', options.skip_duplicates ?? true);
-    
-    // Upload with progress tracking
-    const response = await api.post('/job-descriptions/bulk-upload/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      },
-      timeout: 120000, // 2 minutes for large files
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        console.log(`📊 Upload progress: ${percentCompleted}%`);
-      }
-    });
-    
-    console.log('✅ Bulk upload completed:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('❌ Error during bulk upload:', error);
-    
-    if (error.response?.data) {
-      // Enhanced error handling for bulk upload
-      const errorData = error.response.data;
-      console.error('Bulk upload error details:', errorData);
+  async downloadBulkUploadTemplate() {
+    try {
+   
+      const response = await api.get('/job-descriptions/download_template/', {
+        responseType: 'blob'
+      });
       
-      if (errorData.errors && Array.isArray(errorData.errors)) {
-        // Format row-specific errors
-        const errorMessages = errorData.errors.map(err => 
-          `Row ${err.row}: ${err.errors.join(', ')}`
-        );
-        throw new Error(`Bulk upload failed:\n${errorMessages.join('\n')}`);
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Extract filename from response headers or use default
+      const contentDisposition = response.headers['content-disposition'];
+      let filename = 'Job_Description_Bulk_Upload_Template.xlsx';
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+        if (filenameMatch && filenameMatch[1]) {
+          filename = filenameMatch[1];
+        }
       }
-    }
-    
-    throw error;
-  }
-}
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
 
-async validateBulkUpload(file) {
-  return this.bulkUploadJobDescriptions(file, { validate_only: true });
-}
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error downloading bulk upload template:', error);
+      throw error;
+    }
+  }
+
+  async bulkUploadJobDescriptions(file, options = {}) {
+    try {
+     
+      
+      // Validate file
+      if (!file) {
+        throw new Error('File is required for bulk upload');
+      }
+      
+      const allowedTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-excel'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Invalid file type. Please upload an Excel file (.xlsx or .xls)');
+      }
+      
+      // Create FormData
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('validate_only', options.validate_only ?? false);
+      formData.append('auto_assign_employees', options.auto_assign_employees ?? true);
+      formData.append('skip_duplicates', options.skip_duplicates ?? true);
+      
+      // Upload with progress tracking
+      const response = await api.post('/job-descriptions/bulk-upload/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 120000, // 2 minutes for large files
+       
+      });
+      
+
+      return response.data;
+    } catch (error) {
+    
+      
+      if (error.response?.data) {
+        const errorData = error.response.data;
+     
+        
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          const errorMessages = errorData.errors.map(err => 
+            `Row ${err.row}: ${err.errors.join(', ')}`
+          );
+          throw new Error(`Bulk upload failed:\n${errorMessages.join('\n')}`);
+        }
+      }
+      
+      throw error;
+    }
+  }
+
+  async validateBulkUpload(file) {
+    return this.bulkUploadJobDescriptions(file, { validate_only: true });
+  }
+
   async getJobDescription(id) {
     try {
       const response = await api.get(`/job-descriptions/${id}/`);
@@ -364,18 +373,15 @@ async validateBulkUpload(file) {
     }
   }
 
-  // ENHANCED: Preview eligible employees with better error handling
   async previewEligibleEmployees(criteria) {
     try {
-      console.log('🔍 Previewing eligible employees for criteria:', criteria);
+    
       
-      // Validate required fields
       if (!criteria.job_title || !criteria.business_function || !criteria.department || 
           !criteria.job_function || !criteria.position_group) {
         throw new Error('Missing required criteria fields');
       }
 
-      // Clean criteria - ensure all IDs are integers and remove null/undefined values
       const cleanedCriteria = {
         job_title: criteria.job_title?.trim(),
         business_function: parseInt(criteria.business_function),
@@ -387,14 +393,12 @@ async validateBulkUpload(file) {
         include_vacancies: true
       };
 
-      // Only include unit if it's provided and valid
       if (criteria.unit && parseInt(criteria.unit)) {
         cleanedCriteria.unit = parseInt(criteria.unit);
       } else {
         cleanedCriteria.unit = null;
       }
 
-      // Remove any null/undefined/empty values to avoid 400 errors
       Object.keys(cleanedCriteria).forEach(key => {
         if (cleanedCriteria[key] === null || cleanedCriteria[key] === undefined || 
             cleanedCriteria[key] === '' || (typeof cleanedCriteria[key] === 'number' && isNaN(cleanedCriteria[key]))) {
@@ -402,19 +406,18 @@ async validateBulkUpload(file) {
         }
       });
 
-      console.log('📤 Cleaned criteria being sent:', cleanedCriteria);
+     
       
       const response = await api.post('/job-descriptions/preview_eligible_employees/', cleanedCriteria);
       
-      console.log('✅ Preview response:', response.data);
+     
       return response.data;
     } catch (error) {
       console.error('❌ Error previewing eligible employees:', error);
       
-      // Enhanced error handling for different response types
       if (error.response?.status === 400) {
         const errorData = error.response.data;
-        console.error('Bad Request Details:', errorData);
+
         
         let errorMessage = 'Invalid request parameters';
         if (typeof errorData === 'string') {
@@ -428,7 +431,6 @@ async validateBulkUpload(file) {
         } else if (Array.isArray(errorData)) {
           errorMessage = errorData.join(', ');
         } else if (typeof errorData === 'object') {
-          // Handle field-specific errors
           const fieldErrors = [];
           Object.keys(errorData).forEach(field => {
             if (Array.isArray(errorData[field])) {
@@ -449,37 +451,28 @@ async validateBulkUpload(file) {
     }
   }
 
-
-
-  /**
-   * ENHANCED: Create method with employee selection support
-   */
   async createJobDescription(data) {
     try {
-      console.log('🚀 Creating job description with data:', data);
+  
       
-      // Validate data
       const validationErrors = this.validateJobDescriptionData(data);
       if (validationErrors.length > 0) {
         console.error('❌ Validation errors:', validationErrors);
         throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
       }
 
-      // Clean data
       const cleanedData = this.cleanJobDescriptionData(data);
-      console.log('🔧 Cleaned data for API:', cleanedData);
+    
       
       const response = await api.post('/job-descriptions/', cleanedData);
       
-      console.log('✅ Job description created successfully:', response.data);
+    
       return response.data;
     } catch (error) {
-      console.log('=== CREATE ERROR DEBUG ===');
-      console.error('❌ Full error object:', error);
+
       
       if (error.response?.status === 422 && error.response.data?.requires_employee_selection) {
-        // Special case: Multiple employees found, selection required
-        console.log('👥 Multiple employees found - selection required');
+      
         throw {
           requiresEmployeeSelection: true,
           eligibleEmployees: error.response.data.eligible_employees,
@@ -501,9 +494,7 @@ async validateBulkUpload(file) {
 
   async updateJobDescription(id, data) {
     try {
-      console.log('=== UPDATE DEBUG ===');
-      console.log('1. Update ID:', id);
-      console.log('2. Raw form data:', JSON.stringify(data, null, 2));
+   
       
       const validationErrors = this.validateJobDescriptionData(data);
       if (validationErrors.length > 0) {
@@ -512,11 +503,10 @@ async validateBulkUpload(file) {
       }
       
       const cleanedData = this.cleanJobDescriptionData(data);
-      console.log('3. Cleaned data for API:', JSON.stringify(cleanedData, null, 2));
+    
       
       const response = await api.put(`/job-descriptions/${id}/`, cleanedData);
-      console.log('✅ Update successful');
-      console.log('=== END UPDATE DEBUG ===');
+    
       
       return response.data;
     } catch (error) {
@@ -544,12 +534,10 @@ async validateBulkUpload(file) {
 
   async submitForApproval(id, data) {
     try {
-      console.log('=== SUBMIT FOR APPROVAL DEBUG ===');
-      console.log('Job ID:', id);
-      console.log('Submission data:', JSON.stringify(data, null, 2));
+   
       
       const response = await api.post(`/job-descriptions/${id}/submit_for_approval/`, data);
-      console.log('✅ Submission successful');
+    
       return response.data;
     } catch (error) {
       console.error('Error submitting for approval:', error);
@@ -562,18 +550,16 @@ async validateBulkUpload(file) {
 
   async approveByLineManager(id, data = {}) {
     try {
-      console.log('=== APPROVE BY LINE MANAGER ===');
-      console.log('Job ID:', id);
-      console.log('Input approval data:', JSON.stringify(data, null, 2));
+   
       
       const approvalData = {
         comments: data.comments?.trim() || ''
       };
       
-      console.log('Cleaned approval data:', JSON.stringify(approvalData, null, 2));
+
       
       const response = await api.post(`/job-descriptions/${id}/approve_by_line_manager/`, approvalData);
-      console.log('✅ Line manager approval successful:', response.status);
+
       
       return response.data;
     } catch (error) {
@@ -588,18 +574,15 @@ async validateBulkUpload(file) {
 
   async approveAsEmployee(id, data = {}) {
     try {
-      console.log('=== APPROVE AS EMPLOYEE ===');
-      console.log('Job ID:', id);
-      console.log('Input approval data:', JSON.stringify(data, null, 2));
+  
       
       const approvalData = {
         comments: data.comments?.trim() || ''
       };
-      
-      console.log('Cleaned approval data:', JSON.stringify(approvalData, null, 2));
+
       
       const response = await api.post(`/job-descriptions/${id}/approve_as_employee/`, approvalData);
-      console.log('✅ Employee approval successful:', response.status);
+
       
       return response.data;
     } catch (error) {
@@ -614,10 +597,7 @@ async validateBulkUpload(file) {
 
   async rejectJobDescription(id, data = {}) {
     try {
-      console.log('=== REJECT JOB DESCRIPTION ===');
-      console.log('Job ID:', id);
-      console.log('Input rejection data:', JSON.stringify(data, null, 2));
-      
+
       const rejectionData = {
         reason: data.reason?.trim() || data.comments?.trim() || ''
       };
@@ -626,10 +606,10 @@ async validateBulkUpload(file) {
         throw new Error('Reason for rejection is required');
       }
       
-      console.log('Cleaned rejection data:', JSON.stringify(rejectionData, null, 2));
+
       
       const response = await api.post(`/job-descriptions/${id}/reject/`, rejectionData);
-      console.log('✅ Rejection successful:', response.status);
+   
       
       return response.data;
     } catch (error) {
@@ -644,12 +624,10 @@ async validateBulkUpload(file) {
 
   async requestRevision(id, data) {
     try {
-      console.log('=== REQUEST REVISION ===');
-      console.log('Job ID:', id);
-      console.log('Revision data:', JSON.stringify(data, null, 2));
+    
       
       const response = await api.post(`/job-descriptions/${id}/request_revision/`, data);
-      console.log('✅ Revision request successful');
+   
       return response.data;
     } catch (error) {
       console.error('Error requesting revision:', error);
@@ -666,11 +644,10 @@ async validateBulkUpload(file) {
 
   async getEmployeeJobDescriptions(employeeId) {
     try {
-      console.log('📋 Fetching job descriptions for employee:', employeeId);
+
       const response = await api.get(`/employees/${employeeId}/job_descriptions/`);
-      console.log('📋 Employee job descriptions response:', response.data);
+    
       
-      // Return the job_descriptions array from the response
       return response.data.job_descriptions || [];
     } catch (error) {
       console.error('Error fetching employee job descriptions:', error);
@@ -680,11 +657,10 @@ async validateBulkUpload(file) {
 
   async getTeamJobDescriptions(managerId) {
     try {
-      console.log('👥 Fetching team job descriptions for manager:', managerId);
+
       const response = await api.get(`/employees/${managerId}/team_job_descriptions/`);
-      console.log('👥 Team job descriptions response:', response.data);
+
       
-      // The API might return different structures, handle them all
       if (Array.isArray(response.data)) {
         return response.data;
       } else if (response.data.team_job_descriptions) {
@@ -692,7 +668,6 @@ async validateBulkUpload(file) {
       } else if (response.data.results) {
         return response.data.results;
       } else {
-        // If it's an object, try to find an array property
         const teamJobs = Object.values(response.data).find(value => Array.isArray(value)) || [];
         return teamJobs;
       }
@@ -722,12 +697,11 @@ async validateBulkUpload(file) {
 
   async downloadJobDescriptionPDF(id) {
     try {
-      console.log('📄 Downloading PDF for job description:', id);
+
       const response = await api.get(`/job-descriptions/${id}/download_pdf/`, {
         responseType: 'blob'
       });
       
-      // Create blob link to download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -737,7 +711,7 @@ async validateBulkUpload(file) {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      console.log('✅ PDF download successful');
+   
       return response.data;
     } catch (error) {
       console.error('Error downloading job description PDF:', error);
@@ -747,7 +721,7 @@ async validateBulkUpload(file) {
 
   async downloadMultipleJobDescriptionsPDF(jobIds) {
     try {
-      console.log('📄 Downloading multiple PDFs for job descriptions:', jobIds);
+   
       
       const response = await api.post('/job-descriptions/download_multiple_pdfs/', {
         job_description_ids: jobIds
@@ -755,7 +729,6 @@ async validateBulkUpload(file) {
         responseType: 'blob'
       });
       
-      // Create blob link to download
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -765,7 +738,7 @@ async validateBulkUpload(file) {
       link.remove();
       window.URL.revokeObjectURL(url);
       
-      console.log('✅ Multiple PDFs download successful');
+
       return response.data;
     } catch (error) {
       console.error('Error downloading multiple job descriptions PDFs:', error);
@@ -844,6 +817,62 @@ async validateBulkUpload(file) {
     }
   }
 
+  // ADDED: Access Matrix Item Management
+  async getAccessMatrixItems(matrixId) {
+    try {
+      const response = await api.get(`/job-description/access-matrix/${matrixId}/items/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching access matrix items:', error);
+      throw error;
+    }
+  }
+
+  async addAccessMatrixItem(matrixId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.post(`/job-description/access-matrix/${matrixId}/add_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding access matrix item:', error);
+      throw error;
+    }
+  }
+
+  async updateAccessMatrixItem(matrixId, itemId, data) {
+    try {
+      const cleanData = {
+        item_id: parseInt(itemId),
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/access-matrix/${matrixId}/update_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating access matrix item:', error);
+      throw error;
+    }
+  }
+
+  async deleteAccessMatrixItem(matrixId, itemId) {
+    try {
+      const response = await api.delete(`/job-description/access-matrix/${matrixId}/delete_item/`, {
+        data: { item_id: parseInt(itemId) }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting access matrix item:', error);
+      throw error;
+    }
+  }
+
   // ========================================
   // SUPPORTING DATA ENDPOINTS - BUSINESS RESOURCES
   // ========================================
@@ -911,6 +940,62 @@ async validateBulkUpload(file) {
       return response;
     } catch (error) {
       console.error('Error deleting business resource:', error);
+      throw error;
+    }
+  }
+
+  // ADDED: Business Resource Item Management
+  async getBusinessResourceItems(resourceId) {
+    try {
+      const response = await api.get(`/job-description/business-resources/${resourceId}/items/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching business resource items:', error);
+      throw error;
+    }
+  }
+
+  async addBusinessResourceItem(resourceId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.post(`/job-description/business-resources/${resourceId}/add_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding business resource item:', error);
+      throw error;
+    }
+  }
+
+  async updateBusinessResourceItem(resourceId, itemId, data) {
+    try {
+      const cleanData = {
+        item_id: parseInt(itemId),
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/business-resources/${resourceId}/update_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating business resource item:', error);
+      throw error;
+    }
+  }
+
+  async deleteBusinessResourceItem(resourceId, itemId) {
+    try {
+      const response = await api.delete(`/job-description/business-resources/${resourceId}/delete_item/`, {
+        data: { item_id: parseInt(itemId) }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting business resource item:', error);
       throw error;
     }
   }
@@ -986,6 +1071,62 @@ async validateBulkUpload(file) {
     }
   }
 
+  // ADDED: Company Benefit Item Management
+  async getCompanyBenefitItems(benefitId) {
+    try {
+      const response = await api.get(`/job-description/company-benefits/${benefitId}/items/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching company benefit items:', error);
+      throw error;
+    }
+  }
+
+  async addCompanyBenefitItem(benefitId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.post(`/job-description/company-benefits/${benefitId}/add_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding company benefit item:', error);
+      throw error;
+    }
+  }
+
+  async updateCompanyBenefitItem(benefitId, itemId, data) {
+    try {
+      const cleanData = {
+        item_id: parseInt(itemId),
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/company-benefits/${benefitId}/update_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating company benefit item:', error);
+      throw error;
+    }
+  }
+
+  async deleteCompanyBenefitItem(benefitId, itemId) {
+    try {
+      const response = await api.delete(`/job-description/company-benefits/${benefitId}/delete_item/`, {
+        data: { item_id: parseInt(itemId) }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting company benefit item:', error);
+      throw error;
+    }
+  }
+
   // ========================================
   // JOB DESCRIPTION STATISTICS
   // ========================================
@@ -999,8 +1140,6 @@ async validateBulkUpload(file) {
       throw error;
     }
   }
-
- 
 
   // ========================================
   // EMPLOYEE HELPERS
@@ -1059,7 +1198,7 @@ async validateBulkUpload(file) {
 
   getUnitsForDepartment(departmentId, allUnits) {
     try {
-      console.log('🔍 Filtering units for department:', departmentId);
+ 
       
       if (!departmentId || !allUnits || !Array.isArray(allUnits)) {
         return { results: [], count: 0 };
@@ -1069,7 +1208,7 @@ async validateBulkUpload(file) {
         unit.department === parseInt(departmentId)
       );
       
-      console.log(`✅ Found ${departmentUnits.length} units for department ${departmentId}`);
+
       
       return {
         results: departmentUnits,
@@ -1090,7 +1229,7 @@ async validateBulkUpload(file) {
       const unitsForDept = this.getUnitsForDepartment(departmentId, allUnits);
       const isValid = unitsForDept.results.some(unit => unit.id === parseInt(unitId));
       
-      console.log(`${isValid ? '✅' : '❌'} Unit ${unitId} ${isValid ? 'belongs to' : 'does not belong to'} department ${departmentId}`);
+     
       
       return isValid;
     } catch (error) {
@@ -1455,8 +1594,6 @@ async validateBulkUpload(file) {
   // LEGACY SUPPORT METHODS
   // ========================================
 
-// jobDescriptionService.js - transformJobDescriptionResponse methodunun düzəlişi
-
 transformJobDescriptionResponse(apiData) {
   if (!apiData) {
     return {
@@ -1480,9 +1617,9 @@ transformJobDescriptionResponse(apiData) {
     };
   }
 
-  console.log('🔄 Transforming job description response:', apiData);
+ 
 
-  // FIXED: Process sections properly
+  // Process sections
   const sections = {
     criticalDuties: [''],
     positionMainKpis: [''],
@@ -1494,7 +1631,6 @@ transformJobDescriptionResponse(apiData) {
     apiData.sections.forEach(section => {
       if (!section || !section.content) return;
       
-      // Split content and clean up
       const content = section.content
         .split('\n')
         .map(item => item.replace(/^[\d]+\.\s*/, '').replace(/^•\s*/, '').trim())
@@ -1517,61 +1653,60 @@ transformJobDescriptionResponse(apiData) {
     });
   }
 
-  // FIXED: Business Resources - extract names for display
+  // FIXED: Extract ALL selected IDs (both parent and child)
   const businessResourcesIds = [];
   if (apiData.business_resources && Array.isArray(apiData.business_resources)) {
-    apiData.business_resources.forEach(resource => {
-      if (resource && resource.resource_detail && resource.resource_detail.name) {
-        businessResourcesIds.push(resource.resource_detail.name);
-      } else if (resource && resource.name) {
-        businessResourcesIds.push(resource.name);
-      } else if (resource && resource.id) {
-        businessResourcesIds.push(resource.id); // Fallback to ID
+    apiData.business_resources.forEach(item => {
+      // Each item represents either a parent or a child that was selected
+      // Store the actual item's ID (not the parent ID)
+      if (item.id && !isNaN(parseInt(item.id))) {
+        const itemId = String(item.id);
+        if (!businessResourcesIds.includes(itemId)) {
+          businessResourcesIds.push(itemId);
+        }
       }
     });
   }
 
-  // FIXED: Access Rights - extract names for display
   const accessRightsIds = [];
   if (apiData.access_rights && Array.isArray(apiData.access_rights)) {
-    apiData.access_rights.forEach(access => {
-      if (access && access.access_detail && access.access_detail.name) {
-        accessRightsIds.push(access.access_detail.name);
-      } else if (access && access.name) {
-        accessRightsIds.push(access.name);
-      } else if (access && access.id) {
-        accessRightsIds.push(access.id); // Fallback to ID
+    apiData.access_rights.forEach(item => {
+      if (item.id && !isNaN(parseInt(item.id))) {
+        const itemId = String(item.id);
+        if (!accessRightsIds.includes(itemId)) {
+          accessRightsIds.push(itemId);
+        }
       }
     });
   }
 
-  // FIXED: Company Benefits - extract names for display
   const companyBenefitsIds = [];
   if (apiData.company_benefits && Array.isArray(apiData.company_benefits)) {
-    apiData.company_benefits.forEach(benefit => {
-      if (benefit && benefit.benefit_detail && benefit.benefit_detail.name) {
-        companyBenefitsIds.push(benefit.benefit_detail.name);
-      } else if (benefit && benefit.name) {
-        companyBenefitsIds.push(benefit.name);
-      } else if (benefit && benefit.id) {
-        companyBenefitsIds.push(benefit.id); // Fallback to ID
+    apiData.company_benefits.forEach(item => {
+      if (item.id && !isNaN(parseInt(item.id))) {
+        const itemId = String(item.id);
+        if (!companyBenefitsIds.includes(itemId)) {
+          companyBenefitsIds.push(itemId);
+        }
       }
     });
   }
 
-  // FIXED: Skills - extract skill IDs for selection
+
+
+  // Extract skills
   const skillsData = [];
   if (apiData.required_skills && Array.isArray(apiData.required_skills)) {
     apiData.required_skills.forEach(skill => {
       let skillId = null;
       
-      if (skill && skill.skill_detail && skill.skill_detail.id) {
+      if (skill?.skill_detail?.id) {
         skillId = skill.skill_detail.id;
-      } else if (skill && skill.skill_id) {
+      } else if (skill?.skill_id) {
         skillId = skill.skill_id;
-      } else if (skill && skill.skill) {
+      } else if (skill?.skill) {
         skillId = skill.skill;
-      } else if (skill && skill.id) {
+      } else if (skill?.id) {
         skillId = skill.id;
       }
       
@@ -1581,19 +1716,19 @@ transformJobDescriptionResponse(apiData) {
     });
   }
 
-  // FIXED: Behavioral Competencies - extract competency IDs for selection
+  // Extract competencies
   const competenciesData = [];
   if (apiData.behavioral_competencies && Array.isArray(apiData.behavioral_competencies)) {
     apiData.behavioral_competencies.forEach(comp => {
       let compId = null;
       
-      if (comp && comp.competency_detail && comp.competency_detail.id) {
+      if (comp?.competency_detail?.id) {
         compId = comp.competency_detail.id;
-      } else if (comp && comp.competency_id) {
+      } else if (comp?.competency_id) {
         compId = comp.competency_id;
-      } else if (comp && comp.competency) {
+      } else if (comp?.competency) {
         compId = comp.competency;
-      } else if (comp && comp.id) {
+      } else if (comp?.id) {
         compId = comp.id;
       }
       
@@ -1603,13 +1738,11 @@ transformJobDescriptionResponse(apiData) {
     });
   }
 
-  // FIXED: For edit mode - use NAMES instead of IDs for dropdowns
   const result = {
     id: apiData.id,
     job_title: apiData.job_title || '',
     job_purpose: apiData.job_purpose || '',
     
-    // FIXED: Use names for form display (these will work with SearchableSelect)
     business_function: apiData.business_function?.name || apiData.business_function_name || '',
     department: apiData.department?.name || apiData.department_name || '',
     unit: apiData.unit?.name || apiData.unit_name || '',
@@ -1617,7 +1750,6 @@ transformJobDescriptionResponse(apiData) {
     position_group: apiData.position_group?.name || apiData.position_group_name || '',
     grading_level: apiData.grading_level || '',
     
-    // Employee and reporting info
     reports_to: apiData.reports_to?.id,
     reports_to_name: apiData.reports_to?.full_name,
     assigned_employee: apiData.assigned_employee?.id,
@@ -1625,40 +1757,28 @@ transformJobDescriptionResponse(apiData) {
     manual_employee_name: apiData.manual_employee_name || '',
     manual_employee_phone: apiData.manual_employee_phone || '',
     
-    // Status and metadata
     status: apiData.status,
     status_display: apiData.status_display,
     version: apiData.version,
     created_at: apiData.created_at,
     updated_at: apiData.updated_at,
     
-    // Sections
     ...sections,
     
-    // FIXED: Skills and competencies with proper IDs
     required_skills_data: skillsData,
     behavioral_competencies_data: competenciesData,
-    
-    // FIXED: Resources, access rights, and benefits with NAMES for display
     business_resources_ids: businessResourcesIds,
     access_rights_ids: accessRightsIds,
     company_benefits_ids: companyBenefitsIds,
     
-    // Approval status
     line_manager_approved: !!apiData.line_manager_approved_at,
     employee_approved: !!apiData.employee_approved_at,
     line_manager_comments: apiData.line_manager_comments || '',
     employee_comments: apiData.employee_comments || ''
   };
 
-  console.log('✅ Transformed result:', result);
-  
   return result;
 }
-
-  
-
-  
 }
 
 // Create and export singleton instance

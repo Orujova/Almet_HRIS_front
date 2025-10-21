@@ -76,7 +76,7 @@ const SearchBar = ({
 
   // FIXED: Handle search change with proper type checking
   const handleSearchChange = (value) => {
-    console.log('🔍 SearchBar: Search change', { value, type: typeof value });
+
     
     // FIXED: Ensure we always pass a string
     const stringValue = (() => {
@@ -112,14 +112,14 @@ const SearchBar = ({
 
   // FIXED: Clear search function
   const handleClearSearch = () => {
-    console.log('🧹 SearchBar: Clearing search');
+   
     handleSearchChange("");
     inputRef.current?.focus();
   };
 
   // Clear all recent searches
   const handleClearRecentSearches = () => {
-    console.log('🧹 SearchBar: Clearing recent searches');
+
     setRecentSearches([]);
     saveRecentSearches([]);
   };

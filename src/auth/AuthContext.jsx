@@ -54,7 +54,7 @@ export function AuthProvider({ children }) {
   const removeStorageItem = useCallback((key) => {
     try {
       localStorage.removeItem(key);
-      console.log(`🗑️ Removed ${key}`);
+  
     } catch (error) {
       console.error(`❌ Remove error for ${key}:`, error);
     }
@@ -97,7 +97,7 @@ export function AuthProvider({ children }) {
 
   // ✅ Clear authentication
   const clearAuth = useCallback(async () => {
-    console.log("🧹 Clearing authentication...");
+ 
     
     removeStorageItem("accessToken");
     removeStorageItem("refreshToken");
@@ -111,7 +111,7 @@ export function AuthProvider({ children }) {
         const accounts = msalInstance.getAllAccounts();
         if (accounts.length > 0) {
           await msalInstance.clearCache();
-          console.log("✅ MSAL cache cleared");
+        
         }
       } catch (error) {
         console.error("❌ MSAL cache clear error:", error);
@@ -122,10 +122,10 @@ export function AuthProvider({ children }) {
   // ✅ CRITICAL: Authenticate with backend using fetch
   const authenticateWithBackend = async (idToken, graphToken, msalAccount) => {
     try {
-      console.log("📤 Sending tokens to backend...");
+     
       console.log("📡 Backend URL:", BACKEND_URL);
       console.log("  - ID Token length:", idToken?.length || 0);
-      console.log("  - Graph Token:", graphToken ? "✓" : "✗");
+
       
       if (!idToken) {
         throw new Error("No ID token available");
@@ -173,7 +173,7 @@ export function AuthProvider({ children }) {
           throw new Error("Backend didn't return tokens");
         }
         
-        console.log("✅ Received JWT tokens from backend:");
+     
         console.log("  - Access token length:", accessToken.length);
         console.log("  - Refresh token length:", refreshToken.length);
         
@@ -190,7 +190,7 @@ export function AuthProvider({ children }) {
           setStorageItem("graphAccessToken", graphToken);
           const expiryTime = new Date(Date.now() + 3600 * 1000).toISOString();
           setStorageItem("graphTokenExpiry", expiryTime);
-          console.log("✅ Microsoft Graph token stored");
+        
         }
         
         // Verify storage
@@ -201,7 +201,7 @@ export function AuthProvider({ children }) {
           throw new Error("JWT token storage verification failed");
         }
         
-        console.log("✅ All tokens stored and verified");
+
         
         setAccount({
           ...msalAccount,
@@ -235,18 +235,18 @@ export function AuthProvider({ children }) {
       isProcessingAuth.current = true;
       
       try {
-        console.log("🚀 Starting MSAL initialization...");
+   
         console.log("📡 Backend URL:", BACKEND_URL);
         
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
-        console.log("✅ MSAL initialized");
+    
 
         // Handle redirect response
         const redirectResponse = await msalApp.handleRedirectPromise();
         
         if (redirectResponse && redirectResponse.account) {
-          console.log("🔄 Processing redirect response");
+    
           
           try {
             const tokenResponse = await msalApp.acquireTokenSilent({
@@ -259,7 +259,7 @@ export function AuthProvider({ children }) {
               account: redirectResponse.account,
             });
 
-            console.log("🔑 Microsoft tokens acquired");
+  
 
             await authenticateWithBackend(
               tokenResponse.idToken,
@@ -267,7 +267,7 @@ export function AuthProvider({ children }) {
               redirectResponse.account
             );
 
-            console.log("✅ Authentication successful");
+       
             
             setMsalInstance(msalApp);
             setInitialized(true);
@@ -291,16 +291,16 @@ export function AuthProvider({ children }) {
         const accounts = msalApp.getAllAccounts();
         
         if (accounts.length > 0) {
-          console.log("👤 Found existing account");
+
           
           const token = getStorageItem("accessToken");
           
           if (token) {
-            console.log("🔑 Found stored JWT token");
+         
             try {
               await validateTokenWithBackend(token);
               setAccount(accounts[0]);
-              console.log("✅ Session restored");
+             
             } catch (error) {
               console.warn("⚠️ Token validation failed");
               await clearAuth();
@@ -337,12 +337,12 @@ export function AuthProvider({ children }) {
       setLoading(true);
       isProcessingAuth.current = true;
 
-      console.log("🔐 Starting Microsoft login...");
+
 
       const existingAccounts = msalInstance.getAllAccounts();
       
       if (existingAccounts.length > 0) {
-        console.log("👤 Attempting silent login...");
+   
         
         try {
           const tokenResponse = await msalInstance.acquireTokenSilent({
@@ -361,7 +361,7 @@ export function AuthProvider({ children }) {
             existingAccounts[0]
           );
 
-          console.log("✅ Silent login successful");
+
           router.push("/home");
           return;
           
@@ -370,8 +370,7 @@ export function AuthProvider({ children }) {
         }
       }
 
-      // Redirect login
-      console.log("🔄 Starting redirect login...");
+  
       
       await msalInstance.loginRedirect({
         ...loginRequest,
@@ -394,7 +393,7 @@ export function AuthProvider({ children }) {
     if (!msalInstance || !initialized) return;
 
     try {
-      console.log("🚪 Logging out...");
+     
       
       try {
         const token = getStorageItem("accessToken");
@@ -424,7 +423,7 @@ export function AuthProvider({ children }) {
         router.push("/login");
       }
       
-      console.log("✅ Logout successful");
+  
       
     } catch (error) {
       console.error("❌ Logout error:", error);

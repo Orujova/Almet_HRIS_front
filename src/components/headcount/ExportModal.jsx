@@ -133,10 +133,7 @@ const ExportModal = ({
       // Get actual field names from selected groups
       const selectedFields = getSelectedFields();
       
-      console.log('🎯 COMPLETELY FIXED: Selected field groups:', includeFields);
-      console.log('🎯 COMPLETELY FIXED: Converted to field names:', selectedFields);
-      console.log('🎯 COMPLETELY FIXED: Export type:', exportType);
-      console.log('🎯 COMPLETELY FIXED: Selected employees:', selectedEmployees);
+    
 
       // COMPLETELY FIXED: Backend export_selected endpoint format
       let exportOptions;

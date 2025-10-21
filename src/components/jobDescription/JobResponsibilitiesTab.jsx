@@ -46,9 +46,7 @@ const JobResponsibilitiesTab = ({
 
       // Only initialize if we have selected skills/competencies in formData
       if (formData.required_skills_data?.length > 0 || formData.behavioral_competencies_data?.length > 0) {
-        console.log('🔍 Initializing groups from formData...');
-        console.log('Selected skills:', formData.required_skills_data);
-        console.log('Selected competencies:', formData.behavioral_competencies_data);
+   
 
         try {
           const competencyApi = (await import('@/services/competencyApi')).default;
@@ -77,7 +75,7 @@ const JobResponsibilitiesTab = ({
                     [skillGroup.id]: skills
                   }));
                   
-                  console.log(`✅ Added skill group: ${skillGroup.name} (${skillGroup.id})`);
+                
                 }
               } catch (error) {
                 console.error(`Error loading skills for group ${skillGroup.id}:`, error);
@@ -88,7 +86,7 @@ const JobResponsibilitiesTab = ({
               const groupsArray = Array.from(groupsToAdd);
               setSelectedSkillGroups(groupsArray);
               setExpandedSkillGroups(new Set(groupsArray));
-              console.log(`📦 Initialized ${groupsArray.length} skill groups`);
+
             }
           }
 
@@ -116,7 +114,7 @@ const JobResponsibilitiesTab = ({
                     [behavioralGroup.id]: competencies
                   }));
                   
-                  console.log(`✅ Added behavioral group: ${behavioralGroup.name} (${behavioralGroup.id})`);
+         
                 }
               } catch (error) {
                 console.error(`Error loading competencies for group ${behavioralGroup.id}:`, error);
@@ -127,12 +125,12 @@ const JobResponsibilitiesTab = ({
               const groupsArray = Array.from(groupsToAdd);
               setSelectedBehavioralGroups(groupsArray);
               setExpandedBehavioralGroups(new Set(groupsArray));
-              console.log(`📦 Initialized ${groupsArray.length} behavioral groups`);
+            
             }
           }
           
           setInitialized(true);
-          console.log('✅ Group initialization complete');
+
           
         } catch (error) {
           console.error('Error initializing groups:', error);
@@ -268,7 +266,7 @@ const JobResponsibilitiesTab = ({
         [groupId]: skills
       }));
       
-      console.log(`📥 Loaded ${skills.length} skills for group ${groupId}`);
+
     } catch (error) {
       console.error(`Error fetching skills for group ${groupId}:`, error);
     }
@@ -286,7 +284,7 @@ const JobResponsibilitiesTab = ({
         [groupId]: competencies
       }));
       
-      console.log(`📥 Loaded ${competencies.length} competencies for group ${groupId}`);
+
     } catch (error) {
       console.error(`Error fetching competencies for group ${groupId}:`, error);
     }

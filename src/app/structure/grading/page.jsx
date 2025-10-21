@@ -241,7 +241,7 @@ const GradingPage = () => {
 
 const handleStartComparison = async () => {
   try {
-    console.log('🔄 Starting comparison with scenarios:', selectedForComparison);
+
     
     if (selectedForComparison.length < 1) {
       showWarning('Please select at least 1 scenario to compare with current structure');
@@ -251,13 +251,13 @@ const handleStartComparison = async () => {
     // Always include 'current' in comparison
     const scenariosToCompare = ['current', ...selectedForComparison];
     
-    console.log('📊 Comparing scenarios:', scenariosToCompare);
+
     
     // Fetch comparison data
     const result = await handleCompareScenarios(scenariosToCompare);
     
     if (result && result.comparison) {
-      console.log('✅ Comparison data received:', result.comparison);
+    
       setIsComparisonModalOpen(true);
       return result;
     } else {

@@ -49,12 +49,12 @@ useEffect(() => {
   if (isOpen && !isInitialized) {
     // First time opening - initialize selection
     if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
-      console.log('🎯 Pre-selecting employees:', preSelectedEmployeeIds);
+
       setSelectedEmployees(preSelectedEmployeeIds);
       setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
     } else {
       const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
-      console.log('✅ Auto-selecting all eligible employees:', allEmployeeIds.length);
+     
       setSelectedEmployees(allEmployeeIds);
       setSelectAll(allEmployeeIds.length > 0);
     }
@@ -127,8 +127,7 @@ useEffect(() => {
       selectedEmployees.includes(emp.id)
     );
 
-    console.log('✅ Confirming selection with database IDs:', selectedEmployees);
-    console.log('📋 Selected employee/vacancy data:', selectedEmployeeData);
+
     
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
   };
