@@ -34,7 +34,7 @@ export default function CelebrationsPage() {
     { id: 'all', name: 'All Celebrations', icon: PartyPopper, color: 'bg-almet-sapphire' },
     { id: 'birthday', name: 'Birthdays', icon: Cake, color: 'bg-pink-500' },
     { id: 'work_anniversary', name: 'Work Anniversary', icon: Award, color: 'bg-purple-500' },
-    { id: 'achievement', name: 'Achievements', icon: TrendingUp, color: 'bg-green-500' },
+ 
     { id: 'other', name: 'Other', icon: Gift, color: 'bg-orange-500' }
   ];
 
@@ -54,8 +54,8 @@ export default function CelebrationsPage() {
       setCelebrations([
         { id: 1, type: 'birthday', employeeName: 'Sarah Johnson', employeeId: 'EMP001', position: 'Senior Product Manager', department: 'Product', date: '2024-01-25', imagePreview: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400', message: 'Wishing you a fantastic birthday!', wishes: 45 },
         { id: 2, type: 'work_anniversary', employeeName: 'Michael Chen', employeeId: 'EMP002', position: 'Tech Lead', department: 'Engineering', date: '2024-01-28', years: 5, imagePreview: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400', message: '5 amazing years with us!', wishes: 67 },
-        { id: 3, type: 'birthday', employeeName: 'Emily Rodriguez', employeeId: 'EMP003', position: 'HR Manager', department: 'Human Resources', date: '2024-02-05', imagePreview: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400', message: 'Happy Birthday!', wishes: 38 },
-        { id: 4, type: 'achievement', employeeName: 'David Kim', employeeId: 'EMP004', position: 'Sales Director', department: 'Sales', date: '2024-02-10', achievementTitle: 'Top Performer Q1 2024', imagePreview: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400', message: 'Congratulations!', wishes: 52 }
+        { id: 3, type: 'birthday', employeeName: 'Em ily Rodriguez', employeeId: 'EMP003', position: 'HR Manager', department: 'Human Resources', date: '2024-02-05', imagePreview: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400', message: 'Happy Birthday!', wishes: 38 },
+      
       ]);
       setLoading(false);
     }, 1000);
@@ -210,7 +210,7 @@ export default function CelebrationsPage() {
                       <h3 className="font-semibold text-gray-900 dark:text-white mb-1">{item.employeeName}</h3>
                       <p className="text-sm text-gray-600 dark:text-almet-bali-hai mb-2">{item.position} • {item.department}</p>
                       {item.years && <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded text-xs font-medium mb-2"><Award size={12} />{item.years} years</div>}
-                      {item.achievementTitle && <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded text-xs font-medium mb-2"><TrendingUp size={12} />{item.achievementTitle}</div>}
+                    
                       <p className="text-sm text-gray-700 dark:text-almet-bali-hai mb-3 line-clamp-2">{item.message}</p>
                       <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-almet-comet">
                         <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-almet-bali-hai"><Calendar size={12} />{formatDate(item.date)}</div>
@@ -241,7 +241,7 @@ export default function CelebrationsPage() {
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">{selectedCelebration.employeeName}</h2>
                 <p className="text-sm text-gray-600 dark:text-almet-bali-hai mb-4">{selectedCelebration.position} • {selectedCelebration.department}</p>
                 {selectedCelebration.years && <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-lg text-sm font-medium mb-4"><Award size={16} />{selectedCelebration.years} years</div>}
-                {selectedCelebration.achievementTitle && <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-lg text-sm font-medium mb-4"><TrendingUp size={16} />{selectedCelebration.achievementTitle}</div>}
+           
                 <div className="bg-gray-50 dark:bg-almet-san-juan rounded-lg p-4 mb-4"><p className="text-gray-700 dark:text-almet-bali-hai leading-relaxed">{selectedCelebration.message}</p></div>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-almet-comet">
                   <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-almet-bali-hai"><Calendar size={16} />{formatDate(selectedCelebration.date)}</div>

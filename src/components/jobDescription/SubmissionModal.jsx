@@ -101,7 +101,7 @@ const SubmissionModal = ({
         <div className="p-6 space-y-6">
           
           {/* Job Details Display for Multiple Jobs */}
-          {isMultipleJobs && createdJobs.length > 0 && (
+          {/* {isMultipleJobs && createdJobs.length > 0 && (
             <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor}`}>
               <h3 className={`text-sm font-semibold ${textPrimary} mb-4 flex items-center gap-2`}>
                 <Users size={16} />
@@ -144,7 +144,7 @@ const SubmissionModal = ({
                 )}
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Single Job Display */}
           {!isMultipleJobs && !isExistingJobSubmission && createdJobsData && (

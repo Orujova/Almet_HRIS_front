@@ -527,52 +527,221 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  const handleEdit = async (job) => {
-    try {
-      setActionLoading(true);
-      
-      setFormData({
-        job_title: '',
-        job_purpose: '',
-        business_function: '',
-        department: '',
-        unit: '',
-        job_function: '',
-        position_group: '',
-        grading_level: '',
-        criticalDuties: [''],
-        positionMainKpis: [''],
-        jobDuties: [''],
-        requirements: [''],
-        required_skills_data: [],
-        behavioral_competencies_data: [],
-        business_resources_ids: [],
-        access_rights_ids: [],
-        company_benefits_ids: []
-      });
-      
-      setAvailableSkills([]);
-      setAvailableCompetencies([]);
+  // pages/structure/job-descriptions/page.jsx - FIXED: Edit mode loads resources
+// Add this to your existing page.jsx
 
-      const fullJob = await jobDescriptionService.getJobDescription(job.id);
-      const transformedData = jobDescriptionService.transformJobDescriptionResponse(fullJob);
-      
-      setFormData(transformedData);
-      setEditingJob(fullJob);
-      
-      if (transformedData.position_group) {
-        setSelectedPositionGroup(transformedData.position_group);
-      }
-      
-      setActiveView('create');
-      
-    } catch (error) {
-      console.error('Error loading job for edit:', error);
-      showError('Error loading job description. Please try again.');
-    } finally {
-      setActionLoading(false);
+// FIXED handleEdit function - loads all resources correctly
+const handleEdit = async (job) => {
+  try {
+    setActionLoading(true);
+    
+    // Reset form first
+    setFormData({
+      job_title: '',
+      job_purpose: '',
+      business_function: '',
+      department: '',
+      unit: '',
+      job_function: '',
+      position_group: '',
+      grading_level: '',
+      criticalDuties: [''],
+      positionMainKpis: [''],
+      jobDuties: [''],
+      requirements: [''],
+      required_skills_data: [],
+      behavioral_competencies_data: [],
+      business_resources_ids: [],
+      access_rights_ids: [],
+      company_benefits_ids: []
+    });
+    
+    setAvailableSkills([]);
+    setAvailableCompetencies([]);
+
+    // Fetch full job data
+    const fullJob = await jobDescriptionService.getJobDescription(job.id);
+    
+    console.log('📝 Full Job Data:', fullJob);
+    
+    // Extract business resources IDs
+    const businessResourceIds = [];
+    if (fullJob.business_resources && Array.isArray(fullJob.business_resources)) {
+      fullJob.business_resources.forEach(resource => {
+        // Add parent ID
+        if (resource.resource_id) {
+          businessResourceIds.push(String(resource.resource_id));
+        }
+        // Add specific item IDs if they exist
+        if (resource.specific_items && Array.isArray(resource.specific_items)) {
+          resource.specific_items.forEach(itemId => {
+            businessResourceIds.push(String(itemId));
+          });
+        }
+        // Alternative: if items_detail exists
+        if (resource.specific_items_detail && Array.isArray(resource.specific_items_detail)) {
+          resource.specific_items_detail.forEach(item => {
+            if (item.id) {
+              businessResourceIds.push(String(item.id));
+            }
+          });
+        }
+      });
     }
-  };
+    
+    // Extract access rights IDs
+    const accessRightIds = [];
+    if (fullJob.access_rights && Array.isArray(fullJob.access_rights)) {
+      fullJob.access_rights.forEach(access => {
+        // Add parent ID
+        if (access.access_matrix_id) {
+          accessRightIds.push(String(access.access_matrix_id));
+        }
+        // Add specific item IDs
+        if (access.specific_items && Array.isArray(access.specific_items)) {
+          access.specific_items.forEach(itemId => {
+            accessRightIds.push(String(itemId));
+          });
+        }
+        // Alternative: if items_detail exists
+        if (access.specific_items_detail && Array.isArray(access.specific_items_detail)) {
+          access.specific_items_detail.forEach(item => {
+            if (item.id) {
+              accessRightIds.push(String(item.id));
+            }
+          });
+        }
+      });
+    }
+    
+    // Extract company benefits IDs
+    const companyBenefitIds = [];
+    if (fullJob.company_benefits && Array.isArray(fullJob.company_benefits)) {
+      fullJob.company_benefits.forEach(benefit => {
+        // Add parent ID
+        if (benefit.benefit_id) {
+          companyBenefitIds.push(String(benefit.benefit_id));
+        }
+        // Add specific item IDs
+        if (benefit.specific_items && Array.isArray(benefit.specific_items)) {
+          benefit.specific_items.forEach(itemId => {
+            companyBenefitIds.push(String(itemId));
+          });
+        }
+        // Alternative: if items_detail exists
+        if (benefit.specific_items_detail && Array.isArray(benefit.specific_items_detail)) {
+          benefit.specific_items_detail.forEach(item => {
+            if (item.id) {
+              companyBenefitIds.push(String(item.id));
+            }
+          });
+        }
+      });
+    }
+    
+    console.log('🔍 Extracted IDs:', {
+      businessResourceIds,
+      accessRightIds,
+      companyBenefitIds
+    });
+    
+    // Extract skills IDs
+    const skillIds = [];
+    if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
+      fullJob.required_skills.forEach(skill => {
+        if (skill.skill_id) {
+          skillIds.push(String(skill.skill_id));
+        } else if (skill.skill) {
+          skillIds.push(String(skill.skill));
+        }
+      });
+    }
+    
+    // Extract competencies IDs
+    const competencyIds = [];
+    if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
+      fullJob.behavioral_competencies.forEach(comp => {
+        if (comp.competency_id) {
+          competencyIds.push(String(comp.competency_id));
+        } else if (comp.competency) {
+          competencyIds.push(String(comp.competency));
+        }
+      });
+    }
+    
+    // Extract sections
+    const criticalDuties = [];
+    const positionMainKpis = [];
+    const jobDuties = [];
+    const requirements = [];
+    
+    if (fullJob.sections && Array.isArray(fullJob.sections)) {
+      fullJob.sections.forEach(section => {
+        const content = section.content || '';
+        const lines = content.split('\n')
+          .map(line => line.replace(/^\d+\.\s*/, '').trim())
+          .filter(line => line);
+        
+        switch(section.section_type) {
+          case 'CRITICAL_DUTIES':
+            criticalDuties.push(...lines);
+            break;
+          case 'MAIN_KPIS':
+            positionMainKpis.push(...lines);
+            break;
+          case 'JOB_DUTIES':
+            jobDuties.push(...lines);
+            break;
+          case 'REQUIREMENTS':
+            requirements.push(...lines);
+            break;
+        }
+      });
+    }
+    
+    // Build formData with all extracted IDs
+    const transformedData = {
+      job_title: fullJob.job_title || '',
+      job_purpose: fullJob.job_purpose || '',
+      business_function: fullJob.business_function_name || fullJob.business_function?.name || '',
+      department: fullJob.department_name || fullJob.department?.name || '',
+      unit: fullJob.unit_name || fullJob.unit?.name || '',
+      job_function: fullJob.job_function_name || fullJob.job_function?.name || '',
+      position_group: fullJob.position_group_name || fullJob.position_group?.name || '',
+      grading_level: fullJob.grading_level || '',
+      
+      criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
+      positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
+      jobDuties: jobDuties.length > 0 ? jobDuties : [''],
+      requirements: requirements.length > 0 ? requirements : [''],
+      
+      required_skills_data: skillIds,
+      behavioral_competencies_data: competencyIds,
+      
+      // ✅ CRITICAL: Add resource IDs
+      business_resources_ids: businessResourceIds,
+      access_rights_ids: accessRightIds,
+      company_benefits_ids: companyBenefitIds
+    };
+    
+    console.log('✅ Transformed FormData:', transformedData);
+    
+    setFormData(transformedData);
+    setEditingJob(fullJob);
+    
+    if (transformedData.position_group) {
+      setSelectedPositionGroup(transformedData.position_group);
+    }
+    
+    setActiveView('create');
+    
+  } catch (error) {
+    console.error('❌ Error loading job for edit:', error);
+    showError('Error loading job description. Please try again.');
+  } finally {
+    setActionLoading(false);
+  }
+};
 
   const handleDelete = async (id) => {
     setConfirmModal({

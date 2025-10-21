@@ -1,4 +1,4 @@
-// components/jobDescription/EmployeeSelectionModal.jsx - UPDATED: With Pre-selection Logic
+// components/jobDescription/EmployeeSelectionModal.jsx - COMPLETE with Proper Pre-selection
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -27,12 +27,13 @@ const EmployeeSelectionModal = ({
   onEmployeeSelect,
   loading = false,
   darkMode = false,
-  preSelectedEmployeeIds = [] // ADDED: Pre-selected employees
+  preSelectedEmployeeIds = []
 }) => {
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedEmployee, setExpandedEmployee] = useState(null);
   const [selectAll, setSelectAll] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const bgModal = darkMode ? "bg-almet-cloud-burst" : "bg-white";
@@ -42,31 +43,43 @@ const EmployeeSelectionModal = ({
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
 
-  // Add a ref to track initialization
-const [isInitialized, setIsInitialized] = useState(false);
-
-useEffect(() => {
-  if (isOpen && !isInitialized) {
-    // First time opening - initialize selection
-    if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
-
-      setSelectedEmployees(preSelectedEmployeeIds);
-      setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
-    } else {
-      const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
-     
-      setSelectedEmployees(allEmployeeIds);
-      setSelectAll(allEmployeeIds.length > 0);
+  // Initialize selection when modal opens
+  useEffect(() => {
+    if (!isOpen) {
+      setIsInitialized(false);
+      return;
     }
-    
-    setSearchTerm('');
-    setExpandedEmployee(null);
-    setIsInitialized(true);
-  } else if (!isOpen && isInitialized) {
-    // Reset when modal closes
-    setIsInitialized(false);
-  }
-}, [isOpen, preSelectedEmployeeIds, eligibleEmployees.length]); // Only depend on length, not the array itself
+
+    if (isOpen && !isInitialized) {
+      console.log('🔵 Modal opened - initializing selection');
+      console.log('Pre-selected IDs:', preSelectedEmployeeIds);
+      console.log('Eligible employees:', eligibleEmployees.length);
+      
+      if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
+        console.log('✅ Using pre-selected IDs:', preSelectedEmployeeIds);
+        setSelectedEmployees(preSelectedEmployeeIds);
+        setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
+      } else {
+        const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
+        console.log('✅ Auto-selecting all:', allEmployeeIds);
+        setSelectedEmployees(allEmployeeIds);
+        setSelectAll(allEmployeeIds.length > 0);
+      }
+      
+      setSearchTerm('');
+      setExpandedEmployee(null);
+      setIsInitialized(true);
+    }
+  }, [isOpen, isInitialized]);
+
+  // Update selection if preSelectedEmployeeIds changes while modal is open
+  useEffect(() => {
+    if (isOpen && isInitialized && preSelectedEmployeeIds) {
+      console.log('🔄 Pre-selected IDs updated while modal open:', preSelectedEmployeeIds);
+      setSelectedEmployees(preSelectedEmployeeIds);
+      setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length);
+    }
+  }, [preSelectedEmployeeIds, isOpen, isInitialized]);
 
   // Filter employees based on search
   const filteredEmployees = eligibleEmployees.filter(emp => {
@@ -93,7 +106,6 @@ useEffect(() => {
         ? prev.filter(id => id !== recordId)
         : [...prev, recordId];
       
-      // Update select all state
       setSelectAll(newSelection.length === filteredEmployees.length && filteredEmployees.length > 0);
       
       return newSelection;
@@ -127,7 +139,7 @@ useEffect(() => {
       selectedEmployees.includes(emp.id)
     );
 
-
+    console.log('✅ Confirming selection:', selectedEmployees);
     
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
   };
@@ -164,10 +176,10 @@ useEffect(() => {
                 Select Employees & Vacancies for Job Assignment
               </h2>
               <p className={`${textSecondary} text-xs`}>
-                {eligibleEmployees.length} records match your job criteria. 
+                {eligibleEmployees.length} records match your job criteria.
                 {selectedEmployees.length > 0 && (
                   <span className="text-almet-sapphire font-medium ml-1">
-                    ({selectedEmployees.length} pre-selected)
+                    ({selectedEmployees.length} selected)
                   </span>
                 )}
               </p>
@@ -233,13 +245,13 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* ADDED: Pre-selection Info Banner */}
+        {/* Pre-selection Info Banner */}
         {selectedEmployees.length > 0 && (
           <div className="px-4 py-2 bg-sky-50 dark:bg-sky-900/20 border-b border-sky-200 dark:border-sky-800">
             <div className="flex items-center gap-2 text-xs">
               <CheckCircle size={14} className="text-sky-600" />
               <span className="text-sky-800 dark:text-sky-300">
-                <span className="font-semibold">{selectedEmployees.length}</span> record{selectedEmployees.length > 1 ? 's' : ''} pre-selected based on matching criteria. 
+                <span className="font-semibold">{selectedEmployees.length}</span> record{selectedEmployees.length > 1 ? 's' : ''} selected. 
                 You can modify the selection below.
               </span>
             </div>
@@ -359,7 +371,6 @@ useEffect(() => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {/* Status indicators */}
                           {isVacancyRecord ? (
                             <div className="flex items-center gap-1 text-orange-600 text-xs">
                               <UserX size={12} />

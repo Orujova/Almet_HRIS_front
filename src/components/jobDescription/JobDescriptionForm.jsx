@@ -1,4 +1,4 @@
-// components/jobDescription/JobDescriptionForm.jsx - UPDATED: Reset status when editing submitted jobs
+// components/jobDescription/JobDescriptionForm.jsx - COMPLETE with Auto-Select Fix
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -54,7 +54,7 @@ const JobDescriptionForm = ({
   // Form submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // ADDED: Track if editing job was in pending/approved state
+  // Track if editing job was in pending/approved state
   const [wasInApprovalProcess, setWasInApprovalProcess] = useState(false);
 
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
@@ -85,7 +85,7 @@ const JobDescriptionForm = ({
     }
   ];
 
-  // ADDED: Check if editing job was in approval process
+  // Check if editing job was in approval process
   useEffect(() => {
     if (editingJob) {
       const approvalStatuses = ['PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE', 'APPROVED'];
@@ -94,11 +94,9 @@ const JobDescriptionForm = ({
   }, [editingJob]);
 
   const handleAssignmentPreviewUpdate = (previewData) => {
-  
-    
     setAssignmentPreview(previewData);
     
-    // CRITICAL FIX: Edit modunda employee selection'ı sıfırlama
+    // Don't reset in edit mode
     if (editingJob) {
       console.log('✅ Edit mode detected - preserving current selections');
       return;
@@ -113,35 +111,33 @@ const JobDescriptionForm = ({
     if (previewData && previewData.strategy === 'auto_assign_single') {
       const records = previewData.records || previewData.employees || [];
       
-
-      
       if (records.length === 1) {
         const record = records[0];
         const recordId = record.id;
-  
         
         setSelectedEmployeeIds([recordId]);
         setEligibleEmployees(records);
         setJobCriteria(previewData.criteria || {});
-        
-     
       }
     }
     
+    // 🔥 AUTO-SELECT ALL for manual_selection_required
     if (previewData && previewData.strategy === 'manual_selection_required') {
       const records = previewData.records || previewData.employees || [];
       const criteria = previewData.criteria || {};
       
-
-      
       setEligibleEmployees(records);
       setJobCriteria(criteria);
+      
+      // Auto-select all matching records
+      const allRecordIds = records.map(record => record.id);
+      setSelectedEmployeeIds(allRecordIds);
+      
+      console.log(`✅ Auto-selected ${allRecordIds.length} records for manual selection`);
     }
   };
 
   const handleEmployeeSelection = (employeeIds, employeeData) => {
-   
-    
     if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
       console.warn('⚠️ Invalid employee/vacancy selection data');
       return;
@@ -149,13 +145,6 @@ const JobDescriptionForm = ({
     
     setSelectedEmployeeIds(employeeIds);
     setShowEmployeeSelectionModal(false);
-    
-
-    
-    employeeData.forEach((record, index) => {
-      const isVacancy = record.is_vacancy || record.record_type === 'vacancy';
-     
-    });
   };
 
   const getCurrentTabIndex = () => {
@@ -295,10 +284,8 @@ const JobDescriptionForm = ({
     return Object.keys(errors).length === 0;
   };
 
-  const findExactConstraintMatch = (requiredCriteria, debugLabel = '') => {
+  const findExactConstraintMatch = (requiredCriteria) => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
-    
-
     
     const exactMatches = dropdownData.employees.filter(emp => {
       let matches = true;
@@ -313,18 +300,7 @@ const JobDescriptionForm = ({
       return matches;
     });
     
-    if (exactMatches.length === 0) {
-
-      const availableCombos = new Set();
-      dropdownData.employees.forEach(emp => {
-        const combo = `BF: ${emp.business_function_name} + Dept: ${emp.department_name} (ID: ${emp.department_id})`;
-        availableCombos.add(combo);
-      });
-      
- 
-      
-      return null;
-    }
+    if (exactMatches.length === 0) return null;
     
     const vacantMatches = exactMatches.filter(emp => 
       emp.is_vacancy || emp.record_type === 'vacancy' || emp.name === 'VACANT'
@@ -336,43 +312,30 @@ const JobDescriptionForm = ({
   };
 
   const getBusinessFunctionId = (name) => {
-    if (!name || !dropdownData.employees) {
-      console.log('❌ getBusinessFunctionId: Missing data');
-      return null;
-    }
+    if (!name || !dropdownData.employees) return null;
     
     const employee = findExactConstraintMatch({
       business_function_name: name
-    }, 'Business Function');
+    });
     
     if (employee) {
-      const id = employee.business_function_id || employee.business_function;
-      return id;
+      return employee.business_function_id || employee.business_function;
     }
     
     return null;
   };
 
   const getDepartmentId = (name) => {
-    if (!name || !dropdownData.employees) {
-      console.log('❌ getDepartmentId: Missing data');
-      return null;
-    }
-    
-    if (!formData.business_function) {
-     
-      return null;
-    }
+    if (!name || !dropdownData.employees) return null;
+    if (!formData.business_function) return null;
     
     const employee = findExactConstraintMatch({
       business_function_name: formData.business_function,
       department_name: name
-    }, 'Department');
+    });
     
     if (employee) {
-      const id = employee.department_id || employee.department;
-    
-      return id;
+      return employee.department_id || employee.department;
     }
     
     return null;
@@ -380,83 +343,57 @@ const JobDescriptionForm = ({
 
   const getUnitId = (name) => {
     if (!name) return null;
-    
-    if (!formData.business_function || !formData.department) {
-     
-      return null;
-    }
+    if (!formData.business_function || !formData.department) return null;
     
     const employee = findExactConstraintMatch({
       business_function_name: formData.business_function,
       department_name: formData.department,
       unit_name: name
-    }, 'Unit');
+    });
     
     if (employee) {
-      const id = employee.unit_id || employee.unit;
-      return id;
+      return employee.unit_id || employee.unit;
     }
     
-    console.log(`❌ INVALID: Unit "${name}" doesn't exist in ${formData.business_function} > ${formData.department}`);
     return null;
   };
 
   const getJobFunctionId = (name) => {
-    if (!name || !dropdownData.employees) {
-      console.log('❌ getJobFunctionId: Missing data');
-      return null;
-    }
-    
-    if (!formData.business_function || !formData.department) {
-      console.log('❌ getJobFunctionId: Business function AND department must be selected first');
-      return null;
-    }
+    if (!name || !dropdownData.employees) return null;
+    if (!formData.business_function || !formData.department) return null;
     
     const employee = findExactConstraintMatch({
       business_function_name: formData.business_function,
       department_name: formData.department,
       job_function_name: name
-    }, 'Job Function');
+    });
     
     if (employee) {
-      const id = employee.job_function_id || employee.job_function;
-      return id;
+      return employee.job_function_id || employee.job_function;
     }
     
-    console.log(`❌ INVALID: Job function "${name}" doesn't exist in ${formData.business_function} > ${formData.department}`);
     return null;
   };
 
   const getPositionGroupId = (name) => {
-    if (!name || !dropdownData.employees) {
-      console.log('❌ getPositionGroupId: Missing data');
-      return null;
-    }
-    
-    if (!formData.business_function || !formData.department || !formData.job_function) {
-      console.log('❌ getPositionGroupId: Full organizational path must be selected first');
-      return null;
-    }
+    if (!name || !dropdownData.employees) return null;
+    if (!formData.business_function || !formData.department || !formData.job_function) return null;
     
     const employee = findExactConstraintMatch({
       business_function_name: formData.business_function,
       department_name: formData.department,
       job_function_name: formData.job_function,
       position_group_name: name
-    }, 'Position Group');
+    });
     
     if (employee) {
-      const id = employee.position_group_id || employee.position_group;
-      return id;
+      return employee.position_group_id || employee.position_group;
     }
     
-
     return null;
   };
 
   const handleCancel = () => {
-  
-    
     const hasFormData = formData.job_title?.trim() || 
                        formData.job_purpose?.trim() || 
                        formData.criticalDuties?.some(d => d?.trim()) ||
@@ -482,380 +419,305 @@ const JobDescriptionForm = ({
     onCancel();
   };
 
-
-
-const buildResourcesPayload = (selectedIds, resourceType, dropdownData) => {
-
-  
-  if (!selectedIds || selectedIds.length === 0) {
-    console.log(`⚠️ No ${resourceType} selected`);
-    return {};
-  }
-
-  // Get the appropriate data source
-  let dataSource = [];
-  let parentIdField = '';
-  
-  if (resourceType === 'business_resources') {
-    dataSource = dropdownData.businessResources || [];
-    parentIdField = 'resource_id';
-  } else if (resourceType === 'access_rights') {
-    dataSource = dropdownData.accessMatrix || [];
-    parentIdField = 'access_matrix_id';
-  } else {
-    dataSource = dropdownData.companyBenefits || [];
-    parentIdField = 'benefit_id';
-  }
-
-
-
-  // Parse all selected IDs to integers
-  const selectedIdsParsed = selectedIds
-    .map(id => parseInt(id))
-    .filter(id => !isNaN(id));
-  
-
-  
-  // Separate parent IDs from child IDs
-  const parentIds = new Set();
-  const childIdsByParent = {};
-  const explicitlySelectedParents = new Set();
-  
-  selectedIdsParsed.forEach(selectedId => {
-    // ✅ CRITICAL FIX: Check if this ID is a child FIRST (priority over parent)
-    let foundAsChild = false;
-    
-    for (const parentItem of dataSource) {
-      if (parentItem.items && Array.isArray(parentItem.items)) {
-        const childItem = parentItem.items.find(item => item.id === selectedId);
-        if (childItem) {
-   
-          parentIds.add(parentItem.id);
-          
-          if (!childIdsByParent[parentItem.id]) {
-            childIdsByParent[parentItem.id] = [];
-          }
-          childIdsByParent[parentItem.id].push(selectedId);
-          foundAsChild = true;
-          break;
-        }
-      }
+  const buildResourcesPayload = (selectedIds, resourceType, dropdownData) => {
+    if (!selectedIds || selectedIds.length === 0) {
+      return {};
     }
+
+    let dataSource = [];
+    let parentIdField = '';
     
-    // If not found as child, check if it's a parent
-    if (!foundAsChild) {
-      const parent = dataSource.find(p => p.id === selectedId);
-      
-      if (parent) {
-      
-        parentIds.add(selectedId);
-        explicitlySelectedParents.add(selectedId);
-        
-        if (!childIdsByParent[selectedId]) {
-          childIdsByParent[selectedId] = [];
-        }
-      } else {
-        console.log(`⚠️ WARNING: ${selectedId} not found as parent or child!`);
-      }
-    }
-  });
-
-
-
-  // ✅ ALWAYS use with_items format for consistency
-  const withItems = Array.from(parentIds).map(parentId => {
-    const children = childIdsByParent[parentId] || [];
-    const wasExplicitlySelected = explicitlySelectedParents.has(parentId);
-    
-    if (children.length > 0) {
-
-      return {
-        [parentIdField]: parentId,
-        item_ids: children
-      };
-    } else if (wasExplicitlySelected) {
- 
-      return {
-        [parentIdField]: parentId,
-        item_ids: []
-      };
-    }
-    
-    return null;
-  }).filter(Boolean);
-
-
-
-  if (resourceType === 'business_resources') {
-    return { business_resources_with_items: withItems };
-  } else if (resourceType === 'access_rights') {
-    return { access_rights_with_items: withItems };
-  } else {
-    return { company_benefits_with_items: withItems };
-  }
-};
-  
-
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  
-  if (!validateForm()) {
-    const errorKeys = Object.keys(validationErrors);
-    if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
-      setActiveTab('position');
-    } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
-      setActiveTab('responsibilities');
+    if (resourceType === 'business_resources') {
+      dataSource = dropdownData.businessResources || [];
+      parentIdField = 'resource_id';
+    } else if (resourceType === 'access_rights') {
+      dataSource = dropdownData.accessMatrix || [];
+      parentIdField = 'access_matrix_id';
     } else {
-      setActiveTab('conditions');
+      dataSource = dropdownData.companyBenefits || [];
+      parentIdField = 'benefit_id';
     }
-    
-    const errorMessage = Object.values(validationErrors).join('\n');
-    alert('Please fix the following errors:\n\n' + errorMessage);
-    return;
-  }
 
-  if (!editingJob) {
-    if (assignmentPreview?.requiresSelection || assignmentPreview?.strategy === 'manual_selection_required') {
-      if (selectedEmployeeIds.length === 0) {
-        if (eligibleEmployees.length > 0) {
-          setShowEmployeeSelectionModal(true);
-          return;
-        } else {
-          alert('Multiple employees match your criteria, but employee data is not available. Please try refreshing the preview.');
-          return;
+    const selectedIdsParsed = selectedIds
+      .map(id => parseInt(id))
+      .filter(id => !isNaN(id));
+    
+    const parentIds = new Set();
+    const childIdsByParent = {};
+    const explicitlySelectedParents = new Set();
+    
+    selectedIdsParsed.forEach(selectedId => {
+      let foundAsChild = false;
+      
+      for (const parentItem of dataSource) {
+        if (parentItem.items && Array.isArray(parentItem.items)) {
+          const childItem = parentItem.items.find(item => item.id === selectedId);
+          if (childItem) {
+            parentIds.add(parentItem.id);
+            
+            if (!childIdsByParent[parentItem.id]) {
+              childIdsByParent[parentItem.id] = [];
+            }
+            childIdsByParent[parentItem.id].push(selectedId);
+            foundAsChild = true;
+            break;
+          }
         }
       }
-    }
-  }
-
-  try {
-    setIsSubmitting(true);
-
-    // Get IDs and ensure they are integers
-    const businessFunctionId = parseInt(getBusinessFunctionId(formData.business_function));
-    const departmentId = parseInt(getDepartmentId(formData.department));
-    const jobFunctionId = parseInt(getJobFunctionId(formData.job_function));
-    const positionGroupId = parseInt(getPositionGroupId(formData.position_group));
-    const unitId = formData.unit ? parseInt(getUnitId(formData.unit)) : null;
-
- 
-
-    // Validate that we got all required IDs and they are valid integers
-    const missingIds = [];
-    if (!businessFunctionId || isNaN(businessFunctionId)) {
-      missingIds.push(`Business Function "${formData.business_function}"`);
-    }
-    if (!departmentId || isNaN(departmentId)) {
-      missingIds.push(`Department "${formData.department}"`);
-    }
-    if (!jobFunctionId || isNaN(jobFunctionId)) {
-      missingIds.push(`Job Function "${formData.job_function}"`);
-    }
-    if (!positionGroupId || isNaN(positionGroupId)) {
-      missingIds.push(`Position Group "${formData.position_group}"`);
-    }
-
-    if (missingIds.length > 0) {
-      const errorMessage = `Cannot find valid IDs for: ${missingIds.join(', ')}. This might indicate a data synchronization issue.`;
-      console.error('❌ ID mapping failed:', errorMessage);
-      alert(errorMessage);
-      return;
-    }
-
-    // 🔥 Build complete payload WITHOUT using cleanJobDescriptionData
-    const apiData = {
-      job_title: formData.job_title.trim(),
-      job_purpose: formData.job_purpose.trim(),
-      business_function: businessFunctionId,
-      department: departmentId,
-      job_function: jobFunctionId,
-      position_group: positionGroupId,
       
-      ...(formData.grading_level && formData.grading_level.trim() && { 
-        grading_level: formData.grading_level.trim() 
-      }),
-      
-      ...(unitId && !isNaN(unitId) && { unit: unitId }),
-      
-      sections: [],
-      
-      // Skills - ensure integers
-      required_skills_data: (formData.required_skills_data || [])
-        .map(skillId => parseInt(skillId))
-        .filter(skillId => !isNaN(skillId))
-        .map(skillId => ({
-          skill_id: skillId,
-          proficiency_level: "INTERMEDIATE",
-          is_mandatory: true
-        })),
-      
-      // Competencies - ensure integers
-      behavioral_competencies_data: (formData.behavioral_competencies_data || [])
-        .map(competencyId => parseInt(competencyId))
-        .filter(competencyId => !isNaN(competencyId))
-        .map(competencyId => ({
-          competency_id: competencyId,
-          proficiency_level: "INTERMEDIATE", 
-          is_mandatory: true
-        })),
-      
-      // Employee selection (only for create mode)
-      ...(!editingJob && selectedEmployeeIds.length > 0 && { 
-        selected_employee_ids: selectedEmployeeIds
-          .map(id => parseInt(id))
-          .filter(id => !isNaN(id))
-      })
-    };
-
-
-
-    // Build each payload
-    const resourcesPayload = buildResourcesPayload(
-      formData.business_resources_ids, 
-      'business_resources', 
-      dropdownData
-    );
-    
-    const accessPayload = buildResourcesPayload(
-      formData.access_rights_ids, 
-      'access_rights', 
-      dropdownData
-    );
-    
-    const benefitsPayload = buildResourcesPayload(
-      formData.company_benefits_ids, 
-      'company_benefits', 
-      dropdownData
-    );
-
-  
-
-    // 🔥 CRITICAL: Merge payloads DIRECTLY into apiData
-    Object.assign(apiData, resourcesPayload, accessPayload, benefitsPayload);
-
-
-
-    // Build sections
-    const sectionTypes = [
-      { 
-        type: 'CRITICAL_DUTIES', 
-        title: 'Critical Duties and Responsibilities', 
-        content: formData.criticalDuties || [],
-        order: 1
-      },
-      { 
-        type: 'MAIN_KPIS', 
-        title: 'Key Performance Indicators', 
-        content: formData.positionMainKpis || [],
-        order: 2 
-      },
-      { 
-        type: 'JOB_DUTIES', 
-        title: 'Job Duties', 
-        content: formData.jobDuties || [],
-        order: 3
-      },
-      { 
-        type: 'REQUIREMENTS', 
-        title: 'Requirements and Qualifications', 
-        content: formData.requirements || [],
-        order: 4
-      }
-    ];
-
-    sectionTypes.forEach((section) => {
-      if (section.content && Array.isArray(section.content) && section.content.length > 0) {
-        const validContent = section.content.filter(item => item && item.trim() !== '');
-        if (validContent.length > 0) {
-          const formattedContent = validContent
-            .map((item, index) => `${index + 1}. ${item.trim()}`)
-            .join('\n');
-            
-          apiData.sections.push({
-            section_type: section.type,
-            title: section.title,
-            content: formattedContent,
-            order: section.order
-          });
+      if (!foundAsChild) {
+        const parent = dataSource.find(p => p.id === selectedId);
+        
+        if (parent) {
+          parentIds.add(selectedId);
+          explicitlySelectedParents.add(selectedId);
+          
+          if (!childIdsByParent[selectedId]) {
+            childIdsByParent[selectedId] = [];
+          }
         }
       }
     });
 
- 
-
-    // Handle edit vs create
-    if (editingJob) {
-      if (wasInApprovalProcess) {
-        apiData.reset_approval_status = true;
-        console.log('🔄 Resetting approval status - job was in approval process');
+    const withItems = Array.from(parentIds).map(parentId => {
+      const children = childIdsByParent[parentId] || [];
+      const wasExplicitlySelected = explicitlySelectedParents.has(parentId);
+      
+      if (children.length > 0) {
+        return {
+          [parentIdField]: parentId,
+          item_ids: children
+        };
+      } else if (wasExplicitlySelected) {
+        return {
+          [parentIdField]: parentId,
+          item_ids: []
+        };
       }
       
+      return null;
+    }).filter(Boolean);
 
-      await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
-      
-      if (wasInApprovalProcess) {
-        alert('Job description updated successfully! Approval process has been reset to DRAFT status.');
-      } else {
-        alert('Job description updated successfully!');
-      }
-      
-      onUpdate();
+    if (resourceType === 'business_resources') {
+      return { business_resources_with_items: withItems };
+    } else if (resourceType === 'access_rights') {
+      return { access_rights_with_items: withItems };
     } else {
-   
-      
-   
-      const createdJob = await jobDescriptionService.createJobDescription(apiData);
-
-      onSubmit(createdJob);
+      return { company_benefits_with_items: withItems };
     }
-  } catch (error) {
-    if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
- 
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!validateForm()) {
+      const errorKeys = Object.keys(validationErrors);
+      if (errorKeys.some(key => ['job_title', 'job_purpose', 'business_function', 'department', 'job_function', 'position_group'].includes(key))) {
+        setActiveTab('position');
+      } else if (errorKeys.some(key => ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'].includes(key))) {
+        setActiveTab('responsibilities');
+      } else {
+        setActiveTab('conditions');
+      }
       
-      const serverEmployees = error.response.data.eligible_employees || [];
-      const serverCriteria = error.response.data.criteria || {};
-      
-      if (serverEmployees.length > 0) {
-        setEligibleEmployees(serverEmployees);
-        setJobCriteria(serverCriteria);
-        setShowEmployeeSelectionModal(true);
+      const errorMessage = Object.values(validationErrors).join('\n');
+      alert('Please fix the following errors:\n\n' + errorMessage);
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const businessFunctionId = parseInt(getBusinessFunctionId(formData.business_function));
+      const departmentId = parseInt(getDepartmentId(formData.department));
+      const jobFunctionId = parseInt(getJobFunctionId(formData.job_function));
+      const positionGroupId = parseInt(getPositionGroupId(formData.position_group));
+      const unitId = formData.unit ? parseInt(getUnitId(formData.unit)) : null;
+
+      const missingIds = [];
+      if (!businessFunctionId || isNaN(businessFunctionId)) {
+        missingIds.push(`Business Function "${formData.business_function}"`);
+      }
+      if (!departmentId || isNaN(departmentId)) {
+        missingIds.push(`Department "${formData.department}"`);
+      }
+      if (!jobFunctionId || isNaN(jobFunctionId)) {
+        missingIds.push(`Job Function "${formData.job_function}"`);
+      }
+      if (!positionGroupId || isNaN(positionGroupId)) {
+        missingIds.push(`Position Group "${formData.position_group}"`);
+      }
+
+      if (missingIds.length > 0) {
+        const errorMessage = `Cannot find valid IDs for: ${missingIds.join(', ')}. This might indicate a data synchronization issue.`;
+        alert(errorMessage);
         return;
       }
-    }
-    
-    let errorMessage = 'Error saving job description: ';
-    
-    if (error.response?.data) {
-      if (typeof error.response.data === 'string') {
-        errorMessage += error.response.data;
-      } else if (typeof error.response.data === 'object') {
-        const errorDetails = [];
-        Object.keys(error.response.data).forEach(field => {
-          const fieldErrors = Array.isArray(error.response.data[field]) 
-            ? error.response.data[field].join(', ')
-            : error.response.data[field];
-          errorDetails.push(`${field}: ${fieldErrors}`);
-        });
-        errorMessage += errorDetails.join('\n');
+
+      const apiData = {
+        job_title: formData.job_title.trim(),
+        job_purpose: formData.job_purpose.trim(),
+        business_function: businessFunctionId,
+        department: departmentId,
+        job_function: jobFunctionId,
+        position_group: positionGroupId,
+        
+        ...(formData.grading_level && formData.grading_level.trim() && { 
+          grading_level: formData.grading_level.trim() 
+        }),
+        
+        ...(unitId && !isNaN(unitId) && { unit: unitId }),
+        
+        sections: [],
+        
+        required_skills_data: (formData.required_skills_data || [])
+          .map(skillId => parseInt(skillId))
+          .filter(skillId => !isNaN(skillId))
+          .map(skillId => ({
+            skill_id: skillId,
+            proficiency_level: "INTERMEDIATE",
+            is_mandatory: true
+          })),
+        
+        behavioral_competencies_data: (formData.behavioral_competencies_data || [])
+          .map(competencyId => parseInt(competencyId))
+          .filter(competencyId => !isNaN(competencyId))
+          .map(competencyId => ({
+            competency_id: competencyId,
+            proficiency_level: "INTERMEDIATE", 
+            is_mandatory: true
+          })),
+        
+        ...(!editingJob && selectedEmployeeIds.length > 0 && { 
+          selected_employee_ids: selectedEmployeeIds
+            .map(id => parseInt(id))
+            .filter(id => !isNaN(id))
+        })
+      };
+
+      const resourcesPayload = buildResourcesPayload(
+        formData.business_resources_ids, 
+        'business_resources', 
+        dropdownData
+      );
+      
+      const accessPayload = buildResourcesPayload(
+        formData.access_rights_ids, 
+        'access_rights', 
+        dropdownData
+      );
+      
+      const benefitsPayload = buildResourcesPayload(
+        formData.company_benefits_ids, 
+        'company_benefits', 
+        dropdownData
+      );
+
+      Object.assign(apiData, resourcesPayload, accessPayload, benefitsPayload);
+
+      const sectionTypes = [
+        { 
+          type: 'CRITICAL_DUTIES', 
+          title: 'Critical Duties and Responsibilities', 
+          content: formData.criticalDuties || [],
+          order: 1
+        },
+        { 
+          type: 'MAIN_KPIS', 
+          title: 'Key Performance Indicators', 
+          content: formData.positionMainKpis || [],
+          order: 2 
+        },
+        { 
+          type: 'JOB_DUTIES', 
+          title: 'Job Duties', 
+          content: formData.jobDuties || [],
+          order: 3
+        },
+        { 
+          type: 'REQUIREMENTS', 
+          title: 'Requirements and Qualifications', 
+          content: formData.requirements || [],
+          order: 4
+        }
+      ];
+
+      sectionTypes.forEach((section) => {
+        if (section.content && Array.isArray(section.content) && section.content.length > 0) {
+          const validContent = section.content.filter(item => item && item.trim() !== '');
+          if (validContent.length > 0) {
+            const formattedContent = validContent
+              .map((item, index) => `${index + 1}. ${item.trim()}`)
+              .join('\n');
+              
+            apiData.sections.push({
+              section_type: section.type,
+              title: section.title,
+              content: formattedContent,
+              order: section.order
+            });
+          }
+        }
+      });
+
+      if (editingJob) {
+        if (wasInApprovalProcess) {
+          apiData.reset_approval_status = true;
+        }
+        
+        await jobDescriptionService.updateJobDescription(editingJob.id, apiData);
+        
+        if (wasInApprovalProcess) {
+          alert('Job description updated successfully! Approval process has been reset to DRAFT status.');
+        } else {
+          alert('Job description updated successfully!');
+        }
+        
+        onUpdate();
+      } else {
+        const createdJob = await jobDescriptionService.createJobDescription(apiData);
+        onSubmit(createdJob);
       }
-    } else {
-      errorMessage += error.message || 'Please try again.';
+    } catch (error) {
+      if (error.response?.status === 422 && error.response?.data?.requires_employee_selection) {
+        const serverEmployees = error.response.data.eligible_employees || [];
+        const serverCriteria = error.response.data.criteria || {};
+        
+        if (serverEmployees.length > 0) {
+          setEligibleEmployees(serverEmployees);
+          setJobCriteria(serverCriteria);
+          setShowEmployeeSelectionModal(true);
+          return;
+        }
+      }
+      
+      let errorMessage = 'Error saving job description: ';
+      
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage += error.response.data;
+        } else if (typeof error.response.data === 'object') {
+          const errorDetails = [];
+          Object.keys(error.response.data).forEach(field => {
+            const fieldErrors = Array.isArray(error.response.data[field]) 
+              ? error.response.data[field].join(', ')
+              : error.response.data[field];
+            errorDetails.push(`${field}: ${fieldErrors}`);
+          });
+          errorMessage += errorDetails.join('\n');
+        }
+      } else {
+        errorMessage += error.message || 'Please try again.';
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsSubmitting(false);
     }
-    
-   
-    alert(errorMessage);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-
-
+  };
 
   const handleExplicitSave = async () => {
-
-    
     const syntheticEvent = {
       preventDefault: () => {},
       stopPropagation: () => {}
@@ -891,94 +753,95 @@ const handleSubmit = async (e) => {
   };
 
   const getSubmissionInfo = () => {
-  if (editingJob) {
-    if (wasInApprovalProcess) {
+    if (editingJob) {
+      if (wasInApprovalProcess) {
+        return {
+          title: 'Update Job Description (Approval Reset)',
+          description: 'Updating this job will reset its approval status to DRAFT. It will need to be resubmitted for approval.',
+          employeeCount: 0,
+          type: 'edit',
+          needsSelection: false,
+          warning: true
+        };
+      }
+      
       return {
-        title: 'Update Job Description (Approval Reset)',
-        description: 'Updating this job will reset its approval status to DRAFT. It will need to be resubmitted for approval.',
+        title: 'Ready to Update Job Description',
+        description: 'Click "Update Job Description" to save your changes.',
         employeeCount: 0,
         type: 'edit',
-        needsSelection: false,
-        warning: true
+        needsSelection: false
       };
     }
     
-    return {
-      title: 'Ready to Update Job Description',
-      description: 'Click "Update Job Description" to save your changes.',
-      employeeCount: 0,
-      type: 'edit',
-      needsSelection: false
-    };
-  }
-  
-  if (!assignmentPreview) {
-    return {
-      title: 'Ready to Create Job Description',
-      description: 'Click "Save & Continue" to create the job description.',
-      employeeCount: 0,
-      type: 'single'
-    };
-  }
-
-  switch (assignmentPreview.strategy) {
-    case 'auto_assign_single':
-      const record = assignmentPreview.employees?.[0];
-      const isVacancy = record?.is_vacancy || record?.record_type === 'vacancy';
-      const displayName = isVacancy ? 
-        `Vacant Position (${record.employee_id})` : 
-        (record?.full_name || record?.name);
-      
-      return {
-        title: isVacancy ? 'Ready to Create & Assign to Vacancy' : 'Ready to Create & Auto-Assign',
-        description: `Job will be automatically assigned to ${displayName}.`,
-        employeeCount: 1,
-        type: isVacancy ? 'auto_vacancy' : 'auto_single',
-        employee: record,
-        isVacancy: isVacancy,
-        needsSelection: false // ✅ FIXED: Never needs selection for auto-assign
-      };
-    
-    case 'manual_selection_required':
-      const selectedCount = selectedEmployeeIds.length;
-      return {
-        title: selectedCount > 0 
-          ? `Ready to Create ${selectedCount} Job Description${selectedCount > 1 ? 's' : ''}` 
-          : 'Record Selection Required',
-        description: selectedCount > 0 
-          ? `Will create job descriptions for ${selectedCount} selected record${selectedCount > 1 ? 's' : ''}.`
-          : `${assignmentPreview.employeeCount} records match your criteria. Please select employees/vacancies before proceeding.`,
-        employeeCount: selectedCount,
-        totalAvailable: assignmentPreview.employeeCount,
-        type: 'manual_multiple',
-        needsSelection: selectedCount === 0 // ✅ FIXED: Only needs selection if nothing selected
-      };
-    
-    case 'no_employees_found':
-      return {
-        title: 'Ready to Create Unassigned Position',
-        description: 'Job will be created without assignment to any employee or vacancy.',
-        employeeCount: 0,
-        type: 'unassigned',
-        needsSelection: false // ✅ FIXED: Doesn't need selection
-      };
-    
-    default:
+    if (!assignmentPreview) {
       return {
         title: 'Ready to Create Job Description',
         description: 'Click "Save & Continue" to create the job description.',
         employeeCount: 0,
-        type: 'unknown',
-        needsSelection: false // ✅ FIXED: Default to not needing selection
+        type: 'single'
       };
-  }
-};
+    }
+
+    switch (assignmentPreview.strategy) {
+      case 'auto_assign_single':
+        const record = assignmentPreview.employees?.[0];
+        const isVacancy = record?.is_vacancy || record?.record_type === 'vacancy';
+        const displayName = isVacancy ? 
+          `Vacant Position (${record.employee_id})` : 
+          (record?.full_name || record?.name);
+        
+        return {
+          title: isVacancy ? 'Ready to Create & Assign to Vacancy' : 'Ready to Create & Auto-Assign',
+          description: `Job will be automatically assigned to ${displayName}.`,
+          employeeCount: 1,
+          type: isVacancy ? 'auto_vacancy' : 'auto_single',
+          employee: record,
+          isVacancy: isVacancy,
+          needsSelection: false
+        };
+      
+      case 'manual_selection_required':
+        const selectedCount = selectedEmployeeIds.length;
+        return {
+          title: selectedCount > 0 
+            ? `Ready to Create ${selectedCount} Job Description${selectedCount > 1 ? 's' : ''}` 
+            : 'Record Selection Required',
+          description: selectedCount > 0 
+            ? `Will create job descriptions for ${selectedCount} selected record${selectedCount > 1 ? 's' : ''}.`
+            : `${assignmentPreview.employeeCount} records match your criteria. Please review the selection.`,
+          employeeCount: selectedCount,
+          totalAvailable: assignmentPreview.employeeCount,
+          type: 'manual_multiple',
+          needsSelection: false,
+          allowReview: true
+        };
+      
+      case 'no_employees_found':
+        return {
+          title: 'Ready to Create Unassigned Position',
+          description: 'Job will be created without assignment to any employee or vacancy.',
+          employeeCount: 0,
+          type: 'unassigned',
+          needsSelection: false
+        };
+      
+      default:
+        return {
+          title: 'Ready to Create Job Description',
+          description: 'Click "Save & Continue" to create the job description.',
+          employeeCount: 0,
+          type: 'unknown',
+          needsSelection: false
+        };
+    }
+  };
 
   const submissionInfo = getSubmissionInfo();
 
   return (
     <>
-      <div className={`${bgCard} rounded-xl border ${borderColor} shadow-sm `}>
+      <div className={`${bgCard} rounded-xl border ${borderColor} shadow-sm`}>
         
         {/* Form Header */}
         <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
@@ -990,7 +853,6 @@ const handleSubmit = async (e) => {
               <p className={`${textSecondary} text-xs`}>
                 Step {getCurrentTabIndex() + 1} of {tabs.length}: {tabs[getCurrentTabIndex()]?.description}
               </p>
-              {/* ADDED: Warning banner for editing jobs in approval */}
               {editingJob && wasInApprovalProcess && (
                 <div className="mt-2 flex items-center gap-2 text-xs text-orange-600 dark:text-orange-400">
                   <AlertCircle size={12} />
@@ -1092,24 +954,29 @@ const handleSubmit = async (e) => {
                   </div>
                 </div>
                 
-                {submissionInfo.type === 'manual_multiple' && submissionInfo.needsSelection && (
-                  <button
-                    onClick={() => setShowEmployeeSelectionModal(true)}
-                    disabled={isSubmitting}
-                    className="mt-2 px-2 py-1 bg-almet-sapphire hover:bg-almet-astral text-white rounded text-xs 
-                      flex items-center gap-1 disabled:opacity-50 transition-colors"
-                  >
-                    <Users size={10} />
-                    Select from {submissionInfo.totalAvailable} Employees
-                  </button>
-                )}
-
-                {submissionInfo.type === 'manual_multiple' && selectedEmployeeIds.length > 0 && (
-                  <div className="mt-2 flex items-center gap-1 text-xs">
-                    <CheckCircle size={10} className="text-green-600 flex-shrink-0" />
-                    <span className="text-almet-cloud-burst dark:text-almet-bali-hai">
-                      {selectedEmployeeIds.length} employee{selectedEmployeeIds.length > 1 ? 's' : ''} selected
-                    </span>
+                {submissionInfo.type === 'manual_multiple' && (
+                  <div className="mt-2 space-y-2">
+                    <button
+                      onClick={() => setShowEmployeeSelectionModal(true)}
+                      disabled={isSubmitting}
+                      className="px-2 py-1 bg-almet-sapphire hover:bg-almet-astral text-white rounded text-xs 
+                        flex items-center gap-1 disabled:opacity-50 transition-colors"
+                    >
+                      <Users size={10} />
+                      {selectedEmployeeIds.length > 0 
+                        ? `Review Selection (${selectedEmployeeIds.length}/${submissionInfo.totalAvailable})`
+                        : `Select from ${submissionInfo.totalAvailable} Employees`
+                      }
+                    </button>
+                    
+                    {selectedEmployeeIds.length > 0 && (
+                      <div className="flex items-center gap-1 text-xs">
+                        <CheckCircle size={10} className="text-green-600 flex-shrink-0" />
+                        <span className="text-almet-cloud-burst dark:text-almet-bali-hai">
+                          {selectedEmployeeIds.length} record{selectedEmployeeIds.length > 1 ? 's' : ''} selected
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1122,7 +989,7 @@ const handleSubmit = async (e) => {
                   </div>
                 )}
 
-                {submissionInfo.type === 'vacant' && (
+                {submissionInfo.type === 'auto_vacancy' && (
                   <div className="mt-2 flex items-center gap-1 text-xs">
                     <Target size={10} className="text-almet-waterloo flex-shrink-0" />
                     <span className="text-almet-cloud-burst dark:text-almet-bali-hai">
@@ -1133,7 +1000,6 @@ const handleSubmit = async (e) => {
               </div>
             )}
             
-            {/* ADDED: Edit mode warning on last tab */}
             {isLastTab() && editingJob && submissionInfo.warning && (
               <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                 <div className="flex items-center gap-2">
@@ -1196,16 +1062,16 @@ const handleSubmit = async (e) => {
                   </button>
                 ) : (
                   <button
-  type="button"
-  onClick={handleExplicitSave}
-  disabled={isSubmitting || (submissionInfo.needsSelection && !editingJob)} // ✅ This now works correctly
-  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
-    transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
->
-  {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-  <Save size={14} />
-  {editingJob ? 'Update Job Description' : 'Save & Continue'}
-</button>
+                    type="button"
+                    onClick={handleExplicitSave}
+                    disabled={isSubmitting}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg 
+                      transition-colors disabled:opacity-50 flex items-center gap-2 text-sm font-medium"
+                  >
+                    {isSubmitting && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                    <Save size={14} />
+                    {editingJob ? 'Update Job Description' : 'Save & Continue'}
+                  </button>
                 )}
               </div>
             </div>
@@ -1222,6 +1088,7 @@ const handleSubmit = async (e) => {
         onEmployeeSelect={handleEmployeeSelection}
         loading={false}
         darkMode={darkMode}
+        preSelectedEmployeeIds={selectedEmployeeIds}
       />
     </>
   );

@@ -1,28 +1,22 @@
-// src/app/news/page.jsx - Company News Page with Target Groups (Complete)
+// src/app/news/page.jsx - Complete with Smaller Fonts
 "use client";
 
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
+import { newsService, categoryService, targetGroupService, formatApiError } from '@/services/newsService';
 import { 
-  Plus, Search, Calendar, Eye, Edit, Trash2, TrendingUp, 
-  Clock, X, FileText, CheckCircle, Loader2, Pin, PinOff, Users, Target, Mail, Settings
+  Plus, Search, Calendar, Eye, Edit, Trash2, 
+  X, FileText, CheckCircle, Loader2, Pin, PinOff, 
+  Users, Target, Mail, Settings, Filter,
+  Send
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import NewsFormModal from '@/components/news/NewsFormModal';
 import { useToast } from '@/components/common/Toast';
 import TargetGroupManagement from '@/components/news/TargetGroupManagement';
-
-// Sample Target Groups
-const targetGroups = [
-  { id: 1, name: 'Leadership Team', memberCount: 15 },
-  { id: 2, name: 'Technology Division', memberCount: 45 },
-  { id: 3, name: 'Sales Force', memberCount: 32 },
-  { id: 4, name: 'Marketing Team', memberCount: 28 },
-  { id: 5, name: 'All Employees', memberCount: 250 },
-  { id: 6, name: 'Management Team', memberCount: 20 }
-];
+import CategoryManagement from '@/components/news/CategoryManagement';
 
 export default function CompanyNewsPage() {
   const { darkMode } = useTheme();
@@ -30,10 +24,15 @@ export default function CompanyNewsPage() {
 
   // States
   const [news, setNews] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [targetGroups, setTargetGroups] = useState([]);
+  const [statistics, setStatistics] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [itemsPerPage] = useState(12);
   const [loading, setLoading] = useState(true);
   const [showNewsModal, setShowNewsModal] = useState(false);
@@ -41,144 +40,111 @@ export default function CompanyNewsPage() {
   const [editingNews, setEditingNews] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null });
   const [showTargetGroupManagement, setShowTargetGroupManagement] = useState(false);
+  const [showCategoryManagement, setShowCategoryManagement] = useState(false);
 
-  // Categories
-  const categories = [
-    { id: 'all', name: 'All News', icon: FileText, color: 'bg-almet-sapphire' },
-    { id: 'announcement', name: 'Announcements', icon: TrendingUp, color: 'bg-blue-500' },
-    { id: 'event', name: 'Events', icon: Calendar, color: 'bg-green-500' },
-    { id: 'achievement', name: 'Achievements', icon: CheckCircle, color: 'bg-yellow-500' },
-    { id: 'update', name: 'Updates', icon: Clock, color: 'bg-purple-500' }
-  ];
-
+  // Load initial data
   useEffect(() => {
-    loadNews();
+    loadInitialData();
   }, []);
 
-  const loadNews = async () => {
+  // Load news when filters change
+  useEffect(() => {
+    if (categories.length > 0) {
+      loadNews();
+    }
+  }, [currentPage, selectedCategory, searchTerm]);
+
+  const loadInitialData = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setNews([
-        {
-          id: 1,
-          title: "Q4 Company Performance Review",
-          excerpt: "Exceptional results achieved in Q4 2024 with 25% growth in revenue and expansion into new markets.",
-          content: "Our Q4 performance has exceeded all expectations with a remarkable 25% growth in revenue compared to the previous quarter. This success can be attributed to our strategic expansion into the Asian and European markets, as well as the launch of three innovative products that have been well-received by our customers.\n\nKey highlights include:\n- Revenue growth of 25% quarter-over-quarter\n- Successful entry into 5 new international markets\n- Launch of 3 groundbreaking products\n- Team expansion by 40% to support growth\n- Customer satisfaction rating increased to 94%\n\nLooking ahead to 2025, we are positioned stronger than ever to continue this growth trajectory. Our focus will remain on innovation, customer satisfaction, and strategic market expansion.",
-          category: 'announcement',
-          author: { name: 'CEO Office' },
-          publishedAt: '2024-01-15T10:30:00',
-          imagePreview: 'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800',
-          views: 1245,
-          isPinned: true,
-          tags: ['Performance', 'Growth', 'Q4'],
-          targetGroups: [1, 5], // Leadership Team, All Employees
-          notifyMembers: true
-        },
-        {
-          id: 2,
-          title: "Annual Company Gathering 2024",
-          excerpt: "Join us for our biggest company event of the year featuring team building activities and awards ceremony.",
-          content: "We are excited to announce our Annual Company Gathering 2024, scheduled for March 15th at the Grand Convention Center. This year's event promises to be our most memorable yet!\n\nEvent Schedule:\n- 9:00 AM: Registration and Welcome Coffee\n- 10:00 AM: CEO Keynote Address\n- 11:00 AM: Team Building Activities\n- 1:00 PM: Lunch and Networking\n- 3:00 PM: Awards Ceremony\n- 5:00 PM: Gala Dinner\n- 7:00 PM: Entertainment and Dancing\n\nDon't miss this opportunity to connect with colleagues, celebrate our achievements, and have fun!",
-          category: 'event',
-          author: { name: 'HR Department' },
-          publishedAt: '2024-01-14T14:20:00',
-          imagePreview: 'https://images.unsplash.com/photo-1511578314322-379afb476865?w=800',
-          views: 892,
-          isPinned: false,
-          tags: ['Event', 'Team Building'],
-          targetGroups: [5], // All Employees
-          notifyMembers: true
-        },
-        {
-          id: 3,
-          title: "New Office Opening in Dubai",
-          excerpt: "Expanding our presence in the Middle East with a state-of-the-art office space in Dubai.",
-          content: "We are thrilled to announce the opening of our new regional headquarters in Dubai, UAE. This marks a significant milestone in our Middle Eastern expansion strategy.\n\nOffice Features:\n- 5,000 square meters of modern workspace\n- State-of-the-art technology infrastructure\n- Collaborative spaces and meeting rooms\n- Wellness center and cafeteria\n- Prime location in Dubai Business Bay\n\nThe office will accommodate up to 200 employees and serve as our hub for Middle East operations.",
-          category: 'announcement',
-          author: { name: 'Operations Team' },
-          publishedAt: '2024-01-13T09:15:00',
-          imagePreview: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800',
-          views: 2341,
-          isPinned: false,
-          tags: ['Expansion', 'Office', 'Dubai'],
-          targetGroups: [1, 6, 5], // Leadership, Management, All Employees
-          notifyMembers: false
-        },
-        {
-          id: 4,
-          title: "Employee of the Month - January 2024",
-          excerpt: "Congratulations to Sarah Johnson for outstanding performance and dedication to excellence.",
-          content: "We are proud to recognize Sarah Johnson as our Employee of the Month for January 2024. Sarah has consistently demonstrated exceptional dedication, innovation, and leadership in her role as Senior Product Manager.\n\nHighlights of Sarah's Contributions:\n- Led the successful launch of our new mobile app\n- Improved team productivity by 30%\n- Mentored 5 junior team members\n- Implemented innovative project management processes\n\nCongratulations Sarah! Your hard work and commitment inspire us all.",
-          category: 'achievement',
-          author: { name: 'HR Department' },
-          publishedAt: '2024-01-12T11:00:00',
-          imagePreview: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800',
-          views: 567,
-          isPinned: false,
-          tags: ['Achievement', 'Recognition', 'Employee'],
-          targetGroups: [5], // All Employees
-          notifyMembers: true
-        },
-        {
-          id: 5,
-          title: "Enhanced Benefits Package 2024",
-          excerpt: "We're introducing comprehensive enhancements to employee benefits including health insurance upgrades and wellness programs.",
-          content: "Starting February 1st, all employees will benefit from our enhanced benefits package, reflecting our commitment to employee wellbeing and work-life balance.\n\nNew Benefits Include:\n- Premium health insurance with dental and vision\n- Mental health support and counseling services\n- Flexible work arrangements\n- Professional development allowance ($2,000/year)\n- Gym membership reimbursement\n- Extended parental leave (6 months)\n- Annual wellness retreat\n\nYour wellbeing is our priority!",
-          category: 'update',
-          author: { name: 'HR Department' },
-          publishedAt: '2024-01-11T13:45:00',
-          imagePreview: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=800',
-          views: 1876,
-          isPinned: true,
-          tags: ['Benefits', 'HR', 'Wellbeing'],
-          targetGroups: [5], // All Employees
-          notifyMembers: true
-        },
-        {
-          id: 6,
-          title: "Tech Innovation Summit 2024",
-          excerpt: "Join our innovation team at the annual tech summit to explore AI and automation trends shaping the future.",
-          content: "We're hosting our annual Tech Innovation Summit on February 20-21, bringing together industry leaders and innovators to discuss the future of technology.\n\nSummit Highlights:\n- Keynote: The Future of AI in Business\n- Workshop: Implementing Automation\n- Panel: Cybersecurity in 2024\n- Networking sessions with tech leaders\n- Product demonstrations\n- Innovation showcase\n\nRegister now to secure your spot!",
-          category: 'event',
-          author: { name: 'Tech Team' },
-          publishedAt: '2024-01-10T16:30:00',
-          imagePreview: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
-          views: 734,
-          isPinned: false,
-          tags: ['Technology', 'Innovation', 'AI'],
-          targetGroups: [2, 4], // Technology, Marketing
-          notifyMembers: false
-        }
+    try {
+      await Promise.all([
+        loadCategories(),
+        loadTargetGroups(),
+        loadStatistics()
       ]);
+      await loadNews();
+    } catch (error) {
+      showError('Failed to load data');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+  };
+const handleTogglePublish = async (item, e) => {
+  e.stopPropagation();
+  try {
+    await newsService.togglePublish(item.id);
+    showSuccess(item.is_published ? 'News unpublished' : 'News published');
+    await loadNews();
+    await loadStatistics();
+  } catch (error) {
+    showError(formatApiError(error));
+  }
+};
+  const loadNews = async () => {
+    try {
+      const params = {
+        page: currentPage,
+        search: searchTerm || undefined,
+        ordering: '-is_pinned,-published_at'
+      };
+
+      const response = await newsService.getNews(params);
+      
+      setNews(response.results || []);
+      setTotalCount(response.count || 0);
+      setTotalPages(Math.ceil((response.count || 0) / itemsPerPage));
+    } catch (error) {
+      showError(formatApiError(error));
+    }
   };
 
-  // Əgər Target Group Management açıqsa, onu göstər
+  const loadCategories = async () => {
+    try {
+      const response = await categoryService.getCategories();
+      setCategories(response.results || []);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
+
+  const loadTargetGroups = async () => {
+    try {
+      const response = await targetGroupService.getTargetGroups();
+      setTargetGroups(response.results || []);
+    } catch (error) {
+      console.error('Failed to load target groups:', error);
+    }
+  };
+
+  const loadStatistics = async () => {
+    try {
+      const stats = await newsService.getStatistics();
+      setStatistics(stats);
+    } catch (error) {
+      console.error('Failed to load statistics:', error);
+    }
+  };
+
+  // If showing management screens
   if (showTargetGroupManagement) {
-    return <TargetGroupManagement onBack={() => setShowTargetGroupManagement(false)} />;
+    return <TargetGroupManagement onBack={() => {
+      setShowTargetGroupManagement(false);
+      loadTargetGroups();
+    }} />;
   }
 
-  // Filter and sort news
-  const filteredNews = news.filter(item => {
-    const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         item.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  if (showCategoryManagement) {
+    return <CategoryManagement onBack={() => {
+      setShowCategoryManagement(false);
+      loadCategories();
+      loadNews();
+    }} />;
+  }
 
-  const sortedNews = [...filteredNews].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    return new Date(b.publishedAt) - new Date(a.publishedAt);
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(sortedNews.length / itemsPerPage);
-  const paginatedNews = sortedNews.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Filter news by category
+  const filteredNews = selectedCategory === 'all' 
+    ? news 
+    : news.filter(item => item.category === selectedCategory);
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -197,7 +163,18 @@ export default function CompanyNewsPage() {
   };
 
   const getCategoryInfo = (categoryId) => {
-    return categories.find(cat => cat.id === categoryId) || categories[0];
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? {
+      id: category.id,
+      name: category.name,
+      icon: FileText,
+      color: 'bg-almet-sapphire'
+    } : {
+      id: 'unknown',
+      name: 'Unknown',
+      icon: FileText,
+      color: 'bg-gray-500'
+    };
   };
 
   // CRUD Operations
@@ -208,34 +185,33 @@ export default function CompanyNewsPage() {
 
   const handleEditNews = (item, e) => {
     e.stopPropagation();
-    setEditingNews(item);
+    setEditingNews({
+      ...item,
+      tags: item.tags_list || [],
+      imagePreview: item.image_url,
+      targetGroups: item.target_groups_info?.map(g => g.id) || [],
+      notifyMembers: item.notify_members,
+      isPinned: item.is_pinned,
+      authorDisplayName: item.author_display_name
+    });
     setShowFormModal(true);
   };
 
   const handleSaveNews = async (formData) => {
     try {
       if (editingNews) {
-        setNews(prev => prev.map(item => 
-          item.id === editingNews.id 
-            ? { ...item, ...formData, updatedAt: new Date().toISOString() }
-            : item
-        ));
+        await newsService.updateNews(editingNews.id, formData);
         showSuccess('News updated successfully');
       } else {
-        const newNews = {
-          ...formData,
-          id: Date.now(),
-          author: { name: 'Current User' },
-          publishedAt: new Date().toISOString(),
-          views: 0
-        };
-        setNews(prev => [newNews, ...prev]);
+        await newsService.createNews(formData);
         showSuccess('News created successfully');
       }
+      await loadNews();
+      await loadStatistics();
       setShowFormModal(false);
       setEditingNews(null);
     } catch (error) {
-      showError('Failed to save news');
+      showError(formatApiError(error));
       throw error;
     }
   };
@@ -245,57 +221,88 @@ export default function CompanyNewsPage() {
     setConfirmModal({ isOpen: true, item });
   };
 
-  const confirmDelete = () => {
-    setNews(prev => prev.filter(item => item.id !== confirmModal.item.id));
-    showSuccess('News deleted successfully');
-    setConfirmModal({ isOpen: false, item: null });
+  const confirmDelete = async () => {
+    try {
+      await newsService.deleteNews(confirmModal.item.id);
+      showSuccess('News deleted successfully');
+      await loadNews();
+      await loadStatistics();
+      setConfirmModal({ isOpen: false, item: null });
+    } catch (error) {
+      showError(formatApiError(error));
+    }
   };
 
-  const handleTogglePin = (item, e) => {
+  const handleTogglePin = async (item, e) => {
     e.stopPropagation();
-    setNews(prev => prev.map(newsItem => 
-      newsItem.id === item.id 
-        ? { ...newsItem, isPinned: !newsItem.isPinned }
-        : newsItem
-    ));
-    showSuccess(item.isPinned ? 'News unpinned' : 'News pinned');
+    try {
+      await newsService.togglePin(item.id);
+      showSuccess(item.is_pinned ? 'News unpinned' : 'News pinned');
+      await loadNews();
+    } catch (error) {
+      showError(formatApiError(error));
+    }
   };
 
-  const getTargetGroupInfo = (groupIds) => {
-    if (!groupIds || groupIds.length === 0) return { groups: [], totalMembers: 0 };
-    const groups = targetGroups.filter(g => groupIds.includes(g.id));
-    const totalMembers = groups.reduce((sum, g) => sum + g.memberCount, 0);
-    return { groups, totalMembers };
+  const handleViewNews = async (item) => {
+    try {
+      const fullNews = await newsService.getNewsById(item.id);
+      setSelectedNews(fullNews);
+      setShowNewsModal(true);
+    } catch (error) {
+      showError(formatApiError(error));
+    }
   };
 
   return (
     <DashboardLayout>
-      <div className="p-4 bg-almet-mystic dark:bg-gray-900 min-h-screen">
+      <div className={`p-6 min-h-screen transition-colors ${
+        darkMode ? 'bg-gray-900' : 'bg-almet-mystic'
+      }`}>
         
         {/* Header */}
         <div className="mb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <h1 className={`text-2xl font-bold mb-1.5 ${
+                darkMode ? 'text-white' : 'text-gray-900'
+              }`}>
                 Company News
               </h1>
-              <p className="text-sm text-gray-600 dark:text-almet-bali-hai">
+              <p className={`text-xs ${
+                darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+              }`}>
                 Stay updated with the latest announcements and events
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2.5">
+              <button 
+                onClick={() => setShowCategoryManagement(true)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl hover:shadow-lg transition-all font-medium text-xs ${
+                  darkMode
+                    ? 'bg-almet-cloud-burst border-almet-comet text-almet-bali-hai hover:bg-almet-comet hover:text-white'
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                }`}
+              >
+                <Settings size={15} />
+                Categories
+              </button>
               <button 
                 onClick={() => setShowTargetGroupManagement(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-almet-cloud-burst border border-gray-300 dark:border-almet-comet text-gray-700 dark:text-almet-bali-hai rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet transition-colors font-medium text-sm shadow-sm"
+                className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl hover:shadow-lg transition-all font-medium text-xs ${
+                  darkMode
+                    ? 'bg-almet-cloud-burst border-almet-comet text-almet-bali-hai hover:bg-almet-comet hover:text-white'
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                }`}
               >
-                <Users size={18} />
-                Manage Target Groups
+                <Users size={15} />
+                Target Groups
               </button>
               <button 
                 onClick={handleCreateNews}
-                className="flex items-center gap-2 px-4 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors font-medium text-sm shadow-sm"
+                className="flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all font-medium text-xs shadow-lg shadow-almet-sapphire/20 hover:shadow-xl hover:shadow-almet-sapphire/30 hover:-translate-y-0.5"
               >
-                <Plus size={18} />
+                <Plus size={16} />
                 Create News
               </button>
             </div>
@@ -303,92 +310,204 @@ export default function CompanyNewsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 border border-gray-200 dark:border-almet-comet">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-almet-bali-hai mb-1">Total News</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{news.length}</p>
+        {statistics && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
+              darkMode 
+                ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
+                : 'bg-white border-gray-200 hover:border-almet-sapphire/50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-[10px] font-medium mb-1 uppercase tracking-wide ${
+                    darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                  }`}>
+                    Total News
+                  </p>
+                  <p className={`text-2xl font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {statistics.total_news || 0}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl ${
+                  darkMode ? 'bg-sky-900/30' : 'bg-sky-50'
+                }`}>
+                  <FileText className={`h-5 w-5 ${
+                    darkMode ? 'text-sky-400' : 'text-sky-600'
+                  }`} />
+                </div>
               </div>
-              <div className="p-3 bg-almet-sapphire/10 rounded-lg">
-                <FileText className="h-6 w-6 text-almet-sapphire" />
+            </div>
+           
+            <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
+              darkMode 
+                ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
+                : 'bg-white border-gray-200 hover:border-almet-sapphire/50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-[10px] font-medium mb-1 uppercase tracking-wide ${
+                    darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                  }`}>
+                    Published
+                  </p>
+                  <p className={`text-2xl font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {statistics.published_news || 0}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl ${
+                  darkMode ? 'bg-green-900/30' : 'bg-green-50'
+                }`}>
+                  <CheckCircle className={`h-5 w-5 ${
+                    darkMode ? 'text-green-400' : 'text-green-600'
+                  }`} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
+              darkMode 
+                ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
+                : 'bg-white border-gray-200 hover:border-almet-sapphire/50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-[10px] font-medium mb-1 uppercase tracking-wide ${
+                    darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                  }`}>
+                    Total Views
+                  </p>
+                  <p className={`text-2xl font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {(statistics.total_views || 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl ${
+                  darkMode ? 'bg-purple-900/30' : 'bg-purple-50'
+                }`}>
+                  <Eye className={`h-5 w-5 ${
+                    darkMode ? 'text-purple-400' : 'text-purple-600'
+                  }`} />
+                </div>
+              </div>
+            </div>
+
+            <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
+              darkMode 
+                ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
+                : 'bg-white border-gray-200 hover:border-almet-sapphire/50'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-[10px] font-medium mb-1 uppercase tracking-wide ${
+                    darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                  }`}>
+                    Pinned
+                  </p>
+                  <p className={`text-2xl font-bold ${
+                    darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {statistics.pinned_news || 0}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl ${
+                  darkMode ? 'bg-orange-900/30' : 'bg-orange-50'
+                }`}>
+                  <Pin className={`h-5 w-5 ${
+                    darkMode ? 'text-orange-400' : 'text-orange-600'
+                  }`} />
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 border border-gray-200 dark:border-almet-comet">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-almet-bali-hai mb-1">Total Views</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {news.reduce((sum, item) => sum + item.views, 0).toLocaleString()}
-                </p>
-              </div>
-              <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Eye className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-              </div>
-            </div>
+        {/* Categories Filter */}
+        <div className={`rounded-2xl p-3.5 mb-4 border ${
+          darkMode 
+            ? 'bg-almet-cloud-burst border-almet-comet' 
+            : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Filter size={14} className={darkMode ? 'text-almet-bali-hai' : 'text-gray-600'} />
+            <span className={`text-xs font-medium ${
+              darkMode ? 'text-almet-bali-hai' : 'text-gray-700'
+            }`}>
+              Filter by Category
+            </span>
           </div>
-
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 border border-gray-200 dark:border-almet-comet">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-almet-bali-hai mb-1">Pinned News</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {news.filter(item => item.isPinned).length}
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <Pin className="h-6 w-6 text-green-600 dark:text-green-400" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Categories */}
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 mb-4 border border-gray-200 dark:border-almet-comet">
-          <div className="flex flex-wrap gap-2">
-            {categories.map(category => {
-              const Icon = category.icon;
-              const isActive = selectedCategory === category.id;
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => {
-                    setSelectedCategory(category.id);
-                    setCurrentPage(1);
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isActive
-                      ? `${category.color} text-white shadow-md`
-                      : 'bg-gray-100 dark:bg-almet-san-juan text-gray-700 dark:text-almet-bali-hai hover:bg-gray-200 dark:hover:bg-almet-comet'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {category.name}
-                  {category.id !== 'all' && (
-                    <span className={`px-1.5 py-0.5 rounded text-xs ${
-                      isActive ? 'bg-white/20' : 'bg-gray-200 dark:bg-almet-comet'
-                    }`}>
-                      {news.filter(n => n.category === category.id).length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => {
+                setSelectedCategory('all');
+                setCurrentPage(1);
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                selectedCategory === 'all'
+                  ? 'bg-almet-sapphire text-white shadow-lg shadow-almet-sapphire/20'
+                  : darkMode
+                    ? 'bg-almet-san-juan text-almet-bali-hai hover:bg-almet-comet'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All News
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded-lg text-[10px] ${
+                selectedCategory === 'all' ? 'bg-white/20' : darkMode ? 'bg-almet-comet' : 'bg-gray-200'
+              }`}>
+                {news.length}
+              </span>
+            </button>
+            {categories.filter(c => c.is_active).map(category => (
+              <button
+                key={category.id}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                  selectedCategory === category.id
+                    ? 'bg-almet-sapphire text-white shadow-lg shadow-almet-sapphire/20'
+                    : darkMode
+                      ? 'bg-almet-san-juan text-almet-bali-hai hover:bg-almet-comet'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {category.name}
+                <span className={`ml-1.5 px-1.5 py-0.5 rounded-lg text-[10px] ${
+                  selectedCategory === category.id ? 'bg-white/20' : darkMode ? 'bg-almet-comet' : 'bg-gray-200'
+                }`}>
+                  {news.filter(n => n.category === category.id).length}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Search */}
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 mb-4 border border-gray-200 dark:border-almet-comet">
+        <div className={`rounded-2xl p-3.5 mb-5 border ${
+          darkMode 
+            ? 'bg-almet-cloud-burst border-almet-comet' 
+            : 'bg-white border-gray-200'
+        }`}>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <input
               type="text"
-              placeholder="Search news..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent outline-none"
+              placeholder="Search news by title, excerpt..."
+              className={`w-full pl-10 pr-3 py-2.5 text-xs border rounded-xl outline-none transition-all ${
+                darkMode
+                  ? 'bg-almet-san-juan border-almet-comet text-white placeholder-almet-waterloo focus:border-almet-sapphire focus:ring-2 focus:ring-almet-sapphire/20'
+                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-almet-sapphire focus:ring-2 focus:ring-almet-sapphire/20'
+              }`}
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
             />
           </div>
         </div>
@@ -396,121 +515,183 @@ export default function CompanyNewsPage() {
         {/* News Grid */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
+            <Loader2 className="h-7 w-7 animate-spin text-almet-sapphire" />
           </div>
-        ) : paginatedNews.length === 0 ? (
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-12 text-center border border-gray-200 dark:border-almet-comet">
-            <FileText className="h-16 w-16 text-gray-400 dark:text-almet-bali-hai mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No News Found</h3>
-            <p className="text-sm text-gray-600 dark:text-almet-bali-hai">
-              Try adjusting your search or filters
+        ) : filteredNews.length === 0 ? (
+          <div className={`rounded-2xl p-12 text-center border ${
+            darkMode 
+              ? 'bg-almet-cloud-burst border-almet-comet' 
+              : 'bg-white border-gray-200'
+          }`}>
+            <FileText className={`h-14 w-14 mx-auto mb-3 ${
+              darkMode ? 'text-almet-bali-hai' : 'text-gray-400'
+            }`} />
+            <h3 className={`text-base font-semibold mb-1.5 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              No News Found
+            </h3>
+            <p className={`text-xs mb-3 ${
+              darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+            }`}>
+              {searchTerm || selectedCategory !== 'all' 
+                ? 'Try adjusting your search or filters' 
+                : 'Get started by creating your first news'}
             </p>
+            {!searchTerm && selectedCategory === 'all' && (
+              <button
+                onClick={handleCreateNews}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all text-xs font-medium shadow-lg shadow-almet-sapphire/20"
+              >
+                <Plus size={14} />
+                Create News
+              </button>
+            )}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {paginatedNews.map((item) => {
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+              {filteredNews.map((item) => {
                 const categoryInfo = getCategoryInfo(item.category);
                 const CategoryIcon = categoryInfo.icon;
                 
                 return (
                   <div
                     key={item.id}
-                    className="bg-white dark:bg-almet-cloud-burst rounded-xl overflow-hidden border border-gray-200 dark:border-almet-comet hover:shadow-lg transition-all group relative"
+                    className={`rounded-2xl overflow-hidden border transition-all group relative cursor-pointer ${
+                      darkMode
+                        ? 'bg-almet-cloud-burst border-almet-comet hover:shadow-xl hover:shadow-almet-sapphire/10 hover:border-almet-sapphire/50'
+                        : 'bg-white border-gray-200 hover:shadow-xl hover:border-almet-sapphire/50'
+                    }`}
                   >
-                    {/* Image */}
                     <div 
-                      className="relative h-48 overflow-hidden cursor-pointer"
-                      onClick={() => {
-                        setSelectedNews(item);
-                        setShowNewsModal(true);
-                      }}
-                    >
-                      <img
-                        src={item.imagePreview}
-                        alt={item.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      {item.isPinned && (
-                        <div className="absolute top-3 left-3 bg-almet-sapphire text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 shadow-lg">
-                          <Pin size={12} />
-                          Pinned
-                        </div>
-                      )}
-                      <div className={`absolute top-3 right-3 ${categoryInfo.color} text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 shadow-lg`}>
-                        <CategoryIcon size={12} />
-                        {categoryInfo.name}
-                      </div>
-                    </div>
+  className="relative h-44 overflow-hidden"
+  onClick={() => handleViewNews(item)}
+>
+  <img
+    src={item.image_url || 'https://via.placeholder.com/800x400?text=No+Image'}
+    alt={item.title}
+    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+  />
+  
+  {/* Status Badges Container */}
+  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
+    {item.is_pinned && (
+      <div className="bg-almet-sapphire text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
+        <Pin size={10} />
+        Pinned
+      </div>
+    )}
+    {!item.is_published && (
+      <div className="bg-orange-600 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
+        <FileText size={10} />
+        Draft
+      </div>
+    )}
+  </div>
+  
+  <div className={`absolute top-2.5 right-2.5 ${categoryInfo.color} text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg`}>
+    <CategoryIcon size={10} />
+    {categoryInfo.name}
+  </div>
+</div>
 
                     {/* Action Buttons */}
-                    <div className="absolute top-52 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => handleTogglePin(item, e)}
-                        className={`p-2 ${item.isPinned ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg transition-colors shadow-lg`}
-                        title={item.isPinned ? 'Unpin' : 'Pin'}
-                      >
-                        {item.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-                      </button>
-                      <button
-                        onClick={(e) => handleEditNews(item, e)}
-                        className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
-                        title="Edit"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => handleDeleteNews(item, e)}
-                        className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
+                    <div className="absolute top-48 right-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+  <button
+    onClick={(e) => handleTogglePin(item, e)}
+    className={`p-1.5 rounded-xl transition-all shadow-lg ${
+      item.is_pinned 
+        ? 'bg-orange-600 hover:bg-orange-700' 
+        : 'bg-green-600 hover:bg-green-700'
+    } text-white`}
+    title={item.is_pinned ? 'Unpin' : 'Pin'}
+  >
+    {item.is_pinned ? <PinOff size={12} /> : <Pin size={12} />}
+  </button>
+  
+  {/* ƏLAVƏ ET - Publish/Unpublish Button */}
+  <button
+    onClick={(e) => handleTogglePublish(item, e)}
+    className={`p-1.5 rounded-xl transition-all shadow-lg ${
+      item.is_published 
+        ? 'bg-purple-600 hover:bg-purple-700' 
+        : 'bg-sky-600 hover:bg-sky-700'
+    } text-white`}
+    title={item.is_published ? 'Unpublish' : 'Publish'}
+  >
+    {item.is_published ? <Eye size={12} /> : <Send size={12} />}
+  </button>
+  
+  <button
+    onClick={(e) => handleEditNews(item, e)}
+    className="p-1.5 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
+    title="Edit"
+  >
+    <Edit size={12} />
+  </button>
+  <button
+    onClick={(e) => handleDeleteNews(item, e)}
+    className="p-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
+    title="Delete"
+  >
+    <Trash2 size={12} />
+  </button>
+</div>
 
                     {/* Content */}
                     <div 
-                      className="p-4 cursor-pointer"
-                      onClick={() => {
-                        setSelectedNews(item);
-                        setShowNewsModal(true);
-                      }}
+                      className="p-4"
+                      onClick={() => handleViewNews(item)}
                     >
-                      <h3 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-almet-sapphire transition-colors">
+                      <h3 className={`font-semibold mb-1.5 line-clamp-2 text-sm group-hover:text-almet-sapphire transition-colors ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
                         {item.title}
                       </h3>
-                      <p className="text-sm text-gray-600 dark:text-almet-bali-hai mb-3 line-clamp-2">
+                      <p className={`text-xs mb-3 line-clamp-2 ${
+                        darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                      }`}>
                         {item.excerpt}
                       </p>
 
                       {/* Target Groups */}
-                      {item.targetGroups && item.targetGroups.length > 0 && (
-                        <div className="mb-3">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-almet-bali-hai">
-                              <Target size={12} />
+                      {item.target_groups_info && item.target_groups_info.length > 0 && (
+                        <div className="mb-2.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <div className={`flex items-center gap-0.5 text-[10px] ${
+                              darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                            }`}>
+                              <Target size={10} />
                               <span className="font-medium">Sent to:</span>
                             </div>
-                            {item.targetGroups.slice(0, 2).map(groupId => {
-                              const group = targetGroups.find(g => g.id === groupId);
-                              return group ? (
-                                <span
-                                  key={groupId}
-                                  className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded text-xs font-medium"
-                                >
-                                  {group.name}
-                                </span>
-                              ) : null;
-                            })}
-                            {item.targetGroups.length > 2 && (
-                              <span className="text-xs text-gray-500 dark:text-almet-bali-hai">
-                                +{item.targetGroups.length - 2} more
+                            {item.target_groups_info.slice(0, 2).map(group => (
+                              <span
+                                key={group.id}
+                                className={`px-2 py-0.5 rounded-lg text-[10px] font-medium ${
+                                  darkMode
+                                    ? 'bg-sky-900/30 text-sky-400'
+                                    : 'bg-sky-50 text-sky-700'
+                                }`}
+                              >
+                                {group.name}
+                              </span>
+                            ))}
+                            {item.target_groups_info.length > 2 && (
+                              <span className={`text-[10px] ${
+                                darkMode ? 'text-almet-bali-hai' : 'text-gray-500'
+                              }`}>
+                                +{item.target_groups_info.length - 2} more
                               </span>
                             )}
-                            {item.notifyMembers && (
-                              <div className="flex items-center gap-1 ml-auto">
-                                <Mail size={12} className="text-green-600 dark:text-green-400" />
-                                <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            {item.notify_members && item.notification_sent && (
+                              <div className="flex items-center gap-0.5 ml-auto">
+                                <Mail size={10} className={
+                                  darkMode ? 'text-green-400' : 'text-green-600'
+                                } />
+                                <span className={`text-[10px] font-medium ${
+                                  darkMode ? 'text-green-400' : 'text-green-600'
+                                }`}>
                                   Notified
                                 </span>
                               </div>
@@ -520,26 +701,38 @@ export default function CompanyNewsPage() {
                       )}
 
                       {/* Tags */}
-                      <div className="flex flex-wrap gap-1 mb-3">
-                        {item.tags.slice(0, 3).map((tag, idx) => (
-                          <span
-                            key={idx}
-                            className="px-2 py-0.5 bg-gray-100 dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai rounded text-xs"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
+                      {item.tags_list && item.tags_list.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2.5">
+                          {item.tags_list.slice(0, 3).map((tag, idx) => (
+                            <span
+                              key={idx}
+                              className={`px-2 py-0.5 rounded-lg text-[10px] ${
+                                darkMode
+                                  ? 'bg-almet-san-juan text-almet-bali-hai'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       {/* Meta */}
-                      <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-almet-comet">
-                        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-almet-bali-hai">
-                          <Calendar size={12} />
-                          {formatDate(item.publishedAt)}
+                      <div className={`flex items-center justify-between pt-2.5 border-t text-[10px] ${
+                        darkMode ? 'border-almet-comet' : 'border-gray-200'
+                      }`}>
+                        <div className={`flex items-center gap-1 ${
+                          darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                        }`}>
+                          <Calendar size={10} />
+                          {formatDate(item.published_at)}
                         </div>
-                        <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-almet-bali-hai">
-                          <Eye size={12} />
-                          {item.views} views
+                        <div className={`flex items-center gap-0.5 ${
+                          darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                        }`}>
+                          <Eye size={10} />
+                          {item.view_count} views
                         </div>
                       </div>
                     </div>
@@ -553,7 +746,7 @@ export default function CompanyNewsPage() {
               <Pagination
                 currentPage={currentPage}
                 totalPages={totalPages}
-                totalItems={sortedNews.length}
+                totalItems={totalCount}
                 itemsPerPage={itemsPerPage}
                 onPageChange={handlePageChange}
                 darkMode={darkMode}
@@ -564,56 +757,71 @@ export default function CompanyNewsPage() {
 
         {/* News Detail Modal */}
         {showNewsModal && selectedNews && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowNewsModal(false)}>
-            <div className="bg-white dark:bg-almet-cloud-burst rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-              {/* Modal Header */}
-              <div className="relative h-80">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNewsModal(false)}>
+            <div className={`rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl ${
+              darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
+            }`} onClick={(e) => e.stopPropagation()}>
+              
+              {/* Modal Header Image */}
+              <div className="relative h-72">
                 <img
-                  src={selectedNews.imagePreview}
+                  src={selectedNews.image_url || 'https://via.placeholder.com/1200x600?text=No+Image'}
                   alt={selectedNews.title}
                   className="w-full h-full object-cover"
                 />
                 <button
                   onClick={() => setShowNewsModal(false)}
-                  className="absolute top-4 right-4 p-2 bg-white dark:bg-almet-cloud-burst rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
+                  className={`absolute top-3 right-3 p-2 rounded-xl shadow-lg transition-colors ${
+                    darkMode
+                      ? 'bg-almet-cloud-burst hover:bg-almet-comet text-white'
+                      : 'bg-white hover:bg-gray-100 text-gray-600'
+                  }`}
                 >
-                  <X size={20} className="text-gray-600 dark:text-almet-bali-hai" />
+                  <X size={18} />
                 </button>
                 
                 {/* Action Buttons in Modal */}
-                <div className="absolute top-4 left-4 flex gap-2">
+                <div className="absolute top-3 left-3 flex gap-1.5">
                   <button
-                    onClick={(e) => handleTogglePin(selectedNews, e)}
-                    className={`p-2 ${selectedNews.isPinned ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} text-white rounded-lg transition-colors shadow-lg`}
-                    title={selectedNews.isPinned ? 'Unpin' : 'Pin'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTogglePin(selectedNews, e);
+                      setShowNewsModal(false);
+                    }}
+                    className={`p-2 rounded-xl transition-all shadow-lg ${
+                      selectedNews.is_pinned 
+                        ? 'bg-orange-600 hover:bg-orange-700' 
+                        : 'bg-green-600 hover:bg-green-700'
+                    } text-white`}
+                    title={selectedNews.is_pinned ? 'Unpin' : 'Pin'}
                   >
-                    {selectedNews.isPinned ? <PinOff size={16} /> : <Pin size={16} />}
+                    {selectedNews.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
                   </button>
                   <button
                     onClick={(e) => {
                       setShowNewsModal(false);
                       handleEditNews(selectedNews, e);
                     }}
-                    className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+                    className="p-2 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
                     title="Edit"
                   >
-                    <Edit size={16} />
+                    <Edit size={14} />
                   </button>
                   <button
                     onClick={(e) => {
                       setShowNewsModal(false);
                       handleDeleteNews(selectedNews, e);
                     }}
-                    className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+                    className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
                     title="Delete"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                   </button>
                 </div>
 
                 {/* Category Badge */}
-                <div className={`absolute bottom-4 left-4 ${getCategoryInfo(selectedNews.category).color} text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg`}>
-                  {React.createElement(getCategoryInfo(selectedNews.category).icon, { size: 16 })}
+                <div className={`absolute bottom-3 left-3 ${getCategoryInfo(selectedNews.category).color} text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg`}>
+                  {React.createElement(getCategoryInfo(selectedNews.category).icon, { size: 14 })}
                   {getCategoryInfo(selectedNews.category).name}
                 </div>
               </div>
@@ -621,76 +829,106 @@ export default function CompanyNewsPage() {
               {/* Modal Content */}
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-almet-sapphire text-white rounded-full flex items-center justify-center text-sm font-medium">
-                      {selectedNews.author.name.charAt(0)}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral text-white rounded-full flex items-center justify-center text-sm font-medium">
+                      {(selectedNews.author_display_name || selectedNews.author_name || 'S').charAt(0)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {selectedNews.author.name}
+                      <p className={`text-xs font-medium ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
+                        {selectedNews.author_display_name || selectedNews.author_name || 'System'}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-almet-bali-hai">
-                        {formatDate(selectedNews.publishedAt)}
+                      <p className={`text-[10px] ${
+                        darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                      }`}>
+                        {formatDate(selectedNews.published_at)}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-almet-bali-hai">
-                    <Eye size={16} />
-                    {selectedNews.views} views
+                  <div className={`flex items-center gap-1.5 text-xs ${
+                    darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                  }`}>
+                    <Eye size={14} />
+                    {selectedNews.view_count} views
                   </div>
                 </div>
 
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                <h2 className={`text-xl font-bold mb-3 ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
                   {selectedNews.title}
                 </h2>
 
-                <p className="text-gray-700 dark:text-almet-bali-hai leading-relaxed mb-4 whitespace-pre-line">
+                <p className={`leading-relaxed mb-5 whitespace-pre-line text-sm ${
+                  darkMode ? 'text-almet-bali-hai' : 'text-gray-700'
+                }`}>
                   {selectedNews.content}
                 </p>
 
                 {/* Target Groups Section */}
-                {selectedNews.targetGroups && selectedNews.targetGroups.length > 0 && (
-                  <div className="mb-4 p-4 bg-gray-50 dark:bg-almet-san-juan rounded-lg border border-gray-200 dark:border-almet-comet">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Target className="text-almet-sapphire" size={18} />
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                {selectedNews.target_groups_info && selectedNews.target_groups_info.length > 0 && (
+                  <div className={`mb-5 p-4 rounded-xl border ${
+                    darkMode
+                      ? 'bg-almet-san-juan/50 border-almet-comet'
+                      : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <Target className="text-almet-sapphire" size={16} />
+                      <h3 className={`text-xs font-semibold ${
+                        darkMode ? 'text-white' : 'text-gray-900'
+                      }`}>
                         Target Groups
                       </h3>
-                      {selectedNews.notifyMembers && (
+                      {selectedNews.notify_members && selectedNews.notification_sent && (
                         <div className="flex items-center gap-1 ml-auto">
-                          <Mail size={14} className="text-green-600 dark:text-green-400" />
-                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                          <Mail size={12} className={
+                            darkMode ? 'text-green-400' : 'text-green-600'
+                          } />
+                          <span className={`text-[10px] font-medium ${
+                            darkMode ? 'text-green-400' : 'text-green-600'
+                          }`}>
                             Email Sent
                           </span>
                         </div>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedNews.targetGroups.map(groupId => {
-                        const group = targetGroups.find(g => g.id === groupId);
-                        return group ? (
-                          <div
-                            key={groupId}
-                            className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet"
-                          >
-                            <Users size={14} className="text-gray-600 dark:text-almet-bali-hai" />
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {group.name}
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-almet-bali-hai">
-                              ({group.memberCount} members)
-                            </span>
-                          </div>
-                        ) : null;
-                      })}
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedNews.target_groups_info.map(group => (
+                        <div
+                          key={group.id}
+                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${
+                            darkMode
+                              ? 'bg-almet-cloud-burst border-almet-comet'
+                              : 'bg-white border-gray-200'
+                          }`}
+                        >
+                          <Users size={12} className={
+                            darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                          } />
+                          <span className={`text-xs font-medium ${
+                            darkMode ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {group.name}
+                          </span>
+                          <span className={`text-[10px] ${
+                            darkMode ? 'text-almet-bali-hai' : 'text-gray-500'
+                          }`}>
+                            ({group.member_count} members)
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
-                      <p className="text-xs text-gray-600 dark:text-almet-bali-hai">
-                        Total Recipients: <span className="font-semibold text-gray-900 dark:text-white">
-                          {selectedNews.targetGroups.reduce((sum, groupId) => {
-                            const group = targetGroups.find(g => g.id === groupId);
-                            return sum + (group?.memberCount || 0);
-                          }, 0)} employees
+                    <div className={`mt-2.5 pt-2.5 border-t ${
+                      darkMode ? 'border-almet-comet' : 'border-gray-200'
+                    }`}>
+                      <p className={`text-[10px] ${
+                        darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                      }`}>
+                        Total Recipients: <span className={`font-semibold ${
+                          darkMode ? 'text-white' : 'text-gray-900'
+                        }`}>
+                          {selectedNews.total_recipients} employees
                         </span>
                       </p>
                     </div>
@@ -698,16 +936,24 @@ export default function CompanyNewsPage() {
                 )}
 
                 {/* Tags */}
-                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200 dark:border-almet-comet">
-                  {selectedNews.tags.map((tag, idx) => (
-                    <span
-                      key={idx}
-                      className="px-3 py-1 bg-gray-100 dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai rounded-lg text-sm"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
+                {selectedNews.tags_list && selectedNews.tags_list.length > 0 && (
+                  <div className={`flex flex-wrap gap-1.5 pt-4 border-t ${
+                    darkMode ? 'border-almet-comet' : 'border-gray-200'
+                  }`}>
+                    {selectedNews.tags_list.map((tag, idx) => (
+                      <span
+                        key={idx}
+                        className={`px-2.5 py-1 rounded-xl text-xs ${
+                          darkMode
+                            ? 'bg-almet-san-juan text-almet-bali-hai'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -723,6 +969,8 @@ export default function CompanyNewsPage() {
           onSave={handleSaveNews}
           newsItem={editingNews}
           darkMode={darkMode}
+          categories={categories}
+          targetGroups={targetGroups}
         />
 
         {/* Confirmation Modal */}
