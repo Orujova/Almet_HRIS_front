@@ -1,9 +1,11 @@
 "use client";
-import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText } from "lucide-react";
+import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { newsService } from "@/services/newsService";
+import { useTheme } from "@/components/common/ThemeProvider";
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
   return (
@@ -46,28 +48,65 @@ const ActionCard = ({ icon, title, description, href }) => {
   );
 };
 
-const NewsCard = ({ tag, title, description, date, image }) => {
+const NewsCard = ({ news, darkMode }) => {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric'
+    });
+  };
+
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 cursor-pointer">
-      <img src={image} alt={title} className="w-full h-40 object-cover transition-transform duration-300 hover:scale-110" />
+    <Link 
+      href={`/communication/company-news`}
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 group"
+    >
+      <div className="relative h-40 overflow-hidden">
+        <img 
+          src={news.image_url || 'https://images.unsplash.com/photo-1573164713619-24c711fe7878?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80'} 
+          alt={news.title} 
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110" 
+        />
+        {news.category_name && (
+          <div className="absolute top-2 left-2 bg-almet-sapphire text-white text-xs rounded-full px-3 py-1 font-medium shadow-lg">
+            {news.category_name}
+          </div>
+        )}
+        {news.is_pinned && (
+          <div className="absolute top-2 right-2 bg-orange-500 text-white text-xs rounded-full px-3 py-1 font-medium shadow-lg">
+            Pinned
+          </div>
+        )}
+      </div>
       <div className="p-4">
-        <div className="bg-blue-100 dark:bg-almet-sapphire text-almet-sapphire dark:text-white text-xs rounded-full px-2 py-0.5 inline-block mb-2">{tag}</div>
-        <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base mb-2">{title}</h3>
-        <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mb-3 line-clamp-2">{description}</p>
+        <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base mb-2 line-clamp-2 group-hover:text-almet-sapphire transition-colors">
+          {news.title}
+        </h3>
+        <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mb-3 line-clamp-2">
+          {news.excerpt}
+        </p>
         <div className="flex justify-between items-center">
-          <span className="text-gray-400 dark:text-almet-waterloo text-xs">{date}</span>
-          <Link href="#" className="text-almet-sapphire dark:text-almet-bali-hai text-xs md:text-sm hover:underline">
-            Read more
-          </Link>
+          <span className="text-gray-400 dark:text-almet-waterloo text-xs flex items-center gap-1">
+            <Calendar className="h-3 w-3" />
+            {formatDate(news.published_at)}
+          </span>
+          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-almet-waterloo">
+            <span className="flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              {news.view_count}
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 };
 
 const EventCard = ({ icon, type, title, date, image }) => {
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300  cursor-pointer">
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 cursor-pointer">
       <div className="flex items-center mb-3">
         <div className="h-9 w-9 rounded-full overflow-hidden mr-3">
           <img src={image} alt={type} className="h-full w-full object-cover" />
@@ -87,7 +126,31 @@ const EventCard = ({ icon, type, title, date, image }) => {
 
 export default function Home() {
   const { account } = useAuth();
+  const { darkMode } = useTheme();
   const [isManager, setIsManager] = useState(false);
+  const [latestNews, setLatestNews] = useState([]);
+  const [loadingNews, setLoadingNews] = useState(true);
+  
+  useEffect(() => {
+    loadLatestNews();
+  }, []);
+
+  const loadLatestNews = async () => {
+    setLoadingNews(true);
+    try {
+      const response = await newsService.getNews({
+        page: 1,
+        page_size: 3,
+        is_published: true,
+        ordering: '-is_pinned,-published_at'
+      });
+      setLatestNews(response.results || []);
+    } catch (error) {
+      console.error('Failed to load latest news:', error);
+    } finally {
+      setLoadingNews(false);
+    }
+  };
   
   return (
     <DashboardLayout>
@@ -149,7 +212,7 @@ export default function Home() {
                 <StatsCard
                   icon={<Bell className="h-5 w-5" />}
                   title="Info Center"
-                  value="2"
+                  value={latestNews.length}
                   subtitle="Latest company updates."
                   actionText="Read Company News"
                 />
@@ -219,54 +282,59 @@ export default function Home() {
         />
       </div>
 
-      {/* Company Updates */}
+      {/* Company Updates - REAL NEWS */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-base font-medium text-gray-800 dark:text-white">
             Company Updates
           </h2>
           <Link 
-            href="#" 
-            className="text-almet-sapphire dark:text-almet-bali-hai flex items-center text-xs md:text-sm hover:underline transition-all duration-300"
+            href="/communication/company-news" 
+            className="text-almet-sapphire dark:text-almet-bali-hai flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
           >
             View All
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              className="h-4 w-4 ml-1" 
-              viewBox="0 0 20 20" 
-              fill="currentColor"
-            >
-              <path 
-                fillRule="evenodd" 
-                d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" 
-                clipRule="evenodd" 
-              />
-            </svg>
+            <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <NewsCard
-            tag="News"
-            title="Q4 Performance Review Schedule"
-            description="Important dates and guidelines for upcoming performance reviews."
-            date="Jan 15, 2024"
-            image="https://images.unsplash.com/photo-1573164713619-24c711fe7878?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80"
-          />
-          <NewsCard
-            tag="Announcement"
-            title="New Office Opening in Dubai"
-            description="Exciting expansion of our operations in the Middle East region."
-            date="Jan 14, 2024"
-            image="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2970&q=80"
-          />
-          <NewsCard
-            tag="Update"
-            title="Updated Travel Policy Guidelines"
-            description="Review the new business travel procedures and requirements."
-            date="Jan 13, 2024"
-            image="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2074&q=80"
-          />
-        </div>
+        
+        {loadingNews ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow animate-pulse">
+                <div className="h-40 bg-gray-200 dark:bg-almet-san-juan"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 dark:bg-almet-san-juan rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-almet-san-juan rounded mb-2"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-almet-san-juan rounded w-2/3"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : latestNews.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {latestNews.map((news) => (
+              <NewsCard key={news.id} news={news} darkMode={darkMode} />
+            ))}
+          </div>
+        ) : (
+          <div className={`rounded-lg p-8 text-center ${
+            darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
+          }`}>
+            <FileText className={`h-12 w-12 mx-auto mb-3 ${
+              darkMode ? 'text-almet-bali-hai' : 'text-gray-400'
+            }`} />
+            <h3 className={`text-sm font-semibold mb-1 ${
+              darkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              No News Available
+            </h3>
+            <p className={`text-xs ${
+              darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+            }`}>
+              Check back later for company updates
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Upcoming Events */}

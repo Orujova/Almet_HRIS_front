@@ -1,4 +1,4 @@
-// src/app/news/page.jsx - Complete with Smaller Fonts
+// src/app/news/page.jsx - Complete with Permissions
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -8,8 +8,7 @@ import { newsService, categoryService, targetGroupService, formatApiError } from
 import { 
   Plus, Search, Calendar, Eye, Edit, Trash2, 
   X, FileText, CheckCircle, Loader2, Pin, PinOff, 
-  Users, Target, Mail, Settings, Filter,
-  Send
+  Users, Target, Mail, Settings, Filter, Send
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -27,6 +26,7 @@ export default function CompanyNewsPage() {
   const [categories, setCategories] = useState([]);
   const [targetGroups, setTargetGroups] = useState([]);
   const [statistics, setStatistics] = useState(null);
+  const [permissions, setPermissions] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -49,7 +49,7 @@ export default function CompanyNewsPage() {
 
   // Load news when filters change
   useEffect(() => {
-    if (categories.length > 0) {
+    if (categories.length > 0 && permissions) {
       loadNews();
     }
   }, [currentPage, selectedCategory, searchTerm]);
@@ -58,6 +58,7 @@ export default function CompanyNewsPage() {
     setLoading(true);
     try {
       await Promise.all([
+        loadPermissions(),
         loadCategories(),
         loadTargetGroups(),
         loadStatistics()
@@ -69,17 +70,17 @@ export default function CompanyNewsPage() {
       setLoading(false);
     }
   };
-const handleTogglePublish = async (item, e) => {
-  e.stopPropagation();
-  try {
-    await newsService.togglePublish(item.id);
-    showSuccess(item.is_published ? 'News unpublished' : 'News published');
-    await loadNews();
-    await loadStatistics();
-  } catch (error) {
-    showError(formatApiError(error));
-  }
-};
+
+  const loadPermissions = async () => {
+    try {
+      const perms = await newsService.myPermissions();
+      setPermissions(perms);
+    } catch (error) {
+      console.error('Failed to load permissions:', error);
+      showError('Failed to load permissions');
+    }
+  };
+
   const loadNews = async () => {
     try {
       const params = {
@@ -125,26 +126,121 @@ const handleTogglePublish = async (item, e) => {
     }
   };
 
-  // If showing management screens
-  if (showTargetGroupManagement) {
-    return <TargetGroupManagement onBack={() => {
-      setShowTargetGroupManagement(false);
-      loadTargetGroups();
-    }} />;
-  }
+  const handleTogglePublish = async (item, e) => {
+    e.stopPropagation();
+    
+    if (!permissions?.capabilities?.can_publish_news) {
+      showError('You do not have permission to publish news');
+      return;
+    }
+    
+    try {
+      await newsService.togglePublish(item.id);
+      showSuccess(item.is_published ? 'News unpublished' : 'News published');
+      await loadNews();
+      await loadStatistics();
+    } catch (error) {
+      showError(formatApiError(error));
+    }
+  };
 
-  if (showCategoryManagement) {
-    return <CategoryManagement onBack={() => {
-      setShowCategoryManagement(false);
-      loadCategories();
-      loadNews();
-    }} />;
-  }
+  const handleTogglePin = async (item, e) => {
+    e.stopPropagation();
+    
+    if (!permissions?.capabilities?.can_pin_news) {
+      showError('You do not have permission to pin news');
+      return;
+    }
+    
+    try {
+      await newsService.togglePin(item.id);
+      showSuccess(item.is_pinned ? 'News unpinned' : 'News pinned');
+      await loadNews();
+    } catch (error) {
+      showError(formatApiError(error));
+    }
+  };
 
-  // Filter news by category
-  const filteredNews = selectedCategory === 'all' 
-    ? news 
-    : news.filter(item => item.category === selectedCategory);
+  const handleCreateNews = () => {
+    if (!permissions?.capabilities?.can_create_news) {
+      showError('You do not have permission to create news');
+      return;
+    }
+    setEditingNews(null);
+    setShowFormModal(true);
+  };
+
+  const handleEditNews = (item, e) => {
+    e.stopPropagation();
+    
+    if (!permissions?.capabilities?.can_update_news) {
+      showError('You do not have permission to edit news');
+      return;
+    }
+    
+    setEditingNews({
+      ...item,
+      tags: item.tags_list || [],
+      imagePreview: item.image_url,
+      targetGroups: item.target_groups_info?.map(g => g.id) || [],
+      notifyMembers: item.notify_members,
+      isPinned: item.is_pinned,
+      authorDisplayName: item.author_display_name
+    });
+    setShowFormModal(true);
+  };
+
+  const handleDeleteNews = (item, e) => {
+    e.stopPropagation();
+    
+    if (!permissions?.capabilities?.can_delete_news) {
+      showError('You do not have permission to delete news');
+      return;
+    }
+    
+    setConfirmModal({ isOpen: true, item });
+  };
+
+  const handleSaveNews = async (formData) => {
+    try {
+      if (editingNews) {
+        await newsService.updateNews(editingNews.id, formData);
+        showSuccess('News updated successfully');
+      } else {
+        await newsService.createNews(formData);
+        showSuccess('News created successfully');
+      }
+      await loadNews();
+      await loadStatistics();
+      setShowFormModal(false);
+      setEditingNews(null);
+    } catch (error) {
+      showError(formatApiError(error));
+      throw error;
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await newsService.deleteNews(confirmModal.item.id);
+      showSuccess('News deleted successfully');
+      await loadNews();
+      await loadStatistics();
+      setConfirmModal({ isOpen: false, item: null });
+    } catch (error) {
+      showError(formatApiError(error));
+    }
+  };
+
+  const handleViewNews = async (item) => {
+    try {
+      const fullNews = await newsService.getNewsById(item.id);
+      setSelectedNews(fullNews);
+      setShowNewsModal(true);
+    } catch (error) {
+      showError(formatApiError(error));
+    }
+  };
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -177,82 +273,37 @@ const handleTogglePublish = async (item, e) => {
     };
   };
 
-  // CRUD Operations
-  const handleCreateNews = () => {
-    setEditingNews(null);
-    setShowFormModal(true);
-  };
+  // Show loading until permissions are loaded
+  if (!permissions) {
+    return (
+      <DashboardLayout>
+        <div className="flex justify-center items-center py-20">
+          <Loader2 className="h-7 w-7 animate-spin text-almet-sapphire" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
-  const handleEditNews = (item, e) => {
-    e.stopPropagation();
-    setEditingNews({
-      ...item,
-      tags: item.tags_list || [],
-      imagePreview: item.image_url,
-      targetGroups: item.target_groups_info?.map(g => g.id) || [],
-      notifyMembers: item.notify_members,
-      isPinned: item.is_pinned,
-      authorDisplayName: item.author_display_name
-    });
-    setShowFormModal(true);
-  };
+  // If showing management screens
+  if (showTargetGroupManagement) {
+    return <TargetGroupManagement onBack={() => {
+      setShowTargetGroupManagement(false);
+      loadTargetGroups();
+    }} />;
+  }
 
-  const handleSaveNews = async (formData) => {
-    try {
-      if (editingNews) {
-        await newsService.updateNews(editingNews.id, formData);
-        showSuccess('News updated successfully');
-      } else {
-        await newsService.createNews(formData);
-        showSuccess('News created successfully');
-      }
-      await loadNews();
-      await loadStatistics();
-      setShowFormModal(false);
-      setEditingNews(null);
-    } catch (error) {
-      showError(formatApiError(error));
-      throw error;
-    }
-  };
+  if (showCategoryManagement) {
+    return <CategoryManagement onBack={() => {
+      setShowCategoryManagement(false);
+      loadCategories();
+      loadNews();
+    }} />;
+  }
 
-  const handleDeleteNews = (item, e) => {
-    e.stopPropagation();
-    setConfirmModal({ isOpen: true, item });
-  };
-
-  const confirmDelete = async () => {
-    try {
-      await newsService.deleteNews(confirmModal.item.id);
-      showSuccess('News deleted successfully');
-      await loadNews();
-      await loadStatistics();
-      setConfirmModal({ isOpen: false, item: null });
-    } catch (error) {
-      showError(formatApiError(error));
-    }
-  };
-
-  const handleTogglePin = async (item, e) => {
-    e.stopPropagation();
-    try {
-      await newsService.togglePin(item.id);
-      showSuccess(item.is_pinned ? 'News unpinned' : 'News pinned');
-      await loadNews();
-    } catch (error) {
-      showError(formatApiError(error));
-    }
-  };
-
-  const handleViewNews = async (item) => {
-    try {
-      const fullNews = await newsService.getNewsById(item.id);
-      setSelectedNews(fullNews);
-      setShowNewsModal(true);
-    } catch (error) {
-      showError(formatApiError(error));
-    }
-  };
+  // Filter news by category
+  const filteredNews = selectedCategory === 'all' 
+    ? news 
+    : news.filter(item => item.category === selectedCategory);
 
   return (
     <DashboardLayout>
@@ -276,41 +327,47 @@ const handleTogglePublish = async (item, e) => {
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              <button 
-                onClick={() => setShowCategoryManagement(true)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl hover:shadow-lg transition-all font-medium text-xs ${
-                  darkMode
-                    ? 'bg-almet-cloud-burst border-almet-comet text-almet-bali-hai hover:bg-almet-comet hover:text-white'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                }`}
-              >
-                <Settings size={15} />
-                Categories
-              </button>
-              <button 
-                onClick={() => setShowTargetGroupManagement(true)}
-                className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl hover:shadow-lg transition-all font-medium text-xs ${
-                  darkMode
-                    ? 'bg-almet-cloud-burst border-almet-comet text-almet-bali-hai hover:bg-almet-comet hover:text-white'
-                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
-                }`}
-              >
-                <Users size={15} />
-                Target Groups
-              </button>
-              <button 
-                onClick={handleCreateNews}
-                className="flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all font-medium text-xs shadow-lg shadow-almet-sapphire/20 hover:shadow-xl hover:shadow-almet-sapphire/30 hover:-translate-y-0.5"
-              >
-                <Plus size={16} />
-                Create News
-              </button>
+              {permissions.capabilities.can_view_target_groups && (
+                <>
+                  <button 
+                    onClick={() => setShowCategoryManagement(true)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl hover:shadow-lg transition-all font-medium text-xs ${
+                      darkMode
+                        ? 'bg-almet-cloud-burst border-almet-comet text-almet-bali-hai hover:bg-almet-comet hover:text-white'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                    }`}
+                  >
+                    <Settings size={15} />
+                    Categories
+                  </button>
+                  <button 
+                    onClick={() => setShowTargetGroupManagement(true)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 border rounded-xl hover:shadow-lg transition-all font-medium text-xs ${
+                      darkMode
+                        ? 'bg-almet-cloud-burst border-almet-comet text-almet-bali-hai hover:bg-almet-comet hover:text-white'
+                        : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300'
+                    }`}
+                  >
+                    <Users size={15} />
+                    Target Groups
+                  </button>
+                </>
+              )}
+              {permissions.capabilities.can_create_news && (
+                <button 
+                  onClick={handleCreateNews}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all font-medium text-xs shadow-lg shadow-almet-sapphire/20 hover:shadow-xl hover:shadow-almet-sapphire/30 hover:-translate-y-0.5"
+                >
+                  <Plus size={16} />
+                  Create News
+                </button>
+              )}
             </div>
           </div>
         </div>
 
         {/* Stats Cards */}
-        {statistics && (
+        {statistics && permissions.capabilities.can_view_statistics && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
             <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
               darkMode 
@@ -538,7 +595,7 @@ const handleTogglePublish = async (item, e) => {
                 ? 'Try adjusting your search or filters' 
                 : 'Get started by creating your first news'}
             </p>
-            {!searchTerm && selectedCategory === 'all' && (
+            {!searchTerm && selectedCategory === 'all' && permissions.capabilities.can_create_news && (
               <button
                 onClick={handleCreateNews}
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all text-xs font-medium shadow-lg shadow-almet-sapphire/20"
@@ -565,79 +622,87 @@ const handleTogglePublish = async (item, e) => {
                     }`}
                   >
                     <div 
-  className="relative h-44 overflow-hidden"
-  onClick={() => handleViewNews(item)}
->
-  <img
-    src={item.image_url || 'https://via.placeholder.com/800x400?text=No+Image'}
-    alt={item.title}
-    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-  />
-  
-  {/* Status Badges Container */}
-  <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
-    {item.is_pinned && (
-      <div className="bg-almet-sapphire text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
-        <Pin size={10} />
-        Pinned
-      </div>
-    )}
-    {!item.is_published && (
-      <div className="bg-orange-600 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
-        <FileText size={10} />
-        Draft
-      </div>
-    )}
-  </div>
-  
-  <div className={`absolute top-2.5 right-2.5 ${categoryInfo.color} text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg`}>
-    <CategoryIcon size={10} />
-    {categoryInfo.name}
-  </div>
-</div>
+                      className="relative h-44 overflow-hidden"
+                      onClick={() => handleViewNews(item)}
+                    >
+                      <img
+                        src={item.image_url || 'https://via.placeholder.com/800x400?text=No+Image'}
+                        alt={item.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                      
+                      {/* Status Badges Container */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
+                        {item.is_pinned && (
+                          <div className="bg-almet-sapphire text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
+                            <Pin size={10} />
+                            Pinned
+                          </div>
+                        )}
+                        {!item.is_published && (
+                          <div className="bg-orange-600 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
+                            <FileText size={10} />
+                            Draft
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className={`absolute top-2.5 right-2.5 ${categoryInfo.color} text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg`}>
+                        <CategoryIcon size={10} />
+                        {categoryInfo.name}
+                      </div>
+                    </div>
 
                     {/* Action Buttons */}
                     <div className="absolute top-48 right-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-  <button
-    onClick={(e) => handleTogglePin(item, e)}
-    className={`p-1.5 rounded-xl transition-all shadow-lg ${
-      item.is_pinned 
-        ? 'bg-orange-600 hover:bg-orange-700' 
-        : 'bg-green-600 hover:bg-green-700'
-    } text-white`}
-    title={item.is_pinned ? 'Unpin' : 'Pin'}
-  >
-    {item.is_pinned ? <PinOff size={12} /> : <Pin size={12} />}
-  </button>
-  
-  {/* ƏLAVƏ ET - Publish/Unpublish Button */}
-  <button
-    onClick={(e) => handleTogglePublish(item, e)}
-    className={`p-1.5 rounded-xl transition-all shadow-lg ${
-      item.is_published 
-        ? 'bg-purple-600 hover:bg-purple-700' 
-        : 'bg-sky-600 hover:bg-sky-700'
-    } text-white`}
-    title={item.is_published ? 'Unpublish' : 'Publish'}
-  >
-    {item.is_published ? <Eye size={12} /> : <Send size={12} />}
-  </button>
-  
-  <button
-    onClick={(e) => handleEditNews(item, e)}
-    className="p-1.5 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
-    title="Edit"
-  >
-    <Edit size={12} />
-  </button>
-  <button
-    onClick={(e) => handleDeleteNews(item, e)}
-    className="p-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
-    title="Delete"
-  >
-    <Trash2 size={12} />
-  </button>
-</div>
+                      {permissions.capabilities.can_pin_news && (
+                        <button
+                          onClick={(e) => handleTogglePin(item, e)}
+                          className={`p-1.5 rounded-xl transition-all shadow-lg ${
+                            item.is_pinned 
+                              ? 'bg-orange-600 hover:bg-orange-700' 
+                              : 'bg-green-600 hover:bg-green-700'
+                          } text-white`}
+                          title={item.is_pinned ? 'Unpin' : 'Pin'}
+                        >
+                          {item.is_pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                        </button>
+                      )}
+                      
+                      {permissions.capabilities.can_publish_news && (
+                        <button
+                          onClick={(e) => handleTogglePublish(item, e)}
+                          className={`p-1.5 rounded-xl transition-all shadow-lg ${
+                            item.is_published 
+                              ? 'bg-purple-600 hover:bg-purple-700' 
+                              : 'bg-sky-600 hover:bg-sky-700'
+                          } text-white`}
+                          title={item.is_published ? 'Unpublish' : 'Publish'}
+                        >
+                          {item.is_published ? <Eye size={12} /> : <Send size={12} />}
+                        </button>
+                      )}
+                      
+                      {permissions.capabilities.can_update_news && (
+                        <button
+                          onClick={(e) => handleEditNews(item, e)}
+                          className="p-1.5 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
+                          title="Edit"
+                        >
+                          <Edit size={12} />
+                        </button>
+                      )}
+                      
+                      {permissions.capabilities.can_delete_news && (
+                        <button
+                          onClick={(e) => handleDeleteNews(item, e)}
+                          className="p-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
+                          title="Delete"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
 
                     {/* Content */}
                     <div 
@@ -782,41 +847,47 @@ const handleTogglePublish = async (item, e) => {
                 
                 {/* Action Buttons in Modal */}
                 <div className="absolute top-3 left-3 flex gap-1.5">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTogglePin(selectedNews, e);
-                      setShowNewsModal(false);
-                    }}
-                    className={`p-2 rounded-xl transition-all shadow-lg ${
-                      selectedNews.is_pinned 
-                        ? 'bg-orange-600 hover:bg-orange-700' 
-                        : 'bg-green-600 hover:bg-green-700'
-                    } text-white`}
-                    title={selectedNews.is_pinned ? 'Unpin' : 'Pin'}
-                  >
-                    {selectedNews.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      setShowNewsModal(false);
-                      handleEditNews(selectedNews, e);
-                    }}
-                    className="p-2 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
-                    title="Edit"
-                  >
-                    <Edit size={14} />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      setShowNewsModal(false);
-                      handleDeleteNews(selectedNews, e);
-                    }}
-                    className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
-                    title="Delete"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {permissions.capabilities.can_pin_news && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePin(selectedNews, e);
+                        setShowNewsModal(false);
+                      }}
+                      className={`p-2 rounded-xl transition-all shadow-lg ${
+                        selectedNews.is_pinned 
+                          ? 'bg-orange-600 hover:bg-orange-700' 
+                          : 'bg-green-600 hover:bg-green-700'
+                      } text-white`}
+                      title={selectedNews.is_pinned ? 'Unpin' : 'Pin'}
+                    >
+                      {selectedNews.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                    </button>
+                  )}
+                  {permissions.capabilities.can_update_news && (
+                    <button
+                      onClick={(e) => {
+                        setShowNewsModal(false);
+                        handleEditNews(selectedNews, e);
+                      }}
+                      className="p-2 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
+                      title="Edit"
+                    >
+                      <Edit size={14} />
+                    </button>
+                  )}
+                  {permissions.capabilities.can_delete_news && (
+                    <button
+                      onClick={(e) => {
+                        setShowNewsModal(false);
+                        handleDeleteNews(selectedNews, e);
+                      }}
+                      className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
+                      title="Delete"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Category Badge */}
