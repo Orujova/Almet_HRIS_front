@@ -32,33 +32,30 @@ export default function CrudModal({ context, darkMode }) {
   const labelClass = "block text-xs font-medium text-gray-700 dark:text-almet-bali-hai mb-1.5";
   const textareaClass = "w-full px-2.5 py-2 text-xs border outline-0 border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none";
 
-  // Handle MultiSelect change for bulk creation
+  // FIXED: Handle MultiSelect change - properly update parent formData
   const handleMultiSelectChange = (fieldName, value) => {
-    console.log('🔄 MultiSelect Change:', { fieldName, value });
+    console.log('🔄 MultiSelect onChange triggered:', { fieldName, value, currentFormData: formData });
     
-    setFormData(prev => {
-      const currentValues = Array.isArray(prev[fieldName]) ? prev[fieldName] : [];
-      
-      console.log('📋 Current values:', currentValues);
-      
-      // Toggle value in array
-      let newValues;
-      if (currentValues.includes(value)) {
-        newValues = currentValues.filter(v => v !== value);
-      } else {
-        newValues = [...currentValues, value];
-      }
-      
-      console.log('✅ New values:', newValues);
-      
-      const newFormData = {
-        ...prev,
-        [fieldName]: newValues
-      };
-      
-      console.log('📦 Updated formData:', newFormData);
-      
-      return newFormData;
+    // Get current array from formData
+    const currentArray = formData[fieldName] || [];
+    console.log('📋 Current array:', currentArray);
+    
+    // Toggle the value
+    let newArray;
+    if (currentArray.includes(value)) {
+      newArray = currentArray.filter(v => v !== value);
+      console.log('➖ Removing value:', value);
+    } else {
+      newArray = [...currentArray, value];
+      console.log('➕ Adding value:', value);
+    }
+    
+    console.log('✅ New array:', newArray);
+    
+    // Update formData via setFormData from parent
+    setFormData({
+      ...formData,
+      [fieldName]: newArray
     });
   };
 

@@ -293,101 +293,117 @@ export default function JobCatalogPage() {
   };
 
   const handleCrudSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(prev => ({ ...prev, crud: true }));
-    setErrors(prev => ({ ...prev, crud: null }));
+  e.preventDefault();
+  setLoading(prev => ({ ...prev, crud: true }));
+  setErrors(prev => ({ ...prev, crud: null }));
 
-    try {
-      const submitData = {};
-      
-      if (formData.name) submitData.name = formData.name.trim();
-      if (formData.code !== undefined) submitData.code = formData.code.trim();
-      if (formData.description !== undefined) submitData.description = formData.description.trim();
-      submitData.is_active = formData.is_active !== false;
-      
-      if (crudModalType === 'departments' && formData.business_function) {
+  try {
+    const submitData = {};
+    
+    if (formData.name) submitData.name = formData.name.trim();
+    if (formData.code !== undefined) submitData.code = formData.code.trim();
+    if (formData.description !== undefined) submitData.description = formData.description.trim();
+    submitData.is_active = formData.is_active !== false;
+    
+    // FIXED: Handle departments differently for create vs edit
+    if (crudModalType === 'departments') {
+      if (crudModalMode === 'create') {
+        // For create mode, send business_function_ids array
+        submitData.business_function_id = formData.business_function_ids || [];
+      } else {
+        // For edit mode, send single business_function
         submitData.business_function = formData.business_function;
       }
-      if (crudModalType === 'units' && formData.department) {
+    }
+    
+    // FIXED: Handle units differently for create vs edit
+    if (crudModalType === 'units') {
+      if (crudModalMode === 'create') {
+        // For create mode, send department_ids array
+        submitData.department_id = formData.department_ids || [];
+      } else {
+        // For edit mode, send single department
         submitData.department = formData.department;
       }
-      if (crudModalType === 'position_groups' && formData.hierarchy_level) {
-        submitData.hierarchy_level = parseInt(formData.hierarchy_level);
-      }
-      
-      delete submitData.id;
-      delete submitData.value;
-      delete submitData.pk;
-      delete submitData.uuid;
-      
-      let response;
-      const itemId = selectedItem?.value || selectedItem?.id;
-      
-      if (crudModalMode === 'edit' && !itemId) {
-        throw new Error('Item ID is missing for update operation');
-      }
-      
-      switch (crudModalType) {
-        case 'business_functions':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createBusinessFunction(submitData);
-          } else {
-            response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
-          }
-          break;
-          
-        case 'departments':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createDepartment(submitData);
-          } else {
-            response = await referenceDataAPI.updateDepartment(itemId, submitData);
-          }
-          break;
-          
-        case 'units':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createUnit(submitData);
-          } else {
-            response = await referenceDataAPI.updateUnit(itemId, submitData);
-          }
-          break;
-          
-        case 'job_functions':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createJobFunction(submitData);
-          } else {
-            response = await referenceDataAPI.updateJobFunction(itemId, submitData);
-          }
-          break;
-          
-        case 'job_titles': // NEW
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createJobTitle(submitData);
-          } else {
-            response = await referenceDataAPI.updateJobTitle(itemId, submitData);
-          }
-          break;
-          
-        case 'position_groups':
-          if (crudModalMode === 'create') {
-            response = await referenceDataAPI.createPositionGroup(submitData);
-          } else {
-            response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
-          }
-          break;
-          
-        default:
-          throw new Error(`Unknown CRUD type: ${crudModalType}`);
-      }
+    }
+    
+    if (crudModalType === 'position_groups' && formData.hierarchy_level) {
+      submitData.hierarchy_level = parseInt(formData.hierarchy_level);
+    }
+    
+    delete submitData.id;
+    delete submitData.value;
+    delete submitData.pk;
+    delete submitData.uuid;
+    
+    let response;
+    const itemId = selectedItem?.value || selectedItem?.id;
+    
+    if (crudModalMode === 'edit' && !itemId) {
+      throw new Error('Item ID is missing for update operation');
+    }
+    
+    switch (crudModalType) {
+      case 'business_functions':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createBusinessFunction(submitData);
+        } else {
+          response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
+        }
+        break;
+        
+      case 'departments':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createDepartment(submitData);
+        } else {
+          response = await referenceDataAPI.updateDepartment(itemId, submitData);
+        }
+        break;
+        
+      case 'units':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createUnit(submitData);
+        } else {
+          response = await referenceDataAPI.updateUnit(itemId, submitData);
+        }
+        break;
+        
+      case 'job_functions':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createJobFunction(submitData);
+        } else {
+          response = await referenceDataAPI.updateJobFunction(itemId, submitData);
+        }
+        break;
+        
+      case 'job_titles':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createJobTitle(submitData);
+        } else {
+          response = await referenceDataAPI.updateJobTitle(itemId, submitData);
+        }
+        break;
+        
+      case 'position_groups':
+        if (crudModalMode === 'create') {
+          response = await referenceDataAPI.createPositionGroup(submitData);
+        } else {
+          response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
+        }
+        break;
+        
+      default:
+        throw new Error(`Unknown CRUD type: ${crudModalType}`);
+    }
 
-      await loadInitialData();
-      
-      const entityName = crudModalType.replace(/_/g, ' ');
-      showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
-      
-      closeCrudModal();
-      
-    } catch (error) {
+    await loadInitialData();
+    
+    const entityName = crudModalType.replace(/_/g, ' ');
+    showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
+    
+    closeCrudModal();
+    
+  } catch (error) {
       let errorMsg = 'An error occurred';
       
       if (error?.response?.data) {
