@@ -1,4 +1,4 @@
-// src/app/structure/job-catalog/page.jsx - Job Titles əlavə edilib
+// src/app/structure/job-catalog/page.jsx
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -11,7 +11,7 @@ import { useToast } from '@/components/common/Toast';
 import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
 import { setPositionGroups } from '@/components/jobCatalog/HierarchyColors';
 
-// Import all components
+// Components
 import NavigationTabs from '@/components/jobCatalog/NavigationTabs';
 import OverviewView from '@/components/jobCatalog/OverviewView';
 import ReferenceDataView from '@/components/jobCatalog/ReferenceDataView';
@@ -24,53 +24,41 @@ export default function JobCatalogPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   
-  // View states
-  const [activeView, setActiveView] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('jobCatalog_activeView') || 'overview';
-    }
-    return 'overview';
-  });
+  // ==================== STATE MANAGEMENT ====================
   
-  const [viewMode, setViewMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('jobCatalog_viewMode') || 'grid';
-    }
-    return 'grid';
-  });
+  // View States
+  const [activeView, setActiveView] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('jobCatalog_activeView') || 'overview' : 'overview'
+  );
+  const [viewMode, setViewMode] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('jobCatalog_viewMode') || 'grid' : 'grid'
+  );
+  const [matrixView, setMatrixView] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('jobCatalog_matrixView') || 'department' : 'department'
+  );
+  const [showFilters, setShowFilters] = useState(() => 
+    typeof window !== 'undefined' ? localStorage.getItem('jobCatalog_showFilters') === 'true' : false
+  );
   
-  const [matrixView, setMatrixView] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('jobCatalog_matrixView') || 'department';
-    }
-    return 'department';
-  });
-  
-  const [showFilters, setShowFilters] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('jobCatalog_showFilters') === 'true';
-    }
-    return false;
-  });
-  
+  // Modal States
   const [selectedJob, setSelectedJob] = useState(null);
   const [showCrudModal, setShowCrudModal] = useState(false);
   const [crudModalType, setCrudModalType] = useState('');
   const [crudModalMode, setCrudModalMode] = useState('create');
   const [selectedItem, setSelectedItem] = useState(null);
   
-  // Data states
+  // Data States
   const [employees, setEmployees] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [businessFunctions, setBusinessFunctions] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [units, setUnits] = useState([]);
   const [jobFunctions, setJobFunctions] = useState([]);
-  const [jobTitles, setJobTitles] = useState([]); // NEW
+  const [jobTitles, setJobTitles] = useState([]);
   const [positionGroupsState, setPositionGroupsState] = useState([]);
   const [hierarchyData, setHierarchyData] = useState(null);
   
-  // Filter states
+  // Filter States
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState({
     business_function: '',
@@ -80,7 +68,7 @@ export default function JobCatalogPage() {
     position_group: ''
   });
   
-  // Loading states
+  // Loading States
   const [loading, setLoading] = useState({
     initial: true,
     employees: false,
@@ -90,13 +78,14 @@ export default function JobCatalogPage() {
     crud: false
   });
   
-  // Error states
+  // Error States
   const [errors, setErrors] = useState({});
   
-  // Form data for CRUD operations
+  // Form Data
   const [formData, setFormData] = useState({});
 
-  // Save preferences to localStorage
+  // ==================== LOCALSTORAGE PERSISTENCE ====================
+  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('jobCatalog_activeView', activeView);
@@ -121,7 +110,8 @@ export default function JobCatalogPage() {
     }
   }, [showFilters]);
 
-  // Initial data loading
+  // ==================== DATA LOADING ====================
+  
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -136,7 +126,7 @@ export default function JobCatalogPage() {
         departmentsRes,
         unitsRes,
         jobFunctionsRes,
-        jobTitlesRes, // NEW
+        jobTitlesRes,
         positionGroupsRes,
         statisticsRes
       ] = await Promise.all([
@@ -144,7 +134,7 @@ export default function JobCatalogPage() {
         referenceDataAPI.getDepartmentDropdown(),
         referenceDataAPI.getUnitDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
-        referenceDataAPI.getJobTitleDropdown(), // NEW
+        referenceDataAPI.getJobTitleDropdown(),
         referenceDataAPI.getPositionGroupDropdown(),
         employeeAPI.getStatistics()
       ]);
@@ -155,12 +145,11 @@ export default function JobCatalogPage() {
       setDepartments(departmentsRes.data?.results || departmentsRes.data || []);
       setUnits(unitsRes.data || []);
       setJobFunctions(jobFunctionsRes.data || []);
-      setJobTitles(jobTitlesRes.data || []); // NEW
+      setJobTitles(jobTitlesRes.data || []);
       setPositionGroupsState(positionGroupsData);
       setStatistics(statisticsRes.data || statisticsRes);
 
       setPositionGroups(positionGroupsData);
-
       await loadEmployees();
       
     } catch (error) {
@@ -172,21 +161,11 @@ export default function JobCatalogPage() {
     }
   };
 
-  const retryLoad = () => {
-    loadInitialData();
-  };
-
-  // Employee data loading
   const loadEmployees = async (additionalParams = {}) => {
     setLoading(prev => ({ ...prev, employees: true }));
     
     try {
-      const params = {
-        search: searchTerm,
-        ...selectedFilters,
-        ...additionalParams
-      };
-      
+      const params = { search: searchTerm, ...selectedFilters, ...additionalParams };
       Object.keys(params).forEach(key => {
         if (!params[key]) delete params[key];
       });
@@ -203,7 +182,6 @@ export default function JobCatalogPage() {
     }
   };
 
-  // Hierarchy data loading
   const loadHierarchyData = async () => {
     setLoading(prev => ({ ...prev, hierarchy: true }));
     
@@ -226,17 +204,14 @@ export default function JobCatalogPage() {
 
   useEffect(() => {
     if (!loading.initial) {
-      const timer = setTimeout(() => {
-        loadEmployees();
-      }, 300);
+      const timer = setTimeout(() => loadEmployees(), 300);
       return () => clearTimeout(timer);
     }
   }, [searchTerm, selectedFilters]);
 
-  // CRUD Operations
+  // ==================== CRUD OPERATIONS ====================
+  
   const openCrudModal = (type, mode = 'create', item = null) => {
-    console.log('🔵 Opening CRUD Modal:', { type, mode, item });
-    
     setCrudModalType(type);
     setCrudModalMode(mode);
     setSelectedItem(item);
@@ -259,32 +234,16 @@ export default function JobCatalogPage() {
         formDataInit.hierarchy_level = item.hierarchy_level;
       }
       
-      console.log('✏️ Edit mode - formData:', formDataInit);
       setFormData(formDataInit);
     } else {
-      // CREATE mode
-      const cleanFormData = {
-        name: '',
-        is_active: true
-      };
+      const cleanFormData = { name: '', is_active: true };
       
-      if (type === 'business_functions') {
-        cleanFormData.code = '';
-      }
-      if (type === 'departments') {
-        cleanFormData.business_function_ids = []; // For bulk creation
-      }
-      if (type === 'units') {
-        cleanFormData.department_ids = []; // For bulk creation
-      }
-      if (type === 'job_titles') {
-        cleanFormData.description = '';
-      }
-      if (type === 'position_groups') {
-        cleanFormData.hierarchy_level = 1;
-      }
+      if (type === 'business_functions') cleanFormData.code = '';
+      if (type === 'departments') cleanFormData.business_function_ids = [];
+      if (type === 'units') cleanFormData.department_ids = [];
+      if (type === 'job_titles') cleanFormData.description = '';
+      if (type === 'position_groups') cleanFormData.hierarchy_level = 1;
       
-      console.log('➕ Create mode - formData:', cleanFormData);
       setFormData(cleanFormData);
     }
     
@@ -293,117 +252,97 @@ export default function JobCatalogPage() {
   };
 
   const handleCrudSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(prev => ({ ...prev, crud: true }));
-  setErrors(prev => ({ ...prev, crud: null }));
+    e.preventDefault();
+    setLoading(prev => ({ ...prev, crud: true }));
+    setErrors(prev => ({ ...prev, crud: null }));
 
-  try {
-    const submitData = {};
-    
-    if (formData.name) submitData.name = formData.name.trim();
-    if (formData.code !== undefined) submitData.code = formData.code.trim();
-    if (formData.description !== undefined) submitData.description = formData.description.trim();
-    submitData.is_active = formData.is_active !== false;
-    
-    // FIXED: Handle departments differently for create vs edit
-    if (crudModalType === 'departments') {
-      if (crudModalMode === 'create') {
-        // For create mode, send business_function_ids array
-        submitData.business_function_id = formData.business_function_ids || [];
-      } else {
-        // For edit mode, send single business_function
-        submitData.business_function = formData.business_function;
+    try {
+      const submitData = { is_active: formData.is_active !== false };
+      
+      if (formData.name) submitData.name = formData.name.trim();
+      if (formData.code !== undefined) submitData.code = formData.code.trim();
+      if (formData.description !== undefined) submitData.description = formData.description.trim();
+      
+      // Handle departments
+      if (crudModalType === 'departments') {
+        if (crudModalMode === 'create') {
+          submitData.business_function_id = formData.business_function_ids || [];
+        } else {
+          submitData.business_function = formData.business_function;
+        }
       }
-    }
-    
-    // FIXED: Handle units differently for create vs edit
-    if (crudModalType === 'units') {
-      if (crudModalMode === 'create') {
-        // For create mode, send department_ids array
-        submitData.department_id = formData.department_ids || [];
-      } else {
-        // For edit mode, send single department
-        submitData.department = formData.department;
+      
+      // Handle units
+      if (crudModalType === 'units') {
+        if (crudModalMode === 'create') {
+          submitData.department_id = formData.department_ids || [];
+        } else {
+          submitData.department = formData.department;
+        }
       }
-    }
-    
-    if (crudModalType === 'position_groups' && formData.hierarchy_level) {
-      submitData.hierarchy_level = parseInt(formData.hierarchy_level);
-    }
-    
-    delete submitData.id;
-    delete submitData.value;
-    delete submitData.pk;
-    delete submitData.uuid;
-    
-    let response;
-    const itemId = selectedItem?.value || selectedItem?.id;
-    
-    if (crudModalMode === 'edit' && !itemId) {
-      throw new Error('Item ID is missing for update operation');
-    }
-    
-    switch (crudModalType) {
-      case 'business_functions':
-        if (crudModalMode === 'create') {
-          response = await referenceDataAPI.createBusinessFunction(submitData);
-        } else {
-          response = await referenceDataAPI.updateBusinessFunction(itemId, submitData);
+      
+      if (crudModalType === 'position_groups' && formData.hierarchy_level) {
+        submitData.hierarchy_level = parseInt(formData.hierarchy_level);
+      }
+      
+      delete submitData.id;
+      delete submitData.value;
+      delete submitData.pk;
+      delete submitData.uuid;
+      
+      let response;
+      const itemId = selectedItem?.value || selectedItem?.id;
+      
+      if (crudModalMode === 'edit' && !itemId) {
+        throw new Error('Item ID is missing for update operation');
+      }
+      
+      // Execute CRUD operation
+      const apiMap = {
+        business_functions: {
+          create: referenceDataAPI.createBusinessFunction,
+          update: referenceDataAPI.updateBusinessFunction
+        },
+        departments: {
+          create: referenceDataAPI.createDepartment,
+          update: referenceDataAPI.updateDepartment
+        },
+        units: {
+          create: referenceDataAPI.createUnit,
+          update: referenceDataAPI.updateUnit
+        },
+        job_functions: {
+          create: referenceDataAPI.createJobFunction,
+          update: referenceDataAPI.updateJobFunction
+        },
+        job_titles: {
+          create: referenceDataAPI.createJobTitle,
+          update: referenceDataAPI.updateJobTitle
+        },
+        position_groups: {
+          create: referenceDataAPI.createPositionGroup,
+          update: referenceDataAPI.updatePositionGroup
         }
-        break;
-        
-      case 'departments':
-        if (crudModalMode === 'create') {
-          response = await referenceDataAPI.createDepartment(submitData);
-        } else {
-          response = await referenceDataAPI.updateDepartment(itemId, submitData);
-        }
-        break;
-        
-      case 'units':
-        if (crudModalMode === 'create') {
-          response = await referenceDataAPI.createUnit(submitData);
-        } else {
-          response = await referenceDataAPI.updateUnit(itemId, submitData);
-        }
-        break;
-        
-      case 'job_functions':
-        if (crudModalMode === 'create') {
-          response = await referenceDataAPI.createJobFunction(submitData);
-        } else {
-          response = await referenceDataAPI.updateJobFunction(itemId, submitData);
-        }
-        break;
-        
-      case 'job_titles':
-        if (crudModalMode === 'create') {
-          response = await referenceDataAPI.createJobTitle(submitData);
-        } else {
-          response = await referenceDataAPI.updateJobTitle(itemId, submitData);
-        }
-        break;
-        
-      case 'position_groups':
-        if (crudModalMode === 'create') {
-          response = await referenceDataAPI.createPositionGroup(submitData);
-        } else {
-          response = await referenceDataAPI.updatePositionGroup(itemId, submitData);
-        }
-        break;
-        
-      default:
+      };
+
+      if (!apiMap[crudModalType]) {
         throw new Error(`Unknown CRUD type: ${crudModalType}`);
-    }
+      }
 
-    await loadInitialData();
-    
-    const entityName = crudModalType.replace(/_/g, ' ');
-    showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
-    
-    closeCrudModal();
-    
-  } catch (error) {
+      if (crudModalMode === 'create') {
+        response = await apiMap[crudModalType].create(submitData);
+      } else {
+        response = await apiMap[crudModalType].update(itemId, submitData);
+      }
+
+      await loadInitialData();
+      
+      const entityName = crudModalType.replace(/_/g, ' ');
+      showSuccess(`Successfully ${crudModalMode === 'create' ? 'created' : 'updated'} ${entityName}`);
+      
+      closeCrudModal();
+      
+    } catch (error) {
       let errorMsg = 'An error occurred';
       
       if (error?.response?.data) {
@@ -411,7 +350,6 @@ export default function JobCatalogPage() {
         
         if (typeof errorData === 'string' && errorData.includes('<!DOCTYPE html>')) {
           errorMsg = 'Server error occurred. Please check server logs.';
-          
           const titleMatch = errorData.match(/<title>(.*?)<\/title>/);
           if (titleMatch && titleMatch[1]) {
             errorMsg = titleMatch[1].replace(/\s+at\s+\/.*$/, '').trim();
@@ -469,27 +407,20 @@ export default function JobCatalogPage() {
     try {
       const id = item.id || item.value;
       
-      switch (type) {
-        case 'business_functions':
-          await referenceDataAPI.deleteBusinessFunction(id);
-          break;
-        case 'departments':
-          await referenceDataAPI.deleteDepartment(id);
-          break;
-        case 'units':
-          await referenceDataAPI.deleteUnit(id);
-          break;
-        case 'job_functions':
-          await referenceDataAPI.deleteJobFunction(id);
-          break;
-        case 'job_titles': // NEW
-          await referenceDataAPI.deleteJobTitle(id);
-          break;
-        case 'position_groups':
-          await referenceDataAPI.deletePositionGroup(id);
-          break;
+      const deleteMap = {
+        business_functions: referenceDataAPI.deleteBusinessFunction,
+        departments: referenceDataAPI.deleteDepartment,
+        units: referenceDataAPI.deleteUnit,
+        job_functions: referenceDataAPI.deleteJobFunction,
+        job_titles: referenceDataAPI.deleteJobTitle,
+        position_groups: referenceDataAPI.deletePositionGroup
+      };
+
+      if (!deleteMap[type]) {
+        throw new Error(`Unknown delete type: ${type}`);
       }
 
+      await deleteMap[type](id);
       await loadInitialData();
       showSuccess(`Successfully deleted ${type.replace('_', ' ')}`);
       
@@ -503,12 +434,8 @@ export default function JobCatalogPage() {
     }
   };
 
-  // Navigation
-  const navigateToEmployee = (employeeId) => {
-    router.push(`/structure/employee/${employeeId}/`);
-  };
-
-  // Data processing & computed values
+  // ==================== COMPUTED VALUES ====================
+  
   const jobCatalogData = useMemo(() => {
     const jobMap = new Map();
     
@@ -537,16 +464,14 @@ export default function JobCatalogPage() {
     return Array.from(jobMap.values());
   }, [employees]);
 
-  const filterOptions = useMemo(() => {
-    return {
-      businessFunctions: businessFunctions || [],
-      departments: departments || [],
-      units: units || [],
-      jobFunctions: jobFunctions || [],
-      jobTitles: jobTitles || [], // NEW
-      positionGroups: positionGroupsState || []
-    };
-  }, [businessFunctions, departments, units, jobFunctions, jobTitles, positionGroupsState]);
+  const filterOptions = useMemo(() => ({
+    businessFunctions: businessFunctions || [],
+    departments: departments || [],
+    units: units || [],
+    jobFunctions: jobFunctions || [],
+    jobTitles: jobTitles || [],
+    positionGroups: positionGroupsState || []
+  }), [businessFunctions, departments, units, jobFunctions, jobTitles, positionGroupsState]);
 
   const filteredJobs = useMemo(() => {
     return jobCatalogData.filter(job => {
@@ -630,7 +555,8 @@ export default function JobCatalogPage() {
           if (matrixView === 'function') {
             return job.hierarchy === hierarchyName && job.jobFunction === col;
           }
-          return job.hierarchy === hierarchyName && job.unit === col;
+          // matrixView === 'unit' means by Business Function
+          return job.hierarchy === hierarchyName && job.businessFunction === col;
         });
         matrix[hierarchyName][col] = jobs;
       });
@@ -650,7 +576,12 @@ export default function JobCatalogPage() {
     setSearchTerm('');
   };
 
-  // Context value
+  const navigateToEmployee = (employeeId) => {
+    router.push(`/structure/employee/${employeeId}/`);
+  };
+
+  // ==================== CONTEXT VALUE ====================
+  
   const contextValue = {
     // View states
     activeView, setActiveView,
@@ -670,7 +601,7 @@ export default function JobCatalogPage() {
     departments, 
     units, 
     jobFunctions, 
-    jobTitles, // NEW
+    jobTitles,
     positionGroups: positionGroupsState, 
     hierarchyData,
     
@@ -702,13 +633,14 @@ export default function JobCatalogPage() {
     loadInitialData
   };
 
-  // Render
+  // ==================== RENDER ====================
+  
   if (loading.initial) {
     return <LoadingSpinner message="Loading Job Catalog..." />;
   }
 
   if (errors.initial) {
-    return <ErrorDisplay error={errors.initial} onRetry={retryLoad} />;
+    return <ErrorDisplay error={errors.initial} onRetry={loadInitialData} />;
   }
 
   return (
@@ -732,17 +664,9 @@ export default function JobCatalogPage() {
         />
 
         {/* Content Views */}
-        {activeView === 'overview' && (
-          <OverviewView context={contextValue} />
-        )}
-        
-        {activeView === 'structure' && (
-          <ReferenceDataView context={contextValue} />
-        )}
-        
-        {activeView === 'matrix' && (
-          <MatrixView context={contextValue} />
-        )}
+        {activeView === 'overview' && <OverviewView context={contextValue} />}
+        {activeView === 'structure' && <ReferenceDataView context={contextValue} />}
+        {activeView === 'matrix' && <MatrixView context={contextValue} />}
 
         {/* Modals */}
         <CrudModal context={contextValue} darkMode={darkMode} />

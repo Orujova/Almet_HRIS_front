@@ -1,5 +1,5 @@
 "use client";
-import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight } from "lucide-react";
+import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -82,7 +82,7 @@ const ActionCard = ({ icon, title, description, href }) => {
   );
 };
 
-const NewsCard = ({ news, darkMode }) => {
+const NewsCard = ({ news, darkMode, onClick }) => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -93,9 +93,9 @@ const NewsCard = ({ news, darkMode }) => {
   };
 
   return (
-    <Link 
-      href={`/communication/company-news`}
-      className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 group border border-almet-mystic dark:border-almet-san-juan"
+    <div 
+      onClick={onClick}
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 group border border-almet-mystic dark:border-almet-san-juan cursor-pointer"
     >
       <div className="relative h-40 overflow-hidden">
         <img 
@@ -134,7 +134,164 @@ const NewsCard = ({ news, darkMode }) => {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
+  );
+};
+
+const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
+  if (!isOpen || !news) return null;
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+      onClick={onClose}
+    >
+      <div 
+        className={`rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl ${
+          darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
+        }`} 
+        onClick={(e) => e.stopPropagation()}
+      >
+        
+        {/* Modal Header Image */}
+        <div className="relative h-72">
+          <img
+            src={news.image_url || 'https://images.unsplash.com/photo-1573164713619-24c711fe7878?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80'}
+            alt={news.title}
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className={`absolute top-3 right-3 p-2 rounded-xl shadow-lg transition-colors ${
+              darkMode
+                ? 'bg-almet-cloud-burst hover:bg-almet-comet text-white'
+                : 'bg-white hover:bg-gray-100 text-gray-600'
+            }`}
+          >
+            <X size={18} />
+          </button>
+
+          {/* Category Badge */}
+          {news.category_name && (
+            <div className="absolute bottom-3 left-3 bg-almet-sapphire text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg">
+              <FileText size={14} />
+              {news.category_name}
+            </div>
+          )}
+
+          {/* Status Badges */}
+          <div className="absolute bottom-3 right-3 flex gap-1.5">
+            {news.is_pinned && (
+              <div className="bg-orange-500 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium shadow-lg">
+                Pinned
+              </div>
+            )}
+            {!news.is_published && (
+              <div className="bg-orange-600 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium shadow-lg">
+                Draft
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Modal Content */}
+        <div className="p-6">
+          {/* Author Info & Views */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral text-white rounded-full flex items-center justify-center text-sm font-medium">
+                {(news.author_display_name || news.author_name || 'S').charAt(0)}
+              </div>
+              <div>
+                <p className={`text-xs font-medium ${
+                  darkMode ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {news.author_display_name || news.author_name || 'System'}
+                </p>
+                <p className={`text-[10px] ${
+                  darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+                }`}>
+                  {formatDate(news.published_at)}
+                </p>
+              </div>
+            </div>
+            <div className={`flex items-center gap-1.5 text-xs ${
+              darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+            }`}>
+              <Eye size={14} />
+              {news.view_count} views
+            </div>
+          </div>
+
+          {/* Title */}
+          <h2 className={`text-xl font-bold mb-3 ${
+            darkMode ? 'text-white' : 'text-gray-900'
+          }`}>
+            {news.title}
+          </h2>
+
+          {/* Excerpt */}
+          {news.excerpt && (
+            <p className={`text-sm font-medium mb-3 ${
+              darkMode ? 'text-almet-steel-blue' : 'text-almet-sapphire'
+            }`}>
+              {news.excerpt}
+            </p>
+          )}
+
+          {/* Content */}
+          <p className={`leading-relaxed mb-5 whitespace-pre-line text-sm ${
+            darkMode ? 'text-almet-bali-hai' : 'text-gray-700'
+          }`}>
+            {news.content}
+          </p>
+
+          {/* Tags */}
+          {news.tags_list && news.tags_list.length > 0 && (
+            <div className={`flex flex-wrap gap-1.5 pt-4 border-t ${
+              darkMode ? 'border-almet-comet' : 'border-gray-200'
+            }`}>
+              {news.tags_list.map((tag, idx) => (
+                <span
+                  key={idx}
+                  className={`px-2.5 py-1 rounded-xl text-xs ${
+                    darkMode
+                      ? 'bg-almet-san-juan text-almet-bali-hai'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* View All News Button */}
+          <div className="mt-6 pt-4 border-t border-almet-mystic dark:border-almet-comet">
+            <Link
+              href="/communication/company-news"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-xl hover:from-almet-astral hover:to-almet-steel-blue transition-all text-sm font-medium shadow-lg"
+            >
+              View All Company News
+              <ChevronRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -164,6 +321,8 @@ export default function Home() {
   const [isManager, setIsManager] = useState(false);
   const [latestNews, setLatestNews] = useState([]);
   const [loadingNews, setLoadingNews] = useState(true);
+  const [selectedNews, setSelectedNews] = useState(null);
+  const [showNewsModal, setShowNewsModal] = useState(false);
   
   useEffect(() => {
     loadLatestNews();
@@ -183,6 +342,20 @@ export default function Home() {
       console.error('Failed to load latest news:', error);
     } finally {
       setLoadingNews(false);
+    }
+  };
+
+  const handleNewsClick = async (news) => {
+    try {
+      // Load full news details
+      const fullNews = await newsService.getNewsById(news.id);
+      setSelectedNews(fullNews);
+      setShowNewsModal(true);
+    } catch (error) {
+      console.error('Failed to load news details:', error);
+      // Fallback to basic news data
+      setSelectedNews(news);
+      setShowNewsModal(true);
     }
   };
   
@@ -347,7 +520,12 @@ export default function Home() {
         ) : latestNews.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {latestNews.map((news) => (
-              <NewsCard key={news.id} news={news} darkMode={darkMode} />
+              <NewsCard 
+                key={news.id} 
+                news={news} 
+                darkMode={darkMode}
+                onClick={() => handleNewsClick(news)}
+              />
             ))}
           </div>
         ) : (
@@ -403,6 +581,17 @@ export default function Home() {
           />
         </div>
       </div>
+
+      {/* News Detail Modal */}
+      <NewsDetailModal
+        isOpen={showNewsModal}
+        onClose={() => {
+          setShowNewsModal(false);
+          setSelectedNews(null);
+        }}
+        news={selectedNews}
+        darkMode={darkMode}
+      />
     </DashboardLayout>
   );
 }

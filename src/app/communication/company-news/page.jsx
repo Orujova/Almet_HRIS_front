@@ -1,4 +1,4 @@
-// src/app/news/page.jsx - Complete with Permissions
+// src/app/news/page.jsx
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -7,12 +7,13 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import { newsService, categoryService, targetGroupService, formatApiError } from '@/services/newsService';
 import { 
   Plus, Search, Calendar, Eye, Edit, Trash2, 
-  X, FileText, CheckCircle, Loader2, Pin, PinOff, 
+  FileText, CheckCircle, Loader2, Pin, PinOff, 
   Users, Target, Mail, Settings, Filter, Send
 } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import NewsFormModal from '@/components/news/NewsFormModal';
+import NewsDetailModal from '@/components/news/NewsDetailModal';
 import { useToast } from '@/components/common/Toast';
 import TargetGroupManagement from '@/components/news/TargetGroupManagement';
 import CategoryManagement from '@/components/news/CategoryManagement';
@@ -53,6 +54,10 @@ export default function CompanyNewsPage() {
       loadNews();
     }
   }, [currentPage, selectedCategory, searchTerm]);
+
+  // ============================================
+  // DATA LOADING FUNCTIONS
+  // ============================================
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -125,6 +130,10 @@ export default function CompanyNewsPage() {
       console.error('Failed to load statistics:', error);
     }
   };
+
+  // ============================================
+  // EVENT HANDLERS
+  // ============================================
 
   const handleTogglePublish = async (item, e) => {
     e.stopPropagation();
@@ -247,6 +256,10 @@ export default function CompanyNewsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ============================================
+  // UTILITY FUNCTIONS
+  // ============================================
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -272,6 +285,10 @@ export default function CompanyNewsPage() {
       color: 'bg-gray-500'
     };
   };
+
+  // ============================================
+  // RENDER CONDITIONS
+  // ============================================
 
   // Show loading until permissions are loaded
   if (!permissions) {
@@ -305,13 +322,19 @@ export default function CompanyNewsPage() {
     ? news 
     : news.filter(item => item.category === selectedCategory);
 
+  // ============================================
+  // MAIN RENDER
+  // ============================================
+
   return (
     <DashboardLayout>
       <div className={`p-6 min-h-screen transition-colors ${
         darkMode ? 'bg-gray-900' : 'bg-almet-mystic'
       }`}>
         
-        {/* Header */}
+        {/* ============================================ */}
+        {/* HEADER SECTION */}
+        {/* ============================================ */}
         <div className="mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
@@ -366,9 +389,12 @@ export default function CompanyNewsPage() {
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* ============================================ */}
+        {/* STATISTICS CARDS */}
+        {/* ============================================ */}
         {statistics && permissions.capabilities.can_view_statistics && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            {/* Total News Card */}
             <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
               darkMode 
                 ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
@@ -397,6 +423,7 @@ export default function CompanyNewsPage() {
               </div>
             </div>
            
+            {/* Published Card */}
             <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
               darkMode 
                 ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
@@ -425,6 +452,7 @@ export default function CompanyNewsPage() {
               </div>
             </div>
 
+            {/* Total Views Card */}
             <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
               darkMode 
                 ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
@@ -453,6 +481,7 @@ export default function CompanyNewsPage() {
               </div>
             </div>
 
+            {/* Pinned Card */}
             <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
               darkMode 
                 ? 'bg-almet-cloud-burst border-almet-comet hover:border-almet-sapphire/50' 
@@ -483,7 +512,9 @@ export default function CompanyNewsPage() {
           </div>
         )}
 
-        {/* Categories Filter */}
+        {/* ============================================ */}
+        {/* CATEGORY FILTER */}
+        {/* ============================================ */}
         <div className={`rounded-2xl p-3.5 mb-4 border ${
           darkMode 
             ? 'bg-almet-cloud-burst border-almet-comet' 
@@ -544,7 +575,9 @@ export default function CompanyNewsPage() {
           </div>
         </div>
 
-        {/* Search */}
+        {/* ============================================ */}
+        {/* SEARCH BAR */}
+        {/* ============================================ */}
         <div className={`rounded-2xl p-3.5 mb-5 border ${
           darkMode 
             ? 'bg-almet-cloud-burst border-almet-comet' 
@@ -569,7 +602,9 @@ export default function CompanyNewsPage() {
           </div>
         </div>
 
-        {/* News Grid */}
+        {/* ============================================ */}
+        {/* NEWS GRID */}
+        {/* ============================================ */}
         {loading ? (
           <div className="flex justify-center items-center py-20">
             <Loader2 className="h-7 w-7 animate-spin text-almet-sapphire" />
@@ -621,6 +656,7 @@ export default function CompanyNewsPage() {
                         : 'bg-white border-gray-200 hover:shadow-xl hover:border-almet-sapphire/50'
                     }`}
                   >
+                    {/* News Image */}
                     <div 
                       className="relative h-44 overflow-hidden"
                       onClick={() => handleViewNews(item)}
@@ -631,7 +667,7 @@ export default function CompanyNewsPage() {
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
                       
-                      {/* Status Badges Container */}
+                      {/* Status Badges */}
                       <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5">
                         {item.is_pinned && (
                           <div className="bg-almet-sapphire text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
@@ -647,6 +683,7 @@ export default function CompanyNewsPage() {
                         )}
                       </div>
                       
+                      {/* Category Badge */}
                       <div className={`absolute top-2.5 right-2.5 ${categoryInfo.color} text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg`}>
                         <CategoryIcon size={10} />
                         {categoryInfo.name}
@@ -820,215 +857,24 @@ export default function CompanyNewsPage() {
           </>
         )}
 
+        {/* ============================================ */}
+        {/* MODALS */}
+        {/* ============================================ */}
+
         {/* News Detail Modal */}
-        {showNewsModal && selectedNews && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNewsModal(false)}>
-            <div className={`rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl ${
-              darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
-            }`} onClick={(e) => e.stopPropagation()}>
-              
-              {/* Modal Header Image */}
-              <div className="relative h-72">
-                <img
-                  src={selectedNews.image_url || 'https://via.placeholder.com/1200x600?text=No+Image'}
-                  alt={selectedNews.title}
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  onClick={() => setShowNewsModal(false)}
-                  className={`absolute top-3 right-3 p-2 rounded-xl shadow-lg transition-colors ${
-                    darkMode
-                      ? 'bg-almet-cloud-burst hover:bg-almet-comet text-white'
-                      : 'bg-white hover:bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  <X size={18} />
-                </button>
-                
-                {/* Action Buttons in Modal */}
-                <div className="absolute top-3 left-3 flex gap-1.5">
-                  {permissions.capabilities.can_pin_news && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTogglePin(selectedNews, e);
-                        setShowNewsModal(false);
-                      }}
-                      className={`p-2 rounded-xl transition-all shadow-lg ${
-                        selectedNews.is_pinned 
-                          ? 'bg-orange-600 hover:bg-orange-700' 
-                          : 'bg-green-600 hover:bg-green-700'
-                      } text-white`}
-                      title={selectedNews.is_pinned ? 'Unpin' : 'Pin'}
-                    >
-                      {selectedNews.is_pinned ? <PinOff size={14} /> : <Pin size={14} />}
-                    </button>
-                  )}
-                  {permissions.capabilities.can_update_news && (
-                    <button
-                      onClick={(e) => {
-                        setShowNewsModal(false);
-                        handleEditNews(selectedNews, e);
-                      }}
-                      className="p-2 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
-                      title="Edit"
-                    >
-                      <Edit size={14} />
-                    </button>
-                  )}
-                  {permissions.capabilities.can_delete_news && (
-                    <button
-                      onClick={(e) => {
-                        setShowNewsModal(false);
-                        handleDeleteNews(selectedNews, e);
-                      }}
-                      className="p-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
-                      title="Delete"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Category Badge */}
-                <div className={`absolute bottom-3 left-3 ${getCategoryInfo(selectedNews.category).color} text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg`}>
-                  {React.createElement(getCategoryInfo(selectedNews.category).icon, { size: 14 })}
-                  {getCategoryInfo(selectedNews.category).name}
-                </div>
-              </div>
-
-              {/* Modal Content */}
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral text-white rounded-full flex items-center justify-center text-sm font-medium">
-                      {(selectedNews.author_display_name || selectedNews.author_name || 'S').charAt(0)}
-                    </div>
-                    <div>
-                      <p className={`text-xs font-medium ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        {selectedNews.author_display_name || selectedNews.author_name || 'System'}
-                      </p>
-                      <p className={`text-[10px] ${
-                        darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
-                      }`}>
-                        {formatDate(selectedNews.published_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`flex items-center gap-1.5 text-xs ${
-                    darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
-                  }`}>
-                    <Eye size={14} />
-                    {selectedNews.view_count} views
-                  </div>
-                </div>
-
-                <h2 className={`text-xl font-bold mb-3 ${
-                  darkMode ? 'text-white' : 'text-gray-900'
-                }`}>
-                  {selectedNews.title}
-                </h2>
-
-                <p className={`leading-relaxed mb-5 whitespace-pre-line text-sm ${
-                  darkMode ? 'text-almet-bali-hai' : 'text-gray-700'
-                }`}>
-                  {selectedNews.content}
-                </p>
-
-                {/* Target Groups Section */}
-                {selectedNews.target_groups_info && selectedNews.target_groups_info.length > 0 && (
-                  <div className={`mb-5 p-4 rounded-xl border ${
-                    darkMode
-                      ? 'bg-almet-san-juan/50 border-almet-comet'
-                      : 'bg-gray-50 border-gray-200'
-                  }`}>
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <Target className="text-almet-sapphire" size={16} />
-                      <h3 className={`text-xs font-semibold ${
-                        darkMode ? 'text-white' : 'text-gray-900'
-                      }`}>
-                        Target Groups
-                      </h3>
-                      {selectedNews.notify_members && selectedNews.notification_sent && (
-                        <div className="flex items-center gap-1 ml-auto">
-                          <Mail size={12} className={
-                            darkMode ? 'text-green-400' : 'text-green-600'
-                          } />
-                          <span className={`text-[10px] font-medium ${
-                            darkMode ? 'text-green-400' : 'text-green-600'
-                          }`}>
-                            Email Sent
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedNews.target_groups_info.map(group => (
-                        <div
-                          key={group.id}
-                          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${
-                            darkMode
-                              ? 'bg-almet-cloud-burst border-almet-comet'
-                              : 'bg-white border-gray-200'
-                          }`}
-                        >
-                          <Users size={12} className={
-                            darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
-                          } />
-                          <span className={`text-xs font-medium ${
-                            darkMode ? 'text-white' : 'text-gray-900'
-                          }`}>
-                            {group.name}
-                          </span>
-                          <span className={`text-[10px] ${
-                            darkMode ? 'text-almet-bali-hai' : 'text-gray-500'
-                          }`}>
-                            ({group.member_count} members)
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className={`mt-2.5 pt-2.5 border-t ${
-                      darkMode ? 'border-almet-comet' : 'border-gray-200'
-                    }`}>
-                      <p className={`text-[10px] ${
-                        darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
-                      }`}>
-                        Total Recipients: <span className={`font-semibold ${
-                          darkMode ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {selectedNews.total_recipients} employees
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Tags */}
-                {selectedNews.tags_list && selectedNews.tags_list.length > 0 && (
-                  <div className={`flex flex-wrap gap-1.5 pt-4 border-t ${
-                    darkMode ? 'border-almet-comet' : 'border-gray-200'
-                  }`}>
-                    {selectedNews.tags_list.map((tag, idx) => (
-                      <span
-                        key={idx}
-                        className={`px-2.5 py-1 rounded-xl text-xs ${
-                          darkMode
-                            ? 'bg-almet-san-juan text-almet-bali-hai'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        <NewsDetailModal
+          isOpen={showNewsModal}
+          onClose={() => setShowNewsModal(false)}
+          newsItem={selectedNews}
+          darkMode={darkMode}
+          permissions={permissions}
+          categories={categories}
+          onEdit={handleEditNews}
+          onDelete={handleDeleteNews}
+          onTogglePin={handleTogglePin}
+          formatDate={formatDate}
+          getCategoryInfo={getCategoryInfo}
+        />
 
         {/* News Form Modal */}
         <NewsFormModal

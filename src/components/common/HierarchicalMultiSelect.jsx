@@ -5,17 +5,8 @@ import {
   Check,
   Search,
   X,
-  Package,
-  Shield,
-  Gift,
-  Info,
-  Moon,
-  Sun,
-  Users,
-  FolderTree,
-  Settings
+  Package
 } from 'lucide-react';
-import CustomCheckbox from '@/components/common/CustomCheckbox';
 
 // HierarchicalMultiSelect Component
 const HierarchicalMultiSelect = ({
@@ -119,51 +110,87 @@ const HierarchicalMultiSelect = ({
   };
 
   const isParentSelected = (parent) => {
-    if (isItemSelected(parent.id)) return true;
-    if (parent.items?.length > 0) {
-      return parent.items.some(item => isItemSelected(item.id));
-    }
-    return false;
+    // Parent is selected if its own ID is in the selection
+    return isItemSelected(parent.id);
   };
 
   const getSelectedChildCount = (parent) => {
     if (!parent.items?.length) return 0;
+    
+    // If parent is selected, all children are implicitly selected
+    if (isItemSelected(parent.id)) return parent.items.length;
+    
+    // Otherwise count individually selected children
     return parent.items.filter(item => isItemSelected(item.id)).length;
   };
 
   const handleParentToggle = (parent) => {
+    const parentId = String(parent.id);
     const isSelected = isParentSelected(parent);
     
     if (isSelected) {
-      const idsToRemove = [String(parent.id)];
-      if (parent.items?.length > 0) {
-        parent.items.forEach(item => idsToRemove.push(String(item.id)));
-      }
+      // Remove parent and all its children
+      const childIds = parent.items?.map(item => String(item.id)) || [];
+      const idsToRemove = [parentId, ...childIds];
       
       const newSelection = selectedIds.filter(id => 
         !idsToRemove.includes(String(id))
       );
       onChange(newSelection);
     } else {
-      const idsToAdd = [String(parent.id)];
-      if (parent.items?.length > 0) {
-        parent.items.forEach(item => idsToAdd.push(String(item.id)));
-      }
-      
-      const newSelection = [...new Set([...selectedIds, ...idsToAdd])];
+      // Add only the parent ID, not the children
+      // Also remove any individually selected children
+      const childIds = parent.items?.map(item => String(item.id)) || [];
+      const newSelection = [
+        ...selectedIds.filter(id => !childIds.includes(String(id)) && String(id) !== parentId),
+        parentId
+      ];
       onChange(newSelection);
     }
   };
 
-  const handleChildToggle = (childId) => {
+  const handleChildToggle = (child, parent) => {
+    const childId = String(child.id);
+    const parentId = String(parent.id);
     const isSelected = isItemSelected(childId);
+    const parentSelected = isItemSelected(parentId);
     
-    if (isSelected) {
-      const newSelection = selectedIds.filter(id => String(id) !== String(childId));
+    if (parentSelected) {
+      // If parent is selected, unselect parent and select all other children
+      const otherChildren = parent.items
+        .filter(item => String(item.id) !== childId)
+        .map(item => String(item.id));
+      
+      const newSelection = [
+        ...selectedIds.filter(id => String(id) !== parentId),
+        ...otherChildren
+      ];
       onChange(newSelection);
     } else {
-      const newSelection = [...selectedIds, String(childId)];
-      onChange(newSelection);
+      // Normal toggle
+      if (isSelected) {
+        const newSelection = selectedIds.filter(id => String(id) !== childId);
+        onChange(newSelection);
+      } else {
+        const newSelection = [...selectedIds, childId];
+        
+        // Check if all children are now selected
+        const allChildrenSelected = parent.items.every(item => 
+          String(item.id) === childId || isItemSelected(item.id)
+        );
+        
+        if (allChildrenSelected) {
+          // Replace all children with parent
+          const childIds = parent.items.map(item => String(item.id));
+          const finalSelection = [
+            ...newSelection.filter(id => !childIds.includes(String(id))),
+            parentId
+          ];
+          onChange(finalSelection);
+        } else {
+          onChange(newSelection);
+        }
+      }
     }
   };
 
@@ -180,6 +207,11 @@ const HierarchicalMultiSelect = ({
     return `${selectedCount} ${title} Selected`;
   };
 
+  const isChildSelected = (child, parent) => {
+    // Child is selected if parent is selected OR if child itself is selected
+    return isItemSelected(parent.id) || isItemSelected(child.id);
+  };
+
   return (
     <div className="relative" ref={dropdownRef}>
       <button
@@ -187,7 +219,7 @@ const HierarchicalMultiSelect = ({
         onClick={toggleDropdown}
         className={`w-full flex items-center justify-between px-3.5 py-2 text-xs border ${borderColor} 
           rounded-md ${bgCard} ${textPrimary} hover:${bgHover} transition-all duration-200 focus:outline-none 
-          focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire shadow-sm`}
+           focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire shadow-sm`}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Icon size={14} className="flex-shrink-0 text-almet-sapphire" />
@@ -217,7 +249,7 @@ const HierarchicalMultiSelect = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
                 className={`w-full pl-8 pr-7 py-1.5 text-[11px] border ${borderColor} rounded ${bgCard} ${textPrimary} 
-                  placeholder:${textMuted} focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire transition-all`}
+                 placeholder:${textMuted} focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire transition-all`}
               />
               {searchTerm && (
                 <button
@@ -244,7 +276,7 @@ const HierarchicalMultiSelect = ({
                       <div 
                         className={`flex items-center gap-2 p-2 cursor-pointer transition-all duration-150 ${
                           parentSelected 
-                            ? 'bg-almet-sapphire/5 border-l-2 border-l-almet-sapphire' 
+                             ? 'bg-almet-sapphire/5 border-l-2 border-l-almet-sapphire' 
                             : `${bgAccent} hover:bg-opacity-50`
                         }`}
                       >
@@ -265,7 +297,7 @@ const HierarchicalMultiSelect = ({
                             type="checkbox"
                             checked={parentSelected}
                             onChange={() => handleParentToggle(parent)}
-                            className="w-3.5 h-3.5 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
+                           className="w-3.5 h-3.5 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
                           />
                         </div>
 
@@ -291,31 +323,31 @@ const HierarchicalMultiSelect = ({
                         </div>
 
                         {parentSelected && (
-                          <Check size={13} className="text-almet-sapphire flex-shrink-0" />
+                           <Check size={13} className="text-almet-sapphire flex-shrink-0" />
                         )}
                       </div>
 
                       {isExpanded && hasChildren && (
                         <div className={`border-t ${borderColor} ${bgAccent} p-1.5 space-y-0.5`}>
                           {parent.items.map(child => {
-                            const childSelected = isItemSelected(child.id);
+                            const childSelected = isChildSelected(child, parent);
 
                             return (
                               <div
                                 key={child.id}
                                 className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-all duration-150 ${
                                   childSelected 
-                                    ? 'bg-almet-sapphire/5 border border-almet-sapphire/20' 
+                                      ? 'bg-almet-sapphire/5 border border-almet-sapphire/20' 
                                     : `${bgCard} hover:${bgHover}`
                                 }`}
-                                onClick={() => handleChildToggle(child.id)}
+                                onClick={() => handleChildToggle(child, parent)}
                               >
                                 <div className="ml-5 flex-shrink-0">
                                   <input
                                     type="checkbox"
                                     checked={childSelected}
-                                    onChange={() => handleChildToggle(child.id)}
-                                    className="w-3 h-3 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
+                                    onChange={() => handleChildToggle(child, parent)}
+                                      className="w-3 h-3 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                 </div>
@@ -380,4 +412,5 @@ const HierarchicalMultiSelect = ({
     </div>
   );
 };
+
 export default HierarchicalMultiSelect;

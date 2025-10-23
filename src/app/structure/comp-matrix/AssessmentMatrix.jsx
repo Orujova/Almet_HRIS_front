@@ -287,9 +287,9 @@ const AssessmentMatrixInner = () => {
     ];
 
     if (activeView === 'behavioral') {
-      items.push({ label: 'Behavioral Assessment' });
+      items.push({ label: 'Behavioral Competency Assessment' });
     } else if (activeView === 'core') {
-      items.push({ label: 'Core Employee Assessment' });
+      items.push({ label: 'Core Competency Assessment' });
     } else if (showSettings) {
       items.push({ label: 'Settings' });
     }
@@ -469,7 +469,7 @@ const AssessmentMatrixInner = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <NavigationCard
               icon={Users}
-              title="Behavioral Assessment"
+              title="Behavioral Competency Assessment"
               subtitle="Evaluate employee behavioral competencies, soft skills, and interpersonal abilities through structured assessments"
               color="from-violet-100 via-violet-200 to-violet-300"
               count={dashboardData.behavioralAssessments}
@@ -479,7 +479,7 @@ const AssessmentMatrixInner = () => {
             
             <NavigationCard
               icon={Target}
-              title="Core Employee Assessment"
+              title="Core Competency Assessment"
               subtitle="Assess technical skills, core competencies, and job-specific requirements for comprehensive employee evaluation"
               color="from-blue-100 via-blue-200 to-blue-300"
               count={dashboardData.coreAssessments}
