@@ -1,4 +1,4 @@
-// src/app/structure/job-catalog/page.jsx - With Complete Persistence
+// src/app/structure/job-catalog/page.jsx - Job Titles əlavə edilib
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -24,11 +24,7 @@ export default function JobCatalogPage() {
   const router = useRouter();
   const { showSuccess, showError } = useToast();
   
-  // ============================================
-  // STATE MANAGEMENT WITH PERSISTENCE
-  // ============================================
-  
-  // View states - localStorage-dən oxu
+  // View states
   const [activeView, setActiveView] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('jobCatalog_activeView') || 'overview';
@@ -70,10 +66,11 @@ export default function JobCatalogPage() {
   const [departments, setDepartments] = useState([]);
   const [units, setUnits] = useState([]);
   const [jobFunctions, setJobFunctions] = useState([]);
+  const [jobTitles, setJobTitles] = useState([]); // NEW
   const [positionGroupsState, setPositionGroupsState] = useState([]);
   const [hierarchyData, setHierarchyData] = useState(null);
   
-  // Filter states - persistence optional (user might want fresh filters on reload)
+  // Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFilters, setSelectedFilters] = useState({
     business_function: '',
@@ -99,10 +96,7 @@ export default function JobCatalogPage() {
   // Form data for CRUD operations
   const [formData, setFormData] = useState({});
 
-  // ============================================
-  // SAVE PREFERENCES TO LOCALSTORAGE
-  // ============================================
-  
+  // Save preferences to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('jobCatalog_activeView', activeView);
@@ -127,10 +121,7 @@ export default function JobCatalogPage() {
     }
   }, [showFilters]);
 
-  // ============================================
-  // INITIAL DATA LOADING
-  // ============================================
-  
+  // Initial data loading
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -145,6 +136,7 @@ export default function JobCatalogPage() {
         departmentsRes,
         unitsRes,
         jobFunctionsRes,
+        jobTitlesRes, // NEW
         positionGroupsRes,
         statisticsRes
       ] = await Promise.all([
@@ -152,6 +144,7 @@ export default function JobCatalogPage() {
         referenceDataAPI.getDepartmentDropdown(),
         referenceDataAPI.getUnitDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
+        referenceDataAPI.getJobTitleDropdown(), // NEW
         referenceDataAPI.getPositionGroupDropdown(),
         employeeAPI.getStatistics()
       ]);
@@ -162,18 +155,18 @@ export default function JobCatalogPage() {
       setDepartments(departmentsRes.data?.results || departmentsRes.data || []);
       setUnits(unitsRes.data || []);
       setJobFunctions(jobFunctionsRes.data || []);
+      setJobTitles(jobTitlesRes.data || []); // NEW
       setPositionGroupsState(positionGroupsData);
       setStatistics(statisticsRes.data || statisticsRes);
 
       setPositionGroups(positionGroupsData);
-    
 
       await loadEmployees();
       
     } catch (error) {
       const errorMsg = error?.response?.data?.message || error?.message || 'Failed to load initial data';
       setErrors(prev => ({ ...prev, initial: errorMsg }));
-      console.error('❌ Error loading initial data:', error);
+      console.error('Error loading initial data:', error);
     } finally {
       setLoading(prev => ({ ...prev, initial: false, referenceData: false, statistics: false }));
     }
@@ -183,10 +176,7 @@ export default function JobCatalogPage() {
     loadInitialData();
   };
 
-  // ============================================
-  // EMPLOYEE DATA LOADING
-  // ============================================
-  
+  // Employee data loading
   const loadEmployees = async (additionalParams = {}) => {
     setLoading(prev => ({ ...prev, employees: true }));
     
@@ -204,20 +194,16 @@ export default function JobCatalogPage() {
       const response = await employeeAPI.getAll(params);
       const employeeData = response.data?.results || response.results || [];
       setEmployees(employeeData);
-
       
     } catch (error) {
       setErrors(prev => ({ ...prev, employees: 'Failed to load employees' }));
-      console.error('❌ Error loading employees:', error);
+      console.error('Error loading employees:', error);
     } finally {
       setLoading(prev => ({ ...prev, employees: false }));
     }
   };
 
-  // ============================================
-  // HIERARCHY DATA LOADING
-  // ============================================
-  
+  // Hierarchy data loading
   const loadHierarchyData = async () => {
     setLoading(prev => ({ ...prev, hierarchy: true }));
     
@@ -226,7 +212,7 @@ export default function JobCatalogPage() {
       setHierarchyData(response.data || response);
     } catch (error) {
       setErrors(prev => ({ ...prev, hierarchy: 'Failed to load hierarchy data' }));
-      console.error('❌ Error loading hierarchy data:', error);
+      console.error('Error loading hierarchy data:', error);
     } finally {
       setLoading(prev => ({ ...prev, hierarchy: false }));
     }
@@ -247,12 +233,9 @@ export default function JobCatalogPage() {
     }
   }, [searchTerm, selectedFilters]);
 
-  // ============================================
-  // CRUD OPERATIONS
-  // ============================================
-
+  // CRUD Operations
   const openCrudModal = (type, mode = 'create', item = null) => {
-
+    console.log('🔵 Opening CRUD Modal:', { type, mode, item });
     
     setCrudModalType(type);
     setCrudModalMode(mode);
@@ -276,9 +259,10 @@ export default function JobCatalogPage() {
         formDataInit.hierarchy_level = item.hierarchy_level;
       }
       
- 
+      console.log('✏️ Edit mode - formData:', formDataInit);
       setFormData(formDataInit);
     } else {
+      // CREATE mode
       const cleanFormData = {
         name: '',
         is_active: true
@@ -288,16 +272,19 @@ export default function JobCatalogPage() {
         cleanFormData.code = '';
       }
       if (type === 'departments') {
-        cleanFormData.business_function = '';
+        cleanFormData.business_function_ids = []; // For bulk creation
       }
       if (type === 'units') {
-        cleanFormData.department = '';
+        cleanFormData.department_ids = []; // For bulk creation
+      }
+      if (type === 'job_titles') {
+        cleanFormData.description = '';
       }
       if (type === 'position_groups') {
         cleanFormData.hierarchy_level = 1;
       }
       
-  
+      console.log('➕ Create mode - formData:', cleanFormData);
       setFormData(cleanFormData);
     }
     
@@ -332,8 +319,6 @@ export default function JobCatalogPage() {
       delete submitData.value;
       delete submitData.pk;
       delete submitData.uuid;
-      
-
       
       let response;
       const itemId = selectedItem?.value || selectedItem?.id;
@@ -375,6 +360,14 @@ export default function JobCatalogPage() {
           }
           break;
           
+        case 'job_titles': // NEW
+          if (crudModalMode === 'create') {
+            response = await referenceDataAPI.createJobTitle(submitData);
+          } else {
+            response = await referenceDataAPI.updateJobTitle(itemId, submitData);
+          }
+          break;
+          
         case 'position_groups':
           if (crudModalMode === 'create') {
             response = await referenceDataAPI.createPositionGroup(submitData);
@@ -387,8 +380,6 @@ export default function JobCatalogPage() {
           throw new Error(`Unknown CRUD type: ${crudModalType}`);
       }
 
- 
-
       await loadInitialData();
       
       const entityName = crudModalType.replace(/_/g, ' ');
@@ -397,8 +388,6 @@ export default function JobCatalogPage() {
       closeCrudModal();
       
     } catch (error) {
-  
-      
       let errorMsg = 'An error occurred';
       
       if (error?.response?.data) {
@@ -477,6 +466,9 @@ export default function JobCatalogPage() {
         case 'job_functions':
           await referenceDataAPI.deleteJobFunction(id);
           break;
+        case 'job_titles': // NEW
+          await referenceDataAPI.deleteJobTitle(id);
+          break;
         case 'position_groups':
           await referenceDataAPI.deletePositionGroup(id);
           break;
@@ -489,24 +481,18 @@ export default function JobCatalogPage() {
       const errorMsg = error?.response?.data?.message || `Failed to delete ${type.replace('_', ' ')}`;
       setErrors(prev => ({ ...prev, crud: errorMsg }));
       showError(errorMsg);
-      console.error('❌ Delete error:', error);
+      console.error('Delete error:', error);
     } finally {
       setLoading(prev => ({ ...prev, crud: false }));
     }
   };
 
-  // ============================================
-  // NAVIGATION
-  // ============================================
-  
+  // Navigation
   const navigateToEmployee = (employeeId) => {
     router.push(`/structure/employee/${employeeId}/`);
   };
 
-  // ============================================
-  // DATA PROCESSING & COMPUTED VALUES
-  // ============================================
-  
+  // Data processing & computed values
   const jobCatalogData = useMemo(() => {
     const jobMap = new Map();
     
@@ -541,9 +527,10 @@ export default function JobCatalogPage() {
       departments: departments || [],
       units: units || [],
       jobFunctions: jobFunctions || [],
+      jobTitles: jobTitles || [], // NEW
       positionGroups: positionGroupsState || []
     };
-  }, [businessFunctions, departments, units, jobFunctions, positionGroupsState]);
+  }, [businessFunctions, departments, units, jobFunctions, jobTitles, positionGroupsState]);
 
   const filteredJobs = useMemo(() => {
     return jobCatalogData.filter(job => {
@@ -647,10 +634,7 @@ export default function JobCatalogPage() {
     setSearchTerm('');
   };
 
-  // ============================================
-  // CONTEXT VALUE
-  // ============================================
-  
+  // Context value
   const contextValue = {
     // View states
     activeView, setActiveView,
@@ -670,6 +654,7 @@ export default function JobCatalogPage() {
     departments, 
     units, 
     jobFunctions, 
+    jobTitles, // NEW
     positionGroups: positionGroupsState, 
     hierarchyData,
     
@@ -701,10 +686,7 @@ export default function JobCatalogPage() {
     loadInitialData
   };
 
-  // ============================================
-  // RENDER
-  // ============================================
-  
+  // Render
   if (loading.initial) {
     return <LoadingSpinner message="Loading Job Catalog..." />;
   }
@@ -747,7 +729,7 @@ export default function JobCatalogPage() {
         )}
 
         {/* Modals */}
-        <CrudModal context={contextValue} />
+        <CrudModal context={contextValue} darkMode={darkMode} />
         <JobDetailModal context={contextValue} />
         
       </div>

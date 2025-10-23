@@ -1,10 +1,10 @@
-// src/components/jobCatalog/ReferenceDataView.jsx - With Complete Persistence
+// src/components/jobCatalog/ReferenceDataView.jsx - Job Titles əlavə edilib
 
 import React, { useState, useMemo } from 'react';
 import { 
   Plus, Edit, Trash2, Loader2, Users, Building, Briefcase, Target, Award,
   Search, Eye, EyeOff, ArrowUpDown, ChevronDown, ChevronUp,
-  Building2, Settings, Layers, Check, X, TrendingUp
+  Building2, Settings, Layers, Check, X, TrendingUp, FileText
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { getHierarchyColor } from './HierarchyColors';
@@ -13,7 +13,7 @@ import ConfirmationModal from '@/components/common/ConfirmationModal';
 
 export default function ReferenceDataView({ context }) {
   const {
-    businessFunctions, departments, units, jobFunctions, positionGroups,
+    businessFunctions, departments, units, jobFunctions, jobTitles, positionGroups,
     loading, openCrudModal, handleDelete, employees
   } = context;
 
@@ -83,6 +83,7 @@ export default function ReferenceDataView({ context }) {
       departments: {},
       units: {},
       job_functions: {},
+      job_titles: {}, // NEW
       position_groups: {}
     };
 
@@ -103,6 +104,10 @@ export default function ReferenceDataView({ context }) {
         counts.job_functions[emp.job_function_name] = 
           (counts.job_functions[emp.job_function_name] || 0) + 1;
       }
+      if (emp.job_title) { // NEW
+        counts.job_titles[emp.job_title] = 
+          (counts.job_titles[emp.job_title] || 0) + 1;
+      }
       if (emp.position_group_name) {
         counts.position_groups[emp.position_group_name] = 
           (counts.position_groups[emp.position_group_name] || 0) + 1;
@@ -118,6 +123,7 @@ export default function ReferenceDataView({ context }) {
       departments: Target,
       units: Briefcase,
       job_functions: Users,
+      job_titles: FileText, // NEW
       position_groups: Award
     };
     return icons[tabId] || Building;
@@ -166,6 +172,16 @@ export default function ReferenceDataView({ context }) {
           { key: 'is_active', label: 'Status', sortable: true, align: 'center' }
         ]
       },
+      job_titles: { // NEW
+        title: 'Job Titles',
+        data: jobTitles,
+        columns: [
+          { key: 'name', label: 'Job Title', sortable: true },
+          { key: 'description', label: 'Description', sortable: false },
+          { key: 'employee_count', label: 'Employees', sortable: true, align: 'center' },
+          { key: 'is_active', label: 'Status', sortable: true, align: 'center' }
+        ]
+      },
       position_groups: {
         title: 'Position Groups',
         data: positionGroups,
@@ -199,6 +215,7 @@ export default function ReferenceDataView({ context }) {
       data = data.filter(item => 
         (item.name || item.label || '').toLowerCase().includes(term) ||
         (item.code || '').toLowerCase().includes(term) ||
+        (item.description || '').toLowerCase().includes(term) ||
         (item.business_function_name || '').toLowerCase().includes(term) ||
         (item.department_name || '').toLowerCase().includes(term)
       );
@@ -230,7 +247,7 @@ export default function ReferenceDataView({ context }) {
     }
 
     return data;
-  }, [activeTab, searchTerm, showInactive, sortConfig, businessFunctions, departments, units, jobFunctions, positionGroups, getEmployeeCountsByType]);
+  }, [activeTab, searchTerm, showInactive, sortConfig, businessFunctions, departments, units, jobFunctions, jobTitles, positionGroups, getEmployeeCountsByType]);
 
   // Reset to page 1 when filters change
   React.useEffect(() => {
@@ -485,6 +502,11 @@ export default function ReferenceDataView({ context }) {
                             </div>
                           </div>
                         )}
+                        {column.key === 'description' && (
+                          <div className="text-gray-600 dark:text-almet-bali-hai text-xs max-w-xs truncate">
+                            {item.description || '—'}
+                          </div>
+                        )}
                         {column.key === 'employee_count' && (
                           <div className="text-center">
                             <div className="text-sm font-bold text-gray-900 dark:text-white">
@@ -512,7 +534,7 @@ export default function ReferenceDataView({ context }) {
                             {renderStatusBadge(item.is_active !== false)}
                           </div>
                         )}
-                        {!['name', 'employee_count', 'department_count', 'unit_count', 'hierarchy_level', 'is_active'].includes(column.key) && (
+                        {!['name', 'description', 'employee_count', 'department_count', 'unit_count', 'hierarchy_level', 'is_active'].includes(column.key) && (
                           <div className="text-gray-900 dark:text-white">
                             {item[column.key] || '—'}
                           </div>
@@ -633,6 +655,7 @@ export default function ReferenceDataView({ context }) {
     { id: 'departments', label: 'Departments', data: departments },
     { id: 'units', label: 'Units', data: units },
     { id: 'job_functions', label: 'Job Functions', data: jobFunctions },
+    { id: 'job_titles', label: 'Job Titles', data: jobTitles }, // NEW
     { id: 'position_groups', label: 'Position Groups', data: positionGroups }
   ];
 

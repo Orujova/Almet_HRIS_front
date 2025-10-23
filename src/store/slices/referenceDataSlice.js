@@ -1,4 +1,4 @@
-// src/store/slices/referenceDataSlice.js - Backend endpointlərinə uyğun yenilənilib
+// src/store/slices/referenceDataSlice.js - Job Titles əlavə edilib
 import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import { referenceDataAPI } from '../api/referenceDataAPI';
 
@@ -47,6 +47,19 @@ export const fetchJobFunctions = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await referenceDataAPI.getJobFunctionDropdown();
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+// NEW: Job Titles fetch
+export const fetchJobTitles = createAsyncThunk(
+  'referenceData/fetchJobTitles',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await referenceDataAPI.getJobTitleDropdown();
       return response.data;
     } catch (error) {
       return rejectWithValue(error.data || error.message);
@@ -108,6 +121,49 @@ export const fetchPositionGroupGradingLevels = createAsyncThunk(
     try {
       const response = await referenceDataAPI.getPositionGroupGradingLevels(positionGroupId);
       return { positionGroupId, levels: response.data.levels || [] };
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+// ========================================
+// ASYNC THUNKS - JOB TITLES CRUD (NEW)
+// ========================================
+
+export const createJobTitle = createAsyncThunk(
+  'referenceData/createJobTitle',
+  async (data, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await referenceDataAPI.createJobTitle(data);
+      dispatch(fetchJobTitles());
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+export const updateJobTitle = createAsyncThunk(
+  'referenceData/updateJobTitle',
+  async ({ id, data }, { rejectWithValue, dispatch }) => {
+    try {
+      const response = await referenceDataAPI.updateJobTitle(id, data);
+      dispatch(fetchJobTitles());
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.data || error.message);
+    }
+  }
+);
+
+export const deleteJobTitle = createAsyncThunk(
+  'referenceData/deleteJobTitle',
+  async (id, { rejectWithValue, dispatch }) => {
+    try {
+      await referenceDataAPI.deleteJobTitle(id);
+      dispatch(fetchJobTitles());
+      return id;
     } catch (error) {
       return rejectWithValue(error.data || error.message);
     }
@@ -488,6 +544,7 @@ const initialState = {
   departments: [],
   units: [],
   jobFunctions: [],
+  jobTitles: [], // NEW
   positionGroups: [],
   employeeStatuses: [],
   employeeTags: [],
@@ -506,6 +563,7 @@ const initialState = {
     departments: false,
     units: false,
     jobFunctions: false,
+    jobTitles: false, // NEW
     positionGroups: false,
     employeeStatuses: false,
     employeeTags: false,
@@ -522,6 +580,7 @@ const initialState = {
     departments: null,
     units: null,
     jobFunctions: null,
+    jobTitles: null, // NEW
     positionGroups: null,
     employeeStatuses: null,
     employeeTags: null,
@@ -538,6 +597,7 @@ const initialState = {
     departments: null,
     units: null,
     jobFunctions: null,
+    jobTitles: null, // NEW
     positionGroups: null,
     employeeStatuses: null,
     employeeTags: null,
@@ -552,6 +612,7 @@ const initialState = {
     departments: 0,
     units: 0,
     jobFunctions: 0,
+    jobTitles: 0, // NEW
     positionGroups: 0,
     employeeStatuses: 0,
     employeeTags: 0,
@@ -877,6 +938,26 @@ const referenceDataSlice = createSlice({
         state.error.jobFunctions = action.payload;
       });
 
+    // Job titles (NEW)
+    builder
+      .addCase(fetchJobTitles.pending, (state) => {
+        state.loading.jobTitles = true;
+        state.error.jobTitles = null;
+      })
+      .addCase(fetchJobTitles.fulfilled, (state, action) => {
+        state.loading.jobTitles = false;
+        state.jobTitles = Array.isArray(action.payload) ? action.payload : [];
+        state.lastUpdated.jobTitles = Date.now();
+        state.entityCounts.jobTitles = state.jobTitles.length;
+        state.jobTitles.forEach(item => {
+          if (item._isOptimistic) delete item._isOptimistic;
+        });
+      })
+      .addCase(fetchJobTitles.rejected, (state, action) => {
+        state.loading.jobTitles = false;
+        state.error.jobTitles = action.payload;
+      });
+
     // Position groups
     builder
       .addCase(fetchPositionGroups.pending, (state) => {
@@ -979,6 +1060,7 @@ const referenceDataSlice = createSlice({
       createDepartment,
       createUnit,
       createJobFunction,
+      createJobTitle, // NEW
       createPositionGroup,
       createEmployeeStatus,
       createEmployeeTag,
@@ -1006,6 +1088,7 @@ const referenceDataSlice = createSlice({
       updateDepartment,
       updateUnit,
       updateJobFunction,
+      updateJobTitle, // NEW
       updatePositionGroup,
       updateEmployeeStatus,
       updateEmployeeTag,
@@ -1033,6 +1116,7 @@ const referenceDataSlice = createSlice({
       deleteDepartment,
       deleteUnit,
       deleteJobFunction,
+      deleteJobTitle, // NEW
       deletePositionGroup,
       deleteEmployeeStatus,
       deleteEmployeeTag,
@@ -1096,6 +1180,7 @@ export const selectBusinessFunctions = (state) => state.referenceData.businessFu
 export const selectDepartments = (state) => state.referenceData.departments;
 export const selectUnits = (state) => state.referenceData.units;
 export const selectJobFunctions = (state) => state.referenceData.jobFunctions;
+export const selectJobTitles = (state) => state.referenceData.jobTitles; // NEW
 export const selectPositionGroups = (state) => state.referenceData.positionGroups;
 export const selectEmployeeStatuses = (state) => state.referenceData.employeeStatuses;
 export const selectEmployeeTags = (state) => state.referenceData.employeeTags;
@@ -1197,7 +1282,6 @@ export const selectDepartmentsForDropdown = createSelector(
       business_function_code: dept.business_function_code,
       employee_count: dept.employee_count || 0,
       unit_count: dept.unit_count || 0,
-  
       is_active: dept.is_active !== false,
       _isOptimistic: dept._isOptimistic || false
     }));
@@ -1237,7 +1321,6 @@ export const selectUnitsForDropdown = createSelector(
       department_name: unit.department_name,
       business_function_name: unit.business_function_name,
       employee_count: unit.employee_count || 0,
-    
       is_active: unit.is_active !== false,
       _isOptimistic: unit._isOptimistic || false
     }));
@@ -1258,8 +1341,7 @@ export const selectJobFunctionsForDropdown = createSelector(
     if (ui.filterText) {
       const searchTerm = ui.filterText.toLowerCase();
       filtered = filtered.filter(jf => 
-        (jf.name || '').toLowerCase().includes(searchTerm) 
-        
+        (jf.name || '').toLowerCase().includes(searchTerm)
       );
     }
     
@@ -1273,10 +1355,49 @@ export const selectJobFunctionsForDropdown = createSelector(
     return filtered.map(jf => ({
       value: jf.id || jf.value,
       label: jf.name || jf.label,
-    
       employee_count: jf.employee_count || 0,
       is_active: jf.is_active !== false,
       _isOptimistic: jf._isOptimistic || false
+    }));
+  }
+);
+
+// NEW: Job Titles selector
+export const selectJobTitlesForDropdown = createSelector(
+  [selectJobTitles, selectReferenceDataUI],
+  (jobTitles, ui) => {
+    if (!Array.isArray(jobTitles)) return [];
+    
+    let filtered = jobTitles;
+    
+    if (!ui.showInactive) {
+      filtered = filtered.filter(jt => jt.is_active !== false);
+    }
+    
+    if (ui.filterText) {
+      const searchTerm = ui.filterText.toLowerCase();
+      filtered = filtered.filter(jt => 
+        (jt.name || '').toLowerCase().includes(searchTerm) ||
+        (jt.description || '').toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    filtered.sort((a, b) => {
+      const aVal = a[ui.sortBy] || '';
+      const bVal = b[ui.sortBy] || '';
+      const comparison = aVal.toString().localeCompare(bVal.toString());
+      return ui.sortDirection === 'desc' ? -comparison : comparison;
+    });
+    
+    return filtered.map(jt => ({
+      value: jt.id || jt.value,
+      label: jt.name || jt.label,
+      description: jt.description,
+      employee_count: jt.employee_count || 0,
+      is_active: jt.is_active !== false,
+      created_at: jt.created_at,
+      updated_at: jt.updated_at,
+      _isOptimistic: jt._isOptimistic || false
     }));
   }
 );
@@ -1462,6 +1583,32 @@ export const selectContractConfigsForDropdown = createSelector(
   }
 );
 
+// Combined data selectors
+export const selectReferenceDataForEmployeeForm = createSelector(
+  [
+    selectBusinessFunctionsForDropdown,
+    selectDepartmentsForDropdown,
+    selectUnitsForDropdown,
+    selectJobFunctionsForDropdown,
+    selectJobTitlesForDropdown, // NEW
+    selectPositionGroupsForDropdown,
+    selectEmployeeStatusesForDropdown,
+    selectEmployeeTagsForDropdown,
+    selectContractConfigsForDropdown
+  ],
+   (businessFunctions, departments, units, jobFunctions, jobTitles, positionGroups, statuses, tags, contractConfigs) => ({
+    businessFunctions,
+    departments,
+    units,
+    jobFunctions,
+    jobTitles, // NEW
+    positionGroups,
+    statuses,
+    tags,
+    contractConfigs
+  })
+);
+
 // Filtered data selectors
 export const selectDepartmentsByBusinessFunction = createSelector(
   [selectDepartments, (state, businessFunctionId) => businessFunctionId],
@@ -1494,30 +1641,6 @@ export const selectPositionGroupGradingLevels = createSelector(
   (gradingLevels, positionGroupId) => {
     return gradingLevels[positionGroupId] || [];
   }
-);
-
-// Combined data selectors
-export const selectReferenceDataForEmployeeForm = createSelector(
-  [
-    selectBusinessFunctionsForDropdown,
-    selectDepartmentsForDropdown,
-    selectUnitsForDropdown,
-    selectJobFunctionsForDropdown,
-    selectPositionGroupsForDropdown,
-    selectEmployeeStatusesForDropdown,
-    selectEmployeeTagsForDropdown,
-    selectContractConfigsForDropdown
-  ],
-  (businessFunctions, departments, units, jobFunctions, positionGroups, statuses, tags, contractConfigs) => ({
-    businessFunctions,
-    departments,
-    units,
-    jobFunctions,
-    positionGroups,
-    statuses,
-    tags,
-    contractConfigs
-  })
 );
 
 // Cache management selectors
@@ -1577,3 +1700,5 @@ export const selectIsValidUnit = createSelector(
     return true;
   }
 );
+
+  

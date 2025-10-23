@@ -9,17 +9,51 @@ import { useTheme } from "@/components/common/ThemeProvider";
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
   return (
-    <div className={`${isHighlight ? 'bg-[#29339b] hover:bg-[#1e2570]' : 'bg-white/10 hover:bg-white/20'} backdrop-blur-sm rounded-xl p-4 text-white transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer`}>
-      <div className="flex items-center justify-between mb-2">
-        <div className={`p-1 ${isHighlight ? 'bg-white/30' : 'bg-white/20'} rounded-lg transition-all duration-300`}>
+    <div className={`${
+      isHighlight 
+        ? 'bg-gradient-to-br from-almet-sapphire to-almet-astral shadow-lg shadow-almet-sapphire/20' 
+        : 'bg-white dark:bg-almet-cloud-burst shadow-md'
+    } backdrop-blur-sm rounded-xl p-5 transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border ${
+      isHighlight 
+        ? 'border-almet-steel-blue' 
+        : 'border-almet-mystic dark:border-almet-san-juan'
+    }`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-2.5 ${
+          isHighlight 
+            ? 'bg-white/20 text-white' 
+            : 'bg-gradient-to-br from-almet-mystic to-white dark:from-almet-san-juan dark:to-almet-comet text-almet-sapphire dark:text-almet-steel-blue'
+        } rounded-xl transition-all duration-300 shadow-sm`}>
           {icon}
         </div>
       </div>
-      <h3 className="text-white/80 text-sm font-medium mb-1">{title}</h3>
-      <div className="text-xl font-bold mb-1">{value}</div>
-      <p className="text-white/70 text-sm mb-4">{subtitle}</p>
+      <h3 className={`${
+        isHighlight 
+          ? 'text-white/90' 
+          : 'text-almet-waterloo dark:text-almet-bali-hai'
+      } text-xs font-semibold mb-1 uppercase tracking-wide`}>
+        {title}
+      </h3>
+      <div className={`text-2xl font-bold mb-1 ${
+        isHighlight 
+          ? 'text-white' 
+          : 'text-almet-cloud-burst dark:text-white'
+      }`}>
+        {value}
+      </div>
+      <p className={`${
+        isHighlight 
+          ? 'text-white/80' 
+          : 'text-almet-waterloo dark:text-almet-bali-hai'
+      } text-sm mb-4`}>
+        {subtitle}
+      </p>
       {actionText && (
-        <button className={`${isHighlight ? 'bg-white/30 hover:bg-white/40' : 'bg-white/20 hover:bg-white/30'} text-white text-xs font-medium px-3 py-2 rounded-lg transition-all duration-300 hover:scale-105`}>
+        <button className={`${
+          isHighlight 
+            ? 'bg-white/20 hover:bg-white/30 text-white' 
+            : 'bg-gradient-to-r from-almet-sapphire to-almet-astral hover:from-almet-astral hover:to-almet-steel-blue text-white shadow-md'
+        } text-xs font-semibold px-4 py-2.5 rounded-lg transition-all duration-300 hover:scale-105 w-full`}>
           {actionText}
         </button>
       )}
@@ -31,16 +65,16 @@ const ActionCard = ({ icon, title, description, href }) => {
   return (
     <Link
       href={href}
-      className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1"
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 hover:scale-105 hover:-translate-y-1 border border-almet-mystic dark:border-almet-san-juan"
     >
       <div className="flex flex-col h-full">
-        <div className="text-almet-sapphire dark:text-almet-bali-hai mb-3 transition-all duration-300">
+        <div className="text-almet-sapphire dark:text-almet-steel-blue mb-3 transition-all duration-300">
           {icon}
         </div>
-        <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base">
+        <h3 className="text-almet-cloud-burst dark:text-white font-medium text-sm md:text-base">
           {title}
         </h3>
-        <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mt-1">
+        <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs md:text-sm mt-1">
           {description}
         </p>
       </div>
@@ -61,7 +95,7 @@ const NewsCard = ({ news, darkMode }) => {
   return (
     <Link 
       href={`/communication/company-news`}
-      className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 group"
+      className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow hover:shadow-lg transition-all duration-300 group border border-almet-mystic dark:border-almet-san-juan"
     >
       <div className="relative h-40 overflow-hidden">
         <img 
@@ -81,18 +115,18 @@ const NewsCard = ({ news, darkMode }) => {
         )}
       </div>
       <div className="p-4">
-        <h3 className="text-gray-800 dark:text-white font-medium text-sm md:text-base mb-2 line-clamp-2 group-hover:text-almet-sapphire transition-colors">
+        <h3 className="text-almet-cloud-burst dark:text-white font-medium text-sm md:text-base mb-2 line-clamp-2 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors">
           {news.title}
         </h3>
-        <p className="text-gray-500 dark:text-almet-bali-hai text-xs md:text-sm mb-3 line-clamp-2">
+        <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs md:text-sm mb-3 line-clamp-2">
           {news.excerpt}
         </p>
         <div className="flex justify-between items-center">
-          <span className="text-gray-400 dark:text-almet-waterloo text-xs flex items-center gap-1">
+          <span className="text-almet-waterloo dark:text-almet-bali-hai text-xs flex items-center gap-1">
             <Calendar className="h-3 w-3" />
             {formatDate(news.published_at)}
           </span>
-          <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-almet-waterloo">
+          <div className="flex items-center gap-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
             <span className="flex items-center gap-1">
               <Eye className="h-3 w-3" />
               {news.view_count}
@@ -106,17 +140,17 @@ const NewsCard = ({ news, darkMode }) => {
 
 const EventCard = ({ icon, type, title, date, image }) => {
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 cursor-pointer">
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 cursor-pointer border border-almet-mystic dark:border-almet-san-juan">
       <div className="flex items-center mb-3">
-        <div className="h-9 w-9 rounded-full overflow-hidden mr-3">
+        <div className="h-9 w-9 rounded-full overflow-hidden mr-3 ring-2 ring-almet-mystic dark:ring-almet-san-juan">
           <img src={image} alt={type} className="h-full w-full object-cover" />
         </div>
         <div>
-          <p className="text-gray-500 dark:text-almet-bali-hai text-xs">{type}</p>
-          <h3 className="text-gray-800 dark:text-white font-medium text-sm">{title}</h3>
+          <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs">{type}</p>
+          <h3 className="text-almet-cloud-burst dark:text-white font-medium text-sm">{title}</h3>
         </div>
       </div>
-      <div className="flex items-center text-gray-500 dark:text-almet-bali-hai text-xs">
+      <div className="flex items-center text-almet-waterloo dark:text-almet-bali-hai text-xs">
         <Calendar className="h-3 w-3 mr-1" />
         {date}
       </div>
@@ -155,28 +189,28 @@ export default function Home() {
   return (
     <DashboardLayout>
       {/* Enhanced Welcome Banner */}
-      <div className="bg-almet-sapphire rounded-lg overflow-hidden mb-6 shadow-md">
-        <div className="p-4">
+      <div className="bg-gradient-to-br from-almet-mystic via-white to-almet-mystic dark:from-almet-san-juan dark:via-almet-cloud-burst dark:to-almet-san-juan rounded-2xl overflow-hidden mb-6 shadow-lg border-2 border-almet-sapphire/20 dark:border-almet-steel-blue/20">
+        <div className="p-6">
           {/* Header Section */}
-          <div className="flex flex-col md:flex-row justify-between items-start mb-4">
+          <div className="flex flex-col md:flex-row justify-between items-start mb-6">
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
+              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue dark:from-almet-steel-blue dark:via-almet-astral dark:to-almet-sapphire bg-clip-text text-transparent mb-2">
                 {isManager ? "Manager Dashboard" : (account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!")}
               </h1>
-              <p className="text-blue-100 text-xs md:text-sm">
+              <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs md:text-sm font-medium">
                 {isManager ? "Approvals and team overview at a glance." : "Your key stats and quick actions for the day."}
               </p>
             </div>
             <div className="flex gap-2 mt-4 md:mt-0">
               <button 
                 onClick={() => setIsManager(false)}
-                className={`${!isManager ? 'bg-white text-almet-sapphire' : 'bg-white/20 border border-white/30 text-white hover:bg-white/30'} px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300`}
+                className={`${!isManager ? 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white shadow-md shadow-almet-sapphire/30' : 'bg-white/60 dark:bg-almet-comet text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-white/80 dark:hover:bg-almet-comet/80 border border-almet-sapphire/20 dark:border-almet-steel-blue/20'} px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105`}
               >
                 Employee
               </button>
               <button 
                 onClick={() => setIsManager(true)}
-                className={`${isManager ? 'bg-white text-almet-sapphire' : 'bg-white/20 border border-white/30 text-white hover:bg-white/30'} px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300`}
+                className={`${isManager ? 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white shadow-md shadow-almet-sapphire/30' : 'bg-white/60 dark:bg-almet-comet text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-white/80 dark:hover:bg-almet-comet/80 border border-almet-sapphire/20 dark:border-almet-steel-blue/20'} px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105`}
               >
                 Manager
               </button>
@@ -285,12 +319,12 @@ export default function Home() {
       {/* Company Updates - REAL NEWS */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-base font-medium text-gray-800 dark:text-white">
+          <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white">
             Company Updates
           </h2>
           <Link 
             href="/communication/company-news" 
-            className="text-almet-sapphire dark:text-almet-bali-hai flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
+            className="text-almet-sapphire dark:text-almet-steel-blue flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
           >
             View All
             <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
@@ -300,12 +334,12 @@ export default function Home() {
         {loadingNews ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow animate-pulse">
-                <div className="h-40 bg-gray-200 dark:bg-almet-san-juan"></div>
+              <div key={i} className="bg-white dark:bg-almet-cloud-burst rounded-lg overflow-hidden shadow animate-pulse border border-almet-mystic dark:border-almet-san-juan">
+                <div className="h-40 bg-almet-mystic dark:bg-almet-san-juan"></div>
                 <div className="p-4">
-                  <div className="h-4 bg-gray-200 dark:bg-almet-san-juan rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-almet-san-juan rounded mb-2"></div>
-                  <div className="h-3 bg-gray-200 dark:bg-almet-san-juan rounded w-2/3"></div>
+                  <div className="h-4 bg-almet-mystic dark:bg-almet-san-juan rounded mb-2"></div>
+                  <div className="h-3 bg-almet-mystic dark:bg-almet-san-juan rounded mb-2"></div>
+                  <div className="h-3 bg-almet-mystic dark:bg-almet-san-juan rounded w-2/3"></div>
                 </div>
               </div>
             ))}
@@ -317,19 +351,19 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <div className={`rounded-lg p-8 text-center ${
-            darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
+          <div className={`rounded-lg p-8 text-center border ${
+            darkMode ? 'bg-almet-cloud-burst border-almet-san-juan' : 'bg-white border-almet-mystic'
           }`}>
             <FileText className={`h-12 w-12 mx-auto mb-3 ${
-              darkMode ? 'text-almet-bali-hai' : 'text-gray-400'
+              darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
             }`} />
             <h3 className={`text-sm font-semibold mb-1 ${
-              darkMode ? 'text-white' : 'text-gray-900'
+              darkMode ? 'text-white' : 'text-almet-cloud-burst'
             }`}>
               No News Available
             </h3>
             <p className={`text-xs ${
-              darkMode ? 'text-almet-bali-hai' : 'text-gray-600'
+              darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
             }`}>
               Check back later for company updates
             </p>
@@ -339,7 +373,7 @@ export default function Home() {
 
       {/* Upcoming Events */}
       <div>
-        <h2 className="text-base font-medium text-gray-800 dark:text-white mb-3">
+        <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white mb-3">
           Upcoming Events
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

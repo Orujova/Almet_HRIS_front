@@ -718,12 +718,7 @@ const handleOpenRequestDetail = (request) => {
                 Settings
               </button>
             )}
-            {userPermissions.is_admin && (
-              <div className="flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700/50 px-3 py-2 rounded-lg">
-                <Lock className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-                <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Admin</span>
-              </div>
-            )}
+        
           </div>
         </div>
 

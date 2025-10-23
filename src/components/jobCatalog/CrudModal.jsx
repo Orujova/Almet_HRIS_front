@@ -1,8 +1,9 @@
-// src/components/jobCatalog/CrudModal.jsx - SearchableDropdown ilə
+// src/components/jobCatalog/CrudModal.jsx - MultiSelect ilə bulk creation
 
 import React from 'react';
-import { X, Save, Loader2, AlertCircle } from 'lucide-react';
+import { X, Save, Loader2, AlertCircle, Info } from 'lucide-react';
 import SearchableDropdown from '../common/SearchableDropdown';
+import MultiSelect from '../common/MultiSelect';
 
 export default function CrudModal({ context, darkMode }) {
   const {
@@ -20,6 +21,7 @@ export default function CrudModal({ context, darkMode }) {
       departments: 'Department',
       units: 'Unit',
       job_functions: 'Job Function',
+      job_titles: 'Job Title',
       position_groups: 'Position Group'
     };
     const typeName = typeNames[crudModalType] || 'Item';
@@ -28,6 +30,37 @@ export default function CrudModal({ context, darkMode }) {
 
   const inputClass = "w-full px-2.5 py-2 text-xs border outline-0 border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent";
   const labelClass = "block text-xs font-medium text-gray-700 dark:text-almet-bali-hai mb-1.5";
+  const textareaClass = "w-full px-2.5 py-2 text-xs border outline-0 border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none";
+
+  // Handle MultiSelect change for bulk creation
+  const handleMultiSelectChange = (fieldName, value) => {
+    console.log('🔄 MultiSelect Change:', { fieldName, value });
+    
+    setFormData(prev => {
+      const currentValues = Array.isArray(prev[fieldName]) ? prev[fieldName] : [];
+      
+      console.log('📋 Current values:', currentValues);
+      
+      // Toggle value in array
+      let newValues;
+      if (currentValues.includes(value)) {
+        newValues = currentValues.filter(v => v !== value);
+      } else {
+        newValues = [...currentValues, value];
+      }
+      
+      console.log('✅ New values:', newValues);
+      
+      const newFormData = {
+        ...prev,
+        [fieldName]: newValues
+      };
+      
+      console.log('📦 Updated formData:', newFormData);
+      
+      return newFormData;
+    });
+  };
 
   const renderFormFields = () => {
     switch (crudModalType) {
@@ -72,20 +105,61 @@ export default function CrudModal({ context, darkMode }) {
                 required
               />
             </div>
-            <div className="mb-3">
-              <label className={labelClass}>Business Function *</label>
-              <SearchableDropdown
-                options={businessFunctions}
-                value={formData.business_function || ''}
-                onChange={(value) => setFormData({...formData, business_function: value})}
-                placeholder="Select Business Function"
-                searchPlaceholder="Search business functions..."
-            allowUncheck={true}
-                          darkMode={darkMode}
-                portal={true}
             
-              />
-            </div>
+            {crudModalMode === 'create' ? (
+              <>
+                {/* Bulk Creation Mode */}
+                <div className="mb-3">
+                  <label className={labelClass}>
+                    Business Functions * 
+                    <span className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-1">
+                      (Select multiple for bulk creation)
+                    </span>
+                  </label>
+                  <MultiSelect
+                    options={businessFunctions.map(bf => ({
+                      id: bf.value || bf.id,
+                      name: bf.label || bf.name,
+                      value: bf.value || bf.id
+                    }))}
+                    selected={formData.business_function_ids || []}
+                    onChange={handleMultiSelectChange}
+                    placeholder="Select business functions"
+                    fieldName="business_function_ids"
+                    darkMode={darkMode}
+                  />
+                </div>
+                
+                {/* Info message */}
+                {formData.business_function_ids && formData.business_function_ids.length > 1 && (
+                  <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-[10px] text-blue-800 dark:text-blue-200">
+                        This department will be created for <strong>{formData.business_function_ids.length}</strong> business functions
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Single Selection Mode for Edit */}
+                <div className="mb-3">
+                  <label className={labelClass}>Business Function *</label>
+                  <SearchableDropdown
+                    options={businessFunctions}
+                    value={formData.business_function || ''}
+                    onChange={(value) => setFormData({...formData, business_function: value})}
+                    placeholder="Select Business Function"
+                    searchPlaceholder="Search business functions..."
+                    allowUncheck={true}
+                    darkMode={darkMode}
+                    portal={true}
+                  />
+                </div>
+              </>
+            )}
           </>
         );
 
@@ -103,20 +177,61 @@ export default function CrudModal({ context, darkMode }) {
                 required
               />
             </div>
-            <div className="mb-3">
-              <label className={labelClass}>Department *</label>
-              <SearchableDropdown
-                options={departments}
-                value={formData.department || ''}
-                onChange={(value) => setFormData({...formData, department: value})}
-                placeholder="Select Department"
-                searchPlaceholder="Search departments..."
-            allowUncheck={true}
-                          darkMode={darkMode}
-                portal={true}
-               
-              />
-            </div>
+            
+            {crudModalMode === 'create' ? (
+              <>
+                {/* Bulk Creation Mode */}
+                <div className="mb-3">
+                  <label className={labelClass}>
+                    Departments * 
+                    <span className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-1">
+                      (Select multiple for bulk creation)
+                    </span>
+                  </label>
+                  <MultiSelect
+                    options={departments.map(dept => ({
+                      id: dept.value || dept.id,
+                      name: dept.label || dept.name,
+                      value: dept.value || dept.id
+                    }))}
+                    selected={formData.department_ids || []}
+                    onChange={handleMultiSelectChange}
+                    placeholder="Select departments"
+                    fieldName="department_ids"
+                    darkMode={darkMode}
+                  />
+                </div>
+                
+                {/* Info message */}
+                {formData.department_ids && formData.department_ids.length > 1 && (
+                  <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Info size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-[10px] text-blue-800 dark:text-blue-200">
+                        This unit will be created for <strong>{formData.department_ids.length}</strong> departments
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Single Selection Mode for Edit */}
+                <div className="mb-3">
+                  <label className={labelClass}>Department *</label>
+                  <SearchableDropdown
+                    options={departments}
+                    value={formData.department || ''}
+                    onChange={(value) => setFormData({...formData, department: value})}
+                    placeholder="Select Department"
+                    searchPlaceholder="Search departments..."
+                    allowUncheck={true}
+                    darkMode={darkMode}
+                    portal={true}
+                  />
+                </div>
+              </>
+            )}
           </>
         );
 
@@ -133,6 +248,33 @@ export default function CrudModal({ context, darkMode }) {
               required
             />
           </div>
+        );
+
+      case 'job_titles':
+        return (
+          <>
+            <div className="mb-3">
+              <label className={labelClass}>Name *</label>
+              <input
+                type="text"
+                value={formData.name || ''}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className={inputClass}
+                placeholder="Enter job title name"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label className={labelClass}>Description</label>
+              <textarea
+                value={formData.description || ''}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className={textareaClass}
+                placeholder="Enter job title description (optional)"
+                rows={3}
+              />
+            </div>
+          </>
         );
 
       case 'position_groups':

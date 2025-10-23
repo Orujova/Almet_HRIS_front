@@ -1,4 +1,4 @@
-// src/store/api/referenceDataAPI.js - Backend endpointlərinə uyğun reference data API
+// src/store/api/referenceDataAPI.js - Job Titles əlavə edilib
 import { apiService } from '../../services/api';
 
 export const referenceDataAPI = {
@@ -49,7 +49,6 @@ export const referenceDataAPI = {
             business_function_code: item.business_function_code,
             employee_count: item.employee_count,
             unit_count: item.unit_count,
-         
             is_active: item.is_active
           }))
         }
@@ -81,7 +80,6 @@ export const referenceDataAPI = {
           department_name: item.department_name,
           business_function_name: item.business_function_name,
           employee_count: item.employee_count,
-       
           is_active: item.is_active
         }))
       };
@@ -104,7 +102,6 @@ export const referenceDataAPI = {
         data: data.map(item => ({
           value: item.id,
           label: item.name,
-         
           employee_count: item.employee_count,
           is_active: item.is_active
         }))
@@ -114,6 +111,32 @@ export const referenceDataAPI = {
   createJobFunction: (data) => apiService.createJobFunction(data),
   updateJobFunction: (id, data) => apiService.updateJobFunction(id, data),
   deleteJobFunction: (id) => apiService.deleteJobFunction(id),
+
+  // ========================================
+  // JOB TITLES (NEW)
+  // ========================================
+  getJobTitles: (params = {}) => apiService.getJobTitles(params),
+  getJobTitle: (id) => apiService.getJobTitle(id),
+  getJobTitleDropdown: () => {
+    return apiService.getJobTitles().then(response => {
+      const data = response.data.results || response.data || [];
+      return {
+        ...response,
+        data: data.map(item => ({
+          value: item.id,
+          label: item.name,
+          description: item.description,
+          employee_count: item.employee_count,
+          is_active: item.is_active,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }))
+      };
+    });
+  },
+  createJobTitle: (data) => apiService.createJobTitle(data),
+  updateJobTitle: (id, data) => apiService.updateJobTitle(id, data),
+  deleteJobTitle: (id) => apiService.deleteJobTitle(id),
 
   // ========================================
   // POSITION GROUPS
@@ -220,8 +243,6 @@ export const referenceDataAPI = {
   getContractConfigDropdown: () => {
     return apiService.getContractConfigs().then(response => {
       const data = response.data.results || response.data || [];
-
-
       return {
         ...response,
         data: data.map(item => ({
@@ -255,6 +276,7 @@ export const referenceDataAPI = {
       const [
         businessFunctions,
         jobFunctions,
+        jobTitles,
         positionGroups,
         employeeStatuses,
         employeeTags,
@@ -262,6 +284,7 @@ export const referenceDataAPI = {
       ] = await Promise.all([
         referenceDataAPI.getBusinessFunctionDropdown(),
         referenceDataAPI.getJobFunctionDropdown(),
+        referenceDataAPI.getJobTitleDropdown(),
         referenceDataAPI.getPositionGroupDropdown(),
         referenceDataAPI.getEmployeeStatusDropdown(),
         referenceDataAPI.getEmployeeTagDropdown(),
@@ -271,6 +294,7 @@ export const referenceDataAPI = {
       return {
         businessFunctions: businessFunctions.data,
         jobFunctions: jobFunctions.data,
+        jobTitles: jobTitles.data,
         positionGroups: positionGroups.data,
         employeeStatuses: employeeStatuses.data,
         employeeTags: employeeTags.data,
@@ -342,6 +366,7 @@ export const referenceDataAPI = {
         departments,
         units,
         jobFunctions,
+        jobTitles,
         positionGroups,
         employeeStatuses,
         employeeTags,
@@ -351,6 +376,7 @@ export const referenceDataAPI = {
         referenceDataAPI.getDepartments(),
         referenceDataAPI.getUnits(),
         referenceDataAPI.getJobFunctions(),
+        referenceDataAPI.getJobTitles(),
         referenceDataAPI.getPositionGroups(),
         referenceDataAPI.getEmployeeStatuses(),
         referenceDataAPI.getEmployeeTags(),
@@ -362,6 +388,7 @@ export const referenceDataAPI = {
         departments: departments.data.count || departments.data.length || 0,
         units: units.data.count || units.data.length || 0,
         jobFunctions: jobFunctions.data.count || jobFunctions.data.length || 0,
+        jobTitles: jobTitles.data.count || jobTitles.data.length || 0,
         positionGroups: positionGroups.data.count || positionGroups.data.length || 0,
         employeeStatuses: employeeStatuses.data.count || employeeStatuses.data.length || 0,
         employeeTags: employeeTags.data.count || employeeTags.data.length || 0,
@@ -377,7 +404,7 @@ export const referenceDataAPI = {
     try {
       const searchPromises = [];
       const searchTypes = types.length > 0 ? types : [
-        'businessFunctions', 'departments', 'units', 'jobFunctions', 
+        'businessFunctions', 'departments', 'units', 'jobFunctions', 'jobTitles',
         'positionGroups', 'employeeStatuses', 'employeeTags', 'contractConfigs'
       ];
 
@@ -406,6 +433,13 @@ export const referenceDataAPI = {
         searchPromises.push(
           referenceDataAPI.getJobFunctions({ search: searchTerm })
             .then(res => ({ type: 'jobFunctions', data: res.data.results || res.data }))
+        );
+      }
+
+      if (searchTypes.includes('jobTitles')) {
+        searchPromises.push(
+          referenceDataAPI.getJobTitles({ search: searchTerm })
+            .then(res => ({ type: 'jobTitles', data: res.data.results || res.data }))
         );
       }
 
@@ -465,6 +499,9 @@ export const referenceDataAPI = {
           break;
         case 'jobFunctions':
           response = await referenceDataAPI.getJobFunctions({ is_active: true });
+          break;
+        case 'jobTitles':
+          response = await referenceDataAPI.getJobTitles({ is_active: true });
           break;
         case 'positionGroups':
           response = await referenceDataAPI.getPositionGroups({ is_active: true });

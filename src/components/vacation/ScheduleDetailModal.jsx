@@ -248,11 +248,7 @@ export const ScheduleDetailModal = ({
                         Can Register
                       </span>
                     )}
-                    {schedule.permissions.is_admin && (
-                      <span className="px-2 py-1 bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-300 rounded text-xs font-medium">
-                        Admin
-                      </span>
-                    )}
+            
                   </div>
                 </div>
               )}

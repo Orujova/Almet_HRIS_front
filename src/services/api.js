@@ -1,8 +1,8 @@
-// src/services/api.js - UPDATED: Yeni endpointlər və genişləndirilmiş funksionallıq
+// src/services/api.js - UPDATED: Job Titles endpoint-ləri əlavə edilib
 import axios from "axios";
 
 // Base URL
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Axios instance
 const api = axios.create({
@@ -152,7 +152,7 @@ api.interceptors.response.use(
   }
 );
 
-// Enhanced query parameters helper - Multiple Sorting və Advanced Filtering dəstəyi
+// Enhanced query parameters helper
 const buildQueryParams = (params = {}) => {
   const searchParams = new URLSearchParams();
   
@@ -160,9 +160,7 @@ const buildQueryParams = (params = {}) => {
     const value = params[key];
     if (value !== undefined && value !== null && value !== '') {
       if (Array.isArray(value)) {
-        // Handle arrays - for multiple selections and sorting
         if (key === 'ordering' || key === 'sort') {
-          // Special handling for sorting arrays
           if (value.length > 0) {
             const sortString = value.map(sortObj => {
               if (typeof sortObj === 'object' && sortObj.field && sortObj.direction) {
@@ -173,11 +171,9 @@ const buildQueryParams = (params = {}) => {
             searchParams.append('ordering', sortString);
           }
         } else {
-          // Regular array handling for filters
           searchParams.append(key, value.join(','));
         }
       } else if (typeof value === 'object') {
-        // Handle objects (like date ranges)
         if (value.from && value.to) {
           searchParams.append(`${key}_from`, value.from);
           searchParams.append(`${key}_to`, value.to);
@@ -185,7 +181,6 @@ const buildQueryParams = (params = {}) => {
           searchParams.append(`${key}_min`, value.min);
           searchParams.append(`${key}_max`, value.max);
         } else {
-          // Other object types, serialize as JSON
           searchParams.append(key, JSON.stringify(value));
         }
       } else {
@@ -221,7 +216,7 @@ const handleFileDownload = async (response, filename) => {
   }
 };
 
-// API Service - Backend endpointlərinə uyğun və yenilənmiş
+// API Service
 export const apiService = {
   // ========================================
   // AUTH ENDPOINTS
@@ -279,6 +274,18 @@ export const apiService = {
   deleteJobFunction: (id) => api.delete(`/job-functions/${id}/`),
 
   // ========================================
+  // JOB TITLES (NEW)
+  // ========================================
+  getJobTitles: (params = {}) => {
+    const queryString = buildQueryParams(params);
+    return api.get(`/job-titles/?${queryString}`);
+  },
+  getJobTitle: (id) => api.get(`/job-titles/${id}/`),
+  createJobTitle: (data) => api.post("/job-titles/", data),
+  updateJobTitle: (id, data) => api.put(`/job-titles/${id}/`, data),
+  deleteJobTitle: (id) => api.delete(`/job-titles/${id}/`),
+
+  // ========================================
   // POSITION GROUPS
   // ========================================
   getPositionGroups: (params = {}) => {
@@ -329,7 +336,7 @@ export const apiService = {
   deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
 
   // ========================================
-  // EMPLOYEES - Enhanced with comprehensive filtering and sorting
+  // EMPLOYEES
   // ========================================
   getEmployees: (params = {}) => {
     const queryString = buildQueryParams(params);
@@ -355,29 +362,19 @@ export const apiService = {
     }
     return api.put(`/employees/${id}/`, data);
   },
-  
 
-
-  // Employee Activities
   getEmployeeActivities: (employeeId) => {
     return api.get(`/employees/${employeeId}/`).then(response => ({
       data: response.data.activities || []
     }));
   },
 
-  // Employee Direct Reports
   getEmployeeDirectReports: (employeeId) => api.get(`/employees/${employeeId}/direct_reports/`),
-
-  // Employee Status Preview
   getEmployeeStatusPreview: (employeeId) => api.get(`/employees/${employeeId}/status_preview/`),
-
-  // Employee Statistics
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
 
-
-
   // ========================================
-  // ORG CHART VISIBILITY - YENİ ENDPOİNTLƏR
+  // ORG CHART VISIBILITY
   // ========================================
   toggleOrgChartVisibility: (employeeId) => api.post("/employees/toggle-org-chart-visibility/", {
     employee_id: employeeId
@@ -425,162 +422,124 @@ export const apiService = {
   // ========================================
   // EXPORT & TEMPLATE
   // ========================================
-
-// API service düzəliş - api.js exportEmployees function
-exportEmployees: async (format = 'excel', params = {}) => {
-  try {
-    console.log('🚀 API EXPORT START:');
-    console.log('   Format:', format);
-    console.log('   Params:', params);
-    
-    // Backend API format
-    const payload = {};
-    
-    // Export format setting
-    payload.export_format = format === 'csv' ? 'csv' : 'excel';
-    
-    // CRITICAL: Employee IDs - ensure integers
-    if (params.employee_ids && Array.isArray(params.employee_ids) && params.employee_ids.length > 0) {
-      // Convert to integers and filter out invalid values
-      const validIds = params.employee_ids
-        .map(id => {
-          if (typeof id === 'string') return parseInt(id, 10);
-          if (typeof id === 'number') return id;
-          return null;
-        })
-        .filter(id => id !== null && id > 0);
+  exportEmployees: async (format = 'excel', params = {}) => {
+    try {
+      const payload = {};
+      payload.export_format = format === 'csv' ? 'csv' : 'excel';
       
-      if (validIds.length > 0) {
-        payload.employee_ids = validIds;
-        console.log('📋 Employee IDs to export:', validIds);
-      } else {
-        console.warn('⚠️ No valid employee IDs found');
+      if (params.employee_ids && Array.isArray(params.employee_ids) && params.employee_ids.length > 0) {
+        const validIds = params.employee_ids
+          .map(id => {
+            if (typeof id === 'string') return parseInt(id, 10);
+            if (typeof id === 'number') return id;
+            return null;
+          })
+          .filter(id => id !== null && id > 0);
+        
+        if (validIds.length > 0) {
+          payload.employee_ids = validIds;
+        }
       }
-    }
-    
-    // CRITICAL: Include fields - ensure clean array
-    if (params.include_fields && Array.isArray(params.include_fields) && params.include_fields.length > 0) {
-      // Clean and validate fields
-      const validFields = params.include_fields
-        .filter(field => field && typeof field === 'string' && field.trim())
-        .map(field => field.trim());
       
-      if (validFields.length > 0) {
-        payload.include_fields = validFields;
-        console.log('📊 Fields to include:', validFields);
-      } else {
-        console.warn('⚠️ No valid fields found');
+      if (params.include_fields && Array.isArray(params.include_fields) && params.include_fields.length > 0) {
+        const validFields = params.include_fields
+          .filter(field => field && typeof field === 'string' && field.trim())
+          .map(field => field.trim());
+        
+        if (validFields.length > 0) {
+          payload.include_fields = validFields;
+        }
       }
-    }
-    
-    // Query parameters for filtered export
-    let queryParams = {};
-    if (params._filterParams && typeof params._filterParams === 'object') {
-      queryParams = { ...params._filterParams };
-      delete queryParams.page;
-      delete queryParams.page_size;
-   
-    }
-    
-    // Build query string
-    const queryString = buildQueryParams(queryParams);
-    const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
-    
-
-    
-    // Make request
-    const response = await api.post(endpoint, payload, {
-      responseType: 'blob',
-      timeout: 120000, // 2 minutes
-      headers: {
-        'Content-Type': 'application/json'
+      
+      let queryParams = {};
+      if (params._filterParams && typeof params._filterParams === 'object') {
+        queryParams = { ...params._filterParams };
+        delete queryParams.page;
+        delete queryParams.page_size;
       }
-    });
-    
-   
-    
-    // Handle file download
-    if (response && response.data && response.data.size > 0) {
-      const blob = new Blob([response.data], { 
-        type: format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      
+      const queryString = buildQueryParams(queryParams);
+      const endpoint = `/employees/export_selected/${queryString ? `?${queryString}` : ''}`;
+      
+      const response = await api.post(endpoint, payload, {
+        responseType: 'blob',
+        timeout: 120000,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      // Get filename
-      let filename = `employees_export_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
-      
-      const contentDisposition = response.headers?.['content-disposition'];
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
-      
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-
-      return {
-        success: true,
-        filename: filename,
-        format: format,
-        employeeCount: payload.employee_ids?.length || 'filtered/all',
-        fieldsCount: payload.include_fields?.length || 'default'
-      };
-    } else {
-      throw new Error('No data received from server');
-    }
-    
-  } catch (error) {
-    console.error('❌ Export failed:', error);
-    
-    let errorMessage = 'Export failed. Please try again.';
-    
-    if (error.response) {
-      console.error('Server response error:', error.response.status, error.response.data);
-      
-      if (error.response.data && typeof error.response.data === 'object') {
-        if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.response.data.detail) {
-          errorMessage = error.response.data.detail;
-        }
-      }
-      
-      switch (error.response.status) {
-        case 400:
-          if (!errorMessage.includes('Invalid') && !errorMessage.includes('field')) {
-            errorMessage = 'Bad Request: Please check your selection and try again.';
+      if (response && response.data && response.data.size > 0) {
+        const blob = new Blob([response.data], { 
+          type: format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        let filename = `employees_export_${new Date().toISOString().split('T')[0]}.${format === 'csv' ? 'csv' : 'xlsx'}`;
+        
+        const contentDisposition = response.headers?.['content-disposition'];
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+          if (filenameMatch && filenameMatch[1]) {
+            filename = filenameMatch[1].replace(/['"]/g, '');
           }
-          break;
-        case 401:
-          errorMessage = 'Unauthorized: Please log in again.';
-          break;
-        case 403:
-          errorMessage = 'Forbidden: No permission to export.';
-          break;
-        case 500:
-          errorMessage = 'Server Error: Please try again later.';
-          break;
+        }
+        
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        return {
+          success: true,
+          filename: filename,
+          format: format,
+          employeeCount: payload.employee_ids?.length || 'filtered/all',
+          fieldsCount: payload.include_fields?.length || 'default'
+        };
+      } else {
+        throw new Error('No data received from server');
       }
+      
+    } catch (error) {
+      console.error('❌ Export failed:', error);
+      
+      let errorMessage = 'Export failed. Please try again.';
+      
+      if (error.response) {
+        if (error.response.data && typeof error.response.data === 'object') {
+          if (error.response.data.error) {
+            errorMessage = error.response.data.error;
+          } else if (error.response.data.detail) {
+            errorMessage = error.response.data.detail;
+          }
+        }
+        
+        switch (error.response.status) {
+          case 400:
+            if (!errorMessage.includes('Invalid') && !errorMessage.includes('field')) {
+              errorMessage = 'Bad Request: Please check your selection and try again.';
+            }
+            break;
+          case 401:
+            errorMessage = 'Unauthorized: Please log in again.';
+            break;
+          case 403:
+            errorMessage = 'Forbidden: No permission to export.';
+            break;
+          case 500:
+            errorMessage = 'Server Error: Please try again later.';
+            break;
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
-    
-    throw new Error(errorMessage);
-  }
-},
-
-// ============================================
-// HELPER: buildQueryParams function
-// ============================================
-
-
+  },
 
   downloadEmployeeTemplate: async () => {
     try {
@@ -621,8 +580,6 @@ exportEmployees: async (format = 'excel', params = {}) => {
   getEmployeeGrading: () => api.get("/employee-grading/"),
   bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
 
- 
-
   // ========================================
   // PROFILE IMAGES
   // ========================================
@@ -639,20 +596,14 @@ exportEmployees: async (format = 'excel', params = {}) => {
   deleteProfileImage: (employeeId) => api.post("/profile-images/delete/", { employee_id: employeeId }),
 
   // ========================================
-  // ADVANCED SEARCH & FILTERING METHODS - YENİ
+  // ADVANCED SEARCH & FILTERING
   // ========================================
-  
-  // Comprehensive employee search with all filter options
   searchEmployeesAdvanced: (searchParams = {}) => {
-    // Process advanced search parameters
     const processedParams = {
-      // Text-based searches
       search: searchParams.search,
       employee_search: searchParams.employee_search,
       line_manager_search: searchParams.line_manager_search,
       job_title_search: searchParams.job_title_search,
-      
-      // Multi-select filters
       business_function: searchParams.business_function,
       department: searchParams.department,
       unit: searchParams.unit,
@@ -664,30 +615,18 @@ exportEmployees: async (format = 'excel', params = {}) => {
       line_manager: searchParams.line_manager,
       tags: searchParams.tags,
       gender: searchParams.gender,
-      
-      // Date ranges
       start_date_from: searchParams.start_date_range?.from,
       start_date_to: searchParams.start_date_range?.to,
       contract_end_date_from: searchParams.contract_end_date_range?.from,
       contract_end_date_to: searchParams.contract_end_date_range?.to,
-      
-      // Numeric ranges
       years_of_service_min: searchParams.years_of_service_range?.min,
       years_of_service_max: searchParams.years_of_service_range?.max,
-      
-      // Boolean filters
       is_active: searchParams.is_active,
       is_visible_in_org_chart: searchParams.is_visible_in_org_chart,
       is_deleted: searchParams.is_deleted,
-      
-      // Special filters
       status_needs_update: searchParams.status_needs_update,
       contract_expiring_days: searchParams.contract_expiring_days,
-      
-      // Sorting - Enhanced multiple sorting support
       ordering: searchParams.sorting || searchParams.ordering,
-      
-      // Pagination
       page: searchParams.page,
       page_size: searchParams.page_size
     };
@@ -695,7 +634,6 @@ exportEmployees: async (format = 'excel', params = {}) => {
     return apiService.getEmployees(processedParams);
   },
 
-  // Multiple sorting helper
   buildSortingParams: (sortingArray) => {
     if (!Array.isArray(sortingArray) || sortingArray.length === 0) {
       return '';
@@ -711,40 +649,18 @@ exportEmployees: async (format = 'excel', params = {}) => {
     }).filter(Boolean).join(',');
   },
 
-  // Filter presets
   applyFilterPreset: (presetName, additionalParams = {}) => {
     const presets = {
-      'active_employees': {
-        status: ['ACTIVE'],
-        is_active: true
-      },
-      'new_hires': {
-        years_of_service_range: { min: 0, max: 0.25 }
-      },
-      'probation_employees': {
-        status: ['PROBATION']
-      },
-      'onboarding_employees': {
-        status: ['ONBOARDING']
-      },
-      'on_leave': {
-        status: ['ON_LEAVE']
-      },
-      'no_line_manager': {
-        line_manager: null
-      },
-      'needs_grading': {
-        grading_level: []
-      },
-      'contract_ending_soon': {
-        contract_expiring_days: 30
-      },
-      'org_chart_visible': {
-        is_visible_in_org_chart: true
-      },
-      'org_chart_hidden': {
-        is_visible_in_org_chart: false
-      }
+      'active_employees': { status: ['ACTIVE'], is_active: true },
+      'new_hires': { years_of_service_range: { min: 0, max: 0.25 } },
+      'probation_employees': { status: ['PROBATION'] },
+      'onboarding_employees': { status: ['ONBOARDING'] },
+      'on_leave': { status: ['ON_LEAVE'] },
+      'no_line_manager': { line_manager: null },
+      'needs_grading': { grading_level: [] },
+      'contract_ending_soon': { contract_expiring_days: 30 },
+      'org_chart_visible': { is_visible_in_org_chart: true },
+      'org_chart_hidden': { is_visible_in_org_chart: false }
     };
 
     const presetParams = presets[presetName] || {};
@@ -752,7 +668,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
   },
 
   // ========================================
-  // UTILITY FUNCTIONS - Enhanced
+  // UTILITY FUNCTIONS
   // ========================================
   get: (endpoint, params = {}) => {
     const queryString = buildQueryParams(params);
@@ -802,12 +718,11 @@ exportEmployees: async (format = 'excel', params = {}) => {
   },
 
   // ========================================
-  // BATCH OPERATIONS - Enhanced
+  // BATCH OPERATIONS
   // ========================================
   batchOperation: async (operation, employeeIds, data = {}) => {
     const operations = {
       'delete': () => apiService.softDeleteEmployees(employeeIds),
-    
       'add_tag': (tagId) => apiService.bulkAddTags(employeeIds, tagId),
       'remove_tag': (tagId) => apiService.bulkRemoveTags(employeeIds, tagId),
       'assign_manager': (managerId) => apiService.bulkAssignLineManager({
