@@ -272,14 +272,18 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 </div>
                 
                 {/* Expand/Collapse Button */}
-                {hasChildren && !isVacant && (
+                {hasChildren && (
                     <button
                         onClick={handleToggleExpanded}
                         className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-40 w-7 h-7 rounded-full text-white flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-lg hover:shadow-xl ring-3 ring-white"
                         style={{ 
-                            background: isExpanded 
-                                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
-                                : `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
+                            background: isVacant 
+                                ? (isExpanded 
+                                    ? 'linear-gradient(135deg, #991b1b 0%, #7f1d1d 100%)' 
+                                    : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)')
+                                : (isExpanded 
+                                    ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
+                                    : `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`),
                         }}
                         aria-label={isExpanded ? "Collapse node" : "Expand node"}
                     >
@@ -288,12 +292,15 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 )}
             </div>
             
-            {hasChildren && !isVacant && (
+            {hasChildren && (
                 <Handle 
                     type="source" 
                     position={Position.Bottom} 
                     className="!bg-almet-sapphire !border-2 !border-white !w-3 !h-3 !opacity-100"
-                    style={{ bottom: -6 }}
+                    style={{ 
+                        bottom: -6,
+                        background: isVacant ? 'linear-gradient(135deg, #ef4444, #dc2626)' : undefined
+                    }}
                 />
             )}
         </div>
