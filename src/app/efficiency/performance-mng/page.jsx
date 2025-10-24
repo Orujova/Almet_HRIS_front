@@ -3529,69 +3529,186 @@ export default function PerformanceManagementPage() {
       )}
 
       {/* 2. PERFORMANCE WEIGHTING */}
-      {activeSettingsTab === 'weights' && (
-        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border p-5`}>
-          <h3 className="text-sm font-semibold mb-4 pb-3 border-b text-almet-cloud-burst dark:text-almet-mystic">
-            Performance Weighting by Position Group
-          </h3>
+      {/* 2. PERFORMANCE WEIGHTING */}
+{activeSettingsTab === 'weights' && (
+  <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border p-5`}>
+    <div className="flex items-center justify-between mb-4 pb-3 border-b">
+      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-almet-mystic">
+        Performance Weighting by Position Group
+      </h3>
+      {/* 🆕 ADD BUTTON */}
+      <button
+        onClick={async () => {
+          if (positionGroups.length === 0) {
+            showNotif('No position groups available', 'error');
+            return;
+          }
           
-          <div className="space-y-3">
-            {settings.weightConfigs.map((weight, index) => (
-              <div key={weight.id} className={`p-3 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs mb-1.5 text-gray-600 dark:text-gray-400 font-medium">
-                      Position Group
-                    </label>
-                    <div className={`px-3 py-2 text-xs rounded ${darkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700'} font-medium`}>
-                      {weight.position_group_name}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs mb-1.5 text-gray-600 dark:text-gray-400">Objectives Weight %</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={weight.objectives_weight}
-                      onChange={(e) => {
-                        const newWeights = [...settings.weightConfigs];
-                        const objWeight = parseInt(e.target.value) || 0;
-                        newWeights[index].objectives_weight = objWeight;
-                        newWeights[index].competencies_weight = 100 - objWeight;
-                        setSettings(prev => ({ ...prev, weightConfigs: newWeights }));
-                      }}
-                      className={`w-full px-3 py-1.5 text-xs border rounded ${darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs mb-1.5 text-gray-600 dark:text-gray-400">Competencies Weight %</label>
-                    <input
-                      type="number"
-                      value={weight.competencies_weight}
-                      readOnly
-                      className={`w-full px-3 py-1.5 text-xs border rounded ${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-gray-100 border-gray-300'}`}
-                    />
-                  </div>
+          // Check if all position groups already have weights
+          const existingGroupIds = settings.weightConfigs.map(w => w.position_group);
+          const availableGroups = positionGroups.filter(pg => !existingGroupIds.includes(pg.id));
+          
+          if (availableGroups.length === 0) {
+            showNotif('All position groups already have weight configurations', 'info');
+            return;
+          }
+          
+          try {
+            setLoading(true);
+            await performanceApi.weightConfigs.create({
+              position_group: availableGroups[0].id,
+              objectives_weight: 70,
+              competencies_weight: 30,
+              is_active: true
+            });
+            await loadSettings();
+            showNotif('Weight configuration added successfully');
+          } catch (error) {
+            showNotif('Error adding weight configuration', 'error');
+          } finally {
+            setLoading(false);
+          }
+        }}
+        disabled={loading || positionGroups.length === 0}
+        className="px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded hover:bg-almet-astral flex items-center disabled:opacity-50"
+      >
+        <Plus className="w-3 h-3 mr-1" />
+        Add Weight Config
+      </button>
+    </div>
+    
+    <div className="space-y-3">
+      {settings.weightConfigs.map((weight, index) => (
+        <div key={weight.id} className={`p-3 rounded ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+            <div>
+              <label className="block text-xs mb-1.5 text-gray-600 dark:text-gray-400 font-medium">
+                Position Group
+              </label>
+              {/* 🆕 ƏGƏR YENİ YARADILIRSA, SELECT OLSUN */}
+              {weight.position_group_name ? (
+                <div className={`px-3 py-2 text-xs rounded ${darkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-700'} font-medium`}>
+                  {weight.position_group_name}
                 </div>
-              </div>
-            ))}
-          </div>
+              ) : (
+                <select
+                  value={weight.position_group}
+                  onChange={async (e) => {
+                    try {
+                      setLoading(true);
+                      await performanceApi.weightConfigs.update(weight.id, {
+                        ...weight,
+                        position_group: parseInt(e.target.value)
+                      });
+                      await loadSettings();
+                      showNotif('Position group updated');
+                    } catch (error) {
+                      showNotif('Error updating position group', 'error');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 text-xs border rounded ${darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+                >
+                  {positionGroups.map(pg => (
+                    <option key={pg.id} value={pg.id}>{pg.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-xs mb-1.5 text-gray-600 dark:text-gray-400">Objectives Weight %</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={weight.objectives_weight}
+                onChange={(e) => {
+                  const newWeights = [...settings.weightConfigs];
+                  const objWeight = parseInt(e.target.value) || 0;
+                  newWeights[index].objectives_weight = objWeight;
+                  newWeights[index].competencies_weight = 100 - objWeight;
+                  setSettings(prev => ({ ...prev, weightConfigs: newWeights }));
+                }}
+                onBlur={async () => {
+                  try {
+                    setLoading(true);
+                    await performanceApi.weightConfigs.update(weight.id, {
+                      ...weight,
+                      objectives_weight: weight.objectives_weight,
+                      competencies_weight: weight.competencies_weight
+                    });
+                    await loadSettings();
+                    showNotif('Weights updated');
+                  } catch (error) {
+                    showNotif('Error updating weights', 'error');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                className={`w-full px-3 py-1.5 text-xs border rounded ${darkMode ? 'bg-gray-600 border-gray-500 text-white' : 'bg-white border-gray-300'}`}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-xs mb-1.5 text-gray-600 dark:text-gray-400">Competencies Weight %</label>
+              <input
+                type="number"
+                value={weight.competencies_weight}
+                readOnly
+                className={`w-full px-3 py-1.5 text-xs border rounded ${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-gray-100 border-gray-300'}`}
+              />
+            </div>
 
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={handleSaveWeights}
-              disabled={loading}
-              className="px-4 py-1.5 text-xs bg-almet-sapphire text-white rounded hover:bg-almet-astral transition-colors flex items-center disabled:opacity-50"
-            >
-              {loading ? <Loader className="w-3 h-3 mr-1.5 animate-spin" /> : <Save className="w-3 h-3 mr-1.5" />}
-              Save Weights
-            </button>
+            {/* 🆕 DELETE BUTTON */}
+            <div>
+              <button
+                onClick={async () => {
+                  if (confirm('Delete this weight configuration?')) {
+                    try {
+                      setLoading(true);
+                      await performanceApi.weightConfigs.delete(weight.id);
+                      await loadSettings();
+                      showNotif('Weight configuration deleted');
+                    } catch (error) {
+                      showNotif('Error deleting weight configuration', 'error');
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }}
+                disabled={loading}
+                className="px-2 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 text-xs disabled:opacity-50"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
-      )}
+      ))}
+    </div>
+
+    {settings.weightConfigs.length === 0 && (
+      <div className="text-center py-8 text-gray-500 text-xs">
+        No weight configurations. Click "Add Weight Config" to create one.
+      </div>
+    )}
+
+    {/* 🆕 İNFO MESSAGE */}
+    {settings.weightConfigs.length > 0 && (
+      <div className={`mt-4 p-3 rounded text-xs ${darkMode ? 'bg-blue-900/20 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+        <div className="flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium mb-1">How it works:</p>
+            <p>Objectives Weight + Competencies Weight must equal 100%. Competencies Weight is automatically calculated.</p>
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
       {/* 3. GOAL LIMITS */}
       {activeSettingsTab === 'limits' && (
