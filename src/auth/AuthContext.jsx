@@ -42,6 +42,7 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+
   const getStorageItem = useCallback((key) => {
     try {
       return localStorage.getItem(key);
@@ -50,7 +51,43 @@ export function AuthProvider({ children }) {
       return null;
     }
   }, []);
+// ✅ Refresh Graph token before expiry
+const refreshGraphToken = useCallback(async (account) => {
+  if (!msalInstance || !account) return;
 
+  try {
+    const expiry = getStorageItem("graphTokenExpiry");
+    const now = new Date();
+
+    if (!expiry || new Date(expiry) <= now) {
+      console.log("🔄 Graph token expired, refreshing...");
+
+      const graphTokenResponse = await msalInstance.acquireTokenSilent({
+        ...graphRequest,
+        account,
+      });
+
+      setStorageItem("graphAccessToken", graphTokenResponse.accessToken);
+      const newExpiry = new Date(Date.now() + 3600 * 1000).toISOString();
+      setStorageItem("graphTokenExpiry", newExpiry);
+
+      console.log("✅ Graph token refreshed successfully");
+    } else {
+      console.log("🕒 Graph token still valid");
+    }
+  } catch (error) {
+    console.error("❌ Failed to refresh Graph token:", error);
+  }
+}, [msalInstance, getStorageItem, setStorageItem]);
+useEffect(() => {
+  if (!account || !msalInstance) return;
+
+  const interval = setInterval(() => {
+    refreshGraphToken(account);
+  }, 10 * 60 * 1000); // hər 10 dəqiqədən bir yoxla
+
+  return () => clearInterval(interval);
+}, [account, msalInstance, refreshGraphToken]);
   const removeStorageItem = useCallback((key) => {
     try {
       localStorage.removeItem(key);

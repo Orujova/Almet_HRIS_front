@@ -280,7 +280,10 @@ const HierarchicalMultiSelect = ({
                           </button>
                         )}
                         
-                        <div className="flex-shrink-0 relative">
+                        <div 
+                          className="flex-shrink-0 relative"
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <input
                             type="checkbox"
                             checked={parentChecked}
@@ -294,10 +297,7 @@ const HierarchicalMultiSelect = ({
                           />
                         </div>
 
-                        <div 
-                          className="flex-1 min-w-0"
-                          onClick={() => handleParentToggle(parent)}
-                        >
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className={`text-[11px] font-semibold ${textPrimary} truncate`}>
                               {parent.name}
@@ -400,5 +400,5 @@ const HierarchicalMultiSelect = ({
     </div>
   );
 };
-
-export default HierarchicalMultiSelect;
+ 
+export default HierarchicalMultiSelect
