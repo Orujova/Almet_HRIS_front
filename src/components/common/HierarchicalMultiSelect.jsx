@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -8,7 +8,6 @@ import {
   Package
 } from 'lucide-react';
 
-// HierarchicalMultiSelect Component
 const HierarchicalMultiSelect = ({
   title,
   icon: Icon = Package,
@@ -24,7 +23,7 @@ const HierarchicalMultiSelect = ({
   const [expandedParents, setExpandedParents] = useState(new Set());
   const dropdownRef = React.useRef(null);
 
-  // Theme classes - Almet color palette
+  // Theme classes
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
   const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
@@ -34,7 +33,7 @@ const HierarchicalMultiSelect = ({
   const bgHover = darkMode ? "bg-gray-600" : "bg-almet-mystic";
 
   // Close dropdown when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -49,9 +48,7 @@ const HierarchicalMultiSelect = ({
 
   // Filter data based on search
   const filteredData = React.useMemo(() => {
-    if (!searchTerm.trim()) {
-      return data;
-    }
+    if (!searchTerm.trim()) return data;
 
     const term = searchTerm.toLowerCase();
     return data.filter(parent => {
@@ -65,10 +62,8 @@ const HierarchicalMultiSelect = ({
   }, [searchTerm, data]);
 
   // Auto-expand parents with matching children
-  React.useEffect(() => {
-    if (!searchTerm.trim()) {
-      return;
-    }
+  useEffect(() => {
+    if (!searchTerm.trim()) return;
 
     const term = searchTerm.toLowerCase();
     const newExpanded = new Set();
@@ -88,9 +83,7 @@ const HierarchicalMultiSelect = ({
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
-    if (!isOpen) {
-      setSearchTerm('');
-    }
+    if (!isOpen) setSearchTerm('');
   };
 
   const toggleParentExpansion = (parentId) => {
@@ -105,96 +98,89 @@ const HierarchicalMultiSelect = ({
     });
   };
 
-  const isItemSelected = (itemId) => {
-    return selectedIds.includes(String(itemId)) || selectedIds.includes(itemId);
+  // Check if an ID is selected (normalize to string for comparison)
+  const isIdSelected = (id) => {
+    const strId = String(id);
+    return selectedIds.some(selectedId => String(selectedId) === strId);
   };
 
-  const isParentSelected = (parent) => {
-    // Parent is selected if its own ID is in the selection
-    return isItemSelected(parent.id);
-  };
-
+  // Get count of selected children
   const getSelectedChildCount = (parent) => {
     if (!parent.items?.length) return 0;
-    
-    // If parent is selected, all children are implicitly selected
-    if (isItemSelected(parent.id)) return parent.items.length;
-    
-    // Otherwise count individually selected children
-    return parent.items.filter(item => isItemSelected(item.id)).length;
+    return parent.items.filter(item => isIdSelected(item.id)).length;
   };
 
+  // Check if parent checkbox should be checked (all children selected)
+  const isParentChecked = (parent) => {
+    if (!parent.items?.length) return false;
+    return parent.items.every(item => isIdSelected(item.id));
+  };
+
+  // Check if parent checkbox should be indeterminate (some children selected)
+  const isParentIndeterminate = (parent) => {
+    if (!parent.items?.length) return false;
+    const selectedCount = getSelectedChildCount(parent);
+    return selectedCount > 0 && selectedCount < parent.items.length;
+  };
+
+  // Handle parent checkbox toggle
   const handleParentToggle = (parent) => {
-    const parentId = String(parent.id);
-    const isSelected = isParentSelected(parent);
+    const childIds = (parent.items || []).map(item => String(item.id));
+    const allChildrenSelected = parent.items?.every(item => isIdSelected(item.id));
     
-    if (isSelected) {
-      // Remove parent and all its children
-      const childIds = parent.items?.map(item => String(item.id)) || [];
-      const idsToRemove = [parentId, ...childIds];
-      
+    console.log('🔘 Parent Toggle:', { 
+      parentId: parent.id, 
+      allChildrenSelected, 
+      childIds,
+      currentSelection: selectedIds 
+    });
+
+    if (allChildrenSelected) {
+      // Remove all children
       const newSelection = selectedIds.filter(id => 
-        !idsToRemove.includes(String(id))
+        !childIds.includes(String(id))
       );
+      console.log('➖ Removing all children:', newSelection);
       onChange(newSelection);
     } else {
-      // Add only the parent ID, not the children
-      // Also remove any individually selected children
-      const childIds = parent.items?.map(item => String(item.id)) || [];
-      const newSelection = [
-        ...selectedIds.filter(id => !childIds.includes(String(id)) && String(id) !== parentId),
-        parentId
-      ];
+      // Add all children that aren't already selected
+      const newSelection = [...selectedIds];
+      childIds.forEach(childId => {
+        if (!isIdSelected(childId)) {
+          newSelection.push(childId);
+        }
+      });
+      console.log('➕ Adding all children:', newSelection);
       onChange(newSelection);
     }
   };
 
-  const handleChildToggle = (child, parent) => {
+  // Handle child checkbox toggle
+  const handleChildToggle = (child) => {
     const childId = String(child.id);
-    const parentId = String(parent.id);
-    const isSelected = isItemSelected(childId);
-    const parentSelected = isItemSelected(parentId);
+    const isSelected = isIdSelected(child.id);
     
-    if (parentSelected) {
-      // If parent is selected, unselect parent and select all other children
-      const otherChildren = parent.items
-        .filter(item => String(item.id) !== childId)
-        .map(item => String(item.id));
-      
-      const newSelection = [
-        ...selectedIds.filter(id => String(id) !== parentId),
-        ...otherChildren
-      ];
+    console.log('🔘 Child Toggle:', { 
+      childId, 
+      isSelected,
+      currentSelection: selectedIds 
+    });
+
+    if (isSelected) {
+      // Remove this child
+      const newSelection = selectedIds.filter(id => String(id) !== childId);
+      console.log('➖ Removing child:', newSelection);
       onChange(newSelection);
     } else {
-      // Normal toggle
-      if (isSelected) {
-        const newSelection = selectedIds.filter(id => String(id) !== childId);
-        onChange(newSelection);
-      } else {
-        const newSelection = [...selectedIds, childId];
-        
-        // Check if all children are now selected
-        const allChildrenSelected = parent.items.every(item => 
-          String(item.id) === childId || isItemSelected(item.id)
-        );
-        
-        if (allChildrenSelected) {
-          // Replace all children with parent
-          const childIds = parent.items.map(item => String(item.id));
-          const finalSelection = [
-            ...newSelection.filter(id => !childIds.includes(String(id))),
-            parentId
-          ];
-          onChange(finalSelection);
-        } else {
-          onChange(newSelection);
-        }
-      }
+      // Add this child
+      const newSelection = [...selectedIds, childId];
+      console.log('➕ Adding child:', newSelection);
+      onChange(newSelection);
     }
   };
 
   const handleClearAll = () => {
+    console.log('🗑️ Clearing all selections');
     onChange([]);
   };
 
@@ -204,12 +190,7 @@ const HierarchicalMultiSelect = ({
     if (selectedCount === 0) {
       return `Select ${title}`;
     }
-    return `${selectedCount} ${title} Selected`;
-  };
-
-  const isChildSelected = (child, parent) => {
-    // Child is selected if parent is selected OR if child itself is selected
-    return isItemSelected(parent.id) || isItemSelected(child.id);
+    return `${selectedCount} Selected`;
   };
 
   return (
@@ -219,7 +200,7 @@ const HierarchicalMultiSelect = ({
         onClick={toggleDropdown}
         className={`w-full flex items-center justify-between px-3.5 py-2 text-xs border ${borderColor} 
           rounded-md ${bgCard} ${textPrimary} hover:${bgHover} transition-all duration-200 focus:outline-none 
-           focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire shadow-sm`}
+          focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire shadow-sm`}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Icon size={14} className="flex-shrink-0 text-almet-sapphire" />
@@ -249,7 +230,7 @@ const HierarchicalMultiSelect = ({
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder={searchPlaceholder}
                 className={`w-full pl-8 pr-7 py-1.5 text-[11px] border ${borderColor} rounded ${bgCard} ${textPrimary} 
-                 placeholder:${textMuted} focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire transition-all`}
+                  placeholder:${textMuted} focus:outline-none focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire transition-all`}
               />
               {searchTerm && (
                 <button
@@ -268,15 +249,16 @@ const HierarchicalMultiSelect = ({
                 {filteredData.map(parent => {
                   const isExpanded = expandedParents.has(parent.id);
                   const hasChildren = parent.items?.length > 0;
-                  const parentSelected = isParentSelected(parent);
+                  const parentChecked = isParentChecked(parent);
+                  const parentIndeterminate = isParentIndeterminate(parent);
                   const selectedChildCount = getSelectedChildCount(parent);
 
                   return (
                     <div key={parent.id} className={`border ${borderColor} rounded overflow-hidden transition-all`}>
                       <div 
                         className={`flex items-center gap-2 p-2 cursor-pointer transition-all duration-150 ${
-                          parentSelected 
-                             ? 'bg-almet-sapphire/5 border-l-2 border-l-almet-sapphire' 
+                          parentChecked || parentIndeterminate
+                            ? 'bg-almet-sapphire/5 border-l-2 border-l-almet-sapphire' 
                             : `${bgAccent} hover:bg-opacity-50`
                         }`}
                       >
@@ -292,12 +274,17 @@ const HierarchicalMultiSelect = ({
                           </button>
                         )}
                         
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 relative">
                           <input
                             type="checkbox"
-                            checked={parentSelected}
+                            checked={parentChecked}
+                            ref={(input) => {
+                              if (input) {
+                                input.indeterminate = parentIndeterminate;
+                              }
+                            }}
                             onChange={() => handleParentToggle(parent)}
-                           className="w-3.5 h-3.5 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
+                            className="w-3.5 h-3.5 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
                           />
                         </div>
 
@@ -322,32 +309,32 @@ const HierarchicalMultiSelect = ({
                           )}
                         </div>
 
-                        {parentSelected && (
-                           <Check size={13} className="text-almet-sapphire flex-shrink-0" />
+                        {parentChecked && (
+                          <Check size={13} className="text-almet-sapphire flex-shrink-0" />
                         )}
                       </div>
 
                       {isExpanded && hasChildren && (
                         <div className={`border-t ${borderColor} ${bgAccent} p-1.5 space-y-0.5`}>
                           {parent.items.map(child => {
-                            const childSelected = isChildSelected(child, parent);
+                            const childSelected = isIdSelected(child.id);
 
                             return (
                               <div
                                 key={child.id}
                                 className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-all duration-150 ${
                                   childSelected 
-                                      ? 'bg-almet-sapphire/5 border border-almet-sapphire/20' 
+                                    ? 'bg-almet-sapphire/5 border border-almet-sapphire/20' 
                                     : `${bgCard} hover:${bgHover}`
                                 }`}
-                                onClick={() => handleChildToggle(child, parent)}
+                                onClick={() => handleChildToggle(child)}
                               >
                                 <div className="ml-5 flex-shrink-0">
                                   <input
                                     type="checkbox"
                                     checked={childSelected}
-                                    onChange={() => handleChildToggle(child, parent)}
-                                      className="w-3 h-3 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
+                                    onChange={() => handleChildToggle(child)}
+                                    className="w-3 h-3 text-almet-sapphire border-almet-bali-hai rounded focus:ring-almet-sapphire cursor-pointer accent-almet-sapphire"
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                 </div>
@@ -361,11 +348,6 @@ const HierarchicalMultiSelect = ({
                                   {child.description && (
                                     <p className={`text-[10px] ${textMuted} truncate mt-0.5`}>
                                       {child.description}
-                                    </p>
-                                  )}
-                                  {child.full_path && (
-                                    <p className={`text-[9px] ${textMuted} truncate mt-0.5 font-mono`}>
-                                      {child.full_path}
                                     </p>
                                   )}
                                 </div>

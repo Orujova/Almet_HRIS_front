@@ -1,4 +1,4 @@
-// components/jobDescription/WorkConditionsTab.jsx - FIXED: Data loading
+// components/jobDescription/WorkConditionsTab.jsx - COMPLETE FIXED VERSION
 import React, { useEffect } from 'react';
 import { Package, Shield, Gift } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
@@ -14,15 +14,15 @@ const WorkConditionsTab = ({
   // Debug: Log incoming data
   useEffect(() => {
     console.log('📦 WorkConditionsTab - dropdownData:', {
-      businessResources: dropdownData?.businessResources,
-      accessMatrix: dropdownData?.accessMatrix,
-      companyBenefits: dropdownData?.companyBenefits
+      businessResources: dropdownData?.businessResources?.length || 0,
+      accessMatrix: dropdownData?.accessMatrix?.length || 0,
+      companyBenefits: dropdownData?.companyBenefits?.length || 0
     });
 
     console.log('📝 WorkConditionsTab - formData:', {
-      business_resources_ids: formData?.business_resources_ids,
-      access_rights_ids: formData?.access_rights_ids,
-      company_benefits_ids: formData?.company_benefits_ids
+      business_resources_ids: formData?.business_resources_ids?.length || 0,
+      access_rights_ids: formData?.access_rights_ids?.length || 0,
+      company_benefits_ids: formData?.company_benefits_ids?.length || 0
     });
   }, [dropdownData, formData]);
 
@@ -79,8 +79,7 @@ const WorkConditionsTab = ({
 
   return (
     <div className="space-y-6">
-    
-
+     
 
       {/* Three Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -99,6 +98,9 @@ const WorkConditionsTab = ({
             emptyMessage="No business resources available"
             darkMode={darkMode}
           />
+          <p className={`mt-2 text-xs ${textSecondary}`}>
+            {selectedResourceIds.length} item(s) selected
+          </p>
         </div>
 
         {/* Access Rights */}
@@ -116,6 +118,9 @@ const WorkConditionsTab = ({
             emptyMessage="No access rights available"
             darkMode={darkMode}
           />
+          <p className={`mt-2 text-xs ${textSecondary}`}>
+            {selectedAccessIds.length} item(s) selected
+          </p>
         </div>
 
         {/* Company Benefits */}
@@ -133,8 +138,13 @@ const WorkConditionsTab = ({
             emptyMessage="No company benefits available"
             darkMode={darkMode}
           />
+          <p className={`mt-2 text-xs ${textSecondary}`}>
+            {selectedBenefitIds.length} item(s) selected
+          </p>
         </div>
       </div>
+
+   
     </div>
   );
 };

@@ -4,14 +4,13 @@ import {
     ChevronDown, ChevronRight, Users, Building2, Award, User, Search, Phone, Mail, MapPin,
     Briefcase, Crown, Target, Layers, Filter, TreePine, Maximize2, Minimize2, Plus, Minus,
     ZoomIn, ZoomOut, RotateCcw, X, Grid, UsersRound, Archive, Puzzle, Info, Download,
-    ArrowUp, ArrowDown, Expand, Shrink, RefreshCw, Settings
+    ArrowUp, ArrowDown, Expand, Shrink, RefreshCw, Settings, AlertCircle, XCircle
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { useOrgChart } from '@/hooks/useOrgChart';
 import Select from 'react-select';
 import html2canvas from 'html2canvas';
-// React Flow imports
 import ReactFlow, {
     Controls,
     Background,
@@ -19,7 +18,6 @@ import ReactFlow, {
     useEdgesState,
     ConnectionMode,
     Panel,
-   
     Handle,
     Position,
     useReactFlow,
@@ -28,11 +26,9 @@ import ReactFlow, {
     getTransformForBounds
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-
-// Dagre for automatic layout
 import dagre from 'dagre';
 
-// Clean employee data utility to prevent circular references
+// Clean employee data utility
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
     
@@ -52,6 +48,7 @@ const cleanEmployeeData = (employee) => {
         profile_image_url: employee.profile_image_url,
         avatar: employee.avatar,
         status_color: employee.status_color,
+        vacant: employee.vacant || employee.name?.toLowerCase().includes('vacant') || employee.title?.toLowerCase().includes('vacant'),
         employee_details: employee.employee_details ? {
             grading_display: employee.employee_details.grading_display,
             tags: employee.employee_details.tags
@@ -59,19 +56,19 @@ const cleanEmployeeData = (employee) => {
     };
 };
 
-// Enhanced EmployeeNode component
+// Enhanced EmployeeNode component with vacant styling
 const EmployeeNode = React.memo(({ data, id }) => {
     const employee = data.employee;
     const directReports = employee.direct_reports || 0;
     const hasChildren = directReports > 0;
     const isExpanded = data.isExpanded;
+    const isVacant = employee.vacant;
     
     const handleToggleExpanded = useCallback((e) => {
         e.stopPropagation();
         e.preventDefault();
-       
         data.onToggleExpanded(employee.employee_id);
-    }, [employee.employee_id, isExpanded, data.onToggleExpanded]);
+    }, [employee.employee_id, data.onToggleExpanded]);
     
     const handleSelectEmployee = useCallback((e) => {
         e.stopPropagation();
@@ -98,7 +95,15 @@ const EmployeeNode = React.memo(({ data, id }) => {
         'Vice Chairman': { primary: '#2346A8', bg: 'rgba(35, 70, 168, 0.1)', badge: '#253360' }
     };
 
-    const colors = hierarchyColors[employee.position_group] || hierarchyColors['SPECIALIST'];
+    // Vacant position colors
+    const vacantColors = {
+        primary: '#dc2626',
+        bg: 'rgba(220, 38, 38, 0.05)',
+        badge: '#991b1b',
+        border: '#ef4444'
+    };
+
+    const colors = isVacant ? vacantColors : (hierarchyColors[employee.position_group] || hierarchyColors['SPECIALIST']);
     
     const Avatar = ({ employee, size = 'sm' }) => {
         const sizes = {
@@ -108,6 +113,20 @@ const EmployeeNode = React.memo(({ data, id }) => {
         };
 
         if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
+        
+        // Vacant position avatar
+        if (isVacant) {
+            return (
+                <div 
+                    className={`${sizes[size]} rounded-xl flex items-center justify-center font-bold text-white relative flex-shrink-0 ring-2 ring-red-300 shadow-lg`}
+                    style={{ 
+                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                    }}
+                >
+                    <AlertCircle className="w-5 h-5" />
+                </div>
+            );
+        }
         
         if (employee.profile_image_url) {
             return (
@@ -135,7 +154,6 @@ const EmployeeNode = React.memo(({ data, id }) => {
 
     return (
         <div className="relative">
-            {/* Input handle for parent connections */}
             <Handle 
                 type="target" 
                 position={Position.Top} 
@@ -144,24 +162,48 @@ const EmployeeNode = React.memo(({ data, id }) => {
             />
             
             <div 
-                className="bg-white dark:bg-slate-800 border-2 rounded-xl shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-105 w-[280px] min-h-[140px]"
-                style={{ borderColor: colors.primary }}
+                className={`bg-white dark:bg-slate-800 rounded-xl shadow-lg transition-all duration-300 cursor-pointer hover:shadow-xl hover:scale-105 w-[280px] min-h-[140px] ${
+                    isVacant 
+                        ? 'border-3 border-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse-border' 
+                        : 'border-2'
+                }`}
+                style={{ 
+                    borderColor: isVacant ? '#ef4444' : colors.primary,
+                    borderWidth: isVacant ? '3px' : '2px'
+                }}
                 onClick={handleSelectEmployee}
             >
+                {/* Vacant Badge */}
+                {isVacant && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                        <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-bounce">
+                            <AlertCircle className="w-3 h-3" />
+                            VACANT
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="p-4 pb-2">
                     <div className="flex items-start gap-3">
                         <Avatar employee={employee} size="sm" />
                         <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight mb-1">
-                                {employee.name || 'Unknown Employee'}
+                            <h3 className={`font-bold text-sm leading-tight mb-1 ${
+                                isVacant 
+                                    ? 'text-red-700 dark:text-red-400' 
+                                    : 'text-gray-900 dark:text-gray-100'
+                            }`}>
+                                {employee.name || 'Vacant Position'}
                             </h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-xs leading-relaxed line-clamp-2">
+                            <p className={`text-xs leading-relaxed line-clamp-2 ${
+                                isVacant 
+                                    ? 'text-red-600 dark:text-red-300 italic' 
+                                    : 'text-gray-500 dark:text-gray-400'
+                            }`}>
                                 {employee.title || 'No Title'}
                             </p>
                         </div>
-                        {/* Navigate to Manager Button */}
-                        {employee.line_manager_id && (
+                        {employee.line_manager_id && !isVacant && (
                             <button
                                 onClick={handleNavigateToManager}
                                 className="p-1 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
@@ -178,15 +220,19 @@ const EmployeeNode = React.memo(({ data, id }) => {
                     {employee.employee_details?.grading_display && (
                         <span 
                             className="inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white"
-                            style={{ backgroundColor: colors.badge }}
+                            style={{ backgroundColor: isVacant ? '#dc2626' : colors.badge }}
                         >
                             {employee.employee_details.grading_display}
                         </span>
                     )}
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-almet-mystic dark:bg-slate-700 text-almet-cloud-burst dark:text-gray-200">
+                    <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${
+                        isVacant 
+                            ? 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200 border border-red-300' 
+                            : 'bg-almet-mystic dark:bg-slate-700 text-almet-cloud-burst dark:text-gray-200'
+                    }`}>
                         {employee.department || 'No Department'}
                     </span>
-                    {employee.status_color && (
+                    {employee.status_color && !isVacant && (
                         <div 
                             className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: employee.status_color }}
@@ -196,15 +242,28 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 </div>
 
                 {/* Details */}
-                <div className="px-4 pb-4 border-t border-gray-200 dark:border-slate-600 pt-2 space-y-1">
+                <div className={`px-4 pb-4 border-t pt-2 space-y-1 ${
+                    isVacant 
+                        ? 'border-red-200 dark:border-red-700' 
+                        : 'border-gray-200 dark:border-slate-600'
+                }`}>
                     {employee.unit && (
-                        <div className="flex items-center text-gray-500 dark:text-gray-400 text-xs">
+                        <div className={`flex items-center text-xs ${
+                            isVacant 
+                                ? 'text-red-600 dark:text-red-400' 
+                                : 'text-gray-500 dark:text-gray-400'
+                        }`}>
                             <Layers className="w-3 h-3 mr-2 flex-shrink-0" />
                             <span className="font-medium truncate">{employee.unit}</span>
                         </div>
                     )}
                     
-                    {directReports > 0 && (
+                    {isVacant ? (
+                        <div className="flex items-center font-semibold text-xs text-red-600 dark:text-red-400">
+                            <XCircle className="w-3 h-3 mr-2 flex-shrink-0" />
+                            <span>Position Open</span>
+                        </div>
+                    ) : directReports > 0 && (
                         <div className="flex items-center font-semibold text-xs" style={{ color: colors.primary }}>
                             <Users className="w-3 h-3 mr-2 flex-shrink-0" />
                             <span>{directReports} Reports</span>
@@ -213,13 +272,13 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 </div>
                 
                 {/* Expand/Collapse Button */}
-                {hasChildren && (
+                {hasChildren && !isVacant && (
                     <button
                         onClick={handleToggleExpanded}
                         className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 z-40 w-7 h-7 rounded-full text-white flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-lg hover:shadow-xl ring-3 ring-white"
                         style={{ 
                             background: isExpanded 
-                                ? `linear-gradient(135deg, #ef4444 0%, #dc2626 100%)` 
+                                ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' 
                                 : `linear-gradient(135deg, ${colors.primary} 0%, ${colors.badge} 100%)`,
                         }}
                         aria-label={isExpanded ? "Collapse node" : "Expand node"}
@@ -229,8 +288,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
                 )}
             </div>
             
-            {/* Output handle for child connections */}
-            {hasChildren && (
+            {hasChildren && !isVacant && (
                 <Handle 
                     type="source" 
                     position={Position.Bottom} 
@@ -248,7 +306,6 @@ const OrgChart = () => {
     const { darkMode } = useTheme();
     const containerRef = useRef(null);
     
-    // Use the org chart hook
     const {
         orgChart,
         filteredOrgChart,
@@ -290,7 +347,6 @@ const OrgChart = () => {
         setExpandedNodes
     } = useOrgChart();
 
-    // Enhanced theme colors using Almet palette
     const bgApp = darkMode ? "bg-slate-900" : "bg-almet-mystic";
     const bgCard = darkMode ? "bg-slate-800" : "bg-white";
     const bgCardHover = darkMode ? "bg-slate-700" : "bg-gray-50";
@@ -301,10 +357,6 @@ const OrgChart = () => {
     const borderColor = darkMode ? "border-slate-600" : "border-gray-200";
     const bgAccent = darkMode ? "bg-slate-700" : "bg-almet-mystic";
 
-   
-  
-
-    // Custom select styles for dark mode
     const selectStyles = {
         control: (provided, state) => ({
             ...provided,
@@ -371,7 +423,6 @@ const OrgChart = () => {
         })
     };
 
-    // Enhanced Avatar Component
     const Avatar = ({ employee, size = 'md' }) => {
         const sizes = {
             sm: 'w-8 h-8 text-xs',
@@ -380,6 +431,21 @@ const OrgChart = () => {
         };
 
         if (!employee) return <div className={`${sizes[size]} rounded-xl bg-gray-300 animate-pulse`}></div>;
+        
+        const isVacant = employee.vacant;
+        
+        if (isVacant) {
+            return (
+                <div 
+                    className={`${sizes[size]} rounded-xl flex items-center justify-center font-bold text-white relative flex-shrink-0 ring-2 ring-red-300 shadow-lg`}
+                    style={{ 
+                        background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+                    }}
+                >
+                    <AlertCircle className="w-6 h-6" />
+                </div>
+            );
+        }
         
         if (employee.profile_image_url) {
             return (
@@ -421,7 +487,6 @@ const OrgChart = () => {
         );
     };
 
-    // Enhanced Dagre layout function
     const getLayoutedElements = useCallback((nodes, edges, direction = 'TB') => {
         const dagreGraph = new dagre.graphlib.Graph();
         dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -475,14 +540,12 @@ const OrgChart = () => {
         return { nodes: layoutedNodes, edges };
     }, []);
 
-    // Navigate to specific employee
     const navigateToEmployee = useCallback((employeeId) => {
         const employee = orgChart?.find(emp => emp.employee_id === employeeId);
         if (employee) {
             const cleanEmployee = cleanEmployeeData(employee);
             setSelectedEmployee(cleanEmployee);
             
-            // Ensure the employee's path is expanded
             const pathToEmployee = [];
             let current = employee;
             while (current && current.line_manager_id) {
@@ -490,23 +553,18 @@ const OrgChart = () => {
                 current = orgChart.find(emp => emp.employee_id === current.line_manager_id);
             }
             
-            // Expand all nodes in the path
             const newExpandedNodes = [...new Set([...expandedNodes, ...pathToEmployee])];
             setExpandedNodes(newExpandedNodes);
         }
     }, [orgChart, expandedNodes, setExpandedNodes, setSelectedEmployee]);
 
-    // Fixed hierarchy building with better expansion logic
     const buildOrgHierarchy = useCallback((employees, expandedNodeIds) => {
-       
-        
         if (!Array.isArray(employees) || employees.length === 0) {
             return { visibleNodes: [], edges: [] };
         }
 
         const cleanEmployees = employees.map(cleanEmployeeData).filter(Boolean);
         
-        // Create employee map for quick lookup
         const employeeMap = new Map();
         cleanEmployees.forEach(emp => {
             employeeMap.set(emp.employee_id, { 
@@ -516,7 +574,6 @@ const OrgChart = () => {
             });
         });
 
-        // Build parent-child relationships
         const rootEmployees = [];
         cleanEmployees.forEach(emp => {
             const managerId = emp.line_manager_id;
@@ -532,28 +589,21 @@ const OrgChart = () => {
             }
         });
 
-    
-
-        // Fallback strategies if no roots found
         if (rootEmployees.length === 0) {
             const maxReports = Math.max(...cleanEmployees.map(emp => emp.direct_reports || 0));
             if (maxReports > 0) {
                 const candidates = cleanEmployees.filter(emp => (emp.direct_reports || 0) === maxReports);
                 candidates.forEach(emp => rootEmployees.push(employeeMap.get(emp.employee_id)));
-                console.log('Fallback: Found roots by direct_reports:', rootEmployees.length);
             }
 
             if (rootEmployees.length === 0) {
                 cleanEmployees.slice(0, 3).forEach(emp => rootEmployees.push(employeeMap.get(emp.employee_id)));
-              
             }
         }
 
-        // Mark visible nodes based on expansion state
         const expandedSet = new Set(expandedNodeIds || []);
         const visibleEmployees = [];
 
-        // Always show root employees
         const markVisible = (employee, shouldShow = true) => {
             if (!employee) return;
             
@@ -561,24 +611,18 @@ const OrgChart = () => {
                 employee.isVisible = true;
                 visibleEmployees.push(employee);
                 
-                // FIXED: If this node is expanded AND has children, show ALL children
                 if (expandedSet.has(employee.employee_id) && employee.children.length > 0) {
-                   
                     employee.children.forEach(child => {
-                        markVisible(child, true);  // Show all direct children
+                        markVisible(child, true);
                     });
                 }
             }
         };
 
-        // Start with root employees - always visible
         rootEmployees.forEach(root => {
             markVisible(root, true);
         });
 
-     
-
-        // Create React Flow nodes with navigation support
         const nodes = visibleEmployees.map(emp => ({
             id: emp.employee_id.toString(),
             type: 'employee',
@@ -586,16 +630,12 @@ const OrgChart = () => {
             data: {
                 employee: emp,
                 isExpanded: expandedSet.has(emp.employee_id),
-                onToggleExpanded: (employeeId) => {
-                   
-                    toggleExpandedNode(employeeId);
-                },
+                onToggleExpanded: toggleExpandedNode,
                 onSelectEmployee: setSelectedEmployee,
                 onNavigateToEmployee: navigateToEmployee
             }
         }));
 
-        // Create React Flow edges with enhanced styling
         const edges = visibleEmployees
             .filter(emp => emp.parent && emp.parent.isVisible)
             .map(emp => ({
@@ -605,109 +645,68 @@ const OrgChart = () => {
                 type: 'smoothstep',
                 animated: false,
                 style: { 
-                    stroke: '#30539b', 
-                    strokeWidth: 2,
-                    opacity: 0.8
+                    stroke: emp.vacant ? '#ef4444' : '#30539b', 
+                    strokeWidth: emp.vacant ? 3 : 2,
+                    opacity: emp.vacant ? 1 : 0.8,
+                    strokeDasharray: emp.vacant ? '5,5' : 'none'
                 },
                 markerEnd: {
                     type: 'arrowclosed',
-                    color: '#30539b',
+                    color: emp.vacant ? '#ef4444' : '#30539b',
                     width: 20,
                     height: 20
                 }
             }));
 
-      
         return { visibleNodes: nodes, edges };
     }, [toggleExpandedNode, setSelectedEmployee, navigateToEmployee]);
 
+    const handleExportToPNG = useCallback(async () => {
+        try {
+            const chartContainer = containerRef.current?.querySelector('.react-flow') || 
+                                  containerRef.current?.querySelector('[class*="react-flow"]') ||
+                                  containerRef.current;
+            
+            if (!chartContainer) {
+                console.error('Chart container not found');
+                return;
+            }
 
-  const handleExportToPNG = useCallback(async () => {
-    try {
-        // Find the chart container
-        const chartContainer = containerRef.current?.querySelector('.react-flow') || 
-                              containerRef.current?.querySelector('[class*="react-flow"]') ||
-                              containerRef.current;
-        
-        if (!chartContainer) {
-            console.error('Chart container not found');
-            return;
+            const canvas = await html2canvas(chartContainer, {
+                allowTaint: false,
+                useCORS: true,
+                backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
+                scale: 2,
+                scrollX: 0,
+                scrollY: 0,
+                width: chartContainer.scrollWidth,
+                height: chartContainer.scrollHeight,
+                logging: false,
+                removeContainer: true,
+                foreignObjectRendering: true,
+                imageTimeout: 10000
+            });
+
+            canvas.toBlob((blob) => {
+                if (blob) {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `org-chart-${new Date().toISOString().slice(0, 10)}.png`;
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    URL.revokeObjectURL(url);
+                }
+            }, 'image/png', 0.9);
+
+        } catch (error) {
+            console.error('Screenshot failed:', error);
         }
+    }, [darkMode, containerRef]);
 
-        // Take screenshot with html2canvas
-        const canvas = await html2canvas(chartContainer, {
-            allowTaint: false,
-            useCORS: true,
-            backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
-            scale: 2, // High resolution
-            scrollX: 0,
-            scrollY: 0,
-            width: chartContainer.scrollWidth,
-            height: chartContainer.scrollHeight,
-            logging: false,
-            removeContainer: true,
-            foreignObjectRendering: true,
-            imageTimeout: 10000
-        });
-
-        // Convert to blob and auto-download
-        canvas.toBlob((blob) => {
-            if (blob) {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `org-chart-${new Date().toISOString().slice(0, 10)}.png`;
-                
-                // Auto-click download
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                // Cleanup
-                URL.revokeObjectURL(url);
-                
-          
-            }
-        }, 'image/png', 0.9);
-
-    } catch (error) {
-        console.error('Screenshot failed:', error);
-        // Silent fallback - try with different options
-        fallbackScreenshot();
-    }
-}, [darkMode, containerRef]);
-const fallbackScreenshot = useCallback(async () => {
-    try {
-        const element = containerRef.current;
-        if (!element) return;
-
-        const canvas = await html2canvas(element, {
-            backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
-            scale: 1,
-            logging: false,
-            useCORS: true,
-            allowTaint: false
-        });
-
-        canvas.toBlob((blob) => {
-            if (blob) {
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `org-chart-fallback-${Date.now()}.png`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }
-        }, 'image/png', 0.8);
-
-    } catch (error) {
-        console.error('Fallback screenshot also failed:', error);
-    }
-}, [darkMode, containerRef]);
-
-    // Enhanced Controls Panel
     const EnhancedControlsPanel = () => {
         const { zoomIn, zoomOut, fitView, getViewport } = useReactFlow();
         const [currentZoom, setCurrentZoom] = useState(1);
@@ -745,22 +744,13 @@ const fallbackScreenshot = useCallback(async () => {
             }
         }, [getViewport, zoomOut, fitView, handleZoomToFit]);
         
-        const setZoomLevel = useCallback((level) => {
-            const { zoomTo } = useReactFlow();
-            zoomTo(level, { duration: 300 });
-        }, []);
-        
         return (
             <Panel position="top-left" className="space-y-2">
                 <div className={`${bgCard} border ${borderColor} rounded-lg shadow-lg p-2 space-y-1`}>
-                    {/* Zoom Level Display */}
                     <div className={`text-center text-xs ${textMuted} font-mono pb-1 border-b ${borderColor}`}>
                         {Math.round(currentZoom * 100)}%
                     </div>
                     
-                    
-                    
-                    {/* Traditional Controls */}
                     <button 
                         onClick={() => zoomIn({ duration: 300 })}
                         className={`w-full h-8 p-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-md hover:${bgCardHover} transition-colors flex items-center justify-center`}
@@ -794,18 +784,12 @@ const fallbackScreenshot = useCallback(async () => {
         );
     };
 
-  
-
-    // Main FlowComponent
     const FlowComponent = useCallback(() => {
         const [nodes, setNodes, onNodesChange] = useNodesState([]);
         const [edges, setEdges, onEdgesChange] = useEdgesState([]);
         const { fitView } = useReactFlow();
 
-        // Process data when filteredOrgChart or expandedNodes change
         useEffect(() => {
-           
-
             if (Array.isArray(filteredOrgChart) && filteredOrgChart.length > 0) {
                 const hierarchy = buildOrgHierarchy(filteredOrgChart, expandedNodes || []);
                 
@@ -816,14 +800,11 @@ const fallbackScreenshot = useCallback(async () => {
                         layoutDirection
                     );
                     
-              
                     setNodes(layoutedNodes);
                     setEdges(layoutedEdges);
                     
-                    // Fit view after layout
                     setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 100);
                 } else {
-                 
                     setNodes([]);
                     setEdges([]);
                 }
@@ -834,7 +815,6 @@ const fallbackScreenshot = useCallback(async () => {
         }, [filteredOrgChart, expandedNodes, layoutDirection, buildOrgHierarchy, getLayoutedElements, setNodes, setEdges, fitView]);
 
         const onLayout = useCallback((direction) => {
-        
             const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
                 nodes,
                 edges,
@@ -846,30 +826,23 @@ const fallbackScreenshot = useCallback(async () => {
             setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 0);
         }, [nodes, edges, setNodes, setEdges, fitView, getLayoutedElements, setLayoutDirection]);
 
-        // Fixed expand/collapse handlers
         const handleExpandAll = useCallback(() => {
-         
             if (orgChart && orgChart.length > 0) {
-                // Get all employees who have direct reports
                 const managersWithReports = orgChart
                     .filter(emp => emp.direct_reports && emp.direct_reports > 0)
                     .map(emp => emp.employee_id);
                 
-              
                 setExpandedNodes(managersWithReports);
             }
         }, [orgChart, setExpandedNodes]);
 
         const handleCollapseAll = useCallback(() => {
-            
-            // Find root employees and keep only them expanded
             if (orgChart && orgChart.length > 0) {
                 const rootEmployees = orgChart.filter(emp => 
                     !emp.line_manager_id && !emp.manager_id && !emp.parent_id
                 );
                 
                 if (rootEmployees.length === 0) {
-                    // Fallback: find by highest level or most reports
                     const maxReports = Math.max(...orgChart.map(emp => emp.direct_reports || 0));
                     const fallbackRoots = orgChart
                         .filter(emp => (emp.direct_reports || 0) === maxReports)
@@ -878,13 +851,11 @@ const fallbackScreenshot = useCallback(async () => {
                     setExpandedNodes(fallbackRoots);
                 } else {
                     const rootIds = rootEmployees.map(emp => emp.employee_id);
-                 
                     setExpandedNodes(rootIds);
                 }
             }
         }, [orgChart, setExpandedNodes]);
 
-        // Memoized node types to prevent recreation warning
         const nodeTypes = useMemo(() => ({
             employee: EmployeeNode,
         }), []);
@@ -941,12 +912,8 @@ const fallbackScreenshot = useCallback(async () => {
                     variant="dots"
                 />
                 
-                {/* Enhanced Controls */}
                 <EnhancedControlsPanel />
                 
-             
-                
-                {/* Layout Controls */}
                 <Panel position="top-right" className="space-x-2">
                     <button 
                         onClick={() => onLayout('TB')}
@@ -995,38 +962,68 @@ const fallbackScreenshot = useCallback(async () => {
         setExpandedNodes
     ]);
 
-    // Grid View Component
     const GridView = useCallback(() => (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
             {filteredOrgChart.map(employee => {
                 const cleanEmployee = cleanEmployeeData(employee);
+                const isVacant = cleanEmployee.vacant;
+                
                 return (
                     <div 
                         key={employee.employee_id}
-                        className={`${bgCard} border ${borderColor} rounded-2xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105`}
+                        className={`${bgCard} rounded-2xl p-6 cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-105 relative ${
+                            isVacant 
+                                ? 'border-3 border-red-500 bg-red-50 dark:bg-red-900/20' 
+                                : `border ${borderColor}`
+                        }`}
+                        style={{
+                            borderWidth: isVacant ? '3px' : '1px',
+                            borderColor: isVacant ? '#ef4444' : undefined
+                        }}
                         onClick={() => setSelectedEmployee(cleanEmployee)}
                     >
+                        {isVacant && (
+                            <div className="absolute -top-2 -right-2 z-10">
+                                <div className="bg-red-500 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" />
+                                    VACANT
+                                </div>
+                            </div>
+                        )}
+                        
                         <div className="flex items-start gap-4 mb-4">
                             <Avatar employee={cleanEmployee} size="md" />
                             <div className="flex-1 min-w-0">
-                                <h3 className={`font-bold ${textHeader} text-base leading-tight mb-2`}>
+                                <h3 className={`font-bold text-base leading-tight mb-2 ${
+                                    isVacant ? 'text-red-700 dark:text-red-400' : textHeader
+                                }`}>
                                     {cleanEmployee.name}
                                 </h3>
-                                <p className={`${textSecondary} text-sm`}>
+                                <p className={`text-sm ${
+                                    isVacant ? 'text-red-600 dark:text-red-300 italic' : textSecondary
+                                }`}>
                                     {cleanEmployee.title}
                                 </p>
                             </div>
                         </div>
                         
                         <div className="space-y-2">
-                            <div className={`flex items-center ${textSecondary} text-sm`}>
+                            <div className={`flex items-center text-sm ${
+                                isVacant ? 'text-red-600 dark:text-red-400' : textSecondary
+                            }`}>
                                 <Building2 className="w-4 h-4 mr-2" />
                                 <span>{cleanEmployee.department}</span>
                             </div>
-                            {cleanEmployee.direct_reports > 0 && (
+                            {!isVacant && cleanEmployee.direct_reports > 0 && (
                                 <div className={`flex items-center ${textSecondary} text-sm`}>
                                     <Users className="w-4 h-4 mr-2" />
                                     <span>{cleanEmployee.direct_reports} Reports</span>
+                                </div>
+                            )}
+                            {isVacant && (
+                                <div className="flex items-center text-red-600 dark:text-red-400 text-sm font-semibold">
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                    <span>Position Open</span>
                                 </div>
                             )}
                         </div>
@@ -1036,40 +1033,29 @@ const fallbackScreenshot = useCallback(async () => {
         </div>
     ), [filteredOrgChart, bgCard, borderColor, textHeader, textSecondary, setSelectedEmployee]);
 
-    // Auto-expand initial nodes when org chart loads
     useEffect(() => {
         if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
-           
-            
-            // Find root employees using multiple strategies
             let rootEmployees = [];
             
-            // Strategy 1: Find employees without any manager
             rootEmployees = orgChart.filter(emp => 
                 !emp.line_manager_id && !emp.manager_id && !emp.parent_id
             );
-         
             
-            // Strategy 2: Find by minimum level_to_ceo
             if (rootEmployees.length === 0) {
                 const levels = orgChart.map(emp => emp.level_to_ceo).filter(level => level !== undefined && level !== null);
                 if (levels.length > 0) {
                     const minLevel = Math.min(...levels);
                     rootEmployees = orgChart.filter(emp => emp.level_to_ceo === minLevel);
-                   
                 }
             }
             
-            // Strategy 3: Find by maximum direct_reports
             if (rootEmployees.length === 0) {
                 const maxReports = Math.max(...orgChart.map(emp => emp.direct_reports || 0));
                 if (maxReports > 0) {
                     rootEmployees = orgChart.filter(emp => (emp.direct_reports || 0) === maxReports);
-                    console.log(`Strategy 3 - Max reports ${maxReports}:`, rootEmployees.length);
                 }
             }
             
-            // Strategy 4: Find by position hierarchy
             if (rootEmployees.length === 0) {
                 const topPositions = ['VC', 'CEO', 'CHAIRMAN', 'PRESIDENT', 'DIRECTOR'];
                 for (const position of topPositions) {
@@ -1078,26 +1064,20 @@ const fallbackScreenshot = useCallback(async () => {
                         emp.title?.toUpperCase().includes(position)
                     );
                     if (rootEmployees.length > 0) {
-                        console.log(`Strategy 4 - Position ${position}:`, rootEmployees.length);
                         break;
                     }
                 }
             }
             
-            // Strategy 5: Use first few employees as fallback
             if (rootEmployees.length === 0) {
                 rootEmployees = orgChart.slice(0, Math.min(3, orgChart.length));
-               
             }
             
-            // Set initial expanded nodes
             const initialExpanded = rootEmployees.map(emp => emp.employee_id);
-    
             setExpandedNodes(initialExpanded);
         }
     }, [orgChart, expandedNodes, setExpandedNodes]);
 
-    // Loading overlay
     if (loading.orgChart && (!orgChart || orgChart.length === 0)) {
         return (
             <DashboardLayout>
@@ -1110,6 +1090,11 @@ const fallbackScreenshot = useCallback(async () => {
             </DashboardLayout>
         );
     }
+
+    // Count vacant positions
+    const vacantCount = filteredOrgChart?.filter(emp => 
+        cleanEmployeeData(emp).vacant
+    ).length || 0;
 
     return (
         <DashboardLayout>
@@ -1131,6 +1116,12 @@ const fallbackScreenshot = useCallback(async () => {
                                         <p className={`${textSecondary}`}>
                                             Managers: {summary.totalManagers || 0}
                                         </p>
+                                        {vacantCount > 0 && (
+                                            <p className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-1">
+                                                <AlertCircle className="w-3 h-3" />
+                                                Vacant: {vacantCount}
+                                            </p>
+                                        )}
                                         {filteredOrgChart.length !== orgChart?.length && (
                                             <p className={`${textSecondary}`}>
                                                 Filtered: {filteredOrgChart.length}
@@ -1161,7 +1152,6 @@ const fallbackScreenshot = useCallback(async () => {
                                     />
                                 </div>
                                
-                                
                                 {/* View Mode Toggle */}
                                 <div className={`flex rounded-lg border ${borderColor} ${bgCard} p-0.5 shadow-sm`}>
                                     <button 
@@ -1192,7 +1182,7 @@ const fallbackScreenshot = useCallback(async () => {
                                 
                                 <button 
                                     onClick={handleExportToPNG} 
-                                    title="Export Chart (SVG)"
+                                    title="Export Chart"
                                     className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm flex items-center gap-1`}
                                 >
                                     <Download size={14} />
@@ -1245,7 +1235,6 @@ const fallbackScreenshot = useCallback(async () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                                {/* Business Functions */}
                                 <div>
                                     <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Business Functions</label>
                                     <Select
@@ -1263,7 +1252,6 @@ const fallbackScreenshot = useCallback(async () => {
                                     />
                                 </div>
 
-                                {/* Departments */}
                                 <div>
                                     <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Departments</label>
                                     <Select
@@ -1281,7 +1269,6 @@ const fallbackScreenshot = useCallback(async () => {
                                     />
                                 </div>
 
-                                {/* Position Groups */}
                                 <div>
                                     <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Position Groups</label>
                                     <Select
@@ -1299,7 +1286,6 @@ const fallbackScreenshot = useCallback(async () => {
                                     />
                                 </div>
 
-                                {/* Managers */}
                                 <div>
                                     <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Line Managers</label>
                                     <Select
@@ -1334,24 +1320,35 @@ const fallbackScreenshot = useCallback(async () => {
                     )}
                 </div>
 
-                {/* Enhanced Employee Detail Modal - More compact */}
+                {/* Employee Detail Modal */}
                 {selectedEmployee && (
                     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200 ease-in-out">
-                        <div className={`${bgCard} rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border ${borderColor}`}>
-                            {/* Compact Header */}
+                        <div className={`${bgCard} rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border ${selectedEmployee.vacant ? 'border-red-500 border-3' : borderColor}`}>
                             <div className={`flex items-center justify-between p-4 border-b ${borderColor} sticky top-0 ${bgCard} rounded-t-xl z-10`}>
                                 <div className="flex items-center gap-3">
+                                    {selectedEmployee.vacant && (
+                                        <div className="absolute -top-2 -left-2">
+                                            <div className="bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1 animate-pulse">
+                                                <AlertCircle className="w-4 h-4" />
+                                                VACANT POSITION
+                                            </div>
+                                        </div>
+                                    )}
                                     <Avatar employee={selectedEmployee} size="md" />
                                     <div>
-                                        <h2 className={`text-lg font-bold ${textHeader} mb-1`}>{selectedEmployee.name}</h2>
-                                        <p className={`${textSecondary} text-sm mb-1`}>{selectedEmployee.title}</p>
+                                        <h2 className={`text-lg font-bold mb-1 ${selectedEmployee.vacant ? 'text-red-700 dark:text-red-400' : textHeader}`}>
+                                            {selectedEmployee.name}
+                                        </h2>
+                                        <p className={`text-sm mb-1 ${selectedEmployee.vacant ? 'text-red-600 dark:text-red-300 italic' : textSecondary}`}>
+                                            {selectedEmployee.title}
+                                        </p>
                                         <div className="flex items-center gap-2">
                                             {selectedEmployee.employee_details?.grading_display && (
-                                                <span className="inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white bg-almet-sapphire">
+                                                <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold text-white ${selectedEmployee.vacant ? 'bg-red-600' : 'bg-almet-sapphire'}`}>
                                                     {selectedEmployee.employee_details.grading_display}
                                                 </span>
                                             )}
-                                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${bgAccent} ${textPrimary}`}>
+                                            <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-semibold ${selectedEmployee.vacant ? 'bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-200' : `${bgAccent} ${textPrimary}`}`}>
                                                 {selectedEmployee.department || 'No Department'}
                                             </span>
                                         </div>
@@ -1364,99 +1361,134 @@ const fallbackScreenshot = useCallback(async () => {
 
                             <div className="p-4 overflow-y-auto flex-grow">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    {/* Left Column - Basic Details */}
+                                    {/* Left Column */}
                                     <div className="space-y-4">
                                         {/* Employee Details Card */}
-                                        <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
-                                            <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                        <div className={`${bgAccent} rounded-lg p-3 border ${selectedEmployee.vacant ? 'border-red-300 dark:border-red-700' : borderColor}`}>
+                                            <h4 className={`font-bold mb-3 text-sm uppercase tracking-wider flex items-center gap-2 ${selectedEmployee.vacant ? 'text-red-700 dark:text-red-400' : textHeader}`}>
                                                 <User size={14} />
-                                                Employee Details
+                                                {selectedEmployee.vacant ? 'Vacant Position Details' : 'Employee Details'}
                                             </h4>
                                             <div className="space-y-2">
-                                                <DetailRow 
-                                                    icon={<Target />} 
-                                                    label="Level to CEO" 
-                                                    value={selectedEmployee.level_to_ceo || 0} 
-                                                />
-                                                <DetailRow 
-                                                    icon={<Building2 />} 
-                                                    label="Department" 
-                                                    value={selectedEmployee.department || 'N/A'} 
-                                                />
-                                                <DetailRow 
-                                                    icon={<Layers />} 
-                                                    label="Unit" 
-                                                    value={selectedEmployee.unit || 'N/A'} 
-                                                />
-                                                <DetailRow 
-                                                    icon={<Briefcase />} 
-                                                    label="Position Group" 
-                                                    value={selectedEmployee.position_group || 'N/A'} 
-                                                />
+                                                {selectedEmployee.vacant ? (
+                                                    <>
+                                                        <DetailRow 
+                                                            icon={<XCircle />} 
+                                                            label="Status" 
+                                                            value="Vacant - Hiring in Progress"
+                                                            isVacant={true}
+                                                        />
+                                                        <DetailRow 
+                                                            icon={<Target />} 
+                                                            label="Level to CEO" 
+                                                            value={selectedEmployee.level_to_ceo || 0}
+                                                            isVacant={true}
+                                                        />
+                                                        <DetailRow 
+                                                            icon={<Building2 />} 
+                                                            label="Department" 
+                                                            value={selectedEmployee.department || 'N/A'}
+                                                            isVacant={true}
+                                                        />
+                                                        <DetailRow 
+                                                            icon={<Briefcase />} 
+                                                            label="Position Group" 
+                                                            value={selectedEmployee.position_group || 'N/A'}
+                                                            isVacant={true}
+                                                        />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <DetailRow 
+                                                            icon={<Target />} 
+                                                            label="Level to CEO" 
+                                                            value={selectedEmployee.level_to_ceo || 0} 
+                                                        />
+                                                        <DetailRow 
+                                                            icon={<Building2 />} 
+                                                            label="Department" 
+                                                            value={selectedEmployee.department || 'N/A'} 
+                                                        />
+                                                        <DetailRow 
+                                                            icon={<Layers />} 
+                                                            label="Unit" 
+                                                            value={selectedEmployee.unit || 'N/A'} 
+                                                        />
+                                                        <DetailRow 
+                                                            icon={<Briefcase />} 
+                                                            label="Position Group" 
+                                                            value={selectedEmployee.position_group || 'N/A'} 
+                                                        />
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                         
                                         {/* Contact Information Card */}
-                                        <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
-                                            <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                <Phone size={14} />
-                                                Contact
-                                            </h4>
-                                            <div className="space-y-2">
-                                                <DetailRow 
-                                                    icon={<Phone />} 
-                                                    label="Phone" 
-                                                    value={selectedEmployee.phone || 'Not provided'} 
-                                                />
-                                                <DetailRow 
-                                                    icon={<Mail />} 
-                                                    label="Email" 
-                                                    value={selectedEmployee.email || 'Not provided'} 
-                                                />
+                                        {!selectedEmployee.vacant && (
+                                            <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                                <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                    <Phone size={14} />
+                                                    Contact
+                                                </h4>
+                                                <div className="space-y-2">
+                                                    <DetailRow 
+                                                        icon={<Phone />} 
+                                                        label="Phone" 
+                                                        value={selectedEmployee.phone || 'Not provided'} 
+                                                    />
+                                                    <DetailRow 
+                                                        icon={<Mail />} 
+                                                        label="Email" 
+                                                        value={selectedEmployee.email || 'Not provided'} 
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
 
                                         {/* Team Metrics Card */}
-                                        <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
-                                            <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
-                                                <Users size={14} />
-                                                Team Metrics
-                                            </h4>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <MetricCard 
-                                                    icon={<Users />} 
-                                                    label="Direct Reports" 
-                                                    value={selectedEmployee.direct_reports || 0}
-                                                    color="blue"
-                                                />
-                                                <MetricCard 
-                                                    icon={<UsersRound />} 
-                                                    label="Total Team" 
-                                                    value={(() => {
-                                                        const calculateTeamSize = (managerId, visited = new Set()) => {
-                                                            if (visited.has(managerId)) return 0;
-                                                            visited.add(managerId);
-                                                            
-                                                            const directReports = orgChart?.filter(emp => emp.line_manager_id === managerId) || [];
-                                                            let total = directReports.length;
-                                                            
-                                                            directReports.forEach(report => {
-                                                                total += calculateTeamSize(report.employee_id, visited);
-                                                            });
-                                                            
-                                                            return total;
-                                                        };
-                                                        return calculateTeamSize(selectedEmployee.employee_id);
-                                                    })()}
-                                                    color="green"
-                                                />
+                                        {!selectedEmployee.vacant && (
+                                            <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
+                                                <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
+                                                    <Users size={14} />
+                                                    Team Metrics
+                                                </h4>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <MetricCard 
+                                                        icon={<Users />} 
+                                                        label="Direct Reports" 
+                                                        value={selectedEmployee.direct_reports || 0}
+                                                        color="blue"
+                                                    />
+                                                    <MetricCard 
+                                                        icon={<UsersRound />} 
+                                                        label="Total Team" 
+                                                        value={(() => {
+                                                            const calculateTeamSize = (managerId, visited = new Set()) => {
+                                                                if (visited.has(managerId)) return 0;
+                                                                visited.add(managerId);
+                                                                
+                                                                const directReports = orgChart?.filter(emp => emp.line_manager_id === managerId) || [];
+                                                                let total = directReports.length;
+                                                                
+                                                                directReports.forEach(report => {
+                                                                    total += calculateTeamSize(report.employee_id, visited);
+                                                                });
+                                                                
+                                                                return total;
+                                                            };
+                                                            return calculateTeamSize(selectedEmployee.employee_id);
+                                                        })()}
+                                                        color="green"
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
 
-                                    {/* Right Column - Organizational Relationships */}
+                                    {/* Right Column */}
                                     <div className="space-y-4">
-                                        {/* Reports To (Manager) Section */}
+                                        {/* Reports To */}
                                         {selectedEmployee.line_manager_id && (
                                             <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
                                                 <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
@@ -1490,37 +1522,47 @@ const fallbackScreenshot = useCallback(async () => {
                                             </div>
                                         )}
 
-                                        {/* Direct Reports Section */}
-                                        {selectedEmployee.direct_reports > 0 && (
+                                        {/* Direct Reports */}
+                                        {!selectedEmployee.vacant && selectedEmployee.direct_reports > 0 && (
                                             <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
                                                 <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
                                                     <Users size={14} />
                                                     Direct Reports ({selectedEmployee.direct_reports})
                                                 </h4>
                                                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                                                    {orgChart?.filter(emp => emp.line_manager_id === selectedEmployee.employee_id).map(report => (
-                                                        <div 
-                                                            key={report.employee_id}
-                                                            className={`flex items-center gap-2 p-2 ${bgCard} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] border ${borderColor}`}
-                                                            onClick={() => {
-                                                                const cleanReport = cleanEmployeeData(report);
-                                                                setSelectedEmployee(cleanReport);
-                                                            }}
-                                                        >
-                                                            <Avatar employee={report} size="sm" />
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className={`font-bold ${textPrimary} text-xs mb-1 truncate`}>{report.name}</p>
-                                                                <p className={`${textSecondary} text-xs truncate`}>{report.title}</p>
+                                                    {orgChart?.filter(emp => emp.line_manager_id === selectedEmployee.employee_id).map(report => {
+                                                        const isReportVacant = cleanEmployeeData(report).vacant;
+                                                        return (
+                                                            <div 
+                                                                key={report.employee_id}
+                                                                className={`flex items-center gap-2 p-2 ${bgCard} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] border ${isReportVacant ? 'border-red-300 dark:border-red-700' : borderColor}`}
+                                                                onClick={() => {
+                                                                    const cleanReport = cleanEmployeeData(report);
+                                                                    setSelectedEmployee(cleanReport);
+                                                                }}
+                                                            >
+                                                                <Avatar employee={report} size="sm" />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={`font-bold text-xs mb-1 truncate ${isReportVacant ? 'text-red-700 dark:text-red-400' : textPrimary}`}>
+                                                                        {report.name}
+                                                                    </p>
+                                                                    <p className={`text-xs truncate ${isReportVacant ? 'text-red-600 dark:text-red-300 italic' : textSecondary}`}>
+                                                                        {report.title}
+                                                                    </p>
+                                                                </div>
+                                                                {isReportVacant && (
+                                                                    <AlertCircle className="w-3 h-3 text-red-500 flex-shrink-0" />
+                                                                )}
+                                                                <ArrowDown className={`w-3 h-3 flex-shrink-0 ${isReportVacant ? 'text-red-500' : 'text-almet-sapphire'}`} />
                                                             </div>
-                                                            <ArrowDown className={`w-3 h-3 text-almet-sapphire flex-shrink-0`} />
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             </div>
                                         )}
 
                                         {/* Unit Colleagues */}
-                                        {selectedEmployee.unit && (
+                                        {selectedEmployee.unit && !selectedEmployee.vacant && (
                                             <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
                                                 <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
                                                     <Building2 size={14} />
@@ -1571,7 +1613,7 @@ const fallbackScreenshot = useCallback(async () => {
                                     </p>
                                 </div>
                                 <button 
-                                    onClick={() => {/* clearErrors() */}}
+                                    onClick={() => {}}
                                     className="text-red-400 hover:text-red-600 p-1"
                                 >
                                     <X size={14} />
@@ -1581,13 +1623,28 @@ const fallbackScreenshot = useCallback(async () => {
                     </div>
                 )}
 
-                {/* Enhanced Styles with Almet colors */}
+                {/* Enhanced Styles */}
                 <style jsx>{`
                     .line-clamp-2 { 
                         display: -webkit-box; 
                         -webkit-line-clamp: 2; 
                         -webkit-box-orient: vertical; 
                         overflow: hidden; 
+                    }
+
+                    @keyframes pulse-border {
+                        0%, 100% {
+                            border-color: #ef4444;
+                            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+                        }
+                        50% {
+                            border-color: #dc2626;
+                            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0);
+                        }
+                    }
+
+                    .animate-pulse-border {
+                        animation: pulse-border 2s ease-in-out infinite;
                     }
 
                     .react-flow__controls-dark {
@@ -1690,20 +1747,34 @@ const fallbackScreenshot = useCallback(async () => {
     );
 };
 
-// Enhanced Detail Row Component with Almet colors
-const DetailRow = ({ icon, label, value }) => (
+// Detail Row Component
+const DetailRow = ({ icon, label, value, isVacant = false }) => (
     <div className="flex items-center gap-2 py-1.5">
-        <div className="flex-shrink-0 w-6 h-6 rounded-lg bg-almet-mystic dark:bg-almet-cloud-burst flex items-center justify-center">
-            {React.cloneElement(icon, { className: "w-3 h-3 text-almet-sapphire dark:text-almet-bali-hai" })}
+        <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
+            isVacant 
+                ? 'bg-red-100 dark:bg-red-900' 
+                : 'bg-almet-mystic dark:bg-almet-cloud-burst'
+        }`}>
+            {React.cloneElement(icon, { 
+                className: `w-3 h-3 ${isVacant ? 'text-red-600 dark:text-red-400' : 'text-almet-sapphire dark:text-almet-bali-hai'}` 
+            })}
         </div>
         <div className="flex-1 min-w-0">
-            <p className="text-xs text-almet-waterloo dark:text-gray-400 font-medium uppercase tracking-wider">{label}</p>
-            <p className="text-almet-cloud-burst dark:text-gray-200 font-semibold text-sm truncate" title={value}>{value}</p>
+            <p className={`text-xs font-medium uppercase tracking-wider ${
+                isVacant 
+                    ? 'text-red-600 dark:text-red-400' 
+                    : 'text-almet-waterloo dark:text-gray-400'
+            }`}>{label}</p>
+            <p className={`font-semibold text-sm truncate ${
+                isVacant 
+                    ? 'text-red-700 dark:text-red-300' 
+                    : 'text-almet-cloud-burst dark:text-gray-200'
+            }`} title={value}>{value}</p>
         </div>
     </div>
 );
 
-// Enhanced Metric Card Component with Almet colors
+// Metric Card Component
 const MetricCard = ({ icon, label, value, color = 'blue' }) => {
     const colorClasses = {
         blue: 'bg-almet-mystic dark:bg-almet-cloud-burst/20 border-almet-sapphire/20 dark:border-almet-sapphire/40 text-almet-sapphire dark:text-almet-bali-hai',
