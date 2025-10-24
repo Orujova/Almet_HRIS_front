@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   ChevronDown, 
   ChevronRight, 
   Check,
   Search,
   X,
-  Package
+  Package,
+  Boxes,
+  ShoppingCart
 } from 'lucide-react';
 
 const HierarchicalMultiSelect = ({
@@ -33,7 +35,7 @@ const HierarchicalMultiSelect = ({
   const bgHover = darkMode ? "bg-gray-600" : "bg-almet-mystic";
 
   // Close dropdown when clicking outside
-  useEffect(() => {
+  React.useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -62,7 +64,7 @@ const HierarchicalMultiSelect = ({
   }, [searchTerm, data]);
 
   // Auto-expand parents with matching children
-  useEffect(() => {
+  React.useEffect(() => {
     if (!searchTerm.trim()) return;
 
     const term = searchTerm.toLowerCase();
@@ -110,48 +112,63 @@ const HierarchicalMultiSelect = ({
     return parent.items.filter(item => isIdSelected(item.id)).length;
   };
 
-  // Check if parent checkbox should be checked (all children selected)
+  // Check if parent checkbox should be checked
   const isParentChecked = (parent) => {
-    if (!parent.items?.length) return false;
+    const hasChildren = parent.items?.length > 0;
+    if (!hasChildren) {
+      // If no children, check if parent itself is selected
+      return isIdSelected(parent.id);
+    }
+    // If has children, check if all children are selected
     return parent.items.every(item => isIdSelected(item.id));
   };
 
   // Check if parent checkbox should be indeterminate (some children selected)
   const isParentIndeterminate = (parent) => {
-    if (!parent.items?.length) return false;
+    const hasChildren = parent.items?.length > 0;
+    if (!hasChildren) return false;
+    
     const selectedCount = getSelectedChildCount(parent);
     return selectedCount > 0 && selectedCount < parent.items.length;
   };
 
   // Handle parent checkbox toggle
   const handleParentToggle = (parent) => {
-    const childIds = (parent.items || []).map(item => String(item.id));
-    const allChildrenSelected = parent.items?.every(item => isIdSelected(item.id));
+    const hasChildren = parent.items?.length > 0;
     
-    console.log('🔘 Parent Toggle:', { 
-      parentId: parent.id, 
-      allChildrenSelected, 
-      childIds,
-      currentSelection: selectedIds 
-    });
+    if (!hasChildren) {
+      // If parent has no children, toggle parent itself
+      const parentId = String(parent.id);
+      const isSelected = isIdSelected(parent.id);
 
-    if (allChildrenSelected) {
-      // Remove all children
-      const newSelection = selectedIds.filter(id => 
-        !childIds.includes(String(id))
-      );
-      console.log('➖ Removing all children:', newSelection);
-      onChange(newSelection);
+      if (isSelected) {
+        const newSelection = selectedIds.filter(id => String(id) !== parentId);
+        onChange(newSelection);
+      } else {
+        const newSelection = [...selectedIds, parentId];
+        onChange(newSelection);
+      }
     } else {
-      // Add all children that aren't already selected
-      const newSelection = [...selectedIds];
-      childIds.forEach(childId => {
-        if (!isIdSelected(childId)) {
-          newSelection.push(childId);
-        }
-      });
-      console.log('➕ Adding all children:', newSelection);
-      onChange(newSelection);
+      // If parent has children, toggle all children
+      const childIds = parent.items.map(item => String(item.id));
+      const allChildrenSelected = parent.items.every(item => isIdSelected(item.id));
+
+      if (allChildrenSelected) {
+        // Remove all children
+        const newSelection = selectedIds.filter(id => 
+          !childIds.includes(String(id))
+        );
+        onChange(newSelection);
+      } else {
+        // Add all children that aren't already selected
+        const newSelection = [...selectedIds];
+        childIds.forEach(childId => {
+          if (!isIdSelected(childId)) {
+            newSelection.push(childId);
+          }
+        });
+        onChange(newSelection);
+      }
     }
   };
 
@@ -159,28 +176,17 @@ const HierarchicalMultiSelect = ({
   const handleChildToggle = (child) => {
     const childId = String(child.id);
     const isSelected = isIdSelected(child.id);
-    
-    console.log('🔘 Child Toggle:', { 
-      childId, 
-      isSelected,
-      currentSelection: selectedIds 
-    });
 
     if (isSelected) {
-      // Remove this child
       const newSelection = selectedIds.filter(id => String(id) !== childId);
-      console.log('➖ Removing child:', newSelection);
       onChange(newSelection);
     } else {
-      // Add this child
       const newSelection = [...selectedIds, childId];
-      console.log('➕ Adding child:', newSelection);
       onChange(newSelection);
     }
   };
 
   const handleClearAll = () => {
-    console.log('🗑️ Clearing all selections');
     onChange([]);
   };
 
