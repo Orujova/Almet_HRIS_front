@@ -38,11 +38,7 @@ import {
   ChevronUp,
   Maximize2,
   Minimize2,
-  Camera,
-  Upload,
-  X,
-  Check,
-  Trash2,
+
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
@@ -51,6 +47,7 @@ import EmployeeStatusBadge from "@/components/headcount/EmployeeStatusBadge";
 import EmployeeTag from "@/components/headcount/EmployeeTag";
 import EmployeeDetailJobDescriptions from "@/components/headcount/EmployeeDetailJobDescriptions";
 import EmployeeAssetManagement from "@/components/headcount/EmployeeAssetManagement";
+import EmployeeDetailPerformance from "@/components/headcount/EmployeeDetailPerformance";
 import EmployeeProfilePhotoManager from "@/components/headcount/EmployeeProfilePhotoManager";
 /**
  * Enhanced Employee Detail Page with Profile Photo Management
@@ -65,7 +62,7 @@ const EmployeeDetailPageContent = () => {
     loading, 
     error, 
     clearCurrentEmployee,
-    deleteEmployee 
+
   } = useEmployees();
   
   const [activeTab, setActiveTab] = useState('overview');
@@ -180,26 +177,7 @@ const EmployeeDetailPageContent = () => {
     router.push(`/structure/employee/${id}/edit`);
   };
 
-  const handleDeleteEmployee = async () => {
-    if (!confirm("Are you sure you want to delete this employee? This action cannot be undone.")) {
-      return;
-    }
 
-    setDeleting(true);
-    try {
-      const result = await deleteEmployee(id);
-      if (result.type.endsWith('/fulfilled')) {
-        router.push("/structure/headcount-table");
-      } else {
-        alert("Failed to delete employee. Please try again.");
-      }
-    } catch (error) {
-      console.error('Delete error:', error);
-      alert("Failed to delete employee. Please try again.");
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   // Utility functions
   const getInitials = (name) => {
@@ -472,7 +450,7 @@ const EmployeeDetailPageContent = () => {
 
               {/* Enhanced Action Buttons */}
               <div className={`p-3 border-b ${borderColor}`}>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   <button
                     onClick={handleEditEmployee}
                     className={`${btnPrimary} px-3 py-2 rounded-md flex items-center justify-center text-[10px] font-semibold`}
@@ -480,23 +458,7 @@ const EmployeeDetailPageContent = () => {
                     <Edit size={12} className="mr-1" />
                     Edit
                   </button>
-                  <button
-                    onClick={handleDeleteEmployee}
-                    disabled={deleting}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-md flex items-center justify-center text-[10px] font-semibold transition-all duration-200 disabled:opacity-50"
-                  >
-                    {deleting ? (
-                      <>
-                        <Loader size={12} className="mr-1 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <UserX size={12} className="mr-1" />
-                        Delete
-                      </>
-                    )}
-                  </button>
+                 
                 </div>
               </div>
 
@@ -564,6 +526,13 @@ const EmployeeDetailPageContent = () => {
                       label: 'Job Descriptions', 
                       icon: <ClipboardList size={16} />
                     },
+                    { 
+  id: 'performance', 
+  label: 'Performance', 
+  icon: <TrendingUp size={16} />,
+  badge: currentEmployee?.pending_performance_actions?.has_pending_actions ? 
+    currentEmployee.pending_performance_actions.actions.length : null
+},
                     { 
                       id: 'assets', 
                       label: 'Assets', 
@@ -820,7 +789,24 @@ const EmployeeDetailPageContent = () => {
                       />
                     </div>
                   )}
-
+{activeTab === 'performance' && (
+  <div className="space-y-6">
+    <div className="flex items-center justify-between">
+      <h3 className={`${textPrimary} text-lg font-bold`}>Performance Management</h3>
+      <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
+        <TrendingUp size={16} className="text-almet-sapphire" />
+        <span className={`text-xs font-semibold ${textMuted}`}>
+          Annual Review & Goals
+        </span>
+      </div>
+    </div>
+    <EmployeeDetailPerformance 
+      employeeId={id} 
+      employeeData={currentEmployee}
+      isManager={isManager}
+    />
+  </div>
+)}
                   {activeTab === 'assets' && (
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">

@@ -1,4 +1,4 @@
-// services/performanceApi.js - COMPLETE VERSION
+// services/performanceApi.js - UPDATED VERSION
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -298,6 +298,12 @@ export const performanceService = {
     return true;
   },
 
+  // 🆕 MY PERMISSIONS
+  getMyPermissions: async () => {
+    const response = await api.get('/performance/performance/performances/my_permissions/');
+    return response.data;
+  },
+
   // Initialize (IMPORTANT!)
   initialize: async (data) => {
     const response = await api.post('/performance/performance/performances/initialize/', data);
@@ -471,6 +477,7 @@ export const performanceService = {
     return response;
   },
 };
+
 // ===================== DEPARTMENTS API =====================
 export const departmentsService = {
   list: async (params = {}) => {
@@ -495,6 +502,20 @@ export const positionGroupsService = {
   
   getById: async (id) => {
     const response = await api.get(`/position-groups/${id}/`);
+    return response.data;
+  }
+};
+
+// ===================== EMPLOYEES API =====================
+export const employeesService = {
+  list: async (params = {}) => {
+    const queryString = buildQueryParams(params);
+    const response = await api.get(`/employees/?${queryString}`);
+    return response.data;
+  },
+  
+  getById: async (id) => {
+    const response = await api.get(`/employees/${id}/`);
     return response.data;
   }
 };
@@ -530,8 +551,9 @@ const performanceApi = {
   objectiveStatuses: objectiveStatusService,
   notificationTemplates: notificationTemplateService,
   performances: performanceService,
-  departments: departmentsService,           // 🆕 ƏLAVƏ
-  positionGroups: positionGroupsService,     // 🆕 ƏLAVƏ
+  departments: departmentsService,
+  positionGroups: positionGroupsService,
+  employees: employeesService,
   downloadExcel,
 };
 
