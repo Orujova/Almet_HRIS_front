@@ -170,14 +170,18 @@ export default function PerformanceSettingsPage() {
 
   const handleUpdateWeightConfig = async (id, field, value) => {
     try {
+      setLoading(true);
       const config = settings.weightConfigs.find(w => w.id === id);
       await performanceApi.weightConfigs.update(id, {
         ...config,
         [field]: value
       });
-      await loadSettings();
+      toast.showSuccess('Updated successfully');
     } catch (error) {
       toast.showError('Error updating');
+      await loadSettings();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -456,7 +460,7 @@ export default function PerformanceSettingsPage() {
         {/* Compact Header */}
         <div className="mb-4">
           <button
-            onClick={() => router.push('/performance')}
+            onClick={() => router.push('/efficiency/performance-mng')}
             className="mb-2 flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-almet-sapphire transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
