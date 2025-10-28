@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Award, ChevronDown, ChevronRight, Save, Send, TrendingUp, TrendingDown, Minus, Loader, Info } from 'lucide-react';
+import { Award, ChevronDown, ChevronRight, Save, Send, TrendingUp, TrendingDown, Minus, Loader } from 'lucide-react';
 
 export default function CompetenciesSection({
-  performanceId,
-  competencies,
+  competencies = [],
   settings,
   currentPeriod,
   canEdit,
@@ -22,15 +21,26 @@ export default function CompetenciesSection({
     grade: 'N/A' 
   });
 
+  // 🔍 DEBUG: Log incoming competencies
+  useEffect(() => {
+    console.log('📥 CompetenciesSection received competencies:', competencies);
+    console.log('📊 Number of competencies:', competencies?.length || 0);
+    if (competencies && competencies.length > 0) {
+      console.log('🔍 First competency:', competencies[0]);
+      console.log('🏷️ Available groups:', [...new Set(competencies.map(c => c.competency_group_name))]);
+    }
+  }, [competencies]);
+
   // Auto-expand all groups on mount
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       const groups = {};
       competencies.forEach(comp => {
-        const groupName = comp.competency_group_name || comp.competency_group || 'Ungrouped';
+        const groupName = comp.competency_group_name || 'Ungrouped';
         groups[groupName] = true;
       });
       setExpandedGroups(groups);
+      console.log('✅ CompetenciesSection: Groups expanded:', Object.keys(groups));
     }
   }, [competencies]);
 
@@ -42,13 +52,15 @@ export default function CompetenciesSection({
   }, [competencies]);
 
   const calculateAllScores = () => {
+    console.log('🔢 Calculating scores for competencies:', competencies);
+    
     const groupedData = {};
     let totalRequiredSum = 0;
     let totalActualSum = 0;
 
     // Group competencies and calculate sums
     competencies.forEach(comp => {
-      const groupName = comp.competency_group_name || comp.competency_group || 'Ungrouped';
+      const groupName = comp.competency_group_name || 'Ungrouped';
       
       if (!groupedData[groupName]) {
         groupedData[groupName] = {
@@ -68,6 +80,8 @@ export default function CompetenciesSection({
       totalRequiredSum += required;
       totalActualSum += actual;
     });
+
+    console.log('📊 Grouped data:', groupedData);
 
     // Calculate percentages and grades for each group
     const calculatedGroupScores = {};
@@ -89,6 +103,15 @@ export default function CompetenciesSection({
     const overallPercentage = totalRequiredSum > 0 
       ? (totalActualSum / totalRequiredSum) * 100 
       : 0;
+
+    console.log('✅ Final scores:', {
+      groupScores: calculatedGroupScores,
+      overall: {
+        totalRequired: totalRequiredSum,
+        totalActual: totalActualSum,
+        percentage: overallPercentage.toFixed(1)
+      }
+    });
 
     setGroupScores(calculatedGroupScores);
     setOverallScore({
@@ -145,12 +168,26 @@ export default function CompetenciesSection({
   };
 
   // Group competencies by group name
-  const groupedCompetencies = competencies.reduce((acc, comp) => {
-    const groupName = comp.competency_group_name || comp.competency_group || 'Ungrouped';
+  const groupedCompetencies = (competencies || []).reduce((acc, comp) => {
+    const groupName = comp.competency_group_name || 'Ungrouped';
     if (!acc[groupName]) acc[groupName] = [];
     acc[groupName].push(comp);
     return acc;
   }, {});
+
+  console.log('🗂️ Grouped competencies for render:', groupedCompetencies);
+
+  // ⚠️ SAFETY CHECK: Validate competencies array
+  if (!Array.isArray(competencies)) {
+    console.error('❌ competencies is not an array:', competencies);
+    return (
+      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden p-4`}>
+        <div className="text-center text-red-600">
+          Error: Invalid competencies data
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden`}>
@@ -166,7 +203,7 @@ export default function CompetenciesSection({
                 Behavioral Competencies Assessment
               </h3>
               <p className="text-[10px] text-gray-600 dark:text-gray-400">
-                Evaluate competencies based on required levels
+                Evaluate competencies based on required levels • {competencies.length} total
               </p>
             </div>
           </div>
@@ -191,6 +228,9 @@ export default function CompetenciesSection({
         <div className="text-center py-12">
           <Award className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
           <p className="text-xs text-gray-500 dark:text-gray-400">No competencies configured</p>
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+            Competencies will appear here once they are assigned
+          </p>
         </div>
       ) : (
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -253,8 +293,8 @@ export default function CompetenciesSection({
                       <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {groupComps.map((comp, idx) => {
                           const globalIndex = competencies.findIndex(c => c.id === comp.id);
-                          const required = comp.required_level || 0;
-                          const actual = comp.end_year_rating_value || 0;
+                          const required = parseFloat(comp.required_level) || 0;
+                          const actual = parseFloat(comp.end_year_rating_value) || 0;
                           const gap = actual - required;
                           const GapIcon = getGapIcon(gap);
 
@@ -267,7 +307,7 @@ export default function CompetenciesSection({
                               </td>
                               <td className="px-3 py-2.5">
                                 <p className="text-xs font-medium text-gray-900 dark:text-white">
-                                  {comp.competency_name || 'N/A'}
+                                  {comp.competency_name || comp.name || 'N/A'}
                                 </p>
                               </td>
                               <td className="px-3 py-2.5">
@@ -281,8 +321,18 @@ export default function CompetenciesSection({
                                 <select
                                   value={comp.end_year_rating || ''}
                                   onChange={(e) => {
-                                    const selectedScale = settings.evaluationScale?.find(s => s.id === parseInt(e.target.value));
-                                    onUpdate(globalIndex, 'end_year_rating', e.target.value || null);
+                                    const selectedScaleId = parseInt(e.target.value);
+                                    const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+                                    
+                                    console.log('📝 Updating competency:', {
+                                      competencyId: comp.id,
+                                      globalIndex,
+                                      selectedScaleId,
+                                      selectedScale
+                                    });
+                                    
+                                    onUpdate(globalIndex, 'end_year_rating', selectedScaleId || null);
+                                    
                                     if (selectedScale) {
                                       onUpdate(globalIndex, 'end_year_rating_value', selectedScale.value);
                                     }
@@ -310,7 +360,7 @@ export default function CompetenciesSection({
                               <td className="px-3 py-2.5">
                                 <div className={`px-2 py-1.5 text-xs font-bold text-center rounded-md flex items-center justify-center gap-1 ${getGapColor(gap)}`}>
                                   <GapIcon className="w-3 h-3" />
-                                  {gap > 0 ? `+${gap}` : gap}
+                                  {gap > 0 ? `+${formatNumber(gap, 0)}` : formatNumber(gap, 0)}
                                 </div>
                               </td>
                               <td className="px-3 py-2.5">

@@ -14,14 +14,22 @@ export default function EmployeePerformanceDetail({
   darkMode,
   onBack,
   onExport,
+  // Objectives
   onUpdateObjective,
   onAddObjective,
   onDeleteObjective,
   onSaveObjectivesDraft,
   onSubmitObjectives,
+  // Competencies
   onUpdateCompetency,
   onSaveCompetenciesDraft,
   onSubmitCompetencies,
+  // Mid-Year Review
+  onSaveMidYearDraft,
+  onSubmitMidYearEmployee,
+  onSubmitMidYearManager,
+  onRequestMidYearClarification,
+  // Development Needs
   onUpdateDevelopmentNeed,
   onAddDevelopmentNeed,
   onDeleteDevelopmentNeed,
@@ -30,6 +38,8 @@ export default function EmployeePerformanceDetail({
 }) {
   const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
+
+  const isEmployee = performanceData.employee === permissions.employee?.id;
 
   const calculateTotalWeight = (objectives) => {
     return objectives?.reduce((sum, obj) => sum + (parseFloat(obj.weight) || 0), 0) || 0;
@@ -162,15 +172,24 @@ export default function EmployeePerformanceDetail({
         onSubmit={onSubmitCompetencies}
       />
 
-      <PerformanceReviews
-        midYearEmployee={performanceData.mid_year_employee_comment}
-        midYearManager={performanceData.mid_year_manager_comment}
-        endYearEmployee={performanceData.end_year_employee_comment}
-        endYearManager={performanceData.end_year_manager_comment}
-        currentPeriod={currentPeriod}
-        canEdit={canEdit}
-        darkMode={darkMode}
-      />
+
+<PerformanceReviews
+  midYearEmployee={performanceData.mid_year_employee_comment}
+  midYearManager={performanceData.mid_year_manager_comment}
+  endYearEmployee={performanceData.end_year_employee_comment}
+  endYearManager={performanceData.end_year_manager_comment}
+  currentPeriod={currentPeriod}
+  canEdit={canEdit}
+  isManager={canEdit}
+  isEmployee={isEmployee}
+  performanceData={performanceData}
+  permissions={permissions}  // ✅ PASS THIS
+  onSaveMidYearDraft={onSaveMidYearDraft}
+  onSubmitMidYearEmployee={onSubmitMidYearEmployee}
+  onSubmitMidYearManager={onSubmitMidYearManager}
+  onRequestClarification={onRequestMidYearClarification}
+  darkMode={darkMode}
+/>
 
       <DevelopmentNeeds
         developmentNeeds={performanceData.development_needs || []}

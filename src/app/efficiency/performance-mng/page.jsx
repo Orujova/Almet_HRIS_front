@@ -19,7 +19,7 @@ export default function PerformanceManagementPage() {
   const router = useRouter();
   
   // UI State
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' or 'detail'
+  const [activeView, setActiveView] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
@@ -56,6 +56,7 @@ export default function PerformanceManagementPage() {
     statusTypes: []
   });
 
+  // Competencies - Store all behavioral competencies with group info
   const [behavioralCompetencies, setBehavioralCompetencies] = useState([]);
 
   // ==================== INITIALIZATION ====================
@@ -79,7 +80,7 @@ export default function PerformanceManagementPage() {
         loadBehavioralCompetencies()
       ]);
     } catch (error) {
-      console.error('Initialization error:', error);
+      console.error('❌ Initialization error:', error);
       showNotification('Failed to load application data', 'error');
     } finally {
       setLoading(false);
@@ -90,9 +91,10 @@ export default function PerformanceManagementPage() {
   const loadPermissions = async () => {
     try {
       const permsData = await performanceApi.performances.getMyPermissions();
+      console.log('✅ Permissions loaded:', permsData);
       setPermissions(permsData);
     } catch (error) {
-      console.error('Error loading permissions:', error);
+      console.error('❌ Error loading permissions:', error);
       showNotification('Error loading permissions', 'error');
     }
   };
@@ -100,13 +102,14 @@ export default function PerformanceManagementPage() {
   const loadActiveYear = async () => {
     try {
       const yearData = await performanceApi.years.getActiveYear();
+      console.log('✅ Active year loaded:', yearData);
       setActiveYear(yearData);
       setSelectedYear(yearData.year);
       
       const allYears = await performanceApi.years.list();
       setPerformanceYears(allYears.results || allYears);
     } catch (error) {
-      console.error('Error loading year:', error);
+      console.error('❌ Error loading year:', error);
       showNotification('Error loading performance year', 'error');
     }
   };
@@ -123,6 +126,8 @@ export default function PerformanceManagementPage() {
           performanceApi.objectiveStatuses.list()
         ]);
       
+      console.log('✅ Evaluation Scales loaded:', scalesRes);
+      
       setSettings({
         weightConfigs: weightsRes.results || weightsRes,
         goalLimits: {
@@ -137,41 +142,60 @@ export default function PerformanceManagementPage() {
         statusTypes: statusesRes.results || statusesRes
       });
     } catch (error) {
-      console.error('Error loading settings:', error);
+      console.error('❌ Error loading settings:', error);
       showNotification('Error loading settings', 'error');
     }
   };
 
   const loadBehavioralCompetencies = async () => {
     try {
+      console.log('🔄 Loading behavioral competencies...');
+      
+      // 1. Load all behavioral groups
       const groupsResponse = await competencyApi.behavioralGroups.getAll();
       const groups = groupsResponse.results || groupsResponse;
       
-      const formattedCompetencies = [];
+      console.log('📦 Loaded behavioral groups:', groups);
       
+      const allCompetencies = [];
+      
+      // 2. For each group, load its competencies
       for (const group of groups) {
         try {
-          const groupDetail = await competencyApi.behavioralGroups.getById(group.id);
-          const competencies = groupDetail.competencies || [];
+          const competenciesResponse = await competencyApi.behavioralGroups.getCompetencies(group.id);
+          const competencies = competenciesResponse || [];
           
-          if (competencies.length > 0) {
-            formattedCompetencies.push({
-              group: group.name,
-              groupId: group.id,
-              items: competencies.map(comp => ({ 
-                id: comp.id, 
-                name: comp.name 
-              }))
+          console.log(`📋 Competencies for group "${group.name}":`, competencies);
+          
+          // Add group info to each competency
+          competencies.forEach(comp => {
+            allCompetencies.push({
+              id: comp.id,
+              name: comp.name,
+              description: comp.description || '',
+              group_id: group.id,
+              group_name: group.name
             });
-          }
+          });
         } catch (error) {
-          console.error(`Error loading competencies for group ${group.id}:`, error);
+          console.error(`❌ Error loading competencies for group ${group.name}:`, error);
         }
       }
       
-      setBehavioralCompetencies(formattedCompetencies);
+      console.log('✅ Total behavioral competencies loaded:', allCompetencies.length);
+      console.log('📊 Competencies by group:', 
+        allCompetencies.reduce((acc, comp) => {
+          acc[comp.group_name] = (acc[comp.group_name] || 0) + 1;
+          return acc;
+        }, {})
+      );
+      
+      setBehavioralCompetencies(allCompetencies);
+      return allCompetencies;
     } catch (error) {
-      console.error('Error loading behavioral competencies:', error);
+      console.error('❌ Error loading behavioral competencies:', error);
+      showNotification('Error loading competencies', 'error');
+      return [];
     }
   };
 
@@ -182,7 +206,7 @@ export default function PerformanceManagementPage() {
       setDashboardStats(stats);
       await loadEmployees();
     } catch (error) {
-      console.error('Error loading dashboard:', error);
+      console.error('❌ Error loading dashboard:', error);
       showNotification('Error loading dashboard data', 'error');
     } finally {
       setLoading(false);
@@ -234,78 +258,136 @@ export default function PerformanceManagementPage() {
       
       setEmployees(employeesWithPerformance);
     } catch (error) {
-      console.error('Error loading employees:', error);
+      console.error('❌ Error loading employees:', error);
       showNotification('Error loading employees', 'error');
     }
   };
 
   const loadPerformanceData = async (employeeId, year) => {
-    const key = `${employeeId}_${year}`;
+  const key = `${employeeId}_${year}`;
+  
+  if (performanceData[key]) {
+    setSelectedPerformanceId(performanceData[key].id);
+    return performanceData[key];
+  }
+  
+  setLoading(true);
+  try {
+    const response = await performanceApi.performances.list({
+      employee_id: employeeId,
+      year: year
+    });
     
-    if (performanceData[key]) {
-      setSelectedPerformanceId(performanceData[key].id);
-      return performanceData[key];
+    const perfs = response.results || response;
+    let detailData;
+    
+    if (perfs.length > 0) {
+      const performance = perfs[0];
+      detailData = await performanceApi.performances.get(performance.id);
+    } else {
+      detailData = await performanceApi.performances.initialize({
+        employee: employeeId,
+        performance_year: activeYear.id
+      });
     }
     
-    setLoading(true);
-    try {
-      const response = await performanceApi.performances.list({
-        employee_id: employeeId,
-        year: year
+    console.log('📊 Raw performance data from API:', detailData);
+    console.log('📋 Available behavioral competencies:', behavioralCompetencies);
+    
+    // ✅ CRITICAL FIX: Check if behavioralCompetencies is loaded
+    if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
+      console.error('❌ PROBLEM: Behavioral competencies not loaded yet!');
+      console.log('⏳ Waiting for competencies to load...');
+      
+      // Wait a bit and retry
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Reload competencies if needed
+      if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
+        console.log('🔄 Reloading behavioral competencies...');
+        await loadBehavioralCompetencies();
+      }
+    }
+    
+    // Enrich competency ratings
+    if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
+      console.log('🔍 Enriching competency ratings...');
+      console.log('   Ratings to enrich:', detailData.competency_ratings.length);
+      console.log('   Available competencies:', behavioralCompetencies.length);
+      
+      const enrichedRatings = detailData.competency_ratings.map((rating) => {
+        const competencyInfo = behavioralCompetencies.find(
+          comp => comp.id === rating.behavioral_competency
+        );
+        
+        if (competencyInfo) {
+          console.log(`   ✅ Enriched rating ${rating.id}:`, {
+            id: rating.behavioral_competency,
+            name: competencyInfo.name,
+            group: competencyInfo.group_name
+          });
+          
+          return {
+            ...rating,
+            competency_name: competencyInfo.name,
+            competency_group_id: competencyInfo.group_id,
+            competency_group_name: competencyInfo.group_name,
+            description: competencyInfo.description
+          };
+        } else {
+          console.warn(`   ⚠️ Competency ${rating.behavioral_competency} not found`);
+          return {
+            ...rating,
+            competency_name: `Unknown Competency (ID: ${rating.behavioral_competency})`,
+            competency_group_id: null,
+            competency_group_name: 'Ungrouped'
+          };
+        }
       });
       
-      const perfs = response.results || response;
+      detailData.competency_ratings = enrichedRatings;
       
-      let detailData;
+      console.log('✅ Enrichment complete!');
+      console.log('   Final ratings:', enrichedRatings);
+      console.log('   Groups found:', [...new Set(enrichedRatings.map(r => r.competency_group_name))]);
       
-      if (perfs.length > 0) {
-        const performance = perfs[0];
-        detailData = await performanceApi.performances.get(performance.id);
-      } else {
-        detailData = await performanceApi.performances.initialize({
-          employee: employeeId,
-          performance_year: activeYear.id
-        });
-      }
-      
-      // Enrich competency data with group information
-      if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
-        const enrichedRatings = await Promise.all(
-          detailData.competency_ratings.map(async (rating) => {
-            try {
-              const competencyDetail = await competencyApi.behavioralCompetencies.getById(
-                rating.behavioral_competency
-              );
-              return {
-                ...rating,
-                competency_name: competencyDetail.name,
-                competency_group_id: competencyDetail.group,
-                competency_group_name: competencyDetail.group_name
-              };
-            } catch (error) {
-              console.error(`Error fetching competency ${rating.behavioral_competency}:`, error);
-              return rating;
-            }
-          })
-        );
-        detailData.competency_ratings = enrichedRatings;
-      }
-      
-      setPerformanceData(prev => ({
+    } else {
+      console.log('⚠️ No competency ratings in performance data');
+    }
+    
+    // ✅ CRITICAL: Make sure data is set
+    setPerformanceData(prev => {
+      const newData = {
         ...prev,
         [key]: detailData
-      }));
-      
-      setSelectedPerformanceId(detailData.id);
-      return detailData;
-    } catch (error) {
-      console.error('Error loading performance data:', error);
-      showNotification('Error loading performance data', 'error');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  };
+      };
+      console.log('💾 Setting performance data:', newData);
+      return newData;
+    });
+    
+    setSelectedPerformanceId(detailData.id);
+    
+    // ✅ DEBUG: Expose to window for debugging
+    window.debugData = {
+      behavioralCompetencies,
+      performanceData: { [key]: detailData },
+      selectedEmployee: { id: employeeId, year }
+    };
+    
+    console.log('✅ Performance data loaded successfully');
+    console.log('🔍 Debug data available at: window.debugData');
+    
+    return detailData;
+    
+  } catch (error) {
+    console.error('❌ Error loading performance data:', error);
+    showNotification('Error loading performance data', 'error');
+    return null;
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ==================== HELPER FUNCTIONS ====================
   const showNotification = (message, type = 'success') => {
@@ -415,7 +497,7 @@ export default function PerformanceManagementPage() {
       showNotification('Objectives draft saved successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
-      console.error('Error saving objectives:', error);
+      console.error('❌ Error saving objectives:', error);
       showNotification(error.response?.data?.error || 'Error saving objectives', 'error');
     } finally {
       setLoading(false);
@@ -446,7 +528,7 @@ export default function PerformanceManagementPage() {
       showNotification('Objectives submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
-      console.error('Error submitting objectives:', error);
+      console.error('❌ Error submitting objectives:', error);
       showNotification(error.response?.data?.error || 'Error submitting objectives', 'error');
     } finally {
       setLoading(false);
@@ -487,7 +569,7 @@ export default function PerformanceManagementPage() {
       showNotification('Competencies draft saved successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
-      console.error('Error saving competencies:', error);
+      console.error('❌ Error saving competencies:', error);
       showNotification(error.response?.data?.error || 'Error saving competencies', 'error');
     } finally {
       setLoading(false);
@@ -503,8 +585,89 @@ export default function PerformanceManagementPage() {
       showNotification('Competencies submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
-      console.error('Error submitting competencies:', error);
+      console.error('❌ Error submitting competencies:', error);
       showNotification(error.response?.data?.error || 'Error submitting competencies', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ==================== MID-YEAR REVIEW HANDLERS ====================
+  const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
+    if (!selectedPerformanceId) return;
+    
+    setLoading(true);
+    try {
+      await performanceApi.performances.saveMidYearDraft(
+        selectedPerformanceId,
+        userRole,
+        comment,
+        objectives
+      );
+      showNotification(`Mid-year ${userRole} draft saved successfully`);
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error saving mid-year draft:', error);
+      showNotification(error.response?.data?.error || 'Error saving mid-year draft', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitMidYearEmployee = async (comment, objectives = null) => {
+    if (!selectedPerformanceId) return;
+    
+    setLoading(true);
+    try {
+      await performanceApi.performances.submitMidYearEmployee(
+        selectedPerformanceId,
+        comment,
+        objectives
+      );
+      showNotification('Mid-year self-review submitted successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error submitting mid-year employee review:', error);
+      showNotification(error.response?.data?.error || 'Error submitting mid-year review', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitMidYearManager = async (comment, objectives = null) => {
+    if (!selectedPerformanceId) return;
+    
+    setLoading(true);
+    try {
+      await performanceApi.performances.submitMidYearManager(
+        selectedPerformanceId,
+        comment,
+        objectives
+      );
+      showNotification('Mid-year review completed successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error submitting mid-year manager review:', error);
+      showNotification(error.response?.data?.error || 'Error completing mid-year review', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRequestMidYearClarification = async (comment) => {
+    if (!selectedPerformanceId) return;
+    
+    setLoading(true);
+    try {
+      await performanceApi.performances.requestMidYearClarification(
+        selectedPerformanceId,
+        comment
+      );
+      showNotification('Clarification request sent successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error requesting clarification:', error);
+      showNotification(error.response?.data?.error || 'Error requesting clarification', 'error');
     } finally {
       setLoading(false);
     }
@@ -577,7 +740,7 @@ export default function PerformanceManagementPage() {
       showNotification('Development needs draft saved successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
-      console.error('Error saving development needs:', error);
+      console.error('❌ Error saving development needs:', error);
       showNotification(error.response?.data?.error || 'Error saving development needs', 'error');
     } finally {
       setLoading(false);
@@ -593,92 +756,12 @@ export default function PerformanceManagementPage() {
       showNotification('Development needs submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
-      console.error('Error submitting development needs:', error);
+      console.error('❌ Error submitting development needs:', error);
       showNotification(error.response?.data?.error || 'Error submitting development needs', 'error');
     } finally {
       setLoading(false);
     }
   };
-const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.saveMidYearDraft(
-        selectedPerformanceId,
-        userRole,
-        comment,
-        objectives
-      );
-      showNotification(`Mid-year ${userRole} draft saved successfully`);
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('Error saving mid-year draft:', error);
-      showNotification(error.response?.data?.error || 'Error saving mid-year draft', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitMidYearEmployee = async (comment, objectives = null) => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.submitMidYearEmployee(
-        selectedPerformanceId,
-        comment,
-        objectives
-      );
-      showNotification('Mid-year self-review submitted successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('Error submitting mid-year employee review:', error);
-      showNotification(error.response?.data?.error || 'Error submitting mid-year review', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmitMidYearManager = async (comment, objectives = null) => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.submitMidYearManager(
-        selectedPerformanceId,
-        comment,
-        objectives
-      );
-      showNotification('Mid-year review completed successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('Error submitting mid-year manager review:', error);
-      showNotification(error.response?.data?.error || 'Error completing mid-year review', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRequestMidYearClarification = async (comment) => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.requestMidYearClarification(
-        selectedPerformanceId,
-        comment
-      );
-      showNotification('Clarification request sent successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('Error requesting clarification:', error);
-      showNotification(error.response?.data?.error || 'Error requesting clarification', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
 
   // ==================== OTHER HANDLERS ====================
   const handleSelectEmployee = async (employee) => {
@@ -709,7 +792,7 @@ const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
       );
       showNotification('Export successful');
     } catch (error) {
-      console.error('Error exporting:', error);
+      console.error('❌ Error exporting:', error);
       showNotification('Error exporting', 'error');
     } finally {
       setLoading(false);
@@ -762,42 +845,42 @@ const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
           />
         ) : (
           selectedEmployee && currentPerformanceData ? (
-             <EmployeePerformanceDetail
-            employee={selectedEmployee}
-            performanceData={currentPerformanceData}
-            settings={settings}
-            currentPeriod={getCurrentPeriod()}
-            permissions={permissions}
-            loading={loading}
-            darkMode={darkMode}
-            onBack={handleBackToDashboard}
-            onExport={handleExportExcel}
-            
-            // Objectives
-            onUpdateObjective={handleUpdateObjective}
-            onAddObjective={handleAddObjective}
-            onDeleteObjective={handleDeleteObjective}
-            onSaveObjectivesDraft={handleSaveObjectivesDraft}
-            onSubmitObjectives={handleSubmitObjectives}
-            
-            // Competencies
-            onUpdateCompetency={handleUpdateCompetency}
-            onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
-            onSubmitCompetencies={handleSubmitCompetencies}
-            
-            // Mid-Year Review (NEW)
-            onSaveMidYearDraft={handleSaveMidYearDraft}
-            onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
-            onSubmitMidYearManager={handleSubmitMidYearManager}
-            onRequestMidYearClarification={handleRequestMidYearClarification}
-            
-            // Development Needs
-            onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
-            onAddDevelopmentNeed={handleAddDevelopmentNeed}
-            onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
-            onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
-            onSubmitDevelopmentNeeds={handleSubmitDevelopmentNeeds}
-          />
+            <EmployeePerformanceDetail
+              employee={selectedEmployee}
+              performanceData={currentPerformanceData}
+              settings={settings}
+              currentPeriod={getCurrentPeriod()}
+              permissions={permissions}
+              loading={loading}
+              darkMode={darkMode}
+              onBack={handleBackToDashboard}
+              onExport={handleExportExcel}
+              
+              // Objectives
+              onUpdateObjective={handleUpdateObjective}
+              onAddObjective={handleAddObjective}
+              onDeleteObjective={handleDeleteObjective}
+              onSaveObjectivesDraft={handleSaveObjectivesDraft}
+              onSubmitObjectives={handleSubmitObjectives}
+              
+              // Competencies
+              onUpdateCompetency={handleUpdateCompetency}
+              onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
+              onSubmitCompetencies={handleSubmitCompetencies}
+              
+              // Mid-Year Review
+              onSaveMidYearDraft={handleSaveMidYearDraft}
+              onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
+              onSubmitMidYearManager={handleSubmitMidYearManager}
+              onRequestMidYearClarification={handleRequestMidYearClarification}
+              
+              // Development Needs
+              onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
+              onAddDevelopmentNeed={handleAddDevelopmentNeed}
+              onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
+              onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
+              onSubmitDevelopmentNeeds={handleSubmitDevelopmentNeeds}
+            />
           ) : (
             <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border shadow-sm p-16 text-center`}>
               <Users className="w-20 h-20 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
