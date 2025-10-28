@@ -368,26 +368,42 @@ export const performanceService = {
     return response.data;
   },
 
-  // Mid-Year Review Operations
-  saveMidYearDraft: async (id, userRole, comment) => {
+saveMidYearDraft: async (id, userRole, comment, objectives = null) => {
+    const payload = { user_role: userRole, comment };
+    if (objectives) payload.objectives = objectives;
+    
     const response = await api.post(
       `/performance/performance/performances/${id}/save_mid_year_draft/`,
-      { user_role: userRole, comment }
+      payload
     );
     return response.data;
   },
   
-  submitMidYearEmployee: async (id, comment) => {
+  submitMidYearEmployee: async (id, comment, objectives = null) => {
+    const payload = { comment };
+    if (objectives) payload.objectives = objectives;
+    
     const response = await api.post(
       `/performance/performance/performances/${id}/submit_mid_year_employee/`,
-      { comment }
+      payload
     );
     return response.data;
   },
   
-  submitMidYearManager: async (id, comment) => {
+  submitMidYearManager: async (id, comment, objectives = null) => {
+    const payload = { comment };
+    if (objectives) payload.objectives = objectives;
+    
     const response = await api.post(
       `/performance/performance/performances/${id}/submit_mid_year_manager/`,
+      payload
+    );
+    return response.data;
+  },
+  
+  requestMidYearClarification: async (id, comment) => {
+    const response = await api.post(
+      `/performance/performance/performances/${id}/request_mid_year_clarification/`,
       { comment }
     );
     return response.data;
