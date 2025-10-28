@@ -21,17 +21,6 @@ export default function CompetenciesSection({
     grade: 'N/A' 
   });
 
-  // 🔍 DEBUG: Log incoming competencies
-  useEffect(() => {
-    console.log('📥 CompetenciesSection received competencies:', competencies);
-    console.log('📊 Number of competencies:', competencies?.length || 0);
-    if (competencies && competencies.length > 0) {
-      console.log('🔍 First competency:', competencies[0]);
-      console.log('🏷️ Available groups:', [...new Set(competencies.map(c => c.competency_group_name))]);
-    }
-  }, [competencies]);
-
-  // Auto-expand all groups on mount
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       const groups = {};
@@ -40,25 +29,20 @@ export default function CompetenciesSection({
         groups[groupName] = true;
       });
       setExpandedGroups(groups);
-      console.log('✅ CompetenciesSection: Groups expanded:', Object.keys(groups));
     }
   }, [competencies]);
 
-  // Calculate scores when competencies change
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       calculateAllScores();
     }
-  }, [competencies]);
+  }, [competencies, settings.evaluationScale]);
 
   const calculateAllScores = () => {
-    console.log('🔢 Calculating scores for competencies:', competencies);
-    
     const groupedData = {};
     let totalRequiredSum = 0;
     let totalActualSum = 0;
 
-    // Group competencies and calculate sums
     competencies.forEach(comp => {
       const groupName = comp.competency_group_name || 'Ungrouped';
       
@@ -81,9 +65,19 @@ export default function CompetenciesSection({
       totalActualSum += actual;
     });
 
-    console.log('📊 Grouped data:', groupedData);
+    // ✅ FIX 2: Get letter grade from evaluation scale dynamically
+    const getLetterGradeFromScale = (percentage) => {
+      if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
+        return 'N/A';
+      }
+      
+      const matchingScale = settings.evaluationScale.find(scale => 
+        percentage >= scale.range_min && percentage <= scale.range_max
+      );
+      
+      return matchingScale ? matchingScale.name : 'N/A';
+    };
 
-    // Calculate percentages and grades for each group
     const calculatedGroupScores = {};
     Object.entries(groupedData).forEach(([groupName, data]) => {
       const percentage = data.requiredTotal > 0 
@@ -95,52 +89,47 @@ export default function CompetenciesSection({
         actualTotal: data.actualTotal,
         count: data.count,
         percentage: percentage.toFixed(1),
-        grade: getLetterGrade(percentage)
+        grade: getLetterGradeFromScale(percentage)
       };
     });
 
-    // Calculate overall score
     const overallPercentage = totalRequiredSum > 0 
       ? (totalActualSum / totalRequiredSum) * 100 
       : 0;
-
-    console.log('✅ Final scores:', {
-      groupScores: calculatedGroupScores,
-      overall: {
-        totalRequired: totalRequiredSum,
-        totalActual: totalActualSum,
-        percentage: overallPercentage.toFixed(1)
-      }
-    });
 
     setGroupScores(calculatedGroupScores);
     setOverallScore({
       totalRequired: totalRequiredSum,
       totalActual: totalActualSum,
       percentage: overallPercentage.toFixed(1),
-      grade: getLetterGrade(overallPercentage)
+      grade: getLetterGradeFromScale(overallPercentage)
     });
   };
 
-  const getLetterGrade = (percentage) => {
-    if (percentage >= 90) return 'A';
-    if (percentage >= 80) return 'B';
-    if (percentage >= 70) return 'C';
-    if (percentage >= 60) return 'D';
-    if (percentage >= 50) return 'E';
-    return 'F';
-  };
-
+  // ✅ FIX 2: Dynamic color assignment based on evaluation scale
   const getGradeColor = (grade) => {
-    switch (grade) {
-      case 'A': return 'text-emerald-600 dark:text-emerald-400';
-      case 'B': return 'text-blue-600 dark:text-blue-400';
-      case 'C': return 'text-yellow-600 dark:text-yellow-400';
-      case 'D': return 'text-orange-600 dark:text-orange-400';
-      case 'E': return 'text-purple-600 dark:text-purple-400';
-      case 'F': return 'text-red-600 dark:text-red-400';
-      default: return 'text-gray-600 dark:text-gray-400';
+    if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
+      return 'text-gray-600 dark:text-gray-400';
     }
+    
+    const scaleItem = settings.evaluationScale.find(scale => scale.name === grade);
+    
+    if (!scaleItem) {
+      return 'text-gray-600 dark:text-gray-400';
+    }
+    
+    // Sort scales by value to determine ranking
+    const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
+    const gradeIndex = sortedScales.findIndex(scale => scale.name === grade);
+    const totalGrades = sortedScales.length;
+    
+    // Color gradient from best to worst
+    if (gradeIndex === 0) return 'text-emerald-600 dark:text-emerald-400';
+    if (gradeIndex === 1 && totalGrades > 2) return 'text-blue-600 dark:text-blue-400';
+    if (gradeIndex < totalGrades / 2) return 'text-yellow-600 dark:text-yellow-400';
+    if (gradeIndex < totalGrades * 0.75) return 'text-orange-600 dark:text-orange-400';
+    if (gradeIndex < totalGrades - 1) return 'text-purple-600 dark:text-purple-400';
+    return 'text-red-600 dark:text-red-400';
   };
 
   const toggleGroup = (groupName) => {
@@ -167,7 +156,6 @@ export default function CompetenciesSection({
     return isNaN(num) ? '0' : num.toFixed(decimals);
   };
 
-  // Group competencies by group name
   const groupedCompetencies = (competencies || []).reduce((acc, comp) => {
     const groupName = comp.competency_group_name || 'Ungrouped';
     if (!acc[groupName]) acc[groupName] = [];
@@ -175,11 +163,7 @@ export default function CompetenciesSection({
     return acc;
   }, {});
 
-  console.log('🗂️ Grouped competencies for render:', groupedCompetencies);
-
-  // ⚠️ SAFETY CHECK: Validate competencies array
   if (!Array.isArray(competencies)) {
-    console.error('❌ competencies is not an array:', competencies);
     return (
       <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden p-4`}>
         <div className="text-center text-red-600">
@@ -191,7 +175,6 @@ export default function CompetenciesSection({
 
   return (
     <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden`}>
-      {/* Header */}
       <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -208,7 +191,6 @@ export default function CompetenciesSection({
             </div>
           </div>
           
-          {/* Overall Score Badge */}
           <div className={`px-3 py-2 rounded-lg ${darkMode ? 'bg-purple-900/30' : 'bg-purple-50'}`}>
             <div className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Overall Score</div>
             <div className="flex items-center gap-2">
@@ -223,7 +205,6 @@ export default function CompetenciesSection({
         </div>
       </div>
 
-      {/* Competency Groups */}
       {Object.keys(groupedCompetencies).length === 0 ? (
         <div className="text-center py-12">
           <Award className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
@@ -240,7 +221,6 @@ export default function CompetenciesSection({
 
             return (
               <div key={groupName}>
-                {/* Group Header */}
                 <button
                   onClick={() => toggleGroup(groupName)}
                   className={`w-full p-3 flex items-center justify-between text-left ${
@@ -275,7 +255,6 @@ export default function CompetenciesSection({
                   )}
                 </button>
 
-                {/* Group Content */}
                 {isExpanded && (
                   <div className="overflow-x-auto">
                     <table className="w-full">
@@ -318,18 +297,12 @@ export default function CompetenciesSection({
                                 </div>
                               </td>
                               <td className="px-3 py-2.5">
+                                {/* ✅ FIX 4: Show selected value in dropdown */}
                                 <select
                                   value={comp.end_year_rating || ''}
                                   onChange={(e) => {
                                     const selectedScaleId = parseInt(e.target.value);
                                     const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-                                    
-                                    console.log('📝 Updating competency:', {
-                                      competencyId: comp.id,
-                                      globalIndex,
-                                      selectedScaleId,
-                                      selectedScale
-                                    });
                                     
                                     onUpdate(globalIndex, 'end_year_rating', selectedScaleId || null);
                                     
@@ -388,7 +361,6 @@ export default function CompetenciesSection({
         </div>
       )}
 
-      {/* Summary & Actions */}
       {competencies.length > 0 && (
         <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
           <div className={`p-3 rounded-lg ${darkMode ? 'bg-purple-900/20 border-purple-800' : 'bg-purple-50 border-purple-200'} border mb-3`}>

@@ -297,23 +297,13 @@ export default function PerformanceManagementPage() {
     // ✅ CRITICAL FIX: Check if behavioralCompetencies is loaded
     if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
       console.error('❌ PROBLEM: Behavioral competencies not loaded yet!');
-      console.log('⏳ Waiting for competencies to load...');
-      
-      // Wait a bit and retry
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Reload competencies if needed
-      if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
-        console.log('🔄 Reloading behavioral competencies...');
-        await loadBehavioralCompetencies();
-      }
+      console.log('⏳ Reloading competencies...');
+      await loadBehavioralCompetencies();
     }
     
-    // Enrich competency ratings
+    // ✅ Enrich competency ratings with group info
     if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
-      console.log('🔍 Enriching competency ratings...');
-      console.log('   Ratings to enrich:', detailData.competency_ratings.length);
-      console.log('   Available competencies:', behavioralCompetencies.length);
+      console.log('🔄 Enriching competency ratings...');
       
       const enrichedRatings = detailData.competency_ratings.map((rating) => {
         const competencyInfo = behavioralCompetencies.find(
@@ -321,7 +311,7 @@ export default function PerformanceManagementPage() {
         );
         
         if (competencyInfo) {
-          console.log(`   ✅ Enriched rating ${rating.id}:`, {
+          console.log(`✅ Enriched rating ${rating.id}:`, {
             id: rating.behavioral_competency,
             name: competencyInfo.name,
             group: competencyInfo.group_name
@@ -335,7 +325,7 @@ export default function PerformanceManagementPage() {
             description: competencyInfo.description
           };
         } else {
-          console.warn(`   ⚠️ Competency ${rating.behavioral_competency} not found`);
+          console.warn(`⚠️ Competency ${rating.behavioral_competency} not found`);
           return {
             ...rating,
             competency_name: `Unknown Competency (ID: ${rating.behavioral_competency})`,
@@ -355,27 +345,14 @@ export default function PerformanceManagementPage() {
       console.log('⚠️ No competency ratings in performance data');
     }
     
-    // ✅ CRITICAL: Make sure data is set
-    setPerformanceData(prev => {
-      const newData = {
-        ...prev,
-        [key]: detailData
-      };
-      console.log('💾 Setting performance data:', newData);
-      return newData;
-    });
+    setPerformanceData(prev => ({
+      ...prev,
+      [key]: detailData
+    }));
     
     setSelectedPerformanceId(detailData.id);
     
-    // ✅ DEBUG: Expose to window for debugging
-    window.debugData = {
-      behavioralCompetencies,
-      performanceData: { [key]: detailData },
-      selectedEmployee: { id: employeeId, year }
-    };
-    
     console.log('✅ Performance data loaded successfully');
-    console.log('🔍 Debug data available at: window.debugData');
     
     return detailData;
     
@@ -537,22 +514,26 @@ export default function PerformanceManagementPage() {
 
   // ==================== COMPETENCIES HANDLERS ====================
   const handleUpdateCompetency = (index, field, value) => {
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const newCompetencies = [...(data.competency_ratings || [])];
-    newCompetencies[index] = {
-      ...newCompetencies[index],
-      [field]: value
-    };
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        competency_ratings: newCompetencies
-      }
-    }));
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+  const newCompetencies = [...(data.competency_ratings || [])];
+  
+  newCompetencies[index] = {
+    ...newCompetencies[index],
+    [field]: value
   };
+  
+  console.log(`🔄 Updated competency [${index}][${field}] = ${value}`);
+  console.log('   New competencies:', newCompetencies[index]);
+  
+  setPerformanceData(prev => ({
+    ...prev,
+    [key]: {
+      ...prev[key],
+      competency_ratings: newCompetencies
+    }
+  }));
+};
 
   const handleSaveCompetenciesDraft = async () => {
     if (!selectedPerformanceId) return;

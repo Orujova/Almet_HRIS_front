@@ -20,7 +20,6 @@ export default function ObjectivesSection({
   const canAddMore = objectives.length < settings.goalLimits?.max && totalWeight < 100;
   const isValidForSubmit = objectives.length >= settings.goalLimits?.min && totalWeight === 100;
 
-  // Safe number formatting
   const formatNumber = (value, decimals = 2) => {
     const num = parseFloat(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
@@ -36,7 +35,6 @@ export default function ObjectivesSection({
 
   return (
     <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden`}>
-      {/* Header - Kompakt */}
       <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -77,7 +75,6 @@ export default function ObjectivesSection({
         </div>
       </div>
 
-      {/* Table */}
       {objectives.length === 0 ? (
         <div className="text-center py-12">
           <Target className="w-12 h-12 mx-auto mb-3 text-gray-300 dark:text-gray-600" />
@@ -124,7 +121,6 @@ export default function ObjectivesSection({
         </div>
       )}
 
-      {/* Summary & Actions - Kompakt */}
       {objectives.length > 0 && (
         <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
           <div className={`p-3 rounded-lg ${darkMode ? 'bg-almet-cloud-burst/20 border-almet-sapphire/30' : 'bg-almet-mystic border-almet-sapphire/20'} border mb-3`}>
@@ -263,10 +259,26 @@ function ObjectiveRow({ objective, index, settings, currentPeriod, canEdit, dark
         />
       </td>
       <td className="px-3 py-2.5">
+        {/* ✅ FIX 3: Calculate score when rating is selected */}
         <select
           value={objective.end_year_rating || ''}
-          onChange={(e) => onUpdate(index, 'end_year_rating', e.target.value || null)}
-          disabled={currentPeriod !== 'END_YEAR_REVIEW' }
+          onChange={(e) => {
+            const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
+            onUpdate(index, 'end_year_rating', selectedScaleId);
+            
+            // ✅ Automatically calculate score based on selected rating
+            if (selectedScaleId) {
+              const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+              if (selectedScale) {
+                const weight = parseFloat(objective.weight) || 0;
+                const calculatedScore = (selectedScale.value * weight) / 100;
+                onUpdate(index, 'calculated_score', calculatedScore);
+              }
+            } else {
+              onUpdate(index, 'calculated_score', 0);
+            }
+          }}
+          disabled={currentPeriod !== 'END_YEAR_REVIEW'}
           className={`w-full px-2 py-1.5 text-xs border rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${
             darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
           } disabled:opacity-50 transition-colors`}

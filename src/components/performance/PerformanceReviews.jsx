@@ -20,28 +20,21 @@ export default function PerformanceReviews({
   const [clarificationText, setClarificationText] = useState('');
   const [showClarificationInput, setShowClarificationInput] = useState(false);
 
-  // ✅ PERMISSION CHECKER
   const hasPermission = (permissionCode) => {
     if (permissions?.is_admin) return true;
     if (!Array.isArray(permissions?.permissions)) return false;
     return permissions.permissions.includes(permissionCode);
   };
 
-  // ============================================
-  // 🔐 PERMISSION-BASED ACCESS CONTROL
-  // ============================================
-  
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
 
-  // Role-based permissions
   const canActAsEmployee = hasPermission('performance.approve_as_employee') || 
                            hasPermission('performance.edit_own');
   
   const canActAsManager = hasPermission('performance.approve_as_manager') || 
                           hasPermission('performance.manage_team');
 
-  // Convert backend datetime strings to boolean
   const isEmployeeSubmitted = Boolean(performanceData?.mid_year_employee_submitted);
   const isManagerCompleted = Boolean(performanceData?.mid_year_completed);
   const isEndYearEmployeeSubmitted = Boolean(performanceData?.end_year_employee_submitted);
@@ -54,7 +47,6 @@ export default function PerformanceReviews({
     hasEmployeePermission &&
     !isEmployeeSubmitted;
 
-
   const hasManagerPermission = hasPermission('performance.midyear.submit_manager');
   const canEditMidYearManager = 
     canActAsManager &&
@@ -63,18 +55,18 @@ export default function PerformanceReviews({
     isEmployeeSubmitted &&
     !isManagerCompleted;
 
-  // CLARIFICATION REQUEST
+  // ✅ FIX 1: Clarification ONLY for mid-year review, NOT for end-year
   const hasClarificationPermission = hasPermission('performance.midyear.request_clarification');
   const isClarificationResolved = Boolean(performanceData?.mid_year_clarification_resolved);
   const showMidYearClarification = 
     canActAsEmployee &&
+    isMidYearPeriod &&  // ✅ Only show during mid-year period
     hasClarificationPermission &&
     isManagerCompleted &&
     !isClarificationResolved;
 
   const midYearNeedsClarification = performanceData?.approval_status === 'NEED_CLARIFICATION';
 
-  // END-YEAR PERMISSIONS
   const hasEndYearEmployeePermission = hasPermission('performance.endyear.submit_employee');
   const canEditEndYearEmployee = 
     canActAsEmployee &&
@@ -89,12 +81,6 @@ export default function PerformanceReviews({
     hasEndYearManagerPermission &&
     isEndYearEmployeeSubmitted && 
     !isEndYearCompleted;
-
-
-
-  // ============================================
-  // 🎬 EVENT HANDLERS
-  // ============================================
 
   const handleStartEdit = (section, role, currentComment) => {
     setEditMode({ section, role });
@@ -145,10 +131,6 @@ export default function PerformanceReviews({
     setShowClarificationInput(false);
   };
 
-  // ============================================
-  // 🎨 REVIEW SECTION COMPONENT
-  // ============================================
-
   const ReviewSection = ({ 
     title, 
     icon: Icon, 
@@ -168,7 +150,6 @@ export default function PerformanceReviews({
 
     return (
       <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden`}>
-        {/* Header */}
         <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -349,7 +330,7 @@ export default function PerformanceReviews({
             )}
           </div>
 
-          {/* Clarification Request */}
+          {/* ✅ Clarification Request - Only shows when showClarificationOption is TRUE */}
           {showClarificationOption && !showClarificationInput && (
             <div className={`mt-3 pt-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
@@ -400,10 +381,6 @@ export default function PerformanceReviews({
       </div>
     );
   };
-
-  // ============================================
-  // 🎨 RENDER
-  // ============================================
 
   return (
     <div className="space-y-4">
