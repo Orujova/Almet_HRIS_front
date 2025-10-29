@@ -277,6 +277,14 @@ export const performanceService = {
     const response = await api.get(`/performance/performance/performances/?${queryString}`);
     return response.data;
   },
+  // Objectives Operations
+cancelObjective: async (id, objectiveId, reason) => {
+  const response = await api.post(
+    `/performance/performance/performances/${id}/cancel_objective/`,
+    { objective_id: objectiveId, reason }
+  );
+  return response.data;
+},
   
   create: async (data) => {
     const response = await api.post('/performance/performance/performances/', data);

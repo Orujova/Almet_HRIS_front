@@ -97,18 +97,18 @@ export default function PerformanceSettingsPage() {
         ]);
       
       setSettings({
-        weightConfigs: (weightsRes.results || weightsRes).reverse(),
+        weightConfigs: (weightsRes.results || weightsRes),
         goalLimits: {
           min: limitsRes.min_goals,
           max: limitsRes.max_goals
         },
-        departmentObjectives: (deptObjRes.results || deptObjRes).reverse(),
-        evaluationScale: (scalesRes.results || scalesRes).reverse(),
+        departmentObjectives: (deptObjRes.results || deptObjRes),
+        evaluationScale: (scalesRes.results || scalesRes),
         evaluationTargets: {
           objective_score_target: targetsRes.objective_score_target
         },
-        statusTypes: (statusesRes.results || statusesRes).reverse(),
-        notificationTemplates: (notifTemplatesRes.results || notifTemplatesRes).reverse(),
+        statusTypes: (statusesRes.results || statusesRes),
+        notificationTemplates: (notifTemplatesRes.results || notifTemplatesRes),
       });
     } catch (error) {
       console.error('Error loading settings:', error);
@@ -622,11 +622,11 @@ export default function PerformanceSettingsPage() {
               </div>
               
               <div className="p-3 space-y-2">
-                {settings.weightConfigs.map((weight, index) => (
+                {settings.weightConfigs.map((weight) => (
                   <div key={weight.id} className={`p-3 rounded-lg border ${darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-semibold text-almet-sapphire bg-almet-sapphire/10 px-2 py-0.5 rounded-full">
-                        #{settings.weightConfigs.length - index}
+                        ID: {weight.id}
                       </span>
                       <button onClick={() => setDeleteModal({ isOpen: true, id: weight.id, type: 'weight' })}
                         className="p-1 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20 transition-all">
@@ -734,11 +734,11 @@ export default function PerformanceSettingsPage() {
               </div>
 
               <div className="p-3 space-y-2">
-                {settings.departmentObjectives.map((obj, index) => (
+                {settings.departmentObjectives.map((obj) => (
                   <div key={obj.id} className={`p-3 rounded-lg border ${darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-full">
-                        #{settings.departmentObjectives.length - index}
+                        ID: {obj.id}
                       </span>
                       <button onClick={() => setDeleteModal({ isOpen: true, id: obj.id, type: 'department' })}
                         className="p-1 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20 transition-all">
@@ -829,11 +829,11 @@ export default function PerformanceSettingsPage() {
               </div>
               
               <div className="p-3 space-y-2">
-                {settings.evaluationScale.map((scale, index) => (
+                {settings.evaluationScale.map((scale) => (
                   <div key={scale.id} className={`p-3 rounded-lg border ${darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-semibold text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/30 px-2 py-0.5 rounded-full">
-                        #{settings.evaluationScale.length - index}
+                        ID: {scale.id}
                       </span>
                       <button onClick={() => setDeleteModal({ isOpen: true, id: scale.id, type: 'scale' })}
                         className="p-1 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20 transition-all">
@@ -964,11 +964,11 @@ export default function PerformanceSettingsPage() {
               </div>
               
               <div className="p-3 space-y-2">
-                {settings.statusTypes?.map((status, index) => (
+                {settings.statusTypes?.map((status) => (
                   <div key={status.id} className={`p-3 rounded-lg border ${darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-semibold text-teal-600 dark:text-teal-400 bg-teal-100 dark:bg-teal-900/30 px-2 py-0.5 rounded-full">
-                        #{settings.statusTypes.length - index}
+                        ID: {status.id}
                       </span>
                       <button onClick={() => setDeleteModal({ isOpen: true, id: status.id, type: 'status' })}
                         className="p-1 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20 transition-all">
@@ -1031,11 +1031,11 @@ export default function PerformanceSettingsPage() {
               </div>
               
               <div className="p-3 space-y-2">
-                {settings.notificationTemplates?.map((template, index) => (
+                {settings.notificationTemplates?.map((template) => (
                   <div key={template.id} className={`p-3 rounded-lg border ${darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                        #{settings.notificationTemplates.length - index}
+                        ID: {template.id}
                       </span>
                       <button onClick={() => setDeleteModal({ isOpen: true, id: template.id, type: 'notification' })}
                         className="p-1 bg-red-500/10 text-red-600 rounded hover:bg-red-500/20 transition-all">

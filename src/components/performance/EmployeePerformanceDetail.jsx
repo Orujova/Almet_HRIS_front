@@ -3,6 +3,7 @@ import ObjectivesSection from './ObjectivesSection';
 import CompetenciesSection from './CompetenciesSection';
 import PerformanceReviews from './PerformanceReviews';
 import DevelopmentNeeds from './DevelopmentNeeds';
+import ClarificationComments from './ClarificationComments';
 
 export default function EmployeePerformanceDetail({
   employee,
@@ -13,6 +14,7 @@ export default function EmployeePerformanceDetail({
   loading,
   darkMode,
   onBack,
+  onCancelObjective,
   onExport,
   // Objectives
   onUpdateObjective,
@@ -28,7 +30,6 @@ export default function EmployeePerformanceDetail({
   onSaveMidYearDraft,
   onSubmitMidYearEmployee,
   onSubmitMidYearManager,
-  onRequestMidYearClarification,
   // Development Needs
   onUpdateDevelopmentNeed,
   onAddDevelopmentNeed,
@@ -47,15 +48,33 @@ export default function EmployeePerformanceDetail({
 
   const totalWeight = calculateTotalWeight(performanceData.objectives);
   
-  // Safe number formatting helper
   const formatNumber = (value, decimals = 2) => {
     const num = parseFloat(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
   };
 
+  // Get letter grade from evaluation scale based on percentage
+  const getLetterGradeFromScale = (percentage) => {
+    if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
+      return 'N/A';
+    }
+    
+    const matchingScale = settings.evaluationScale.find(scale => 
+      percentage >= scale.range_min && percentage <= scale.range_max
+    );
+    
+    return matchingScale ? matchingScale.name : 'N/A';
+  };
+
+  // Calculate objectives letter grade
+  const objectivesGrade = getLetterGradeFromScale(performanceData.objectives_percentage || 0);
+  
+  // Calculate overall letter grade
+  const overallGrade = getLetterGradeFromScale(performanceData.overall_weighted_percentage || 0);
+
   return (
     <div className="space-y-4">
-      {/* Employee Header - Sadələşdirilmiş */}
+      {/* Employee Header */}
       <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -95,46 +114,52 @@ export default function EmployeePerformanceDetail({
         </div>
       </div>
 
-      {/* Performance Metrics Summary - Kompakt */}
-      {performanceData.overall_weighted_percentage && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MetricCard
-            icon={Target}
-            title="Objectives"
-            value={formatNumber(performanceData.total_objectives_score)}
-            subtitle={`${formatNumber(performanceData.objectives_percentage, 0)}%`}
-            color="blue"
-            darkMode={darkMode}
-          />
-          <MetricCard
-            icon={Award}
-            title="Competencies"
-            value={`${performanceData.total_competencies_actual_score || 0}/${performanceData.total_competencies_required_score || 0}`}
-            subtitle={`${formatNumber(performanceData.competencies_percentage, 0)}% • ${performanceData.competencies_letter_grade || 'N/A'}`}
-            color="purple"
-            darkMode={darkMode}
-          />
-          <MetricCard
-            icon={TrendingUp}
-            title="Overall"
-            value={`${formatNumber(performanceData.overall_weighted_percentage, 0)}%`}
-            subtitle="Weighted Avg"
-            color="green"
-            darkMode={darkMode}
-          />
-          <MetricCard
-            icon={Star}
-            title="Rating"
-            value={performanceData.final_rating || 'N/A'}
-            subtitle="Final Grade"
-            color="yellow"
-            darkMode={darkMode}
-          />
-        </div>
-      )}
+      {/* Performance Metrics Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <MetricCard
+          icon={Target}
+          title="Objectives"
+          value={formatNumber(performanceData.total_objectives_score || 0)}
+          subtitle={`${formatNumber(performanceData.objectives_percentage || 0, 1)}% • ${objectivesGrade}`}
+          color="blue"
+          darkMode={darkMode}
+        />
+        <MetricCard
+          icon={Award}
+          title="Competencies"
+          value={`${performanceData.total_competencies_actual_score || 0}/${performanceData.total_competencies_required_score || 0}`}
+          subtitle={`${formatNumber(performanceData.competencies_percentage || 0, 1)}% • ${performanceData.competencies_letter_grade || 'N/A'}`}
+          color="purple"
+          darkMode={darkMode}
+        />
+        <MetricCard
+          icon={TrendingUp}
+          title="Overall"
+          value={`${formatNumber(performanceData.overall_weighted_percentage || 0, 1)}%`}
+          subtitle={`Grade: ${overallGrade}`}
+          color="green"
+          darkMode={darkMode}
+        />
+        <MetricCard
+          icon={Star}
+          title="Final Rating"
+          value={performanceData.final_rating || overallGrade}
+          subtitle={`Obj: ${performanceData.objectives_weight || 70}% • Comp: ${performanceData.competencies_weight || 30}%`}
+          color="yellow"
+          darkMode={darkMode}
+        />
+      </div>
 
-      {/* Evaluation Scale Reference - Kompakt */}
+      {/* Evaluation Scale Reference */}
       <EvaluationScaleReference scales={settings.evaluationScale} darkMode={darkMode} />
+
+      {/* Clarification Comments Section */}
+      {performanceData.clarification_comments && performanceData.clarification_comments.length > 0 && (
+        <ClarificationComments 
+          comments={performanceData.clarification_comments}
+          darkMode={darkMode}
+        />
+      )}
 
       {/* Main Content Sections */}
       <ObjectivesSection
@@ -148,11 +173,13 @@ export default function EmployeePerformanceDetail({
         totalScore={performanceData.total_objectives_score}
         percentage={performanceData.objectives_percentage}
         targetScore={settings.evaluationTargets?.objective_score_target}
+        performanceData={performanceData}
         onUpdate={onUpdateObjective}
         onAdd={onAddObjective}
         onDelete={onDeleteObjective}
         onSaveDraft={onSaveObjectivesDraft}
         onSubmit={onSubmitObjectives}
+        onCancelObjective={onCancelObjective}
       />
 
       <CompetenciesSection
@@ -172,24 +199,19 @@ export default function EmployeePerformanceDetail({
         onSubmit={onSubmitCompetencies}
       />
 
-
-<PerformanceReviews
-  midYearEmployee={performanceData.mid_year_employee_comment}
-  midYearManager={performanceData.mid_year_manager_comment}
-  endYearEmployee={performanceData.end_year_employee_comment}
-  endYearManager={performanceData.end_year_manager_comment}
-  currentPeriod={currentPeriod}
-  canEdit={canEdit}
-  isManager={canEdit}
-  isEmployee={isEmployee}
-  performanceData={performanceData}
-  permissions={permissions}  // ✅ PASS THIS
-  onSaveMidYearDraft={onSaveMidYearDraft}
-  onSubmitMidYearEmployee={onSubmitMidYearEmployee}
-  onSubmitMidYearManager={onSubmitMidYearManager}
-  onRequestClarification={onRequestMidYearClarification}
-  darkMode={darkMode}
-/>
+      <PerformanceReviews
+        midYearEmployee={performanceData.mid_year_employee_comment}
+        midYearManager={performanceData.mid_year_manager_comment}
+        endYearEmployee={performanceData.end_year_employee_comment}
+        endYearManager={performanceData.end_year_manager_comment}
+        currentPeriod={currentPeriod}
+        performanceData={performanceData}
+        permissions={permissions}
+        onSaveMidYearDraft={onSaveMidYearDraft}
+        onSubmitMidYearEmployee={onSubmitMidYearEmployee}
+        onSubmitMidYearManager={onSubmitMidYearManager}
+        darkMode={darkMode}
+      />
 
       <DevelopmentNeeds
         developmentNeeds={performanceData.development_needs || []}

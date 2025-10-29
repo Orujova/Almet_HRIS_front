@@ -55,6 +55,7 @@ export default function CompetenciesSection({
       }
 
       const required = parseFloat(comp.required_level) || 0;
+      // ✅ FIX: Use end_year_rating_value from backend
       const actual = parseFloat(comp.end_year_rating_value) || 0;
 
       groupedData[groupName].requiredTotal += required;
@@ -65,7 +66,6 @@ export default function CompetenciesSection({
       totalActualSum += actual;
     });
 
-    // ✅ FIX 2: Get letter grade from evaluation scale dynamically
     const getLetterGradeFromScale = (percentage) => {
       if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
         return 'N/A';
@@ -106,7 +106,6 @@ export default function CompetenciesSection({
     });
   };
 
-  // ✅ FIX 2: Dynamic color assignment based on evaluation scale
   const getGradeColor = (grade) => {
     if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
       return 'text-gray-600 dark:text-gray-400';
@@ -118,12 +117,10 @@ export default function CompetenciesSection({
       return 'text-gray-600 dark:text-gray-400';
     }
     
-    // Sort scales by value to determine ranking
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     const gradeIndex = sortedScales.findIndex(scale => scale.name === grade);
     const totalGrades = sortedScales.length;
     
-    // Color gradient from best to worst
     if (gradeIndex === 0) return 'text-emerald-600 dark:text-emerald-400';
     if (gradeIndex === 1 && totalGrades > 2) return 'text-blue-600 dark:text-blue-400';
     if (gradeIndex < totalGrades / 2) return 'text-yellow-600 dark:text-yellow-400';
@@ -273,6 +270,7 @@ export default function CompetenciesSection({
                         {groupComps.map((comp, idx) => {
                           const globalIndex = competencies.findIndex(c => c.id === comp.id);
                           const required = parseFloat(comp.required_level) || 0;
+                          // ✅ FIX: Use end_year_rating_value
                           const actual = parseFloat(comp.end_year_rating_value) || 0;
                           const gap = actual - required;
                           const GapIcon = getGapIcon(gap);
@@ -297,17 +295,19 @@ export default function CompetenciesSection({
                                 </div>
                               </td>
                               <td className="px-3 py-2.5">
-                                {/* ✅ FIX 4: Show selected value in dropdown */}
                                 <select
                                   value={comp.end_year_rating || ''}
                                   onChange={(e) => {
                                     const selectedScaleId = parseInt(e.target.value);
                                     const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
                                     
-                                    onUpdate(globalIndex, 'end_year_rating', selectedScaleId || null);
-                                    
+                                    // ✅ FIX: Always update both values together
                                     if (selectedScale) {
+                                      onUpdate(globalIndex, 'end_year_rating', selectedScaleId);
                                       onUpdate(globalIndex, 'end_year_rating_value', selectedScale.value);
+                                    } else {
+                                      onUpdate(globalIndex, 'end_year_rating', null);
+                                      onUpdate(globalIndex, 'end_year_rating_value', 0);
                                     }
                                   }}
                                   disabled={currentPeriod !== 'END_YEAR_REVIEW' || !canEdit}
