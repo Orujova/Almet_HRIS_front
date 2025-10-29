@@ -91,18 +91,15 @@ export default function PerformanceManagementPage() {
   const loadPermissions = async () => {
     try {
       const permsData = await performanceApi.performances.getMyPermissions();
-      console.log('✅ Permissions loaded:', permsData);
       setPermissions(permsData);
     } catch (error) {
       console.error('❌ Error loading permissions:', error);
-      showNotification('Error loading permissions', 'error');
     }
   };
 
   const loadActiveYear = async () => {
     try {
       const yearData = await performanceApi.years.getActiveYear();
-      console.log('✅ Active year loaded:', yearData);
       setActiveYear(yearData);
       setSelectedYear(yearData.year);
       
@@ -110,7 +107,6 @@ export default function PerformanceManagementPage() {
       setPerformanceYears(allYears.results || allYears);
     } catch (error) {
       console.error('❌ Error loading year:', error);
-      showNotification('Error loading performance year', 'error');
     }
   };
 
@@ -141,7 +137,6 @@ export default function PerformanceManagementPage() {
       });
     } catch (error) {
       console.error('❌ Error loading settings:', error);
-      showNotification('Error loading settings', 'error');
     }
   };
 
@@ -175,7 +170,6 @@ export default function PerformanceManagementPage() {
       return allCompetencies;
     } catch (error) {
       console.error('❌ Error loading behavioral competencies:', error);
-      showNotification('Error loading competencies', 'error');
       return [];
     }
   };
@@ -188,7 +182,6 @@ export default function PerformanceManagementPage() {
       await loadEmployees();
     } catch (error) {
       console.error('❌ Error loading dashboard:', error);
-      showNotification('Error loading dashboard data', 'error');
     } finally {
       setLoading(false);
     }
@@ -240,17 +233,11 @@ export default function PerformanceManagementPage() {
       setEmployees(employeesWithPerformance);
     } catch (error) {
       console.error('❌ Error loading employees:', error);
-      showNotification('Error loading employees', 'error');
     }
   };
 
   const loadPerformanceData = async (employeeId, year) => {
     const key = `${employeeId}_${year}`;
-    
-    if (performanceData[key]) {
-      setSelectedPerformanceId(performanceData[key].id);
-      return performanceData[key];
-    }
     
     setLoading(true);
     try {
@@ -306,7 +293,12 @@ export default function PerformanceManagementPage() {
       console.log('✅ Performance data loaded:', {
         performanceId: detailData.id,
         objectives: detailData.objectives?.length || 0,
-        competencies: detailData.competency_ratings?.length || 0
+        competencies: detailData.competency_ratings?.length || 0,
+        total_objectives_score: detailData.total_objectives_score,
+        objectives_percentage: detailData.objectives_percentage,
+        competencies_percentage: detailData.competencies_percentage,
+        overall_percentage: detailData.overall_weighted_percentage,
+        final_rating: detailData.final_rating
       });
       
       setPerformanceData(prev => ({
@@ -341,16 +333,6 @@ export default function PerformanceManagementPage() {
     return employeeId === permissions.employee.id;
   };
 
-  const canEditPerformance = (employeeId) => {
-    if (permissions.is_admin) return true;
-    if (!permissions.employee) return false;
-    
-    const employee = employees.find(e => e.id === employeeId);
-    if (!employee) return false;
-    
-    return employee.line_manager === permissions.employee.name;
-  };
-
   const getCurrentPeriod = () => {
     if (!activeYear) return 'CLOSED';
     return activeYear.current_period || 'CLOSED';
@@ -362,47 +344,44 @@ export default function PerformanceManagementPage() {
     const data = performanceData[key];
     const newObjectives = [...(data.objectives || [])];
     
-    // Update the field first
     newObjectives[index] = {
       ...newObjectives[index],
       [field]: value
     };
     
-    // ✅ Recalculate total score for ALL objectives
+    // ✅ Immediately save to backend when end_year_rating changes
+    if (field === 'end_year_rating') {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === value);
+      if (selectedScale && newObjectives[index].weight) {
+        const weight = parseFloat(newObjectives[index].weight) || 0;
+        const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+        const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+        
+        newObjectives[index].calculated_score = calculatedScore;
+        
+        console.log('🎯 Objective rating updated:', {
+          index,
+          rating: value,
+          scale_value: selectedScale.value,
+          weight,
+          calculated_score: calculatedScore
+        });
+      }
+    }
+    
+    // Recalculate total
     let totalScore = 0;
     let totalWeight = 0;
     
     newObjectives.forEach((obj) => {
       totalWeight += parseFloat(obj.weight) || 0;
-      
-      // ✅ Use existing calculated_score if available
-      if (obj.calculated_score && obj.calculated_score > 0) {
+      if (obj.calculated_score) {
         totalScore += parseFloat(obj.calculated_score);
-      } else if (obj.end_year_rating && obj.weight) {
-        const selectedScale = settings.evaluationScale?.find(s => s.id === obj.end_year_rating);
-        if (selectedScale) {
-          const weight = parseFloat(obj.weight) || 0;
-          const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-          const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-          
-          obj.calculated_score = calculatedScore;
-          totalScore += calculatedScore;
-        }
       }
     });
     
     const targetScore = settings.evaluationTargets?.objective_score_target || 21;
     const percentage = targetScore > 0 ? (totalScore / targetScore) * 100 : 0;
-    
-    console.log('📊 Objectives Update:', {
-      field,
-      index,
-      value,
-      total_score: totalScore.toFixed(2),
-      target_score: targetScore,
-      percentage: percentage.toFixed(2),
-      total_weight: totalWeight
-    });
     
     setPerformanceData(prev => ({
       ...prev,
@@ -413,6 +392,21 @@ export default function PerformanceManagementPage() {
         objectives_percentage: percentage
       }
     }));
+    
+    // ✅ Auto-save after 1 second of no changes
+    if (field === 'end_year_rating' && selectedPerformanceId) {
+      setTimeout(async () => {
+        try {
+          await performanceApi.performances.saveObjectivesDraft(
+            selectedPerformanceId,
+            newObjectives
+          );
+          console.log('✅ Auto-saved objectives');
+        } catch (error) {
+          console.error('❌ Auto-save failed:', error);
+        }
+      }, 1000);
+    }
   };
 
   const handleAddObjective = () => {
@@ -438,8 +432,6 @@ export default function PerformanceManagementPage() {
       calculated_score: 0
     };
     
-    console.log('➕ Adding new objective');
-    
     setPerformanceData(prev => ({
       ...prev,
       [key]: {
@@ -454,11 +446,8 @@ export default function PerformanceManagementPage() {
     const data = performanceData[key];
     const newObjectives = [...(data.objectives || [])];
     
-    console.log('🗑️ Deleting objective at index:', index);
-    
     newObjectives.splice(index, 1);
     
-    // Recalculate scores after deletion
     let totalScore = 0;
     let totalWeight = 0;
     
@@ -491,16 +480,12 @@ export default function PerformanceManagementPage() {
     
     setLoading(true);
     try {
-      console.log('💾 Saving objectives draft:', data.objectives?.length || 0, 'objectives');
-      
       await performanceApi.performances.saveObjectivesDraft(
         selectedPerformanceId, 
         data.objectives || []
       );
       
-      console.log('✅ Objectives draft saved successfully');
       showNotification('Objectives draft saved successfully');
-      
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving objectives:', error);
@@ -528,27 +513,10 @@ export default function PerformanceManagementPage() {
       return;
     }
     
-    const incompleteObjectives = objectives.filter(obj => 
-      !obj.title?.trim() || !obj.description?.trim() || !obj.status
-    );
-    
-    if (incompleteObjectives.length > 0) {
-      showNotification(
-        `${incompleteObjectives.length} objectives have incomplete information`,
-        'error'
-      );
-      return;
-    }
-    
     setLoading(true);
     try {
-      console.log('📤 Submitting objectives...');
-      
       await performanceApi.performances.submitObjectives(selectedPerformanceId);
-      
-      console.log('✅ Objectives submitted successfully');
       showNotification('Objectives submitted successfully');
-      
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting objectives:', error);
@@ -563,17 +531,12 @@ export default function PerformanceManagementPage() {
     
     setLoading(true);
     try {
-      console.log('❌ Cancelling objective:', objectiveId);
-      
       await performanceApi.performances.cancelObjective(
         selectedPerformanceId,
         objectiveId,
         reason
       );
-      
-      console.log('✅ Objective cancelled successfully');
       showNotification('Objective cancelled successfully');
-      
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error cancelling objective:', error);
@@ -601,6 +564,7 @@ export default function PerformanceManagementPage() {
       
       console.log('🎯 Competency rating updated:', {
         index,
+        competency: newCompetencies[index].competency_name,
         rating_id: value,
         rating_value: selectedScale ? selectedScale.value : 0,
         scale_name: selectedScale ? selectedScale.name : 'None'
@@ -635,6 +599,8 @@ export default function PerformanceManagementPage() {
       return matchingScale ? matchingScale.name : 'N/A';
     };
     
+    const letterGrade = getLetterGradeFromScale(percentage);
+    
     setPerformanceData(prev => ({
       ...prev,
       [key]: {
@@ -643,19 +609,43 @@ export default function PerformanceManagementPage() {
         total_competencies_required_score: totalRequired,
         total_competencies_actual_score: totalActual,
         competencies_percentage: percentage,
-        competencies_letter_grade: getLetterGradeFromScale(percentage)
+        competencies_letter_grade: letterGrade
       }
     }));
     
-    console.log('📊 Competency Update:', {
-      index,
-      field,
-      value,
+    console.log('📊 Competency scores updated:', {
       totalRequired,
       totalActual,
       percentage: percentage.toFixed(2),
-      letterGrade: getLetterGradeFromScale(percentage)
+      letterGrade,
+      competencies: newCompetencies.map(c => ({
+        name: c.competency_name,
+        required: c.required_level,
+        rating_id: c.end_year_rating,
+        rating_value: c.end_year_rating_value
+      }))
     });
+    
+    // ✅ Auto-save after 1 second
+    if (field === 'end_year_rating' && selectedPerformanceId) {
+      setTimeout(async () => {
+        try {
+          const payload = newCompetencies.map(comp => ({
+            id: comp.id,
+            end_year_rating: comp.end_year_rating || null,
+            notes: comp.notes || ''
+          }));
+          
+          await performanceApi.performances.saveCompetenciesDraft(
+            selectedPerformanceId,
+            payload
+          );
+          console.log('✅ Auto-saved competencies');
+        } catch (error) {
+          console.error('❌ Auto-save failed:', error);
+        }
+      }, 1000);
+    }
   };
 
   const handleSaveCompetenciesDraft = async () => {
@@ -666,33 +656,27 @@ export default function PerformanceManagementPage() {
     
     setLoading(true);
     try {
-      const competenciesPayload = (data.competency_ratings || []).map(comp => {
-        console.log('📦 Preparing competency:', {
-          id: comp.id,
-          name: comp.competency_name,
-          rating_id: comp.end_year_rating,
-          rating_value: comp.end_year_rating_value,
-          notes: comp.notes
-        });
-        
-        return {
-          id: comp.id,
-          end_year_rating: comp.end_year_rating || null,
-          notes: comp.notes || ''
-        };
-      });
+      const competenciesPayload = (data.competency_ratings || []).map(comp => ({
+        id: comp.id,
+        end_year_rating: comp.end_year_rating || null,
+        notes: comp.notes || ''
+      }));
       
-      console.log('💾 Saving competencies draft:', competenciesPayload);
+      console.log('💾 Saving competencies draft:', {
+        performance_id: selectedPerformanceId,
+        competencies: competenciesPayload
+      });
       
       const response = await performanceApi.performances.saveCompetenciesDraft(
         selectedPerformanceId,
         competenciesPayload
       );
       
-      console.log('✅ Competencies draft saved:', response);
+      console.log('✅ Competencies saved:', response);
       
       showNotification('Competencies draft saved successfully');
       
+      // ✅ Reload to get updated data from backend
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving competencies:', error);
@@ -709,6 +693,7 @@ export default function PerformanceManagementPage() {
     const data = performanceData[key];
     const competencies = data.competency_ratings || [];
     
+    // ✅ Validate all competencies have ratings
     const missingRatings = competencies.filter(comp => !comp.end_year_rating);
     
     if (missingRatings.length > 0) {
@@ -716,6 +701,7 @@ export default function PerformanceManagementPage() {
         `${missingRatings.length} competencies missing ratings. Please rate all competencies.`,
         'error'
       );
+      console.log('❌ Missing ratings:', missingRatings.map(c => c.competency_name));
       return;
     }
     
@@ -926,7 +912,7 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  // ==================== RENDER ====================
+  // ==================== RENDER SECTION ====================
   if (loading && !activeYear) {
     return (
       <DashboardLayout>
@@ -1046,3 +1032,4 @@ export default function PerformanceManagementPage() {
     </DashboardLayout>
   );
 }
+

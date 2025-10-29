@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Award, ChevronDown, ChevronRight, Save, Send, TrendingUp, TrendingDown, Minus, Loader } from 'lucide-react';
 
+
+
 export default function CompetenciesSection({
   competencies = [],
   settings,

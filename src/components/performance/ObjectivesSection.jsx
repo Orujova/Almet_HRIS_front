@@ -1,6 +1,7 @@
 import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, Loader, XCircle } from 'lucide-react';
 import { useEffect } from 'react';
 
+
 export default function ObjectivesSection({
   objectives,
   settings,
@@ -359,10 +360,6 @@ function ObjectiveRow({
             const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
             console.log('🎯 Rating selected:', selectedScaleId);
             
-            // ✅ Update the rating
-            onUpdate(index, 'end_year_rating', selectedScaleId);
-            
-            // ✅ Calculate and update score immediately
             if (selectedScaleId) {
               const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
               if (selectedScale) {
@@ -377,10 +374,19 @@ function ObjectiveRow({
                   calculatedScore
                 });
                 
-                onUpdate(index, 'calculated_score', calculatedScore);
+                // ✅ Update rating first
+                onUpdate(index, 'end_year_rating', selectedScaleId);
+                
+                // ✅ Then update calculated score (after a tick to allow state update)
+                setTimeout(() => {
+                  onUpdate(index, 'calculated_score', calculatedScore);
+                }, 0);
               }
             } else {
-              onUpdate(index, 'calculated_score', 0);
+              onUpdate(index, 'end_year_rating', null);
+              setTimeout(() => {
+                onUpdate(index, 'calculated_score', 0);
+              }, 0);
             }
           }}
           disabled={!canRateEndYear || isCancelled}
