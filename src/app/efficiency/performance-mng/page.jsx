@@ -671,41 +671,36 @@ export default function PerformanceManagementPage() {
 };
 
   const handleSaveCompetenciesDraft = async () => {
-    if (!selectedPerformanceId) return;
-    
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    
-    setLoading(true);
-    try {
-      const competenciesPayload = (data.competency_ratings || []).map(comp => ({
-        id: comp.id,
-        end_year_rating: comp.end_year_rating || null,
-        notes: comp.notes || ''
-      }));
-      
-      console.log('💾 Saving competencies draft:', {
-        performance_id: selectedPerformanceId,
-        competencies: competenciesPayload
-      });
-      
-      const response = await performanceApi.performances.saveCompetenciesDraft(
-        selectedPerformanceId,
-        competenciesPayload
-      );
-      
-      console.log('✅ Competencies saved:', response);
-      
-      showNotification('Competencies draft saved successfully');
-      
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error saving competencies:', error);
-      showNotification(error.response?.data?.error || 'Error saving competencies', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!selectedPerformanceId) return;
+
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+
+  const competenciesToSave = (data.competency_ratings || []).map(comp => ({
+    id: comp.id, // Critical: must include the rating record ID
+    behavioral_competency: comp.behavioral_competency, // Foreign key
+    end_year_rating: comp.end_year_rating || null,
+    end_year_rating_value: comp.end_year_rating_value || 0,
+    notes: comp.notes || ''
+  }));
+
+  console.log('Saving competencies draft:', competenciesToSave);
+
+  setLoading(true);
+  try {
+    await performanceApi.performances.saveCompetenciesDraft(
+      selectedPerformanceId,
+      competenciesToSave
+    );
+    showNotification('Competencies draft saved');
+    await loadPerformanceData(selectedEmployee.id, selectedYear); // This will now return correct ratings
+  } catch (error) {
+    console.error('Error saving competencies:', error);
+    showNotification('Failed to save competencies', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmitCompetencies = async () => {
     if (!selectedPerformanceId) return;
