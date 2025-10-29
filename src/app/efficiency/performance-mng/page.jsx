@@ -268,25 +268,25 @@ export default function PerformanceManagementPage() {
       }
       
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
-  const enrichedRatings = detailData.competency_ratings.map((rating) => {
-    const competencyInfo = behavioralCompetencies.find(
-      comp => comp.id === rating.behavioral_competency
-    );
-    
-    // ✅ Ensure end_year_rating_value is set from backend
-    return {
-      ...rating,
-      competency_name: competencyInfo?.name || `Unknown Competency (ID: ${rating.behavioral_competency})`,
-      competency_group_id: competencyInfo?.group_id || null,
-      competency_group_name: competencyInfo?.group_name || 'Ungrouped',
-      description: competencyInfo?.description || '',
-      // ✅ Make sure this value exists
-      end_year_rating_value: rating.end_year_rating_value || 0
-    };
-  });
-  
-  detailData.competency_ratings = enrichedRatings;
-}
+        const enrichedRatings = detailData.competency_ratings.map((rating) => {
+          const competencyInfo = behavioralCompetencies.find(
+            comp => comp.id === rating.behavioral_competency
+          );
+          
+          // ✅ Ensure end_year_rating_value is set from backend
+          return {
+            ...rating,
+            competency_name: competencyInfo?.name || `Unknown Competency (ID: ${rating.behavioral_competency})`,
+            competency_group_id: competencyInfo?.group_id || null,
+            competency_group_name: competencyInfo?.group_name || 'Ungrouped',
+            description: competencyInfo?.description || '',
+            // ✅ Make sure this value exists
+            end_year_rating_value: rating.end_year_rating_value || 0
+          };
+        });
+        
+        detailData.competency_ratings = enrichedRatings;
+      }
       
       console.log('✅ Performance data loaded:', {
         performanceId: detailData.id,
@@ -299,14 +299,17 @@ export default function PerformanceManagementPage() {
         final_rating: detailData.final_rating
       });
       
+      // ✅ NEW: Recalculate scores after loading to ensure consistency
+      const recalculatedData = recalculateScores(detailData);
+      
       setPerformanceData(prev => ({
         ...prev,
-        [key]: detailData
+        [key]: recalculatedData
       }));
       
-      setSelectedPerformanceId(detailData.id);
+      setSelectedPerformanceId(recalculatedData.id);
       
-      return detailData;
+      return recalculatedData;
       
     } catch (error) {
       console.error('❌ Error loading performance data:', error);
@@ -336,137 +339,160 @@ export default function PerformanceManagementPage() {
     return activeYear.current_period || 'CLOSED';
   };
 
-  // ✅ FIXED: Letter Grade Calculation
+  // ✅ NEW: Grade calculation function (shared)
   const getLetterGradeFromScale = (percentage) => {
     if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
-      console.log('⚠️ No evaluation scale available');
       return 'N/A';
     }
     
-    const numPercentage = parseFloat(percentage);
+    const matchingScale = settings.evaluationScale.find(scale => 
+      percentage >= scale.range_min && percentage <= scale.range_max
+    );
     
-    console.log('🔍 Finding grade for percentage:', {
-      percentage: numPercentage,
-      available_scales: settings.evaluationScale.map(s => ({
-        name: s.name,
-        min: s.range_min,
-        max: s.range_max,
-        matches: numPercentage >= s.range_min && numPercentage <= s.range_max
-      }))
-    });
-    
-    const matchingScale = settings.evaluationScale.find(scale => {
-      const min = parseFloat(scale.range_min);
-      const max = parseFloat(scale.range_max);
-      return numPercentage >= min && numPercentage <= max;
-    });
-    
-    if (matchingScale) {
-      console.log('✅ Grade found:', matchingScale.name);
-      return matchingScale.name;
-    }
-    
-    console.log('⚠️ No matching grade found for percentage:', numPercentage);
-    return 'N/A';
+    return matchingScale ? matchingScale.name : 'N/A';
   };
 
-  // ==================== OBJECTIVES HANDLERS ====================
+  // ✅ NEW: Recalculate all scores and aggregates
+  const recalculateScores = (data) => {
+    if (!data) return data;
+    
+    const newData = { ...data };
+    
+    // Calculate objectives totals
+    let totalObjectivesScore = 0;
+    (newData.objectives || []).forEach(obj => {
+      if (!obj.is_cancelled) {
+        totalObjectivesScore += parseFloat(obj.calculated_score) || 0;
+      }
+    });
+    
+    const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+    const objectivesPercentage = targetScore > 0 
+      ? (totalObjectivesScore / targetScore) * 100 
+      : 0;
+    
+    newData.total_objectives_score = totalObjectivesScore;
+    newData.objectives_percentage = objectivesPercentage;
+    newData.objectives_letter_grade = getLetterGradeFromScale(objectivesPercentage); // Optional if needed
+
+    // Calculate competencies totals
+    let totalRequired = 0;
+    let totalActual = 0;
+    (newData.competency_ratings || []).forEach(comp => {
+      const required = parseFloat(comp.required_level) || 0;
+      const actual = parseFloat(comp.end_year_rating_value) || 0;
+      totalRequired += required;
+      totalActual += actual;
+    });
+    
+    const competenciesPercentage = totalRequired > 0 
+      ? (totalActual / totalRequired) * 100 
+      : 0;
+    
+    newData.total_competencies_required_score = totalRequired;
+    newData.total_competencies_actual_score = totalActual;
+    newData.competencies_percentage = competenciesPercentage;
+    newData.competencies_letter_grade = getLetterGradeFromScale(competenciesPercentage);
+
+    // Calculate overall
+    const objectivesWeight = parseFloat(newData.objectives_weight) || 70;
+    const competenciesWeight = parseFloat(newData.competencies_weight) || 30;
+    
+    const overallPercentage = 
+      (objectivesPercentage * objectivesWeight / 100) + 
+      (competenciesPercentage * competenciesWeight / 100);
+    
+    newData.overall_weighted_percentage = overallPercentage;
+    
+    // Set final rating if not set (or always recalculate?)
+    if (!newData.final_rating) {
+      newData.final_rating = getLetterGradeFromScale(overallPercentage);
+    }
+
+    console.log('🔄 Recalculated scores:', {
+      objectives: {
+        total: totalObjectivesScore,
+        percentage: objectivesPercentage,
+        grade: newData.objectives_letter_grade
+      },
+      competencies: {
+        totalActual,
+        totalRequired,
+        percentage: competenciesPercentage,
+        grade: newData.competencies_letter_grade
+      },
+      overall: {
+        percentage: overallPercentage,
+        final_rating: newData.final_rating
+      }
+    });
+    
+    return newData;
+  };
+
+  // ==================== OBJECTIVE HANDLERS ====================
   const handleUpdateObjective = (index, field, value) => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
     const newObjectives = [...(data.objectives || [])];
-    
     newObjectives[index] = {
       ...newObjectives[index],
       [field]: value
     };
     
+    // If updating end_year_rating, recalculate calculated_score
     if (field === 'end_year_rating') {
-      const selectedScale = settings.evaluationScale?.find(s => s.id === value);
-      if (selectedScale && newObjectives[index].weight) {
-        const weight = parseFloat(newObjectives[index].weight) || 0;
-        const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-        const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-        
-        newObjectives[index].calculated_score = calculatedScore;
-        
-        console.log('🎯 Objective rating updated:', {
-          index,
-          rating: value,
-          scale_value: selectedScale.value,
-          weight,
-          calculated_score: calculatedScore
-        });
+      const selectedScaleId = value ? parseInt(value) : null;
+      if (selectedScaleId) {
+        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+        if (selectedScale) {
+          const weight = parseFloat(newObjectives[index].weight) || 0;
+          const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+          const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+          newObjectives[index].calculated_score = calculatedScore;
+        }
+      } else {
+        newObjectives[index].calculated_score = 0;
       }
     }
     
-    let totalScore = 0;
-    let totalWeight = 0;
+    const updatedData = {
+      ...data,
+      objectives: newObjectives
+    };
     
-    newObjectives.forEach((obj) => {
-      totalWeight += parseFloat(obj.weight) || 0;
-      if (obj.calculated_score) {
-        totalScore += parseFloat(obj.calculated_score);
-      }
-    });
-    
-    const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-    const percentage = targetScore > 0 ? (totalScore / targetScore) * 100 : 0;
+    // Recalculate aggregates
+    const recalculatedData = recalculateScores(updatedData);
     
     setPerformanceData(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key],
-        objectives: newObjectives,
-        total_objectives_score: totalScore,
-        objectives_percentage: percentage
-      }
+      [key]: recalculatedData
     }));
-    
-    if (field === 'end_year_rating' && selectedPerformanceId) {
-      setTimeout(async () => {
-        try {
-          await performanceApi.performances.saveObjectivesDraft(
-            selectedPerformanceId,
-            newObjectives
-          );
-          console.log('✅ Auto-saved objectives');
-        } catch (error) {
-          console.error('❌ Auto-save failed:', error);
-        }
-      }, 1000);
-    }
   };
 
   const handleAddObjective = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const objectives = data.objectives || [];
-    
-    const totalWeight = objectives.reduce((sum, obj) => sum + (parseFloat(obj.weight) || 0), 0);
-    
-    if (objectives.length >= settings.goalLimits.max || totalWeight >= 100) {
-      showNotification('Cannot add more objectives', 'error');
-      return;
-    }
-    
     const newObjective = {
       title: '',
       description: '',
-      linked_department_objective: null,
       weight: 0,
+      linked_department_objective: null,
       progress: 0,
-      status: settings.statusTypes[0]?.id || null,
+      status: null,
       end_year_rating: null,
       calculated_score: 0
     };
     
+    const updatedData = {
+      ...performanceData[key],
+      objectives: [...(performanceData[key].objectives || []), newObjective]
+    };
+    
+    const recalculatedData = recalculateScores(updatedData);
+    
     setPerformanceData(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key],
-        objectives: [...(prev[key].objectives || []), newObjective]
-      }
+      [key]: recalculatedData
     }));
   };
 
@@ -474,46 +500,27 @@ export default function PerformanceManagementPage() {
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
     const newObjectives = [...(data.objectives || [])];
-    
     newObjectives.splice(index, 1);
     
-    let totalScore = 0;
-    let totalWeight = 0;
+    const updatedData = {
+      ...data,
+      objectives: newObjectives
+    };
     
-    newObjectives.forEach(obj => {
-      if (obj.calculated_score) {
-        totalScore += parseFloat(obj.calculated_score) || 0;
-      }
-      totalWeight += parseFloat(obj.weight) || 0;
-    });
-    
-    const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-    const percentage = targetScore > 0 ? (totalScore / targetScore) * 100 : 0;
+    const recalculatedData = recalculateScores(updatedData);
     
     setPerformanceData(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key],
-        objectives: newObjectives,
-        total_objectives_score: totalScore,
-        objectives_percentage: percentage
-      }
+      [key]: recalculatedData
     }));
   };
 
-  const handleSaveObjectivesDraft = async () => {
+  const handleSaveObjectivesDraft = async (objectives) => {
     if (!selectedPerformanceId) return;
-    
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
     
     setLoading(true);
     try {
-      await performanceApi.performances.saveObjectivesDraft(
-        selectedPerformanceId, 
-        data.objectives || []
-      );
-      
+      await performanceApi.performances.saveObjectivesDraft(selectedPerformanceId, objectives);
       showNotification('Objectives draft saved successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -526,21 +533,6 @@ export default function PerformanceManagementPage() {
 
   const handleSubmitObjectives = async () => {
     if (!selectedPerformanceId) return;
-    
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const objectives = data.objectives || [];
-    
-    if (objectives.length < settings.goalLimits.min) {
-      showNotification(`Minimum ${settings.goalLimits.min} objectives required`, 'error');
-      return;
-    }
-    
-    const totalWeight = objectives.reduce((sum, obj) => sum + (parseFloat(obj.weight) || 0), 0);
-    if (totalWeight !== 100) {
-      showNotification('Total weight must be 100%', 'error');
-      return;
-    }
     
     setLoading(true);
     try {
@@ -560,11 +552,7 @@ export default function PerformanceManagementPage() {
     
     setLoading(true);
     try {
-      await performanceApi.performances.cancelObjective(
-        selectedPerformanceId,
-        objectiveId,
-        reason
-      );
+      await performanceApi.performances.cancelObjective(selectedPerformanceId, objectiveId, reason);
       showNotification('Objective cancelled successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
@@ -575,205 +563,76 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  // ==================== COMPETENCIES HANDLERS ====================
+  // ==================== COMPETENCY HANDLERS ====================
   const handleUpdateCompetency = (index, field, value) => {
-  const key = `${selectedEmployee.id}_${selectedYear}`;
-  const data = performanceData[key];
-  const newCompetencies = [...(data.competency_ratings || [])];
-  
-  if (field === 'end_year_rating') {
-    const selectedScale = settings.evaluationScale?.find(s => s.id === value);
-    
-    // ✅ Update both fields together
-    newCompetencies[index] = {
-      ...newCompetencies[index],
-      end_year_rating: value,
-      end_year_rating_value: selectedScale ? selectedScale.value : 0
-    };
-    
-    console.log('🎯 Competency rating updated:', {
-      index,
-      competency: newCompetencies[index].competency_name,
-      rating_id: value,
-      rating_value: selectedScale ? selectedScale.value : 0,
-      scale_name: selectedScale ? selectedScale.name : 'None'
-    });
-  } else if (field === 'end_year_rating_value') {
-    // ✅ Handle direct value updates
-    newCompetencies[index] = {
-      ...newCompetencies[index],
-      end_year_rating_value: value
-    };
-  } else {
+    const key = `${selectedEmployee.id}_${selectedYear}`;
+    const data = performanceData[key];
+    const newCompetencies = [...(data.competency_ratings || [])];
     newCompetencies[index] = {
       ...newCompetencies[index],
       [field]: value
     };
-  }
-  
-  // ✅ Recalculate scores using the correct values
-  const totalRequired = newCompetencies.reduce((sum, comp) => 
-    sum + (parseFloat(comp.required_level) || 0), 0
-  );
-  
-  const totalActual = newCompetencies.reduce((sum, comp) => 
-    sum + (parseFloat(comp.end_year_rating_value) || 0), 0
-  );
-  
-  const percentage = totalRequired > 0 ? (totalActual / totalRequired) * 100 : 0;
-  const letterGrade = getLetterGradeFromScale(percentage);
-  
-  setPerformanceData(prev => ({
-    ...prev,
-    [key]: {
-      ...prev[key],
-      competency_ratings: newCompetencies,
-      total_competencies_required_score: totalRequired,
-      total_competencies_actual_score: totalActual,
-      competencies_percentage: percentage,
-      competencies_letter_grade: letterGrade
-    }
-  }));
-  
-  console.log('📊 Competency scores updated:', {
-    totalRequired,
-    totalActual,
-    percentage: percentage.toFixed(2),
-    letterGrade,
-    competencies: newCompetencies.map(c => ({
-      name: c.competency_name,
-      required: c.required_level,
-      rating_id: c.end_year_rating,
-      rating_value: c.end_year_rating_value
-    }))
-  });
-  
-  // Auto-save after update
-  if (field === 'end_year_rating' && selectedPerformanceId) {
-    setTimeout(async () => {
-      try {
-        const payload = newCompetencies.map(comp => ({
-          id: comp.id,
-          end_year_rating: comp.end_year_rating || null,
-          notes: comp.notes || ''
-        }));
-        
-        await performanceApi.performances.saveCompetenciesDraft(
-          selectedPerformanceId,
-          payload
-        );
-        console.log('✅ Auto-saved competencies');
-      } catch (error) {
-        console.error('❌ Auto-save failed:', error);
+    
+    // If updating end_year_rating, set end_year_rating_value
+    if (field === 'end_year_rating') {
+      const selectedScaleId = value ? parseInt(value) : null;
+      if (selectedScaleId) {
+        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+        if (selectedScale) {
+          newCompetencies[index].end_year_rating_value = selectedScale.value;
+        }
+      } else {
+        newCompetencies[index].end_year_rating_value = 0;
       }
-    }, 1000);
-  }
-};
+    }
+    
+    const updatedData = {
+      ...data,
+      competency_ratings: newCompetencies
+    };
+    
+    // Recalculate aggregates
+    const recalculatedData = recalculateScores(updatedData);
+    
+    setPerformanceData(prev => ({
+      ...prev,
+      [key]: recalculatedData
+    }));
+  };
 
-  const handleSaveCompetenciesDraft = async () => {
-  if (!selectedPerformanceId) return;
-
-  const key = `${selectedEmployee.id}_${selectedYear}`;
-  const data = performanceData[key];
-
-  const competenciesToSave = (data.competency_ratings || []).map(comp => ({
-    id: comp.id, // Critical: must include the rating record ID
-    behavioral_competency: comp.behavioral_competency, // Foreign key
-    end_year_rating: comp.end_year_rating || null,
-    end_year_rating_value: comp.end_year_rating_value || 0,
-    notes: comp.notes || ''
-  }));
-
-  console.log('Saving competencies draft:', competenciesToSave);
-
-  setLoading(true);
-  try {
-    await performanceApi.performances.saveCompetenciesDraft(
-      selectedPerformanceId,
-      competenciesToSave
-    );
-    showNotification('Competencies draft saved');
-    await loadPerformanceData(selectedEmployee.id, selectedYear); // This will now return correct ratings
-  } catch (error) {
-    console.error('Error saving competencies:', error);
-    showNotification('Failed to save competencies', 'error');
-  } finally {
-    setLoading(false);
-  }
-};
+  const handleSaveCompetenciesDraft = async (competencies) => {
+    if (!selectedPerformanceId) return;
+    
+    setLoading(true);
+    try {
+      await performanceApi.performances.saveCompetenciesDraft(selectedPerformanceId, competencies);
+      showNotification('Competencies draft saved successfully');
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error saving competencies:', error);
+      showNotification(error.response?.data?.error || 'Error saving competencies', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmitCompetencies = async () => {
     if (!selectedPerformanceId) return;
     
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const competencies = data.competency_ratings || [];
-    
-    console.log('🔍 Validating competencies for submit:', {
-      total: competencies.length,
-      competencies: competencies.map(c => ({
-        id: c.id,
-        name: c.competency_name,
-        end_year_rating: c.end_year_rating,
-        end_year_rating_value: c.end_year_rating_value,
-        has_rating: !!c.end_year_rating
-      }))
-    });
-    
-    const missingRatings = competencies.filter(comp => {
-      const hasRating = comp.end_year_rating && comp.end_year_rating !== null;
-      console.log(`Checking ${comp.competency_name}:`, {
-        end_year_rating: comp.end_year_rating,
-        hasRating
-      });
-      return !hasRating;
-    });
-    
-    if (missingRatings.length > 0) {
-      const missingNames = missingRatings.map(c => c.competency_name);
-      console.log('❌ Missing ratings for:', missingNames);
-      
-      showNotification(
-        `${missingRatings.length} competencies missing ratings: ${missingNames.join(', ')}`,
-        'error'
-      );
-      return;
-    }
-    
     setLoading(true);
     try {
-      console.log('💾 Saving draft before submit...');
-      
-      const competenciesPayload = competencies.map(comp => ({
-        id: comp.id,
-        end_year_rating: comp.end_year_rating || null,
-        notes: comp.notes || ''
-      }));
-      
-      await performanceApi.performances.saveCompetenciesDraft(
-        selectedPerformanceId,
-        competenciesPayload
-      );
-      
-      console.log('✅ Draft saved, now submitting...');
-      
-      const response = await performanceApi.performances.submitCompetencies(selectedPerformanceId);
-      
-      console.log('✅ Competencies submitted:', response);
-      
+      await performanceApi.performances.submitCompetencies(selectedPerformanceId);
       showNotification('Competencies submitted successfully');
-      
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting competencies:', error);
-      console.error('Error details:', error.response?.data);
       showNotification(error.response?.data?.error || 'Error submitting competencies', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  // ==================== MID-YEAR REVIEW HANDLERS ====================
+  // ==================== MID-YEAR HANDLERS ====================
   const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
     if (!selectedPerformanceId) return;
     

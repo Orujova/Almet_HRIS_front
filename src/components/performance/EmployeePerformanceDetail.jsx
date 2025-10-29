@@ -144,7 +144,7 @@ export default function EmployeePerformanceDetail({
           icon={Star}
           title="Final Rating"
           value={performanceData.final_rating || overallGrade}
-          subtitle={`Obj: ${performanceData.objectives_weight || 70}% • Comp: ${performanceData.competencies_weight || 30}%`}
+          subtitle={`Obj: ${performanceData.objectives_weight }% • Comp: ${performanceData.competencies_weight}%`}
           color="yellow"
           darkMode={darkMode}
         />
