@@ -298,32 +298,59 @@ export default function CompetenciesSection({
                               </td>
                               <td className="px-3 py-2.5">
                                 <select
-                                  value={comp.end_year_rating || ''}
-                                  onChange={(e) => {
-                                    const selectedScaleId = parseInt(e.target.value);
-                                    const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-                                    
-                                    // ✅ FIX: Always update both values together
-                                    if (selectedScale) {
-                                      onUpdate(globalIndex, 'end_year_rating', selectedScaleId);
-                                      onUpdate(globalIndex, 'end_year_rating_value', selectedScale.value);
-                                    } else {
-                                      onUpdate(globalIndex, 'end_year_rating', null);
-                                      onUpdate(globalIndex, 'end_year_rating_value', 0);
-                                    }
-                                  }}
-                                  disabled={currentPeriod !== 'END_YEAR_REVIEW' || !canEdit}
-                                  className={`w-full px-2 py-1.5 text-xs border rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 ${
-                                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-                                  } disabled:opacity-50 transition-colors`}
-                                >
-                                  <option value="">Select</option>
-                                  {settings.evaluationScale?.map(scale => (
-                                    <option key={scale.id} value={scale.id}>
-                                      {scale.name} ({scale.value})
-                                    </option>
-                                  ))}
-                                </select>
+  value={comp.end_year_rating || ''}
+  onChange={(e) => {
+    const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
+    
+    if (selectedScaleId) {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+      
+      if (selectedScale) {
+        // ✅ FIX: Update BOTH values at once using a batch update
+        const updates = {
+          end_year_rating: selectedScaleId,
+          end_year_rating_value: selectedScale.value
+        };
+        
+        // Update the competency with both values
+        const globalIndex = competencies.findIndex(c => c.id === comp.id);
+        
+        // Call onUpdate for rating ID
+        onUpdate(globalIndex, 'end_year_rating', selectedScaleId);
+        
+        // Then update the value (backend will also set this, but we need it for immediate UI update)
+        setTimeout(() => {
+          onUpdate(globalIndex, 'end_year_rating_value', selectedScale.value);
+        }, 0);
+        
+        console.log('🎯 Updated competency:', {
+          id: comp.id,
+          name: comp.competency_name,
+          rating_id: selectedScaleId,
+          rating_value: selectedScale.value,
+          scale_name: selectedScale.name
+        });
+      }
+    } else {
+      const globalIndex = competencies.findIndex(c => c.id === comp.id);
+      onUpdate(globalIndex, 'end_year_rating', null);
+      setTimeout(() => {
+        onUpdate(globalIndex, 'end_year_rating_value', 0);
+      }, 0);
+    }
+  }}
+  disabled={currentPeriod !== 'END_YEAR_REVIEW' || !canEdit}
+  className={`w-full px-2 py-1.5 text-xs border rounded-md focus:ring-1 focus:ring-purple-500 focus:border-purple-500 ${
+    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
+  } disabled:opacity-50 transition-colors`}
+>
+  <option value="">Select</option>
+  {settings.evaluationScale?.map(scale => (
+    <option key={scale.id} value={scale.id}>
+      {scale.name} ({scale.value})
+    </option>
+  ))}
+</select>
                               </td>
                               <td className="px-3 py-2.5">
                                 <div className={`px-2 py-1.5 text-xs font-bold text-center rounded-md ${

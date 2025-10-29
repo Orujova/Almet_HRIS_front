@@ -135,6 +135,10 @@ export default function PerformanceManagementPage() {
         },
         statusTypes: statusesRes.results || statusesRes
       });
+      
+      console.log('✅ Settings loaded:', {
+        evaluationScale: scalesRes.results || scalesRes
+      });
     } catch (error) {
       console.error('❌ Error loading settings:', error);
     }
@@ -264,31 +268,25 @@ export default function PerformanceManagementPage() {
       }
       
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
-        const enrichedRatings = detailData.competency_ratings.map((rating) => {
-          const competencyInfo = behavioralCompetencies.find(
-            comp => comp.id === rating.behavioral_competency
-          );
-          
-          if (competencyInfo) {
-            return {
-              ...rating,
-              competency_name: competencyInfo.name,
-              competency_group_id: competencyInfo.group_id,
-              competency_group_name: competencyInfo.group_name,
-              description: competencyInfo.description
-            };
-          } else {
-            return {
-              ...rating,
-              competency_name: `Unknown Competency (ID: ${rating.behavioral_competency})`,
-              competency_group_id: null,
-              competency_group_name: 'Ungrouped'
-            };
-          }
-        });
-        
-        detailData.competency_ratings = enrichedRatings;
-      }
+  const enrichedRatings = detailData.competency_ratings.map((rating) => {
+    const competencyInfo = behavioralCompetencies.find(
+      comp => comp.id === rating.behavioral_competency
+    );
+    
+    // ✅ Ensure end_year_rating_value is set from backend
+    return {
+      ...rating,
+      competency_name: competencyInfo?.name || `Unknown Competency (ID: ${rating.behavioral_competency})`,
+      competency_group_id: competencyInfo?.group_id || null,
+      competency_group_name: competencyInfo?.group_name || 'Ungrouped',
+      description: competencyInfo?.description || '',
+      // ✅ Make sure this value exists
+      end_year_rating_value: rating.end_year_rating_value || 0
+    };
+  });
+  
+  detailData.competency_ratings = enrichedRatings;
+}
       
       console.log('✅ Performance data loaded:', {
         performanceId: detailData.id,
@@ -338,6 +336,40 @@ export default function PerformanceManagementPage() {
     return activeYear.current_period || 'CLOSED';
   };
 
+  // ✅ FIXED: Letter Grade Calculation
+  const getLetterGradeFromScale = (percentage) => {
+    if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
+      console.log('⚠️ No evaluation scale available');
+      return 'N/A';
+    }
+    
+    const numPercentage = parseFloat(percentage);
+    
+    console.log('🔍 Finding grade for percentage:', {
+      percentage: numPercentage,
+      available_scales: settings.evaluationScale.map(s => ({
+        name: s.name,
+        min: s.range_min,
+        max: s.range_max,
+        matches: numPercentage >= s.range_min && numPercentage <= s.range_max
+      }))
+    });
+    
+    const matchingScale = settings.evaluationScale.find(scale => {
+      const min = parseFloat(scale.range_min);
+      const max = parseFloat(scale.range_max);
+      return numPercentage >= min && numPercentage <= max;
+    });
+    
+    if (matchingScale) {
+      console.log('✅ Grade found:', matchingScale.name);
+      return matchingScale.name;
+    }
+    
+    console.log('⚠️ No matching grade found for percentage:', numPercentage);
+    return 'N/A';
+  };
+
   // ==================== OBJECTIVES HANDLERS ====================
   const handleUpdateObjective = (index, field, value) => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
@@ -349,7 +381,6 @@ export default function PerformanceManagementPage() {
       [field]: value
     };
     
-    // ✅ Immediately save to backend when end_year_rating changes
     if (field === 'end_year_rating') {
       const selectedScale = settings.evaluationScale?.find(s => s.id === value);
       if (selectedScale && newObjectives[index].weight) {
@@ -369,7 +400,6 @@ export default function PerformanceManagementPage() {
       }
     }
     
-    // Recalculate total
     let totalScore = 0;
     let totalWeight = 0;
     
@@ -393,7 +423,6 @@ export default function PerformanceManagementPage() {
       }
     }));
     
-    // ✅ Auto-save after 1 second of no changes
     if (field === 'end_year_rating' && selectedPerformanceId) {
       setTimeout(async () => {
         try {
@@ -548,105 +577,98 @@ export default function PerformanceManagementPage() {
 
   // ==================== COMPETENCIES HANDLERS ====================
   const handleUpdateCompetency = (index, field, value) => {
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const newCompetencies = [...(data.competency_ratings || [])];
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+  const newCompetencies = [...(data.competency_ratings || [])];
+  
+  if (field === 'end_year_rating') {
+    const selectedScale = settings.evaluationScale?.find(s => s.id === value);
     
-    // ✅ When updating end_year_rating, also update the value
-    if (field === 'end_year_rating') {
-      const selectedScale = settings.evaluationScale?.find(s => s.id === value);
-      
-      newCompetencies[index] = {
-        ...newCompetencies[index],
-        end_year_rating: value,
-        end_year_rating_value: selectedScale ? selectedScale.value : 0
-      };
-      
-      console.log('🎯 Competency rating updated:', {
-        index,
-        competency: newCompetencies[index].competency_name,
-        rating_id: value,
-        rating_value: selectedScale ? selectedScale.value : 0,
-        scale_name: selectedScale ? selectedScale.name : 'None'
-      });
-    } else {
-      newCompetencies[index] = {
-        ...newCompetencies[index],
-        [field]: value
-      };
-    }
-    
-    // ✅ Recalculate scores immediately
-    const totalRequired = newCompetencies.reduce((sum, comp) => 
-      sum + (parseFloat(comp.required_level) || 0), 0
-    );
-    
-    const totalActual = newCompetencies.reduce((sum, comp) => 
-      sum + (parseFloat(comp.end_year_rating_value) || 0), 0
-    );
-    
-    const percentage = totalRequired > 0 ? (totalActual / totalRequired) * 100 : 0;
-    
-    const getLetterGradeFromScale = (percentage) => {
-      if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
-        return 'N/A';
-      }
-      
-      const matchingScale = settings.evaluationScale.find(scale => 
-        percentage >= scale.range_min && percentage <= scale.range_max
-      );
-      
-      return matchingScale ? matchingScale.name : 'N/A';
+    // ✅ Update both fields together
+    newCompetencies[index] = {
+      ...newCompetencies[index],
+      end_year_rating: value,
+      end_year_rating_value: selectedScale ? selectedScale.value : 0
     };
     
-    const letterGrade = getLetterGradeFromScale(percentage);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        competency_ratings: newCompetencies,
-        total_competencies_required_score: totalRequired,
-        total_competencies_actual_score: totalActual,
-        competencies_percentage: percentage,
-        competencies_letter_grade: letterGrade
-      }
-    }));
-    
-    console.log('📊 Competency scores updated:', {
-      totalRequired,
-      totalActual,
-      percentage: percentage.toFixed(2),
-      letterGrade,
-      competencies: newCompetencies.map(c => ({
-        name: c.competency_name,
-        required: c.required_level,
-        rating_id: c.end_year_rating,
-        rating_value: c.end_year_rating_value
-      }))
+    console.log('🎯 Competency rating updated:', {
+      index,
+      competency: newCompetencies[index].competency_name,
+      rating_id: value,
+      rating_value: selectedScale ? selectedScale.value : 0,
+      scale_name: selectedScale ? selectedScale.name : 'None'
     });
-    
-    // ✅ Auto-save after 1 second
-    if (field === 'end_year_rating' && selectedPerformanceId) {
-      setTimeout(async () => {
-        try {
-          const payload = newCompetencies.map(comp => ({
-            id: comp.id,
-            end_year_rating: comp.end_year_rating || null,
-            notes: comp.notes || ''
-          }));
-          
-          await performanceApi.performances.saveCompetenciesDraft(
-            selectedPerformanceId,
-            payload
-          );
-          console.log('✅ Auto-saved competencies');
-        } catch (error) {
-          console.error('❌ Auto-save failed:', error);
-        }
-      }, 1000);
+  } else if (field === 'end_year_rating_value') {
+    // ✅ Handle direct value updates
+    newCompetencies[index] = {
+      ...newCompetencies[index],
+      end_year_rating_value: value
+    };
+  } else {
+    newCompetencies[index] = {
+      ...newCompetencies[index],
+      [field]: value
+    };
+  }
+  
+  // ✅ Recalculate scores using the correct values
+  const totalRequired = newCompetencies.reduce((sum, comp) => 
+    sum + (parseFloat(comp.required_level) || 0), 0
+  );
+  
+  const totalActual = newCompetencies.reduce((sum, comp) => 
+    sum + (parseFloat(comp.end_year_rating_value) || 0), 0
+  );
+  
+  const percentage = totalRequired > 0 ? (totalActual / totalRequired) * 100 : 0;
+  const letterGrade = getLetterGradeFromScale(percentage);
+  
+  setPerformanceData(prev => ({
+    ...prev,
+    [key]: {
+      ...prev[key],
+      competency_ratings: newCompetencies,
+      total_competencies_required_score: totalRequired,
+      total_competencies_actual_score: totalActual,
+      competencies_percentage: percentage,
+      competencies_letter_grade: letterGrade
     }
-  };
+  }));
+  
+  console.log('📊 Competency scores updated:', {
+    totalRequired,
+    totalActual,
+    percentage: percentage.toFixed(2),
+    letterGrade,
+    competencies: newCompetencies.map(c => ({
+      name: c.competency_name,
+      required: c.required_level,
+      rating_id: c.end_year_rating,
+      rating_value: c.end_year_rating_value
+    }))
+  });
+  
+  // Auto-save after update
+  if (field === 'end_year_rating' && selectedPerformanceId) {
+    setTimeout(async () => {
+      try {
+        const payload = newCompetencies.map(comp => ({
+          id: comp.id,
+          end_year_rating: comp.end_year_rating || null,
+          notes: comp.notes || ''
+        }));
+        
+        await performanceApi.performances.saveCompetenciesDraft(
+          selectedPerformanceId,
+          payload
+        );
+        console.log('✅ Auto-saved competencies');
+      } catch (error) {
+        console.error('❌ Auto-save failed:', error);
+      }
+    }, 1000);
+  }
+};
 
   const handleSaveCompetenciesDraft = async () => {
     if (!selectedPerformanceId) return;
@@ -676,7 +698,6 @@ export default function PerformanceManagementPage() {
       
       showNotification('Competencies draft saved successfully');
       
-      // ✅ Reload to get updated data from backend
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving competencies:', error);
@@ -693,21 +714,53 @@ export default function PerformanceManagementPage() {
     const data = performanceData[key];
     const competencies = data.competency_ratings || [];
     
-    // ✅ Validate all competencies have ratings
-    const missingRatings = competencies.filter(comp => !comp.end_year_rating);
+    console.log('🔍 Validating competencies for submit:', {
+      total: competencies.length,
+      competencies: competencies.map(c => ({
+        id: c.id,
+        name: c.competency_name,
+        end_year_rating: c.end_year_rating,
+        end_year_rating_value: c.end_year_rating_value,
+        has_rating: !!c.end_year_rating
+      }))
+    });
+    
+    const missingRatings = competencies.filter(comp => {
+      const hasRating = comp.end_year_rating && comp.end_year_rating !== null;
+      console.log(`Checking ${comp.competency_name}:`, {
+        end_year_rating: comp.end_year_rating,
+        hasRating
+      });
+      return !hasRating;
+    });
     
     if (missingRatings.length > 0) {
+      const missingNames = missingRatings.map(c => c.competency_name);
+      console.log('❌ Missing ratings for:', missingNames);
+      
       showNotification(
-        `${missingRatings.length} competencies missing ratings. Please rate all competencies.`,
+        `${missingRatings.length} competencies missing ratings: ${missingNames.join(', ')}`,
         'error'
       );
-      console.log('❌ Missing ratings:', missingRatings.map(c => c.competency_name));
       return;
     }
     
     setLoading(true);
     try {
-      console.log('📤 Submitting competencies...');
+      console.log('💾 Saving draft before submit...');
+      
+      const competenciesPayload = competencies.map(comp => ({
+        id: comp.id,
+        end_year_rating: comp.end_year_rating || null,
+        notes: comp.notes || ''
+      }));
+      
+      await performanceApi.performances.saveCompetenciesDraft(
+        selectedPerformanceId,
+        competenciesPayload
+      );
+      
+      console.log('✅ Draft saved, now submitting...');
       
       const response = await performanceApi.performances.submitCompetencies(selectedPerformanceId);
       
@@ -718,6 +771,7 @@ export default function PerformanceManagementPage() {
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting competencies:', error);
+      console.error('Error details:', error.response?.data);
       showNotification(error.response?.data?.error || 'Error submitting competencies', 'error');
     } finally {
       setLoading(false);
@@ -912,7 +966,7 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  // ==================== RENDER SECTION ====================
+  // ==================== RENDER ====================
   if (loading && !activeYear) {
     return (
       <DashboardLayout>
@@ -1032,4 +1086,3 @@ export default function PerformanceManagementPage() {
     </DashboardLayout>
   );
 }
-

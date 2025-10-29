@@ -402,22 +402,7 @@ function ObjectiveRow({
           ))}
         </select>
         
-        {/* ✅ FIX: Show selected scale info below dropdown */}
-        {selectedScale && (
-          <div className="mt-1 text-[10px] text-gray-600 dark:text-gray-400">
-            <div className="flex items-center gap-1">
-              <span className="font-semibold text-almet-sapphire dark:text-almet-astral">
-                {selectedScale.name}
-              </span>
-              <span>•</span>
-              <span>Value: {selectedScale.value}</span>
-              <span>•</span>
-              <span className="font-medium">
-                {selectedScale.range_min}-{selectedScale.range_max}%
-              </span>
-            </div>
-          </div>
-        )}
+       
       </td>
       <td className="px-3 py-2.5">
         <div className={`px-2 py-1.5 text-xs font-bold text-center rounded-md ${
