@@ -305,14 +305,19 @@ const CompetencyMatrixSystemInner = () => {
     setEditValue(name);
   };
 
-  const beginEditGroup = (group) => {
-    setEditKey(`group-${group}`);
-    setEditValue(group);
+  const beginEditGroup = (groupId, groupName) => {
+    setEditKey(`group-${groupId}`);
+    setEditValue(groupName);
   };
 
   const beginEditChildGroup = (mainGroupId, childGroupId, childGroupName) => {
     setEditKey(`childgroup-${mainGroupId}-${childGroupId}`);
     setEditValue(childGroupName);
+  };
+
+  const beginEditLeadershipItem = (mainGroupId, childGroupId, itemId, itemName) => {
+    setEditKey(`item-${mainGroupId}-${childGroupId}-${itemId}`);
+    setEditValue(itemName);
   };
 
   const addGroup = async () => {
@@ -388,7 +393,7 @@ const CompetencyMatrixSystemInner = () => {
             await competencyApi.leadershipMainGroups.delete(g.id);
           }
           await fetchData();
-          if (expandedCard === gName) setExpandedCard(null);
+          if (expandedCard === gName || expandedCard === g.id) setExpandedCard(null);
           if (selectedGroup === gName) setSelectedGroup('');
           showSuccess('Group deleted successfully');
         } catch (e) {
@@ -503,8 +508,8 @@ const CompetencyMatrixSystemInner = () => {
     if (!editKey || !editValue.trim()) return;
 
     if (editKey.startsWith('group-')) {
-      const groupName = editKey.replace('group-', '');
-      const gObj = findGroupByName(groupName);
+      const groupId = parseInt(editKey.replace('group-', ''));
+      const gObj = currentGroups.find(g => g.id === groupId);
       if (!gObj) {
         showError('Group not found');
         return;
@@ -561,6 +566,31 @@ const CompetencyMatrixSystemInner = () => {
       } catch (e) {
         setErr(e);
         showError(e?.message || 'Could not update child group');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    if (editKey.startsWith('item-')) {
+      const parts = editKey.split('-');
+      const itemId = parseInt(parts[3]);
+      const childGroupId = parseInt(parts[2]);
+
+      setBusy(true);
+      setErr(null);
+      try {
+        await competencyApi.leadershipItems.update(itemId, {
+          child_group: childGroupId,
+          name: editValue.trim()
+        });
+        
+        await fetchData();
+        cancelEdit();
+        showSuccess('Item updated successfully');
+      } catch (e) {
+        setErr(e);
+        showError(e?.message || 'Could not update item');
       } finally {
         setBusy(false);
       }
@@ -631,7 +661,7 @@ const CompetencyMatrixSystemInner = () => {
 
       {filteredData.map(mainGroup => {
         const isMainOpen = expandedCard === mainGroup.id;
-        const isEditingMain = editKey === `group-${mainGroup.name}`;
+        const isEditingMain = editKey === `group-${mainGroup.id}`;
 
         return (
           <article key={mainGroup.id} className={`${card} border ${border} rounded-2xl shadow-sm hover:shadow-md transition`}>
@@ -679,7 +709,7 @@ const CompetencyMatrixSystemInner = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        beginEditGroup(mainGroup.name);
+                        beginEditGroup(mainGroup.id, mainGroup.name);
                       }}
                       className="p-2 rounded-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                     >
@@ -796,31 +826,67 @@ const CompetencyMatrixSystemInner = () => {
                                 No items yet
                               </div>
                             ) : (
-                              childGroup.items.map(item => (
-                                <div
-                                  key={item.id}
-                                  className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-almet-cloud-burst border border-gray-100 dark:border-gray-700 hover:border-almet-sapphire transition"
-                                >
-                                  <div className="w-1.5 h-1.5 rounded-full bg-almet-sapphire" />
-                                  <div className="flex-1 min-w-0">
-                                    <p className={`text-xs font-medium ${text} truncate`}>{item.name}</p>
-                                    {item.created_at && (
-                                      <p className={`${textDim} text-xs`}>
-                                        {new Date(item.created_at).toLocaleDateString()}
-                                      </p>
+                              childGroup.items.map(item => {
+                                const isEditingItem = editKey === `item-${mainGroup.id}-${childGroup.id}-${item.id}`;
+                                
+                                return (
+                                  <div
+                                    key={item.id}
+                                    className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-almet-cloud-burst border border-gray-100 dark:border-gray-700 hover:border-almet-sapphire transition"
+                                  >
+                                    {isEditingItem ? (
+                                      <>
+                                        <input
+                                          value={editValue}
+                                          onChange={(e) => setEditValue(e.target.value)}
+                                          autoFocus
+                                          className="flex-1 px-2 py-1 rounded-lg border text-xs bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white border-gray-200 dark:border-almet-comet focus:outline-none focus:border-almet-sapphire"
+                                        />
+                                        <button
+                                          onClick={saveEdit}
+                                          disabled={busy}
+                                          className="p-1 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                        >
+                                          <Save size={12} />
+                                        </button>
+                                        <button
+                                          onClick={cancelEdit}
+                                          className="p-1 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700"
+                                        >
+                                          <X size={12} />
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-almet-sapphire" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className={`text-xs font-medium ${text} truncate`}>{item.name}</p>
+                                          {item.created_at && (
+                                            <p className={`${textDim} text-xs`}>
+                                              {new Date(item.created_at).toLocaleDateString()}
+                                            </p>
+                                          )}
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <button
+                                            onClick={() => beginEditLeadershipItem(mainGroup.id, childGroup.id, item.id, item.name)}
+                                            className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                          >
+                                            <Edit size={12} />
+                                          </button>
+                                          <button
+                                            onClick={() => deleteItem(item.id, item.name, childGroup.id)}
+                                            disabled={busy}
+                                            className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                          >
+                                            <Trash2 size={12} />
+                                          </button>
+                                        </div>
+                                      </>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-1">
-                                    <button
-                                      onClick={() => deleteItem(item.id, item.name, childGroup.id)}
-                                      disabled={busy}
-                                      className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                                    >
-                                      <Trash2 size={12} />
-                                    </button>
-                                  </div>
-                                </div>
-                              ))
+                                );
+                              })
                             )}
                           </div>
                         )}
@@ -856,6 +922,19 @@ const CompetencyMatrixSystemInner = () => {
                 <span className={`ml-auto px-2 py-1 rounded-full bg-almet-sapphire/10 text-almet-sapphire text-xs font-semibold`}>
                   {mainGroup.childGroups.reduce((acc, cg) => acc + cg.items.length, 0)} items
                 </span>
+                <button
+                  onClick={() => beginEditGroup(mainGroup.id, mainGroup.name)}
+                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                >
+                  <Edit size={14} />
+                </button>
+                <button
+                  onClick={() => deleteGroup(mainGroup.name, mainGroup.id)}
+                  disabled={busy}
+                  className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
               
               <div className="overflow-x-auto">
@@ -879,46 +958,123 @@ const CompetencyMatrixSystemInner = () => {
                                 {childGroup.name}
                               </div>
                             </td>
-                            <td colSpan={3} className={`px-4 py-3 text-sm ${textDim} italic bg-gray-50 dark:bg-gray-800/50`}>
+                            <td colSpan={2} className={`px-4 py-3 text-sm ${textDim} italic bg-gray-50 dark:bg-gray-800/50`}>
                               No items yet
+                            </td>
+                            <td className="px-4 py-3 bg-gray-50 dark:bg-gray-800/50">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => beginEditChildGroup(mainGroup.id, childGroup.id, childGroup.name)}
+                                  className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  onClick={() => deleteChildGroup(childGroup.id, childGroup.name)}
+                                  disabled={busy}
+                                  className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ) : (
-                          childGroup.items.map((item, itemIdx) => (
-                            <tr 
-                              key={item.id}
-                              className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
-                                itemIdx === 0 ? 'border-t-2 border-gray-200 dark:border-gray-700' : ''
-                              }`}
-                            >
-                              {itemIdx === 0 && (
-                                <td 
-                                  rowSpan={childGroup.items.length}
-                                  className={`px-4 py-3 text-sm font-medium ${text} bg-gray-50 dark:bg-gray-800/50 align-top`}
-                                >
-                                  <div className="flex items-center gap-2 sticky top-0">
-                                    <Building size={14} className="text-almet-sapphire" />
-                                    {childGroup.name}
+                          childGroup.items.map((item, itemIdx) => {
+                            const isEditingItem = editKey === `item-${mainGroup.id}-${childGroup.id}-${item.id}`;
+                            
+                            return (
+                              <tr 
+                                key={item.id}
+                                className={`hover:bg-gray-50 dark:hover:bg-gray-800 transition ${
+                                  itemIdx === 0 ? 'border-t-2 border-gray-200 dark:border-gray-700' : ''
+                                }`}
+                              >
+                                {itemIdx === 0 && (
+                                  <td 
+                                    rowSpan={childGroup.items.length}
+                                    className={`px-4 py-3 text-sm font-medium ${text} bg-gray-50 dark:bg-gray-800/50 align-top`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2 sticky top-0">
+                                      <div className="flex items-center gap-2">
+                                        <Building size={14} className="text-almet-sapphire" />
+                                        {childGroup.name}
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <button
+                                          onClick={() => beginEditChildGroup(mainGroup.id, childGroup.id, childGroup.name)}
+                                          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                                        >
+                                          <Edit size={12} />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteChildGroup(childGroup.id, childGroup.name)}
+                                          disabled={busy}
+                                          className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                        >
+                                          <Trash2 size={12} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </td>
+                                )}
+                                <td className={`px-4 py-3 text-sm ${text}`}>
+                                  {isEditingItem ? (
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        autoFocus
+                                        className="w-full px-2 py-1 rounded-lg border text-xs bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white border-gray-200 dark:border-almet-comet focus:outline-none focus:border-almet-sapphire"
+                                      />
+                                    </div>
+                                  ) : (
+                                    item.name
+                                  )}
+                                </td>
+                                <td className={`px-4 py-3 text-sm ${textDim}`}>
+                                  {item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center justify-end gap-2">
+                                    {isEditingItem ? (
+                                      <>
+                                        <button
+                                          onClick={saveEdit}
+                                          disabled={busy}
+                                          className="p-2 rounded-lg text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 transition"
+                                        >
+                                          <Save size={16} />
+                                        </button>
+                                        <button
+                                          onClick={cancelEdit}
+                                          className="p-2 rounded-lg text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                                        >
+                                          <X size={16} />
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          onClick={() => beginEditLeadershipItem(mainGroup.id, childGroup.id, item.id, item.name)}
+                                          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                                        >
+                                          <Edit size={16} />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteItem(item.id, item.name)}
+                                          disabled={busy}
+                                          className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </td>
-                              )}
-                              <td className={`px-4 py-3 text-sm ${text}`}>{item.name}</td>
-                              <td className={`px-4 py-3 text-sm ${textDim}`}>
-                                {item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={() => deleteItem(item.id, item.name)}
-                                    disabled={busy}
-                                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))
+                              </tr>
+                            );
+                          })
                         )}
                       </React.Fragment>
                     ))}
