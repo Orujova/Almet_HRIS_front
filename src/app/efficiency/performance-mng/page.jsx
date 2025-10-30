@@ -137,7 +137,9 @@ export default function PerformanceManagementPage() {
       });
       
       console.log('✅ Settings loaded:', {
-        evaluationScale: scalesRes.results || scalesRes
+        evaluationScale: scalesRes.results || scalesRes,
+        weightConfigs: weightsRes.results
+        
       });
     } catch (error) {
       console.error('❌ Error loading settings:', error);
@@ -267,25 +269,76 @@ export default function PerformanceManagementPage() {
         await loadBehavioralCompetencies();
       }
       
+      // ✅ FIX: Enrich competencies with proper end_year_rating_value
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
+        console.log('🔍 RAW competencies from backend:', detailData.competency_ratings);
+        
         const enrichedRatings = detailData.competency_ratings.map((rating) => {
           const competencyInfo = behavioralCompetencies.find(
             comp => comp.id === rating.behavioral_competency
           );
           
-          // ✅ Ensure end_year_rating_value is set from backend
-          return {
+          // ✅ CRITICAL: Get the rating value from the scale
+          let ratingValue = 0;
+          
+          // Check if backend provided the value
+          if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
+            ratingValue = parseFloat(rating.end_year_rating_value);
+            console.log('✅ Backend provided value:', {
+              id: rating.id,
+              end_year_rating: rating.end_year_rating,
+              end_year_rating_value: ratingValue
+            });
+          } 
+          // If not, calculate from scale
+          else if (rating.end_year_rating) {
+            const selectedScale = settings.evaluationScale?.find(
+              s => s.id === rating.end_year_rating
+            );
+            if (selectedScale) {
+              ratingValue = selectedScale.value;
+              console.log('🔧 Calculated missing rating value:', {
+                competency_id: rating.behavioral_competency,
+                rating_id: rating.end_year_rating,
+                scale_name: selectedScale.name,
+                calculated_value: ratingValue
+              });
+            } else {
+              console.warn('⚠️ Could not find scale for rating:', rating.end_year_rating);
+            }
+          }
+          
+          const enriched = {
             ...rating,
             competency_name: competencyInfo?.name || `Unknown Competency (ID: ${rating.behavioral_competency})`,
             competency_group_id: competencyInfo?.group_id || null,
             competency_group_name: competencyInfo?.group_name || 'Ungrouped',
             description: competencyInfo?.description || '',
-            // ✅ Make sure this value exists
-            end_year_rating_value: rating.end_year_rating_value || 0
+            end_year_rating_value: ratingValue
           };
+          
+          console.log('📦 Enriched competency:', {
+            id: enriched.id,
+            name: enriched.competency_name,
+            end_year_rating: enriched.end_year_rating,
+            end_year_rating_value: enriched.end_year_rating_value,
+            required_level: enriched.required_level
+          });
+          
+          return enriched;
         });
         
         detailData.competency_ratings = enrichedRatings;
+        
+        console.log('✅ ALL Competencies after enrichment:', 
+          enrichedRatings.map(r => ({
+            id: r.id,
+            name: r.competency_name,
+            rating_id: r.end_year_rating,
+            rating_value: r.end_year_rating_value,
+            required: r.required_level
+          }))
+        );
       }
       
       console.log('✅ Performance data loaded:', {
@@ -299,7 +352,7 @@ export default function PerformanceManagementPage() {
         final_rating: detailData.final_rating
       });
       
-      // ✅ NEW: Recalculate scores after loading to ensure consistency
+      // ✅ Recalculate scores after loading to ensure consistency
       const recalculatedData = recalculateScores(detailData);
       
       setPerformanceData(prev => ({
@@ -472,15 +525,22 @@ export default function PerformanceManagementPage() {
 
   const handleAddObjective = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
+    
+    // Get the first status as default (usually "Not Started" or similar)
+    const defaultStatus = settings.statusTypes && settings.statusTypes.length > 0 
+      ? settings.statusTypes[0].id 
+      : null;
+    
     const newObjective = {
       title: '',
       description: '',
       weight: 0,
       linked_department_objective: null,
       progress: 0,
-      status: null,
+      status: defaultStatus,  // ✅ Set default status
       end_year_rating: null,
-      calculated_score: 0
+      calculated_score: 0,
+      is_cancelled: false
     };
     
     const updatedData = {
@@ -494,6 +554,8 @@ export default function PerformanceManagementPage() {
       ...prev,
       [key]: recalculatedData
     }));
+    
+    console.log('✅ New objective added with default status:', defaultStatus);
   };
 
   const handleDeleteObjective = (index) => {
@@ -515,21 +577,34 @@ export default function PerformanceManagementPage() {
     }));
   };
 
-  const handleSaveObjectivesDraft = async (objectives) => {
-    if (!selectedPerformanceId) return;
+  // Verify/Replace handleSaveObjectivesDraft in page.jsx:
+
+const handleSaveObjectivesDraft = async (objectives) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    // ✅ Log what we're sending
+    console.log('📋 Saving objectives:', objectives.map(obj => ({
+      id: obj.id,
+      title: obj.title,
+      status: obj.status,
+      weight: obj.weight,
+      end_year_rating: obj.end_year_rating,  // ✅ Make sure this is included
+      calculated_score: obj.calculated_score
+    })));
     
-    setLoading(true);
-    try {
-      await performanceApi.performances.saveObjectivesDraft(selectedPerformanceId, objectives);
-      showNotification('Objectives draft saved successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error saving objectives:', error);
-      showNotification(error.response?.data?.error || 'Error saving objectives', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+    await performanceApi.performances.saveObjectivesDraft(selectedPerformanceId, objectives);
+    showNotification('Objectives draft saved successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error saving objectives:', error);
+    console.error('❌ Error response:', error.response?.data);
+    showNotification(error.response?.data?.error || 'Error saving objectives', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmitObjectives = async () => {
     if (!selectedPerformanceId) return;
@@ -563,70 +638,175 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  // ==================== COMPETENCY HANDLERS ====================
-  const handleUpdateCompetency = (index, field, value) => {
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const newCompetencies = [...(data.competency_ratings || [])];
-    newCompetencies[index] = {
-      ...newCompetencies[index],
-      [field]: value
-    };
-    
-    // If updating end_year_rating, set end_year_rating_value
-    if (field === 'end_year_rating') {
-      const selectedScaleId = value ? parseInt(value) : null;
-      if (selectedScaleId) {
-        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-        if (selectedScale) {
-          newCompetencies[index].end_year_rating_value = selectedScale.value;
-        }
-      } else {
-        newCompetencies[index].end_year_rating_value = 0;
-      }
-    }
-    
-    const updatedData = {
-      ...data,
-      competency_ratings: newCompetencies
-    };
-    
-    // Recalculate aggregates
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
-  };
+// Replace the handleUpdateCompetency function in page.jsx:
 
-  const handleSaveCompetenciesDraft = async (competencies) => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.saveCompetenciesDraft(selectedPerformanceId, competencies);
-      showNotification('Competencies draft saved successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error saving competencies:', error);
-      showNotification(error.response?.data?.error || 'Error saving competencies', 'error');
-    } finally {
-      setLoading(false);
-    }
+const handleUpdateCompetency = (index, field, value) => {
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+  const newCompetencies = [...(data.competency_ratings || [])];
+  
+  // Create updated competency object
+  const updatedCompetency = {
+    ...newCompetencies[index],
+    [field]: value
   };
+  
+  // ✅ If updating end_year_rating, ALSO set end_year_rating_value immediately
+  if (field === 'end_year_rating') {
+    const selectedScaleId = value ? parseInt(value) : null;
+    if (selectedScaleId) {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+      if (selectedScale) {
+        updatedCompetency.end_year_rating_value = selectedScale.value;
+        
+        console.log('✅ Competency updated with both values:', {
+          index,
+          name: updatedCompetency.competency_name,
+          rating_id: selectedScaleId,
+          rating_value: selectedScale.value
+        });
+      }
+    } else {
+      updatedCompetency.end_year_rating_value = 0;
+    }
+  }
+  
+  newCompetencies[index] = updatedCompetency;
+  
+  const updatedData = {
+    ...data,
+    competency_ratings: newCompetencies
+  };
+  
+  // Recalculate aggregates
+  const recalculatedData = recalculateScores(updatedData);
+  
+  setPerformanceData(prev => ({
+    ...prev,
+    [key]: recalculatedData
+  }));
+};
+
+ // Replace the handleSaveCompetenciesDraft function in page.jsx:
+
+const handleSaveCompetenciesDraft = async (competencies) => {
+  if (!selectedPerformanceId) {
+    showNotification('No performance record selected', 'error');
+    return;
+  }
+  
+  // ✅ Validate competencies array
+  if (!Array.isArray(competencies)) {
+    console.error('❌ Invalid competencies data:', competencies);
+    showNotification('Invalid competencies data', 'error');
+    return;
+  }
+  
+  setLoading(true);
+  try {
+    // ✅ Log current state BEFORE saving
+    console.log('📋 BEFORE SAVE - Current competencies state:', 
+      competencies.map(c => ({
+        id: c.id,
+        name: c.competency_name,
+        end_year_rating: c.end_year_rating,
+        end_year_rating_value: c.end_year_rating_value,
+        required_level: c.required_level
+      }))
+    );
+    
+    // ✅ Prepare data - Include end_year_rating_value if backend accepts it
+    const preparedCompetencies = competencies.map(comp => {
+      const payload = {
+        id: comp.id,
+        behavioral_competency: comp.behavioral_competency,
+        required_level: comp.required_level,
+        end_year_rating: comp.end_year_rating,
+        notes: comp.notes || ''
+      };
+      
+      // ✅ CRITICAL: Include rating value if it exists
+      // The backend should calculate this, but we send it to ensure consistency
+      if (comp.end_year_rating_value !== null && comp.end_year_rating_value !== undefined) {
+        payload.end_year_rating_value = comp.end_year_rating_value;
+      }
+      
+      return payload;
+    });
+    
+    console.log('📤 SENDING to backend:', preparedCompetencies);
+    
+    const response = await performanceApi.performances.saveCompetenciesDraft(
+      selectedPerformanceId, 
+      preparedCompetencies
+    );
+    
+    console.log('📥 RESPONSE from backend:', response);
+    
+    showNotification('Competencies draft saved successfully');
+    
+    // ✅ Reload to get fresh data from backend
+    console.log('🔄 Reloading performance data...');
+    const reloadedData = await loadPerformanceData(selectedEmployee.id, selectedYear);
+    
+    console.log('📋 AFTER RELOAD - Competencies state:', 
+      reloadedData?.competency_ratings?.map(c => ({
+        id: c.id,
+        name: c.competency_name,
+        end_year_rating: c.end_year_rating,
+        end_year_rating_value: c.end_year_rating_value,
+        required_level: c.required_level
+      }))
+    );
+    
+  } catch (error) {
+    console.error('❌ Error saving competencies:', error);
+    console.error('❌ Error response:', error.response?.data);
+    showNotification(
+      error.response?.data?.error || 'Error saving competencies', 
+      'error'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSubmitCompetencies = async () => {
-    if (!selectedPerformanceId) return;
+    if (!selectedPerformanceId) {
+      showNotification('No performance record selected', 'error');
+      return;
+    }
     
     setLoading(true);
     try {
+      console.log('📤 Submitting competencies for performance:', selectedPerformanceId);
+      
       await performanceApi.performances.submitCompetencies(selectedPerformanceId);
+      
       showNotification('Competencies submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting competencies:', error);
-      showNotification(error.response?.data?.error || 'Error submitting competencies', 'error');
+      console.error('❌ Error response data:', error.response?.data);
+      console.error('❌ Error response status:', error.response?.status);
+      
+      // Get detailed error message
+      let errorMessage = 'Error submitting competencies';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMessage = error.response.data;
+        } else if (error.response.data.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.response.data.message) {
+          errorMessage = error.response.data.message;
+        } else {
+          errorMessage = JSON.stringify(error.response.data);
+        }
+      }
+      
+      showNotification(errorMessage, 'error');
     } finally {
       setLoading(false);
     }

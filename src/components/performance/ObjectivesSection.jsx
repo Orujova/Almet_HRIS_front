@@ -1,7 +1,6 @@
 import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, Loader, XCircle } from 'lucide-react';
 import { useEffect } from 'react';
 
-
 export default function ObjectivesSection({
   objectives,
   settings,
@@ -22,7 +21,15 @@ export default function ObjectivesSection({
   onCancelObjective
 }) {
   const canAddMore = objectives.length < settings.goalLimits?.max && totalWeight < 100;
-  const isValidForSubmit = objectives.length >= settings.goalLimits?.min && totalWeight === 100;
+  
+  // ✅ Validation: Check title, status, and weight
+  const isValidForSubmit = objectives.length >= settings.goalLimits?.min && 
+                          totalWeight === 100 &&
+                          objectives.every(obj => 
+                            obj.title?.trim() && 
+                            obj.status && 
+                            obj.weight > 0
+                          );
 
   const isGoalsSubmitted = performanceData?.objectives_employee_submitted || false;
   const isGoalsApproved = performanceData?.objectives_manager_approved || false;
@@ -50,7 +57,6 @@ export default function ObjectivesSection({
 
   const weightStatus = getWeightStatus();
 
-  // ✅ Get letter grade from evaluation scale
   const getLetterGradeFromScale = (percentage) => {
     if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
       return 'N/A';
@@ -65,7 +71,6 @@ export default function ObjectivesSection({
 
   const objectivesGrade = getLetterGradeFromScale(percentage || 0);
 
-  // ✅ FIX: Log when objectives data changes
   useEffect(() => {
     if (objectives && objectives.length > 0) {
       console.log('📊 Objectives loaded:', objectives.length, 'items');
@@ -73,6 +78,25 @@ export default function ObjectivesSection({
       console.log('📊 Percentage:', percentage, 'Grade:', objectivesGrade);
     }
   }, [objectives, totalScore, percentage]);
+
+  // ✅ Get validation error message
+  const getValidationMessage = () => {
+    if (objectives.length < settings.goalLimits?.min) {
+      return `Add ${settings.goalLimits.min - objectives.length} more objective(s)`;
+    }
+    if (totalWeight !== 100) {
+      return 'Total weight must be 100%';
+    }
+    const missingTitle = objectives.some(obj => !obj.title?.trim());
+    const missingStatus = objectives.some(obj => !obj.status);
+    const missingWeight = objectives.some(obj => !obj.weight || obj.weight <= 0);
+    
+    if (missingTitle) return 'All objectives must have a title';
+    if (missingStatus) return '⚠️ All objectives must have a status';
+    if (missingWeight) return 'All objectives must have weight > 0';
+    
+    return '';
+  };
 
   return (
     <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden`}>
@@ -93,7 +117,6 @@ export default function ObjectivesSection({
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Weight Status Badge */}
             <div className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 ${
               weightStatus.color === 'green' ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
               weightStatus.color === 'red' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
@@ -103,7 +126,6 @@ export default function ObjectivesSection({
               <span className="text-xs font-semibold">{totalWeight}% • {weightStatus.text}</span>
             </div>
             
-            {/* Submission Status Badge */}
             {isGoalsSubmitted && (
               <div className="px-2.5 py-1.5 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 flex items-center gap-1.5">
                 <CheckCircle className="w-3.5 h-3.5" />
@@ -148,14 +170,14 @@ export default function ObjectivesSection({
             <thead className={`${darkMode ? 'bg-gray-750' : 'bg-gray-50'}`}>
               <tr className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
                 <th className="px-3 py-2 text-left w-10">#</th>
-                <th className="px-3 py-2 text-left min-w-[180px]">Title</th>
+                <th className="px-3 py-2 text-left min-w-[180px]">Title *</th>
                 <th className="px-3 py-2 text-left min-w-[200px]">Description</th>
                 <th className="px-3 py-2 text-left min-w-[150px]">Dept. Objective</th>
-                <th className="px-3 py-2 text-center w-20">Weight %</th>
+                <th className="px-3 py-2 text-center w-20">Weight % *</th>
                 <th className="px-3 py-2 text-center w-20">Progress %</th>
                 <th className="px-3 py-2 text-center w-28">End Year Rating</th>
                 <th className="px-3 py-2 text-center w-20">Score</th>
-                <th className="px-3 py-2 text-center w-24">Status</th>
+                <th className="px-3 py-2 text-center w-24">Status *</th>
                 {(canEditGoals || canCancelGoals) && <th className="px-3 py-2 text-center w-16">Action</th>}
               </tr>
             </thead>
@@ -183,7 +205,6 @@ export default function ObjectivesSection({
 
       {objectives.length > 0 && (
         <div className={`p-4 border-t ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
-          {/* ✅ UPDATED Score Summary with Letter Grade */}
           <div className={`p-3 rounded-lg ${darkMode ? 'bg-almet-cloud-burst/20 border-almet-sapphire/30' : 'bg-almet-mystic border-almet-sapphire/20'} border mb-3`}>
             <div className="flex items-center justify-between">
               <div>
@@ -208,7 +229,7 @@ export default function ObjectivesSection({
           <div className="flex gap-2">
             {canSaveDraft && (
               <button
-                onClick={onSaveDraft}
+                onClick={() => onSaveDraft(objectives)}
                 disabled={loading}
                 className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-xs font-medium disabled:opacity-50 flex items-center gap-1.5 transition-colors"
               >
@@ -219,7 +240,7 @@ export default function ObjectivesSection({
             
             {canSubmitGoals && (
               <button
-                onClick={onSubmit}
+                onClick={() => onSubmit()}
                 disabled={!isValidForSubmit || loading}
                 className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs font-medium flex items-center gap-1.5 transition-colors"
               >
@@ -229,11 +250,9 @@ export default function ObjectivesSection({
             )}
             
             {canSubmitGoals && !isValidForSubmit && (
-              <div className="flex items-center gap-1.5 px-2.5 py-2 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-lg text-[10px]">
+              <div className="flex items-center gap-1.5 px-2.5 py-2 bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-lg text-[10px] font-medium">
                 <AlertCircle className="w-3.5 h-3.5" />
-                {objectives.length < settings.goalLimits?.min 
-                  ? `Add ${settings.goalLimits.min - objectives.length} more`
-                  : 'Total weight must be 100%'}
+                {getValidationMessage()}
               </div>
             )}
             
@@ -277,8 +296,10 @@ function ObjectiveRow({
 
   const isCancelled = objective.is_cancelled || false;
 
-  // ✅ FIX: Get the selected scale info for display
-  const selectedScale = settings.evaluationScale?.find(s => s.id === objective.end_year_rating);
+  // ✅ Check if fields are missing
+  const isTitleMissing = !objective.title?.trim();
+  const isStatusMissing = !objective.status;
+  const isWeightMissing = !objective.weight || objective.weight <= 0;
 
   return (
     <tr className={`${darkMode ? 'hover:bg-gray-750' : 'hover:bg-gray-50'} transition-colors ${isCancelled ? 'opacity-50' : ''}`}>
@@ -295,8 +316,8 @@ function ObjectiveRow({
           disabled={!canEditGoals || isCancelled}
           className={`w-full px-2 py-1.5 text-xs border rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${
             darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-          } disabled:opacity-50 transition-colors`}
-          placeholder="Objective title"
+          } ${isTitleMissing && canEditGoals ? 'border-red-500 dark:border-red-500' : ''} disabled:opacity-50 transition-colors`}
+          placeholder="Objective title (required)"
         />
       </td>
       <td className="px-3 py-2.5">
@@ -320,7 +341,7 @@ function ObjectiveRow({
             darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
           } disabled:opacity-50 transition-colors`}
         >
-          <option value="">-- Select --</option>
+          <option value="">-- Optional --</option>
           {settings.departmentObjectives?.map(dept => (
             <option key={dept.id} value={dept.id}>{dept.title}</option>
           ))}
@@ -336,7 +357,7 @@ function ObjectiveRow({
           disabled={!canEditGoals || isCancelled}
           className={`w-full px-2 py-1.5 text-xs border rounded-md text-center font-semibold focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${
             darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-          } disabled:opacity-50 transition-colors`}
+          } ${isWeightMissing && canEditGoals ? 'border-red-500 dark:border-red-500' : ''} disabled:opacity-50 transition-colors`}
         />
       </td>
       <td className="px-3 py-2.5">
@@ -353,12 +374,10 @@ function ObjectiveRow({
         />
       </td>
       <td className="px-3 py-2.5">
-        {/* ✅ FIX: Show selected value properly */}
         <select
           value={objective.end_year_rating || ''}
           onChange={(e) => {
             const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
-            console.log('🎯 Rating selected:', selectedScaleId);
             
             if (selectedScaleId) {
               const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
@@ -367,17 +386,7 @@ function ObjectiveRow({
                 const targetScore = settings.evaluationTargets?.objective_score_target || 21;
                 const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
                 
-                console.log('📊 Calculated score:', {
-                  scaleValue: selectedScale.value,
-                  weight,
-                  targetScore,
-                  calculatedScore
-                });
-                
-                // ✅ Update rating first
                 onUpdate(index, 'end_year_rating', selectedScaleId);
-                
-                // ✅ Then update calculated score (after a tick to allow state update)
                 setTimeout(() => {
                   onUpdate(index, 'calculated_score', calculatedScore);
                 }, 0);
@@ -401,8 +410,6 @@ function ObjectiveRow({
             </option>
           ))}
         </select>
-        
-       
       </td>
       <td className="px-3 py-2.5">
         <div className={`px-2 py-1.5 text-xs font-bold text-center rounded-md ${
@@ -414,13 +421,13 @@ function ObjectiveRow({
       <td className="px-3 py-2.5">
         <select
           value={objective.status || ''}
-          onChange={(e) => onUpdate(index, 'status', e.target.value)}
+          onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
           disabled={isCancelled}
           className={`w-full px-2 py-1.5 text-xs border rounded-md focus:ring-1 focus:ring-almet-sapphire focus:border-almet-sapphire ${
             darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300'
-          } disabled:opacity-50 transition-colors`}
+          } ${isStatusMissing && canEditGoals ? 'border-red-500 dark:border-red-500 bg-red-50 dark:bg-red-900/10' : ''} disabled:opacity-50 transition-colors`}
         >
-          <option value="">-- Status --</option>
+          <option value="">⚠️ Select Status (Required)</option>
           {settings.statusTypes?.map(status => (
             <option key={status.id} value={status.id}>{status.label}</option>
           ))}

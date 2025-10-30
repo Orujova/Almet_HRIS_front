@@ -182,7 +182,8 @@ export default function EmployeePerformanceDetail({
         onCancelObjective={onCancelObjective}
       />
 
-      <CompetenciesSection
+      
+<CompetenciesSection
         competencies={performanceData.competency_ratings || []}
         groupScores={performanceData.group_competency_scores}
         settings={settings}
@@ -195,8 +196,14 @@ export default function EmployeePerformanceDetail({
         percentage={performanceData.competencies_percentage}
         letterGrade={performanceData.competencies_letter_grade}
         onUpdate={onUpdateCompetency}
-        onSaveDraft={onSaveCompetenciesDraft}
-        onSubmit={onSubmitCompetencies}
+        onSaveDraft={(competencies) => {
+          console.log('🎯 Save Draft called with:', competencies?.length, 'competencies');
+          onSaveCompetenciesDraft(competencies);
+        }}
+        onSubmit={() => {
+          console.log('🎯 Submit called');
+          onSubmitCompetencies();
+        }}
       />
 
       <PerformanceReviews

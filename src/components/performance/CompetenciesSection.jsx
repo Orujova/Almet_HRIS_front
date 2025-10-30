@@ -297,31 +297,18 @@ export default function CompetenciesSection({
                                 </div>
                               </td>
                               <td className="px-3 py-2.5">
-                                <select
+                               <select
   value={comp.end_year_rating || ''}
   onChange={(e) => {
     const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
+    const globalIndex = competencies.findIndex(c => c.id === comp.id);
     
     if (selectedScaleId) {
       const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
       
       if (selectedScale) {
-        // ✅ FIX: Update BOTH values at once using a batch update
-        const updates = {
-          end_year_rating: selectedScaleId,
-          end_year_rating_value: selectedScale.value
-        };
-        
-        // Update the competency with both values
-        const globalIndex = competencies.findIndex(c => c.id === comp.id);
-        
-        // Call onUpdate for rating ID
+        // ✅ Update both values in a single call by updating the parent state properly
         onUpdate(globalIndex, 'end_year_rating', selectedScaleId);
-        
-        // Then update the value (backend will also set this, but we need it for immediate UI update)
-        setTimeout(() => {
-          onUpdate(globalIndex, 'end_year_rating_value', selectedScale.value);
-        }, 0);
         
         console.log('🎯 Updated competency:', {
           id: comp.id,
@@ -332,11 +319,7 @@ export default function CompetenciesSection({
         });
       }
     } else {
-      const globalIndex = competencies.findIndex(c => c.id === comp.id);
       onUpdate(globalIndex, 'end_year_rating', null);
-      setTimeout(() => {
-        onUpdate(globalIndex, 'end_year_rating_value', 0);
-      }, 0);
     }
   }}
   disabled={currentPeriod !== 'END_YEAR_REVIEW' || !canEdit}
@@ -416,7 +399,7 @@ export default function CompetenciesSection({
           {canEdit && (
             <div className="flex gap-2">
               <button
-                onClick={onSaveDraft}
+                onClick={() => onSaveDraft(competencies)}
                 disabled={loading}
                 className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-xs font-medium disabled:opacity-50 flex items-center gap-1.5 transition-colors"
               >
@@ -425,7 +408,7 @@ export default function CompetenciesSection({
               </button>
               
               <button
-                onClick={onSubmit}
+                onClick={() => onSubmit()}
                 disabled={loading}
                 className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs font-medium flex items-center gap-1.5 disabled:opacity-50 transition-colors"
               >
