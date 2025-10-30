@@ -2,18 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Target, ArrowRight, Loader2, AlertCircle, Settings,
-  RefreshCw, ChevronDown, ChevronRight, Home, BarChart3, 
-  TrendingUp, Award
+  RefreshCw, ChevronRight, Home, BarChart3, 
+  TrendingUp, Award, Crown
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import BehavioralAssessmentCalculation from '@/components/assessment/BehavioralAssessmentCalculation';
 import CoreEmployeeCalculation from '@/components/assessment/CoreEmployeeCalculation';
+import LeadershipAssessmentCalculation from '@/components/assessment/LeadershipAssessmentCalculation';
 import AssessmentSettings from '@/components/assessment/AssessmentSettings';
 import { assessmentApi } from '@/services/assessmentApi';
 import { ToastProvider, useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 
-// Breadcrumb Component - təkmilləşdirilmiş
+// Breadcrumb Component
 const Breadcrumb = ({ items }) => (
   <nav className="flex items-center space-x-2 text-xs text-almet-waterloo mb-4" aria-label="Breadcrumb">
     {items.map((item, index) => (
@@ -45,7 +46,7 @@ const AssessmentMatrixInner = () => {
   const { darkMode } = useTheme();
   const { showSuccess, showError } = useToast();
   
-  // TAB STATE with better persistence
+  // TAB STATE with persistence
   const [activeView, setActiveView] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('assessmentMatrixView') || 'dashboard';
@@ -59,6 +60,7 @@ const AssessmentMatrixInner = () => {
   const [dashboardData, setDashboardData] = useState({
     behavioralAssessments: 0,
     coreAssessments: 0,
+    leadershipAssessments: 0,
     totalAssessments: 0,
     completedAssessments: 0,
     draftAssessments: 0,
@@ -74,14 +76,14 @@ const AssessmentMatrixInner = () => {
     type: 'default'
   });
 
-  // Tab persistence with better handling
+  // Tab persistence
   useEffect(() => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('assessmentMatrixView', activeView);
     }
   }, [activeView]);
 
-  // Theme classes - təkmilləşdirilmiş
+  // Theme classes
   const bgApp = darkMode ? 'bg-gray-900' : 'bg-almet-mystic';
   const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
   const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
@@ -93,14 +95,16 @@ const AssessmentMatrixInner = () => {
     setLoading(true);
     setError(null);
     try {
-      const [behavioralRes, coreRes] = await Promise.all([
+      const [behavioralRes, coreRes, leadershipRes] = await Promise.all([
         assessmentApi.employeeBehavioral.getAll(),
-        assessmentApi.employeeCore.getAll()
+        assessmentApi.employeeCore.getAll(),
+        assessmentApi.employeeLeadership.getAll()
       ]);
 
       const behavioralAssessments = behavioralRes.results || [];
       const coreAssessments = coreRes.results || [];
-      const allAssessments = [...behavioralAssessments, ...coreAssessments];
+      const leadershipAssessments = leadershipRes.results || [];
+      const allAssessments = [...behavioralAssessments, ...coreAssessments, ...leadershipAssessments];
       const completed = allAssessments.filter(a => a.status === 'COMPLETED').length;
       const draft = allAssessments.filter(a => a.status === 'DRAFT').length;
       const completionRate = allAssessments.length > 0 ? ((completed / allAssessments.length) * 100) : 0;
@@ -108,6 +112,7 @@ const AssessmentMatrixInner = () => {
       setDashboardData({
         behavioralAssessments: behavioralAssessments.length,
         coreAssessments: coreAssessments.length,
+        leadershipAssessments: leadershipAssessments.length,
         totalAssessments: allAssessments.length,
         completedAssessments: completed,
         draftAssessments: draft,
@@ -128,7 +133,7 @@ const AssessmentMatrixInner = () => {
     }
   }, [activeView]);
 
-  // Shared Components - təkmilləşdirilmiş
+  // Shared Components
   const ActionButton = ({ 
     onClick, 
     icon: Icon, 
@@ -290,6 +295,8 @@ const AssessmentMatrixInner = () => {
       items.push({ label: 'Behavioral Competency Assessment' });
     } else if (activeView === 'core') {
       items.push({ label: 'Core Competency Assessment' });
+    } else if (activeView === 'leadership') {
+      items.push({ label: 'Leadership Assessment' });
     } else if (showSettings) {
       items.push({ label: 'Settings' });
     }
@@ -393,7 +400,7 @@ const AssessmentMatrixInner = () => {
       {/* Breadcrumb */}
       <Breadcrumb items={getBreadcrumbs()} />
 
-      {/* Header - təkmilləşdirilmiş */}
+      {/* Header */}
       <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -402,7 +409,7 @@ const AssessmentMatrixInner = () => {
             </div>
             <div>
               <h1 className={`text-xl font-bold ${textPrimary}`}>Assessment Matrix</h1>
-              <p className={`text-xs ${textSecondary} mt-1 `}>
+              <p className={`text-xs ${textSecondary} mt-1`}>
                 Comprehensive employee competency assessment and management system
               </p>
             </div>
@@ -433,8 +440,8 @@ const AssessmentMatrixInner = () => {
       {/* Content */}
       {activeView === 'dashboard' && (
         <div className="space-y-5">
-          {/* Overview Stats - təkmilləşdirilmiş */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Overview Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <StatCard
               icon={BarChart3}
               title="Total Assessments"
@@ -463,10 +470,17 @@ const AssessmentMatrixInner = () => {
               subtitle="Technical skills assessments"
               color="orange"
             />
+            <StatCard
+              icon={Crown}
+              title="Leadership"
+              value={dashboardData.leadershipAssessments}
+              subtitle="Senior position assessments"
+              color="blue"
+            />
           </div>
 
-          {/* Assessment Types Navigation - təkmilləşdirilmiş */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          {/* Assessment Types Navigation */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
             <NavigationCard
               icon={Users}
               title="Behavioral Competency Assessment"
@@ -486,6 +500,16 @@ const AssessmentMatrixInner = () => {
               isActive={false}
               onClick={() => setActiveView('core')}
             />
+            
+            <NavigationCard
+              icon={Crown}
+              title="Leadership Assessment"
+              subtitle="Comprehensive leadership evaluation for senior positions including Manager, Vice Chairman, Director, Vice President, and HOD"
+              color="from-amber-100 via-amber-200 to-amber-300"
+              count={dashboardData.leadershipAssessments}
+              isActive={false}
+              onClick={() => setActiveView('leadership')}
+            />
           </div>
         </div>
       )}
@@ -500,6 +524,12 @@ const AssessmentMatrixInner = () => {
       {activeView === 'core' && (
         <div className="space-y-4">
           <CoreEmployeeCalculation />
+        </div>
+      )}
+
+      {activeView === 'leadership' && (
+        <div className="space-y-4">
+          <LeadershipAssessmentCalculation />
         </div>
       )}
 

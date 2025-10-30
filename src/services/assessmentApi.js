@@ -743,6 +743,223 @@ export const positionGroupsApi = {
     }
   }
 };
+export const positionLeadershipApi = {
+  getAll: async (params = {}) => {
+    try {
+      const queryString = buildQueryParams(params);
+      const response = await api.get(`/assessments/position-leadership/?${queryString}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching position leadership assessments:', error);
+      throw error;
+    }
+  },
+
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/assessments/position-leadership/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching position leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  create: async (data) => {
+    try {
+      const response = await api.post('/assessments/position-leadership/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating position leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`/assessments/position-leadership/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating position leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      await api.delete(`/assessments/position-leadership/${id}/`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting position leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  duplicate: async (id, data) => {
+    try {
+      const response = await api.post(`/assessments/position-leadership/${id}/duplicate/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error duplicating position leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  // ✅ DÜZƏLDILDI: position_group_id parametri əlavə edildi
+  getGradeLevels: async (positionGroupId) => {
+    try {
+      const response = await api.get(
+        `/assessments/position-leadership/get_grade_levels/?position_group_id=${positionGroupId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching grade levels:', error);
+      throw error;
+    }
+  },
+
+  // ✅ DÜZƏLDILDI: position_group_id və grade_level parametrləri əlavə edildi
+  getJobTitles: async (positionGroupId, gradeLevel) => {
+    try {
+      const response = await api.get(
+        `/assessments/position-leadership/get_job_titles/?position_group_id=${positionGroupId}&grade_level=${gradeLevel}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching job titles:', error);
+      throw error;
+    }
+  },
+
+  getLeadershipPositions: async () => {
+    try {
+      const response = await api.get('/assessments/position-leadership/get_leadership_positions/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership positions:', error);
+      throw error;
+    }
+  },
+
+  getForEmployee: async (employeeId) => {
+    try {
+      const response = await api.get(`/assessments/position-leadership/get_for_employee/?employee_id=${employeeId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership assessment for employee:', error);
+      throw error;
+    }
+  }
+};
+
+// ========================================
+// EMPLOYEE LEADERSHIP API
+// ========================================
+export const employeeLeadershipApi = {
+  getAll: async (params = {}) => {
+    try {
+      const queryString = buildQueryParams(params);
+      const response = await api.get(`/assessments/employee-leadership/?${queryString}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching employee leadership assessments:', error);
+      throw error;
+    }
+  },
+
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/assessments/employee-leadership/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching employee leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  create: async (data) => {
+    try {
+      const response = await api.post('/assessments/employee-leadership/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating employee leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`/assessments/employee-leadership/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating employee leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      await api.delete(`/assessments/employee-leadership/${id}/`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting employee leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  submit: async (id, data) => {
+    try {
+      const response = await api.post(`/assessments/employee-leadership/${id}/submit/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error submitting employee leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  reopen: async (id, data) => {
+    try {
+      const response = await api.post(`/assessments/employee-leadership/${id}/reopen/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error reopening employee leadership assessment:', error);
+      throw error;
+    }
+  },
+
+  recalculateScores: async (id, data) => {
+    try {
+      const response = await api.post(`/assessments/employee-leadership/${id}/recalculate_scores/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error recalculating leadership scores:', error);
+      throw error;
+    }
+  },
+
+  exportDocument: async (id) => {
+    try {
+      const response = await api.get(`/assessments/employee-leadership/${id}/export_document/`, {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `leadership-assessment-${id}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error exporting leadership document:', error);
+      throw error;
+    }
+  }
+};
+
 
 // ========================================
 // COMBINED ASSESSMENT API SERVICE
@@ -763,7 +980,8 @@ export const assessmentApi = {
   // Employee Assessments
   employeeCore: employeeCoreApi,
   employeeBehavioral: employeeBehavioralApi,
-  
+   positionLeadership: positionLeadershipApi,
+  employeeLeadership: employeeLeadershipApi,
   // Supporting APIs
   employees: employeesApi,
   positionGroups: positionGroupsApi

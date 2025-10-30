@@ -316,13 +316,211 @@ export const behavioralCompetenciesApi = {
     }
   }
 };
+// Leadership Main Groups API
+export const leadershipMainGroupsApi = {
+  // Get all leadership main groups
+  getAll: async (params = {}) => {
+    try {
+      const response = await api.get('/competency/leadership-main-groups/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership main groups:', error);
+      throw error;
+    }
+  },
+
+  // Get single leadership main group with child groups
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/competency/leadership-main-groups/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership main group:', error);
+      throw error;
+    }
+  },
+
+  // Create new leadership main group
+  create: async (data) => {
+    try {
+      const response = await api.post('/competency/leadership-main-groups/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating leadership main group:', error);
+      throw error;
+    }
+  },
+
+  // Update leadership main group
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`/competency/leadership-main-groups/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating leadership main group:', error);
+      throw error;
+    }
+  },
+
+  // Delete leadership main group
+  delete: async (id) => {
+    try {
+      await api.delete(`/competency/leadership-main-groups/${id}/`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting leadership main group:', error);
+      throw error;
+    }
+  },
+
+  // Get child groups for a specific main group
+  getChildGroups: async (id) => {
+    try {
+      const response = await api.get(`/competency/leadership-main-groups/${id}/child_groups/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching main group child groups:', error);
+      throw error;
+    }
+  }
+};
+
+// Leadership Child Groups API
+export const leadershipChildGroupsApi = {
+  // Get all leadership child groups
+  getAll: async (params = {}) => {
+    try {
+      const response = await api.get('/competency/leadership-child-groups/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership child groups:', error);
+      throw error;
+    }
+  },
+
+  // Get single leadership child group with items
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/competency/leadership-child-groups/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership child group:', error);
+      throw error;
+    }
+  },
+
+  // Create new leadership child group
+  create: async (data) => {
+    try {
+      const response = await api.post('/competency/leadership-child-groups/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating leadership child group:', error);
+      throw error;
+    }
+  },
+
+  // Update leadership child group
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`/competency/leadership-child-groups/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating leadership child group:', error);
+      throw error;
+    }
+  },
+
+  // Delete leadership child group
+  delete: async (id) => {
+    try {
+      await api.delete(`/competency/leadership-child-groups/${id}/`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting leadership child group:', error);
+      throw error;
+    }
+  },
+
+  // Get items for a specific child group
+  getItems: async (id) => {
+    try {
+      const response = await api.get(`/competency/leadership-child-groups/${id}/items/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching child group items:', error);
+      throw error;
+    }
+  }
+};
+
+// Leadership Items API
+export const leadershipItemsApi = {
+  // Get all leadership items
+  getAll: async (params = {}) => {
+    try {
+      const response = await api.get('/competency/leadership-items/', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership items:', error);
+      throw error;
+    }
+  },
+
+  // Get single leadership item
+  getById: async (id) => {
+    try {
+      const response = await api.get(`/competency/leadership-items/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching leadership item:', error);
+      throw error;
+    }
+  },
+
+  // Create new leadership item
+  create: async (data) => {
+    try {
+      const response = await api.post('/competency/leadership-items/', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating leadership item:', error);
+      throw error;
+    }
+  },
+
+  // Update leadership item
+  update: async (id, data) => {
+    try {
+      const response = await api.put(`/competency/leadership-items/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating leadership item:', error);
+      throw error;
+    }
+  },
+
+  // Delete leadership item
+  delete: async (id) => {
+    try {
+      await api.delete(`/competency/leadership-items/${id}/`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting leadership item:', error);
+      throw error;
+    }
+  }
+};
 
 // Combined API service
 export const competencyApi = {
   skillGroups: skillGroupsApi,
   skills: skillsApi,
   behavioralGroups: behavioralGroupsApi,
-  behavioralCompetencies: behavioralCompetenciesApi
+  behavioralCompetencies: behavioralCompetenciesApi,
+  leadershipMainGroups: leadershipMainGroupsApi,
+  leadershipChildGroups: leadershipChildGroupsApi,
+  leadershipItems: leadershipItemsApi
 };
 
 export default competencyApi;
