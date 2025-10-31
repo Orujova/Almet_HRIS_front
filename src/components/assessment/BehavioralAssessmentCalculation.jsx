@@ -268,15 +268,18 @@ const handleEditPositionAssessment = async (assessment) => {
   }
 };
 
-// ✅ handleUpdatePositionAssessment - validation və data prep
 const handleUpdatePositionAssessment = async () => {
-  // Validation
   if (!editPositionFormData.position_group) {
     showError('Please select position group');
     return;
   }
 
-  if (!editPositionFormData.grade_levels || editPositionFormData.grade_levels.length === 0) {
+  // ✅ Grade levels yoxlaması
+  const gradeLevelsToSend = editSelectedGradeLevels.length > 0 
+    ? editSelectedGradeLevels 
+    : editPositionFormData.grade_levels;
+
+  if (!gradeLevelsToSend || gradeLevelsToSend.length === 0) {
     showError('Please select at least one grade level');
     return;
   }
@@ -288,18 +291,30 @@ const handleUpdatePositionAssessment = async () => {
 
   setIsSubmitting(true);
   try {
-    // ✅ Clean data preparation
+    // ✅ Clean data
+    const cleanedGradeLevels = gradeLevelsToSend
+      .filter(g => g !== null && g !== undefined && g !== '')
+      .map(g => String(g).trim());
+
+    if (cleanedGradeLevels.length === 0) {
+      showError('Please select at least one valid grade level');
+      setIsSubmitting(false);
+      return;
+    }
+
     const updateData = {
       position_group: editPositionFormData.position_group,
-      grade_levels: editPositionFormData.grade_levels.filter(g => g).map(g => String(g).trim()),
-      competency_ratings: editPositionFormData.competency_ratings
+      grade_levels: cleanedGradeLevels,
+      competency_ratings: editPositionFormData.competency_ratings.map(r => ({
+        behavioral_competency_id: parseInt(r.behavioral_competency_id),
+        required_level: parseInt(r.required_level)
+      }))
     };
     
-    console.log('🚀 Sending update data:', updateData);
+    console.log('🚀 Sending update:', updateData);
     
     await assessmentApi.positionBehavioral.update(editPositionFormData.id, updateData);
     
-    // Reset states
     setShowEditPositionModal(false);
     setEditPositionFormData({ id: '', position_group: '', grade_levels: [], competency_ratings: [] });
     setEditGradeLevels([]);
@@ -308,20 +323,17 @@ const handleUpdatePositionAssessment = async () => {
     showSuccess('Position assessment template updated successfully');
     await fetchData();
   } catch (err) {
-    console.error('❌ Error updating position assessment:', err);
-    console.error('Response:', err.response?.data);
+    console.error('❌ Error:', err.response?.data);
     
-    // Better error handling
     if (err.response?.data?.grade_levels) {
-      showError(`Grade levels error: ${err.response.data.grade_levels[0]}`);
+      showError(`Grade levels: ${err.response.data.grade_levels[0]}`);
     } else {
-      showError(err.response?.data?.detail || 'Failed to update position assessment');
+      showError('Failed to update position assessment');
     }
   } finally {
     setIsSubmitting(false);
   }
 };
-
   const handleCreatePositionAssessment = async () => {
     if (!positionFormData.position_group || positionFormData.grade_levels.length === 0) {
       showError('Please select position group and at least one grade level');
@@ -515,8 +527,9 @@ const handleUpdatePositionAssessment = async () => {
   };
 
 
+// BehavioralAssessmentCalculation.jsx
 
-  // Create employee assessment - actual_level düzgün göndərilməsi
+// ✅ DÜZƏLIŞLIK: handleCreateEmployeeAssessment
 const handleCreateEmployeeAssessment = async (isDraft = true) => {
   if (!employeeFormData.employee || !employeeFormData.position_assessment) {
     showError('Please select employee and ensure position template is loaded');
@@ -525,10 +538,10 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
 
   setIsSubmitting(true);
   try {
-    // ✅ Ensure actual_level is integer
+    // ✅ Behavioral competency ratings
     const competencyRatings = employeeFormData.competency_ratings.map(rating => ({
-      leadership_item_id: parseInt(rating.leadership_item_id),  // ✅ Convert to int
-      actual_level: parseInt(rating.actual_level) || 0,  // ✅ Convert to int, default 0
+      behavioral_competency_id: parseInt(rating.behavioral_competency_id),
+      actual_level: parseInt(rating.actual_level) || 0,
       notes: rating.notes || ''
     }));
 
@@ -540,9 +553,11 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
       action_type: isDraft ? 'save_draft' : 'submit'
     };
     
-    console.log('🚀 Sending create data:', data); // Debug
+    console.log('🚀 Creating behavioral assessment:', data);
     
-    await assessmentApi.employeeLeadership.create(data);
+    // ✅ Düzgün API - employeeBehavioral
+    await assessmentApi.employeeBehavioral.create(data);
+    
     setShowCreateEmployeeModal(false);
     setEmployeeFormData({
       employee: '',
@@ -556,24 +571,24 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
     showSuccess(isDraft ? 'Employee assessment saved as draft' : 'Employee assessment submitted successfully');
     await fetchData();
   } catch (err) {
-    console.error('❌ Error creating employee assessment:', err);
-    console.error('Response data:', err.response?.data);
+    console.error('❌ Error creating behavioral assessment:', err);
+    console.error('Response:', err.response?.data);
     showError(err.response?.data?.competency_ratings?.[0] || 'Failed to create employee assessment');
   } finally {
     setIsSubmitting(false);
   }
 };
 
-// Update employee assessment
+// ✅ DÜZƏLIŞLIK: handleUpdateEmployeeAssessment
 const handleUpdateEmployeeAssessment = async (isDraft = true) => {
   if (!editFormData.id) return;
 
   setIsSubmitting(true);
   try {
-    // ✅ Ensure actual_level is integer
+    // ✅ Behavioral competency ratings
     const competencyRatings = editFormData.competency_ratings.map(rating => ({
-      leadership_item_id: parseInt(rating.leadership_item_id),  // ✅ Convert to int
-      actual_level: parseInt(rating.actual_level) || 0,  // ✅ Convert to int, default 0
+      behavioral_competency_id: parseInt(rating.behavioral_competency_id),
+      actual_level: parseInt(rating.actual_level) || 0,
       notes: rating.notes || ''
     }));
 
@@ -585,9 +600,11 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
       action_type: isDraft ? 'save_draft' : 'submit'
     };
     
-    console.log('🚀 Sending update data:', data); // Debug
+    console.log('🚀 Updating behavioral assessment:', data);
     
-    await assessmentApi.employeeLeadership.update(editFormData.id, data);
+    // ✅ Düzgün API - employeeBehavioral
+    await assessmentApi.employeeBehavioral.update(editFormData.id, data);
+    
     setShowEditEmployeeModal(false);
     setEditFormData({
       employee: '',
@@ -600,8 +617,8 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
     showSuccess(isDraft ? 'Assessment updated successfully' : 'Assessment submitted successfully');
     await fetchData();
   } catch (err) {
-    console.error('❌ Error updating employee assessment:', err);
-    console.error('Response data:', err.response?.data);
+    console.error('❌ Error updating behavioral assessment:', err);
+    console.error('Response:', err.response?.data);
     showError(err.response?.data?.competency_ratings?.[0] || 'Failed to update employee assessment');
   } finally {
     setIsSubmitting(false);

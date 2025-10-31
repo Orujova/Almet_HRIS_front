@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Crown, Search, Eye, Edit, Trash2, 
   Download, AlertCircle, CheckCircle, Loader2, X, Save, 
-  User, Building, RefreshCw, Info
+  User, Building, RefreshCw, Info,ChevronRight ,ChevronDown 
 } from 'lucide-react';
 import { assessmentApi } from '@/services/assessmentApi';
 import { competencyApi } from '@/services/competencyApi';
@@ -36,7 +36,7 @@ const LeadershipAssessmentCalculation = () => {
   const [templateError, setTemplateError] = useState(null);
   const [selectedEmployeeInfo, setSelectedEmployeeInfo] = useState(null);
   const [positionDuplicateError, setPositionDuplicateError] = useState(null);
-  
+  const [expandedChildGroups, setExpandedChildGroups] = useState({});
   // Confirmation Modal States
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -374,8 +374,7 @@ const LeadershipAssessmentCalculation = () => {
     fetchData();
   }, []);
 
-  // ✅ CRUD Operations - job_title SİLİNDİ
-  // ✅ handleEditPositionAssessment
+
 const handleEditPositionAssessment = async (assessment) => {
   try {
     const detailedAssessment = await assessmentApi.positionLeadership.getById(assessment.id);
@@ -410,14 +409,21 @@ const handleEditPositionAssessment = async (assessment) => {
   }
 };
 
-// ✅ handleUpdatePositionAssessment
 const handleUpdatePositionAssessment = async () => {
+  // Validation
   if (!editPositionFormData.position_group) {
     showError('Please select position group');
     return;
   }
 
-  if (!editPositionFormData.grade_levels || editPositionFormData.grade_levels.length === 0) {
+  // ✅ DÜZƏLIŞLIK: Grade levels yoxlaması
+  const gradeLevelsToSend = editSelectedGradeLevels.length > 0 
+    ? editSelectedGradeLevels 
+    : editPositionFormData.grade_levels;
+
+  console.log('📊 Grade levels before validation:', gradeLevelsToSend);
+
+  if (!gradeLevelsToSend || gradeLevelsToSend.length === 0) {
     showError('Please select at least one grade level');
     return;
   }
@@ -429,21 +435,31 @@ const handleUpdatePositionAssessment = async () => {
 
   setIsSubmitting(true);
   try {
-    const competencyRatings = editPositionFormData.competency_ratings.map(rating => ({
-      leadership_item_id: rating.leadership_item_id,
-      required_level: rating.required_level
-    }));
+    // ✅ DÜZƏLIŞLIK: Clean və validate et
+    const cleanedGradeLevels = gradeLevelsToSend
+      .filter(g => g !== null && g !== undefined && g !== '')
+      .map(g => String(g).trim());
+
+    if (cleanedGradeLevels.length === 0) {
+      showError('Please select at least one valid grade level');
+      setIsSubmitting(false);
+      return;
+    }
 
     const updateData = {
       position_group: editPositionFormData.position_group,
-      grade_levels: editPositionFormData.grade_levels.filter(g => g).map(g => String(g).trim()),
-      competency_ratings: competencyRatings
+      grade_levels: cleanedGradeLevels, // ✅ Təmizlənmiş data
+      competency_ratings: editPositionFormData.competency_ratings.map(r => ({
+        leadership_item_id: parseInt(r.leadership_item_id),
+        required_level: parseInt(r.required_level)
+      }))
     };
     
-    console.log('🚀 Sending leadership update data:', updateData);
+    console.log('🚀 Sending update data:', JSON.stringify(updateData, null, 2));
     
     await assessmentApi.positionLeadership.update(editPositionFormData.id, updateData);
     
+    // Reset states
     setShowEditPositionModal(false);
     setEditPositionFormData({ id: '', position_group: '', grade_levels: [], competency_ratings: [] });
     setEditGradeLevels([]);
@@ -452,18 +468,21 @@ const handleUpdatePositionAssessment = async () => {
     showSuccess('Position assessment template updated successfully');
     await fetchData();
   } catch (err) {
-    console.error('❌ Error updating leadership assessment:', err);
-    console.error('Response:', err.response?.data);
+    console.error('❌ Error:', err);
+    console.error('❌ Response:', err.response?.data);
     
     if (err.response?.data?.grade_levels) {
       showError(`Grade levels error: ${err.response.data.grade_levels[0]}`);
+    } else if (err.response?.data?.non_field_errors) {
+      showError(err.response.data.non_field_errors[0]);
     } else {
-      showError(err.response?.data?.detail || 'Failed to update position assessment');
+      showError('Failed to update position assessment');
     }
   } finally {
     setIsSubmitting(false);
   }
 };
+
 
   const handleEditAssessment = async (assessment) => {
     try {
@@ -712,7 +731,12 @@ const handleUpdatePositionAssessment = async () => {
       [groupId]: !prev[groupId]
     }));
   };
-
+const toggleChildGroup = (groupId) => {
+  setExpandedChildGroups(prev => ({
+    ...prev,
+    [groupId]: !prev[groupId]
+  }));
+};
   if (isLoading) {
     return (
       <div className="bg-white rounded-lg p-12 text-center border border-gray-200">
@@ -1020,64 +1044,79 @@ const handleUpdatePositionAssessment = async () => {
               )}
 
               <div className="space-y-2">
-                {leadershipMainGroups.map(mainGroup => {
-                  const totalItems = mainGroup.child_groups?.reduce((acc, cg) => acc + (cg.items?.length || 0), 0) || 0;
-                  
-                  return (
-                    <CollapsibleGroup 
-                      key={mainGroup.id} 
-                      title={`${mainGroup.name} (${totalItems} items)`} 
-                      isOpen={expandedGroups[mainGroup.id]} 
-                      onToggle={() => toggleGroup(mainGroup.id)}
-                    >
-                      <div className="space-y-3">
-                        {mainGroup.child_groups && mainGroup.child_groups.length > 0 ? (
-                          mainGroup.child_groups.map(childGroup => (
-                            <div key={childGroup.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                              <div className="bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center gap-2">
-                                <Building size={14} className="text-almet-sapphire" />
-                                <h5 className="text-xs font-semibold text-gray-700">{childGroup.name}</h5>
-                                <span className="ml-auto text-xs text-gray-500">({childGroup.items?.length || 0} items)</span>
-                              </div>
-                              <div className="divide-y divide-gray-100">
-                                {childGroup.items && childGroup.items.length > 0 ? (
-                                  childGroup.items.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
-                                      <div className="flex-1 pr-4">
-                                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                                      </div>
-                                      <select 
-                                        value={positionFormData.competency_ratings.find(r => r.leadership_item_id === item.id)?.required_level || ''} 
-                                        onChange={(e) => {
-                                          const newRatings = [...positionFormData.competency_ratings].filter(r => r.leadership_item_id !== item.id);
-                                          if (e.target.value) newRatings.push({ leadership_item_id: item.id, required_level: parseInt(e.target.value) });
-                                          setPositionFormData({...positionFormData, competency_ratings: newRatings});
-                                        }} 
-                                        className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
-                                      >
-                                        <option value="">-</option>
-                                        {behavioralScales.map(scale => <option key={scale.id} value={scale.scale}>{scale.scale}</option>)}
-                                      </select>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="px-3 py-4 text-center text-xs text-gray-400">
-                                    No items in this group
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-4 text-center text-sm text-gray-400">
-                            No child groups in this main group
+  {leadershipMainGroups.map(mainGroup => {
+    const totalItems = mainGroup.child_groups?.reduce((acc, cg) => acc + (cg.items?.length || 0), 0) || 0;
+    
+    return (
+      <CollapsibleGroup 
+        key={mainGroup.id} 
+        title={`${mainGroup.name} (${totalItems} items)`} 
+        isOpen={expandedGroups[mainGroup.id]} 
+        onToggle={() => toggleGroup(mainGroup.id)}
+      >
+        <div className="space-y-2">
+          {mainGroup.child_groups && mainGroup.child_groups.length > 0 ? (
+            mainGroup.child_groups.map(childGroup => (
+              <div key={childGroup.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* ✅ CHILD GROUP HEADER - Collapsible */}
+                <button
+                  onClick={() => toggleChildGroup(childGroup.id)}
+                  className="w-full bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center justify-between hover:bg-gray-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Building size={14} className="text-almet-sapphire" />
+                    <h5 className="text-xs font-semibold text-gray-700">{childGroup.name}</h5>
+                    <span className="ml-auto text-xs text-gray-500">({childGroup.items?.length || 0} items)</span>
+                  </div>
+                  {expandedChildGroups[childGroup.id] ? (
+                    <ChevronDown size={16} className="text-gray-600" />
+                  ) : (
+                    <ChevronRight size={16} className="text-gray-600" />
+                  )}
+                </button>
+                
+                {/* ✅ CHILD GROUP CONTENT - Collapsible */}
+                {expandedChildGroups[childGroup.id] && (
+                  <div className="divide-y divide-gray-100">
+                    {childGroup.items && childGroup.items.length > 0 ? (
+                      childGroup.items.map(item => (
+                        <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                          <div className="flex-1 pr-4">
+                            <div className="text-sm font-medium text-gray-900">{item.name}</div>
                           </div>
-                        )}
+                          <select 
+                            value={positionFormData.competency_ratings.find(r => r.leadership_item_id === item.id)?.required_level || ''} 
+                            onChange={(e) => {
+                              const newRatings = [...positionFormData.competency_ratings].filter(r => r.leadership_item_id !== item.id);
+                              if (e.target.value) newRatings.push({ leadership_item_id: item.id, required_level: parseInt(e.target.value) });
+                              setPositionFormData({...positionFormData, competency_ratings: newRatings});
+                            }} 
+                            className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
+                          >
+                            <option value="">-</option>
+                            {behavioralScales.map(scale => <option key={scale.id} value={scale.scale}>{scale.scale}</option>)}
+                          </select>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs text-gray-400">
+                        No items in this group
                       </div>
-                    </CollapsibleGroup>
-                  );
-                })}
+                    )}
+                  </div>
+                )}
               </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-sm text-gray-400">
+              No child groups in this main group
+            </div>
+          )}
+        </div>
+      </CollapsibleGroup>
+    );
+  })}
+</div>
 
               {positionFormData.competency_ratings.length > 0 && (
                 <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -1202,65 +1241,79 @@ const handleUpdatePositionAssessment = async () => {
                 </div>
               )}
 
-              <div className="space-y-2">
-                {leadershipMainGroups.map(mainGroup => {
-                  const totalItems = mainGroup.child_groups?.reduce((acc, cg) => acc + (cg.items?.length || 0), 0) || 0;
-                  
-                  return (
-                    <CollapsibleGroup 
-                      key={mainGroup.id} 
-                      title={`${mainGroup.name} (${totalItems} items)`} 
-                      isOpen={expandedGroups[mainGroup.id]} 
-                      onToggle={() => toggleGroup(mainGroup.id)}
-                    >
-                      <div className="space-y-3">
-                        {mainGroup.child_groups && mainGroup.child_groups.length > 0 ? (
-                          mainGroup.child_groups.map(childGroup => (
-                            <div key={childGroup.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                              <div className="bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center gap-2">
-                                <Building size={14} className="text-almet-sapphire" />
-                                <h5 className="text-xs font-semibold text-gray-700">{childGroup.name}</h5>
-                                <span className="ml-auto text-xs text-gray-500">({childGroup.items?.length || 0} items)</span>
-                              </div>
-                              <div className="divide-y divide-gray-100">
-                                {childGroup.items && childGroup.items.length > 0 ? (
-                                  childGroup.items.map(item => (
-                                    <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
-                                      <div className="flex-1 pr-4">
-                                        <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                                      </div>
-                                      <select 
-                                        value={editPositionFormData.competency_ratings.find(r => r.leadership_item_id === item.id)?.required_level || ''} 
-                                        onChange={(e) => {
-                                          const newRatings = [...editPositionFormData.competency_ratings].filter(r => r.leadership_item_id !== item.id);
-                                          if (e.target.value) newRatings.push({ leadership_item_id: item.id, required_level: parseInt(e.target.value) });
-                                          setEditPositionFormData({...editPositionFormData, competency_ratings: newRatings});
-                                        }} 
-                                        className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
-                                      >
-                                        <option value="">-</option>
-                                        {behavioralScales.map(scale => <option key={scale.id} value={scale.scale}>{scale.scale}</option>)}
-                                      </select>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="px-3 py-4 text-center text-xs text-gray-400">
-                                    No items in this group
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="p-4 text-center text-sm text-gray-400">
-                            No child groups in this main group
+          
+<div className="space-y-2">
+  {leadershipMainGroups.map(mainGroup => {
+    const totalItems = mainGroup.child_groups?.reduce((acc, cg) => acc + (cg.items?.length || 0), 0) || 0;
+    
+    return (
+      <CollapsibleGroup 
+        key={mainGroup.id} 
+        title={`${mainGroup.name} (${totalItems} items)`} 
+        isOpen={expandedGroups[mainGroup.id]} 
+        onToggle={() => toggleGroup(mainGroup.id)}
+      >
+        <div className="space-y-2">
+          {mainGroup.child_groups && mainGroup.child_groups.length > 0 ? (
+            mainGroup.child_groups.map(childGroup => (
+              <div key={childGroup.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                <button
+                  onClick={() => toggleChildGroup(childGroup.id)}
+                  className="w-full bg-gray-100 px-3 py-2 border-b border-gray-200 flex items-center justify-between hover:bg-gray-200 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <Building size={14} className="text-almet-sapphire" />
+                    <h5 className="text-xs font-semibold text-gray-700">{childGroup.name}</h5>
+                    <span className="ml-auto text-xs text-gray-500">({childGroup.items?.length || 0} items)</span>
+                  </div>
+                  {expandedChildGroups[childGroup.id] ? (
+                    <ChevronDown size={16} className="text-gray-600" />
+                  ) : (
+                    <ChevronRight size={16} className="text-gray-600" />
+                  )}
+                </button>
+                
+                {expandedChildGroups[childGroup.id] && (
+                  <div className="divide-y divide-gray-100">
+                    {childGroup.items && childGroup.items.length > 0 ? (
+                      childGroup.items.map(item => (
+                        <div key={item.id} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                          <div className="flex-1 pr-4">
+                            <div className="text-sm font-medium text-gray-900">{item.name}</div>
                           </div>
-                        )}
+                          <select 
+                            value={editPositionFormData.competency_ratings.find(r => r.leadership_item_id === item.id)?.required_level || ''} 
+                            onChange={(e) => {
+                              const newRatings = [...editPositionFormData.competency_ratings].filter(r => r.leadership_item_id !== item.id);
+                              if (e.target.value) newRatings.push({ leadership_item_id: item.id, required_level: parseInt(e.target.value) });
+                              setEditPositionFormData({...editPositionFormData, competency_ratings: newRatings});
+                            }} 
+                            className="w-20 px-2 py-1 border border-gray-300 rounded-md text-center text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
+                          >
+                            <option value="">-</option>
+                            {behavioralScales.map(scale => <option key={scale.id} value={scale.scale}>{scale.scale}</option>)}
+                          </select>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-3 py-4 text-center text-xs text-gray-400">
+                        No items in this group
                       </div>
-                    </CollapsibleGroup>
-                  );
-                })}
+                    )}
+                  </div>
+                )}
               </div>
+            ))
+          ) : (
+            <div className="p-4 text-center text-sm text-gray-400">
+              No child groups in this main group
+            </div>
+          )}
+        </div>
+      </CollapsibleGroup>
+    );
+  })}
+</div>
 
               {editPositionFormData.competency_ratings.length > 0 && (
                 <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
@@ -1762,85 +1815,335 @@ const handleUpdatePositionAssessment = async () => {
         </div>
       )}
 
-      {/* View Modal - Simplified version */}
-      {showViewModal && selectedAssessment && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-40 p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] shadow-xl">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                <Eye className="w-5 h-5 text-almet-sapphire" />
-                View Assessment Details
-              </h3>
-              <button onClick={() => { setShowViewModal(false); setSelectedAssessment(null); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Assessment Information</h4>
-                  <dl className="grid grid-cols-2 gap-3 text-sm">
-                    {selectedAssessment.employee_name && (
-                      <>
-                        <dt className="text-gray-600">Employee:</dt>
-                        <dd className="text-gray-900 font-medium">{selectedAssessment.employee_name}</dd>
-                      </>
-                    )}
-                    {selectedAssessment.position_group_name && (
-                      <>
-                        <dt className="text-gray-600">Position Group:</dt>
-                        <dd className="text-gray-900">{selectedAssessment.position_group_name}</dd>
-                      </>
-                    )}
-                    {selectedAssessment.job_title && (
-                      <>
-                        <dt className="text-gray-600">Job Title:</dt>
-                        <dd className="text-gray-900">{selectedAssessment.job_title}</dd>
-                      </>
-                    )}
-                    {selectedAssessment.grade_levels && (
-                      <>
-                        <dt className="text-gray-600">Grade Levels:</dt>
-                        <dd className="text-gray-900">{selectedAssessment.grade_levels.join(', ')}</dd>
-                      </>
-                    )}
-                    {selectedAssessment.status && (
-                      <>
-                        <dt className="text-gray-600">Status:</dt>
-                        <dd><StatusBadge status={selectedAssessment.status} /></dd>
-                      </>
-                    )}
-                    {selectedAssessment.overall_letter_grade && (
-                      <>
-                        <dt className="text-gray-600">Overall Grade:</dt>
-                        <dd><GradeBadge grade={selectedAssessment.overall_letter_grade} percentage={parseFloat(selectedAssessment.overall_percentage || 0).toFixed(0)} /></dd>
-                      </>
-                    )}
-                  </dl>
-                </div>
+      
+{showViewModal && selectedAssessment && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+          <Eye className="w-5 h-5 text-almet-sapphire" />
+          {activeTab === 'position' ? 'Position Template Details' : 'Assessment Details'}
+        </h3>
+        <button onClick={() => { setShowViewModal(false); setSelectedAssessment(null); }} className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+          <X size={20} />
+        </button>
+      </div>
 
-                <div>
-                  <h4 className="text-sm font-medium text-gray-900 mb-3">Competency Ratings</h4>
-                  <p className="text-sm text-gray-600">
-                    {selectedAssessment.competency_ratings?.length || 0} competencies rated
-                  </p>
+      <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
+        {activeTab === 'position' ? (
+          // ✅ POSITION TEMPLATE VIEW
+          <div className="space-y-4">
+            {/* Position Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <div className="text-xs font-medium text-gray-600">Position Group</div>
+                <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.position_group_name}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Grade Levels</div>
+                <div className="text-sm font-medium text-gray-900 mt-1">
+                  {selectedAssessment.grade_levels && selectedAssessment.grade_levels.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {selectedAssessment.grade_levels.map((level, idx) => (
+                        <span key={idx} className="inline-flex px-2 py-0.5 bg-sky-100 text-sky-700 rounded-md text-xs font-medium">
+                          Grade {level}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">No grades</span>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Total Competencies</div>
+                <div className="text-sm font-medium text-gray-900 mt-1">
+                  {selectedAssessment.competency_ratings?.length || 0} items
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
-              <ActionButton 
-                onClick={() => { setShowViewModal(false); setSelectedAssessment(null); }} 
-                icon={X} 
-                label="Close" 
-                variant="outline" 
-                size="md" 
-              />
-            </div>
+            {/* ✅ Competency Ratings - Grouped by Main and Child Groups */}
+            {selectedAssessment.grouped_competencies && Object.keys(selectedAssessment.grouped_competencies).length > 0 ? (
+              <div className="space-y-3">
+                {Object.entries(selectedAssessment.grouped_competencies).map(([mainGroupName, childGroups]) => (
+                  <div key={mainGroupName} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral p-3">
+                      <h4 className="text-sm font-semibold text-white">{mainGroupName}</h4>
+                    </div>
+                    <div className="p-3 space-y-3">
+                      {Object.entries(childGroups).map(([childGroupName, items]) => (
+                        <div key={childGroupName} className="border border-gray-100 rounded-md overflow-hidden">
+                          <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                            <h5 className="text-xs font-semibold text-gray-700">{childGroupName}</h5>
+                          </div>
+                          <div className="divide-y divide-gray-100">
+                            {items.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-3 hover:bg-gray-50">
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">{item.item_name}</div>
+                                </div>
+                                <span className="inline-flex px-3 py-1 bg-almet-sapphire text-white rounded-md text-sm font-medium">
+                                  Level {item.required_level}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : selectedAssessment.competency_ratings && selectedAssessment.competency_ratings.length > 0 ? (
+              // ✅ Fallback: Simple table if grouped data not available
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-100 p-3 border-b border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900">Required Competency Levels</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Main Group</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Child Group</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Competency Item</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Required Level</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {selectedAssessment.competency_ratings.map((rating, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 text-xs text-gray-600">{rating.main_group_name}</td>
+                          <td className="px-3 py-2 text-xs text-gray-600">{rating.child_group_name}</td>
+                          <td className="px-3 py-2 text-sm font-medium text-gray-900">{rating.item_name}</td>
+                          <td className="px-3 py-2 text-center">
+                            <span className="inline-flex px-2 py-0.5 bg-almet-sapphire text-white rounded-md text-xs font-medium">
+                              {rating.required_level}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-gray-400">
+                <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                <p>No competency ratings found</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        ) : (
+          // ✅ EMPLOYEE ASSESSMENT VIEW
+          <div className="space-y-4">
+            {/* Employee Info */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <div className="text-xs font-medium text-gray-600">Employee</div>
+                <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.employee_name}</div>
+                <div className="text-xs text-gray-500">ID: {selectedAssessment.employee_id}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Position</div>
+                <div className="text-sm text-gray-700 mt-1">
+                  {selectedAssessment.position_assessment_info?.position_group || 'N/A'}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Status</div>
+                <div className="mt-1"><StatusBadge status={selectedAssessment.status} /></div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Assessment Date</div>
+                <div className="text-sm text-gray-700 mt-1">
+                  {new Date(selectedAssessment.assessment_date).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+
+   
+
+            {/* Main Group Scores */}
+            {selectedAssessment.main_group_scores_display && Object.keys(selectedAssessment.main_group_scores_display).length > 0 && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-100 p-3 border-b border-gray-200">
+                  <h5 className="text-xs font-medium text-gray-900">Main Group Performance Summary</h5>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-3">
+                  {Object.entries(selectedAssessment.main_group_scores_display).map(([groupName, scores]) => (
+                    <div key={groupName} className="bg-white p-3 rounded-md border border-gray-200">
+                      <h6 className="text-xs font-medium text-gray-900 mb-2">{groupName}</h6>
+                      <div className="space-y-1 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Grade:</span>
+                          <span className="font-medium">{scores.letter_grade}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Score:</span>
+                          <span className="font-medium">{scores.percentage}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">Points:</span>
+                          <span className="font-medium">{scores.employee_total}/{scores.position_total}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ✅ Detailed Competency Ratings - Grouped */}
+            {selectedAssessment.grouped_competencies && Object.keys(selectedAssessment.grouped_competencies).length > 0 ? (
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-900">Detailed Assessment Results</h4>
+                {Object.entries(selectedAssessment.grouped_competencies).map(([mainGroupName, childGroups]) => (
+                  <div key={mainGroupName} className="border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral p-3">
+                      <h4 className="text-sm font-semibold text-white">{mainGroupName}</h4>
+                    </div>
+                    <div className="p-3 space-y-3">
+                      {Object.entries(childGroups).map(([childGroupName, items]) => (
+                        <div key={childGroupName} className="border border-gray-100 rounded-md overflow-hidden">
+                          <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                            <h5 className="text-xs font-semibold text-gray-700">{childGroupName}</h5>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full">
+                              <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Competency</th>
+                                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Required</th>
+                                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Actual</th>
+                                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Gap</th>
+                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Notes</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {items.map((item, idx) => {
+                                  const gap = item.gap || (item.actual_level - item.required_level);
+                                  return (
+                                    <tr key={idx} className="hover:bg-gray-50">
+                                      <td className="px-3 py-2 text-sm font-medium text-gray-900">{item.item_name}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <span className="inline-flex px-2 py-0.5 bg-almet-sapphire text-white rounded-md text-xs font-medium">
+                                          {item.required_level}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 text-center">
+                                        <span className="inline-flex px-2 py-0.5 bg-gray-500 text-white rounded-md text-xs font-medium">
+                                          {item.actual_level}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 text-center">
+                                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${
+                                          gap > 0 ? 'bg-emerald-50 text-emerald-700' : 
+                                          gap < 0 ? 'bg-red-50 text-red-700' : 
+                                          'bg-sky-50 text-sky-700'
+                                        }`}>
+                                          {gap > 0 ? `+${gap}` : gap}
+                                        </span>
+                                      </td>
+                                      <td className="px-3 py-2 text-xs text-gray-600">{item.notes || '-'}</td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : selectedAssessment.competency_ratings && selectedAssessment.competency_ratings.length > 0 ? (
+              // ✅ Fallback: Simple table
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-100 p-3 border-b border-gray-200">
+                  <h4 className="text-sm font-medium text-gray-900">Detailed Assessment Results</h4>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Main Group</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Child Group</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Competency</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Required</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Actual</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Gap</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Notes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {selectedAssessment.competency_ratings.map((rating, index) => {
+                        const gap = rating.actual_level - rating.required_level;
+                        return (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-xs text-gray-600">{rating.main_group_name}</td>
+                            <td className="px-3 py-2 text-xs text-gray-600">{rating.child_group_name}</td>
+                            <td className="px-3 py-2 text-sm font-medium text-gray-900">{rating.item_name}</td>
+                            <td className="px-3 py-2 text-center">
+                              <span className="inline-flex px-2 py-0.5 bg-almet-sapphire text-white rounded-md text-xs font-medium">
+                                {rating.required_level}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className="inline-flex px-2 py-0.5 bg-gray-500 text-white rounded-md text-xs font-medium">
+                                {rating.actual_level}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${
+                                gap > 0 ? 'bg-emerald-50 text-emerald-700' : 
+                                gap < 0 ? 'bg-red-50 text-red-700' : 
+                                'bg-sky-50 text-sky-700'
+                              }`}>
+                                {gap > 0 ? `+${gap}` : gap}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-xs text-gray-600">{rating.notes || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-gray-400">
+                <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                <p>No competency ratings found</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 p-4 border-t border-gray-200 bg-gray-50">
+        {activeTab === 'employee' && selectedAssessment.status === 'COMPLETED' && (
+          <ActionButton 
+            onClick={() => handleExport(selectedAssessment.id)} 
+            icon={Download} 
+            label="Export PDF" 
+            variant="secondary" 
+            size="md" 
+          />
+        )}
+        <ActionButton 
+          onClick={() => { setShowViewModal(false); setSelectedAssessment(null); }} 
+          icon={X} 
+          label="Close" 
+          variant="outline" 
+          size="md" 
+        />
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

@@ -1325,7 +1325,7 @@ const CoreEmployeeCalculation = () => {
                       </div>
                       <div>
                         <span className="text-xs font-medium text-blue-700">Position Group:</span>
-                        <p className="text-sm text-blue-900">{selectedEmployeeInfo.position_group}</p>
+                        <p className="text-sm text-blue-900">{selectedEmployeeInfo.position_group_name}</p>
                       </div>
                     </div>
                   </div>
