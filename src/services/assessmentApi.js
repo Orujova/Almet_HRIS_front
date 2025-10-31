@@ -375,18 +375,7 @@ export const positionBehavioralApi = {
     }
   },
 
-  // YENİ: Get job titles for position group and grade level
-  getJobTitles: async (positionGroupId, gradeLevel) => {
-    try {
-      const response = await api.get(
-        `/assessments/position-behavioral/get_job_titles/?position_group_id=${positionGroupId}&grade_level=${gradeLevel}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching job titles:', error);
-      throw error;
-    }
-  },
+
   getForEmployee: async (employeeId) => {
     try {
       const response = await api.get(`/assessments/position-behavioral/get_for_employee/?employee_id=${employeeId}`);
@@ -818,18 +807,7 @@ export const positionLeadershipApi = {
     }
   },
 
-  // ✅ DÜZƏLDILDI: position_group_id və grade_level parametrləri əlavə edildi
-  getJobTitles: async (positionGroupId, gradeLevel) => {
-    try {
-      const response = await api.get(
-        `/assessments/position-leadership/get_job_titles/?position_group_id=${positionGroupId}&grade_level=${gradeLevel}`
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching job titles:', error);
-      throw error;
-    }
-  },
+
 
   getLeadershipPositions: async () => {
     try {
