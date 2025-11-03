@@ -15,7 +15,7 @@ import MultiSelect from '@/components/common/MultiSelect';
 import CollapsibleGroup from './CollapsibleGroup';
 import { useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
-
+import BehavioralAssessmentCharts from './charts/BehavioralAssessmentCharts';
 const BehavioralAssessmentCalculation = () => {
   const { showSuccess, showError } = useToast();
 
@@ -1566,7 +1566,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                         )}
                       </div>
                     </div>
-                    {/* ❌ Job Title field silindi */}
+
                     <div>
                       <div className="text-xs font-medium text-gray-600">Created Date</div>
                       <div className="text-sm text-gray-700 mt-1">{new Date(selectedAssessment.created_at).toLocaleDateString()}</div>
@@ -1629,7 +1629,11 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                       </div>
                     </div>
                   </div>
+ {selectedAssessment.group_scores && Object.keys(selectedAssessment.group_scores).length > 0 && (
 
+      <BehavioralAssessmentCharts assessment={selectedAssessment} />
+   
+  )}
                   {selectedAssessment.group_scores && (
                     <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
                       <h5 className="text-xs font-medium text-emerald-900 mb-2">Group Performance Summary</h5>

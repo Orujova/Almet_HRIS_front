@@ -15,7 +15,7 @@ import ConfirmationModal from '@/components/common/ConfirmationModal';
 import StatusBadge from './StatusBadge';
 import ActionButton from './ActionButton';
 import CollapsibleGroup from './CollapsibleGroup';
-
+import CoreAssessmentCharts  from './charts/CoreAssessmentCharts';
 const GapIndicator = ({ gap }) => {
   if (gap > 0) {
     return (
@@ -1885,34 +1885,106 @@ const CoreEmployeeCalculation = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Position</label>
-                      <p className="text-sm text-gray-900">{selectedAssessment.position_assessment_title}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
-                      <StatusBadge status={selectedAssessment.status} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Date</label>
-                      <p className="text-sm text-gray-700">{new Date(selectedAssessment.assessment_date).toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Gap Score</label>
-                      <GapIndicator gap={selectedAssessment.gap_score || 0} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Completion</label>
-                      <CompletionIndicator percentage={selectedAssessment.completion_percentage} />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Total Scores</label>
-                      <p className="text-sm text-gray-700">
-                        {selectedAssessment.total_employee_score} / {selectedAssessment.total_position_score}
-                      </p>
-                    </div>
-                  </div>
+                 
+
+                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <div className="text-xs font-medium text-gray-600">Employee</div>
+                <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.employee_name}</div>
+                <div className="text-xs text-gray-500">ID: {selectedAssessment.employee_id}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Position</div>
+                <div className="text-sm text-gray-700 mt-1">{selectedAssessment.position_assessment_title}</div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Status</div>
+                <div className="mt-1"><StatusBadge status={selectedAssessment.status} /></div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Gap Score</div>
+                <div className="mt-1"><GapIndicator gap={selectedAssessment.gap_score || 0} /></div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Progress</div>
+                <div className="mt-1"><CompletionIndicator percentage={selectedAssessment.completion_percentage} /></div>
+              </div>
+              <div>
+                <div className="text-xs font-medium text-gray-600">Total Scores</div>
+                <div className="text-sm text-gray-700 mt-1">
+                  {selectedAssessment.total_employee_score} / {selectedAssessment.total_position_score}
+                </div>
+              </div>
+            </div>
+
+            {/* ✅ NEW: Skill Group Performance Summary */}
+            {selectedAssessment.group_scores && Object.keys(selectedAssessment.group_scores).length > 0 && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral p-3 border-b border-gray-200">
+                  <h5 className="text-sm font-semibold text-white">Skill Group Performance Summary</h5>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-600">Skill Group</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Required</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Actual</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Gap</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Completion</th>
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-600">Skills</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {Object.entries(selectedAssessment.group_scores).map(([groupName, scores]) => {
+                        const gapColor = scores.gap > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                        scores.gap < 0 ? 'bg-red-50 text-red-700 border-red-200' :
+                                        'bg-blue-50 text-blue-700 border-blue-200';
+                        
+                        const completionColor = scores.completion_percentage >= 100 ? 'bg-emerald-50 text-emerald-700' :
+                                               scores.completion_percentage >= 80 ? 'bg-blue-50 text-blue-700' :
+                                               scores.completion_percentage >= 60 ? 'bg-amber-50 text-amber-700' :
+                                               'bg-red-50 text-red-700';
+
+                        return (
+                          <tr key={groupName} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 text-sm font-medium text-gray-900">{groupName}</td>
+                            <td className="px-3 py-2 text-center">
+                              <span className="inline-flex px-2 py-0.5 bg-almet-sapphire text-white rounded-md text-xs font-medium">
+                                {scores.position_total}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className="inline-flex px-2 py-0.5 bg-gray-500 text-white rounded-md text-xs font-medium">
+                                {scores.employee_total}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium border ${gapColor}`}>
+                                {scores.gap > 0 ? `+${scores.gap}` : scores.gap}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${completionColor}`}>
+                                {scores.completion_percentage.toFixed(0)}%
+                              </span>
+                            </td>
+                            <td className="px-3 py-2 text-center text-xs text-gray-600">
+                              {scores.skills_count} skills
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+  {selectedAssessment.group_scores && Object.keys(selectedAssessment.group_scores).length > 0 && (
+              
+                <CoreAssessmentCharts assessment={selectedAssessment} />
+          
+            )}
 
                   {selectedAssessment.notes && (
                     <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
