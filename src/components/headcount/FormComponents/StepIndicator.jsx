@@ -1,9 +1,13 @@
-// src/components/headcount/FormComponents/StepIndicator.jsx - Compact with Soft Colors
+// src/components/headcount/FormComponents/StepIndicator.jsx - REDESIGNED
 import { Check, AlertCircle, Clock } from "lucide-react";
 import { useTheme } from "../../common/ThemeProvider";
 
 /**
- * Enhanced step indicator component with soft colors and Almet theming
+ * TƏKMİLLƏŞDİRİLMİŞ STEP INDICATOR
+ * - Daha kompakt və oxunaqlı dizayn
+ * - Kiçik font ölçüləri
+ * - Yumşaq rənglər və keçidlər
+ * - Almet rəng palitrasına uyğun
  */
 const StepIndicator = ({ 
   currentStep, 
@@ -15,19 +19,18 @@ const StepIndicator = ({
 }) => {
   const { darkMode } = useTheme();
 
-  // Theme-dependent classes with Almet colors
+  // TƏKMİLLƏŞDİRİLMİŞ THEME CLASSES
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
   const textMuted = darkMode ? "text-gray-400" : "text-almet-comet";
-  const borderColor = darkMode ? "border-gray-700" : "border-almet-bali-hai";
 
-  // Get step style based on status
+  // Get step style
   const getStepStyle = (step) => {
     const status = getStepStatus(step);
     const isActive = step === currentStep;
     const isClickable = allowNavigation && onStepClick && (step <= currentStep || status === 'completed');
 
-    let baseClasses = "w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium transition-all duration-200 ";
+    let baseClasses = "w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-200 ";
     
     if (isClickable) {
       baseClasses += "cursor-pointer ";
@@ -35,19 +38,19 @@ const StepIndicator = ({
 
     switch (status) {
       case 'completed':
-        return baseClasses + "bg-emerald-400 dark:bg-emerald-500 text-white hover:bg-emerald-500 dark:hover:bg-emerald-600 shadow-sm";
+        return baseClasses + "bg-emerald-500 dark:bg-emerald-600 text-white hover:bg-emerald-600 dark:hover:bg-emerald-700 shadow-sm";
       case 'error':
-        return baseClasses + "bg-rose-400 dark:bg-rose-500 text-white hover:bg-rose-500 dark:hover:bg-rose-600 shadow-sm";
+        return baseClasses + "bg-rose-500 dark:bg-rose-600 text-white hover:bg-rose-600 dark:hover:bg-rose-700 shadow-sm";
       case 'active':
-        return baseClasses + "bg-almet-sapphire text-white shadow-md ring-3 ring-almet-sapphire/20";
+        return baseClasses + "bg-almet-sapphire text-white shadow-md ring-2 ring-almet-sapphire/30";
       case 'pending':
       default:
         if (isActive) {
-          return baseClasses + "bg-almet-sapphire text-white shadow-md ring-3 ring-almet-sapphire/20";
+          return baseClasses + "bg-almet-sapphire text-white shadow-md ring-2 ring-almet-sapphire/30";
         }
         return baseClasses + (darkMode 
           ? "bg-gray-700 text-gray-300 hover:bg-gray-600" 
-          : "bg-almet-mystic text-almet-comet hover:bg-almet-bali-hai/50");
+          : "bg-gray-100 text-almet-comet hover:bg-gray-200");
     }
   };
 
@@ -57,13 +60,13 @@ const StepIndicator = ({
     
     switch (status) {
       case 'completed':
-        return <Check size={12} />;
+        return <Check size={14} strokeWidth={3} />;
       case 'error':
-        return <AlertCircle size={12} />;
+        return <AlertCircle size={14} />;
       case 'active':
-        return <Clock size={12} />;
+        return <Clock size={14} />;
       default:
-        return <span className="text-[10px] font-bold">{step}</span>;
+        return <span className="text-xs font-bold">{step}</span>;
     }
   };
 
@@ -72,12 +75,12 @@ const StepIndicator = ({
     const status = getStepStatus(step);
     
     if (status === 'completed' || step < currentStep) {
-      return "bg-emerald-300 dark:bg-emerald-400";
+      return "bg-emerald-400 dark:bg-emerald-500";
     }
     if (status === 'error') {
-      return "bg-rose-300 dark:bg-rose-400";
+      return "bg-rose-400 dark:bg-rose-500";
     }
-    return darkMode ? "bg-gray-700" : "bg-almet-bali-hai";
+    return darkMode ? "bg-gray-700" : "bg-gray-200";
   };
 
   // Handle step click
@@ -92,7 +95,7 @@ const StepIndicator = ({
 
   return (
     <div className="w-full">
-      {/* Steps Container */}
+      {/* STEPS CONTAINER - kompakt */}
       <div className="flex items-center justify-between">
         {Array.from({ length: totalSteps }).map((_, index) => {
           const step = index + 1;
@@ -101,7 +104,7 @@ const StepIndicator = ({
           
           return (
             <div key={step} className="flex items-center flex-1">
-              {/* Step Circle */}
+              {/* STEP CIRCLE */}
               <div className="relative flex items-center">
                 <div
                   className={getStepStyle(step)}
@@ -111,14 +114,13 @@ const StepIndicator = ({
                   {getStepIcon(step)}
                 </div>
                 
-                {/* Step Status Indicator */}
+                {/* ERROR INDICATOR */}
                 {status === 'error' && (
-                  <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-rose-400 rounded-full border border-white dark:border-gray-800">
-                  </div>
+                  <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white dark:border-gray-800" />
                 )}
               </div>
               
-              {/* Step Label */}
+              {/* STEP LABEL - kiçik və oxunaqlı */}
               {stepLabels && stepLabels[index] && (
                 <div className="ml-2 hidden sm:block">
                   <p className={`text-xs font-medium ${
@@ -138,10 +140,10 @@ const StepIndicator = ({
                 </div>
               )}
               
-              {/* Connector Line */}
+              {/* CONNECTOR LINE - yumşaq */}
               {!isLast && (
                 <div className="flex-1 h-0.5 mx-3">
-                  <div className={`h-full transition-all duration-300 ${getConnectorStyle(step)}`} />
+                  <div className={`h-full transition-all duration-300 rounded-full ${getConnectorStyle(step)}`} />
                 </div>
               )}
             </div>
@@ -149,8 +151,8 @@ const StepIndicator = ({
         })}
       </div>
 
-      {/* Mobile Step Labels */}
-      <div className="sm:hidden mt-3">
+      {/* MOBILE STEP LABELS - çox kiçik */}
+      <div className="sm:hidden mt-2">
         {stepLabels && stepLabels[currentStep - 1] && (
           <div className="text-center">
             <p className={`text-xs font-medium ${textPrimary}`}>
@@ -163,30 +165,30 @@ const StepIndicator = ({
         )}
       </div>
 
-      {/* Progress Summary */}
-      <div className="mt-3 flex justify-between items-center text-[10px]">
+      {/* PROGRESS SUMMARY - kompakt */}
+      <div className="mt-2 flex justify-between items-center text-[10px]">
         <div className={textMuted}>
           <span>Step {currentStep} of {totalSteps}</span>
           {stepLabels[currentStep - 1] && (
-            <span className="hidden sm:inline"> - {stepLabels[currentStep - 1]}</span>
+            <span className="hidden sm:inline"> • {stepLabels[currentStep - 1]}</span>
           )}
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Completed Steps */}
-          <div className="flex items-center">
-            <div className="w-2 h-2 bg-emerald-400 dark:bg-emerald-500 rounded-full mr-1" />
+          {/* COMPLETED STEPS */}
+          <div className="flex items-center gap-1">
+            <div className="w-2 h-2 bg-emerald-500 dark:bg-emerald-600 rounded-full" />
             <span className={textMuted}>
-              {Array.from({ length: totalSteps }).filter((_, i) => getStepStatus(i + 1) === 'completed').length} completed
+              {Array.from({ length: totalSteps }).filter((_, i) => getStepStatus(i + 1) === 'completed').length} done
             </span>
           </div>
           
-          {/* Error Steps */}
+          {/* ERROR STEPS */}
           {Array.from({ length: totalSteps }).some((_, i) => getStepStatus(i + 1) === 'error') && (
-            <div className="flex items-center">
-              <div className="w-2 h-2 bg-rose-400 dark:bg-rose-500 rounded-full mr-1" />
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 bg-rose-500 dark:bg-rose-600 rounded-full" />
               <span className={`text-rose-600 dark:text-rose-400`}>
-                {Array.from({ length: totalSteps }).filter((_, i) => getStepStatus(i + 1) === 'error').length} with errors
+                {Array.from({ length: totalSteps }).filter((_, i) => getStepStatus(i + 1) === 'error').length} errors
               </span>
             </div>
           )}

@@ -747,7 +747,7 @@ const CoreEmployeeCalculation = () => {
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Employee</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Job Title</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Gap Score</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Progress</th>
@@ -1894,7 +1894,7 @@ const CoreEmployeeCalculation = () => {
                 <div className="text-xs text-gray-500">ID: {selectedAssessment.employee_id}</div>
               </div>
               <div>
-                <div className="text-xs font-medium text-gray-600">Position</div>
+                <div className="text-xs font-medium text-gray-600">Job Title</div>
                 <div className="text-sm text-gray-700 mt-1">{selectedAssessment.position_assessment_title}</div>
               </div>
               <div>

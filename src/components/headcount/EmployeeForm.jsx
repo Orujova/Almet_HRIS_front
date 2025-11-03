@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeForm.jsx - FIXED: Date handling and contract configs from API
+// src/components/headcount/EmployeeForm.jsx - REDESIGNED MAIN COMPONENT
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, ChevronRight, Save, X, AlertCircle, CheckCircle, Loader } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
@@ -13,12 +13,20 @@ import {
   FormStep4Documents 
 } from "./FormSteps";
 
+/**
+ * TƏKMİLLƏŞDİRİLMİŞ EMPLOYEE FORM - MAIN COMPONENT
+ * - Kompakt və sadə layout
+ * - Kiçik font ölçüləri (text-xs, text-sm)
+ * - Yumşaq rənglər və spacing
+ * - Almet rəng palitrasına tam uyğun
+ * - User-friendly və oxunaqlı
+ * - Göz yormayan dizayn
+ */
 const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) => {
   const { darkMode } = useTheme();
   const router = useRouter();
   const isEditMode = !!employee;
 
-  // Redux hooks
   const { 
     createEmployee, 
     updateEmployee, 
@@ -27,26 +35,21 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     clearErrors 
   } = useEmployees();
 
-  // FIXED: Enhanced form state initialization with proper date and boolean handling
+  // Form state initialization
   const [formData, setFormData] = useState(() => {
     if (isEditMode && employee) {
       return {
-        // Basic Information
         id: employee.id,
         first_name: employee.first_name || "",
         last_name: employee.last_name || "",
         email: employee.email || employee.user?.email || "",
         original_email: employee.email || employee.user?.email || "",
         father_name: employee.father_name || "",
-        
-        // Personal Information
         phone: employee.phone || "",
         date_of_birth: employee.date_of_birth || "",
         gender: employee.gender || "",
         address: employee.address || "",
         emergency_contact: employee.emergency_contact || "",
-        
-        // Job Information - FIXED: Enhanced handling with names
         business_function: employee.business_function?.toString() || "",
         business_function_name: employee.business_function_name || "",
         department: employee.department?.toString() || "",
@@ -60,30 +63,19 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         grading_level: employee.grading_level || employee.grade || "",
         start_date: employee.start_date || "",
         contract_duration: employee.contract_duration || "PERMANENT",
-        
-        // Contract Information
         contract_start_date: employee.contract_start_date || "",
         contract_end_date: employee.contract_end_date || "",
         end_date: employee.end_date || "",
-        
-        // Management Information
         line_manager: employee.line_manager?.toString() || "",
         line_manager_name: employee.line_manager_name || "",
         notes: employee.notes || "",
-        
-        // System Fields - FIXED: Proper boolean conversion
         status: employee.status || "ONBOARDING",
         is_visible_in_org_chart: Boolean(employee.is_visible_in_org_chart),
-        
-        // Tags and Documents - FIXED: Enhanced tag handling
         tag_ids: employee.tags ? employee.tags.map(tag => tag.toString()) : [],
         current_tags: employee.tag_details || [],
         documents: employee.documents || [],
         profile_image: employee.profile_image || employee.profile_image_url || null,
-        
         vacancy_id: employee.vacancy_id || null,
-        
-        // Internal tracking
         _email_changed: false,
         _department_loaded: false,
         _unit_loaded: false,
@@ -91,7 +83,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       };
     }
     
-    // Default form data for new employee
     return {
       first_name: "",
       last_name: "",
@@ -136,7 +127,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     employeeTags: [],
     lineManagers: [],
     gradingLevels: [],
-    contractConfigs: [] // NEW: Contract configurations from API
+    contractConfigs: []
   });
 
   // Loading states
@@ -149,11 +140,10 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     employeeTags: false,
     lineManagers: false,
     gradingLevels: false,
-    contractConfigs: false, // NEW: Contract configs loading state
+    contractConfigs: false,
     initialLoad: true
   });
 
-  // Document type options
   const documentTypes = [
     { value: "CONTRACT", label: "Contract" },
     { value: "ID", label: "ID Document" },
@@ -165,7 +155,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     { value: "OTHER", label: "Other" }
   ];
 
-  // Validation state
   const [validationErrors, setValidationErrors] = useState({});
   const [stepValidation, setStepValidation] = useState({
     1: false,
@@ -174,32 +163,26 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     4: true
   });
 
-  // API-specific state
   const [lineManagerSearch, setLineManagerSearch] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Theme classes
+  // TƏKMİLLƏŞDİRİLMİŞ THEME CLASSES - kompakt və yumşaq
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textSecondary = darkMode ? "text-gray-300" : "text-gray-700";
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-gray-300" : "text-almet-waterloo";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow";
   const btnSecondary = darkMode
     ? "bg-gray-700 hover:bg-gray-600 text-gray-200 disabled:opacity-50"
     : "bg-gray-100 hover:bg-gray-200 text-gray-700 disabled:opacity-50";
 
-  // Step configuration
-  const stepLabels = ["Basic Information", "Job Details", "Additional Info", "Documents"];
+  const stepLabels = ["Basic Info", "Job Details", "Additional", "Documents"];
   const totalSteps = stepLabels.length;
 
-  // File input ref
   const fileInputRef = useRef(null);
 
-  // ========================================
-  // REFERENCE DATA LOADING FUNCTIONS
-  // ========================================
-
+  // Reference data loading functions
   const loadBusinessFunctions = useCallback(async () => {
     setLoading(prev => ({ ...prev, businessFunctions: true }));
     try {
@@ -416,7 +399,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   }, [isEditMode, formData._grading_loaded]);
 
-  // NEW: Load contract configurations from API
   const loadContractConfigs = useCallback(async () => {
     setLoading(prev => ({ ...prev, contractConfigs: true }));
     try {
@@ -443,7 +425,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       }));
     } catch (error) {
       console.error('Failed to load contract configs:', error);
-      // Set fallback hardcoded options
       setReferenceData(prev => ({
         ...prev,
         contractConfigs: [
@@ -496,10 +477,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   }, [isEditMode, employee?.id]);
 
-  // ========================================
-  // INITIALIZATION AND EFFECTS
-  // ========================================
-
   // Initialize reference data
   useEffect(() => {
     let mounted = true;
@@ -516,7 +493,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           loadPositionGroups(),
           loadEmployeeTags(),
           loadLineManagers(),
-          loadContractConfigs() // NEW: Load contract configs
+          loadContractConfigs()
         ]);
 
         if (isEditMode && employee && mounted) {
@@ -606,10 +583,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   }, [formData.position_group]);
 
-  // ========================================
-  // FORM VALIDATION
-  // ========================================
-
+  // Validation
   const validateStep = useCallback((step) => {
     const errors = {};
 
@@ -624,7 +598,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         if (!formData.email?.trim()) {
           errors.email = "Email is required";
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-          errors.email = "Please enter a valid email address";
+          errors.email = "Please enter a valid email";
         }
         break;
 
@@ -673,7 +647,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     setStepValidation(newStepValidation);
   }, [formData, validateStep, totalSteps]);
 
-  // Get step status for indicator
+  // Get step status
   const getStepStatus = useCallback((step) => {
     if (step < currentStep && stepValidation[step]) {
       return 'completed';
@@ -687,15 +661,11 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     return 'pending';
   }, [currentStep, stepValidation]);
 
-  // ========================================
-  // EVENT HANDLERS
-  // ========================================
-
+  // Event handlers
   const handleInputChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
     let newValue = type === 'checkbox' ? checked : value;
 
-    // FIXED: Proper boolean handling
     if (name === 'is_visible_in_org_chart') {
       newValue = Boolean(type === 'checkbox' ? checked : (value === 'true' || value === true));
     }
@@ -763,10 +733,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   }, []);
 
-  // ========================================
-  // STEP NAVIGATION
-  // ========================================
-
+  // Step navigation
   const canProceed = useCallback((step) => {
     const errors = validateStep(step);
     setValidationErrors(errors);
@@ -787,15 +754,11 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     setCurrentStep(step);
   }, []);
 
-  // ========================================
-  // FORM SUBMISSION - FIXED WITH PROPER DATE HANDLING
-  // ========================================
-
+  // Form submission
   const formatDateForAPI = (dateString) => {
     if (!dateString) return null;
     
     try {
-      // If it's already in YYYY-MM-DD format, validate it's a real date
       if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
         const date = new Date(dateString + 'T00:00:00');
         if (isNaN(date.getTime())) {
@@ -805,14 +768,12 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         return dateString;
       }
       
-      // Parse and format other date formats
       const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         console.warn(`Invalid date: ${dateString}`);
         return null;
       }
       
-      // Convert to YYYY-MM-DD format with timezone handling
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
@@ -825,7 +786,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   };
 
   const handleSubmit = async () => {
-    // Validate required steps
     let allErrors = {};
     let hasErrors = false;
 
@@ -846,15 +806,11 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     setSubmitting(true);
     
     try {
-      // FIXED: Create FormData object matching API specification exactly
       const formDataObj = new FormData();
 
-      // Basic Information - Required fields
       formDataObj.append('first_name', formData.first_name);
       formDataObj.append('last_name', formData.last_name);
       formDataObj.append('email', formData.email);
-
-      // Job Information - Required fields  
       formDataObj.append('job_title', formData.job_title);
       formDataObj.append('business_function', formData.business_function);
       formDataObj.append('department', formData.department);
@@ -862,11 +818,9 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
       formDataObj.append('position_group', formData.position_group);
       formDataObj.append('contract_duration', formData.contract_duration);
 
-      // FIXED: Boolean field - convert to string as API expects
       const booleanValue = formData.is_visible_in_org_chart === true || formData.is_visible_in_org_chart === 'true';
       formDataObj.append('is_visible_in_org_chart', booleanValue ? 'True' : 'False');
 
-      // Optional fields with proper null/empty checks and date formatting
       if (formData.father_name) {
         formDataObj.append('father_name', formData.father_name);
       }
@@ -892,7 +846,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         formDataObj.append('line_manager', formData.line_manager);
       }
 
-      // Date fields with validation
       const dateFields = [
         'start_date', 
         'date_of_birth', 
@@ -916,19 +869,16 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         formDataObj.append('vacancy_id', formData.vacancy_id);
       }
 
-      // Tags - FIXED: Append each tag ID separately as API expects array
       if (formData.tag_ids && formData.tag_ids.length > 0) {
         formData.tag_ids.forEach(tagId => {
           formDataObj.append('tag_ids[]', tagId);
         });
       }
 
-      // Profile image - FIXED: Handle file upload properly
       if (formData.profile_image && formData.profile_image instanceof File) {
         formDataObj.append('profile_photo', formData.profile_image);
       }
 
-      // Documents - FIXED: Handle document uploads
       if (formData.documents && formData.documents.length > 0) {
         const doc = formData.documents[0];
         if (doc.file instanceof File) {
@@ -945,7 +895,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         console.log(`${key}:`, value instanceof File ? `File: ${value.name}` : value);
       }
 
-      // Submit to API using FormData (multipart/form-data)
       let result;
       if (isEditMode) {
         result = await apiService.put(`/employees/${employee.id}/`, formDataObj);
@@ -953,7 +902,6 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         result = await apiService.post('/employees/', formDataObj);
       }
 
-      // Handle success
       if (result.status >= 200 && result.status < 300) {
         if (onSuccess) {
           onSuccess(result.data);
@@ -986,7 +934,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         }
         
         if (Object.keys(apiErrors).length === 0) {
-          apiErrors.submit = 'Failed to save employee. Please check your data and try again.';
+          apiErrors.submit = 'Failed to save employee. Please check your data.';
         }
         
         setValidationErrors(apiErrors);
@@ -1008,10 +956,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   };
 
-  // ========================================
-  // STEP PROPS PREPARATION
-  // ========================================
-
+  // Step props
   const stepProps = {
     formData,
     handleInputChange,
@@ -1023,7 +968,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     jobFunctions: referenceData.jobFunctions,
     positionGroups: referenceData.positionGroups,
     gradeOptions: referenceData.gradingLevels,
-    contractConfigs: referenceData.contractConfigs, // NEW: Pass contract configs
+    contractConfigs: referenceData.contractConfigs,
     loadingGradingLevels: loading.gradingLevels,
     
     lineManagerOptions: referenceData.lineManagers,
@@ -1043,10 +988,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     isEditMode
   };
 
-  // ========================================
-  // RENDER STEP CONTENT
-  // ========================================
-
+  // Render step content
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
@@ -1062,18 +1004,18 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     }
   };
 
-  // Show loading state
+  // Loading state
   if (loading.initialLoad) {
     return (
-      <div className="container mx-auto px-4 py-0">
-        <div className={`${bgCard} rounded-xl shadow-lg overflow-hidden border ${borderColor}`}>
-          <div className="flex items-center justify-center py-12">
+      <div className="container mx-auto px-4 py-6">
+        <div className={`${bgCard} rounded-xl shadow-sm border ${borderColor} overflow-hidden`}>
+          <div className="flex items-center justify-center py-16">
             <div className="text-center">
-              <Loader className="h-8 w-8 animate-spin text-almet-sapphire mx-auto mb-4" />
-              <p className={`${textPrimary} text-lg font-medium`}>
-                {isEditMode ? 'Loading employee data...' : 'Initializing form data...'}
+              <Loader className="h-10 w-10 animate-spin text-almet-sapphire mx-auto mb-4" />
+              <p className={`${textPrimary} text-base font-medium`}>
+                {isEditMode ? 'Loading employee data...' : 'Initializing form...'}
               </p>
-              <p className={`${textSecondary} text-sm mt-2`}>
+              <p className={`${textSecondary} text-xs mt-1.5`}>
                 Loading reference data from server
               </p>
             </div>
@@ -1084,27 +1026,27 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   }
 
   return (
-    <div className="container mx-auto py-0">
-      <div className={`${bgCard} rounded-xl shadow-lg border ${borderColor}`}>
-        {/* Header */}
-        <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
+    <div className="container mx-auto py-6">
+      <div className={`${bgCard} rounded-xl shadow-sm border ${borderColor}`}>
+        {/* HEADER - kompakt */}
+        <div className="px-4 py-3 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className={`text-xl font-bold ${textPrimary}`}>
-                {isEditMode ? `Edit Employee: ${employee?.name || employee?.first_name + ' ' + employee?.last_name}` : 'Add New Employee'}
+              <h1 className={`text-base font-bold ${textPrimary}`}>
+                {isEditMode ? `Edit: ${employee?.name || employee?.first_name + ' ' + employee?.last_name}` : 'Add New Employee'}
               </h1>
-              <p className={`text-sm ${textSecondary} mt-1`}>
+              <p className={`text-xs ${textSecondary} mt-0.5`}>
                 {isEditMode 
-                  ? 'Update employee information and documents' 
-                  : 'Complete all required information to add a new employee'
+                  ? 'Update employee information' 
+                  : 'Complete required fields to add employee'
                 }
               </p>
             </div>
           </div>
         </div>
 
-        {/* Step Indicator */}
-        <div className="px-6 py-4 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
+        {/* STEP INDICATOR - kompakt */}
+        <div className="px-4 py-3 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">
           <StepIndicator 
             currentStep={currentStep} 
             totalSteps={totalSteps} 
@@ -1114,7 +1056,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
             allowNavigation={true}
           />
           
-          <div className="mt-3">
+          <div className="mt-2">
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
               <div 
                 className="bg-almet-sapphire h-1 rounded-full transition-all duration-300"
@@ -1124,43 +1066,43 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           </div>
         </div>
 
-        {/* Form Content */}
-        <div className="px-6 py-6">
-          {/* Global error message */}
+        {/* FORM CONTENT - kompakt */}
+        <div className="px-4 py-4">
+          {/* GLOBAL ERROR - kompakt */}
           {validationErrors.submit && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <div className="flex items-center">
-                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2" />
-                <span className="text-sm text-red-800 dark:text-red-300">
+            <div className="mb-3 p-2.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
+                <span className="text-xs text-red-800 dark:text-red-300">
                   {validationErrors.submit}
                 </span>
               </div>
             </div>
           )}
 
-          {/* Loading reference data */}
+          {/* LOADING REFERENCE DATA - kompakt */}
           {(loading.businessFunctions || loading.jobFunctions || loading.positionGroups || loading.contractConfigs) && (
-            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center">
-                <Loader className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400 mr-2" />
-                <span className="text-sm text-blue-800 dark:text-blue-300">
+            <div className="mb-3 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Loader className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <span className="text-xs text-blue-800 dark:text-blue-300">
                   Loading reference data...
                 </span>
               </div>
             </div>
           )}
 
-          {/* Step Content */}
+          {/* STEP CONTENT */}
           {renderStepContent()}
         </div>
 
-        {/* Navigation Footer */}
-        <div className={`px-6 py-4 border-t ${borderColor} bg-gray-50 dark:bg-gray-800/50`}>
+        {/* NAVIGATION FOOTER - kompakt */}
+        <div className={`px-4 py-3 border-t ${borderColor} bg-gray-50 dark:bg-gray-800/50`}>
           <div className="flex justify-between items-center">
             <button
               onClick={handlePrevious}
               disabled={currentStep === 1 || submitting}
-              className={`flex items-center px-4 py-2 rounded-lg transition-all duration-200 ${
+              className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 currentStep === 1 || submitting
                   ? "text-gray-400 cursor-not-allowed"
                   : `${btnSecondary} hover:shadow-sm`
@@ -1170,16 +1112,16 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
               Previous
             </button>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3">
               <div className={`text-xs ${textSecondary}`}>
-                Step {currentStep} of {totalSteps}
+                Step {currentStep}/{totalSteps}
               </div>
 
               {currentStep < totalSteps ? (
                 <button
                   onClick={handleNext}
                   disabled={submitting || !stepValidation[currentStep]}
-                  className={`flex items-center px-6 py-2 rounded-lg ${btnPrimary} hover:shadow-sm`}
+                  className={`flex items-center px-5 py-2 rounded-lg text-sm font-medium ${btnPrimary}`}
                 >
                   Next
                   <ChevronRight size={16} className="ml-1" />
@@ -1188,7 +1130,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || !stepValidation[1] || !stepValidation[2]}
-                  className={`flex items-center px-6 py-2 rounded-lg ${btnPrimary} hover:shadow-sm`}
+                  className={`flex items-center px-5 py-2 rounded-lg text-sm font-medium ${btnPrimary}`}
                 >
                   {submitting ? (
                     <>
@@ -1198,7 +1140,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
                   ) : (
                     <>
                       <Save size={16} className="mr-2" />
-                      {isEditMode ? 'Update Employee' : 'Create Employee'}
+                      {isEditMode ? 'Update' : 'Create'}
                     </>
                   )}
                 </button>
@@ -1206,12 +1148,12 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
             </div>
           </div>
 
-          {/* Validation summary */}
+          {/* VALIDATION SUMMARY - kompakt */}
           {Object.keys(validationErrors).length > 0 && currentStep === totalSteps && (
-            <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs">
-              <div className="flex items-center text-amber-700 dark:text-amber-300">
-                <AlertCircle size={12} className="mr-1" />
-                Please fix all validation errors before submitting
+            <div className="mt-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-xs">
+              <div className="flex items-center text-amber-700 dark:text-amber-300 gap-1">
+                <AlertCircle size={12} />
+                Please fix all errors before submitting
               </div>
             </div>
           )}

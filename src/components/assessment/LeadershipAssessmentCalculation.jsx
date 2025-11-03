@@ -902,7 +902,7 @@ const toggleChildGroup = (groupId) => {
                         <div className="text-sm font-medium text-gray-900">{assessment.employee_name}</div>
                         <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{assessment.position_assessment_title || assessment.position_group_name}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">       {assessment.position_assessment_info?.position_group || 'N/A'}</td>
                       <td className="px-4 py-3"><StatusBadge status={assessment.status} /></td>
                       <td className="px-4 py-3">
                         <GradeBadge grade={assessment.overall_letter_grade} percentage={parseFloat(assessment.overall_percentage || 0).toFixed(0)} />
