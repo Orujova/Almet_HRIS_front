@@ -1021,7 +1021,7 @@ const handleSaveCompetenciesDraft = async (competencies) => {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen p-6 max-w-[1600px] mx-auto">
+      <div className="min-h-screen p-6  mx-auto">
         <PerformanceHeader
           selectedYear={selectedYear}
           setSelectedYear={setSelectedYear}

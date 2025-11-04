@@ -581,7 +581,7 @@ const WorkforceSettings = () => {
 
   return (
     <DashboardLayout>
-      <div className="  p-6 min-h-screen max-w-7xl space-y-6">
+      <div className="  p-6 min-h-screen  space-y-6">
         {/* Clean Header */}
         <div className="bg-white   dark:bg-almet-cloud-burst rounded-lg shadow-sm border border-almet-mystic dark:border-almet-comet">
           <div className="p-6">

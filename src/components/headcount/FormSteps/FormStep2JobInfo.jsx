@@ -285,9 +285,7 @@ const FormStep2JobInfo = ({
           <h2 className={`text-lg font-bold ${textPrimary}`}>
             Job Information
           </h2>
-          <p className={`text-sm ${textMuted} mt-1`}>
-            Employment details and organizational structure
-          </p>
+   
         </div>
         <div className="flex items-center space-x-2">
           <div className="text-xs px-3 py-1 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded-full font-medium">

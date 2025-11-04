@@ -458,7 +458,7 @@ const VacantPositionsTable = () => {
   // Error handling
   if (errors.vacantPositions) {
     return (
-      <div className="container mx-auto pt-6 px-4 max-w-7xl">
+      <div className="container mx-auto pt-6 px-4 ">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
           <div className="text-red-600 dark:text-red-400">
             <h3 className="text-lg font-semibold mb-2">Failed to Load Data</h3>

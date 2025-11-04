@@ -306,7 +306,7 @@ export default function VacationSettingsPage() {
       <div className="min-h-screen p-6">
         <div className="bg-white rounded-lg dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet">
           <div className="px-6 py-6">
-            <div className="max-w-7xl mx-auto">
+            <div className=" mx-auto">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button
@@ -340,7 +340,7 @@ export default function VacationSettingsPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto py-6">
+        <div className=" mx-auto py-6">
           <div className="mb-8">
             <nav className="flex space-x-1 bg-white dark:bg-almet-cloud-burst p-1 rounded-xl shadow-sm border border-gray-200 dark:border-almet-comet">
               {[

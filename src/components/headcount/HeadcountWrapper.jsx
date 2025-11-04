@@ -296,7 +296,7 @@ const HeadcountWrapper = () => {
   if (!hasRequiredData) {
     return (
       <div className={`min-h-screen ${bgPrimary} flex items-center justify-center p-6`}>
-        <div className={`${bgCard} rounded-xl p-8 border ${borderColor} text-center max-w-md`}>
+        <div className={`${bgCard} rounded-xl p-8 border ${borderColor} text-center `}>
           <AlertCircle className={`w-12 h-12 ${textMuted} mx-auto mb-4`} />
           <h2 className={`text-lg font-semibold ${textPrimary} mb-2`}>No Companies Found</h2>
           <p className={`text-sm ${textSecondary} mb-4`}>
@@ -317,7 +317,7 @@ const HeadcountWrapper = () => {
   if (selectedView === 'dashboard') {
     return (
       <div className={`min-h-screen  p-5`}>
-        <div className="max-w-7xl mx-auto">
+        <div className=" mx-auto">
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between">
@@ -456,7 +456,7 @@ const HeadcountWrapper = () => {
   // All Companies View or Company-Specific View
   return (
     <div className={`min-h-screen  `}>
-      <div className="max-w-7xl mx-auto">
+      <div className="mx-auto">
         {/* Back Button */}
         <div className="mb-2">
           <button

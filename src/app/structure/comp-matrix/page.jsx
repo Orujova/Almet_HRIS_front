@@ -1377,7 +1377,7 @@ const CompetencyMatrixSystemInner = () => {
     return (
       <DashboardLayout>
         <div className={`min-h-screen ${bgApp} p-6`}>
-          <div className="max-w-7xl mx-auto">
+          <div className=" mx-auto">
             <div className={`${card} border ${border} rounded-2xl p-10 shadow-md text-center`}>
               <div className="w-12 h-12 mx-auto mb-4 border-4 border-almet-mystic border-t-almet-sapphire rounded-full animate-spin" />
               <p className={`${text} font-semibold`}>Loading data...</p>
@@ -1393,7 +1393,7 @@ const CompetencyMatrixSystemInner = () => {
     return (
       <DashboardLayout>
         <div className={`min-h-screen ${bgApp} p-6`}>
-          <div className="max-w-7xl mx-auto">
+          <div className="mx-auto">
             <div className={`${card} border border-red-200 rounded-2xl p-8 shadow-md`}>
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-red-600" />
@@ -1420,7 +1420,7 @@ const CompetencyMatrixSystemInner = () => {
   return (
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} p-6`}>
-        <div className="max-w-7xl mx-auto space-y-4">
+        <div className=" mx-auto space-y-4">
           <header className={`${card} border ${border} rounded-2xl p-5 shadow-sm`}>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="space-y-1">

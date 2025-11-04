@@ -136,22 +136,7 @@ const FormStep1BasicInfo = ({
         </div>
       </div>
 
-      {/* EDIT MODE NOTICE */}
-      {isEditMode && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5">
-          <div className="flex items-start gap-2">
-            <AlertCircle className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div>
-              <h4 className="text-xs font-medium text-blue-800 dark:text-blue-300 mb-0.5">
-                Editing Employee Information
-              </h4>
-              <p className="text-[10px] text-blue-700 dark:text-blue-400">
-                Only changed fields will be validated
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+     
 
       {/* EMPLOYEE ID AUTO-ASSIGNMENT NOTICE */}
       {!isEditMode && (

@@ -409,13 +409,7 @@ saveMidYearDraft: async (id, userRole, comment, objectives = null) => {
     return response.data;
   },
   
-  requestMidYearClarification: async (id, comment) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/request_mid_year_clarification/`,
-      { comment }
-    );
-    return response.data;
-  },
+
 
   // End-Year Review Operations
   saveEndYearDraft: async (id, userRole, comment) => {

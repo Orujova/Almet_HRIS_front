@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { MessageSquare, AlertCircle, ChevronDown, ChevronRight, User, Calendar, CheckCircle } from 'lucide-react';
+import { MessageSquare, AlertCircle, ChevronDown, ChevronRight, User, Calendar, CheckCircle, Edit2, X, Send } from 'lucide-react';
 
-export default function ClarificationComments({ comments, darkMode }) {
+export default function ClarificationComments({ comments, darkMode, canRespond, onRespond }) {
   const [isExpanded, setIsExpanded] = useState(true);
+  const [respondingTo, setRespondingTo] = useState(null);
+  const [response, setResponse] = useState('');
 
   const getCommentTypeLabel = (type) => {
     const types = {
@@ -38,6 +40,14 @@ export default function ClarificationComments({ comments, darkMode }) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleRespond = async (commentId) => {
+    if (!response.trim()) return;
+    
+    await onRespond(commentId, response);
+    setRespondingTo(null);
+    setResponse('');
   };
 
   if (!comments || comments.length === 0) {
@@ -82,6 +92,7 @@ export default function ClarificationComments({ comments, darkMode }) {
             {comments.map((comment, index) => {
               const typeInfo = getCommentTypeLabel(comment.comment_type);
               const colorClasses = getColorClasses(typeInfo.color);
+              const isResponding = respondingTo === comment.id;
               
               return (
                 <div 
@@ -100,6 +111,16 @@ export default function ClarificationComments({ comments, darkMode }) {
                         </span>
                       )}
                     </div>
+                    
+                    {canRespond && !comment.is_resolved && !isResponding && (
+                      <button
+                        onClick={() => setRespondingTo(comment.id)}
+                        className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                        Respond
+                      </button>
+                    )}
                   </div>
 
                   <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-md p-3 mb-2`}>
@@ -111,7 +132,7 @@ export default function ClarificationComments({ comments, darkMode }) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400 mb-2">
                     {comment.requested_by_name && (
                       <div className="flex items-center gap-1">
                         <User className="w-3 h-3" />
@@ -126,10 +147,45 @@ export default function ClarificationComments({ comments, darkMode }) {
                     )}
                   </div>
 
+                  {isResponding && (
+                    <div className="space-y-2 mt-3">
+                      <textarea
+                        value={response}
+                        onChange={(e) => setResponse(e.target.value)}
+                        placeholder="Enter your response..."
+                        className={`w-full px-3 py-2 text-sm rounded-lg border ${
+                          darkMode 
+                            ? 'bg-gray-800 border-gray-600 text-white' 
+                            : 'bg-white border-gray-300'
+                        } focus:ring-2 focus:ring-blue-500 resize-none`}
+                        rows={3}
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleRespond(comment.id)}
+                          disabled={!response.trim()}
+                          className="flex-1 px-3 py-2 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Submit Response
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRespondingTo(null);
+                            setResponse('');
+                          }}
+                          className="px-3 py-2 text-xs rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {comment.resolution_comment && (
                     <div className={`mt-2 p-2 rounded-md ${darkMode ? 'bg-green-900/20 border-green-800' : 'bg-green-50 border-green-200'} border`}>
                       <p className="text-[10px] font-semibold text-green-700 dark:text-green-400 mb-1">
-                        Resolution:
+                        Manager Response:
                       </p>
                       <p className="text-xs text-gray-700 dark:text-gray-300">
                         {comment.resolution_comment}

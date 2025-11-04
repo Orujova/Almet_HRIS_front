@@ -13,7 +13,7 @@ import {
   Newspaper,
   Gift,
   Package,
-  KeyRound,
+
   UserCog,
   Building2,
   TicketsPlane
@@ -100,6 +100,12 @@ const Sidebar = ({ collapsed = false }) => {
       icon: <Plane className="w-4 h-4" />,
       path: "/requests/business-trip",
       id: "business-trip",
+    },
+      {
+      label: "Time Off",
+      icon: <TicketsPlane className="w-4 h-4" />,
+      path: "/requests/time-off",
+      id: "time-off",
     },
     { 
       type: "section", 

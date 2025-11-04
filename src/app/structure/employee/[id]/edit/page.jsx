@@ -94,7 +94,7 @@ const EditEmployeePageContent = () => {
     <div className="w-full max-w-none px-0">
       {/* Page Header */}
       <div className="container mx-auto px-4 py-6">
-        <div className="mb-8">
+        <div >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h1 className={`text-2xl font-bold ${textPrimary}`}>

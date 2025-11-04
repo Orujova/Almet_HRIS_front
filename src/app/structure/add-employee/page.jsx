@@ -232,7 +232,7 @@ const AddEmployeePage = () => {
   return (
     <Provider store={store}>
       <DashboardLayout>
-        <div className="p-4 max-w-7xl mx-auto">
+        <div className="p-4 m mx-auto">
           {/* Header with navigation and help */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">

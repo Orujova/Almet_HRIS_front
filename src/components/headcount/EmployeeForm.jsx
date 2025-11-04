@@ -1026,7 +1026,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto ">
       <div className={`${bgCard} rounded-xl shadow-sm border ${borderColor}`}>
         {/* HEADER - kompakt */}
         <div className="px-4 py-3 bg-gradient-to-r from-almet-sapphire/5 to-almet-astral/5 border-b border-gray-100 dark:border-gray-700">

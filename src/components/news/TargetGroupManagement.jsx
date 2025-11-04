@@ -433,7 +433,7 @@ export default function TargetGroupManagement({ onBack }) {
       <div className={`p-6 min-h-screen transition-colors ${
         darkMode ? 'bg-gray-900' : 'bg-almet-mystic'
       }`}>
-        <div className="max-w-7xl mx-auto">
+        <div className=" mx-auto">
           
           {/* Header */}
           <div className="mb-6">

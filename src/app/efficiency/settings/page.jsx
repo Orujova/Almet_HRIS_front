@@ -456,7 +456,7 @@ export default function PerformanceSettingsPage() {
 
   return (
     <DashboardLayout>
-      <div className="p-4 max-w-7xl mx-auto">
+      <div className="p-4  mx-auto">
         {/* Compact Header */}
         <div className="mb-4">
           <button
