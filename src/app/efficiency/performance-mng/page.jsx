@@ -5,7 +5,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import performanceApi from "@/services/performanceService";
 import competencyApi from "@/services/competencyApi";
-
+import { useCallback, useRef } from 'react';
 // Component Imports
 import PerformanceHeader from "@/components/performance/PerformanceHeader";
 import PerformanceDashboard from "@/components/performance/PerformanceDashboard";
@@ -484,44 +484,80 @@ export default function PerformanceManagementPage() {
   };
 
   // ==================== OBJECTIVE HANDLERS ====================
-  const handleUpdateObjective = (index, field, value) => {
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const newObjectives = [...(data.objectives || [])];
-    newObjectives[index] = {
-      ...newObjectives[index],
-      [field]: value
-    };
-    
-    // If updating end_year_rating, recalculate calculated_score
-    if (field === 'end_year_rating') {
-      const selectedScaleId = value ? parseInt(value) : null;
-      if (selectedScaleId) {
-        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-        if (selectedScale) {
-          const weight = parseFloat(newObjectives[index].weight) || 0;
-          const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-          const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-          newObjectives[index].calculated_score = calculatedScore;
-        }
-      } else {
-        newObjectives[index].calculated_score = 0;
-      }
+
+  const saveObjectivesTimeoutRef = useRef(null);
+
+const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
+  // Clear existing timeout
+  if (saveObjectivesTimeoutRef.current) {
+    clearTimeout(saveObjectivesTimeoutRef.current);
+  }
+  
+  // Set new timeout to save after 1 second of no changes
+  saveObjectivesTimeoutRef.current = setTimeout(async () => {
+    try {
+      console.log('🔄 Auto-saving objectives...');
+      await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
+      console.log('✅ Objectives auto-saved');
+      showNotification('Changes saved', 'info');
+    } catch (error) {
+      console.error('❌ Auto-save error:', error);
     }
-    
-    const updatedData = {
-      ...data,
-      objectives: newObjectives
-    };
-    
-    // Recalculate aggregates
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
+  }, 1000); // Wait 1 second after last change
+}, []);
+  const handleUpdateObjective = (index, field, value) => {
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+  const newObjectives = [...(data.objectives || [])];
+  newObjectives[index] = {
+    ...newObjectives[index],
+    [field]: value
   };
+  
+  // If updating end_year_rating, recalculate calculated_score
+  if (field === 'end_year_rating') {
+    const selectedScaleId = value ? parseInt(value) : null;
+    if (selectedScaleId) {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+      if (selectedScale) {
+        const weight = parseFloat(newObjectives[index].weight) || 0;
+        const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+        const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+        newObjectives[index].calculated_score = calculatedScore;
+        
+        console.log('✅ Objective rating updated:', {
+          index,
+          title: newObjectives[index].title,
+          rating_id: selectedScaleId,
+          rating_name: selectedScale.name,
+          rating_value: selectedScale.value,
+          weight: weight,
+          calculated_score: calculatedScore
+        });
+      }
+    } else {
+      newObjectives[index].calculated_score = 0;
+    }
+  }
+  
+  const updatedData = {
+    ...data,
+    objectives: newObjectives
+  };
+  
+  // Recalculate aggregates
+  const recalculatedData = recalculateScores(updatedData);
+  
+  setPerformanceData(prev => ({
+    ...prev,
+    [key]: recalculatedData
+  }));
+  
+  // ✅ FIX #6 & #7: Auto-save objectives after update
+  if (selectedPerformanceId) {
+    debouncedSaveObjectives(selectedPerformanceId, newObjectives);
+  }
+};
 
   const handleAddObjective = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
@@ -577,7 +613,7 @@ export default function PerformanceManagementPage() {
     }));
   };
 
-  // Verify/Replace handleSaveObjectivesDraft in page.jsx:
+
 
 const handleSaveObjectivesDraft = async (objectives) => {
   if (!selectedPerformanceId) return;
@@ -606,21 +642,25 @@ const handleSaveObjectivesDraft = async (objectives) => {
   }
 };
 
-  const handleSubmitObjectives = async () => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.submitObjectives(selectedPerformanceId);
-      showNotification('Objectives submitted successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error submitting objectives:', error);
-      showNotification(error.response?.data?.error || 'Error submitting objectives', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const handleSubmitObjectives = async (objectives) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    // ✅ FIX #1: Send objectives data with submit request
+    await performanceApi.performances.submitObjectives(
+      selectedPerformanceId,
+      objectives  // Pass objectives array
+    );
+    showNotification('Objectives submitted successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error submitting objectives:', error);
+    showNotification(error.response?.data?.error || 'Error submitting objectives', 'error');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleCancelObjective = async (objectiveId, reason) => {
     if (!selectedPerformanceId) return;
@@ -638,7 +678,7 @@ const handleSaveObjectivesDraft = async (objectives) => {
     }
   };
 
-// Replace the handleUpdateCompetency function in page.jsx:
+
 
 const handleUpdateCompetency = (index, field, value) => {
   const key = `${selectedEmployee.id}_${selectedYear}`;

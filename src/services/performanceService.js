@@ -327,13 +327,13 @@ cancelObjective: async (id, objectiveId, reason) => {
     return response.data;
   },
   
-  submitObjectives: async (id) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/submit_objectives/`,
-      {}
-    );
-    return response.data;
-  },
+  submitObjectives: async (performanceId, objectives) => {
+  const response = await apiClient.post(
+    `/api/performance/performances/${performanceId}/submit_objectives/`,
+    { objectives }  // ✅ FIX #1: Include objectives in payload
+  );
+  return response.data;
+},
   
   approveObjectivesEmployee: async (id) => {
     const response = await api.post(

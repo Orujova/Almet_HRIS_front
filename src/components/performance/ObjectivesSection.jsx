@@ -20,12 +20,15 @@ export default function ObjectivesSection({
   onSubmit,
   onCancelObjective
 }) {
-  const canAddMore = objectives.length < settings.goalLimits?.max && totalWeight < 100;
+
+
+
+  const activeObjectives = objectives.filter(obj => !obj.is_cancelled);
+  const canAddMore = activeObjectives.length < settings.goalLimits?.max && totalWeight < 100;
   
-  // ✅ Validation: Check title, status, and weight
-  const isValidForSubmit = objectives.length >= settings.goalLimits?.min && 
+  const isValidForSubmit = activeObjectives.length >= settings.goalLimits?.min && 
                           totalWeight === 100 &&
-                          objectives.every(obj => 
+                          activeObjectives.every(obj => 
                             obj.title?.trim() && 
                             obj.status && 
                             obj.weight > 0
@@ -38,12 +41,18 @@ export default function ObjectivesSection({
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
   
-  const canEditGoals = canEdit && isGoalSettingPeriod && !isGoalsSubmitted;
-  const canSaveDraft = canEdit && isGoalSettingPeriod;
+  const isNeedClarification = performanceData?.approval_status === 'NEED_CLARIFICATION';
+  const canEditGoals = canEdit && isGoalSettingPeriod && (!isGoalsApproved || isNeedClarification);
+  
+  const canSaveDraft = canEdit && isGoalSettingPeriod && !isGoalsApproved;
+  
   const canSubmitGoals = canEdit && isGoalSettingPeriod && !isGoalsSubmitted && isValidForSubmit;
+  
+  // ✅ FIX #5: Can cancel AND add goals during mid-year
   const canCancelGoals = canEdit && isMidYearPeriod;
+  const canAddMidYearGoal = canEdit && isMidYearPeriod && canAddMore;
+  
   const canRateEndYear = canEdit && isEndYearPeriod;
-
   const formatNumber = (value, decimals = 2) => {
     const num = parseFloat(value);
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
@@ -79,7 +88,6 @@ export default function ObjectivesSection({
     }
   }, [objectives, totalScore, percentage]);
 
-  // ✅ Get validation error message
   const getValidationMessage = () => {
     if (objectives.length < settings.goalLimits?.min) {
       return `Add ${settings.goalLimits.min - objectives.length} more objective(s)`;
@@ -140,14 +148,14 @@ export default function ObjectivesSection({
               </div>
             )}
             
-            {canEditGoals && (
+             {(canEditGoals || canAddMidYearGoal) && (
               <button
                 onClick={onAdd}
                 disabled={!canAddMore || loading}
                 className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral text-xs font-medium disabled:opacity-50 flex items-center gap-1.5 transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add
+                {isMidYearPeriod ? 'Add Replacement' : 'Add'}
               </button>
             )}
           </div>
@@ -227,6 +235,7 @@ export default function ObjectivesSection({
           </div>
 
           <div className="flex gap-2">
+            {/* ✅ FIX #3: Only show Save Draft if NOT approved (locked) */}
             {canSaveDraft && (
               <button
                 onClick={() => onSaveDraft(objectives)}
@@ -238,9 +247,10 @@ export default function ObjectivesSection({
               </button>
             )}
             
+            {/* ✅ FIX #1: Submit button sends objectives data with submit */}
             {canSubmitGoals && (
               <button
-                onClick={() => onSubmit()}
+                onClick={() => onSubmit(objectives)}
                 disabled={!isValidForSubmit || loading}
                 className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-xs font-medium flex items-center gap-1.5 transition-colors"
               >
@@ -296,7 +306,6 @@ function ObjectiveRow({
 
   const isCancelled = objective.is_cancelled || false;
 
-  // ✅ Check if fields are missing
   const isTitleMissing = !objective.title?.trim();
   const isStatusMissing = !objective.status;
   const isWeightMissing = !objective.weight || objective.weight <= 0;
