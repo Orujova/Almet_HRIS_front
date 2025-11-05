@@ -201,34 +201,52 @@ const NotificationsPage = () => {
   };
 
   const getModuleColor = (module) => {
-    switch (module) {
-      case 'vacation':
-        return 'text-emerald-600 dark:text-emerald-400';
-      case 'business_trip':
-        return 'text-blue-600 dark:text-blue-400';
-      default:
-        return 'text-gray-600 dark:text-gray-400';
-    }
-  };
+  switch (module) {
+    case 'vacation':
+      return 'text-emerald-600 dark:text-emerald-400';
+    case 'business_trip':
+      return 'text-blue-600 dark:text-blue-400';
+    case 'timeoff':
+      return 'text-amber-600 dark:text-amber-400';
+    case 'company_news':
+      return 'text-purple-600 dark:text-purple-400';
+    default:
+      return 'text-gray-600 dark:text-gray-400';
+  }
+};
+
 
   const getModuleBadgeColor = (module) => {
-    switch (module) {
-      case 'vacation':
-        return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400';
-      case 'business_trip':
-        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
-      default:
-        return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400';
-    }
-  };
+  switch (module) {
+    case 'vacation':
+      return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400';
+    case 'business_trip':
+      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
+    case 'timeoff':
+      return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
+    case 'company_news':
+      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400';
+    default:
+      return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400';
+  }
+};
+
 
   const getModuleIcon = (module) => {
-    switch (module) {
-      case 'vacation': return '🏖️';
-      case 'business_trip': return '✈️';
-      default: return '📧';
-    }
-  };
+  switch (module) {
+    case 'vacation':
+      return '🏖️';
+    case 'business_trip':
+      return '✈️';
+    case 'timeoff':
+      return '🕒';
+    case 'company_news':
+      return '📰';
+    default:
+      return '📧';
+  }
+};
+
 
   const getTimeAgo = (dateString) => {
     const date = new Date(dateString);
@@ -372,10 +390,13 @@ const NotificationsPage = () => {
             {/* Module Tabs */}
             <div className="flex items-center gap-2 mb-4">
               {[
-                { key: 'all', label: 'All Mail', icon: '📬' },
-                { key: 'business_trip', label: 'Business Trips', icon: '✈️' },
-                { key: 'vacation', label: 'Vacation', icon: '🏖️' }
-              ].map(module => (
+  { key: 'all',           label: 'All Mail',      icon: '📬' },
+  { key: 'business_trip', label: 'Business Trips', icon: '✈️' },
+  { key: 'vacation',      label: 'Vacation',      icon: '🏖️' },
+  { key: 'timeoff',       label: 'Time Off',      icon: '🕒' },
+  { key: 'company_news',  label: 'Company News',  icon: '📰' },
+].map(module => (
+
                 <button
                   key={module.key}
                   onClick={() => {
@@ -681,9 +702,17 @@ const NotificationsPage = () => {
                             {/* Meta Info */}
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${getModuleBadgeColor(email.module)}`}>
-                                {email.module === 'business_trip' ? 'Business Trip' : 
-                                 email.module === 'vacation' ? 'Vacation' : 'General'}
-                              </span>
+  {email.module === 'business_trip'
+    ? 'Business Trip'
+    : email.module === 'vacation'
+    ? 'Vacation'
+    : email.module === 'timeoff'
+    ? 'Time Off'
+    : email.module === 'company_news'
+    ? 'Company News'
+    : 'General'}
+</span>
+
                               {email.has_attachments && (
                                 <span className={`inline-flex items-center gap-1 text-[10px] ${darkMode ? 'text-almet-bali-hai' : 'text-gray-500'}`}>
                                   <Paperclip size={12} />

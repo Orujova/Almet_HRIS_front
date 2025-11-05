@@ -1032,7 +1032,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         <p className={`${textPrimary} mt-1`}>{jobDetail.job_function?.name || 'N/A'}</p>
                       </div>
                       <div>
-                        <span className={`font-semibold ${textMuted}`}>Position Group:</span>
+                        <span className={`font-semibold ${textMuted}`}>Hierarchy:</span>
                         <p className={`${textPrimary} mt-1`}>{jobDetail.position_group?.display_name || jobDetail.position_group?.name}</p>
                       </div>
                       <div>

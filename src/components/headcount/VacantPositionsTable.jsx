@@ -417,7 +417,7 @@ const VacantPositionsTable = () => {
               const pg = positionGroups?.find(p => p.id === parseInt(id));
               return pg ? pg.display_name : id;
             });
-            label = `Position Group: ${pgLabels.join(', ')}`;
+            label = `Hierarchy: ${pgLabels.join(', ')}`;
             break;
           case 'grading_level':
             const gradeLabels = filterValue.map(value => {
@@ -597,17 +597,17 @@ const VacantPositionsTable = () => {
                 />
               </div>
 
-              {/* Position Group Filter */}
+              {/* Hierarchy Filter */}
               <div>
                 <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                  Position Group
+                  Hierarchy
                 </label>
                 <SearchableDropdown
                   options={positionGroupFilterOptions}
                   value={filters.position_group}
                   onChange={(value) => handleFilterChange('position_group', Array.isArray(value) ? value : [value])}
-                  placeholder="All Position Groups"
-                  searchPlaceholder="Search position groups..."
+                  placeholder="All Hierarchys"
+                  searchPlaceholder="Search Hierarchys..."
                   darkMode={darkMode}
                    allowUncheck={true}
                   loading={loading.referenceData}

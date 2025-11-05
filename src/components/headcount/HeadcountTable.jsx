@@ -1391,7 +1391,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     if (localFilters.position_group?.length > 0) {
       filters.push({ 
         key: "position_group", 
-        label: `Position Group: ${localFilters.position_group.length} selected`
+        label: `Hierarchy: ${localFilters.position_group.length} selected`
       });
     }
      if (localFilters.tags?.length > 0) {
@@ -1503,8 +1503,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     { value: 'department_name', label: 'Department', description: 'Department name' },
     { value: 'unit_name', label: 'Unit', description: 'Organizational unit' },
     { value: 'job_function_name', label: 'Job Function', description: 'Specific job function' },
-    { value: 'position_group_name', label: 'Position Group', description: 'Position group category' },
-    { value: 'position_group_level', label: 'Position Level', description: 'Hierarchy level in position group' },
+    { value: 'position_group_name', label: 'Hierarchy', description: 'Hierarchy category' },
+    { value: 'position_group_level', label: 'Position Level', description: 'Hierarchy level in Hierarchy' },
     { value: 'grading_level', label: 'Grade Level', description: 'Employee grade level' },
     { value: 'line_manager_name', label: 'Line Manager', description: 'Direct supervisor' },
     { value: 'line_manager_hc_number', label: 'Manager ID', description: 'Manager employee ID' },

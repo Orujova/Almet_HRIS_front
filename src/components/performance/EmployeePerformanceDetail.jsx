@@ -37,7 +37,7 @@ export default function EmployeePerformanceDetail({
   onSaveDevelopmentNeedsDraft,
   onSubmitDevelopmentNeeds
 }) {
-  const canEdit = permissions.is_admin || 
+    const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
 
   const isEmployee = performanceData.employee === permissions.employee?.id;
@@ -53,24 +53,48 @@ export default function EmployeePerformanceDetail({
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
   };
 
-  // Get letter grade from evaluation scale based on percentage
+  // ✅ FIX: Get letter grade from evaluation scale based on percentage
   const getLetterGradeFromScale = (percentage) => {
     if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
       return 'N/A';
     }
     
+    const numPercentage = parseFloat(percentage) || 0;
+    
+    // Find the matching scale
     const matchingScale = settings.evaluationScale.find(scale => 
-      percentage >= scale.range_min && percentage <= scale.range_max
+      numPercentage >= parseFloat(scale.range_min) && 
+      numPercentage <= parseFloat(scale.range_max)
     );
     
     return matchingScale ? matchingScale.name : 'N/A';
   };
 
-  // Calculate objectives letter grade
-  const objectivesGrade = getLetterGradeFromScale(performanceData.objectives_percentage || 0);
+  // ✅ FIX: Calculate grades from current percentages
+  const objectivesPercentage = parseFloat(performanceData.objectives_percentage) || 0;
+  const competenciesPercentage = parseFloat(performanceData.competencies_percentage) || 0;
+  const overallPercentage = parseFloat(performanceData.overall_weighted_percentage) || 0;
   
-  // Calculate overall letter grade
-  const overallGrade = getLetterGradeFromScale(performanceData.overall_weighted_percentage || 0);
+  // Use backend-provided grades if available, otherwise calculate
+  const objectivesGrade = performanceData.objectives_letter_grade || 
+                          getLetterGradeFromScale(objectivesPercentage);
+  
+  const competenciesGrade = performanceData.competencies_letter_grade || 
+                            getLetterGradeFromScale(competenciesPercentage);
+  
+  // ✅ FIX: Final rating - use backend if available, otherwise calculate
+  const finalRating = performanceData.final_rating || 
+                      getLetterGradeFromScale(overallPercentage);
+  
+  console.log('📊 Rating Display:', {
+    objectivesPercentage,
+    objectivesGrade,
+    competenciesPercentage,
+    competenciesGrade,
+    overallPercentage,
+    finalRating,
+    backendFinalRating: performanceData.final_rating
+  });
 
   return (
     <div className="space-y-4">
@@ -120,7 +144,7 @@ export default function EmployeePerformanceDetail({
           icon={Target}
           title="Objectives"
           value={formatNumber(performanceData.total_objectives_score || 0)}
-          subtitle={`${formatNumber(performanceData.objectives_percentage || 0, 1)}% • ${objectivesGrade}`}
+          subtitle={`${formatNumber(objectivesPercentage, 1)}% • ${objectivesGrade}`}
           color="blue"
           darkMode={darkMode}
         />
@@ -128,23 +152,23 @@ export default function EmployeePerformanceDetail({
           icon={Award}
           title="Competencies"
           value={`${performanceData.total_competencies_actual_score || 0}/${performanceData.total_competencies_required_score || 0}`}
-          subtitle={`${formatNumber(performanceData.competencies_percentage || 0, 1)}% • ${performanceData.competencies_letter_grade || 'N/A'}`}
+          subtitle={`${formatNumber(competenciesPercentage, 1)}% • ${competenciesGrade}`}
           color="purple"
           darkMode={darkMode}
         />
         <MetricCard
           icon={TrendingUp}
           title="Overall"
-          value={`${formatNumber(performanceData.overall_weighted_percentage || 0, 1)}%`}
-          subtitle={`Grade: ${overallGrade}`}
+          value={`${formatNumber(overallPercentage, 1)}%`}
+          subtitle={`Grade: ${getLetterGradeFromScale(overallPercentage)}`}
           color="green"
           darkMode={darkMode}
         />
         <MetricCard
           icon={Star}
           title="Final Rating"
-          value={performanceData.final_rating || overallGrade}
-          subtitle={`Obj: ${performanceData.objectives_weight }% • Comp: ${performanceData.competencies_weight}%`}
+          value={finalRating}
+          subtitle={`Obj: ${performanceData.objectives_weight}% • Comp: ${performanceData.competencies_weight}%`}
           color="yellow"
           darkMode={darkMode}
         />
@@ -153,7 +177,7 @@ export default function EmployeePerformanceDetail({
       {/* Evaluation Scale Reference */}
       <EvaluationScaleReference scales={settings.evaluationScale} darkMode={darkMode} />
 
-      {/* Clarification Comments Section */}
+         {/* Clarification Comments Section */}
       {performanceData.clarification_comments && performanceData.clarification_comments.length > 0 && (
         <ClarificationComments 
           comments={performanceData.clarification_comments}
@@ -257,6 +281,10 @@ function MetricCard({ icon: Icon, title, value, subtitle, color, darkMode }) {
 }
 
 function EvaluationScaleReference({ scales, darkMode }) {
+  if (!scales || scales.length === 0) {
+    return null;
+  }
+
   return (
     <details className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border overflow-hidden group`}>
       <summary className="p-3 cursor-pointer flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
@@ -275,7 +303,7 @@ function EvaluationScaleReference({ scales, darkMode }) {
       
       <div className="p-3 border-t border-gray-200 dark:border-gray-700">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          {scales?.map((scale) => (
+          {scales.map((scale) => (
             <div key={scale.id} className={`${darkMode ? 'bg-gray-750' : 'bg-gray-50'} rounded-lg p-2.5 text-center`}>
               <div className="text-sm font-bold text-almet-sapphire dark:text-almet-astral mb-1">
                 {scale.name}

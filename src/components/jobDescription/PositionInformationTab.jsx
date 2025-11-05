@@ -311,7 +311,7 @@ const PositionInformationTab = ({
       department_name: formData.department,
       job_function_name: formData.job_function,
       position_group_name: name
-    }, 'Position Group');
+    }, 'Hierarchy');
     
     if (employee) {
       const id = employee.position_group_id || employee.position_group;
@@ -823,10 +823,10 @@ const getAssignmentPreviewDisplay = () => {
           )}
         </div>
         
-        {/* UPDATED: Position Group with SearchableDropdown */}
+        {/* UPDATED: Hierarchy with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-            Position Group <span className="text-red-500">*</span>
+            Hierarchy <span className="text-red-500">*</span>
             {counts.positionGroups > 0 && (
               <span className={`text-xs ${textMuted} ml-1`}>({counts.positionGroups} available)</span>
             )}
@@ -836,7 +836,7 @@ const getAssignmentPreviewDisplay = () => {
             value={formData.position_group}
             onChange={handlePositionGroupChange}
             placeholder={formData.job_function ? 
-              (counts.positionGroups > 0 ? "Select Position Group" : "No position groups available") : 
+              (counts.positionGroups > 0 ? "Select Hierarchy" : "No Hierarchys available") : 
               "Select Job Function First"
             }
             className={validationErrors.position_group ? 'border-red-500' : ''}
@@ -861,7 +861,7 @@ const getAssignmentPreviewDisplay = () => {
             onChange={(value) => onFormDataChange({...formData, grading_level: value})}
             placeholder={formData.position_group ? 
               (counts.gradingLevels > 0 ? "Select Grading Level" : "No grading levels available") : 
-              "Select Position Group First"
+              "Select Hierarchy First"
             }
             darkMode={darkMode}
           />
@@ -1033,7 +1033,7 @@ const getAssignmentPreviewDisplay = () => {
               </h4>
             
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Required:</span> Job Title, Business Function, Department, Job Function, Position Group, Job Purpose
+                <span className="font-medium">Required:</span> Job Title, Business Function, Department, Job Function, Hierarchy, Job Purpose
               </div>
             </div>
           </div>

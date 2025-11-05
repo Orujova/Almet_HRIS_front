@@ -684,7 +684,7 @@ const CoreEmployeeCalculation = () => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position Group</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Hierarchy</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Job Title</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Skills</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Created</th>
@@ -865,7 +865,7 @@ const CoreEmployeeCalculation = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Position Group <span className="text-red-500">*</span>
+                   Hierarchy  <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown
                     options={positionGroups.map(group => ({
@@ -876,7 +876,7 @@ const CoreEmployeeCalculation = () => {
                   zIndex="z-[60]"
                     value={positionFormData.position_group}
                     onChange={handlePositionGroupChange}
-                    placeholder="Select Position Group"
+                    placeholder="Select Hierarchy"
                   />
                 </div>
                 
@@ -893,7 +893,7 @@ const CoreEmployeeCalculation = () => {
                   zIndex="z-[60]"
                     value={positionFormData.job_title}
                     onChange={(value) => setPositionFormData({...positionFormData, job_title: value})}
-                    placeholder={positionFormData.position_group ? "Select or type job title" : "Select position group first"}
+                    placeholder={positionFormData.position_group ? "Select or type job title" : "Select Hierarchy first"}
                     disabled={!positionFormData.position_group}
                   />
                 </div>
@@ -1077,7 +1077,7 @@ const CoreEmployeeCalculation = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Position Group <span className="text-red-500">*</span>
+                   Hierarchy  <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown
                     options={positionGroups.map(group => ({
@@ -1088,7 +1088,7 @@ const CoreEmployeeCalculation = () => {
                   zIndex="z-[60]"
                     value={editPositionFormData.position_group}
                     onChange={handleEditPositionGroupChange}
-                    placeholder="Select Position Group"
+                    placeholder="Select Hierarchy"
                   />
                 </div>
                 
@@ -1105,7 +1105,7 @@ const CoreEmployeeCalculation = () => {
                   zIndex="z-[60]"
                     value={editPositionFormData.job_title}
                     onChange={(value) => setEditPositionFormData({...editPositionFormData, job_title: value})}
-                    placeholder={editPositionFormData.position_group ? "Select or type job title" : "Select position group first"}
+                    placeholder={editPositionFormData.position_group ? "Select or type job title" : "Select Hierarchy first"}
                     disabled={!editPositionFormData.position_group}
                   />
                 </div>
@@ -1324,7 +1324,7 @@ const CoreEmployeeCalculation = () => {
                         <p className="text-sm text-blue-900">{selectedEmployeeInfo.job_title}</p>
                       </div>
                       <div>
-                        <span className="text-xs font-medium text-blue-700">Position Group:</span>
+                        <span className="text-xs font-medium text-blue-700">Hierarchy:</span>
                         <p className="text-sm text-blue-900">{selectedEmployeeInfo.position_group_name}</p>
                       </div>
                     </div>
@@ -1620,7 +1620,7 @@ const CoreEmployeeCalculation = () => {
                       <p className="text-sm text-blue-900">{selectedEmployeeInfo.job_title}</p>
                     </div>
                     <div>
-                      <span className="text-xs font-medium text-blue-700">Position Group:</span>
+                      <span className="text-xs font-medium text-blue-700">Hierarchy:</span>
                       <p className="text-sm text-blue-900">{selectedEmployeeInfo.position_group_name}</p>
                     </div>
                   </div>
@@ -1827,7 +1827,7 @@ const CoreEmployeeCalculation = () => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Position Group</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Hierarchy</label>
                       <p className="text-sm font-medium text-gray-900">{selectedAssessment.position_group_name}</p>
                     </div>
                     <div>

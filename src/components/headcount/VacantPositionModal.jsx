@@ -361,7 +361,7 @@ const employeeOptions = employees?.filter(emp =>
     if (!formData.business_function) newErrors.business_function = 'Business function is required';
     if (!formData.department) newErrors.department = 'Department is required';
     if (!formData.job_function) newErrors.job_function = 'Job function is required';
-    if (!formData.position_group) newErrors.position_group = 'Position group is required';
+    if (!formData.position_group) newErrors.position_group = 'Hierarchy is required';
     if (!formData.job_title?.trim()) newErrors.job_title = 'Job title is required';
     if (!formData.grading_level) newErrors.grading_level = 'Grading level is required';
 
@@ -476,17 +476,17 @@ const employeeOptions = employees?.filter(emp =>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Position Group */}
+                {/* Hierarchy */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-1.5`}>
-                    Position Group *
+                    Hierarchy *
                   </label>
                   <SearchableDropdown
                     options={positionGroupOptions}
                     value={formData.position_group}
                     onChange={handlePositionGroupChange}
-                    placeholder="Select Position Group"
-                    searchPlaceholder="Search position groups..."
+                    placeholder="Select Hierarchy"
+                    searchPlaceholder="Search Hierarchys..."
                     error={!!errors.position_group}
                     darkMode={darkMode}
                      allowUncheck={true}
@@ -511,7 +511,7 @@ const employeeOptions = employees?.filter(emp =>
                     options={gradingLevelOptions}
                     value={formData.grading_level}
                     onChange={(value) => handleInputChange('grading_level', value)}
-                    placeholder={formData.position_group ? "Select Grading Level" : "Select Position Group first"}
+                    placeholder={formData.position_group ? "Select Grading Level" : "Select Hierarchy first"}
                     searchPlaceholder="Search grading levels..."
                     error={!!errors.grading_level}
                     darkMode={darkMode}
@@ -520,7 +520,7 @@ const employeeOptions = employees?.filter(emp =>
                     disabled={!formData.position_group}
                     loading={cascadingLoading.gradingLevels}
                     allowClear={true}
-                    emptyMessage={formData.position_group ? "No grading levels available" : "Select a position group first"}
+                    emptyMessage={formData.position_group ? "No grading levels available" : "Select a Hierarchy first"}
                   />
                   {errors.grading_level && (
                     <p className="mt-1 text-xs text-red-600 flex items-center">
@@ -531,7 +531,7 @@ const employeeOptions = employees?.filter(emp =>
                   {formData.position_group && !cascadingLoading.gradingLevels && gradingLevelOptions.length === 0 && (
                     <p className="mt-1 text-xs text-amber-600 flex items-center">
                       <AlertCircle size={12} className="mr-1" />
-                      No grading levels found for this position group
+                      No grading levels found for this Hierarchy
                     </p>
                   )}
                 </div>

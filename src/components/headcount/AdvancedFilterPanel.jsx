@@ -755,16 +755,16 @@ const AdvancedFilterPanel = ({
             {/* Right Column - Management & Additional */}
             <div className="space-y-4">
             
-              {/* Position Group using MultiSelect */}
+              {/* Hierarchy using MultiSelect */}
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  Position Group
+                  Hierarchy
                 </label>
                 <MultiSelect
                   options={positionGroupOptionsForMultiSelect}
                   selected={filters.position_group}
                   onChange={handleMultiSelectChangeAdapter}
-                  placeholder="Select position groups..."
+                  placeholder="Select Hierarchys..."
                   fieldName="position_group"
                   darkMode={darkMode}
                 />

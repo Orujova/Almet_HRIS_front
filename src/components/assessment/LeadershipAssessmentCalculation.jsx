@@ -119,7 +119,7 @@ const LeadershipAssessmentCalculation = () => {
     );
   };
 
-  // ✅ Handle Position Group Change - SADƏLƏŞDI
+
   const handlePositionGroupChange = async (positionGroupId) => {
     if (!positionGroupId) {
       setGradeLevels([]);
@@ -177,7 +177,7 @@ const LeadershipAssessmentCalculation = () => {
     });
   };
 
-  // ✅ Edit Position Group Change - SADƏLƏŞDI
+
   const handleEditPositionGroupChange = async (positionGroupId) => {
     if (!positionGroupId) {
       setEditGradeLevels([]);
@@ -421,7 +421,7 @@ const handleEditPositionAssessment = async (assessment) => {
 const handleUpdatePositionAssessment = async () => {
   // Validation
   if (!editPositionFormData.position_group) {
-    showError('Please select position group');
+    showError('Please select Hierarchy');
     return;
   }
 
@@ -521,7 +521,7 @@ const handleUpdatePositionAssessment = async () => {
   // ✅ Create Position - job_title YOXDUR
   const handleCreatePositionAssessment = async () => {
     if (!positionFormData.position_group || positionFormData.grade_levels.length === 0) {
-      showError('Please select position group and at least one grade level');
+      showError('Please select Hierarchy and at least one grade level');
       return;
     }
 
@@ -558,7 +558,7 @@ const handleUpdatePositionAssessment = async () => {
       if (err.response?.data?.non_field_errors) {
         const selectedPosition = positionGroups.find(pg => pg.id === positionFormData.position_group);
         setPositionDuplicateError({
-          message: 'A template for this Position Group already exists. Please edit the existing template.',
+          message: 'A template for this Hierarchy already exists. Please edit the existing template.',
           positionGroup: selectedPosition?.name,
           gradeLevels: positionFormData.grade_levels.join(', ')
         });
@@ -831,7 +831,7 @@ const toggleChildGroup = (groupId) => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position Group</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Hierarchy</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Grade Levels</th>
                   {/* ❌ Job Title column SİLİNDİ */}
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Competencies</th>
@@ -960,13 +960,13 @@ const toggleChildGroup = (groupId) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Position Group <span className="text-red-500">*</span>
+                    Hierarchy <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown 
                     options={positionGroups} 
                     value={positionFormData.position_group} 
                     onChange={handlePositionGroupChange}
-                    placeholder="Select Position Group"
+                    placeholder="Select Hierarchy"
                     portal={true}
                     allowUncheck={true}
                     zIndex="z-[60]" 
@@ -979,7 +979,7 @@ const toggleChildGroup = (groupId) => {
                   </label>
                   {!positionFormData.position_group ? (
                     <div className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400 bg-gray-50">
-                      Select Position Group first
+                      Select Hierarchy first
                     </div>
                   ) : gradeLevels.length === 0 ? (
                     <div className="px-3 py-2 border border-amber-300 rounded-md text-sm text-amber-600 bg-amber-50">
@@ -1010,7 +1010,7 @@ const toggleChildGroup = (groupId) => {
                       <h4 className="text-sm font-medium text-red-800">Duplicate Template</h4>
                       <p className="text-xs text-red-700 mt-1">{positionDuplicateError.message}</p>
                       <div className="mt-2 text-xs text-red-600">
-                        <strong>Position Group:</strong> {positionDuplicateError.positionGroup}<br />
+                        <strong>Hierarchy:</strong> {positionDuplicateError.positionGroup}<br />
                         <strong>Grade Levels:</strong> {positionDuplicateError.gradeLevels}
                       </div>
                     </div>
@@ -1186,13 +1186,13 @@ const toggleChildGroup = (groupId) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Position Group <span className="text-red-500">*</span>
+                    Hierarchy <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown 
                     options={positionGroups} 
                     value={editPositionFormData.position_group} 
                     onChange={handleEditPositionGroupChange}
-                    placeholder="Select Position Group"
+                    placeholder="Select Hierarchy"
                     portal={true}
                     allowUncheck={true}
                     zIndex="z-[60]" 
@@ -1205,7 +1205,7 @@ const toggleChildGroup = (groupId) => {
                   </label>
                   {!editPositionFormData.position_group ? (
                     <div className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400 bg-gray-50">
-                      Select Position Group first
+                      Select Hierarchy first
                     </div>
                   ) : editGradeLevels.length === 0 ? (
                     <div className="px-3 py-2 border border-amber-300 rounded-md text-sm text-amber-600 bg-amber-50">
@@ -1412,7 +1412,7 @@ const toggleChildGroup = (groupId) => {
                       <div className="text-sm font-semibold text-sky-900">Grade {selectedEmployeeInfo.grading_level}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-sky-700">Position Group</div>
+                      <div className="text-xs font-medium text-sky-700">Hierarchy</div>
                       <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.position_group_name}</div>
                     </div>
                   </div>
@@ -1698,7 +1698,7 @@ const toggleChildGroup = (groupId) => {
                 <div className="text-sm font-semibold text-sky-900">Grade {selectedEmployeeInfo.grading_level}</div>
               </div>
               <div>
-                <div className="text-xs font-medium text-sky-700">Position Group</div>
+                <div className="text-xs font-medium text-sky-700">Hierarchy</div>
                 <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.position_group_name}</div>
               </div>
             </div>
@@ -1918,7 +1918,7 @@ const toggleChildGroup = (groupId) => {
             {/* Position Info - Compact Grid */}
             <div className="grid grid-cols-3 gap-3 p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200">
               <div>
-                <div className="text-xs text-gray-600 mb-1">Position Group</div>
+                <div className="text-xs text-gray-600 mb-1">Hierarchy</div>
                 <div className="text-sm font-semibold text-gray-900">{selectedAssessment.position_group_name}</div>
               </div>
               <div>

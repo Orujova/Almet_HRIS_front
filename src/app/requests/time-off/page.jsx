@@ -876,6 +876,9 @@ const TimeOffPage = () => {
                       type="time"
                       value={formData.start_time}
                       onChange={(e) => setFormData({...formData, start_time: e.target.value})}
+                      min="09:00"
+                      max="18:00"
+                      step="1800"
                       className={`w-full px-4 py-2.5 text-sm border outline-0 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                         formErrors.start_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                       }`}
@@ -891,6 +894,9 @@ const TimeOffPage = () => {
                       type="time"
                       value={formData.end_time}
                       onChange={(e) => setFormData({...formData, end_time: e.target.value})}
+                      min="09:00"
+                      max="18:00"
+                      step="1800"
                       className={`w-full px-4 py-2.5 text-sm outline-0 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                         formErrors.end_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                       }`}

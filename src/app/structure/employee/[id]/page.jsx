@@ -651,7 +651,7 @@ const EmployeeDetailPageContent = () => {
                             />
                             <InfoItem 
                               icon={<Target size={12} className="text-almet-sapphire" />}
-                              label="Position Group"
+                              label="Hierarchy"
                               value={getFieldValue('position_group_display_name') || getFieldValue('position_group_name')}
                             />
                             <InfoItem 

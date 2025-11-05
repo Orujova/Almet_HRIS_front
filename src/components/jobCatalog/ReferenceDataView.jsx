@@ -183,10 +183,10 @@ export default function ReferenceDataView({ context }) {
         ]
       },
       position_groups: {
-        title: 'Position Groups',
+        title: 'Hierarchys',
         data: positionGroups,
         columns: [
-          { key: 'name', label: 'Position Group', sortable: true },
+          { key: 'name', label: 'Hierarchy', sortable: true },
           { key: 'hierarchy_level', label: 'Level', sortable: true, align: 'center' },
           { key: 'employee_count', label: 'Employees', sortable: true, align: 'center' },
           { key: 'is_active', label: 'Status', sortable: true, align: 'center' }
@@ -656,7 +656,7 @@ export default function ReferenceDataView({ context }) {
     { id: 'units', label: 'Units', data: units },
     { id: 'job_functions', label: 'Job Functions', data: jobFunctions },
     { id: 'job_titles', label: 'Job Titles', data: jobTitles }, // NEW
-    { id: 'position_groups', label: 'Position Groups', data: positionGroups }
+    { id: 'position_groups', label: 'Hierarchys', data: positionGroups }
   ];
 
   const activeTabData = tabs.find(tab => tab.id === activeTab);

@@ -224,7 +224,7 @@ const JobDescriptionForm = ({
       errors.job_function = 'Job Function is required';
     }
     if (!formData.position_group) {
-      errors.position_group = 'Position Group is required';
+      errors.position_group = 'Hierarchy is required';
     }
     
     const requiredSections = ['criticalDuties', 'positionMainKpis', 'jobDuties', 'requirements'];
@@ -261,7 +261,7 @@ const JobDescriptionForm = ({
           errors.job_function = 'Job Function is required';
         }
         if (!formData.position_group) {
-          errors.position_group = 'Position Group is required';
+          errors.position_group = 'Hierarchy is required';
         }
         break;
         
@@ -546,7 +546,7 @@ const JobDescriptionForm = ({
         missingIds.push(`Job Function "${formData.job_function}"`);
       }
       if (!positionGroupId || isNaN(positionGroupId)) {
-        missingIds.push(`Position Group "${formData.position_group}"`);
+        missingIds.push(`Hierarchy "${formData.position_group}"`);
       }
 
       if (missingIds.length > 0) {

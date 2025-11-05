@@ -636,7 +636,7 @@ export default function PerformanceSettingsPage() {
 
                     <div className="grid grid-cols-3 gap-2">
                       <div>
-                        <label className="block text-[10px] mb-1 text-gray-700 dark:text-gray-300 font-medium">Position Group</label>
+                        <label className="block text-[10px] mb-1 text-gray-700 dark:text-gray-300 font-medium">Hierarchy</label>
                         <SearchableDropdown
                           options={positionGroups}
                           value={weight.position_group}

@@ -1277,7 +1277,7 @@ const OrgChart = () => {
                                 </div>
 
                                 <div>
-                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Position Groups</label>
+                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Hierarchy</label>
                                     <Select
                                         isMulti
                                         placeholder="Select positions..."
@@ -1399,7 +1399,7 @@ const OrgChart = () => {
                                                         />
                                                         <DetailRow 
                                                             icon={<Briefcase />} 
-                                                            label="Position Group" 
+                                                            label="Hierarchy" 
                                                             value={selectedEmployee.position_group || 'N/A'}
                                                             isVacant={true}
                                                         />
@@ -1423,7 +1423,7 @@ const OrgChart = () => {
                                                         />
                                                         <DetailRow 
                                                             icon={<Briefcase />} 
-                                                            label="Position Group" 
+                                                            label="Hierarchy" 
                                                             value={selectedEmployee.position_group || 'N/A'} 
                                                         />
                                                     </>

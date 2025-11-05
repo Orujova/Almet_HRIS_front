@@ -226,7 +226,7 @@ const EmployeeSelectionModal = ({
             )}
             {jobCriteria.position_group?.name && (
               <div>
-                <span className={`font-medium ${textMuted}`}>Position Group:</span>
+                <span className={`font-medium ${textMuted}`}>Hierarchy:</span>
                 <span className={`${textPrimary} ml-2`}>{jobCriteria.position_group.name}</span>
               </div>
             )}
@@ -457,7 +457,7 @@ const EmployeeSelectionModal = ({
                               </div>
                               <div className="flex items-center gap-2">
                                 <Target size={10} className={textMuted} />
-                                <span className={`font-medium ${textMuted}`}>Position Group:</span> 
+                                <span className={`font-medium ${textMuted}`}>Hierarchy:</span> 
                                 <span className={textPrimary}>{employee.position_group_name}</span>
                               </div>
                               <div className="flex items-center gap-2">

@@ -22,7 +22,7 @@ export default function CrudModal({ context, darkMode }) {
       units: 'Unit',
       job_functions: 'Job Function',
       job_titles: 'Job Title',
-      position_groups: 'Position Group'
+      position_groups: 'Hierarchy'
     };
     const typeName = typeNames[crudModalType] || 'Item';
     return `${crudModalMode === 'create' ? 'Create' : 'Edit'} ${typeName}`;
@@ -284,7 +284,7 @@ export default function CrudModal({ context, darkMode }) {
                 value={formData.name || ''}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 className={inputClass}
-                placeholder="Enter position group name"
+                placeholder="Enter Hierarchy name"
                 required
               />
             </div>

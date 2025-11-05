@@ -270,7 +270,7 @@ const handleEditPositionAssessment = async (assessment) => {
 
 const handleUpdatePositionAssessment = async () => {
   if (!editPositionFormData.position_group) {
-    showError('Please select position group');
+    showError('Please select Hierarchy');
     return;
   }
 
@@ -336,7 +336,7 @@ const handleUpdatePositionAssessment = async () => {
 };
   const handleCreatePositionAssessment = async () => {
     if (!positionFormData.position_group || positionFormData.grade_levels.length === 0) {
-      showError('Please select position group and at least one grade level');
+      showError('Please select Hierarchy and at least one grade level');
       return;
     }
 
@@ -363,7 +363,7 @@ const handleUpdatePositionAssessment = async () => {
       if (err.response?.data?.non_field_errors) {
         const selectedPosition = positionGroups.find(pg => pg.id === positionFormData.position_group);
         setPositionDuplicateError({
-          message: 'A template for this Position Group already exists. Please edit the existing template.',
+          message: 'A template for this Hierarchy already exists. Please edit the existing template.',
           positionGroup: selectedPosition?.name,
           gradeLevels: positionFormData.grade_levels.join(', ')
         });
@@ -799,7 +799,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position Group</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Hierarchy</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Grade Levels</th>
                   
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Competencies</th>
@@ -927,13 +927,13 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Position Group <span className="text-red-500">*</span>
+                   Hierarchy <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown 
                     options={positionGroups} 
                     value={positionFormData.position_group} 
                     onChange={handlePositionGroupChange}
-                    placeholder="Select Position Group"
+                    placeholder="Select Hierarchy"
                     portal={true}
                     allowUncheck={true}
                     zIndex="z-[60]" 
@@ -946,7 +946,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                   </label>
                   {!positionFormData.position_group ? (
                     <div className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400 bg-gray-50">
-                      Select Position Group first
+                      Select Hierarchy first
                     </div>
                   ) : gradeLevels.length === 0 ? (
                     <div className="px-3 py-2 border border-amber-300 rounded-md text-sm text-amber-600 bg-amber-50">
@@ -977,7 +977,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                       <h4 className="text-sm font-medium text-red-800">Duplicate Template</h4>
                       <p className="text-xs text-red-700 mt-1">{positionDuplicateError.message}</p>
                       <div className="mt-2 text-xs text-red-600">
-                        <strong>Position Group:</strong> {positionDuplicateError.positionGroup}<br />
+                        <strong>Hierarchy:</strong> {positionDuplicateError.positionGroup}<br />
                         <strong>Grade Levels:</strong> {positionDuplicateError.gradeLevels}
                       </div>
                     </div>
@@ -1124,7 +1124,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                    Position Group <span className="text-red-500">*</span>
+                   Hierarchy <span className="text-red-500">*</span>
                   </label>
                   <SearchableDropdown 
                     options={positionGroups} 
@@ -1132,7 +1132,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                     zIndex="z-[60]" 
                     value={editPositionFormData.position_group} 
                     onChange={handleEditPositionGroupChange}
-                    placeholder="Select Position Group" 
+                    placeholder="Select Hierarchy" 
                     allowUncheck={true}
                   />
                 </div>
@@ -1143,7 +1143,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                   </label>
                   {!editPositionFormData.position_group ? (
                     <div className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-400 bg-gray-50">
-                      Select Position Group first
+                      Select Hierarchy first
                     </div>
                   ) : editGradeLevels.length === 0 ? (
                     <div className="px-3 py-2 border border-amber-300 rounded-md text-sm text-amber-600 bg-amber-50">
@@ -1274,7 +1274,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                       <div className="text-sm font-semibold text-sky-900">Grade {selectedEmployeeInfo.grading_level}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-sky-700">Position Group</div>
+                      <div className="text-xs font-medium text-sky-700">Hierarchy</div>
                       <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.position_group_name}</div>
                     </div>
                   </div>
@@ -1439,7 +1439,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                       <div className="text-sm font-semibold text-sky-900">Grade {selectedEmployeeInfo.grading_level}</div>
                     </div>
                     <div>
-                      <div className="text-xs font-medium text-sky-700">Position Group</div>
+                      <div className="text-xs font-medium text-sky-700">Hierarchy</div>
                       <div className="text-sm font-semibold text-sky-900">{selectedEmployeeInfo.position_group_name}</div>
                     </div>
                   </div>
@@ -1547,7 +1547,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
-                      <div className="text-xs font-medium text-gray-600">Position Group</div>
+                      <div className="text-xs font-medium text-gray-600">Hierarchy</div>
                       <div className="text-sm font-medium text-gray-900 mt-1">{selectedAssessment.position_assessment_info?.position_group || 'N/A'}</div>
                     </div>
                     <div>

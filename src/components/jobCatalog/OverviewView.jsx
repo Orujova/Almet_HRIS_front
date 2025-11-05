@@ -209,17 +209,17 @@ export default function OverviewView({ context }) {
                 />
               </div>
 
-              {/* Position Group */}
+              {/* Hierarchy */}
               <div>
                 <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Position Group
+                  Hierarchy
                 </label>
                 <SearchableDropdown
                   options={filterOptions.positionGroups}
                   value={selectedFilters.position_group}
                   onChange={(value) => setSelectedFilters(prev => ({ ...prev, position_group: value }))}
                   placeholder="All"
-                  searchPlaceholder="Search position groups..."
+                  searchPlaceholder="Search Hierarchys..."
                   darkMode={darkMode}
                   className="w-full"
                 />
