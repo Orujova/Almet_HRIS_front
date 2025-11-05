@@ -152,11 +152,17 @@ const CoreEmployeeCalculation = () => {
   }, [activeTab]);
 
   // Helper function to filter job titles based on position group
+  // Helper function to filter job titles based on position group
   const getJobTitlesForPositionGroup = (positionGroupId) => {
     if (!positionGroupId) return uniqueJobTitles;
     
-    const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
+    // Filter employees by position_group ID (not position_group_level)
+    const employeesInGroup = employees.filter(emp => emp.position_group === positionGroupId);
     const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
+    
+    console.log('🔍 Position Group ID:', positionGroupId);
+    console.log('🔍 Employees in group:', employeesInGroup.length);
+    console.log('🔍 Job titles found:', jobTitlesInGroup);
     
     return jobTitlesInGroup.map((title, index) => ({ 
       value: title,
