@@ -329,7 +329,7 @@ cancelObjective: async (id, objectiveId, reason) => {
   
   submitObjectives: async (performanceId, objectives) => {
   const response = await api.post(
-    `performance/performances/${performanceId}/submit_objectives/`,
+    `/performance/performance/performances/${performanceId}/submit_objectives/`,
     { objectives }  // ✅ FIX #1: Include objectives in payload
   );
   return response.data;
