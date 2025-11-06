@@ -21,12 +21,15 @@ export default function CompetenciesSection({
     grade: "N/A",
   });
 
+  // ✅ FIX: Initialize all groups as COLLAPSED by default
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       const groups = {};
       competencies.forEach((c) => {
         const g = c.competency_group_name || "Ungrouped";
-        if (!groups[g]) groups[g] = false;
+        if (groups[g] === undefined) {
+          groups[g] = false; // All collapsed by default
+        }
       });
       setExpandedGroups(groups);
     }
@@ -123,6 +126,7 @@ export default function CompetenciesSection({
     return "text-red-600 dark:text-red-400";
   };
 
+  // ✅ FIX: Manual toggle - doesn't auto-collapse
   const toggleGroup = (groupName) => {
     setExpandedGroups((prev) => ({
       ...prev,
@@ -164,6 +168,10 @@ export default function CompetenciesSection({
     );
   }
 
+  // ✅ FIX: Check if END_YEAR period is active
+  const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
+  const canRateEndYear = canEdit && isEndYearPeriod;
+
   const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
     darkMode 
       ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
@@ -183,7 +191,15 @@ export default function CompetenciesSection({
                 Behavioral Competencies Assessment
               </h3>
               <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
-                Evaluate competencies based on required levels • {competencies.length} total
+                {isEndYearPeriod ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                    ⚠️ End Year Period - Ratings can be added
+                  </span>
+                ) : (
+                  <span>
+                    Evaluate competencies based on required levels • {competencies.length} total
+                  </span>
+                )}
               </p>
             </div>
           </div>
@@ -222,6 +238,7 @@ export default function CompetenciesSection({
 
             return (
               <div key={groupName}>
+                {/* ✅ FIX: Manual toggle button */}
                 <button
                   type="button"
                   onClick={() => toggleGroup(groupName)}
@@ -297,9 +314,11 @@ export default function CompetenciesSection({
                                   <span className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
                                     {comp.competency_name}
                                   </span>
-                                  <span className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
-                                    {comp.competency_code}
-                                  </span>
+                                  {comp.description && (
+                                    <span className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                                      {comp.description}
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-center">
@@ -308,19 +327,25 @@ export default function CompetenciesSection({
                                 </span>
                               </td>
                               <td className="px-4 py-3 text-center">
+                                {/* ✅ FIX: Only enable during END_YEAR period */}
                                 <select
                                   value={comp.end_year_rating || ""}
-                                  disabled={!canEdit}
+                                  disabled={!canRateEndYear}
                                   onChange={(e) => handleChange("end_year_rating", e.target.value)}
                                   className={`${inputClass} w-full`}
                                 >
                                   <option value="">Select...</option>
                                   {settings.evaluationScale?.map((s) => (
-                                    <option key={s.id} value={s.value}>
+                                    <option key={s.id} value={s.id}>
                                       {`${s.name} (${s.value})`}
                                     </option>
                                   ))}
                                 </select>
+                                {!canRateEndYear && comp.end_year_rating && (
+                                  <div className={`text-xs mt-1 ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                                    {settings.evaluationScale?.find(s => s.id === comp.end_year_rating)?.name || 'N/A'}
+                                  </div>
+                                )}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
@@ -378,12 +403,21 @@ export default function CompetenciesSection({
           <button
             type="button"
             onClick={() => onSubmit(competencies)}
-            disabled={loading}
+            disabled={loading || !canRateEndYear}
             className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-40 transition-all shadow-sm"
           >
             <Send className="w-4 h-4" />
             Submit
           </button>
+          {!canRateEndYear && (
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs ${
+              darkMode 
+                ? 'bg-amber-900/20 text-amber-400 border border-amber-800/30' 
+                : 'bg-amber-50 text-amber-700 border border-amber-200'
+            }`}>
+              <span>⚠️ Ratings can only be submitted during End Year Review period</span>
+            </div>
+          )}
         </div>
       )}
     </div>

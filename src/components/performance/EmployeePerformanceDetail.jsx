@@ -10,6 +10,7 @@ export default function EmployeePerformanceDetail({
   performanceData,
   settings,
   currentPeriod,
+  activeYear,
   permissions,
   loading,
   darkMode,
@@ -37,7 +38,7 @@ export default function EmployeePerformanceDetail({
   onSaveDevelopmentNeedsDraft,
   onSubmitDevelopmentNeeds
 }) {
-    const canEdit = permissions.is_admin || 
+  const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
 
   const isEmployee = performanceData.employee === permissions.employee?.id;
@@ -53,7 +54,6 @@ export default function EmployeePerformanceDetail({
     return isNaN(num) ? '0.00' : num.toFixed(decimals);
   };
 
-  // ✅ FIX: Get letter grade from evaluation scale based on percentage
   const getLetterGradeFromScale = (percentage) => {
     if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
       return 'N/A';
@@ -61,7 +61,6 @@ export default function EmployeePerformanceDetail({
     
     const numPercentage = parseFloat(percentage) || 0;
     
-    // Find the matching scale
     const matchingScale = settings.evaluationScale.find(scale => 
       numPercentage >= parseFloat(scale.range_min) && 
       numPercentage <= parseFloat(scale.range_max)
@@ -70,30 +69,22 @@ export default function EmployeePerformanceDetail({
     return matchingScale ? matchingScale.name : 'N/A';
   };
 
-  // ✅ FIX: Calculate grades from current percentages
   const objectivesPercentage = parseFloat(performanceData.objectives_percentage) || 0;
   const competenciesPercentage = parseFloat(performanceData.competencies_percentage) || 0;
   const overallPercentage = parseFloat(performanceData.overall_weighted_percentage) || 0;
   
-  // Use backend-provided grades if available, otherwise calculate
   const objectivesGrade = performanceData.objectives_letter_grade || 
                           getLetterGradeFromScale(objectivesPercentage);
   
   const competenciesGrade = performanceData.competencies_letter_grade || 
                             getLetterGradeFromScale(competenciesPercentage);
   
-  // ✅ FIX: Final rating - use backend if available, otherwise calculate
   const finalRating = performanceData.final_rating || 
                       getLetterGradeFromScale(overallPercentage);
   
-  console.log('📊 Rating Display:', {
-    objectivesPercentage,
-    objectivesGrade,
-    competenciesPercentage,
-    competenciesGrade,
-    overallPercentage,
-    finalRating,
-    backendFinalRating: performanceData.final_rating
+  console.log('📊 Performance Detail - Clarification Comments:', {
+    count: performanceData.clarification_comments?.length || 0,
+    comments: performanceData.clarification_comments
   });
 
   return (
@@ -177,7 +168,7 @@ export default function EmployeePerformanceDetail({
       {/* Evaluation Scale Reference */}
       <EvaluationScaleReference scales={settings.evaluationScale} darkMode={darkMode} />
 
-         {/* Clarification Comments Section */}
+      {/* ✅ FIX: Clarification Comments Section - Always render if there are comments */}
       {performanceData.clarification_comments && performanceData.clarification_comments.length > 0 && (
         <ClarificationComments 
           comments={performanceData.clarification_comments}
@@ -190,6 +181,7 @@ export default function EmployeePerformanceDetail({
         objectives={performanceData.objectives || []}
         settings={settings}
         currentPeriod={currentPeriod}
+        activeYear={activeYear}
         canEdit={canEdit}
         loading={loading}
         darkMode={darkMode}
@@ -206,8 +198,7 @@ export default function EmployeePerformanceDetail({
         onCancelObjective={onCancelObjective}
       />
 
-      
-<CompetenciesSection
+      <CompetenciesSection
         competencies={performanceData.competency_ratings || []}
         groupScores={performanceData.group_competency_scores}
         settings={settings}
@@ -220,14 +211,8 @@ export default function EmployeePerformanceDetail({
         percentage={performanceData.competencies_percentage}
         letterGrade={performanceData.competencies_letter_grade}
         onUpdate={onUpdateCompetency}
-        onSaveDraft={(competencies) => {
-          console.log('🎯 Save Draft called with:', competencies?.length, 'competencies');
-          onSaveCompetenciesDraft(competencies);
-        }}
-        onSubmit={() => {
-          console.log('🎯 Submit called');
-          onSubmitCompetencies();
-        }}
+        onSaveDraft={onSaveCompetenciesDraft}
+        onSubmit={onSubmitCompetencies}
       />
 
       <PerformanceReviews

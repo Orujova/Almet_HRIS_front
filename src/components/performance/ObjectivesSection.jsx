@@ -1,9 +1,10 @@
-import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, Loader, XCircle, TrendingUp } from 'lucide-react';
+import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, Loader, XCircle, Clock, MessageSquare } from 'lucide-react';
 
 export default function ObjectivesSection({
   objectives,
   settings,
   currentPeriod,
+  activeYear,
   canEdit,
   loading,
   darkMode,
@@ -32,15 +33,54 @@ export default function ObjectivesSection({
 
   const isGoalsSubmitted = performanceData?.objectives_employee_submitted || false;
   const isGoalsApproved = performanceData?.objectives_manager_approved || false;
+  const isNeedClarification = performanceData?.approval_status === 'NEED_CLARIFICATION';
+  
+  // ✅ Check if we're in MANAGER period
+  const isManagerPeriodActive = () => {
+    if (!activeYear) return false;
+    const today = new Date().toISOString().split('T')[0];
+    const managerStart = activeYear.goal_setting_manager_start;
+    const managerEnd = activeYear.goal_setting_manager_end;
+    return today >= managerStart && today <= managerEnd;
+  };
+  
+  // ✅ Check if we're in EMPLOYEE period
+  const isEmployeePeriodActive = () => {
+    if (!activeYear) return false;
+    const today = new Date().toISOString().split('T')[0];
+    const employeeStart = activeYear.goal_setting_employee_start;
+    const employeeEnd = activeYear.goal_setting_employee_end;
+    return today >= employeeStart && today <= employeeEnd;
+  };
   
   const isGoalSettingPeriod = currentPeriod === 'GOAL_SETTING';
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
   
-  const isNeedClarification = performanceData?.approval_status === 'NEED_CLARIFICATION';
-  const canEditGoals = canEdit && isGoalSettingPeriod && (!isGoalsApproved || isNeedClarification);
-  const canSaveDraft = canEdit && isGoalSettingPeriod && !isGoalsApproved;
-  const canSubmitGoals = canEdit && isGoalSettingPeriod && !isGoalsSubmitted && isValidForSubmit;
+  const isManagerPeriod = isGoalSettingPeriod && isManagerPeriodActive();
+  const isEmployeePeriod = isGoalSettingPeriod && isEmployeePeriodActive();
+  
+  // ✅ FIX: Manager can edit if:
+  // 1. During manager period (not submitted OR clarification needed)
+  // 2. Manager period ended BUT clarification was requested (can respond)
+  const canEditGoals = canEdit && (
+    // Normal manager period - can edit if not submitted or clarification
+    (isManagerPeriod && (!isGoalsSubmitted || isNeedClarification)) ||
+    // Manager period ended BUT clarification requested - can still edit
+    (!isManagerPeriod && isNeedClarification)
+  );
+  
+  // ✅ FIX: Save Draft visible when manager can edit
+  const canSaveDraft = canEditGoals;
+  
+  // ✅ FIX: Submit visible when:
+  // 1. During manager period (not submitted yet)
+  // 2. Manager period ended BUT clarification - can resubmit
+  const canSubmitGoals = canEdit && isValidForSubmit && (
+    (isManagerPeriod && !isGoalsSubmitted) ||
+    (!isManagerPeriod && isNeedClarification)
+  );
+  
   const canCancelGoals = canEdit && isMidYearPeriod;
   const canAddMidYearGoal = canEdit && isMidYearPeriod && canAddMore;
   const canRateEndYear = canEdit && isEndYearPeriod;
@@ -85,6 +125,67 @@ export default function ObjectivesSection({
     
     return '';
   };
+  
+  // ✅ Period status message with clarification support
+  const getPeriodStatusMessage = () => {
+    if (!activeYear) return null;
+    
+    // ✅ Priority 1: Clarification needed - manager can respond even if period ended
+    if (isNeedClarification) {
+      return {
+        type: 'warning',
+        message: 'Clarification Requested - Manager can edit and resubmit (even after manager period)',
+        icon: MessageSquare
+      };
+    }
+    
+    // Priority 2: Manager period active
+    if (isManagerPeriod) {
+      if (isGoalsSubmitted) {
+        return {
+          type: 'info',
+          message: `Manager Period Active - Goals submitted, waiting for employee review`,
+          icon: Clock
+        };
+      }
+      return {
+        type: 'info',
+        message: `Manager Period Active (${activeYear.goal_setting_manager_start} to ${activeYear.goal_setting_manager_end})`,
+        icon: Clock
+      };
+    }
+    
+    // Priority 3: Employee period active
+    if (isEmployeePeriod && isGoalsSubmitted && !isGoalsApproved) {
+      return {
+        type: 'warning',
+        message: `Employee Review Period Active - Waiting for employee approval`,
+        icon: Clock
+      };
+    }
+    
+    // Priority 4: Goals approved
+    if (isGoalsApproved) {
+      return {
+        type: 'success',
+        message: 'Goals Approved - Goal Setting Complete ✓',
+        icon: CheckCircle
+      };
+    }
+    
+    // Priority 5: Period ended
+    if (isGoalSettingPeriod && !isManagerPeriod && !isEmployeePeriod) {
+      return {
+        type: 'error',
+        message: 'Goal setting period has ended',
+        icon: XCircle
+      };
+    }
+    
+    return null;
+  };
+  
+  const periodStatus = getPeriodStatusMessage();
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60' : 'bg-white'} border ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'} rounded-xl overflow-hidden shadow-sm`}>
@@ -116,6 +217,19 @@ export default function ObjectivesSection({
           )}
         </div>
 
+        {/* ✅ Period Status Banner with Icon */}
+        {periodStatus && (
+          <div className={`mb-4 px-4 py-3 rounded-xl border flex items-center gap-3 ${
+            periodStatus.type === 'info' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30' :
+            periodStatus.type === 'warning' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30' :
+            periodStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' :
+            'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'
+          }`}>
+            {periodStatus.icon && <periodStatus.icon className="w-5 h-5 flex-shrink-0" />}
+            <span className="text-sm font-medium">{periodStatus.message}</span>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2">
           <div className={`px-3 py-2 rounded-xl flex items-center gap-2 ${
             weightStatus.color === 'emerald' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' :
@@ -137,6 +251,13 @@ export default function ObjectivesSection({
             <div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30 flex items-center gap-2">
               <CheckCircle className="w-4 h-4" />
               <span className="text-xs font-semibold">Approved</span>
+            </div>
+          )}
+          
+          {isNeedClarification && (
+            <div className="px-3 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800/30 flex items-center gap-2 animate-pulse">
+              <MessageSquare className="w-4 h-4" />
+              <span className="text-xs font-semibold">Clarification Requested</span>
             </div>
           )}
         </div>
@@ -221,7 +342,8 @@ export default function ObjectivesSection({
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
+            {/* ✅ Save Draft: Show when manager can edit (including clarification response) */}
             {canSaveDraft && (
               <button
                 onClick={() => onSaveDraft(objectives)}
@@ -237,6 +359,7 @@ export default function ObjectivesSection({
               </button>
             )}
             
+            {/* ✅ Submit: Show during manager period OR when responding to clarification */}
             {canSubmitGoals && (
               <button
                 onClick={() => onSubmit(objectives)}
@@ -244,7 +367,7 @@ export default function ObjectivesSection({
                 className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-40 transition-all shadow-sm"
               >
                 <Send className="w-4 h-4" />
-                Submit for Approval
+                {isNeedClarification ? 'Resubmit for Review' : 'Submit for Employee Review'}
               </button>
             )}
             
@@ -255,17 +378,50 @@ export default function ObjectivesSection({
               </div>
             )}
             
-            {isGoalsSubmitted && !isGoalsApproved && (
+            {/* ✅ Status Messages */}
+            {isGoalsSubmitted && !isGoalsApproved && !isNeedClarification && isEmployeePeriod && (
               <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-xl text-xs">
                 <AlertCircle className="w-4 h-4" />
-                Waiting for manager approval
+                Waiting for employee approval (Employee period active)
               </div>
             )}
             
             {isGoalsApproved && (
               <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 rounded-xl text-xs">
                 <CheckCircle className="w-4 h-4" />
-                Goals approved - locked for editing
+                Goals approved - Goal setting complete!
+              </div>
+            )}
+            
+            {/* ✅ Clarification Info Box */}
+            {isNeedClarification && (
+              <div className={`flex-1 min-w-full p-4 rounded-xl border ${
+                darkMode 
+                  ? 'bg-amber-900/20 border-amber-800/30 text-amber-400' 
+                  : 'bg-amber-50 border-amber-200 text-amber-700'
+              }`}>
+                <div className="flex items-start gap-3">
+                  <MessageSquare className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <h4 className="text-sm font-bold mb-1">Clarification Requested</h4>
+                    <p className="text-xs opacity-90 mb-2">
+                      Employee has requested clarification. You can:
+                    </p>
+                    <ul className="text-xs space-y-1 ml-4">
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                        Edit objectives and save draft
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
+                        Make no changes and resubmit directly
+                      </li>
+                    </ul>
+                    <p className="text-xs mt-2 opacity-75 italic">
+                      Note: You can edit even if manager period has ended
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
