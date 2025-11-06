@@ -226,7 +226,7 @@ export const apiService = {
   refreshToken: (refreshToken) => api.post("/auth/refresh/", { refresh: refreshToken }),
 
   // ========================================
-  // BUSINESS FUNCTIONS
+  // Companys
   // ========================================
   getBusinessFunctions: (params = {}) => {
     const queryString = buildQueryParams(params);

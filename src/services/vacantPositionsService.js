@@ -69,7 +69,7 @@ vacantApi.interceptors.response.use(
 class ReferenceDataService {
   
   /**
-   * Get all business functions
+   * Get all Companys
    */
   async getBusinessFunctions(params = {}) {
     try {
@@ -79,8 +79,8 @@ class ReferenceDataService {
         data: response.data.results || response.data
       };
     } catch (error) {
-      console.error('Failed to fetch business functions:', error);
-      throw this.handleError(error, 'Failed to fetch business functions');
+      console.error('Failed to fetch Companys:', error);
+      throw this.handleError(error, 'Failed to fetch Companys');
     }
   }
 
@@ -101,7 +101,7 @@ class ReferenceDataService {
   }
 
   /**
-   * Get departments by business function
+   * Get departments by Company
    */
   async getDepartmentsByBusinessFunction(businessFunctionId) {
     try {
@@ -113,7 +113,7 @@ class ReferenceDataService {
         data: response.data.results || response.data
       };
     } catch (error) {
-      console.error('Failed to fetch departments by business function:', error);
+      console.error('Failed to fetch departments by Company:', error);
       throw this.handleError(error, 'Failed to fetch departments');
     }
   }

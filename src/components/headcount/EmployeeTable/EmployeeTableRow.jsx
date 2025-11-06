@@ -120,7 +120,7 @@ const EmployeeTableRow = ({
                       employee.department_detail?.name ||
                       'Unknown Department',
                       
-      // Business function mapping
+      // Company mapping
       business_function_name: employee.business_function_name ||
                              employee.businessFunction ||
                              employee.business_function ||
@@ -394,7 +394,7 @@ const EmployeeTableRow = ({
         </div>
       </td>
 
-      {/* Business Function & Department - Highlighted when active */}
+      {/* Company & Department - Highlighted when active */}
       <td className="px-2 py-2 whitespace-nowrap">
         <div className="flex flex-col space-y-0.5">
           <div 

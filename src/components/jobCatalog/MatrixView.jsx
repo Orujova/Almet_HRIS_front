@@ -63,7 +63,7 @@ export default function MatrixView({ context }) {
               >
                 <option value="department">Department</option>
                 <option value="function">Job Function</option>
-                <option value="unit">Business Function</option>
+                <option value="unit">Company</option>
               </select>
             </div>
           </div>
@@ -201,7 +201,7 @@ export default function MatrixView({ context }) {
                 </div>
                 <div className="text-xs text-gray-600 dark:text-almet-bali-hai">
                   {matrixView === 'department' ? 'Departments' : 
-                   matrixView === 'function' ? 'Job Functions' : 'Business Functions'}
+                   matrixView === 'function' ? 'Job Functions' : 'Companys'}
                 </div>
               </div>
             </div>

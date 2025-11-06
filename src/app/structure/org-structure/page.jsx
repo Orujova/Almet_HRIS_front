@@ -1243,7 +1243,7 @@ const OrgChart = () => {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div>
-                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Business Functions</label>
+                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Companys</label>
                                     <Select
                                         isMulti
                                         placeholder="Select functions..."

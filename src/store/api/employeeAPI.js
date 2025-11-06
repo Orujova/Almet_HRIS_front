@@ -77,7 +77,7 @@ export const employeeAPI = {
       return null;
     };
 
-    // Business Function Filter
+    // Company Filter
     if (params.business_function) {
       const processedValues = processFilterValue(params.business_function, 'business_function');
       if (processedValues) {
@@ -760,7 +760,7 @@ export const employeeAPI = {
       errors.job_title = 'Job title is required';
     }
     if (!data.business_function) {
-      errors.business_function = 'Business function is required';
+      errors.business_function = 'Company is required';
     }
     if (!data.department) {
       errors.department = 'Department is required';

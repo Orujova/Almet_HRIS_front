@@ -216,7 +216,7 @@ const AdvancedFilterPanel = ({
       .sort((a, b) => safeLocaleCompare(a, b, 'name'));
   }, [formattedEmployees]);
 
-  // Business Function options
+  // Company options
   const businessFunctionOptionsForMultiSelect = useMemo(() => {
     if (!Array.isArray(businessFunctionsDropdown)) return [];
 
@@ -600,16 +600,16 @@ const AdvancedFilterPanel = ({
                 )}
               </div>
 
-              {/* Business Function using MultiSelect */}
+              {/* Company using MultiSelect */}
               <div>
                 <label className={`block ${textSecondary} text-sm font-medium mb-2`}>
-                  Business Function
+                  Company
                 </label>
                 <MultiSelect
                   options={businessFunctionOptionsForMultiSelect}
                   selected={filters.business_function}
                   onChange={handleMultiSelectChangeAdapter}
-                  placeholder="Select business functions..."
+                  placeholder="Select Companys..."
                   fieldName="business_function"
                   darkMode={darkMode}
                 />

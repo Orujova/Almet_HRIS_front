@@ -254,7 +254,7 @@ export const useVacantPositions = () => {
   }, [positionGroups]);
 
   /**
-   * Fetch departments by business function
+   * Fetch departments by Company
    */
   const fetchDepartmentsByBusinessFunction = useCallback(async (businessFunctionId) => {
     if (!businessFunctionId) {
@@ -265,7 +265,7 @@ export const useVacantPositions = () => {
       const result = await referenceDataService.getDepartmentsByBusinessFunction(businessFunctionId);
       return result.success ? result.data : [];
     } catch (error) {
-      console.error('Failed to fetch departments by business function:', error);
+      console.error('Failed to fetch departments by Company:', error);
       return [];
     }
   }, []);
@@ -463,7 +463,7 @@ export const useVacantPositions = () => {
           const dept = vp.department_name || 'Unknown';
           stats.by_department[dept] = (stats.by_department[dept] || 0) + 1;
 
-          // By business function
+          // By Company
           const bf = vp.business_function_name || 'Unknown';
           stats.by_business_function[bf] = (stats.by_business_function[bf] || 0) + 1;
 

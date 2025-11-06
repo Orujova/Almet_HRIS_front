@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountTable.jsx - FINAL FIX: Business Function Filter
+// src/components/headcount/HeadcountTable.jsx - FINAL FIX: Company Filter
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
@@ -112,7 +112,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [loading.exporting]);
 
-  // 🎯 CRITICAL FIX: Local filters now store business function ID (not label)
+  // 🎯 CRITICAL FIX: Local filters now store Company ID (not label)
   const [localFilters, setLocalFilters] = useState({
     search: "",
     employee_search: [],
@@ -213,7 +213,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
 
     if (businessFunctionFilter) {
-      // Find business function by code
+      // Find Company by code
       const bf = businessFunctions?.find(b => b.code === businessFunctionFilter);
       
      
@@ -239,7 +239,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           console.log('✅ Filter already applied, skipping');
         }
       } else {
-        console.warn('⚠️ Business function not found for code:', businessFunctionFilter);
+        console.warn('⚠️ Company not found for code:', businessFunctionFilter);
       }
     } else {
   
@@ -576,7 +576,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   // ✅ CRITICAL: This receives IDs from QuickFilterBar
   const handleBusinessFunctionChange = useCallback((selectedBFs) => {
     if (isWrapperFilterApplied) {
-      showWarning('Business function is filtered by company selection');
+      showWarning('Company is filtered by company selection');
       return;
     }
     
@@ -609,7 +609,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
   const handleClearFilter = useCallback((key) => {
     if (key === 'business_function' && isWrapperFilterApplied) {
-      showWarning('Business function is filtered by company selection');
+      showWarning('Company is filtered by company selection');
       return;
     }
     
@@ -1384,7 +1384,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     if (localFilters.business_function?.length > 0) {
       filters.push({ 
         key: "business_function", 
-        label: `Business Function: ${localFilters.business_function.length} selected`,
+        label: `Company: ${localFilters.business_function.length} selected`,
         isWrapperFilter: isWrapperFilterApplied
       });
     }
@@ -1498,8 +1498,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     { value: 'phone', label: 'Phone Number', description: 'Contact phone number' },
     { value: 'father_name', label: 'Father Name', description: 'Father\'s name' },
     { value: 'job_title', label: 'Job Title', description: 'Current position title' },
-    { value: 'business_function_name', label: 'Business Function', description: 'Main business area' },
-    { value: 'business_function_code', label: 'Function Code', description: 'Business function code' },
+    { value: 'business_function_name', label: 'Company', description: 'Main business area' },
+    { value: 'business_function_code', label: 'Function Code', description: 'Company code' },
     { value: 'department_name', label: 'Department', description: 'Department name' },
     { value: 'unit_name', label: 'Unit', description: 'Organizational unit' },
     { value: 'job_function_name', label: 'Job Function', description: 'Specific job function' },

@@ -121,7 +121,7 @@ const QuickFilterBar = ({
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [departments]);
 
-  // ✅ Business Function options - USE ID AS VALUE
+  // ✅ Company options - USE ID AS VALUE
   const businessFunctionOptions = useMemo(() => {
     if (!Array.isArray(businessFunctions)) return [];
     
@@ -219,7 +219,7 @@ const QuickFilterBar = ({
       await fetchBusinessFunctions?.();
       setRetryAttempts(prev => ({ ...prev, businessFunctions: 0 }));
     } catch (error) {
-      console.error('Business functions retry failed:', error);
+      console.error('Companys retry failed:', error);
     }
   }, [fetchBusinessFunctions, retryAttempts.businessFunctions]);
 
@@ -284,12 +284,12 @@ const QuickFilterBar = ({
 
       {!compactMode && (
         <MultiSelectDropdown
-          label="Business Function"
+          label="Company"
           options={businessFunctionOptions}
           selectedValues={businessFunctionFilter}
           onChange={onBusinessFunctionChange}
           dropdownKey="businessFunction"
-          placeholder="All Functions"
+          placeholder="All Companys"
           isLoading={loading.businessFunctions}
           hasError={!!error.businessFunctions}
           showCodes={true}

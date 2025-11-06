@@ -1010,7 +1010,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       
       // Business logic validation
       if (!employeeData.business_function) {
-        errors.business_function = 'Business function is required';
+        errors.business_function = 'Company is required';
       }
       if (!employeeData.job_title?.trim()) {
         errors.job_title = 'Job title is required';

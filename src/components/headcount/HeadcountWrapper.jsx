@@ -66,7 +66,7 @@ const HeadcountWrapper = () => {
     return colors[index % colors.length];
   }, []);
 
-  // Transform business functions into company cards with statistics
+  // Transform Companys into company cards with statistics
   const companyCards = useMemo(() => {
     if (!businessFunctions || businessFunctions.length === 0) return [];
     
@@ -300,7 +300,7 @@ const HeadcountWrapper = () => {
           <AlertCircle className={`w-12 h-12 ${textMuted} mx-auto mb-4`} />
           <h2 className={`text-lg font-semibold ${textPrimary} mb-2`}>No Companies Found</h2>
           <p className={`text-sm ${textSecondary} mb-4`}>
-            No business functions are configured yet.
+            No Companys are configured yet.
           </p>
           <button
             onClick={() => window.location.href = '/structure/settings'}
@@ -444,7 +444,7 @@ const HeadcountWrapper = () => {
               <AlertCircle className={`w-10 h-10 ${textMuted} mx-auto mb-3`} />
               <p className={`text-sm ${textSecondary} mb-2`}>No companies found</p>
               <p className={`text-xs ${textMuted}`}>
-                Add business functions in settings to get started
+                Add Companys in settings to get started
               </p>
             </div>
           )}

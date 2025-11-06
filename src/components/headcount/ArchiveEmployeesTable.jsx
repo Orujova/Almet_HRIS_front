@@ -826,17 +826,17 @@ const ArchiveEmployeesTable = () => {
               />
             </div>
 
-            {/* Business Function Filter */}
+            {/* Company Filter */}
             <div>
               <label className={`block text-xs font-medium ${textPrimary} mb-2`}>
-                Business Function
+                Company
               </label>
               <SearchableDropdown
                 options={businessFunctionOptions}
                 value={filters.business_function}
                 onChange={(values) => handleFilterChange('business_function', values)}
-                placeholder="Select business functions..."
-                searchPlaceholder="Search business functions..."
+                placeholder="Select Companys..."
+                searchPlaceholder="Search Companys..."
                 darkMode={darkMode}
            
                      allowUncheck={true}

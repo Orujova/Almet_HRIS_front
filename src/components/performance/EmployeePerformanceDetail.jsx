@@ -205,6 +205,7 @@ export default function EmployeePerformanceDetail({
         currentPeriod={currentPeriod}
         canEdit={canEdit}
         loading={loading}
+        performanceData={performanceData}
         darkMode={darkMode}
         totalRequired={performanceData.total_competencies_required_score}
         totalActual={performanceData.total_competencies_actual_score}
@@ -213,6 +214,7 @@ export default function EmployeePerformanceDetail({
         onUpdate={onUpdateCompetency}
         onSaveDraft={onSaveCompetenciesDraft}
         onSubmit={onSubmitCompetencies}
+         isLeadershipAssessment={performanceData.is_leadership_assessment || false}
       />
 
       <PerformanceReviews

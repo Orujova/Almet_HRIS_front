@@ -215,7 +215,7 @@ const JobDescriptionForm = ({
       errors.job_purpose = 'Job Purpose is required';
     }
     if (!formData.business_function) {
-      errors.business_function = 'Business Function is required';
+      errors.business_function = 'Company is required';
     }
     if (!formData.department) {
       errors.department = 'Department is required';
@@ -252,7 +252,7 @@ const JobDescriptionForm = ({
           errors.job_purpose = 'Job Purpose is required';
         }
         if (!formData.business_function) {
-          errors.business_function = 'Business Function is required';
+          errors.business_function = 'Company is required';
         }
         if (!formData.department) {
           errors.department = 'Department is required';
@@ -537,7 +537,7 @@ const JobDescriptionForm = ({
 
       const missingIds = [];
       if (!businessFunctionId || isNaN(businessFunctionId)) {
-        missingIds.push(`Business Function "${formData.business_function}"`);
+        missingIds.push(`Company "${formData.business_function}"`);
       }
       if (!departmentId || isNaN(departmentId)) {
         missingIds.push(`Department "${formData.department}"`);

@@ -59,7 +59,8 @@ export default function PerformanceManagementPage() {
 
   // Competencies
   const [behavioralCompetencies, setBehavioralCompetencies] = useState([]);
-
+  const [leadershipCompetencies, setLeadershipCompetencies] = useState([]);
+const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
   // ==================== INITIALIZATION ====================
   useEffect(() => {
     initializeApp();
@@ -78,7 +79,8 @@ export default function PerformanceManagementPage() {
         loadPermissions(),
         loadActiveYear(),
         loadSettings(),
-        loadBehavioralCompetencies()
+        loadBehavioralCompetencies(),
+        loadLeadershipCompetencies() 
       ]);
     } catch (error) {
       console.error('❌ Initialization error:', error);
@@ -179,7 +181,52 @@ export default function PerformanceManagementPage() {
       return [];
     }
   };
-
+const loadLeadershipCompetencies = async () => {
+  try {
+    const mainGroupsResponse = await competencyApi.leadershipMainGroups.getAll();
+    const mainGroups = mainGroupsResponse.results || mainGroupsResponse;
+    
+    const allLeadershipItems = [];
+    
+    for (const mainGroup of mainGroups) {
+      try {
+        const mainGroupDetail = await competencyApi.leadershipMainGroups.getById(mainGroup.id);
+        const childGroups = mainGroupDetail.child_groups || [];
+        
+        for (const childGroup of childGroups) {
+          try {
+            const childGroupDetail = await competencyApi.leadershipChildGroups.getById(childGroup.id);
+            const items = childGroupDetail.items || [];
+            
+            items.forEach(item => {
+              allLeadershipItems.push({
+                id: item.id,
+                name: item.name,
+                description: item.description || '',
+                child_group_id: childGroup.id,
+                child_group_name: childGroup.name,
+                main_group_id: mainGroup.id,
+                main_group_name: mainGroup.name
+              });
+            });
+          } catch (error) {
+            console.error(`❌ Error loading items for child group ${childGroup.name}:`, error);
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Error loading child groups for main group ${mainGroup.name}:`, error);
+      }
+    }
+    
+    setLeadershipCompetencies(allLeadershipItems);
+    setLeadershipMainGroups(mainGroups);
+    console.log('✅ Loaded leadership competencies:', allLeadershipItems.length);
+    return allLeadershipItems;
+  } catch (error) {
+    console.error('❌ Error loading leadership competencies:', error);
+    return [];
+  }
+};
   const loadDashboardData = async () => {
     setLoading(true);
     try {
@@ -241,45 +288,73 @@ export default function PerformanceManagementPage() {
       console.error('❌ Error loading employees:', error);
     }
   };
-
-  const loadPerformanceData = async (employeeId, year) => {
-    const key = `${employeeId}_${year}`;
+const checkIfLeadershipPosition = (positionName) => {
+  if (!positionName) return false;
+  
+  // Normalize position name
+  const normalized = positionName.toUpperCase().replace('_', ' ').trim();
+  
+  const leadershipKeywords = [
+    'MANAGER',
+    'VICE CHAIRMAN',
+    'VICE_CHAIRMAN',
+    'DIRECTOR',
+    'VICE',
+    'HOD'
+  ];
+  
+  return leadershipKeywords.some(keyword => 
+    keyword === normalized || 
+    normalized.includes(keyword)
+  );
+};
+ const loadPerformanceData = async (employeeId, year) => {
+  const key = `${employeeId}_${year}`;
+  
+  setLoading(true);
+  try {
+    const response = await performanceApi.performances.list({
+      employee_id: employeeId,
+      year: year
+    });
     
-    setLoading(true);
-    try {
-      const response = await performanceApi.performances.list({
-        employee_id: employeeId,
-        year: year
+    const perfs = response.results || response;
+    let detailData;
+    
+    if (perfs.length > 0) {
+      const performance = perfs[0];
+      detailData = await performanceApi.performances.get(performance.id);
+    } else {
+      detailData = await performanceApi.performances.initialize({
+        employee: employeeId,
+        performance_year: activeYear.id
       });
-      
-      const perfs = response.results || response;
-      let detailData;
-      
-      if (perfs.length > 0) {
-        const performance = perfs[0];
-        detailData = await performanceApi.performances.get(performance.id);
-      } else {
-        detailData = await performanceApi.performances.initialize({
-          employee: employeeId,
-          performance_year: activeYear.id
-        });
+    }
+    
+    // ✅ CHECK POSITION TYPE
+    const employee = employees.find(e => e.id === employeeId);
+    const isLeadershipPosition = checkIfLeadershipPosition(employee?.position_group_name);
+    
+    console.log('🔍 Employee Position Check:', {
+      position: employee?.position_group_name,
+      isLeadership: isLeadershipPosition
+    });
+    
+    // ✅ Load appropriate competencies based on position
+    if (isLeadershipPosition) {
+      // LEADERSHIP COMPETENCIES
+      if (!leadershipCompetencies || leadershipCompetencies.length === 0) {
+        await loadLeadershipCompetencies();
       }
       
-      if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
-        await loadBehavioralCompetencies();
-      }
-      
-      // ✅ FIX: Enrich competencies with proper end_year_rating_value
+      // Enrich leadership competency ratings
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
-        console.log('🔍 RAW competencies from backend:', detailData.competency_ratings);
-        
         const enrichedRatings = detailData.competency_ratings.map((rating) => {
-          const competencyInfo = behavioralCompetencies.find(
-            comp => comp.id === rating.behavioral_competency
+          const competencyInfo = leadershipCompetencies.find(
+            comp => comp.id === rating.leadership_item
           );
           
           let ratingValue = 0;
-          
           if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
             ratingValue = parseFloat(rating.end_year_rating_value);
           } else if (rating.end_year_rating) {
@@ -291,52 +366,81 @@ export default function PerformanceManagementPage() {
             }
           }
           
-          const enriched = {
+          return {
+            ...rating,
+            competency_name: competencyInfo?.name || `Unknown Leadership Item (ID: ${rating.leadership_item})`,
+            competency_group_name: competencyInfo?.child_group_name || 'Ungrouped',
+            main_group_name: competencyInfo?.main_group_name || 'Ungrouped',
+            description: competencyInfo?.description || '',
+            end_year_rating_value: ratingValue
+          };
+        });
+        
+        detailData.competency_ratings = enrichedRatings;
+        detailData.is_leadership_assessment = true;
+        
+        console.log('✅ Loaded LEADERSHIP competencies:', enrichedRatings.length);
+      }
+    } else {
+      // BEHAVIORAL COMPETENCIES (existing code)
+      if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
+        await loadBehavioralCompetencies();
+      }
+      
+      // Enrich behavioral competency ratings
+      if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
+        const enrichedRatings = detailData.competency_ratings.map((rating) => {
+          const competencyInfo = behavioralCompetencies.find(
+            comp => comp.id === rating.behavioral_competency
+          );
+          
+          let ratingValue = 0;
+          if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
+            ratingValue = parseFloat(rating.end_year_rating_value);
+          } else if (rating.end_year_rating) {
+            const selectedScale = settings.evaluationScale?.find(
+              s => s.id === rating.end_year_rating
+            );
+            if (selectedScale) {
+              ratingValue = selectedScale.value;
+            }
+          }
+          
+          return {
             ...rating,
             competency_name: competencyInfo?.name || `Unknown Competency (ID: ${rating.behavioral_competency})`,
-            competency_group_id: competencyInfo?.group_id || null,
             competency_group_name: competencyInfo?.group_name || 'Ungrouped',
             description: competencyInfo?.description || '',
             end_year_rating_value: ratingValue
           };
-          
-          return enriched;
         });
         
         detailData.competency_ratings = enrichedRatings;
+        detailData.is_leadership_assessment = false;
+        
+        console.log('✅ Loaded BEHAVIORAL competencies:', enrichedRatings.length);
       }
-      
-      // ✅ FIX: Ensure clarification_comments is properly set
-      if (!detailData.clarification_comments) {
-        detailData.clarification_comments = [];
-      }
-      
-      console.log('✅ Performance data loaded:', {
-        performanceId: detailData.id,
-        objectives: detailData.objectives?.length || 0,
-        competencies: detailData.competency_ratings?.length || 0,
-        clarification_comments: detailData.clarification_comments?.length || 0
-      });
-      
-      const recalculatedData = recalculateScores(detailData);
-      
-      setPerformanceData(prev => ({
-        ...prev,
-        [key]: recalculatedData
-      }));
-      
-      setSelectedPerformanceId(recalculatedData.id);
-      
-      return recalculatedData;
-      
-    } catch (error) {
-      console.error('❌ Error loading performance data:', error);
-      showNotification('Error loading performance data', 'error');
-      return null;
-    } finally {
-      setLoading(false);
     }
-  };
+    
+    const recalculatedData = recalculateScores(detailData);
+    
+    setPerformanceData(prev => ({
+      ...prev,
+      [key]: recalculatedData
+    }));
+    
+    setSelectedPerformanceId(recalculatedData.id);
+    
+    return recalculatedData;
+    
+  } catch (error) {
+    console.error('❌ Error loading performance data:', error);
+    showNotification('Error loading performance data', 'error');
+    return null;
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ==================== HELPER FUNCTIONS ====================
   const showNotification = (message, type = 'success') => {
@@ -625,59 +729,131 @@ export default function PerformanceManagementPage() {
     }));
   };
 
-  const handleSaveCompetenciesDraft = async (competencies) => {
-    if (!selectedPerformanceId) {
-      showNotification('No performance record selected', 'error');
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      const preparedCompetencies = competencies.map(comp => ({
-        id: comp.id,
-        behavioral_competency: comp.behavioral_competency,
-        required_level: comp.required_level,
-        end_year_rating: comp.end_year_rating,
-        notes: comp.notes || ''
-      }));
-      
-      await performanceApi.performances.saveCompetenciesDraft(
-        selectedPerformanceId, 
-        preparedCompetencies
-      );
-      
-      showNotification('Competencies draft saved successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-      
-    } catch (error) {
-      console.error('❌ Error saving competencies:', error);
-      showNotification(
-        error.response?.data?.error || 'Error saving competencies', 
-        'error'
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // src/app/performance-management/page.jsx
 
-  const handleSubmitCompetencies = async () => {
-    if (!selectedPerformanceId) {
-      showNotification('No performance record selected', 'error');
-      return;
+const handleSaveCompetenciesDraft = async (competencies) => {
+  if (!selectedPerformanceId) {
+    showNotification('No performance record selected', 'error');
+    return;
+  }
+  
+  setLoading(true);
+  try {
+    const preparedCompetencies = competencies.map(comp => ({
+      id: comp.id,
+      behavioral_competency: comp.behavioral_competency,
+      required_level: comp.required_level,
+      end_year_rating: comp.end_year_rating,
+      notes: comp.notes || ''
+    }));
+    
+    const response = await performanceApi.performances.saveCompetenciesDraft(
+      selectedPerformanceId, 
+      preparedCompetencies
+    );
+    
+    console.log('💾 Save response:', response);
+    
+    // ✅ Show detailed sync status
+    if (response.synced_to_behavioral_assessment) {
+      showNotification(
+        `✓ Competencies saved and synced to behavioral assessment (${response.sync_message})`,
+        'success'
+      );
+    } else {
+      if (response.sync_message) {
+        showNotification(
+          `Competencies saved • ${response.sync_message}`,
+          'info'
+        );
+      } else {
+        showNotification('Competencies draft saved successfully', 'success');
+      }
     }
     
-    setLoading(true);
-    try {
-      await performanceApi.performances.submitCompetencies(selectedPerformanceId);
-      showNotification('Competencies submitted successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error submitting competencies:', error);
-      showNotification(error.response?.data?.error || 'Error submitting competencies', 'error');
-    } finally {
-      setLoading(false);
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+    
+  } catch (error) {
+    console.error('❌ Error saving competencies:', error);
+    showNotification(
+      error.response?.data?.error || 'Error saving competencies', 
+      'error'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // src/app/performance-management/page.jsx
+
+const handleSubmitCompetencies = async (competencies) => {
+  if (!selectedPerformanceId) {
+    showNotification('No performance record selected', 'error');
+    return;
+  }
+  
+  setLoading(true);
+  try {
+    // ✅ Prepare competencies data to send
+    const preparedCompetencies = competencies.map(comp => ({
+      id: comp.id,
+      behavioral_competency: comp.behavioral_competency,
+      required_level: comp.required_level,
+      end_year_rating: comp.end_year_rating,
+      notes: comp.notes || ''
+    }));
+    
+    // ✅ Submit with competencies data
+    const response = await performanceApi.performances.submitCompetencies(
+      selectedPerformanceId,
+      preparedCompetencies
+    );
+    
+    console.log('✅ Submit response:', response);
+    
+    // ✅ Show sync status notification
+    if (response.synced_to_behavioral_assessment) {
+      const syncResult = response.sync_result;
+      const wasCompleted = syncResult?.was_completed;
+      
+      let message = 'Competencies submitted successfully';
+      
+      if (wasCompleted) {
+        message += ` and synced to COMPLETED behavioral assessment`;
+      } else {
+        message += ` and synced to behavioral assessment`;
+      }
+      
+      showNotification(message, 'success');
+      
+      // Show sync details
+      if (syncResult?.synced_count > 0 || syncResult?.updated_count > 0) {
+        setTimeout(() => {
+          showNotification(
+            `${syncResult.synced_count} created, ${syncResult.updated_count} updated in assessment`,
+            'info'
+          );
+        }, 1500);
+      }
+    } else {
+      const reason = response.sync_result?.message || 'No behavioral assessment found';
+      showNotification(
+        `Competencies submitted • ${reason}`,
+        'warning'
+      );
     }
-  };
+    
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error submitting competencies:', error);
+    showNotification(
+      error.response?.data?.error || 'Error submitting competencies', 
+      'error'
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ==================== MID-YEAR HANDLERS ====================
   const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {

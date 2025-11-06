@@ -97,7 +97,7 @@ export const EmployeeSection = ({
 
           <div className="grid md:grid-cols-2 gap-4">
             {[
-              { field: 'businessFunction', label: 'Business Function' },
+              { field: 'businessFunction', label: 'Company' },
               { field: 'department', label: 'Department' },
               { field: 'unit', label: 'Unit' },
               { field: 'jobFunction', label: 'Job Function' }

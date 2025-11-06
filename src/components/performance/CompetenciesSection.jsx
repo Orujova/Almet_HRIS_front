@@ -9,8 +9,10 @@ export default function CompetenciesSection({
   loading,
   darkMode,
   onUpdate,
+  performanceData,
   onSaveDraft,
   onSubmit,
+  isLeadershipAssessment = false,
 }) {
   const [expandedGroups, setExpandedGroups] = useState({});
   const [groupScores, setGroupScores] = useState({});
@@ -162,7 +164,16 @@ export default function CompetenciesSection({
   };
 
   const groupedCompetencies = (competencies || []).reduce((acc, comp) => {
-    const groupName = comp.competency_group_name || "Ungrouped";
+    let groupName;
+    
+    if (isLeadershipAssessment) {
+      // For leadership: Use main_group_name
+      groupName = comp.main_group_name || comp.competency_group_name || "Ungrouped";
+    } else {
+      // For behavioral: Use competency_group_name
+      groupName = comp.competency_group_name || "Ungrouped";
+    }
+    
     if (!acc[groupName]) acc[groupName] = [];
     acc[groupName].push(comp);
     return acc;
@@ -190,46 +201,59 @@ export default function CompetenciesSection({
 
   return (
     <div className={`rounded-xl border shadow-sm overflow-hidden ${darkMode ? 'bg-almet-cloud-burst/60 border-almet-comet/30' : 'bg-white border-almet-mystic'}`}>
-      <div className={`p-5 border-b ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-purple-500/10 dark:bg-purple-500/20">
-              <Award className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                Behavioral Competencies Assessment
-              </h3>
-              <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
-                {isEndYearPeriod ? (
-                  <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                    ⚠️ End Year Period - Ratings can be added
-                  </span>
-                ) : (
-                  <span>
-                    Evaluate competencies based on required levels • {competencies.length} total
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className={`px-4 py-3 rounded-xl ${darkMode ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-200'}`}>
-            <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
-              Overall Score
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xl font-bold text-purple-600 dark:text-purple-400">
-                {overallScore.totalActual}/{overallScore.totalRequired}
-              </span>
-              <span className={`text-sm font-semibold ${getGradeColor(overallScore.grade)}`}>
-                {overallScore.percentage}% • {overallScore.grade}
-              </span>
-            </div>
-          </div>
-        </div>
+     <div className={`p-5 border-b ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'}`}>
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="p-3 rounded-xl bg-purple-500/10 dark:bg-purple-500/20">
+        <Award className="w-5 h-5 text-purple-600 dark:text-purple-400" />
       </div>
+      <div>
+        <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                {/* ✅ Dynamic title */}
+                {isLeadershipAssessment 
+                  ? "Leadership Competencies Assessment"
+                  : "Behavioral Competencies Assessment"
+                }
+              </h3>
+        <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5 flex items-center gap-2`}>
+          {isEndYearPeriod ? (
+            <span className="text-amber-600 dark:text-amber-400 font-semibold">
+              ⚠️ End Year Period - Ratings can be added
+            </span>
+          ) : (
+            <span>
+              Evaluate competencies based on required levels • {competencies.length} total
+            </span>
+          )}
+          
+          {/* ✅ Show sync indicator */}
+          {performanceData?.metadata?.had_existing_ratings && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-medium">
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
+              </svg>
+              Synced with Assessment
+            </span>
+          )}
+        </p>
+      </div>
+    </div>
 
+    <div className={`px-4 py-3 rounded-xl ${darkMode ? 'bg-purple-500/10 border border-purple-500/20' : 'bg-purple-50 border border-purple-200'}`}>
+      <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+        Overall Score
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xl font-bold text-purple-600 dark:text-purple-400">
+          {overallScore.totalActual}/{overallScore.totalRequired}
+        </span>
+        <span className={`text-sm font-semibold ${getGradeColor(overallScore.grade)}`}>
+          {overallScore.percentage}% • {overallScore.grade}
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
       {Object.keys(groupedCompetencies).length === 0 ? (
         <div className="text-center py-16">
           <Award className="w-16 h-16 mx-auto mb-4 text-almet-waterloo/30" />
@@ -391,7 +415,7 @@ export default function CompetenciesSection({
         </div>
       )}
 
-      {competencies.length > 0 && canEdit && (
+       {competencies.length > 0 && canEdit && (
         <div className={`p-5 border-t flex gap-3 ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'}`}>
           <button
             type="button"
@@ -410,6 +434,7 @@ export default function CompetenciesSection({
             )}
             Save Draft
           </button>
+          
           <button
             type="button"
             onClick={() => onSubmit(competencies)}
@@ -419,6 +444,7 @@ export default function CompetenciesSection({
             <Send className="w-4 h-4" />
             Submit
           </button>
+          
           {!canRateEndYear && (
             <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs ${
               darkMode 

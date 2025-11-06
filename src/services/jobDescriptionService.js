@@ -1462,7 +1462,7 @@ cleanJobDescriptionData(data) {
       );
     }
 
-    // Business function filter
+    // Company filter
     if (filters.businessFunction) {
       filtered = filtered.filter(job => 
         job.business_function === filters.businessFunction || 

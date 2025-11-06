@@ -171,7 +171,7 @@ export const deleteJobTitle = createAsyncThunk(
 );
 
 // ========================================
-// ASYNC THUNKS - BUSINESS FUNCTIONS CRUD
+// ASYNC THUNKS - Companys CRUD
 // ========================================
 
 export const createBusinessFunction = createAsyncThunk(
@@ -858,7 +858,7 @@ const referenceDataSlice = createSlice({
   },
   
   extraReducers: (builder) => {
-    // Business functions
+    // Companys
     builder
       .addCase(fetchBusinessFunctions.pending, (state) => {
         state.loading.businessFunctions = true;

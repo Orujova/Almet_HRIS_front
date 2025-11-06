@@ -1015,7 +1015,7 @@ const handleViewScheduleDetail = (scheduleId) => {
                     {['businessFunction', 'department', 'unit', 'jobFunction'].map(field => (
                       <div key={field}>
                         <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                          {field === 'businessFunction' ? 'Business Function' : 
+                          {field === 'businessFunction' ? 'Company' : 
                            field === 'department' ? 'Department' : 
                            field === 'unit' ? 'Unit' : 'Job Function'}
                         </label>

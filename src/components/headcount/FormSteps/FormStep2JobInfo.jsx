@@ -63,11 +63,11 @@ const FormStep2JobInfo = ({
       }));
   };
 
-  // FIXED: Enhanced business function options with current value preservation
+  // FIXED: Enhanced Company options with current value preservation
   const getBusinessFunctionOptions = () => {
     const baseOptions = Array.isArray(businessFunctions) ? [...businessFunctions] : [];
     
-    // In edit mode, ensure current business function is available
+    // In edit mode, ensure current Company is available
     if (isEditMode && formData.business_function && formData.business_function_name) {
       const existingOption = baseOptions.find(bf => bf.value === formData.business_function);
       if (!existingOption) {
@@ -454,9 +454,9 @@ const FormStep2JobInfo = ({
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* FIXED: Business Function Field */}
+          {/* FIXED: Company Field */}
           <FormField
-            label="Business Function"
+            label="Company"
             name="business_function"
             value={formData.business_function || ""}
             onChange={handleInputChange}
@@ -467,7 +467,7 @@ const FormStep2JobInfo = ({
             validationError={validationErrors.business_function}
             helpText="Top-level organizational unit"
             loading={loading.businessFunctions}
-            placeholder={loading.businessFunctions ? "Loading..." : "Select business function"}
+            placeholder={loading.businessFunctions ? "Loading..." : "Select Company"}
             searchable={true}
             showCodes={true}
             showColors={true}
@@ -484,10 +484,10 @@ const FormStep2JobInfo = ({
             icon={<Users size={14} className={textMuted} />}
             options={getDepartmentOptions()}
             validationError={validationErrors.department}
-            helpText="Department within business function"
+            helpText="Department within Company"
             disabled={!formData.business_function}
             loading={loading.departments}
-            placeholder={getPlaceholder('departments', 'Business Function', formData.business_function)}
+            placeholder={getPlaceholder('departments', 'Company', formData.business_function)}
             searchable={true}
             showColors={true}
           />
@@ -519,10 +519,10 @@ const FormStep2JobInfo = ({
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mr-2 flex-shrink-0" />
               <div>
                 <span className="text-sm text-amber-800 dark:text-amber-300 font-medium">
-                  No departments found for this business function
+                  No departments found for this Company
                 </span>
                 <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                  Please contact your system administrator to add departments for this business function.
+                  Please contact your system administrator to add departments for this Company.
                 </p>
               </div>
             </div>
@@ -689,7 +689,7 @@ const FormStep2JobInfo = ({
               Loading reference data...
             </span>
             <div className="text-xs text-gray-500 mt-1 flex flex-wrap gap-2 justify-center">
-              {loading.businessFunctions && <span>Business Functions</span>}
+              {loading.businessFunctions && <span>Companys</span>}
               {loading.departments && <span>Departments</span>}
               {loading.units && <span>Units</span>}
               {loading.jobFunctions && <span>Job Functions</span>}

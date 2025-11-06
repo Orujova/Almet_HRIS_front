@@ -159,7 +159,7 @@ const VacantPositionCard = ({
             <div>
               <div className="flex items-center text-xs font-medium text-almet-comet mb-1">
                 <Building size={10} className="mr-1" />
-                Business Function
+                Company
               </div>
               <p className={`text-sm ${textSecondary} font-medium truncate`}>
                 {position.business_function_name}

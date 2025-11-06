@@ -198,7 +198,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
         }))
       }));
     } catch (error) {
-      console.error('Failed to load business functions:', error);
+      console.error('Failed to load Companys:', error);
     } finally {
       setLoading(prev => ({ ...prev, businessFunctions: false }));
     }
@@ -526,7 +526,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
     };
   }, []);
 
-  // Handle business function change
+  // Handle Company change
   useEffect(() => {
     if (formData.business_function) {
       loadDepartments(formData.business_function);
@@ -607,7 +607,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
           errors.start_date = "Start date is required";
         }
         if (!formData.business_function) {
-          errors.business_function = "Business function is required";
+          errors.business_function = "Company is required";
         }
         if (!formData.department) {
           errors.department = "Department is required";

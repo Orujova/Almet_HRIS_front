@@ -3,7 +3,7 @@ import { apiService } from '../../services/api';
 
 export const referenceDataAPI = {
   // ========================================
-  // BUSINESS FUNCTIONS
+  // Companys
   // ========================================
   getBusinessFunctions: () => apiService.getBusinessFunctions(),
   getBusinessFunction: (id) => apiService.getBusinessFunction(id),

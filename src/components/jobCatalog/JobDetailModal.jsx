@@ -66,7 +66,7 @@ export default function JobDetailModal({ context }) {
               <div className="flex items-center p-2.5 bg-gray-50 dark:bg-almet-san-juan rounded-lg">
                 <Building2 size={16} className="mr-2 text-almet-sapphire flex-shrink-0" />
                 <div className="min-w-0 flex-1">
-                  <div className="text-[10px] text-gray-500 dark:text-almet-bali-hai uppercase">Business Function</div>
+                  <div className="text-[10px] text-gray-500 dark:text-almet-bali-hai uppercase">Company</div>
                   <div className="text-xs text-gray-900 dark:text-white font-medium truncate">{selectedJob.businessFunction}</div>
                 </div>
               </div>

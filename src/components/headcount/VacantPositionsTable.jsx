@@ -389,7 +389,7 @@ const VacantPositionsTable = () => {
               const bf = businessFunctions?.find(b => b.id === parseInt(id));
               return bf ? `${bf.name} (${bf.code})` : id;
             });
-            label = `Business Function: ${bfLabels.join(', ')}`;
+            label = `Company: ${bfLabels.join(', ')}`;
             break;
           case 'department':
             const deptLabels = filterValue.map(id => {
@@ -561,17 +561,17 @@ const VacantPositionsTable = () => {
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              {/* Business Function Filter */}
+              {/* Company Filter */}
               <div>
                 <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                  Business Function
+                  Company
                 </label>
                 <SearchableDropdown
                   options={businessFunctionFilterOptions}
                   value={filters.business_function}
                   onChange={(value) => handleFilterChange('business_function', Array.isArray(value) ? value : [value])}
-                  placeholder="All Business Functions"
-                  searchPlaceholder="Search business functions..."
+                  placeholder="All Companys"
+                  searchPlaceholder="Search Companys..."
                   darkMode={darkMode}
                    allowUncheck={true}
                   loading={loading.referenceData}

@@ -208,7 +208,7 @@ const EmployeeSelectionModal = ({
             )}
             {jobCriteria.business_function?.name && (
               <div>
-                <span className={`font-medium ${textMuted}`}>Business Function:</span>
+                <span className={`font-medium ${textMuted}`}>Company:</span>
                 <span className={`${textPrimary} ml-2`}>{jobCriteria.business_function.name}</span>
               </div>
             )}
@@ -447,7 +447,7 @@ const EmployeeSelectionModal = ({
                             <div className="space-y-2">
                               <div className="flex items-center gap-2">
                                 <Building size={10} className={textMuted} />
-                                <span className={`font-medium ${textMuted}`}>Business Function:</span> 
+                                <span className={`font-medium ${textMuted}`}>Company:</span> 
                                 <span className={textPrimary}>{employee.business_function_name}</span>
                               </div>
                               <div className="flex items-center gap-2">

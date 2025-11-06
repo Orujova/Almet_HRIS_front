@@ -358,7 +358,7 @@ const employeeOptions = employees?.filter(emp =>
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.business_function) newErrors.business_function = 'Business function is required';
+    if (!formData.business_function) newErrors.business_function = 'Company is required';
     if (!formData.department) newErrors.department = 'Department is required';
     if (!formData.job_function) newErrors.job_function = 'Job function is required';
     if (!formData.position_group) newErrors.position_group = 'Hierarchy is required';
@@ -595,17 +595,17 @@ const employeeOptions = employees?.filter(emp =>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Business Function */}
+                {/* Company */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-1.5`}>
-                    Business Function *
+                    Company *
                   </label>
                   <SearchableDropdown
                     options={businessFunctionOptions}
                     value={formData.business_function}
                     onChange={handleBusinessFunctionChange}
-                    placeholder="Select Business Function"
-                    searchPlaceholder="Search business functions..."
+                    placeholder="Select Company"
+                    searchPlaceholder="Search Companys..."
                     error={!!errors.business_function}
                     darkMode={darkMode}
                      allowUncheck={true}

@@ -198,8 +198,8 @@ export const orgChartAPI = {
   },
 
   /**
-   * Filter by business function
-   * @param {Array|string} businessFunctionIds - Business function IDs
+   * Filter by Company
+   * @param {Array|string} businessFunctionIds - Company IDs
    * @param {Object} params - Additional filter parameters
    * @returns {Promise} API response
    */

@@ -631,7 +631,7 @@ const EmployeeDetailPageContent = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <InfoItem 
                               icon={<Building size={12} className="text-almet-sapphire" />}
-                              label="Business Function"
+                              label="Company"
                               value={getFieldValue('business_function_name')}
                             />
                             <InfoItem 

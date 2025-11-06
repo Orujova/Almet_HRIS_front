@@ -130,7 +130,7 @@ export const useReferenceData = () => {
     fetchPositionGroupGradingLevels: useCallback((positionGroupId) => 
       dispatch(fetchPositionGroupGradingLevels(positionGroupId)), [dispatch]),
     
-    // Business functions CRUD
+    // Companys CRUD
     createBusinessFunction: useCallback((data) => dispatch(createBusinessFunction(data)), [dispatch]),
     updateBusinessFunction: useCallback((id, data) => dispatch(updateBusinessFunction({ id, data })), [dispatch]),
     deleteBusinessFunction: useCallback((id) => dispatch(deleteBusinessFunction(id)), [dispatch]),
@@ -541,16 +541,16 @@ export const useReferenceData = () => {
         errors: []
       };
 
-      // Validate business function
+      // Validate Company
       if (businessFunctionId && !helpers.isValidBusinessFunction(businessFunctionId)) {
         validation.isValid = false;
-        validation.errors.push('Invalid business function selected');
+        validation.errors.push('Invalid Company selected');
       }
 
-      // Validate department belongs to business function
+      // Validate department belongs to Company
       if (departmentId && !helpers.isValidDepartment(departmentId, businessFunctionId)) {
         validation.isValid = false;
-        validation.errors.push('Department does not belong to selected business function');
+        validation.errors.push('Department does not belong to selected Company');
       }
 
       // Validate unit belongs to department
@@ -692,7 +692,7 @@ export const useHierarchicalReferenceData = () => {
   const loading = useSelector(selectReferenceDataLoading) || {};
   const error = useSelector(selectReferenceDataError) || {};
 
-  // Auto-load departments when business function changes
+  // Auto-load departments when Company changes
   useEffect(() => {
     if (selectedBusinessFunction) {
       dispatch(fetchDepartments(selectedBusinessFunction));
@@ -712,7 +712,7 @@ export const useHierarchicalReferenceData = () => {
     }
   }, [selectedDepartment, dispatch]);
 
-  // Load business functions on mount
+  // Load Companys on mount
   useEffect(() => {
     if (businessFunctions.length === 0 && !loading.businessFunctions) {
       dispatch(fetchBusinessFunctions());
@@ -890,7 +890,7 @@ export const useReferenceDataForm = (entityType, initialData = null) => {
         break;
       case 'departments':
         if (!formData.business_function) {
-          newErrors.business_function = 'Business function is required';
+          newErrors.business_function = 'Company is required';
         }
         break;
       case 'units':

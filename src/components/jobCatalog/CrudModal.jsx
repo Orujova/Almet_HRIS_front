@@ -17,7 +17,7 @@ export default function CrudModal({ context, darkMode }) {
 
   const getModalTitle = () => {
     const typeNames = {
-      business_functions: 'Business Function',
+      business_functions: 'Company',
       departments: 'Department',
       units: 'Unit',
       job_functions: 'Job Function',
@@ -71,7 +71,7 @@ export default function CrudModal({ context, darkMode }) {
                 value={formData.name || ''}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 className={inputClass}
-                placeholder="Enter business function name"
+                placeholder="Enter Company name"
                 required
               />
             </div>
@@ -108,7 +108,7 @@ export default function CrudModal({ context, darkMode }) {
                 {/* Bulk Creation Mode */}
                 <div className="mb-3">
                   <label className={labelClass}>
-                    Business Functions * 
+                    Companys * 
                     <span className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-1">
                       (Select multiple for bulk creation)
                     </span>
@@ -121,7 +121,7 @@ export default function CrudModal({ context, darkMode }) {
                     }))}
                     selected={formData.business_function_ids || []}
                     onChange={handleMultiSelectChange}
-                    placeholder="Select business functions"
+                    placeholder="Select Companys"
                     fieldName="business_function_ids"
                     darkMode={darkMode}
                   />
@@ -133,7 +133,7 @@ export default function CrudModal({ context, darkMode }) {
                     <div className="flex items-start gap-2">
                       <Info size={14} className="text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                       <span className="text-[10px] text-blue-800 dark:text-blue-200">
-                        This department will be created for <strong>{formData.business_function_ids.length}</strong> business functions
+                        This department will be created for <strong>{formData.business_function_ids.length}</strong> Companys
                       </span>
                     </div>
                   </div>
@@ -143,13 +143,13 @@ export default function CrudModal({ context, darkMode }) {
               <>
                 {/* Single Selection Mode for Edit */}
                 <div className="mb-3">
-                  <label className={labelClass}>Business Function *</label>
+                  <label className={labelClass}>Company *</label>
                   <SearchableDropdown
                     options={businessFunctions}
                     value={formData.business_function || ''}
                     onChange={(value) => setFormData({...formData, business_function: value})}
-                    placeholder="Select Business Function"
-                    searchPlaceholder="Search business functions..."
+                    placeholder="Select Company"
+                    searchPlaceholder="Search Companys..."
                     allowUncheck={true}
                     darkMode={darkMode}
                     portal={true}

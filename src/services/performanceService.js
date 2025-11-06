@@ -362,10 +362,10 @@ cancelObjective: async (id, objectiveId, reason) => {
     return response.data;
   },
   
-  submitCompetencies: async (id) => {
+  submitCompetencies: async (id,competencies) => {
     const response = await api.post(
       `/performance/performance/performances/${id}/submit_competencies/`,
-      {}
+      { competencies }  
     );
     return response.data;
   },

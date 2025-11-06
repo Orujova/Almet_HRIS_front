@@ -135,7 +135,7 @@ export const RequestDetailModal = ({
                     </p>
                   </div>
                   <div>
-                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">Business Function</p>
+                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">Company</p>
                     <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">
                       {request.employee_info?.business_function}
                     </p>

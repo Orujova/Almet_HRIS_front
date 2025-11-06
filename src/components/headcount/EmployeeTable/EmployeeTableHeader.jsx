@@ -73,14 +73,14 @@ const EmployeeTableHeader = ({
           </button>
         </th>
 
-        {/* Business Function & Department */}
+        {/* Company & Department */}
         <th scope="col" className="px-2 py-2 text-left">
           <button
             className={`text-[10px] font-medium ${styles.textMuted} tracking-wider flex items-center hover:text-blue-600 transition-colors`}
             onClick={handleSort("business_function_name")}
-            title="Sort by business function (Ctrl+Click for multi-sort)"
+            title="Sort by Company (Ctrl+Click for multi-sort)"
           >
-            Business Function & Department
+            Company & Department
             <SortingIndicator 
               direction={getSortDirection("business_function_name")} 
               index={getSortIndex ? getSortIndex("business_function_name") : undefined}

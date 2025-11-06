@@ -145,17 +145,17 @@ export default function OverviewView({ context }) {
           <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2">
               
-              {/* Business Function */}
+              {/* Company */}
               <div>
                 <label className="block text-[10px] font-medium text-gray-700 dark:text-almet-bali-hai mb-1">
-                  Business Function
+                  Company
                 </label>
                 <SearchableDropdown
                   options={filterOptions.businessFunctions}
                   value={selectedFilters.business_function}
                   onChange={(value) => setSelectedFilters(prev => ({ ...prev, business_function: value }))}
                   placeholder="All"
-                  searchPlaceholder="Search business functions..."
+                  searchPlaceholder="Search Companys..."
                   darkMode={darkMode}
                   className="w-full"
                 />

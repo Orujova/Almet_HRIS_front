@@ -196,7 +196,7 @@ const ExportModal = ({
     { 
       key: "job_info", 
       label: "Job Information", 
-      description: "Job title, department, business function, units",
+      description: "Job title, department, Company, units",
       count: fieldGroupMappings.job_info.length
     },
     { 

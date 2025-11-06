@@ -552,7 +552,7 @@ export const getColorModes = () => {
   }
   
   if (REFERENCE_DATA?.businessFunctions?.length > 0) {
-    availableModes.push({ value: 'BUSINESS_FUNCTION', label: 'Business Function', description: 'Color by business unit' });
+    availableModes.push({ value: 'BUSINESS_FUNCTION', label: 'Company', description: 'Color by business unit' });
   }
   
   if (REFERENCE_DATA?.units?.length > 0) {

@@ -555,7 +555,7 @@ export default function JobCatalogPage() {
           if (matrixView === 'function') {
             return job.hierarchy === hierarchyName && job.jobFunction === col;
           }
-          // matrixView === 'unit' means by Business Function
+          // matrixView === 'unit' means by Company
           return job.hierarchy === hierarchyName && job.businessFunction === col;
         });
         matrix[hierarchyName][col] = jobs;

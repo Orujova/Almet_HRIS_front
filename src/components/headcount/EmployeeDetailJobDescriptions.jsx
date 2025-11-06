@@ -1016,7 +1016,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     <h3 className={`text-lg font-bold ${textPrimary} mb-3`}>{jobDetail.job_title}</h3>
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div>
-                        <span className={`font-semibold ${textMuted}`}>Business Function:</span>
+                        <span className={`font-semibold ${textMuted}`}>Company:</span>
                         <p className={`${textPrimary} mt-1`}>{jobDetail.business_function?.name}</p>
                       </div>
                       <div>

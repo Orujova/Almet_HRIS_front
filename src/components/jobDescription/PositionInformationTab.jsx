@@ -221,7 +221,7 @@ const PositionInformationTab = ({
     
     const employee = findExactConstraintMatch({
       business_function_name: name
-    }, 'Business Function');
+    }, 'Company');
     
     if (employee) {
       const id = employee.business_function_id || employee.business_function;
@@ -729,10 +729,10 @@ const getAssignmentPreviewDisplay = () => {
           )}
         </div>
         
-        {/* UPDATED: Business Function with SearchableDropdown */}
+        {/* UPDATED: Company with SearchableDropdown */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-            Business Function <span className="text-red-500">*</span>
+            Company <span className="text-red-500">*</span>
             {counts.businessFunctions > 0 && (
               <span className={`text-xs ${textMuted} ml-1`}>({counts.businessFunctions} available)</span>
             )}
@@ -741,7 +741,7 @@ const getAssignmentPreviewDisplay = () => {
             options={getUniqueBusinessFunctions()}
             value={formData.business_function}
             onChange={handleBusinessFunctionChange}
-            placeholder={counts.businessFunctions > 0 ? "Select Business Function" : "No business functions available"}
+            placeholder={counts.businessFunctions > 0 ? "Select Company" : "No Companys available"}
             className={validationErrors.business_function ? 'border-red-500' : ''}
             darkMode={darkMode}
              allowUncheck={true}
@@ -765,7 +765,7 @@ const getAssignmentPreviewDisplay = () => {
             onChange={handleDepartmentChange}
             placeholder={formData.business_function ? 
               (counts.departments > 0 ? "Select Department" : "No departments available") : 
-              "Select Business Function First"
+              "Select Company First"
             }
             className={validationErrors.department ? 'border-red-500' : ''}
             darkMode={darkMode}
@@ -1033,7 +1033,7 @@ const getAssignmentPreviewDisplay = () => {
               </h4>
             
               <div className="text-xs text-gray-600 dark:text-gray-400">
-                <span className="font-medium">Required:</span> Job Title, Business Function, Department, Job Function, Hierarchy, Job Purpose
+                <span className="font-medium">Required:</span> Job Title, Company, Department, Job Function, Hierarchy, Job Purpose
               </div>
             </div>
           </div>
