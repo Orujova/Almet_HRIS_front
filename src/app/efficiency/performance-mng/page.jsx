@@ -288,27 +288,46 @@ const loadLeadershipCompetencies = async () => {
       console.error('❌ Error loading employees:', error);
     }
   };
-const checkIfLeadershipPosition = (positionName) => {
-  if (!positionName) return false;
+const checkIfLeadershipPosition = (employee) => {
+  if (!employee || !employee.position) return false;
   
-  // Normalize position name
-  const normalized = positionName.toUpperCase().replace('_', ' ').trim();
+  // Get both the raw name and display name
+  const positionName = employee.position.toUpperCase().trim();
   
+  // ✅ All leadership position variants
   const leadershipKeywords = [
     'MANAGER',
-    'VICE CHAIRMAN',
     'VICE_CHAIRMAN',
+    'VICE CHAIRMAN',
     'DIRECTOR',
     'VICE',
-    'HOD'
+    'HOD',
+    'HEAD OF DEPARTMENT'
   ];
   
-  return leadershipKeywords.some(keyword => 
-    keyword === normalized || 
-    normalized.includes(keyword)
-  );
+  console.log('🔍 Leadership Check:', {
+    employeeName: employee.name,
+    positionName: positionName,
+    checking: leadershipKeywords
+  });
+  
+  // ✅ Check exact match OR contains
+  const isLeadership = leadershipKeywords.some(keyword => {
+    const matches = positionName === keyword || positionName.includes(keyword);
+    if (matches) {
+      console.log(`✅ Matched keyword: ${keyword}`);
+    }
+    return matches;
+  });
+  
+  console.log(`Result: ${isLeadership ? 'LEADERSHIP' : 'BEHAVIORAL'}`);
+  
+  return isLeadership;
 };
- const loadPerformanceData = async (employeeId, year) => {
+
+// src/app/efficiency/performance-mng/page.jsx - FIXED LEADERSHIP LOADING
+
+const loadPerformanceData = async (employeeId, year) => {
   const key = `${employeeId}_${year}`;
   
   setLoading(true);
@@ -325,30 +344,79 @@ const checkIfLeadershipPosition = (positionName) => {
       const performance = perfs[0];
       detailData = await performanceApi.performances.get(performance.id);
     } else {
+      // ✅ Initialize performance (backend will auto-detect leadership vs behavioral)
       detailData = await performanceApi.performances.initialize({
         employee: employeeId,
         performance_year: activeYear.id
       });
     }
     
-    // ✅ CHECK POSITION TYPE
+    // ✅ Get employee info for position check
     const employee = employees.find(e => e.id === employeeId);
-    const isLeadershipPosition = checkIfLeadershipPosition(employee?.position_group_name);
+    const positionName = employee?.position?.toUpperCase().replace('_', ' ').trim() || '';
     
-    console.log('🔍 Employee Position Check:', {
-      position: employee?.position_group_name,
-      isLeadership: isLeadershipPosition
+    // ✅ Check if this is a leadership position
+    const leadershipKeywords = [
+      'MANAGER',
+      'VICE_CHAIRMAN',
+      'VICE CHAIRMAN',
+      'DIRECTOR',
+      'VICE',
+      'HOD',
+      'HEAD OF DEPARTMENT'
+    ];
+    
+    const isLeadershipPosition = leadershipKeywords.some(keyword => 
+      positionName === keyword.toUpperCase() ||
+      positionName.includes(keyword.toUpperCase())
+    );
+    
+    console.log('🔍 Leadership Check:', {
+      employeeName: employee?.name,
+      positionName,
+      checking: leadershipKeywords,
     });
     
-    // ✅ Load appropriate competencies based on position
+    // Find matching keyword
+    const matchedKeyword = leadershipKeywords.find(keyword =>
+      positionName === keyword.toUpperCase() ||
+      positionName.includes(keyword.toUpperCase())
+    );
+    
+    if (matchedKeyword) {
+      console.log('✅ Matched keyword:', matchedKeyword);
+    }
+    
+    console.log('Result:', isLeadershipPosition ? 'LEADERSHIP' : 'BEHAVIORAL');
+    
+    // ✅ Determine which competencies to load based on position
     if (isLeadershipPosition) {
       // LEADERSHIP COMPETENCIES
       if (!leadershipCompetencies || leadershipCompetencies.length === 0) {
         await loadLeadershipCompetencies();
       }
       
-      // Enrich leadership competency ratings
+      // ✅ Enrich leadership competency ratings
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
+        // Check if these are actually leadership competencies
+        const firstRating = detailData.competency_ratings[0];
+        const hasLeadershipItem = 'leadership_item' in firstRating;
+        
+        if (!hasLeadershipItem) {
+          console.error('❌ ERROR: Expected leadership competencies but got behavioral!');
+          console.error('This employee needs a leadership assessment template created.');
+          
+          // Show error to user
+          showNotification(
+            `ERROR: ${employee.name} is a ${positionName} but has behavioral competencies. ` +
+            `Please create a Leadership Assessment Template for this position first.`,
+            'error'
+          );
+          
+          setLoading(false);
+          return null;
+        }
+        
         const enrichedRatings = detailData.competency_ratings.map((rating) => {
           const competencyInfo = leadershipCompetencies.find(
             comp => comp.id === rating.leadership_item
@@ -371,6 +439,7 @@ const checkIfLeadershipPosition = (positionName) => {
             competency_name: competencyInfo?.name || `Unknown Leadership Item (ID: ${rating.leadership_item})`,
             competency_group_name: competencyInfo?.child_group_name || 'Ungrouped',
             main_group_name: competencyInfo?.main_group_name || 'Ungrouped',
+            child_group_name: competencyInfo?.child_group_name || 'Ungrouped',
             description: competencyInfo?.description || '',
             end_year_rating_value: ratingValue
           };
@@ -387,7 +456,6 @@ const checkIfLeadershipPosition = (positionName) => {
         await loadBehavioralCompetencies();
       }
       
-      // Enrich behavioral competency ratings
       if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
         const enrichedRatings = detailData.competency_ratings.map((rating) => {
           const competencyInfo = behavioralCompetencies.find(
@@ -419,6 +487,22 @@ const checkIfLeadershipPosition = (positionName) => {
         detailData.is_leadership_assessment = false;
         
         console.log('✅ Loaded BEHAVIORAL competencies:', enrichedRatings.length);
+      }
+    }
+    
+    // ✅ Log what we actually got
+    if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
+      const firstRating = detailData.competency_ratings[0];
+      const actualType = firstRating.main_group_name ? 'LEADERSHIP' : 'BEHAVIORAL';
+      console.log('✅ Actual Competency Type:', actualType);
+      
+      // ✅ Warning if mismatch
+      if (isLeadershipPosition && actualType === 'BEHAVIORAL') {
+        console.warn('⚠️ WARNING: Expected LEADERSHIP but got BEHAVIORAL competencies!');
+        console.warn('This means the position assessment might be wrong or missing.');
+      } else if (!isLeadershipPosition && actualType === 'LEADERSHIP') {
+        console.warn('⚠️ WARNING: Expected BEHAVIORAL but got LEADERSHIP competencies!');
+        console.warn('This means the position assessment might be wrong.');
       }
     }
     

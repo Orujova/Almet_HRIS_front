@@ -16,8 +16,10 @@ import {
 
   UserCog,
   Building2,
-  TicketsPlane
+  TicketsPlane,
+  ScrollText
 } from "lucide-react";
+
 
 const Sidebar = ({ collapsed = false }) => {
   const pathname = usePathname();
@@ -122,11 +124,21 @@ const Sidebar = ({ collapsed = false }) => {
       icon: <Gift className="w-4 h-4" />,
       path: "/communication/celebrations",
       id: "celebrations",
+    }, { 
+      type: "section", 
+      label: "COMPANY POLICIES" 
     },
+     {
+      label: "Policies",
+      icon: <ScrollText className="w-4 h-4" />,
+      path: "/company-policies",
+      id: "policies",
+    }, 
     { 
       type: "section", 
       label: "SETTINGS" 
     },
+   
     // {
     //   label: "Access Mng",
     //   icon: <KeyRound className="w-4 h-4" />,

@@ -447,9 +447,7 @@ const WorkforceSettings = () => {
                   <th className="text-left p-3 font-medium text-almet-cloud-burst dark:text-white">Color</th>
                 </>
               )}
-              {activeSection === 'tags' && (
-                <th className="text-left p-3 font-medium text-almet-cloud-burst dark:text-white">Color</th>
-              )}
+            
               {activeSection === 'contracts' && (
                 <>
                   <th className="text-left p-3 font-medium text-almet-cloud-burst dark:text-white">Type</th>
@@ -504,20 +502,7 @@ const WorkforceSettings = () => {
                   </>
                 )}
                 
-                {activeSection === 'tags' && (
-                  <td className="p-3">
-                    <div className="flex items-center">
-                      <div 
-                        className="w-3 h-3 rounded-full mr-2"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        {item.color}
-                      </span>
-                    </div>
-                  </td>
-                )}
-                
+             
                 {activeSection === 'contracts' && (
                   <>
                     <td className="p-3">

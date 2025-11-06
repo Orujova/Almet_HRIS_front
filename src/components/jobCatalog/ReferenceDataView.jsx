@@ -766,37 +766,7 @@ export default function ReferenceDataView({ context }) {
       {viewMode === 'table' && renderTableView()}
       {viewMode === 'hierarchy' && activeTab === 'position_groups' && renderHierarchyView()}
 
-      {/* Summary Footer */}
-      {viewMode === 'table' && processedData.length > 0 && (
-        <div className="bg-gray-50 dark:bg-almet-san-juan rounded-lg p-3 border border-gray-200 dark:border-almet-comet">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-600 dark:text-almet-bali-hai">
-            <div className="flex items-center gap-3">
-              <span>
-                Showing <span className="font-medium text-gray-900 dark:text-white">{processedData.length}</span> of{' '}
-                <span className="font-medium text-gray-900 dark:text-white">{activeTabData?.data?.length || 0}</span>
-              </span>
-              {searchTerm && (
-                <span>for "{searchTerm}"</span>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <span>
-                Employees: <span className="font-medium text-gray-900 dark:text-white">
-                  {Object.values(getEmployeeCountsByType[activeTab] || {}).reduce((a, b) => a + b, 0)}
-                </span>
-              </span>
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="text-almet-sapphire hover:text-almet-astral transition-colors font-medium"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+     
 
       {/* Confirmation Modal */}
       <ConfirmationModal
