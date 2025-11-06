@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, User, UserCheck, Edit2, Save, X, Send } from 'lucide-react';
+import { FileText, User, UserCheck, Edit2, Save, X, Send, MessageSquare } from 'lucide-react';
 
 export default function PerformanceReviews({
   midYearEmployee,
@@ -32,15 +32,12 @@ export default function PerformanceReviews({
   const canActAsManager = hasPermission('performance.approve_as_manager') || 
                           hasPermission('performance.manage_team');
 
-  // Mid-Year statuses
   const isEmployeeSubmitted = Boolean(performanceData?.mid_year_employee_submitted);
   const isManagerCompleted = Boolean(performanceData?.mid_year_completed);
   
-  // End-Year statuses
   const isEndYearEmployeeSubmitted = Boolean(performanceData?.end_year_employee_submitted);
   const isEndYearCompleted = Boolean(performanceData?.end_year_completed);
 
-  // Mid-Year permissions
   const hasEmployeePermission = hasPermission('performance.midyear.submit_employee');
   const canEditMidYearEmployee = 
     canActAsEmployee &&
@@ -56,7 +53,6 @@ export default function PerformanceReviews({
     isEmployeeSubmitted &&
     !isManagerCompleted;
 
-  // End-Year permissions
   const hasEndYearEmployeePermission = hasPermission('performance.endyear.submit_employee');
   const canEditEndYearEmployee = 
     canActAsEmployee &&
@@ -110,12 +106,18 @@ export default function PerformanceReviews({
     handleCancelEdit();
   };
 
+  const textareaClass = `w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 resize-none transition-all ${
+    darkMode 
+      ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
+      : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
+  }`;
+
   const ReviewSection = ({ 
     title, 
     icon: Icon, 
     employeeComment, 
     managerComment, 
-    iconBg,
+    iconColor,
     section,
     canEditEmployee,
     canEditManager,
@@ -126,32 +128,34 @@ export default function PerformanceReviews({
     const isEditingManager = editMode.section === section && editMode.role === 'manager';
 
     return (
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border shadow-sm overflow-hidden`}>
-        <div className={`p-4 border-b ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
-          <div className="flex items-center gap-2">
-            <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center`}>
-              <Icon className="w-4 h-4 text-white" />
+      <div className={`${darkMode ? 'bg-almet-cloud-burst/60 border-almet-comet/30' : 'bg-white border-almet-mystic'} rounded-xl border shadow-sm overflow-hidden`}>
+        <div className={`p-5 border-b ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`p-3 rounded-xl ${iconColor}`}>
+              <Icon className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
-              <p className="text-[10px] text-gray-600 dark:text-gray-400">
+              <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                {title}
+              </h3>
+              <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
                 Employee and manager feedback
               </p>
             </div>
           </div>
         </div>
 
-        <div className="p-4 space-y-3">
+        <div className="p-5 space-y-4">
           {/* Employee Comment */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-almet-sapphire" />
-                <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-almet-sapphire" />
+                <h4 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
                   Employee Comment
                 </h4>
                 {employeeSubmitted && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium">
+                  <span className="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30 font-medium">
                     Submitted
                   </span>
                 )}
@@ -160,59 +164,59 @@ export default function PerformanceReviews({
               {canEditEmployee && !isEditingEmployee && (
                 <button
                   onClick={() => handleStartEdit(section, 'employee', employeeComment)}
-                  className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 flex items-center gap-1 transition-colors"
+                  className="h-9 px-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 flex items-center gap-2 text-xs font-medium transition-all"
                 >
-                  <Edit2 className="w-3 h-3" />
+                  <Edit2 className="w-3.5 h-3.5" />
                   {employeeComment ? 'Edit' : 'Add Comment'}
                 </button>
               )}
             </div>
 
             {isEditingEmployee ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <textarea
                   value={editComment}
                   onChange={(e) => setEditComment(e.target.value)}
                   placeholder="Share your self-assessment, achievements, and challenges during this period..."
-                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${
-                    darkMode 
-                      ? 'bg-gray-750 border-gray-600 text-white placeholder-gray-500' 
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                  } focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none`}
+                  className={textareaClass}
                   rows={6}
                   autoFocus
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleSaveDraft(section, 'employee')}
-                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5 transition-colors font-medium"
+                    className={`flex-1 h-10 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                      darkMode 
+                        ? 'bg-almet-comet/50 hover:bg-almet-comet text-white' 
+                        : 'bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst'
+                    }`}
                   >
-                    <Save className="w-3.5 h-3.5" />
+                    <Save className="w-4 h-4" />
                     Save Draft
                   </button>
                   <button
                     onClick={() => handleSubmit(section, 'employee')}
-                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center justify-center gap-1.5 transition-colors font-medium"
+                    className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
                   >
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-4 h-4" />
                     Submit Review
                   </button>
                   <button
                     onClick={handleCancelEdit}
-                    className="px-3 py-2 text-xs rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 flex items-center justify-center transition-colors"
+                    className="h-10 px-4 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-xl flex items-center justify-center transition-all"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className={`${darkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-3`}>
+              <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4`}>
                 {employeeComment ? (
-                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
                     {employeeComment}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
                     No comment provided yet
                   </p>
                 )}
@@ -222,14 +226,14 @@ export default function PerformanceReviews({
 
           {/* Manager Comment */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5 text-purple-600" />
-                <h4 className="text-xs font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-purple-600" />
+                <h4 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
                   Manager Assessment
                 </h4>
                 {managerSubmitted && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 font-medium">
+                  <span className="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30 font-medium">
                     Completed
                   </span>
                 )}
@@ -238,59 +242,59 @@ export default function PerformanceReviews({
               {canEditManager && !isEditingManager && (
                 <button
                   onClick={() => handleStartEdit(section, 'manager', managerComment)}
-                  className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50 flex items-center gap-1 transition-colors"
+                  className="h-9 px-3 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:hover:bg-purple-900/30 flex items-center gap-2 text-xs font-medium transition-all"
                 >
-                  <Edit2 className="w-3 h-3" />
+                  <Edit2 className="w-3.5 h-3.5" />
                   {managerComment ? 'Edit' : 'Add Assessment'}
                 </button>
               )}
             </div>
 
             {isEditingManager ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <textarea
                   value={editComment}
                   onChange={(e) => setEditComment(e.target.value)}
                   placeholder="Provide your assessment of employee's performance, strengths, and areas for improvement..."
-                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${
-                    darkMode 
-                      ? 'bg-gray-750 border-gray-600 text-white placeholder-gray-500' 
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
-                  } focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none`}
+                  className={textareaClass}
                   rows={6}
                   autoFocus
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleSaveDraft(section, 'manager')}
-                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 flex items-center justify-center gap-1.5 transition-colors font-medium"
+                    className={`flex-1 h-10 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
+                      darkMode 
+                        ? 'bg-almet-comet/50 hover:bg-almet-comet text-white' 
+                        : 'bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst'
+                    }`}
                   >
-                    <Save className="w-3.5 h-3.5" />
+                    <Save className="w-4 h-4" />
                     Save Draft
                   </button>
                   <button
                     onClick={() => handleSubmit(section, 'manager')}
-                    className="flex-1 px-3 py-2 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700 flex items-center justify-center gap-1.5 transition-colors font-medium"
+                    className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
                   >
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-4 h-4" />
                     {section === 'mid_year' ? 'Complete Review' : 'Submit Assessment'}
                   </button>
                   <button
                     onClick={handleCancelEdit}
-                    className="px-3 py-2 text-xs rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 flex items-center justify-center transition-colors"
+                    className="h-10 px-4 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-xl flex items-center justify-center transition-all"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ) : (
-              <div className={`${darkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'} border rounded-lg p-3`}>
+              <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4`}>
                 {managerComment ? (
-                  <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
                     {managerComment}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 italic">
+                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
                     {employeeSubmitted ? 'Waiting for manager assessment...' : 'No assessment provided yet'}
                   </p>
                 )}
@@ -303,13 +307,13 @@ export default function PerformanceReviews({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <ReviewSection
         title="Mid-Year Review"
         icon={FileText}
         employeeComment={midYearEmployee}
         managerComment={midYearManager}
-        iconBg="bg-orange-600"
+        iconColor="bg-orange-500"
         section="mid_year"
         canEditEmployee={canEditMidYearEmployee}
         canEditManager={canEditMidYearManager}
@@ -322,7 +326,7 @@ export default function PerformanceReviews({
         icon={FileText}
         employeeComment={endYearEmployee}
         managerComment={endYearManager}
-        iconBg="bg-green-600"
+        iconColor="bg-emerald-600"
         section="end_year"
         canEditEmployee={canEditEndYearEmployee}
         canEditManager={canEditEndYearManager}

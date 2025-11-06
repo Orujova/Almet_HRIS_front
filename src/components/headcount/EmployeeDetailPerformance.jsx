@@ -26,59 +26,88 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
     team: true
   });
 
-  // Initial load
+  // ✅ FIX: Initial load with proper data structure
   useEffect(() => {
     if (employeeId || employeeData) {
       loadPerformanceData();
     }
   }, [employeeId, employeeData]);
 
-  // Load performance data
-  const loadPerformanceData = useCallback(async () => {
-    try {
-      setLoading(true);
-      
-      if (employeeData?.performance_records) {
-        setPerformanceRecords(employeeData.performance_records);
-      } else if (employeeId) {
-        const response = await performanceApi.performances.list({ employee_id: employeeId });
-        setPerformanceRecords(response.results || []);
-      }
-    } catch (error) {
-      console.error('Error loading performance:', error);
-      setPerformanceRecords([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [employeeId, employeeData]);
+  /// ✅ Düzəliş: Əvvəl employeeData.performance_records-dan istifadə et
+const loadPerformanceData = useCallback(async () => {
+  try {
+    setLoading(true);
 
-  // Refresh data
+    // 1) Ən əvvəl employees/{id}/ responsundan gələn performance_records-dan istifadə edək
+    if (employeeData?.performance_records?.length) {
+      console.log('📊 Using employeeData.performance_records:', employeeData.performance_records);
+      setPerformanceRecords(employeeData.performance_records);
+      return; // Burda dayandırırıq, artıq datamız var
+    }
+
+    // 2) Əgər employeeData-dan gəlmirsə, onda API list-i çağırırıq
+    const id = employeeId || employeeData?.id;
+    if (id) {
+      const response = await performanceApi.performances.list({
+        employee_id: id,
+      });
+      console.log('📊 Performance API list Response:', response);
+      setPerformanceRecords(response.results || []);
+    } else {
+      console.warn('⚠️ No employee ID available');
+      setPerformanceRecords([]);
+    }
+  } catch (error) {
+    console.error('❌ Error loading performance:', error);
+    setPerformanceRecords([]);
+  } finally {
+    setLoading(false);
+  }
+}, [employeeId, employeeData]);
+
+
+  // ✅ FIX: Refresh data properly
   const refreshData = useCallback(async () => {
     try {
       setRefreshing(true);
       
-      const response = await performanceApi.performances.list({ employee_id: employeeId });
+      const id = employeeId || employeeData?.id;
+      if (!id) {
+        console.error('❌ No employee ID for refresh');
+        return;
+      }
+      
+      console.log('🔄 Refreshing performance data for employee:', id);
+      
+      const response = await performanceApi.performances.list({ 
+        employee_id: id 
+      });
+      
+      console.log('✅ Refresh successful:', response);
       setPerformanceRecords(response.results || []);
       
+      // If detail modal is open, refresh that too
       if (showDetailModal && selectedRecord) {
         const freshDetail = await performanceApi.performances.get(selectedRecord.id);
         setSelectedRecord(freshDetail);
       }
     } catch (error) {
-      console.error('Error refreshing:', error);
+      console.error('❌ Error refreshing:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [employeeId, showDetailModal, selectedRecord]);
+  }, [employeeId, employeeData, showDetailModal, selectedRecord]);
 
   // View details
   const viewDetails = async (recordId) => {
     try {
+      console.log('👁️ Viewing details for record:', recordId);
       const detail = await performanceApi.performances.get(recordId);
+      console.log('📄 Detail data:', detail);
       setSelectedRecord(detail);
       setShowDetailModal(true);
     } catch (error) {
-      console.error('Error loading details:', error);
+      console.error('❌ Error loading details:', error);
       alert('Failed to load performance details');
     }
   };
@@ -86,34 +115,45 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
   // Download Excel
   const downloadExcel = async (recordId) => {
     try {
-      const fileName = `performance-${employeeData?.name || 'employee'}-${new Date().getFullYear()}.xlsx`;
+      const fileName = `performance-${employeeData?.name || employeeData?.employee_name || 'employee'}-${new Date().getFullYear()}.xlsx`;
       await performanceApi.downloadExcel(recordId, fileName);
     } catch (error) {
-      console.error('Error downloading:', error);
+      console.error('❌ Error downloading:', error);
       alert('Failed to download report');
     }
   };
 
   // Open action modal
   const openActionModal = (record, action) => {
+    console.log('🎬 Opening action modal:', { record, action });
     setSelectedRecord(record);
     setCurrentAction(action);
     setComment('');
     setShowActionModal(true);
   };
 
-  // Execute action
+  // ✅ FIX: Execute action with proper error handling
   const executeAction = async () => {
-    if (!selectedRecord || !currentAction) return;
+    if (!selectedRecord || !currentAction) {
+      console.error('❌ No record or action selected');
+      return;
+    }
 
     try {
       setActionLoading(true);
+      console.log('⚡ Executing action:', currentAction.type, 'for record:', selectedRecord.id);
 
       const actionMap = {
         'approve_objectives_employee': () => 
           performanceApi.performances.approveObjectivesEmployee(selectedRecord.id),
-        'approve_objectives_manager': () => 
-          performanceApi.performances.approveObjectivesManager(selectedRecord.id),
+        'request_clarification': () => {
+          if (!comment.trim()) throw new Error('Comment required for clarification');
+          return performanceApi.performances.requestClarification(selectedRecord.id, {
+            comment,
+            section: 'objectives',
+            comment_type: 'OBJECTIVE_CLARIFICATION'
+          });
+        },
         'submit_mid_year_employee': () => 
           performanceApi.performances.submitMidYearEmployee(selectedRecord.id, { comment }),
         'submit_mid_year_manager': () => 
@@ -126,28 +166,30 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
           performanceApi.performances.approveFinalEmployee(selectedRecord.id),
         'approve_final_manager': () => 
           performanceApi.performances.approveFinalManager(selectedRecord.id),
-        'request_clarification': () => {
-          if (!comment.trim()) throw new Error('Comment required');
-          return performanceApi.performances.requestClarification(selectedRecord.id, {
-            comment,
-            section: 'objectives'
-          });
-        }
       };
 
+      if (!actionMap[currentAction.type]) {
+        throw new Error(`Unknown action type: ${currentAction.type}`);
+      }
+
       const result = await actionMap[currentAction.type]();
+      console.log('✅ Action result:', result);
       
+      // Close modal
       setShowActionModal(false);
       setComment('');
       setCurrentAction(null);
       setSelectedRecord(null);
       
+      // Refresh data
       await refreshData();
       
-      alert(result?.message || result?.success ? 'Action completed successfully!' : 'Done');
+      // Show success message
+      const successMsg = result?.message || result?.success || 'Action completed successfully!';
+      alert(successMsg);
       
     } catch (error) {
-      console.error('Action error:', error);
+      console.error('❌ Action error:', error);
       const errorMsg = error.response?.data?.error || 
                       error.response?.data?.message || 
                       error.message || 
@@ -184,8 +226,8 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
 
   const getPeriodColor = (period) => ({
     'GOAL_SETTING': darkMode 
-      ? 'bg-almet-sapphire/20 text-almet-astral border-almet-sapphire/30' 
-      : 'bg-almet-mystic text-almet-cloud-burst border-almet-bali-hai/30',
+      ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' 
+      : 'bg-blue-50 text-blue-700 border-blue-200',
     'MID_YEAR_REVIEW': darkMode
       ? 'bg-orange-500/20 text-orange-300 border-orange-500/30'
       : 'bg-orange-50 text-orange-700 border-orange-200',
@@ -203,7 +245,7 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
   const getScoreColor = (score) => {
     const num = parseFloat(score);
     if (num >= 90) return darkMode ? 'text-green-400' : 'text-green-600';
-    if (num >= 70) return darkMode ? 'text-almet-astral' : 'text-almet-sapphire';
+    if (num >= 70) return darkMode ? 'text-blue-400' : 'text-blue-600';
     if (num >= 50) return darkMode ? 'text-orange-400' : 'text-orange-600';
     return darkMode ? 'text-red-400' : 'text-red-600';
   };
@@ -213,8 +255,8 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
       ? 'bg-green-600 hover:bg-green-700 text-white' 
       : 'bg-green-600 hover:bg-green-700 text-white',
     blue: darkMode
-      ? 'bg-almet-sapphire hover:bg-almet-astral text-white'
-      : 'bg-almet-sapphire hover:bg-almet-cloud-burst text-white',
+      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+      : 'bg-blue-600 hover:bg-blue-700 text-white',
     purple: darkMode
       ? 'bg-purple-600 hover:bg-purple-700 text-white'
       : 'bg-purple-600 hover:bg-purple-700 text-white',
@@ -231,17 +273,37 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
     RefreshCw: <RefreshCw size={14} />
   })[icon] || <Activity size={14} />;
 
-  // Extract data
+  // ✅ FIX: Extract data safely
   const currentPerf = employeeData?.current_performance;
   const perfSummary = employeeData?.performance_summary;
   const pendingActions = employeeData?.pending_performance_actions;
   const teamOverview = employeeData?.team_performance_overview;
 
+  // ✅ FIX: Debug logs
+  useEffect(() => {
+    console.log('🔍 Component Debug:', {
+      employeeId,
+      employeeDataId: employeeData?.id,
+      employeeDataName: employeeData?.name || employeeData?.employee_name,
+      performanceRecordsCount: performanceRecords.length,
+      currentPerf,
+      pendingActions,
+      performanceRecords: performanceRecords.map(r => ({
+        id: r.id,
+        year: r.year,
+        current_period: r.current_period,
+        approval_status: r.approval_status,
+        actions_count: r.available_actions?.length || 0,
+        actions: r.available_actions
+      }))
+    });
+  }, [employeeId, employeeData, performanceRecords, currentPerf, pendingActions]);
+
   // Loading state
   if (loading) {
     return (
       <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border p-12 text-center`}>
-        <RefreshCw className={`w-10 h-10 ${darkMode ? 'text-almet-astral' : 'text-almet-sapphire'} animate-spin mx-auto mb-3`} />
+        <RefreshCw className={`w-10 h-10 ${darkMode ? 'text-blue-400' : 'text-blue-600'} animate-spin mx-auto mb-3`} />
         <p className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} text-sm font-medium`}>
           Loading performance data...
         </p>
@@ -251,7 +313,7 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
 
   return (
     <div className="space-y-4">
-    
+     
 
       {/* Summary Cards */}
       <Section
@@ -332,18 +394,7 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
         )}
       </Section>
 
-      {/* Team Overview */}
-      {isManager && teamOverview?.is_manager && (
-        <Section
-          darkMode={darkMode}
-          title="Team Overview"
-          icon={<Users />}
-          expanded={expanded.team}
-          onToggle={() => toggle('team')}
-        >
-          <TeamOverview darkMode={darkMode} data={teamOverview} />
-        </Section>
-      )}
+ 
 
       {/* Modals */}
       {showActionModal && currentAction && (
@@ -383,6 +434,7 @@ export default function EmployeeDetailPerformance({ employeeId, employeeData, is
     </div>
   );
 }
+
 
 // ==================== SUB-COMPONENTS ====================
 
@@ -582,51 +634,7 @@ function EmptyState({ darkMode }) {
   );
 }
 
-function TeamOverview({ darkMode, data }) {
-  const stats = data.stats || {};
 
-  return (
-    <div className="space-y-3">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Team Size', value: data.team_size },
-          { label: 'Initiated', value: stats.performance_initiated },
-          { label: 'Not Initiated', value: stats.not_initiated },
-          { label: 'Fully Approved', value: stats.fully_approved }
-        ].map((stat, idx) => (
-          <div
-            key={idx}
-            className={`${darkMode ? 'bg-gray-750 border-gray-700' : 'bg-gray-50 border-gray-200'} rounded-lg p-3 text-center border`}
-          >
-            <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-0.5`}>
-              {stat.value || 0}
-            </p>
-            <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-600'}`}>
-              {stat.label}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Attention Alert */}
-      {data.needs_attention_count > 0 && (
-        <div className={`p-3 rounded-lg border ${
-          darkMode 
-            ? 'bg-orange-500/10 border-orange-500/30'
-            : 'bg-orange-50 border-orange-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className={darkMode ? 'text-orange-400' : 'text-orange-600'} />
-            <span className={`text-xs font-medium ${darkMode ? 'text-orange-300' : 'text-orange-700'}`}>
-              {data.needs_attention_count} team member(s) need attention
-            </span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ActionModal({ 
   darkMode, action, record, comment, setComment, loading,

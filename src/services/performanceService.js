@@ -343,13 +343,7 @@ cancelObjective: async (id, objectiveId, reason) => {
     return response.data;
   },
   
-  approveObjectivesManager: async (id) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/approve_objectives_manager/`,
-      {}
-    );
-    return response.data;
-  },
+
   
   cancelObjective: async (id, objectiveId, reason) => {
     const response = await api.post(
