@@ -23,17 +23,26 @@ export default function CompetenciesSection({
 
   // ✅ FIX: Initialize all groups as COLLAPSED by default
   useEffect(() => {
-    if (competencies && competencies.length > 0) {
-      const groups = {};
+  if (competencies && competencies.length > 0) {
+    setExpandedGroups((prev) => {
+      // Köhnə vəziyyəti saxlayırıq
+      const next = { ...prev };
+
       competencies.forEach((c) => {
         const g = c.competency_group_name || "Ungrouped";
-        if (groups[g] === undefined) {
-          groups[g] = false; // All collapsed by default
+
+        // Əgər bu group üçün hələ state yoxdursa (ilk dəfə gəlirsə)
+        // onu default olaraq COLLAPSED (false) qoyuruq
+        if (next[g] === undefined) {
+          next[g] = false;
         }
       });
-      setExpandedGroups(groups);
-    }
-  }, [competencies]);
+
+      return next;
+    });
+  }
+}, [competencies]);
+
 
   useEffect(() => {
     if (competencies && competencies.length > 0) {
@@ -128,11 +137,12 @@ export default function CompetenciesSection({
 
   // ✅ FIX: Manual toggle - doesn't auto-collapse
   const toggleGroup = (groupName) => {
-    setExpandedGroups((prev) => ({
-      ...prev,
-      [groupName]: !prev[groupName],
-    }));
-  };
+  setExpandedGroups((prev) => ({
+    ...prev,
+    [groupName]: !prev[groupName],
+  }));
+};
+
 
   const getGapIcon = (gap) => {
     if (gap > 0) return TrendingUp;
