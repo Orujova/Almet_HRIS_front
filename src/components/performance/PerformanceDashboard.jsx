@@ -258,7 +258,7 @@ export default function PerformanceDashboard({
                   subtitle="Employees with objectives"
                   color="blue"
                 />
-                <StatCard
+                {/* <StatCard
                   icon={FileText}
                   title="Mid-Year Reviews"
                   value={dashboardStats.mid_year_completed}
@@ -273,7 +273,7 @@ export default function PerformanceDashboard({
                   total={totalEmployees}
                   subtitle="Fully completed reviews"
                   color="green"
-                />
+                /> */}
               </div>
             )}
 
