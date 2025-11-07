@@ -430,6 +430,7 @@ export default function ObjectivesSection({
     </div>
   );
 }
+// ObjectiveRow component with fixed rating display
 
 function ObjectiveRow({ 
   objective, 
@@ -454,6 +455,11 @@ function ObjectiveRow({
   const isStatusMissing = !objective.status;
   const isWeightMissing = !objective.weight || objective.weight <= 0;
 
+  // ✅ Get selected rating details
+  const selectedRating = settings.evaluationScale?.find(
+    s => s.id === objective.end_year_rating
+  );
+
   const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
     darkMode 
       ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
@@ -471,6 +477,7 @@ function ObjectiveRow({
           {isCancelled ? <XCircle className="w-4 h-4" /> : index + 1}
         </div>
       </td>
+      
       <td className="px-4 py-3">
         <input
           type="text"
@@ -481,6 +488,7 @@ function ObjectiveRow({
           placeholder="Objective title..."
         />
       </td>
+      
       <td className="px-4 py-3">
         <textarea
           value={objective.description || ''}
@@ -491,6 +499,7 @@ function ObjectiveRow({
           placeholder="Description..."
         />
       </td>
+      
       <td className="px-4 py-3">
         <select
           value={objective.linked_department_objective || ''}
@@ -504,6 +513,7 @@ function ObjectiveRow({
           ))}
         </select>
       </td>
+      
       <td className="px-4 py-3">
         <input
           type="number"
@@ -515,6 +525,7 @@ function ObjectiveRow({
           className={`${inputClass} w-full text-center font-semibold ${isWeightMissing && canEditGoals ? 'border-red-500' : ''}`}
         />
       </td>
+      
       <td className="px-4 py-3">
         <input
           type="number"
@@ -526,49 +537,81 @@ function ObjectiveRow({
           className={`${inputClass} w-full text-center font-semibold`}
         />
       </td>
+      
+      {/* ✅ RATING COLUMN - FIXED */}
       <td className="px-4 py-3">
-        <select
-          value={objective.end_year_rating || ''}
-          onChange={(e) => {
-            const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
-            if (selectedScaleId) {
-              const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-              if (selectedScale) {
-                const weight = parseFloat(objective.weight) || 0;
-                const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-                const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-                onUpdate(index, 'end_year_rating', selectedScaleId);
+        {canRateEndYear && !isCancelled ? (
+          // ✅ Editable dropdown
+          <select
+            value={objective.end_year_rating || ''}
+            onChange={(e) => {
+              const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
+              if (selectedScaleId) {
+                const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+                if (selectedScale) {
+                  const weight = parseFloat(objective.weight) || 0;
+                  const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+                  const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+                  onUpdate(index, 'end_year_rating', selectedScaleId);
+                  setTimeout(() => {
+                    onUpdate(index, 'calculated_score', calculatedScore);
+                  }, 0);
+                }
+              } else {
+                onUpdate(index, 'end_year_rating', null);
                 setTimeout(() => {
-                  onUpdate(index, 'calculated_score', calculatedScore);
+                  onUpdate(index, 'calculated_score', 0);
                 }, 0);
               }
-            } else {
-              onUpdate(index, 'end_year_rating', null);
-              setTimeout(() => {
-                onUpdate(index, 'calculated_score', 0);
-              }, 0);
-            }
-          }}
-          disabled={!canRateEndYear || isCancelled}
-          className={`${inputClass} w-full`}
-        >
-          <option value="">-- Select --</option>
-          {settings.evaluationScale?.map(scale => (
-            <option key={scale.id} value={scale.id}>
-              {scale.name} • {scale.value}
-            </option>
-          ))}
-        </select>
+            }}
+            className={`${inputClass} w-full`}
+          >
+            <option value="">-- Select --</option>
+            {settings.evaluationScale?.map(scale => (
+              <option key={scale.id} value={scale.id}>
+                {scale.name} • {scale.value}
+              </option>
+            ))}
+          </select>
+        ) : (
+          // ✅ Read-only display with better visibility
+          <div className={`px-3 py-2 rounded-xl text-xs font-bold text-center ${
+            selectedRating 
+              ? darkMode 
+                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30' 
+                : 'bg-blue-50 text-blue-700 border border-blue-200'
+              : darkMode
+                ? 'bg-almet-comet/30 text-almet-bali-hai border border-almet-comet/30'
+                : 'bg-gray-50 text-gray-500 border border-gray-200'
+          }`}>
+            {selectedRating ? (
+              <div className="flex items-center justify-center gap-1.5">
+                <span>{selectedRating.name}</span>
+                <span className="opacity-60">•</span>
+                <span>{selectedRating.value}</span>
+              </div>
+            ) : (
+              'Not Rated'
+            )}
+          </div>
+        )}
       </td>
+      
+      {/* ✅ SCORE COLUMN - Enhanced visibility */}
       <td className="px-4 py-3">
         <div className={`px-3 py-2 text-xs font-bold text-center rounded-xl ${
-          darkMode 
-            ? 'bg-almet-sapphire/20 text-almet-sapphire border border-almet-sapphire/30' 
-            : 'bg-almet-sapphire/5 text-almet-sapphire border border-almet-sapphire/20'
+          objective.calculated_score > 0
+            ? darkMode 
+              ? 'bg-almet-sapphire/20 text-almet-sapphire border border-almet-sapphire/30' 
+              : 'bg-almet-sapphire/5 text-almet-sapphire border border-almet-sapphire/20'
+            : darkMode
+              ? 'bg-almet-comet/30 text-almet-bali-hai'
+              : 'bg-gray-50 text-gray-400'
         }`}>
           {formatNumber(objective.calculated_score || 0)}
         </div>
       </td>
+      
       <td className="px-4 py-3">
         <select
           value={objective.status || ''}
@@ -582,6 +625,7 @@ function ObjectiveRow({
           ))}
         </select>
       </td>
+      
       {(canEditGoals || canCancelGoals) && (
         <td className="px-4 py-3 text-center">
           {canEditGoals && !isCancelled && (

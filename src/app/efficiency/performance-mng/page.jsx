@@ -1153,6 +1153,8 @@ const handleSubmitCompetencies = async (competencies) => {
           <PerformanceDashboard
             dashboardStats={dashboardStats}
             employees={employees}
+            settings={settings}
+            selectedYear={selectedYear}
             permissions={permissions}
             onSelectEmployee={handleSelectEmployee}
             canViewEmployee={canViewEmployee}

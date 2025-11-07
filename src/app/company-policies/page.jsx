@@ -31,7 +31,6 @@ export default function CompanyPoliciesPage() {
       icon: <ShieldCheck className="w-5 h-5" />,
       description: "Employee separation with clearance procedures",
       updated: "2025",
- 
       pdfUrl: "/pdfs/Termination Process.pdf",
     },
     {
@@ -41,7 +40,6 @@ export default function CompanyPoliciesPage() {
       icon: <BriefcaseBusiness className="w-5 h-5" />,
       description: "Recruitment and workforce planning",
       updated: "2025",
-  
       pdfUrl: "/pdfs/Hiring Procedure.pdf",
     },
     {
@@ -51,18 +49,16 @@ export default function CompanyPoliciesPage() {
       icon: <FileText className="w-5 h-5" />,
       description: "New employee integration program",
       updated: "2025",
-  
       pdfUrl: "/pdfs/Onboarding Process.pdf",
     },
     {
-      id: "policies",
-      title: "General Policies",
-      category: "Policies & Benefits",
-      icon: <Plane className="w-5 h-5" />,
-      description: "Business trips, vacation, insurance",
+      id: "handover",
+      title: "Handover Procedure",
+      category: "Employment Lifecycle",
+      icon: <FileText className="w-5 h-5" />,
+      description: "Transition and knowledge transfer process",
       updated: "2025",
-   
-      pdfUrl: "/pdfs/Policies.pdf",
+      pdfUrl: "/pdfs/Handover Procedure.pdf",
     },
     {
       id: "confidentiality",
@@ -71,8 +67,16 @@ export default function CompanyPoliciesPage() {
       icon: <Lock className="w-5 h-5" />,
       description: "Protection of sensitive information",
       updated: "2025",
-  
       pdfUrl: "/pdfs/Confidentiality & Non-Disclosure Procedure.pdf",
+    },
+    {
+      id: "code-of-conduct",
+      title: "Code of Conduct",
+      category: "Legal & Compliance",
+      icon: <ShieldCheck className="w-5 h-5" />,
+      description: "Ethical standards and professional behavior",
+      updated: "2025",
+      pdfUrl: "/pdfs/Code of Conduct.pdf",
     },
     {
       id: "signatures",
@@ -81,8 +85,52 @@ export default function CompanyPoliciesPage() {
       icon: <Mail className="w-5 h-5" />,
       description: "Official email signature templates",
       updated: "2025",
-   
       pdfUrl: "/pdfs/Corporate signature templates.pdf",
+    },
+    {
+      id: "vacation",
+      title: "Vacation Policy",
+      category: "Benefits & Leave",
+      icon: <Plane className="w-5 h-5" />,
+      description: "Annual leave and time-off procedures",
+      updated: "2025",
+      pdfUrl: "/pdfs/Vacation.pdf",
+    },
+    {
+      id: "business-trip",
+      title: "Business Trip Policy",
+      category: "Travel & Expenses",
+      icon: <Plane className="w-5 h-5" />,
+      description: "Corporate travel guidelines and procedures",
+      updated: "2025",
+      pdfUrl: "/pdfs/Business Trip.pdf",
+    },
+    {
+      id: "taxi",
+      title: "Company Taxi Usage",
+      category: "Travel & Expenses",
+      icon: <BriefcaseBusiness className="w-5 h-5" />,
+      description: "Corporate transportation policy",
+      updated: "2025",
+      pdfUrl: "/pdfs/Company Taxi usage .pdf",
+    },
+    {
+      id: "medical-insurance",
+      title: "Additional Medical Insurance",
+      category: "Benefits & Leave",
+      icon: <ShieldCheck className="w-5 h-5" />,
+      description: "Supplementary health coverage details",
+      updated: "2025",
+      pdfUrl: "/pdfs/Additional Medical Insurance .pdf",
+    },
+    {
+      id: "pasha-life",
+      title: "Pasha-Life Insurance",
+      category: "Benefits & Leave",
+      icon: <ShieldCheck className="w-5 h-5" />,
+      description: "Life insurance coverage information",
+      updated: "2025",
+      pdfUrl: "/pdfs/Pasha-Life Insurance .pdf",
     },
   ];
 

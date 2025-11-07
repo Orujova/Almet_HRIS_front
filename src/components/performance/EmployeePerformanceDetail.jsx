@@ -1,4 +1,5 @@
-import { ArrowLeft, Download, Star, TrendingUp, Award, Target } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, Download, Star, TrendingUp, Award, Target, FileText, BookOpen, CheckCircle } from 'lucide-react';
 import ObjectivesSection from './ObjectivesSection';
 import CompetenciesSection from './CompetenciesSection';
 import PerformanceReviews from './PerformanceReviews';
@@ -17,27 +18,26 @@ export default function EmployeePerformanceDetail({
   onBack,
   onCancelObjective,
   onExport,
-  // Objectives
   onUpdateObjective,
   onAddObjective,
   onDeleteObjective,
   onSaveObjectivesDraft,
   onSubmitObjectives,
-  // Competencies
   onUpdateCompetency,
   onSaveCompetenciesDraft,
   onSubmitCompetencies,
-  // Mid-Year Review
   onSaveMidYearDraft,
   onSubmitMidYearEmployee,
   onSubmitMidYearManager,
-  // Development Needs
   onUpdateDevelopmentNeed,
   onAddDevelopmentNeed,
   onDeleteDevelopmentNeed,
   onSaveDevelopmentNeedsDraft,
   onSubmitDevelopmentNeeds
 }) {
+  // ✅ Tab State
+  const [activeTab, setActiveTab] = useState('objectives');
+
   const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
 
@@ -81,32 +81,109 @@ export default function EmployeePerformanceDetail({
   
   const finalRating = performanceData.final_rating || 
                       getLetterGradeFromScale(overallPercentage);
-  
-  console.log('📊 Performance Detail - Clarification Comments:', {
-    count: performanceData.clarification_comments?.length || 0,
-    comments: performanceData.clarification_comments
-  });
+
+  // ✅ Tab Configuration
+  const tabs = [
+    {
+      id: 'objectives',
+      label: 'Objectives',
+      icon: Target,
+      badge: performanceData.objectives?.length || 0,
+      status: performanceData.objectives_manager_approved ? 'completed' : 'pending'
+    },
+    {
+      id: 'competencies',
+      label: 'Competencies',
+      icon: Award,
+      badge: performanceData.competency_ratings?.length || 0,
+      status: performanceData.competencies_submitted ? 'completed' : 'pending'
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews',
+      icon: FileText,
+      badge: [
+        performanceData.mid_year_completed,
+        performanceData.end_year_completed
+      ].filter(Boolean).length,
+      status: performanceData.end_year_completed ? 'completed' : 
+              performanceData.mid_year_completed ? 'inprogress' : 'pending'
+    },
+    {
+      id: 'development',
+      label: 'Development',
+      icon: BookOpen,
+      badge: performanceData.development_needs?.length || 0,
+      status: performanceData.development_needs_submitted ? 'completed' : 'pending'
+    }
+  ];
+
+  const TabButton = ({ tab }) => {
+    const isActive = activeTab === tab.id;
+    const Icon = tab.icon;
+    
+    return (
+      <button
+        onClick={() => setActiveTab(tab.id)}
+        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+          isActive 
+            ? darkMode 
+              ? 'bg-almet-sapphire text-white shadow-lg' 
+              : 'bg-almet-sapphire text-white shadow-lg'
+            : darkMode
+              ? 'bg-almet-san-juan/30 text-almet-bali-hai hover:bg-almet-san-juan/50'
+              : 'bg-almet-mystic text-almet-waterloo hover:bg-almet-mystic/80'
+        }`}
+      >
+        <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} />
+        <span className="font-semibold text-sm">{tab.label}</span>
+        
+        {/* Badge */}
+        <div className={`ml-auto flex items-center gap-2`}>
+          <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
+            isActive
+              ? 'bg-white/20 text-white'
+              : darkMode
+                ? 'bg-almet-comet/30 text-almet-bali-hai'
+                : 'bg-white text-almet-waterloo'
+          }`}>
+            {tab.badge}
+          </span>
+          
+          {/* Status Indicator */}
+          {tab.status === 'completed' && (
+            <CheckCircle className="w-4 h-4 text-emerald-500" />
+          )}
+          {tab.status === 'inprogress' && (
+            <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+          )}
+        </div>
+      </button>
+    );
+  };
 
   return (
     <div className="space-y-4">
-      {/* Employee Header */}
-      <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg p-4 shadow-sm border ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      {/* Employee Header - Compact */}
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl p-4 shadow-sm border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className={`p-2 rounded-lg transition-colors ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+              className={`p-2 rounded-xl transition-colors ${darkMode ? 'hover:bg-almet-san-juan' : 'hover:bg-almet-mystic'}`}
             >
-              <ArrowLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <ArrowLeft className="w-5 h-5 text-almet-waterloo dark:text-almet-bali-hai" />
             </button>
             
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-sm font-semibold">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-base font-bold">
               {employee.name.charAt(0)}
             </div>
             
             <div>
-              <h2 className="text-base font-semibold text-gray-900 dark:text-white">{employee.name}</h2>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <h2 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                {employee.name}
+              </h2>
+              <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
                 <span>{employee.position}</span>
                 <span>•</span>
                 <span>{employee.department}</span>
@@ -116,21 +193,32 @@ export default function EmployeePerformanceDetail({
             </div>
           </div>
           
-          {canEdit && (
-            <button
-              onClick={onExport}
-              disabled={loading}
-              className="px-3 py-2 bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg text-xs font-medium flex items-center gap-2 disabled:opacity-50 transition-colors"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Export
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Overall Score Badge */}
+            <div className={`px-4 py-2 rounded-xl ${darkMode ? 'bg-almet-sapphire/20 border border-almet-sapphire/30' : 'bg-almet-sapphire/10 border border-almet-sapphire/20'}`}>
+              <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-0.5">Overall</div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-almet-sapphire">{formatNumber(overallPercentage, 1)}%</span>
+                <span className="text-sm font-semibold text-almet-sapphire">{finalRating}</span>
+              </div>
+            </div>
+            
+            {canEdit && (
+              <button
+                onClick={onExport}
+                disabled={loading}
+                className="h-10 px-4 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-50 transition-all shadow-sm"
+              >
+                <Download className="w-4 h-4" />
+                Export
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Performance Metrics Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Mini Performance Metrics */}
+      <div className="grid grid-cols-3 gap-3">
         <MetricCard
           icon={Target}
           title="Objectives"
@@ -148,27 +236,19 @@ export default function EmployeePerformanceDetail({
           darkMode={darkMode}
         />
         <MetricCard
-          icon={TrendingUp}
-          title="Overall"
-          value={`${formatNumber(overallPercentage, 1)}%`}
-          subtitle={`Grade: ${getLetterGradeFromScale(overallPercentage)}`}
-          color="green"
-          darkMode={darkMode}
-        />
-        <MetricCard
           icon={Star}
-          title="Final Rating"
-          value={finalRating}
-          subtitle={`Obj: ${performanceData.objectives_weight}% • Comp: ${performanceData.competencies_weight}%`}
-          color="yellow"
+          title="Weights"
+          value={`${performanceData.objectives_weight}% / ${performanceData.competencies_weight}%`}
+          subtitle="Obj / Comp"
+          color="amber"
           darkMode={darkMode}
         />
       </div>
 
-      {/* Evaluation Scale Reference */}
+      {/* Evaluation Scale Reference - Collapsible */}
       <EvaluationScaleReference scales={settings.evaluationScale} darkMode={darkMode} />
 
-      {/* ✅ FIX: Clarification Comments Section - Always render if there are comments */}
+      {/* Clarification Comments */}
       {performanceData.clarification_comments && performanceData.clarification_comments.length > 0 && (
         <ClarificationComments 
           comments={performanceData.clarification_comments}
@@ -176,73 +256,92 @@ export default function EmployeePerformanceDetail({
         />
       )}
 
-      {/* Main Content Sections */}
-      <ObjectivesSection
-        objectives={performanceData.objectives || []}
-        settings={settings}
-        currentPeriod={currentPeriod}
-        activeYear={activeYear}
-        canEdit={canEdit}
-        loading={loading}
-        darkMode={darkMode}
-        totalWeight={totalWeight}
-        totalScore={performanceData.total_objectives_score}
-        percentage={performanceData.objectives_percentage}
-        targetScore={settings.evaluationTargets?.objective_score_target}
-        performanceData={performanceData}
-        onUpdate={onUpdateObjective}
-        onAdd={onAddObjective}
-        onDelete={onDeleteObjective}
-        onSaveDraft={onSaveObjectivesDraft}
-        onSubmit={onSubmitObjectives}
-        onCancelObjective={onCancelObjective}
-      />
+      {/* ✅ TAB NAVIGATION */}
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border shadow-sm p-3`}>
+        <div className="grid grid-cols-4 gap-2">
+          {tabs.map(tab => (
+            <TabButton key={tab.id} tab={tab} />
+          ))}
+        </div>
+      </div>
 
-      <CompetenciesSection
-        competencies={performanceData.competency_ratings || []}
-        groupScores={performanceData.group_competency_scores}
-        settings={settings}
-        currentPeriod={currentPeriod}
-        canEdit={canEdit}
-        loading={loading}
-        performanceData={performanceData}
-        darkMode={darkMode}
-        totalRequired={performanceData.total_competencies_required_score}
-        totalActual={performanceData.total_competencies_actual_score}
-        percentage={performanceData.competencies_percentage}
-        letterGrade={performanceData.competencies_letter_grade}
-        onUpdate={onUpdateCompetency}
-        onSaveDraft={onSaveCompetenciesDraft}
-        onSubmit={onSubmitCompetencies}
-         isLeadershipAssessment={performanceData.is_leadership_assessment || false}
-      />
+      {/* ✅ TAB CONTENT - Only show active tab */}
+      <div className="min-h-[600px]">
+        {activeTab === 'objectives' && (
+          <ObjectivesSection
+            objectives={performanceData.objectives || []}
+            settings={settings}
+            currentPeriod={currentPeriod}
+            activeYear={activeYear}
+            canEdit={canEdit}
+            loading={loading}
+            darkMode={darkMode}
+            totalWeight={totalWeight}
+            totalScore={performanceData.total_objectives_score}
+            percentage={performanceData.objectives_percentage}
+            targetScore={settings.evaluationTargets?.objective_score_target}
+            performanceData={performanceData}
+            onUpdate={onUpdateObjective}
+            onAdd={onAddObjective}
+            onDelete={onDeleteObjective}
+            onSaveDraft={onSaveObjectivesDraft}
+            onSubmit={onSubmitObjectives}
+            onCancelObjective={onCancelObjective}
+          />
+        )}
 
-      <PerformanceReviews
-        midYearEmployee={performanceData.mid_year_employee_comment}
-        midYearManager={performanceData.mid_year_manager_comment}
-        endYearEmployee={performanceData.end_year_employee_comment}
-        endYearManager={performanceData.end_year_manager_comment}
-        currentPeriod={currentPeriod}
-        performanceData={performanceData}
-        permissions={permissions}
-        onSaveMidYearDraft={onSaveMidYearDraft}
-        onSubmitMidYearEmployee={onSubmitMidYearEmployee}
-        onSubmitMidYearManager={onSubmitMidYearManager}
-        darkMode={darkMode}
-      />
+        {activeTab === 'competencies' && (
+          <CompetenciesSection
+            competencies={performanceData.competency_ratings || []}
+            groupScores={performanceData.group_competency_scores}
+            settings={settings}
+            currentPeriod={currentPeriod}
+            canEdit={canEdit}
+            loading={loading}
+            performanceData={performanceData}
+            darkMode={darkMode}
+            totalRequired={performanceData.total_competencies_required_score}
+            totalActual={performanceData.total_competencies_actual_score}
+            percentage={performanceData.competencies_percentage}
+            letterGrade={performanceData.competencies_letter_grade}
+            onUpdate={onUpdateCompetency}
+            onSaveDraft={onSaveCompetenciesDraft}
+            onSubmit={onSubmitCompetencies}
+            isLeadershipAssessment={performanceData.is_leadership_assessment || false}
+          />
+        )}
 
-      <DevelopmentNeeds
-        developmentNeeds={performanceData.development_needs || []}
-        competencies={performanceData.competency_ratings || []}
-        canEdit={canEdit}
-        loading={loading}
-        darkMode={darkMode}
-        onUpdate={onUpdateDevelopmentNeed}
-        onAdd={onAddDevelopmentNeed}
-        onDelete={onDeleteDevelopmentNeed}
-        onSaveDraft={onSaveDevelopmentNeedsDraft}
-        onSubmit={onSubmitDevelopmentNeeds}
-      />
+        {activeTab === 'reviews' && (
+          <PerformanceReviews
+            midYearEmployee={performanceData.mid_year_employee_comment}
+            midYearManager={performanceData.mid_year_manager_comment}
+            endYearEmployee={performanceData.end_year_employee_comment}
+            endYearManager={performanceData.end_year_manager_comment}
+            currentPeriod={currentPeriod}
+            performanceData={performanceData}
+            permissions={permissions}
+            onSaveMidYearDraft={onSaveMidYearDraft}
+            onSubmitMidYearEmployee={onSubmitMidYearEmployee}
+            onSubmitMidYearManager={onSubmitMidYearManager}
+            darkMode={darkMode}
+          />
+        )}
+
+        {activeTab === 'development' && (
+          <DevelopmentNeeds
+            developmentNeeds={performanceData.development_needs || []}
+            competencies={performanceData.competency_ratings || []}
+            canEdit={canEdit}
+            loading={loading}
+            darkMode={darkMode}
+            onUpdate={onUpdateDevelopmentNeed}
+            onAdd={onAddDevelopmentNeed}
+            onDelete={onDeleteDevelopmentNeed}
+            onSaveDraft={onSaveDevelopmentNeedsDraft}
+            onSubmit={onSubmitDevelopmentNeeds}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -251,18 +350,17 @@ function MetricCard({ icon: Icon, title, value, subtitle, color, darkMode }) {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-600',
     purple: 'from-purple-500 to-purple-600',
-    green: 'from-green-500 to-green-600',
-    yellow: 'from-yellow-500 to-yellow-600'
+    amber: 'from-amber-500 to-amber-600'
   };
 
   return (
-    <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border p-3 hover:shadow-md transition-shadow`}>
+    <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border p-3`}>
       <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center mb-2`}>
         <Icon className="w-4 h-4 text-white" />
       </div>
-      <h3 className="text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1 uppercase tracking-wide">{title}</h3>
-      <p className="text-lg font-bold text-gray-900 dark:text-white mb-0.5">{value}</p>
-      <p className="text-[10px] text-gray-600 dark:text-gray-400">{subtitle}</p>
+      <h3 className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai mb-1">{title}</h3>
+      <p className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} mb-0.5`}>{value}</p>
+      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{subtitle}</p>
     </div>
   );
 }
@@ -273,39 +371,30 @@ function EvaluationScaleReference({ scales, darkMode }) {
   }
 
   return (
-    <details className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg border overflow-hidden group`}>
-      <summary className="p-3 cursor-pointer flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
+    <details className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border overflow-hidden group`}>
+      <summary className="p-3 cursor-pointer flex items-center justify-between hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-colors">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-almet-mystic dark:bg-almet-cloud-burst/20 flex items-center justify-center">
-            <Star className="w-3.5 h-3.5 text-almet-sapphire" />
-          </div>
-          <h3 className="text-xs font-semibold text-gray-900 dark:text-white">
+          <Star className="w-4 h-4 text-almet-sapphire" />
+          <h3 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
             Evaluation Scale Reference
           </h3>
         </div>
-        <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-4 h-4 text-almet-waterloo transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </summary>
       
-      <div className="p-3 border-t border-gray-200 dark:border-gray-700">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className={`p-3 border-t ${darkMode ? 'border-almet-comet' : 'border-almet-mystic'}`}>
+        <div className="grid grid-cols-5 gap-2">
           {scales.map((scale) => (
-            <div key={scale.id} className={`${darkMode ? 'bg-gray-750' : 'bg-gray-50'} rounded-lg p-2.5 text-center`}>
-              <div className="text-sm font-bold text-almet-sapphire dark:text-almet-astral mb-1">
-                {scale.name}
-              </div>
-              <div className="text-xs font-semibold text-gray-900 dark:text-white mb-0.5">
+            <div key={scale.id} className={`${darkMode ? 'bg-almet-san-juan' : 'bg-almet-mystic'} rounded-lg p-2 text-center`}>
+              <div className="text-sm font-bold text-almet-sapphire mb-1">{scale.name}</div>
+              <div className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} mb-0.5`}>
                 Value: {scale.value}
               </div>
-              <div className="text-[10px] text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
                 {scale.range_min}-{scale.range_max}%
               </div>
-              {scale.description && (
-                <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-700">
-                  {scale.description}
-                </div>
-              )}
             </div>
           ))}
         </div>
