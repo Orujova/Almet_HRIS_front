@@ -4,13 +4,16 @@ import {
     ChevronDown, ChevronRight, Users, Building2, Award, User, Search, Phone, Mail, MapPin,
     Briefcase, Crown, Target, Layers, Filter, TreePine, Maximize2, Minimize2, Plus, Minus,
     ZoomIn, ZoomOut, RotateCcw, X, Grid, UsersRound, Archive, Puzzle, Info, Download,
-    ArrowUp, ArrowDown, Expand, Shrink, RefreshCw, Settings, AlertCircle, XCircle
+    ArrowUp, ArrowDown, Expand, Shrink, RefreshCw, Settings, AlertCircle, XCircle, FileText,
+    CheckCircle, Clock, Shield
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
 import { useOrgChart } from '@/hooks/useOrgChart';
+import jobDescriptionService from '@/services/jobDescriptionService';
 import Select from 'react-select';
 import html2canvas from 'html2canvas';
+import { createPortal } from 'react-dom';
 import ReactFlow, {
     Controls,
     Background,
@@ -313,6 +316,11 @@ const OrgChart = () => {
     const { darkMode } = useTheme();
     const containerRef = useRef(null);
     
+    // Job Description Modal State
+    const [showJobDescriptionModal, setShowJobDescriptionModal] = useState(false);
+    const [jobDetail, setJobDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    
     const {
         orgChart,
         filteredOrgChart,
@@ -363,6 +371,70 @@ const OrgChart = () => {
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const borderColor = darkMode ? "border-slate-600" : "border-gray-200";
     const bgAccent = darkMode ? "bg-slate-700" : "bg-almet-mystic";
+
+    // Fetch Job Description Function
+    const fetchJobDescription = async (employeeId) => {
+        try {
+            setDetailLoading(true);
+            
+            const jobDescriptions = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
+            
+            if (!jobDescriptions || jobDescriptions.length === 0) {
+                alert('No job description found for this employee');
+                return;
+            }
+
+            const activeJob = jobDescriptions.find(job => 
+                job.status === 'ACTIVE' || job.status === 'APPROVED'
+            ) || jobDescriptions[0];
+
+            const detail = await jobDescriptionService.getJobDescription(activeJob.id);
+            setJobDetail(detail);
+            setShowJobDescriptionModal(true);
+        } catch (error) {
+            console.error('Error fetching job description:', error);
+            alert('Error loading job description. Please try again.');
+        } finally {
+            setDetailLoading(false);
+        }
+    };
+
+    // Get Job Status Display
+    const getJobStatusDisplay = (job) => {
+        const statusInfo = jobDescriptionService.getStatusInfo(job.status);
+        let statusColor = '';
+        let statusBg = '';
+        
+        switch (job.status) {
+            case 'DRAFT':
+                statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
+                statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
+                break;
+            case 'PENDING_LINE_MANAGER':
+            case 'PENDING_EMPLOYEE':
+                statusColor = 'text-orange-600 dark:text-orange-400';
+                statusBg = 'bg-orange-100 dark:bg-orange-900/20';
+                break;
+            case 'APPROVED':
+            case 'ACTIVE':
+                statusColor = 'text-green-600 dark:text-green-400';
+                statusBg = 'bg-green-100 dark:bg-green-900/20';
+                break;
+            case 'REJECTED':
+                statusColor = 'text-red-600 dark:text-red-400';
+                statusBg = 'bg-red-100 dark:bg-red-900/20';
+                break;
+            default:
+                statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
+                statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
+        }
+
+        return (
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${statusColor} ${statusBg}`}>
+                {job.status_display?.status || statusInfo.label}
+            </span>
+        );
+    };
 
     const selectStyles = {
         control: (provided, state) => ({
@@ -1040,6 +1112,280 @@ const OrgChart = () => {
         </div>
     ), [filteredOrgChart, bgCard, borderColor, textHeader, textSecondary, setSelectedEmployee]);
 
+    // Job Description Modal Component
+    const JobDescriptionModal = () => {
+        if (!showJobDescriptionModal || !jobDetail) return null;
+
+        return createPortal(
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000] p-4">
+                <div className={`${bgCard} rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-2xl`}>
+                    <div className="p-5">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-200 dark:border-slate-600">
+                            <div>
+                                <h2 className={`text-xl font-bold ${textHeader} mb-2`}>Job Description Details</h2>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    {getJobStatusDisplay(jobDetail)}
+                                    <span className={`text-xs ${textMuted}`}>
+                                        Created {jobDescriptionService.formatDate(jobDetail.created_at)}
+                                    </span>
+                                    <span className={`text-xs ${textMuted}`}>
+                                        Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id);
+                                    }}
+                                    className="flex items-center gap-2 px-3.5 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-colors text-xs font-semibold"
+                                >
+                                    <Download size={14} />
+                                    Download PDF
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowJobDescriptionModal(false);
+                                        setJobDetail(null);
+                                    }}
+                                    className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-slate-700`}
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Job Overview */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                            <div className="lg:col-span-2 space-y-5">
+                                {/* Basic Information */}
+                                <div className={`p-4 ${bgAccent} rounded-xl`}>
+                                    <h3 className={`text-lg font-bold ${textHeader} mb-3`}>{jobDetail.job_title}</h3>
+                                    <div className="grid grid-cols-2 gap-3 text-xs">
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Company:</span>
+                                            <p className={`${textPrimary} mt-1`}>{jobDetail.business_function?.name}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Department:</span>
+                                            <p className={`${textPrimary} mt-1`}>{jobDetail.department?.name}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Unit:</span>
+                                            <p className={`${textPrimary} mt-1`}>{jobDetail.unit?.name || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Job Function:</span>
+                                            <p className={`${textPrimary} mt-1`}>{jobDetail.job_function?.name || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Hierarchy:</span>
+                                            <p className={`${textPrimary} mt-1`}>
+                                                {jobDetail.position_group?.display_name || jobDetail.position_group?.name}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Grading Level:</span>
+                                            <p className={`${textPrimary} mt-1`}>{jobDetail.grading_level || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Reports To:</span>
+                                            <p className={`${textPrimary} mt-1`}>{jobDetail.reports_to?.full_name || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className={`font-semibold ${textMuted}`}>Position Type:</span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                {jobDescriptionService.isVacantPosition(jobDetail) ? (
+                                                    <>
+                                                        <AlertCircle size={14} className="text-orange-500" />
+                                                        <span className={`${textPrimary} text-orange-600 dark:text-orange-400 font-semibold`}>
+                                                            Vacant
+                                                        </span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <CheckCircle size={14} className="text-green-500" />
+                                                        <span className={`${textPrimary} text-green-600 dark:text-green-400 font-semibold`}>
+                                                            Assigned
+                                                        </span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Job Purpose */}
+                                <div>
+                                    <h4 className={`text-base font-bold ${textHeader} mb-2 flex items-center gap-2`}>
+                                        <Target size={16} className="text-almet-sapphire" />
+                                        Job Purpose
+                                    </h4>
+                                    <div className={`p-4 ${bgAccent} rounded-xl`}>
+                                        <p className={`${textSecondary} leading-relaxed text-xs`}>{jobDetail.job_purpose}</p>
+                                    </div>
+                                </div>
+
+                                {/* Job Sections */}
+                                {jobDetail.sections && jobDetail.sections.length > 0 && (
+                                    <div className="space-y-5">
+                                        {jobDetail.sections.map((section, index) => (
+                                            <div key={index}>
+                                                <h4 className={`text-base font-bold ${textHeader} mb-2 flex items-center gap-2`}>
+                                                    <Briefcase size={16} className="text-almet-sapphire" />
+                                                    {section.title}
+                                                </h4>
+                                                <div className={`p-4 ${bgAccent} rounded-xl`}>
+                                                    <div className={`${textSecondary} leading-relaxed whitespace-pre-line text-xs`}>
+                                                        {section.content}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sidebar */}
+                            <div className="space-y-5">
+                                {/* Approval Status */}
+                                <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                                    <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+                                        <CheckCircle size={16} className="text-almet-sapphire" />
+                                        Approval Status
+                                    </h4>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className={`text-xs font-semibold ${textMuted}`}>Line Manager</span>
+                                            <span className={`flex items-center gap-2 text-xs font-semibold ${
+                                                jobDetail.line_manager_approved_at 
+                                                    ? 'text-green-600 dark:text-green-400' 
+                                                    : 'text-orange-600 dark:text-orange-400'
+                                            }`}>
+                                                {jobDetail.line_manager_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
+                                                {jobDetail.line_manager_approved_at ? 'Approved' : 'Pending'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className={`text-xs font-semibold ${textMuted}`}>Employee</span>
+                                            <span className={`flex items-center gap-2 text-xs font-semibold ${
+                                                jobDetail.employee_approved_at 
+                                                    ? 'text-green-600 dark:text-green-400' 
+                                                    : 'text-orange-600 dark:text-orange-400'
+                                            }`}>
+                                                {jobDetail.employee_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
+                                                {jobDetail.employee_approved_at ? 'Approved' : 'Pending'}
+                                            </span>
+                                        </div>
+                                        
+                                        {jobDetail.line_manager_comments && (
+                                            <div className={`mt-3 p-2.5 ${bgCard} rounded-lg`}>
+                                                <span className={`text-xs font-semibold ${textMuted}`}>Manager Comments:</span>
+                                                <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.line_manager_comments}</p>
+                                            </div>
+                                        )}
+                                        {jobDetail.employee_comments && (
+                                            <div className={`mt-3 p-2.5 ${bgCard} rounded-lg`}>
+                                                <span className={`text-xs font-semibold ${textMuted}`}>Employee Comments:</span>
+                                                <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.employee_comments}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Next Action Required */}
+                                <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                                    <h4 className={`font-bold ${textHeader} mb-2 flex items-center gap-2 text-sm`}>
+                                        <Target size={16} className="text-almet-sapphire" />
+                                        Next Action
+                                    </h4>
+                                    <p className={`text-xs ${textSecondary} leading-relaxed`}>
+                                        {jobDescriptionService.getNextAction(jobDetail)}
+                                    </p>
+                                </div>
+
+                                {/* Required Skills */}
+                                {jobDetail.required_skills && jobDetail.required_skills.length > 0 && (
+                                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                                        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+                                            <Award size={16} className="text-almet-sapphire" />
+                                            Required Skills
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {jobDetail.required_skills.map((skill, index) => (
+                                                <div key={index} className="flex items-center justify-between py-0.5">
+                                                    <span className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                                                        {skill.skill_detail?.name || skill.name}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Business Resources */}
+                                {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
+                                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                                        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+                                            <Building2 size={16} className="text-almet-sapphire" />
+                                            Business Resources
+                                        </h4>
+                                        <div className="space-y-1.5">
+                                            {jobDetail.business_resources.map((resource, index) => (
+                                                <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                                                    <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
+                                                    {resource.name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Access Rights */}
+                                {jobDetail.access_rights && jobDetail.access_rights.length > 0 && (
+                                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                                        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+                                            <Shield size={16} className="text-almet-sapphire" />
+                                            Access Rights
+                                        </h4>
+                                        <div className="space-y-1.5">
+                                            {jobDetail.access_rights.map((access, index) => (
+                                                <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                                                    <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
+                                                    {access.name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Company Benefits */}
+                                {jobDetail.company_benefits && jobDetail.company_benefits.length > 0 && (
+                                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                                        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+                                            <Award size={16} className="text-almet-sapphire" />
+                                            Company Benefits
+                                        </h4>
+                                        <div className="space-y-1.5">
+                                            {jobDetail.company_benefits.map((benefit, index) => (
+                                                <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                                                    <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
+                                                    {benefit.name}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>,
+            document.body
+        );
+    };
+
     useEffect(() => {
         if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
             let rootEmployees = [];
@@ -1243,7 +1589,7 @@ const OrgChart = () => {
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                                 <div>
-                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Companys</label>
+                                    <label className={`block text-xs font-medium ${textSecondary} mb-1.5`}>Companies</label>
                                     <Select
                                         isMulti
                                         placeholder="Select functions..."
@@ -1361,9 +1707,25 @@ const OrgChart = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <button onClick={clearSelectedEmployee} className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-lg transition-colors`}>
-                                    <X size={20} aria-label="Close modal"/>
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    {!selectedEmployee.vacant && (
+                                        <button
+                                            onClick={() => {
+                                                if (selectedEmployee?.employee_id) {
+                                                    fetchJobDescription(selectedEmployee.employee_id);
+                                                }
+                                            }}
+                                            disabled={detailLoading}
+                                            className="flex items-center gap-2 px-3 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium disabled:opacity-50"
+                                        >
+                                            <FileText size={16} />
+                                            {detailLoading ? 'Loading...' : 'View Job Description'}
+                                        </button>
+                                    )}
+                                    <button onClick={clearSelectedEmployee} className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-lg transition-colors`}>
+                                        <X size={20} aria-label="Close modal"/>
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="p-4 overflow-y-auto flex-grow">
@@ -1604,6 +1966,9 @@ const OrgChart = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Job Description Modal */}
+                {typeof window !== 'undefined' && <JobDescriptionModal />}
 
                 {/* Error Display */}
                 {hasErrors && (
