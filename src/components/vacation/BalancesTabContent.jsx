@@ -124,32 +124,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
     return name.includes(term) || empId.includes(term);
   });
 
-  const getBalanceStatus = (balance) => {
-    if (balance.remaining_balance < 5) {
-      return {
-        color: "text-red-600",
-        bg: "bg-red-50 dark:bg-red-900/20",
-        label: "Critical",
-      };
-    } else if (balance.remaining_balance < 10) {
-      return {
-        color: "text-amber-600",
-        bg: "bg-amber-50 dark:bg-amber-900/20",
-        label: "Low",
-      };
-    } else if (balance.remaining_balance > 20) {
-      return {
-        color: "text-green-600",
-        bg: "bg-green-50 dark:bg-green-900/20",
-        label: "Excellent",
-      };
-    }
-    return {
-      color: "text-blue-600",
-      bg: "bg-blue-50 dark:bg-blue-900/20",
-      label: "Good",
-    };
-  };
+
 
   const canUpdate =
     userPermissions.is_admin ||
@@ -387,7 +362,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
                     "Scheduled",
                     "Remaining",
                     "To Plan",
-                    "Status",
+                  
                     ...(canUpdate ? ["Actions"] : []),
                   ].map((h) => (
                     <th
@@ -401,7 +376,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                 {filteredBalances.map((balance) => {
-                  const status = getBalanceStatus(balance);
+              
                   const isEditing = editingBalance === balance.id;
 
                   return (
@@ -471,13 +446,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
                       <td className="px-4 py-3 text-center text-sm font-semibold text-red-600">
                         {balance.should_be_planned}
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-full ${status.bg} ${status.color}`}
-                        >
-                          {status.label}
-                        </span>
-                      </td>
+                    
                       {canUpdate && (
                         <td className="px-4 py-3 text-center">
                           {isEditing ? (

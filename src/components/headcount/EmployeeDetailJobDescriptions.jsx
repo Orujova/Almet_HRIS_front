@@ -20,14 +20,14 @@ import {
   Briefcase,
   Target,
   Award,
-  Settings,
+
   Shield,
   Search,
   Filter,
   ChevronDown,
   UserCheck,
   UserX as UserVacant,
-  ArrowRight,
+ 
   ChevronLeft,
   ChevronRight,
 
