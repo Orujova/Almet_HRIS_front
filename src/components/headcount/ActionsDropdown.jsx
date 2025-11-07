@@ -1,11 +1,16 @@
-// src/components/headcount/ActionsDropdown.jsx - Enhanced with proper z-index and positioning
+// src/components/headcount/ActionsDropdown.jsx - Enhanced with Job Description Modal
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { MoreVertical, Edit, Users, FileText, BarChart2, Trash2, UserPlus, TagIcon, Archive } from "lucide-react";
+import { 
+  MoreVertical, Edit, Users, FileText, BarChart2, Trash2, UserPlus, 
+  TagIcon, Archive, X, Download, CheckCircle, Clock, Building, 
+  Briefcase, Target, Award, Shield, UserCheck, UserX as UserVacant 
+} from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useToast } from "../common/Toast";
 import { getThemeStyles } from "./utils/themeStyles";
 import { archiveEmployeesService } from "../../services/vacantPositionsService";
+import jobDescriptionService from "../../services/jobDescriptionService";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 
@@ -13,7 +18,7 @@ import { createPortal } from "react-dom";
 import ConfirmationModal from "../common/ConfirmationModal";
 
 /**
- * Enhanced Actions Dropdown with Portal Rendering and Proper Z-Index
+ * Enhanced Actions Dropdown with Portal Rendering and Job Description Modal
  */
 const ActionsDropdown = ({ 
   employeeId, 
@@ -28,6 +33,11 @@ const ActionsDropdown = ({
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, right: 0 });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  
+  // Job Description Modal State
+  const [showJobDescriptionModal, setShowJobDescriptionModal] = useState(false);
+  const [jobDetail, setJobDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState({
@@ -45,6 +55,14 @@ const ActionsDropdown = ({
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   const styles = getThemeStyles(darkMode);
 
+  // Theme classes
+  const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-almet-bali-hai" : "text-almet-waterloo";
+  const textMuted = darkMode ? "text-almet-santas-gray" : "text-almet-bali-hai";
+  const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
+  const bgAccent = darkMode ? "bg-almet-san-juan/30" : "bg-almet-mystic/50";
+
   // Calculate dropdown position
   const calculatePosition = () => {
     if (!buttonRef.current) return;
@@ -53,24 +71,20 @@ const ActionsDropdown = ({
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
     
-    // Dropdown dimensions (approximate)
-    const dropdownWidth = 224; // w-56 = 224px
-    const dropdownHeight = 400; // approximate max height
+    const dropdownWidth = 224;
+    const dropdownHeight = 400;
     
-    let top = buttonRect.bottom + 4; // 4px gap
-    let left = buttonRect.right - dropdownWidth; // Align right edge
+    let top = buttonRect.bottom + 4;
+    let left = buttonRect.right - dropdownWidth;
     
-    // Check if dropdown would go below viewport
     if (top + dropdownHeight > viewportHeight) {
-      top = buttonRect.top - dropdownHeight - 4; // Position above
+      top = buttonRect.top - dropdownHeight - 4;
     }
     
-    // Check if dropdown would go outside left edge
     if (left < 8) {
-      left = 8; // 8px margin from edge
+      left = 8;
     }
     
-    // Check if dropdown would go outside right edge
     if (left + dropdownWidth > viewportWidth - 8) {
       left = viewportWidth - dropdownWidth - 8;
     }
@@ -119,7 +133,7 @@ const ActionsDropdown = ({
     setIsOpen(!isOpen);
   };
 
-  // ENHANCED: Safe employee name extraction
+  // Safe employee name extraction
   const getEmployeeName = () => {
     if (!employee) return `Employee ${employeeId}`;
     
@@ -139,7 +153,7 @@ const ActionsDropdown = ({
     };
   };
 
-  // Get current tags with safe processing
+  // Get current tags
   const getCurrentTags = () => {
     if (!employee) return [];
     
@@ -169,6 +183,76 @@ const ActionsDropdown = ({
   };
 
   // ========================================
+  // JOB DESCRIPTION MODAL FUNCTIONS
+  // ========================================
+
+  const fetchJobDescription = async () => {
+    try {
+      setDetailLoading(true);
+      setIsOpen(false); // Close dropdown
+      
+      // First get employee's job descriptions
+      const jobDescriptions = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
+      
+      if (!jobDescriptions || jobDescriptions.length === 0) {
+        showWarning('No job description found for this employee');
+        return;
+      }
+
+      // Get the most recent/active job description
+      const activeJob = jobDescriptions.find(job => 
+        job.status === 'ACTIVE' || job.status === 'APPROVED'
+      ) || jobDescriptions[0];
+
+      // Fetch full details
+      const detail = await jobDescriptionService.getJobDescription(activeJob.id);
+      setJobDetail(detail);
+      setShowJobDescriptionModal(true);
+    } catch (error) {
+      console.error('Error fetching job description:', error);
+      showError('Error loading job description. Please try again.');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const getStatusDisplay = (job) => {
+    const statusInfo = jobDescriptionService.getStatusInfo(job.status);
+    let statusColor = '';
+    let statusBg = '';
+    
+    switch (job.status) {
+      case 'DRAFT':
+        statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
+        statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
+        break;
+      case 'PENDING_LINE_MANAGER':
+      case 'PENDING_EMPLOYEE':
+        statusColor = 'text-orange-600 dark:text-orange-400';
+        statusBg = 'bg-orange-100 dark:bg-orange-900/20';
+        break;
+      case 'APPROVED':
+      case 'ACTIVE':
+        statusColor = 'text-green-600 dark:text-green-400';
+        statusBg = 'bg-green-100 dark:bg-green-900/20';
+        break;
+      case 'REJECTED':
+        statusColor = 'text-red-600 dark:text-red-400';
+        statusBg = 'bg-red-100 dark:bg-red-900/20';
+        break;
+      default:
+        statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
+        statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
+    }
+
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${statusColor} ${statusBg}`}>
+        {job.status_display?.status || statusInfo.label}
+      </span>
+    );
+  };
+
+  // ========================================
   // CONFIRMATION MODAL HELPERS
   // ========================================
 
@@ -193,7 +277,7 @@ const ActionsDropdown = ({
   };
 
   // ========================================
-  // ENHANCED DELETE ACTION HANDLERS
+  // DELETE ACTION HANDLERS
   // ========================================
 
   const handleSoftDelete = async () => {
@@ -210,11 +294,8 @@ const ActionsDropdown = ({
           
           const result = await archiveEmployeesService.bulkSoftDeleteEmployees([employeeId]);
           
-         
-          
           showSuccess(result.message || `${employeeName} soft deleted successfully`);
           
-          // Trigger refresh
           if (onRefresh) {
             await onRefresh();
           } else if (onAction) {
@@ -228,7 +309,7 @@ const ActionsDropdown = ({
           }
           
         } catch (error) {
-          console.error('INDIVIDUAL SOFT DELETE: Operation failed:', error);
+          console.error('Soft delete failed:', error);
           showError(`Failed to soft delete ${employeeName}: ${error.message || 'Unknown error'}`);
         } finally {
           setIsProcessing(false);
@@ -243,7 +324,7 @@ const ActionsDropdown = ({
     openConfirmation({
       type: 'danger',
       title: 'Permanent Deletion Warning',
-      message: `⚠️ WARNING: This will permanently delete ${employeeName} `,
+      message: `⚠️ WARNING: This will permanently delete ${employeeName}`,
       confirmText: 'Continue',
       action: async () => {
         try {
@@ -255,7 +336,6 @@ const ActionsDropdown = ({
           
           showSuccess(result.message || `${employeeName} permanently deleted successfully`);
           
-          // Trigger refresh
           if (onRefresh) {
             await onRefresh();
           } else if (onAction) {
@@ -269,7 +349,7 @@ const ActionsDropdown = ({
           }
           
         } catch (error) {
-          console.error('INDIVIDUAL HARD DELETE: Operation failed:', error);
+          console.error('Hard delete failed:', error);
           showError(`Failed to delete ${employeeName}: ${error.message || 'Unknown error'}`);
         } finally {
           setIsProcessing(false);
@@ -279,11 +359,17 @@ const ActionsDropdown = ({
   };
 
   // ========================================
-  // ENHANCED ACTION HANDLER
+  // ACTION HANDLER
   // ========================================
 
   const handleAction = (action) => {
     setIsOpen(false);
+    
+    // Handle job description viewing
+    if (action === "viewJobDescription") {
+      fetchJobDescription();
+      return;
+    }
     
     // Handle delete actions with confirmation modals
     if (action === "softDelete") {
@@ -298,15 +384,7 @@ const ActionsDropdown = ({
     
     // Handle other actions normally
     if (onAction) {
-      console.log('ENHANCED DROPDOWN: Triggering action:', {
-        employeeId,
-        action,
-        employeeName: getEmployeeName()
-      });
-      
       onAction(employeeId, action);
-    } else {
-      console.warn('ENHANCED DROPDOWN: No onAction handler provided');
     }
   };
 
@@ -314,7 +392,10 @@ const ActionsDropdown = ({
   const currentTags = getCurrentTags();
   const employeeName = getEmployeeName();
 
-  // Dropdown Menu Component
+  // ========================================
+  // DROPDOWN MENU COMPONENT
+  // ========================================
+
   const DropdownMenu = () => (
     <div
       ref={dropdownRef}
@@ -324,7 +405,7 @@ const ActionsDropdown = ({
       style={{ 
         top: `${dropdownPosition.top}px`,
         left: `${dropdownPosition.left}px`,
-        zIndex: 99999 // Very high z-index to appear above everything
+        zIndex: 99999
       }}
     >
       <div className="py-1" role="menu">
@@ -354,7 +435,6 @@ const ActionsDropdown = ({
           </button>
         </Link>
 
-        {/* Divider */}
         <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
         {/* Change Line Manager */}
@@ -407,20 +487,20 @@ const ActionsDropdown = ({
           </div>
         </button>
 
-        {/* Divider */}
         <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
-        {/* Job Description */}
+        {/* Job Description - Now opens modal */}
         <button
           className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
           onClick={() => handleAction("viewJobDescription")}
+          disabled={detailLoading}
         >
           <div className="flex items-center">
             <FileText size={14} className="mr-2 text-amber-500" />
             <div className="flex flex-col items-start">
               <span>Job Description</span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                View detailed job info
+                {detailLoading ? 'Loading...' : 'View detailed job info'}
               </span>
             </div>
           </div>
@@ -458,7 +538,7 @@ const ActionsDropdown = ({
           </div>
         </button>
 
-        {/* Team Overview (if manager) */}
+        {/* Team Overview */}
         {employee?.direct_reports_count > 0 && (
           <button
             className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
@@ -476,10 +556,9 @@ const ActionsDropdown = ({
           </button>
         )}
 
-        {/* Divider before danger zone */}
         <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
-        {/* Soft Delete Employee */}
+        {/* Soft Delete */}
         <button
           className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
           onClick={() => handleAction("softDelete")}
@@ -495,7 +574,7 @@ const ActionsDropdown = ({
           </div>
         </button>
 
-        {/* Hard Delete Employee */}
+        {/* Hard Delete */}
         <button
           className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
           onClick={() => handleAction("hardDelete")}
@@ -513,6 +592,267 @@ const ActionsDropdown = ({
       </div>
     </div>
   );
+
+  // ========================================
+  // JOB DESCRIPTION MODAL COMPONENT
+  // ========================================
+
+  const JobDescriptionModal = () => {
+    if (!showJobDescriptionModal || !jobDetail) return null;
+
+    return createPortal(
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000] p-4">
+        <div className={`${bgCard} rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-2xl`}>
+          <div className="p-5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-200 dark:border-almet-comet">
+              <div>
+                <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>Job Description Details</h2>
+                <div className="flex items-center gap-3 flex-wrap">
+                  {getStatusDisplay(jobDetail)}
+                  <span className={`text-xs ${textMuted}`}>Created {jobDescriptionService.formatDate(jobDetail.created_at)}</span>
+                  <span className={`text-xs ${textMuted}`}>
+                    Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id);
+                  }}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-colors text-xs font-semibold"
+                >
+                  <Download size={14} />
+                  Download PDF
+                </button>
+                <button
+                  onClick={() => {
+                    setShowJobDescriptionModal(false);
+                    setJobDetail(null);
+                  }}
+                  className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-almet-comet/30`}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Job Overview */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+              <div className="lg:col-span-2 space-y-5">
+                {/* Basic Information */}
+                <div className={`p-4 ${bgAccent} rounded-xl`}>
+                  <h3 className={`text-lg font-bold ${textPrimary} mb-3`}>{jobDetail.job_title}</h3>
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Company:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.business_function?.name}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Department:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.department?.name}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Unit:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.unit?.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Job Function:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.job_function?.name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Hierarchy:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.position_group?.display_name || jobDetail.position_group?.name}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Grading Level:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.grading_level || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Reports To:</span>
+                      <p className={`${textPrimary} mt-1`}>{jobDetail.reports_to?.full_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <span className={`font-semibold ${textMuted}`}>Position Type:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        {jobDescriptionService.isVacantPosition(jobDetail) ? (
+                          <>
+                            <UserVacant size={14} className="text-orange-500" />
+                            <span className={`${textPrimary} text-orange-600 dark:text-orange-400 font-semibold`}>Vacant</span>
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck size={14} className="text-green-500" />
+                            <span className={`${textPrimary} text-green-600 dark:text-green-400 font-semibold`}>Assigned</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Job Purpose */}
+                <div>
+                  <h4 className={`text-base font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
+                    <Target size={16} className="text-almet-sapphire" />
+                    Job Purpose
+                  </h4>
+                  <div className={`p-4 ${bgAccent} rounded-xl`}>
+                    <p className={`${textSecondary} leading-relaxed text-xs`}>{jobDetail.job_purpose}</p>
+                  </div>
+                </div>
+
+                {/* Job Sections */}
+                {jobDetail.sections && jobDetail.sections.length > 0 && (
+                  <div className="space-y-5">
+                    {jobDetail.sections.map((section, index) => (
+                      <div key={index}>
+                        <h4 className={`text-base font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
+                          <Briefcase size={16} className="text-almet-sapphire" />
+                          {section.title}
+                        </h4>
+                        <div className={`p-4 ${bgAccent} rounded-xl`}>
+                          <div className={`${textSecondary} leading-relaxed whitespace-pre-line text-xs`}>
+                            {section.content}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sidebar */}
+              <div className="space-y-5">
+                {/* Approval Status */}
+                <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                  <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                    <CheckCircle size={16} className="text-almet-sapphire" />
+                    Approval Status
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-semibold ${textMuted}`}>Line Manager</span>
+                      <span className={`flex items-center gap-2 text-xs font-semibold ${jobDetail.line_manager_approved_at ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                        {jobDetail.line_manager_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
+                        {jobDetail.line_manager_approved_at ? 'Approved' : 'Pending'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`text-xs font-semibold ${textMuted}`}>Employee</span>
+                      <span className={`flex items-center gap-2 text-xs font-semibold ${jobDetail.employee_approved_at ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                        {jobDetail.employee_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
+                        {jobDetail.employee_approved_at ? 'Approved' : 'Pending'}
+                      </span>
+                    </div>
+                    
+                    {jobDetail.line_manager_comments && (
+                      <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
+                        <span className={`text-xs font-semibold ${textMuted}`}>Manager Comments:</span>
+                        <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.line_manager_comments}</p>
+                      </div>
+                    )}
+                    {jobDetail.employee_comments && (
+                      <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
+                        <span className={`text-xs font-semibold ${textMuted}`}>Employee Comments:</span>
+                        <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.employee_comments}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Next Action Required */}
+                <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                  <h4 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2 text-sm`}>
+                    <Target size={16} className="text-almet-sapphire" />
+                    Next Action
+                  </h4>
+                  <p className={`text-xs ${textSecondary} leading-relaxed`}>
+                    {jobDescriptionService.getNextAction(jobDetail)}
+                  </p>
+                </div>
+
+                {/* Required Skills */}
+                {jobDetail.required_skills && jobDetail.required_skills.length > 0 && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Award size={16} className="text-almet-sapphire" />
+                      Required Skills
+                    </h4>
+                    <div className="space-y-2">
+                      {jobDetail.required_skills.map((skill, index) => (
+                        <div key={index} className="flex items-center justify-between py-0.5">
+                          <span className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                            {skill.skill_detail?.name || skill.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Business Resources */}
+                {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Building size={16} className="text-almet-sapphire" />
+                      Business Resources
+                    </h4>
+                    <div className="space-y-1.5">
+                      {jobDetail.business_resources.map((resource, index) => (
+                        <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                          <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
+                          {resource.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Access Rights */}
+                {jobDetail.access_rights && jobDetail.access_rights.length > 0 && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Shield size={16} className="text-almet-sapphire" />
+                      Access Rights
+                    </h4>
+                    <div className="space-y-1.5">
+                      {jobDetail.access_rights.map((access, index) => (
+                        <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                          <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
+                          {access.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Company Benefits */}
+                {jobDetail.company_benefits && jobDetail.company_benefits.length > 0 && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Award size={16} className="text-almet-sapphire" />
+                      Company Benefits
+                    </h4>
+                    <div className="space-y-1.5">
+                      {jobDetail.company_benefits.map((benefit, index) => (
+                        <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                          <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
+                          {benefit.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  };
 
   return (
     <>
@@ -532,6 +872,9 @@ const ActionsDropdown = ({
         {isOpen && !disabled && !isProcessing && typeof window !== 'undefined' && 
           createPortal(<DropdownMenu />, document.body)}
       </div>
+
+      {/* Job Description Modal */}
+      {typeof window !== 'undefined' && <JobDescriptionModal />}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

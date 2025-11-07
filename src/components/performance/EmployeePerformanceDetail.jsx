@@ -5,6 +5,7 @@ import CompetenciesSection from './CompetenciesSection';
 import PerformanceReviews from './PerformanceReviews';
 import DevelopmentNeeds from './DevelopmentNeeds';
 import ClarificationComments from './ClarificationComments';
+import { useToast } from '@/components/common/Toast';
 
 export default function EmployeePerformanceDetail({
   employee,
@@ -35,6 +36,8 @@ export default function EmployeePerformanceDetail({
   onSaveDevelopmentNeedsDraft,
   onSubmitDevelopmentNeeds
 }) {
+  const { showInfo } = useToast();
+  
   // ✅ Tab State
   const [activeTab, setActiveTab] = useState('objectives');
 
@@ -82,6 +85,9 @@ export default function EmployeePerformanceDetail({
   const finalRating = performanceData.final_rating || 
                       getLetterGradeFromScale(overallPercentage);
 
+  // ✅ Check if performance is completed
+  const isCompleted = performanceData?.approval_status === 'COMPLETED';
+
   // ✅ Tab Configuration
   const tabs = [
     {
@@ -124,7 +130,10 @@ export default function EmployeePerformanceDetail({
     
     return (
       <button
-        onClick={() => setActiveTab(tab.id)}
+        onClick={() => {
+          setActiveTab(tab.id);
+          showInfo(`Switched to ${tab.label} tab`);
+        }}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
           isActive 
             ? darkMode 
@@ -203,7 +212,8 @@ export default function EmployeePerformanceDetail({
               </div>
             </div>
             
-            {canEdit && (
+            {/* ✅ Only show export button if performance is completed */}
+            {canEdit && isCompleted && (
               <button
                 onClick={onExport}
                 disabled={loading}
@@ -212,6 +222,17 @@ export default function EmployeePerformanceDetail({
                 <Download className="w-4 h-4" />
                 Export
               </button>
+            )}
+            
+            {/* ✅ Show completion status badge */}
+            {!isCompleted && canEdit && (
+              <div className={`px-3 py-2 rounded-xl text-xs font-medium ${
+                darkMode 
+                  ? 'bg-amber-900/20 text-amber-400 border border-amber-800/30' 
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                Export available after completion
+              </div>
             )}
           </div>
         </div>

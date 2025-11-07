@@ -35,7 +35,6 @@ export default function ObjectivesSection({
   const isGoalsApproved = performanceData?.objectives_manager_approved || false;
   const isNeedClarification = performanceData?.approval_status === 'NEED_CLARIFICATION';
   
-  // ✅ Check if we're in MANAGER period
   const isManagerPeriodActive = () => {
     if (!activeYear) return false;
     const today = new Date().toISOString().split('T')[0];
@@ -44,7 +43,6 @@ export default function ObjectivesSection({
     return today >= managerStart && today <= managerEnd;
   };
   
-  // ✅ Check if we're in EMPLOYEE period
   const isEmployeePeriodActive = () => {
     if (!activeYear) return false;
     const today = new Date().toISOString().split('T')[0];
@@ -60,22 +58,13 @@ export default function ObjectivesSection({
   const isManagerPeriod = isGoalSettingPeriod && isManagerPeriodActive();
   const isEmployeePeriod = isGoalSettingPeriod && isEmployeePeriodActive();
   
-  // ✅ FIX: Manager can edit if:
-  // 1. During manager period (not submitted OR clarification needed)
-  // 2. Manager period ended BUT clarification was requested (can respond)
   const canEditGoals = canEdit && (
-    // Normal manager period - can edit if not submitted or clarification
     (isManagerPeriod && (!isGoalsSubmitted || isNeedClarification)) ||
-    // Manager period ended BUT clarification requested - can still edit
     (!isManagerPeriod && isNeedClarification)
   );
   
-  // ✅ FIX: Save Draft visible when manager can edit
   const canSaveDraft = canEditGoals;
   
-  // ✅ FIX: Submit visible when:
-  // 1. During manager period (not submitted yet)
-  // 2. Manager period ended BUT clarification - can resubmit
   const canSubmitGoals = canEdit && isValidForSubmit && (
     (isManagerPeriod && !isGoalsSubmitted) ||
     (!isManagerPeriod && isNeedClarification)
@@ -126,11 +115,9 @@ export default function ObjectivesSection({
     return '';
   };
   
-  // ✅ Period status message with clarification support
   const getPeriodStatusMessage = () => {
     if (!activeYear) return null;
     
-    // ✅ Priority 1: Clarification needed - manager can respond even if period ended
     if (isNeedClarification) {
       return {
         type: 'warning',
@@ -139,7 +126,6 @@ export default function ObjectivesSection({
       };
     }
     
-    // Priority 2: Manager period active
     if (isManagerPeriod) {
       if (isGoalsSubmitted) {
         return {
@@ -155,7 +141,6 @@ export default function ObjectivesSection({
       };
     }
     
-    // Priority 3: Employee period active
     if (isEmployeePeriod && isGoalsSubmitted && !isGoalsApproved) {
       return {
         type: 'warning',
@@ -164,7 +149,6 @@ export default function ObjectivesSection({
       };
     }
     
-    // Priority 4: Goals approved
     if (isGoalsApproved) {
       return {
         type: 'success',
@@ -173,7 +157,6 @@ export default function ObjectivesSection({
       };
     }
     
-    // Priority 5: Period ended
     if (isGoalSettingPeriod && !isManagerPeriod && !isEmployeePeriod) {
       return {
         type: 'error',
@@ -217,7 +200,6 @@ export default function ObjectivesSection({
           )}
         </div>
 
-        {/* ✅ Period Status Banner with Icon */}
         {periodStatus && (
           <div className={`mb-4 px-4 py-3 rounded-xl border flex items-center gap-3 ${
             periodStatus.type === 'info' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800/30' :
@@ -343,7 +325,6 @@ export default function ObjectivesSection({
           </div>
 
           <div className="flex gap-3 flex-wrap">
-            {/* ✅ Save Draft: Show when manager can edit (including clarification response) */}
             {canSaveDraft && (
               <button
                 onClick={() => onSaveDraft(objectives)}
@@ -359,7 +340,6 @@ export default function ObjectivesSection({
               </button>
             )}
             
-            {/* ✅ Submit: Show during manager period OR when responding to clarification */}
             {canSubmitGoals && (
               <button
                 onClick={() => onSubmit(objectives)}
@@ -378,7 +358,6 @@ export default function ObjectivesSection({
               </div>
             )}
             
-            {/* ✅ Status Messages */}
             {isGoalsSubmitted && !isGoalsApproved && !isNeedClarification && isEmployeePeriod && (
               <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 rounded-xl text-xs">
                 <AlertCircle className="w-4 h-4" />
@@ -393,7 +372,6 @@ export default function ObjectivesSection({
               </div>
             )}
             
-            {/* ✅ Clarification Info Box */}
             {isNeedClarification && (
               <div className={`flex-1 min-w-full p-4 rounded-xl border ${
                 darkMode 
@@ -430,7 +408,6 @@ export default function ObjectivesSection({
     </div>
   );
 }
-// ObjectiveRow component with fixed rating display
 
 function ObjectiveRow({ 
   objective, 
@@ -455,10 +432,12 @@ function ObjectiveRow({
   const isStatusMissing = !objective.status;
   const isWeightMissing = !objective.weight || objective.weight <= 0;
 
-  // ✅ Get selected rating details
-  const selectedRating = settings.evaluationScale?.find(
-    s => s.id === objective.end_year_rating
-  );
+  const getSelectedRating = () => {
+    if (!objective.end_year_rating) return null;
+    return settings.evaluationScale?.find(s => s.id === objective.end_year_rating);
+  };
+
+  const selectedRating = getSelectedRating();
 
   const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
     darkMode 
@@ -538,10 +517,8 @@ function ObjectiveRow({
         />
       </td>
       
-      {/* ✅ RATING COLUMN - FIXED */}
       <td className="px-4 py-3">
         {canRateEndYear && !isCancelled ? (
-          // ✅ Editable dropdown
           <select
             value={objective.end_year_rating || ''}
             onChange={(e) => {
@@ -564,9 +541,9 @@ function ObjectiveRow({
                 }, 0);
               }
             }}
-            className={`${inputClass} w-full`}
+            className={`${inputClass} w-full text-center font-semibold`}
           >
-            <option value="">-- Select --</option>
+            <option value="">-- Select Rating --</option>
             {settings.evaluationScale?.map(scale => (
               <option key={scale.id} value={scale.id}>
                 {scale.name} • {scale.value}
@@ -574,30 +551,39 @@ function ObjectiveRow({
             ))}
           </select>
         ) : (
-          // ✅ Read-only display with better visibility
-          <div className={`px-3 py-2 rounded-xl text-xs font-bold text-center ${
-            selectedRating 
-              ? darkMode 
-                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30' 
-                : 'bg-blue-50 text-blue-700 border border-blue-200'
-              : darkMode
-                ? 'bg-almet-comet/30 text-almet-bali-hai border border-almet-comet/30'
-                : 'bg-gray-50 text-gray-500 border border-gray-200'
-          }`}>
+          <div className="flex items-center justify-center w-full">
             {selectedRating ? (
-              <div className="flex items-center justify-center gap-1.5">
+              <div className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 ${
+                darkMode 
+                  ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30' 
+                  : 'bg-blue-50 text-blue-700 border border-blue-200'
+              }`}>
                 <span>{selectedRating.name}</span>
                 <span className="opacity-60">•</span>
                 <span>{selectedRating.value}</span>
               </div>
+            ) : objective.end_year_rating ? (
+              <div className={`px-3 py-2 rounded-xl text-xs font-medium inline-flex items-center gap-2 ${
+                darkMode
+                  ? 'bg-red-900/20 text-red-400 border border-red-800/30'
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>
+                <span>⚠️</span>
+                <span>Invalid Rating</span>
+              </div>
             ) : (
-              'Not Rated'
+              <div className={`px-3 py-2 rounded-xl text-xs font-medium ${
+                darkMode
+                  ? 'bg-almet-comet/30 text-almet-bali-hai border border-almet-comet/30'
+                  : 'bg-gray-50 text-gray-500 border border-gray-200'
+              }`}>
+                Not Rated
+              </div>
             )}
           </div>
         )}
       </td>
       
-      {/* ✅ SCORE COLUMN - Enhanced visibility */}
       <td className="px-4 py-3">
         <div className={`px-3 py-2 text-xs font-bold text-center rounded-xl ${
           objective.calculated_score > 0

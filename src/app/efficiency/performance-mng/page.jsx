@@ -1,28 +1,33 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import performanceApi from "@/services/performanceService";
 import competencyApi from "@/services/competencyApi";
-import { useCallback, useRef } from 'react';
 
 // Component Imports
 import PerformanceHeader from "@/components/performance/PerformanceHeader";
 import PerformanceDashboard from "@/components/performance/PerformanceDashboard";
 import EmployeePerformanceDetail from "@/components/performance/EmployeePerformanceDetail";
 
+// Common Components
+import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
+import { useToast } from "@/components/common/Toast";
+import SearchableDropdown from "@/components/common/SearchableDropdown";
+
 // Icons
-import { Loader, CheckCircle, XCircle, AlertCircle, Users } from 'lucide-react';
+import { Loader, Users } from 'lucide-react';
 
 export default function PerformanceManagementPage() {
   const { darkMode } = useTheme();
   const router = useRouter();
+  const { showSuccess, showError, showWarning, showInfo } = useToast();
   
   // UI State
   const [activeView, setActiveView] = useState('dashboard');
   const [loading, setLoading] = useState(false);
-  const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
+  const [error, setError] = useState(null);
 
   // User & Permissions
   const [permissions, setPermissions] = useState({
@@ -60,7 +65,8 @@ export default function PerformanceManagementPage() {
   // Competencies
   const [behavioralCompetencies, setBehavioralCompetencies] = useState([]);
   const [leadershipCompetencies, setLeadershipCompetencies] = useState([]);
-const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
+  const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
+
   // ==================== INITIALIZATION ====================
   useEffect(() => {
     initializeApp();
@@ -74,6 +80,7 @@ const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
 
   const initializeApp = async () => {
     setLoading(true);
+    setError(null);
     try {
       await Promise.all([
         loadPermissions(),
@@ -84,7 +91,8 @@ const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
       ]);
     } catch (error) {
       console.error('❌ Initialization error:', error);
-      showNotification('Failed to load application data', 'error');
+      setError(error.message || 'Failed to load application data');
+      showError('Failed to load application data');
     } finally {
       setLoading(false);
     }
@@ -95,8 +103,10 @@ const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
     try {
       const permsData = await performanceApi.performances.getMyPermissions();
       setPermissions(permsData);
+      console.log('✅ Permissions loaded:', permsData);
     } catch (error) {
       console.error('❌ Error loading permissions:', error);
+      throw error;
     }
   };
 
@@ -108,8 +118,10 @@ const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
       
       const allYears = await performanceApi.years.list();
       setPerformanceYears(allYears.results || allYears);
+      console.log('✅ Active year loaded:', yearData.year);
     } catch (error) {
       console.error('❌ Error loading year:', error);
+      throw error;
     }
   };
 
@@ -139,12 +151,10 @@ const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
         statusTypes: statusesRes.results || statusesRes
       });
       
-      console.log('✅ Settings loaded:', {
-        evaluationScale: scalesRes.results || scalesRes,
-        weightConfigs: weightsRes.results
-      });
+      console.log('✅ Settings loaded');
     } catch (error) {
       console.error('❌ Error loading settings:', error);
+      throw error;
     }
   };
 
@@ -175,66 +185,71 @@ const [leadershipMainGroups, setLeadershipMainGroups] = useState([]);
       }
       
       setBehavioralCompetencies(allCompetencies);
+      console.log('✅ Behavioral competencies loaded:', allCompetencies.length);
       return allCompetencies;
     } catch (error) {
       console.error('❌ Error loading behavioral competencies:', error);
       return [];
     }
   };
-const loadLeadershipCompetencies = async () => {
-  try {
-    const mainGroupsResponse = await competencyApi.leadershipMainGroups.getAll();
-    const mainGroups = mainGroupsResponse.results || mainGroupsResponse;
-    
-    const allLeadershipItems = [];
-    
-    for (const mainGroup of mainGroups) {
-      try {
-        const mainGroupDetail = await competencyApi.leadershipMainGroups.getById(mainGroup.id);
-        const childGroups = mainGroupDetail.child_groups || [];
-        
-        for (const childGroup of childGroups) {
-          try {
-            const childGroupDetail = await competencyApi.leadershipChildGroups.getById(childGroup.id);
-            const items = childGroupDetail.items || [];
-            
-            items.forEach(item => {
-              allLeadershipItems.push({
-                id: item.id,
-                name: item.name,
-                description: item.description || '',
-                child_group_id: childGroup.id,
-                child_group_name: childGroup.name,
-                main_group_id: mainGroup.id,
-                main_group_name: mainGroup.name
+
+  const loadLeadershipCompetencies = async () => {
+    try {
+      const mainGroupsResponse = await competencyApi.leadershipMainGroups.getAll();
+      const mainGroups = mainGroupsResponse.results || mainGroupsResponse;
+      
+      const allLeadershipItems = [];
+      
+      for (const mainGroup of mainGroups) {
+        try {
+          const mainGroupDetail = await competencyApi.leadershipMainGroups.getById(mainGroup.id);
+          const childGroups = mainGroupDetail.child_groups || [];
+          
+          for (const childGroup of childGroups) {
+            try {
+              const childGroupDetail = await competencyApi.leadershipChildGroups.getById(childGroup.id);
+              const items = childGroupDetail.items || [];
+              
+              items.forEach(item => {
+                allLeadershipItems.push({
+                  id: item.id,
+                  name: item.name,
+                  description: item.description || '',
+                  child_group_id: childGroup.id,
+                  child_group_name: childGroup.name,
+                  main_group_id: mainGroup.id,
+                  main_group_name: mainGroup.name
+                });
               });
-            });
-          } catch (error) {
-            console.error(`❌ Error loading items for child group ${childGroup.name}:`, error);
+            } catch (error) {
+              console.error(`❌ Error loading items for child group ${childGroup.name}:`, error);
+            }
           }
+        } catch (error) {
+          console.error(`❌ Error loading child groups for main group ${mainGroup.name}:`, error);
         }
-      } catch (error) {
-        console.error(`❌ Error loading child groups for main group ${mainGroup.name}:`, error);
       }
+      
+      setLeadershipCompetencies(allLeadershipItems);
+      setLeadershipMainGroups(mainGroups);
+      console.log('✅ Leadership competencies loaded:', allLeadershipItems.length);
+      return allLeadershipItems;
+    } catch (error) {
+      console.error('❌ Error loading leadership competencies:', error);
+      return [];
     }
-    
-    setLeadershipCompetencies(allLeadershipItems);
-    setLeadershipMainGroups(mainGroups);
-    console.log('✅ Loaded leadership competencies:', allLeadershipItems.length);
-    return allLeadershipItems;
-  } catch (error) {
-    console.error('❌ Error loading leadership competencies:', error);
-    return [];
-  }
-};
+  };
+
   const loadDashboardData = async () => {
     setLoading(true);
     try {
       const stats = await performanceApi.dashboard.getStatistics(selectedYear);
       setDashboardStats(stats);
       await loadEmployees();
+      console.log('✅ Dashboard data loaded');
     } catch (error) {
       console.error('❌ Error loading dashboard:', error);
+      showError('Error loading dashboard data');
     } finally {
       setLoading(false);
     }
@@ -284,245 +299,170 @@ const loadLeadershipCompetencies = async () => {
       });
       
       setEmployees(employeesWithPerformance);
+      console.log('✅ Employees loaded:', employeesWithPerformance.length);
     } catch (error) {
       console.error('❌ Error loading employees:', error);
+      showError('Error loading employees');
     }
   };
-  
-// src/app/efficiency/performance-mng/page.jsx - loadPerformanceData
 
-const loadPerformanceData = async (employeeId, year) => {
-  const key = `${employeeId}_${year}`;
-  
-  setLoading(true);
-  try {
-    const response = await performanceApi.performances.list({
-      employee_id: employeeId,
-      year: year
-    });
+  const loadPerformanceData = async (employeeId, year) => {
+    const key = `${employeeId}_${year}`;
     
-    const perfs = response.results || response;
-    let detailData;
-    
-    if (perfs.length > 0) {
-      const performance = perfs[0];
-      detailData = await performanceApi.performances.get(performance.id);
-    } else {
-      detailData = await performanceApi.performances.initialize({
-        employee: employeeId,
-        performance_year: activeYear.id
-      });
-    }
-    
-    // ✅ Get employee info
-    const employee = employees.find(e => e.id === employeeId);
-    const positionName = employee?.position?.toUpperCase().replace('_', ' ').trim() || '';
-    
-    // ✅ Check if leadership position (EXPECTED type based on position)
-    const leadershipKeywords = [
-      'MANAGER', 'VICE_CHAIRMAN', 'VICE CHAIRMAN', 
-      'DIRECTOR', 'VICE', 'HOD', 'HEAD OF DEPARTMENT'
-    ];
-    
-    const isLeadershipPosition = leadershipKeywords.some(keyword => 
-      positionName === keyword.toUpperCase() ||
-      positionName.includes(keyword.toUpperCase())
-    );
-    
-    console.log('📍 Position Check:', {
-      employee: employee?.name,
-      position: positionName,
-      expectedType: isLeadershipPosition ? 'LEADERSHIP' : 'BEHAVIORAL'
-    });
-    
-    // ✅✅✅ CRITICAL FIX: Detect ACTUAL competency type from data
-    if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
-      
-      const firstRating = detailData.competency_ratings[0];
-      
-      // ✅ Detect actual type from data (NOT from position)
-      const hasLeadershipItem = firstRating.leadership_item !== null && firstRating.leadership_item !== undefined;
-      const hasBehavioralCompetency = firstRating.behavioral_competency !== null && firstRating.behavioral_competency !== undefined;
-      
-      const actualType = hasLeadershipItem ? 'LEADERSHIP' : 
-                        hasBehavioralCompetency ? 'BEHAVIORAL' : 
-                        'UNKNOWN';
-      
-      console.log('🎯 Competency Type Detection:', {
-        hasLeadershipItem,
-        hasBehavioralCompetency,
-        actualType,
-        firstRating: {
-          leadership_item: firstRating.leadership_item,
-          behavioral_competency: firstRating.behavioral_competency
-        }
+    setLoading(true);
+    try {
+      const response = await performanceApi.performances.list({
+        employee_id: employeeId,
+        year: year
       });
       
-      // ✅ WARNING: If type mismatch
-      if (isLeadershipPosition && actualType === 'BEHAVIORAL') {
-        console.error('❌ ERROR: Expected LEADERSHIP but got BEHAVIORAL competencies!');
-        console.error(`This ${positionName} position should have a Leadership Assessment Template.`);
-        
-        showNotification(
-          `⚠️ ERROR: ${employee.name} is a ${positionName} but has BEHAVIORAL competencies. ` +
-          `Please create a Leadership Assessment Template for this position.`,
-          'error'
-        );
-        
-        setLoading(false);
-        return null;
-      }
+      const perfs = response.results || response;
+      let detailData;
       
-      if (!isLeadershipPosition && actualType === 'LEADERSHIP') {
-        console.warn('⚠️ WARNING: Expected BEHAVIORAL but got LEADERSHIP competencies!');
-        console.warn(`Position ${positionName} has leadership assessment but shouldn't.`);
-      }
-      
-      // ============ ENRICH BASED ON ACTUAL TYPE ============
-      
-      if (actualType === 'LEADERSHIP') {
-        // ✅ LEADERSHIP COMPETENCIES
-        if (!leadershipCompetencies || leadershipCompetencies.length === 0) {
-          await loadLeadershipCompetencies();
-        }
-        
-        console.log('🎯 Enriching LEADERSHIP competencies...');
-        
-        const enrichedRatings = detailData.competency_ratings.map((rating) => {
-          const leadershipItem = leadershipCompetencies.find(
-            item => item.id === rating.leadership_item
-          );
-          
-          if (!leadershipItem) {
-            console.warn(`⚠️ Leadership item not found: ID ${rating.leadership_item}`);
-          }
-          
-          let ratingValue = 0;
-          if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
-            ratingValue = parseFloat(rating.end_year_rating_value);
-          } else if (rating.end_year_rating) {
-            const selectedScale = settings.evaluationScale?.find(
-              s => s.id === rating.end_year_rating
-            );
-            if (selectedScale) {
-              ratingValue = selectedScale.value;
-            }
-          }
-          
-          return {
-            ...rating,
-            // ✅ PRIMARY NAME
-            competency_name: leadershipItem?.name || `Leadership Item ${rating.leadership_item}`,
-            
-            // ✅ Leadership fields
-            leadership_item_id: rating.leadership_item,
-            leadership_item_name: leadershipItem?.name || 'Unknown',
-            main_group_id: leadershipItem?.main_group_id || null,
-            main_group_name: leadershipItem?.main_group_name || 'Ungrouped',
-            child_group_id: leadershipItem?.child_group_id || null,
-            child_group_name: leadershipItem?.child_group_name || 'Ungrouped',
-            
-            description: leadershipItem?.description || '',
-            end_year_rating_value: ratingValue,
-            
-            // ✅ CORRECT type
-            competency_type: 'LEADERSHIP'
-          };
-        });
-        
-        detailData.competency_ratings = enrichedRatings;
-        detailData.is_leadership_assessment = true;
-        
-        console.log('✅ Enriched LEADERSHIP competencies:', enrichedRatings.length);
-        
-      } else if (actualType === 'BEHAVIORAL') {
-        // ✅ BEHAVIORAL COMPETENCIES
-        if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
-          await loadBehavioralCompetencies();
-        }
-        
-        console.log('🎯 Enriching BEHAVIORAL competencies...');
-        
-        const enrichedRatings = detailData.competency_ratings.map((rating) => {
-          const competency = behavioralCompetencies.find(
-            comp => comp.id === rating.behavioral_competency
-          );
-          
-          if (!competency) {
-            console.warn(`⚠️ Behavioral competency not found: ID ${rating.behavioral_competency}`);
-          }
-          
-          let ratingValue = 0;
-          if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
-            ratingValue = parseFloat(rating.end_year_rating_value);
-          } else if (rating.end_year_rating) {
-            const selectedScale = settings.evaluationScale?.find(
-              s => s.id === rating.end_year_rating
-            );
-            if (selectedScale) {
-              ratingValue = selectedScale.value;
-            }
-          }
-          
-          return {
-            ...rating,
-            // ✅ PRIMARY NAME
-            competency_name: competency?.name || `Behavioral Competency ${rating.behavioral_competency}`,
-            
-            // ✅ Behavioral fields
-            behavioral_competency_id: rating.behavioral_competency,
-            behavioral_competency_name: competency?.name || 'Unknown',
-            competency_group_id: competency?.group_id || null,
-            competency_group_name: competency?.group_name || 'Ungrouped',
-            
-            description: competency?.description || '',
-            end_year_rating_value: ratingValue,
-            
-            // ✅ CORRECT type
-            competency_type: 'BEHAVIORAL'
-          };
-        });
-        
-        detailData.competency_ratings = enrichedRatings;
-        detailData.is_leadership_assessment = false;
-        
-        console.log('✅ Enriched BEHAVIORAL competencies:', enrichedRatings.length);
-        
+      if (perfs.length > 0) {
+        const performance = perfs[0];
+        detailData = await performanceApi.performances.get(performance.id);
       } else {
-        console.error('❌ ERROR: Could not detect competency type!');
-        showNotification('Error: Unknown competency type', 'error');
-        setLoading(false);
-        return null;
+        detailData = await performanceApi.performances.initialize({
+          employee: employeeId,
+          performance_year: activeYear.id
+        });
       }
+      
+      const employee = employees.find(e => e.id === employeeId);
+      const positionName = employee?.position?.toUpperCase().replace('_', ' ').trim() || '';
+      
+      const leadershipKeywords = [
+        'MANAGER', 'VICE_CHAIRMAN', 'VICE CHAIRMAN', 
+        'DIRECTOR', 'VICE', 'HOD', 'HEAD OF DEPARTMENT'
+      ];
+      
+      const isLeadershipPosition = leadershipKeywords.some(keyword => 
+        positionName === keyword.toUpperCase() ||
+        positionName.includes(keyword.toUpperCase())
+      );
+      
+      if (detailData.competency_ratings && detailData.competency_ratings.length > 0) {
+        const firstRating = detailData.competency_ratings[0];
+        
+        const hasLeadershipItem = firstRating.leadership_item !== null && firstRating.leadership_item !== undefined;
+        const hasBehavioralCompetency = firstRating.behavioral_competency !== null && firstRating.behavioral_competency !== undefined;
+        
+        const actualType = hasLeadershipItem ? 'LEADERSHIP' : 
+                          hasBehavioralCompetency ? 'BEHAVIORAL' : 
+                          'UNKNOWN';
+        
+        if (isLeadershipPosition && actualType === 'BEHAVIORAL') {
+          showError(
+            `⚠️ ERROR: ${employee.name} is a ${positionName} but has BEHAVIORAL competencies. ` +
+            `Please create a Leadership Assessment Template for this position.`
+          );
+          setLoading(false);
+          return null;
+        }
+        
+        if (actualType === 'LEADERSHIP') {
+          if (!leadershipCompetencies || leadershipCompetencies.length === 0) {
+            await loadLeadershipCompetencies();
+          }
+          
+          const enrichedRatings = detailData.competency_ratings.map((rating) => {
+            const leadershipItem = leadershipCompetencies.find(
+              item => item.id === rating.leadership_item
+            );
+            
+            let ratingValue = 0;
+            if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
+              ratingValue = parseFloat(rating.end_year_rating_value);
+            } else if (rating.end_year_rating) {
+              const selectedScale = settings.evaluationScale?.find(
+                s => s.id === rating.end_year_rating
+              );
+              if (selectedScale) {
+                ratingValue = selectedScale.value;
+              }
+            }
+            
+            return {
+              ...rating,
+              competency_name: leadershipItem?.name || `Leadership Item ${rating.leadership_item}`,
+              leadership_item_id: rating.leadership_item,
+              leadership_item_name: leadershipItem?.name || 'Unknown',
+              main_group_id: leadershipItem?.main_group_id || null,
+              main_group_name: leadershipItem?.main_group_name || 'Ungrouped',
+              child_group_id: leadershipItem?.child_group_id || null,
+              child_group_name: leadershipItem?.child_group_name || 'Ungrouped',
+              description: leadershipItem?.description || '',
+              end_year_rating_value: ratingValue,
+              competency_type: 'LEADERSHIP'
+            };
+          });
+          
+          detailData.competency_ratings = enrichedRatings;
+          detailData.is_leadership_assessment = true;
+          
+        } else if (actualType === 'BEHAVIORAL') {
+          if (!behavioralCompetencies || behavioralCompetencies.length === 0) {
+            await loadBehavioralCompetencies();
+          }
+          
+          const enrichedRatings = detailData.competency_ratings.map((rating) => {
+            const competency = behavioralCompetencies.find(
+              comp => comp.id === rating.behavioral_competency
+            );
+            
+            let ratingValue = 0;
+            if (rating.end_year_rating_value !== null && rating.end_year_rating_value !== undefined) {
+              ratingValue = parseFloat(rating.end_year_rating_value);
+            } else if (rating.end_year_rating) {
+              const selectedScale = settings.evaluationScale?.find(
+                s => s.id === rating.end_year_rating
+              );
+              if (selectedScale) {
+                ratingValue = selectedScale.value;
+              }
+            }
+            
+            return {
+              ...rating,
+              competency_name: competency?.name || `Behavioral Competency ${rating.behavioral_competency}`,
+              behavioral_competency_id: rating.behavioral_competency,
+              behavioral_competency_name: competency?.name || 'Unknown',
+              competency_group_id: competency?.group_id || null,
+              competency_group_name: competency?.group_name || 'Ungrouped',
+              description: competency?.description || '',
+              end_year_rating_value: ratingValue,
+              competency_type: 'BEHAVIORAL'
+            };
+          });
+          
+          detailData.competency_ratings = enrichedRatings;
+          detailData.is_leadership_assessment = false;
+        }
+      }
+      
+      const recalculatedData = recalculateScores(detailData);
+      
+      setPerformanceData(prev => ({
+        ...prev,
+        [key]: recalculatedData
+      }));
+      
+      setSelectedPerformanceId(recalculatedData.id);
+      showSuccess('Performance data loaded successfully');
+      
+      return recalculatedData;
+      
+    } catch (error) {
+      console.error('❌ Error loading performance data:', error);
+      showError('Error loading performance data');
+      return null;
+    } finally {
+      setLoading(false);
     }
-    
-    const recalculatedData = recalculateScores(detailData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
-    
-    setSelectedPerformanceId(recalculatedData.id);
-    
-    return recalculatedData;
-    
-  } catch (error) {
-    console.error('❌ Error loading performance data:', error);
-    showNotification('Error loading performance data', 'error');
-    return null;
-  } finally {
-    setLoading(false);
-  }
-};
-  // ==================== HELPER FUNCTIONS ====================
-  const showNotification = (message, type = 'success') => {
-    setNotification({ show: true, message, type });
-    setTimeout(() => {
-      setNotification({ show: false, message: '', type: 'success' });
-    }, 3000);
   };
 
+  // ==================== HELPER FUNCTIONS ====================
   const canViewEmployee = (employeeId) => {
     if (permissions.can_view_all) return true;
     if (!permissions.employee) return false;
@@ -611,10 +551,8 @@ const loadPerformanceData = async (employeeId, year) => {
     
     saveObjectivesTimeoutRef.current = setTimeout(async () => {
       try {
-        console.log('🔄 Auto-saving objectives...');
         await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
-        console.log('✅ Objectives auto-saved');
-        showNotification('Changes saved', 'info');
+        showInfo('Changes auto-saved');
       } catch (error) {
         console.error('❌ Auto-save error:', error);
       }
@@ -719,11 +657,11 @@ const loadPerformanceData = async (employeeId, year) => {
     setLoading(true);
     try {
       await performanceApi.performances.saveObjectivesDraft(selectedPerformanceId, objectives);
-      showNotification('Objectives draft saved successfully');
+      showSuccess('Objectives draft saved successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving objectives:', error);
-      showNotification(error.response?.data?.error || 'Error saving objectives', 'error');
+      showError(error.response?.data?.error || 'Error saving objectives');
     } finally {
       setLoading(false);
     }
@@ -738,11 +676,11 @@ const loadPerformanceData = async (employeeId, year) => {
         selectedPerformanceId,
         objectives
       );
-      showNotification('Objectives submitted successfully');
+      showSuccess('Objectives submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting objectives:', error);
-      showNotification(error.response?.data?.error || 'Error submitting objectives', 'error');
+      showError(error.response?.data?.error || 'Error submitting objectives');
     } finally {
       setLoading(false);
     }
@@ -754,11 +692,11 @@ const loadPerformanceData = async (employeeId, year) => {
     setLoading(true);
     try {
       await performanceApi.performances.cancelObjective(selectedPerformanceId, objectiveId, reason);
-      showNotification('Objective cancelled successfully');
+      showSuccess('Objective cancelled successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error cancelling objective:', error);
-      showNotification(error.response?.data?.error || 'Error cancelling objective', 'error');
+      showError(error.response?.data?.error || 'Error cancelling objective');
     } finally {
       setLoading(false);
     }
@@ -802,131 +740,104 @@ const loadPerformanceData = async (employeeId, year) => {
     }));
   };
 
-  // src/app/performance-management/page.jsx
-
-const handleSaveCompetenciesDraft = async (competencies) => {
-  if (!selectedPerformanceId) {
-    showNotification('No performance record selected', 'error');
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    const preparedCompetencies = competencies.map(comp => ({
-      id: comp.id,
-      behavioral_competency: comp.behavioral_competency,
-      required_level: comp.required_level,
-      end_year_rating: comp.end_year_rating,
-      notes: comp.notes || ''
-    }));
+  const handleSaveCompetenciesDraft = async (competencies) => {
+    if (!selectedPerformanceId) {
+      showError('No performance record selected');
+      return;
+    }
     
-    const response = await performanceApi.performances.saveCompetenciesDraft(
-      selectedPerformanceId, 
-      preparedCompetencies
-    );
-    
-    console.log('💾 Save response:', response);
-    
-    // ✅ Show detailed sync status
-    if (response.synced_to_behavioral_assessment) {
-      showNotification(
-        `✓ Competencies saved and synced to behavioral assessment (${response.sync_message})`,
-        'success'
+    setLoading(true);
+    try {
+      const preparedCompetencies = competencies.map(comp => ({
+        id: comp.id,
+        behavioral_competency: comp.behavioral_competency,
+        required_level: comp.required_level,
+        end_year_rating: comp.end_year_rating,
+        notes: comp.notes || ''
+      }));
+      
+      const response = await performanceApi.performances.saveCompetenciesDraft(
+        selectedPerformanceId, 
+        preparedCompetencies
       );
-    } else {
-      if (response.sync_message) {
-        showNotification(
-          `Competencies saved • ${response.sync_message}`,
-          'info'
+      
+      if (response.synced_to_behavioral_assessment) {
+        showSuccess(
+          `✓ Competencies saved and synced to behavioral assessment (${response.sync_message})`
         );
       } else {
-        showNotification('Competencies draft saved successfully', 'success');
+        if (response.sync_message) {
+          showInfo(`Competencies saved • ${response.sync_message}`);
+        } else {
+          showSuccess('Competencies draft saved successfully');
+        }
       }
+      
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+      
+    } catch (error) {
+      console.error('❌ Error saving competencies:', error);
+      showError(error.response?.data?.error || 'Error saving competencies');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmitCompetencies = async (competencies) => {
+    if (!selectedPerformanceId) {
+      showError('No performance record selected');
+      return;
     }
     
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-    
-  } catch (error) {
-    console.error('❌ Error saving competencies:', error);
-    showNotification(
-      error.response?.data?.error || 'Error saving competencies', 
-      'error'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-
-  // src/app/performance-management/page.jsx
-
-const handleSubmitCompetencies = async (competencies) => {
-  if (!selectedPerformanceId) {
-    showNotification('No performance record selected', 'error');
-    return;
-  }
-  
-  setLoading(true);
-  try {
-    // ✅ Prepare competencies data to send
-    const preparedCompetencies = competencies.map(comp => ({
-      id: comp.id,
-      behavioral_competency: comp.behavioral_competency,
-      required_level: comp.required_level,
-      end_year_rating: comp.end_year_rating,
-      notes: comp.notes || ''
-    }));
-    
-    // ✅ Submit with competencies data
-    const response = await performanceApi.performances.submitCompetencies(
-      selectedPerformanceId,
-      preparedCompetencies
-    );
-    
-    console.log('✅ Submit response:', response);
-    
-    // ✅ Show sync status notification
-    if (response.synced_to_behavioral_assessment) {
-      const syncResult = response.sync_result;
-      const wasCompleted = syncResult?.was_completed;
+    setLoading(true);
+    try {
+      const preparedCompetencies = competencies.map(comp => ({
+        id: comp.id,
+        behavioral_competency: comp.behavioral_competency,
+        required_level: comp.required_level,
+        end_year_rating: comp.end_year_rating,
+        notes: comp.notes || ''
+      }));
       
-      let message = 'Competencies submitted successfully';
-      
-      if (wasCompleted) {
-        message += ` and synced to COMPLETED behavioral assessment`;
-      } else {
-        message += ` and synced to behavioral assessment`;
-      }
-      
-      showNotification(message, 'success');
-      
-      // Show sync details
-      if (syncResult?.synced_count > 0 || syncResult?.updated_count > 0) {
-        setTimeout(() => {
-          showNotification(
-            `${syncResult.synced_count} created, ${syncResult.updated_count} updated in assessment`,
-            'info'
-          );
-        }, 1500);
-      }
-    } else {
-      const reason = response.sync_result?.message || 'No behavioral assessment found';
-      showNotification(
-        `Competencies submitted • ${reason}`,
-        'warning'
+      const response = await performanceApi.performances.submitCompetencies(
+        selectedPerformanceId,
+        preparedCompetencies
       );
+      
+      if (response.synced_to_behavioral_assessment) {
+        const syncResult = response.sync_result;
+        const wasCompleted = syncResult?.was_completed;
+        
+        let message = 'Competencies submitted successfully';
+        
+        if (wasCompleted) {
+          message += ` and synced to COMPLETED behavioral assessment`;
+        } else {
+          message += ` and synced to behavioral assessment`;
+        }
+        
+        showSuccess(message);
+        
+        if (syncResult?.synced_count > 0 || syncResult?.updated_count > 0) {
+          setTimeout(() => {
+            showInfo(
+              `${syncResult.synced_count} created, ${syncResult.updated_count} updated in assessment`
+            );
+          }, 1500);
+        }
+      } else {
+        const reason = response.sync_result?.message || 'No behavioral assessment found';
+        showWarning(`Competencies submitted • ${reason}`);
+      }
+      
+      await loadPerformanceData(selectedEmployee.id, selectedYear);
+    } catch (error) {
+      console.error('❌ Error submitting competencies:', error);
+      showError(error.response?.data?.error || 'Error submitting competencies');
+    } finally {
+      setLoading(false);
     }
-    
-    await loadPerformanceData(selectedEmployee.id, selectedYear);
-  } catch (error) {
-    console.error('❌ Error submitting competencies:', error);
-    showNotification(
-      error.response?.data?.error || 'Error submitting competencies', 
-      'error'
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // ==================== MID-YEAR HANDLERS ====================
   const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
@@ -940,11 +851,11 @@ const handleSubmitCompetencies = async (competencies) => {
         comment,
         objectives
       );
-      showNotification(`Mid-year ${userRole} draft saved successfully`);
+      showSuccess(`Mid-year ${userRole} draft saved successfully`);
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving mid-year draft:', error);
-      showNotification(error.response?.data?.error || 'Error saving mid-year draft', 'error');
+      showError(error.response?.data?.error || 'Error saving mid-year draft');
     } finally {
       setLoading(false);
     }
@@ -960,11 +871,11 @@ const handleSubmitCompetencies = async (competencies) => {
         comment,
         objectives
       );
-      showNotification('Mid-year self-review submitted successfully');
+      showSuccess('Mid-year self-review submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting mid-year employee review:', error);
-      showNotification(error.response?.data?.error || 'Error submitting mid-year review', 'error');
+      showError(error.response?.data?.error || 'Error submitting mid-year review');
     } finally {
       setLoading(false);
     }
@@ -980,11 +891,11 @@ const handleSubmitCompetencies = async (competencies) => {
         comment,
         objectives
       );
-      showNotification('Mid-year review completed successfully');
+      showSuccess('Mid-year review completed successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting mid-year manager review:', error);
-      showNotification(error.response?.data?.error || 'Error completing mid-year review', 'error');
+      showError(error.response?.data?.error || 'Error completing mid-year review');
     } finally {
       setLoading(false);
     }
@@ -1054,11 +965,11 @@ const handleSubmitCompetencies = async (competencies) => {
         selectedPerformanceId,
         data.development_needs || []
       );
-      showNotification('Development needs draft saved successfully');
+      showSuccess('Development needs draft saved successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving development needs:', error);
-      showNotification(error.response?.data?.error || 'Error saving development needs', 'error');
+      showError(error.response?.data?.error || 'Error saving development needs');
     } finally {
       setLoading(false);
     }
@@ -1070,11 +981,11 @@ const handleSubmitCompetencies = async (competencies) => {
     setLoading(true);
     try {
       await performanceApi.performances.submitDevelopmentNeeds(selectedPerformanceId);
-      showNotification('Development needs submitted successfully');
+      showSuccess('Development needs submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error submitting development needs:', error);
-      showNotification(error.response?.data?.error || 'Error submitting development needs', 'error');
+      showError(error.response?.data?.error || 'Error submitting development needs');
     } finally {
       setLoading(false);
     }
@@ -1083,7 +994,7 @@ const handleSubmitCompetencies = async (competencies) => {
   // ==================== OTHER HANDLERS ====================
   const handleSelectEmployee = async (employee) => {
     if (!canViewEmployee(employee.id)) {
-      showNotification('You do not have permission to view this employee', 'error');
+      showError('You do not have permission to view this employee');
       return;
     }
     
@@ -1107,27 +1018,33 @@ const handleSubmitCompetencies = async (competencies) => {
         selectedPerformanceId, 
         `performance_${selectedEmployee.employee_id}_${selectedYear}.xlsx`
       );
-      showNotification('Export successful');
+      showSuccess('Export successful');
     } catch (error) {
       console.error('❌ Error exporting:', error);
-      showNotification('Error exporting', 'error');
+      showError('Error exporting');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleRetry = () => {
+    setError(null);
+    initializeApp();
+  };
+
   // ==================== RENDER ====================
+  if (error) {
+    return (
+      <DashboardLayout>
+        <ErrorDisplay error={error} onRetry={handleRetry} />
+      </DashboardLayout>
+    );
+  }
+
   if (loading && !activeYear) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <Loader className="w-16 h-16 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Loading Performance Management System...
-            </p>
-          </div>
-        </div>
+        <LoadingSpinner message="Loading Performance Management System..." />
       </DashboardLayout>
     );
   }
@@ -1214,28 +1131,15 @@ const handleSubmitCompetencies = async (competencies) => {
           )
         )}
 
-        {notification.show && (
-          <div className={`fixed bottom-6 right-6 px-5 py-4 rounded-xl shadow-2xl ${
-            notification.type === 'success' ? 'bg-green-600' :
-            notification.type === 'error' ? 'bg-red-600' :
-            'bg-blue-600'
-          } text-white flex items-center gap-3 z-50 text-sm font-medium animate-slide-up max-w-md`}>
-            {notification.type === 'success' && <CheckCircle className="w-5 h-5 flex-shrink-0" />}
-            {notification.type === 'error' && <XCircle className="w-5 h-5 flex-shrink-0" />}
-            {notification.type === 'info' && <AlertCircle className="w-5 h-5 flex-shrink-0" />}
-            <span>{notification.message}</span>
+        {loading && activeYear && (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl p-8`}>
+              <Loader className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-3" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">Processing...</p>
+            </div>
           </div>
         )}
       </div>
-
-      {loading && activeYear && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl shadow-2xl p-8`}>
-            <Loader className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">Processing...</p>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   );
 }
