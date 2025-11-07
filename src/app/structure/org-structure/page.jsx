@@ -377,23 +377,45 @@ const OrgChart = () => {
         try {
             setDetailLoading(true);
             
+            console.log('🔍 Fetching job description for employee:', employeeId);
+            
             const jobDescriptions = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
             
+            console.log('📋 Job descriptions response:', jobDescriptions);
+            
             if (!jobDescriptions || jobDescriptions.length === 0) {
-                alert('No job description found for this employee');
+                alert('No job description found for this employee. The employee may not have a job description created yet.');
                 return;
             }
 
+            // Try to find active or approved job description
             const activeJob = jobDescriptions.find(job => 
                 job.status === 'ACTIVE' || job.status === 'APPROVED'
             ) || jobDescriptions[0];
 
+            console.log('✅ Selected job description:', activeJob);
+
             const detail = await jobDescriptionService.getJobDescription(activeJob.id);
+            
+            console.log('📄 Job description detail:', detail);
+            
             setJobDetail(detail);
             setShowJobDescriptionModal(true);
         } catch (error) {
-            console.error('Error fetching job description:', error);
-            alert('Error loading job description. Please try again.');
+            console.error('❌ Error fetching job description:', error);
+            
+            // More specific error messages
+            if (error.response?.status === 404) {
+                alert('Job description not found. This employee may not have a job description created yet.');
+            } else if (error.response?.status === 403) {
+                alert('You do not have permission to view this job description.');
+            } else if (error.response?.status === 500) {
+                alert('Server error while loading job description. Please try again later.');
+            } else if (error.message?.includes('Network')) {
+                alert('Network error. Please check your internet connection.');
+            } else {
+                alert(`Error loading job description: ${error.message || 'Unknown error'}. Please try again.`);
+            }
         } finally {
             setDetailLoading(false);
         }
@@ -1708,7 +1730,7 @@ const OrgChart = () => {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    {!selectedEmployee.vacant && (
+                                    {!selectedEmployee.vacant && selectedEmployee.employee_id && (
                                         <button
                                             onClick={() => {
                                                 if (selectedEmployee?.employee_id) {
@@ -1716,13 +1738,27 @@ const OrgChart = () => {
                                                 }
                                             }}
                                             disabled={detailLoading}
-                                            className="flex items-center gap-2 px-3 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium disabled:opacity-50"
+                                            className="flex items-center gap-2 px-3 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="View job description for this employee"
                                         >
-                                            <FileText size={16} />
-                                            {detailLoading ? 'Loading...' : 'View Job Description'}
+                                            {detailLoading ? (
+                                                <>
+                                                    <RefreshCw size={16} className="animate-spin" />
+                                                    Loading...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <FileText size={16} />
+                                                    Job Description
+                                                </>
+                                            )}
                                         </button>
                                     )}
-                                    <button onClick={clearSelectedEmployee} className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-lg transition-colors`}>
+                                    <button 
+                                        onClick={clearSelectedEmployee} 
+                                        className={`${textMuted} hover:${textPrimary} p-2 hover:${bgAccent} rounded-lg transition-colors`}
+                                        title="Close"
+                                    >
                                         <X size={20} aria-label="Close modal"/>
                                     </button>
                                 </div>
