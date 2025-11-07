@@ -25,32 +25,52 @@ export default function CompetenciesSection({
   // ✅ Detect competency type from first competency
   const isLeadershipAssessment = competencies.length > 0 && competencies[0].main_group_name;
 
-  // ✅ Initialize all groups as COLLAPSED by default
+  // ✅ Initialize all groups as COLLAPSED by default - OPTIMIZED
   useEffect(() => {
     if (competencies && competencies.length > 0) {
+      const groupNames = new Set();
+      
+      competencies.forEach((c) => {
+        const g = isLeadershipAssessment 
+          ? (c.main_group_name || "Ungrouped")
+          : (c.competency_group_name || "Ungrouped");
+        groupNames.add(g);
+      });
+
       setExpandedGroups((prev) => {
         const next = { ...prev };
+        let hasChanges = false;
 
-        competencies.forEach((c) => {
-          const g = isLeadershipAssessment 
-            ? (c.main_group_name || "Ungrouped")
-            : (c.competency_group_name || "Ungrouped");
-
-          if (next[g] === undefined) {
-            next[g] = false; // Default collapsed
+        groupNames.forEach((groupName) => {
+          if (next[groupName] === undefined) {
+            next[groupName] = false; // Default collapsed
+            hasChanges = true;
           }
         });
 
-        return next;
+        return hasChanges ? next : prev;
       });
     }
-  }, [competencies, isLeadershipAssessment]);
+  }, [competencies.length, isLeadershipAssessment]); // ✅ Only re-run if length or type changes
 
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       calculateAllScores();
     }
   }, [competencies, settings.evaluationScale]);
+
+  // ✅ Debug logging (only in development)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && competencies.length > 0) {
+      console.log('📊 Competencies Section:', {
+        type: isLeadershipAssessment ? 'LEADERSHIP' : 'BEHAVIORAL',
+        count: competencies.length,
+        groups: Object.keys(groupedCompetencies).length,
+        overallScore: `${overallScore.totalActual}/${overallScore.totalRequired} (${overallScore.percentage}%)`,
+        hasSync: performanceData?.metadata?.had_existing_ratings
+      });
+    }
+  }, [competencies.length]);
 
   const calculateAllScores = () => {
     const groupedData = {};

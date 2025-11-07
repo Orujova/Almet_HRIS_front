@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, CheckCircle, XCircle, AlertCircle, Download, Check, Edit, Trash, Lock, Settings, X, FileText, Upload, Paperclip, Eye, Filter } from 'lucide-react';
+import { Calendar, Clock, Users, CheckCircle,TrendingUp , XCircle, AlertCircle, Download, Check, Edit, Trash, Lock, Settings, X, FileText, Upload, Paperclip, Eye, Filter } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
@@ -12,6 +12,7 @@ import { RejectionModal } from '@/components/business-trip/RejectionModal';
 import { AttachmentsModal } from '@/components/vacation/AttachmentsModal';
 import { RequestDetailModal } from '@/components/vacation/RequestDetailModal';
 import { ScheduleDetailModal } from '@/components/vacation/ScheduleDetailModal';
+import BalancesTabContent from '@/components/vacation/BalancesTabContent';
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showInfo } = useToast();
@@ -808,7 +809,10 @@ const handleViewScheduleDetail = (scheduleId) => {
               { key: 'request', label: 'Request', icon: FileText },
               ...(canApprove ? [{ key: 'approval', label: 'Approval', icon: CheckCircle }] : []),
               { key: 'all', label: 'My Records', icon: Calendar },
-              ...(canExportAll || canExportTeam ? [{ key: 'records', label: 'All Records', icon: Users }] : [])
+              ...(canExportAll || canExportTeam ? [{ key: 'records', label: 'All Records', icon: Users }] : []),
+              ...(userPermissions.permissions?.includes('vacation.balance.view_all') || userPermissions.is_admin 
+                ? [{ key: 'balances', label: 'Balances', icon: TrendingUp }] 
+                : [])
             ].map(tab => (
               <button 
                 key={tab.key} 
@@ -1873,6 +1877,14 @@ const handleViewScheduleDetail = (scheduleId) => {
               </table>
             </div>
           </div>
+        )}
+        {activeTab === 'balances' && (
+          <BalancesTabContent 
+            userPermissions={userPermissions}
+            darkMode={darkMode}
+            showSuccess={showSuccess}
+            showError={showError}
+          />
         )}
       </div>
 

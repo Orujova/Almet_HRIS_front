@@ -560,18 +560,59 @@ deleteAttachment: async (attachmentId) => {
 
   // === BALANCES ===
   
-  // Export Balances
-  exportBalances: async (params = {}) => {
-    try {
-      const response = await vacationApi.get('/vacation/balances/export/', { 
-        params,
-        responseType: 'blob'
-      });
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+getAllBalances: async (params = {}) => {
+  try {
+    const response = await vacationApi.get('/vacation/balances/', { 
+      params: {
+        year: params.year || new Date().getFullYear(),
+        department: params.department || '',
+        min_remaining: params.min_remaining || '',
+        max_remaining: params.max_remaining || ''
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Export Balances
+exportBalances: async (params = {}) => {
+  try {
+    const response = await vacationApi.get('/vacation/balances/export/', { 
+      params: {
+        year: params.year || new Date().getFullYear(),
+        department: params.department || '',
+        min_remaining: params.min_remaining || '',
+        max_remaining: params.max_remaining || ''
+      },
+      responseType: 'blob'
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Update Employee Balance
+updateEmployeeBalance: async (data) => {
+  try {
+    const response = await vacationApi.put('/vacation/balances/update/', data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
+
+// Reset Balances
+resetBalances: async (data) => {
+  try {
+    const response = await vacationApi.post('/vacation/balances/reset/', data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 
   // Download Balance Template
   downloadBalanceTemplate: async () => {
@@ -599,15 +640,7 @@ deleteAttachment: async (attachmentId) => {
     }
   },
 
-  // Update Individual Balance
-  updateIndividualBalance: async (data) => {
-    try {
-      const response = await vacationApi.put('/vacation/balances/update/', data);
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
+
 
  
 };
@@ -633,7 +666,25 @@ export const VacationHelpers = {
     if (schedule.edit_count >= maxEdits) return false;
     return true;
   },
+ canViewAllBalances: (userPermissions) => {
+  if (userPermissions?.is_admin) return true;
+  return userPermissions?.permissions?.includes('vacation.balance.view_all');
+},
 
+canExportBalances: (userPermissions) => {
+  if (userPermissions?.is_admin) return true;
+  return userPermissions?.permissions?.includes('vacation.balance.export');
+},
+
+canUpdateBalances: (userPermissions) => {
+  if (userPermissions?.is_admin) return true;
+  return userPermissions?.permissions?.includes('vacation.balance.update');
+},
+
+canResetBalances: (userPermissions) => {
+  if (userPermissions?.is_admin) return true;
+  return userPermissions?.permissions?.includes('vacation.balance.reset');
+},
   // Check if request can be created with current balance
   canCreateRequest: (balance, requestDays, allowNegativeBalance) => {
     if (allowNegativeBalance) return true;
