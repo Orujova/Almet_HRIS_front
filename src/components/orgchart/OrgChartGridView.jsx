@@ -28,7 +28,7 @@ const cleanEmployeeData = (employee) => {
     };
 };
 
-export const GridView = ({ 
+ const GridView = ({ 
     filteredOrgChart, 
     setSelectedEmployee, 
     darkMode 

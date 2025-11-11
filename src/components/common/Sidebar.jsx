@@ -27,16 +27,16 @@ const Sidebar = ({ collapsed = false }) => {
   // Sidebar menu structure
   const menuItems = [
     // Reports section added as a top-level item
-    { 
-      type: "section", 
-      label: "ANALYTICS" 
-    },
-    {
-      label: "Reports",
-      icon: <PieChart className="w-4 h-4" />,
-      path: "/dashboard",
-      id: "dashboard",
-    },
+    // { 
+    //   type: "section", 
+    //   label: "ANALYTICS" 
+    // },
+    // {
+    //   label: "Reports",
+    //   icon: <PieChart className="w-4 h-4" />,
+    //   path: "/dashboard",
+    //   id: "dashboard",
+    // },
     { 
       type: "section", 
       label: "STRUCTURE" 

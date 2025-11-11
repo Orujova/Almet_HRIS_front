@@ -28,7 +28,7 @@ const cleanEmployeeData = (employee) => {
     };
 };
 
-export const EmployeeNode = React.memo(({ data, id }) => {
+const EmployeeNode = React.memo(({ data, id }) => {
     const employee = data.employee;
     const directReports = employee.direct_reports || 0;
     const hasChildren = directReports > 0;
