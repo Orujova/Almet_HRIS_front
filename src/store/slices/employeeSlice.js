@@ -700,14 +700,24 @@ const employeeSlice = createSlice({
     },
     
     updateFilter: (state, action) => {
-      const { key, value } = action.payload;
-      if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
-        delete state.currentFilters[key];
-        state.appliedFilters = state.appliedFilters.filter(f => f.key !== key);
-      } else {
-        state.currentFilters[key] = value;
-      }
-    },
+  const { key, value } = action.payload;
+  
+  console.log('🔄 employeeSlice updateFilter:', { key, value, type: typeof value });
+  
+  if (value === null || value === undefined || value === '' || 
+      (Array.isArray(value) && value.length === 0)) {
+    delete state.currentFilters[key];
+    state.appliedFilters = state.appliedFilters.filter(f => f.key !== key);
+    console.log(`🗑️ Removed filter: ${key}`);
+  } else {
+    state.currentFilters[key] = value;
+    console.log(`✅ Set filter: ${key} =`, value);
+  }
+  
+  // ✅ Reset pagination when filter changes
+  state.pagination.page = 1;
+  console.log('🔄 Filter updated, pagination reset to page 1');
+},
     
     // ========================================
     // ADVANCED FILTERING - YENİ REDUCER-LƏR

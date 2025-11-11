@@ -13,6 +13,12 @@ export default function PerformanceAnalyticsDashboard({
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   useEffect(() => {
+    console.log('📊 Analytics Props:', {
+      employeeCount: employees?.length || 0,
+      hasSettings: !!settings,
+      scaleCount: settings?.evaluationScale?.length || 0
+    });
+    
     if (employees && employees.length > 0 && settings?.evaluationScale) {
       calculateAnalytics();
     }
@@ -21,14 +27,19 @@ export default function PerformanceAnalyticsDashboard({
   const calculateAnalytics = () => {
     setLoading(true);
     try {
+      console.log('🔄 Starting analytics calculation...');
+      
       // ✅ 1. Grade Distribution (Normal vs Real)
       const gradeDistribution = calculateGradeDistribution();
+      console.log('✅ Grade distribution calculated:', gradeDistribution);
       
       // ✅ 2. Department Performance
       const departmentStats = calculateDepartmentStats();
+      console.log('✅ Department stats calculated:', departmentStats);
       
       // ✅ 3. Position Performance
       const positionStats = calculatePositionStats();
+      console.log('✅ Position stats calculated:', positionStats);
       
       setAnalyticsData({
         gradeDistribution,
@@ -36,6 +47,8 @@ export default function PerformanceAnalyticsDashboard({
         positionStats,
         totalEmployees: employees.length
       });
+      
+      console.log('✅ Analytics data set successfully');
     } catch (error) {
       console.error('❌ Analytics calculation error:', error);
     } finally {
@@ -44,51 +57,74 @@ export default function PerformanceAnalyticsDashboard({
   };
 
   const calculateGradeDistribution = () => {
-    if (!settings?.evaluationScale || !employees) return [];
+    if (!settings?.evaluationScale || !employees || employees.length === 0) {
+      console.log('❌ No data for grade distribution');
+      return [];
+    }
 
-    // Sort scales by value descending (E++ highest, E-- lowest)
+    console.log('📊 Calculating grade distribution for', employees.length, 'employees');
+
+    // ✅ Sort scales by value descending (E++ highest, E-- lowest)
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
-    // Calculate normal distribution percentages based on scale ranges
-    const totalRange = 100; // 0-100%
+    console.log('📊 Scales:', sortedScales.map(s => `${s.name} (${s.range_min}-${s.range_max}%)`));
+
+    // ✅ Calculate normal distribution based on range sizes
+    const totalRange = 100;
     const normalDist = sortedScales.map(scale => {
-      const rangeSize = scale.range_max - scale.range_min;
+      const rangeSize = (parseFloat(scale.range_max) - parseFloat(scale.range_min)) + 1;
       const normalPercentage = (rangeSize / totalRange) * 100;
       return {
         grade: scale.name,
-        norm: Math.round(normalPercentage),
+        norm: Math.round(normalPercentage * 10) / 10, // One decimal
         value: scale.value
       };
     });
 
-    // Calculate actual distribution from employees
+    console.log('📊 Normal distribution:', normalDist);
+
+    // ✅ Calculate actual distribution from employees
     const gradeCounts = {};
     sortedScales.forEach(scale => {
       gradeCounts[scale.name] = 0;
     });
 
+    // ✅ Count employees by final_rating
+    let employeesWithRatings = 0;
     employees.forEach(emp => {
-      if (emp.final_rating) {
-        if (gradeCounts[emp.final_rating] !== undefined) {
-          gradeCounts[emp.final_rating]++;
-        }
+      if (emp.final_rating && gradeCounts[emp.final_rating] !== undefined) {
+        gradeCounts[emp.final_rating]++;
+        employeesWithRatings++;
       }
     });
 
-    const totalWithGrades = Object.values(gradeCounts).reduce((sum, count) => sum + count, 0);
+    console.log('📊 Grade counts:', gradeCounts);
+    console.log('📊 Total with ratings:', employeesWithRatings);
 
-    return sortedScales.map(scale => ({
-      grade: scale.name,
-      norm: normalDist.find(n => n.grade === scale.name)?.norm || 0,
-      actual: totalWithGrades > 0 
-        ? Math.round((gradeCounts[scale.name] / totalWithGrades) * 100) 
-        : 0,
-      employeeCount: gradeCounts[scale.name],
-      value: scale.value
-    }));
+    const result = sortedScales.map(scale => {
+      const actualPercentage = employeesWithRatings > 0 
+        ? Math.round((gradeCounts[scale.name] / employeesWithRatings) * 1000) / 10 
+        : 0;
+      
+      return {
+        grade: scale.name,
+        norm: normalDist.find(n => n.grade === scale.name)?.norm || 0,
+        actual: actualPercentage,
+        employeeCount: gradeCounts[scale.name],
+        value: scale.value
+      };
+    });
+
+    console.log('✅ Final distribution:', result);
+    return result;
   };
 
   const calculateDepartmentStats = () => {
+    if (!employees || employees.length === 0) {
+      console.log('❌ No employees for department stats');
+      return [];
+    }
+
     const deptMap = {};
     
     employees.forEach(emp => {
@@ -103,23 +139,33 @@ export default function PerformanceAnalyticsDashboard({
       }
       
       deptMap[dept].totalEmployees++;
-      if (emp.overall_weighted_percentage) {
-        const score = parseFloat(emp.overall_weighted_percentage);
+      
+      // ✅ Parse overall_weighted_percentage correctly
+      const score = parseFloat(emp.overall_weighted_percentage);
+      if (!isNaN(score) && score > 0) {
         deptMap[dept].totalScore += score;
         deptMap[dept].scores.push(score);
       }
     });
 
-    return Object.values(deptMap).map(dept => ({
+    const result = Object.values(deptMap).map(dept => ({
       department: dept.department,
       employeeCount: dept.totalEmployees,
       avgScore: dept.scores.length > 0 
-        ? (dept.totalScore / dept.scores.length).toFixed(1)
+        ? parseFloat((dept.totalScore / dept.scores.length).toFixed(1))
         : 0
     })).sort((a, b) => b.avgScore - a.avgScore);
+
+    console.log('✅ Department stats:', result);
+    return result;
   };
 
   const calculatePositionStats = () => {
+    if (!employees || employees.length === 0) {
+      console.log('❌ No employees for position stats');
+      return [];
+    }
+
     const posMap = {};
     
     employees.forEach(emp => {
@@ -134,20 +180,24 @@ export default function PerformanceAnalyticsDashboard({
       }
       
       posMap[pos].totalEmployees++;
-      if (emp.overall_weighted_percentage) {
-        const score = parseFloat(emp.overall_weighted_percentage);
+      
+      const score = parseFloat(emp.overall_weighted_percentage);
+      if (!isNaN(score) && score > 0) {
         posMap[pos].totalScore += score;
         posMap[pos].scores.push(score);
       }
     });
 
-    return Object.values(posMap).map(pos => ({
+    const result = Object.values(posMap).map(pos => ({
       position: pos.position,
       employeeCount: pos.totalEmployees,
       avgScore: pos.scores.length > 0 
-        ? (pos.totalScore / pos.scores.length).toFixed(1)
+        ? parseFloat((pos.totalScore / pos.scores.length).toFixed(1))
         : 0
     })).sort((a, b) => b.avgScore - a.avgScore);
+
+    console.log('✅ Position stats:', result);
+    return result;
   };
 
   const getEmployeeCompetencyData = (employee) => {
@@ -191,11 +241,12 @@ export default function PerformanceAnalyticsDashboard({
     );
   }
 
-  if (!analyticsData) {
+  if (!analyticsData || !analyticsData.gradeDistribution || analyticsData.gradeDistribution.length === 0) {
     return (
       <div className={`${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'} rounded-xl p-8 text-center`}>
         <BarChart3 className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-        <p className="text-gray-500">No analytics data available</p>
+        <p className="text-gray-500 font-medium mb-2">No analytics data available</p>
+        <p className="text-sm text-gray-400">Complete some performance reviews to see analytics</p>
       </div>
     );
   }
@@ -225,8 +276,6 @@ export default function PerformanceAnalyticsDashboard({
               </p>
             </div>
           </div>
-          
-          
         </div>
       </div>
 
@@ -292,7 +341,7 @@ export default function PerformanceAnalyticsDashboard({
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {analyticsData.gradeDistribution.map((item) => {
-                const variance = item.actual - item.norm;
+                const variance = (item.actual - item.norm).toFixed(1);
                 return (
                   <tr key={item.grade} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-4 py-2 font-bold text-almet-sapphire">{item.grade}</td>
@@ -313,66 +362,70 @@ export default function PerformanceAnalyticsDashboard({
       </div>
 
       {/* Department Performance */}
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-        <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Performance by Department
-        </h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={analyticsData.departmentStats} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-            <XAxis type="number" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-            <YAxis 
-              dataKey="department" 
-              type="category" 
-              width={150}
-              stroke={darkMode ? '#9ca3af' : '#6b7280'}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                borderRadius: '8px'
-              }}
-              formatter={(value, name) => {
-                if (name === 'avgScore') return [`${value}%`, 'Average Score'];
-                if (name === 'employeeCount') return [value, 'Employees'];
-                return [value, name];
-              }}
-            />
-            <Legend />
-            <Bar dataKey="avgScore" fill={COLORS.primary} name="Average Score (%)" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {analyticsData.departmentStats && analyticsData.departmentStats.length > 0 && (
+        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
+          <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Performance by Department
+          </h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={analyticsData.departmentStats} layout="vertical">
+              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+              <XAxis type="number" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+              <YAxis 
+                dataKey="department" 
+                type="category" 
+                width={150}
+                stroke={darkMode ? '#9ca3af' : '#6b7280'}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                  border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '8px'
+                }}
+                formatter={(value, name) => {
+                  if (name === 'avgScore') return [`${value}%`, 'Average Score'];
+                  if (name === 'employeeCount') return [value, 'Employees'];
+                  return [value, name];
+                }}
+              />
+              <Legend />
+              <Bar dataKey="avgScore" fill={COLORS.primary} name="Average Score (%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Position Performance */}
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-        <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Performance by Position
-        </h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart data={analyticsData.positionStats}>
-            <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-            <XAxis 
-              dataKey="position" 
-              stroke={darkMode ? '#9ca3af' : '#6b7280'}
-              angle={-45}
-              textAnchor="end"
-              height={100}
-            />
-            <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                borderRadius: '8px'
-              }}
-            />
-            <Legend />
-            <Bar dataKey="avgScore" fill={COLORS.secondary} name="Average Score (%)" />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
+      {analyticsData.positionStats && analyticsData.positionStats.length > 0 && (
+        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
+          <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Performance by Position
+          </h3>
+          <ResponsiveContainer width="100%" height={400}>
+            <BarChart data={analyticsData.positionStats}>
+              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+              <XAxis 
+                dataKey="position" 
+                stroke={darkMode ? '#9ca3af' : '#6b7280'}
+                angle={-45}
+                textAnchor="end"
+                height={100}
+              />
+              <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                  border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '8px'
+                }}
+              />
+              <Legend />
+              <Bar dataKey="avgScore" fill={COLORS.secondary} name="Average Score (%)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Employee Selector for Competency Radar */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
@@ -383,7 +436,7 @@ export default function PerformanceAnalyticsDashboard({
           <select
             value={selectedEmployee?.id || ''}
             onChange={(e) => {
-              const emp = employees.find(emp => emp.id === parseInt(e.target.value));
+              const emp = employees.find(emp => emp.id === e.target.value);
               setSelectedEmployee(emp);
             }}
             className={`w-full px-4 py-2 rounded-xl border ${

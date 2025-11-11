@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, User, UserCheck, Edit2, Save, X, Send, MessageSquare } from 'lucide-react';
+import { FileText, User, UserCheck, Edit2, Save, X, Send, MessageSquare, AlertCircle } from 'lucide-react';
 
 export default function PerformanceReviews({
   midYearEmployee,
@@ -14,8 +14,13 @@ export default function PerformanceReviews({
   onSubmitMidYearManager,
   darkMode
 }) {
-  const [editMode, setEditMode] = useState({ section: null, role: null });
-  const [editComment, setEditComment] = useState('');
+  // ✅ FIXED: Separate state for each section and role
+  const [editingState, setEditingState] = useState({
+    midYear_employee: { isEditing: false, text: '' },
+    midYear_manager: { isEditing: false, text: '' },
+    endYear_employee: { isEditing: false, text: '' },
+    endYear_manager: { isEditing: false, text: '' }
+  });
 
   const hasPermission = (permissionCode) => {
     if (permissions?.is_admin) return true;
@@ -38,6 +43,7 @@ export default function PerformanceReviews({
   const isEndYearEmployeeSubmitted = Boolean(performanceData?.end_year_employee_submitted);
   const isEndYearCompleted = Boolean(performanceData?.end_year_completed);
 
+  // ✅ Mid-Year Permissions
   const hasEmployeePermission = hasPermission('performance.midyear.submit_employee');
   const canEditMidYearEmployee = 
     canActAsEmployee &&
@@ -53,6 +59,7 @@ export default function PerformanceReviews({
     isEmployeeSubmitted &&
     !isManagerCompleted;
 
+  // ✅ End-Year Permissions
   const hasEndYearEmployeePermission = hasPermission('performance.endyear.submit_employee');
   const canEditEndYearEmployee = 
     canActAsEmployee &&
@@ -68,42 +75,74 @@ export default function PerformanceReviews({
     isEndYearEmployeeSubmitted && 
     !isEndYearCompleted;
 
+  // ✅ FIXED: Handle edit mode properly
   const handleStartEdit = (section, role, currentComment) => {
-    setEditMode({ section, role });
-    setEditComment(currentComment || '');
+    const key = `${section}_${role}`;
+    setEditingState(prev => ({
+      ...prev,
+      [key]: {
+        isEditing: true,
+        text: currentComment || ''
+      }
+    }));
   };
 
-  const handleCancelEdit = () => {
-    setEditMode({ section: null, role: null });
-    setEditComment('');
+  const handleCancelEdit = (section, role) => {
+    const key = `${section}_${role}`;
+    setEditingState(prev => ({
+      ...prev,
+      [key]: {
+        isEditing: false,
+        text: ''
+      }
+    }));
+  };
+
+  const handleTextChange = (section, role, value) => {
+    const key = `${section}_${role}`;
+    setEditingState(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        text: value
+      }
+    }));
   };
 
   const handleSaveDraft = async (section, role) => {
-    if (!editComment.trim()) {
+    const key = `${section}_${role}`;
+    const text = editingState[key].text;
+    
+    if (!text.trim()) {
       alert('Please enter a comment before saving');
       return;
     }
     
-    if (section === 'mid_year') {
-      await onSaveMidYearDraft(role, editComment);
+    if (section === 'midYear') {
+      await onSaveMidYearDraft(role, text);
     }
-    handleCancelEdit();
+    
+    handleCancelEdit(section, role);
   };
 
   const handleSubmit = async (section, role) => {
-    if (!editComment.trim()) {
+    const key = `${section}_${role}`;
+    const text = editingState[key].text;
+    
+    if (!text.trim()) {
       alert('Please enter a comment before submitting');
       return;
     }
 
-    if (section === 'mid_year') {
+    if (section === 'midYear') {
       if (role === 'employee') {
-        await onSubmitMidYearEmployee(editComment);
+        await onSubmitMidYearEmployee(text);
       } else if (role === 'manager') {
-        await onSubmitMidYearManager(editComment);
+        await onSubmitMidYearManager(text);
       }
     }
-    handleCancelEdit();
+    
+    handleCancelEdit(section, role);
   };
 
   const textareaClass = `w-full px-4 py-3 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 resize-none transition-all ${
@@ -124,8 +163,14 @@ export default function PerformanceReviews({
     employeeSubmitted,
     managerSubmitted
   }) => {
-    const isEditingEmployee = editMode.section === section && editMode.role === 'employee';
-    const isEditingManager = editMode.section === section && editMode.role === 'manager';
+    const employeeKey = `${section}_employee`;
+    const managerKey = `${section}_manager`;
+    
+    const isEditingEmployee = editingState[employeeKey]?.isEditing;
+    const isEditingManager = editingState[managerKey]?.isEditing;
+    
+    const employeeText = editingState[employeeKey]?.text || '';
+    const managerText = editingState[managerKey]?.text || '';
 
     return (
       <div className={`${darkMode ? 'bg-almet-cloud-burst/60 border-almet-comet/30' : 'bg-white border-almet-mystic'} rounded-xl border shadow-sm overflow-hidden`}>
@@ -139,24 +184,24 @@ export default function PerformanceReviews({
                 {title}
               </h3>
               <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
-                Employee and manager feedback
+                Employee self-review and manager Comment
               </p>
             </div>
           </div>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Employee Comment */}
+        <div className="p-5 space-y-5">
+          {/* ✅ EMPLOYEE COMMENT SECTION */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-almet-sapphire" />
                 <h4 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                  Employee Comment
+                  Employee Self-Review
                 </h4>
                 {employeeSubmitted && (
                   <span className="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30 font-medium">
-                    Submitted
+                    ✓ Submitted
                   </span>
                 )}
               </div>
@@ -167,7 +212,7 @@ export default function PerformanceReviews({
                   className="h-9 px-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 flex items-center gap-2 text-xs font-medium transition-all"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  {employeeComment ? 'Edit' : 'Add Comment'}
+                  {employeeComment ? 'Edit' : 'Add Review'}
                 </button>
               )}
             </div>
@@ -175,9 +220,9 @@ export default function PerformanceReviews({
             {isEditingEmployee ? (
               <div className="space-y-3">
                 <textarea
-                  value={editComment}
-                  onChange={(e) => setEditComment(e.target.value)}
-                  placeholder="Share your self-assessment, achievements, and challenges during this period..."
+                  value={employeeText}
+                  onChange={(e) => handleTextChange(section, 'employee', e.target.value)}
+                  placeholder="Share your self-assessment, achievements, challenges, and progress during this period..."
                   className={textareaClass}
                   rows={6}
                   autoFocus
@@ -202,7 +247,7 @@ export default function PerformanceReviews({
                     Submit Review
                   </button>
                   <button
-                    onClick={handleCancelEdit}
+                    onClick={() => handleCancelEdit(section, 'employee')}
                     className="h-10 px-4 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-xl flex items-center justify-center transition-all"
                   >
                     <X className="w-4 h-4" />
@@ -216,25 +261,28 @@ export default function PerformanceReviews({
                     {employeeComment}
                   </p>
                 ) : (
-                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
-                    No comment provided yet
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-almet-waterloo/50" />
+                    <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
+                      No self-review provided yet
+                    </p>
+                  </div>
                 )}
               </div>
             )}
           </div>
 
-          {/* Manager Comment */}
+          {/* ✅ MANAGER COMMENT SECTION */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-purple-600" />
                 <h4 className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                  Manager Assessment
+                  Manager Comment
                 </h4>
                 {managerSubmitted && (
                   <span className="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/30 font-medium">
-                    Completed
+                    ✓ Completed
                   </span>
                 )}
               </div>
@@ -253,9 +301,9 @@ export default function PerformanceReviews({
             {isEditingManager ? (
               <div className="space-y-3">
                 <textarea
-                  value={editComment}
-                  onChange={(e) => setEditComment(e.target.value)}
-                  placeholder="Provide your assessment of employee's performance, strengths, and areas for improvement..."
+                  value={managerText}
+                  onChange={(e) => handleTextChange(section, 'manager', e.target.value)}
+                  placeholder="Provide your assessment of employee's performance, strengths, areas for improvement, and feedback on their self-review..."
                   className={textareaClass}
                   rows={6}
                   autoFocus
@@ -277,10 +325,10 @@ export default function PerformanceReviews({
                     className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
                   >
                     <Send className="w-4 h-4" />
-                    {section === 'mid_year' ? 'Complete Review' : 'Submit Assessment'}
+                    {section === 'midYear' ? 'Complete Review' : 'Submit Assessment'}
                   </button>
                   <button
-                    onClick={handleCancelEdit}
+                    onClick={() => handleCancelEdit(section, 'manager')}
                     className="h-10 px-4 bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 rounded-xl flex items-center justify-center transition-all"
                   >
                     <X className="w-4 h-4" />
@@ -294,9 +342,12 @@ export default function PerformanceReviews({
                     {managerComment}
                   </p>
                 ) : (
-                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
-                    {employeeSubmitted ? 'Waiting for manager assessment...' : 'No assessment provided yet'}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-almet-waterloo/50" />
+                    <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
+                      {employeeSubmitted ? 'Waiting for manager Comment...' : 'No Comment provided yet'}
+                    </p>
+                  </div>
                 )}
               </div>
             )}
@@ -308,26 +359,48 @@ export default function PerformanceReviews({
 
   return (
     <div className="space-y-5">
+      {/* Current Period Info */}
+      {(isMidYearPeriod || isEndYearPeriod) && (
+        <div className={`${darkMode ? 'bg-blue-900/20 border-blue-800/30' : 'bg-blue-50 border-blue-200'} border rounded-xl p-4`}>
+          <div className="flex items-start gap-3">
+            <MessageSquare className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h4 className="text-sm font-bold text-blue-900 dark:text-blue-300 mb-1">
+                {isMidYearPeriod ? 'Mid-Year Review Period Active' : 'End-Year Review Period Active'}
+              </h4>
+              <p className="text-xs text-blue-700 dark:text-blue-400">
+                {isMidYearPeriod 
+                  ? 'Review performance at the halfway point of the year. Employee submits self-review first, then manager completes assessment.'
+                  : 'Complete final year-end review. Employee provides final self-assessment, followed by manager\'s final evaluation.'
+                }
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mid-Year Review Section */}
       <ReviewSection
         title="Mid-Year Review"
         icon={FileText}
         employeeComment={midYearEmployee}
         managerComment={midYearManager}
         iconColor="bg-orange-500"
-        section="mid_year"
+        section="midYear"
         canEditEmployee={canEditMidYearEmployee}
         canEditManager={canEditMidYearManager}
         employeeSubmitted={isEmployeeSubmitted}
         managerSubmitted={isManagerCompleted}
       />
 
+      {/* End-Year Review Section */}
       <ReviewSection
         title="End-Year Review"
         icon={FileText}
         employeeComment={endYearEmployee}
         managerComment={endYearManager}
         iconColor="bg-emerald-600"
-        section="end_year"
+        section="endYear"
         canEditEmployee={canEditEndYearEmployee}
         canEditManager={canEditEndYearManager}
         employeeSubmitted={isEndYearEmployeeSubmitted}

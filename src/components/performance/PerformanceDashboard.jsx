@@ -34,7 +34,39 @@ export default function PerformanceDashboard({
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  const completedCount = employees.filter(e => e.approval_status === 'COMPLETED').length;
+  // ✅ FIXED: Count ONLY truly completed performances
+  // A performance is completed when:
+  // 1. All objectives have end_year_rating (not null)
+  // 2. Competencies are submitted (competencies_submitted = true)
+  // 3. approval_status = 'COMPLETED'
+  const getTruelyCompletedCount = () => {
+    return employees.filter(emp => {
+      // Must have COMPLETED status
+      if (emp.approval_status !== 'COMPLETED') {
+        return false;
+      }
+      
+      // Must have competencies submitted
+      if (!emp.competencies_submitted) {
+        return false;
+      }
+      
+      // Must have all objectives rated (if has objectives)
+      if (emp.objectives && emp.objectives.length > 0) {
+        const allObjectivesRated = emp.objectives
+          .filter(obj => !obj.is_cancelled)
+          .every(obj => obj.end_year_rating !== null && obj.end_year_rating !== undefined);
+        
+        if (!allObjectivesRated) {
+          return false;
+        }
+      }
+      
+      return true;
+    }).length;
+  };
+
+  const completedCount = getTruelyCompletedCount();
   const totalEmployees = employees.length;
 
   const statusDistribution = {
@@ -133,8 +165,6 @@ export default function PerformanceDashboard({
       </div>
     );
   };
-
-
 
   const TimelineItem = ({ label, data, color, isLast }) => (
     <div className="flex gap-3">
@@ -258,7 +288,7 @@ export default function PerformanceDashboard({
                   subtitle="Employees with objectives"
                   color="blue"
                 />
-                {/* <StatCard
+                <StatCard
                   icon={FileText}
                   title="Mid-Year Reviews"
                   value={dashboardStats.mid_year_completed}
@@ -268,16 +298,49 @@ export default function PerformanceDashboard({
                 />
                 <StatCard
                   icon={Award}
-                  title="Completed"
+                  title="Fully Completed"
                   value={completedCount}
                   total={totalEmployees}
-                  subtitle="Fully completed reviews"
+                  subtitle="Objectives rated & competencies submitted"
                   color="green"
-                /> */}
+                />
               </div>
             )}
 
-       
+            {/* Status Distribution */}
+            <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
+              <h3 className={`text-base font-bold mb-4 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                Status Distribution
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {Object.entries(statusDistribution).map(([status, count]) => {
+                  const badge = getStatusBadge(status);
+                  const percentage = totalEmployees > 0 ? Math.round((count / totalEmployees) * 100) : 0;
+                  
+                  return (
+                    <div key={status} className={`${darkMode ? 'bg-almet-san-juan' : 'bg-almet-mystic'} rounded-lg p-3`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-xs px-2 py-1 rounded-lg ${badge.class} font-medium`}>
+                          {badge.text}
+                        </span>
+                        <span className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                          {count}
+                        </span>
+                      </div>
+                      <div className={`w-full h-1.5 rounded-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'}`}>
+                        <div 
+                          className="h-1.5 rounded-full bg-almet-sapphire transition-all duration-500"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                        {percentage}% of total
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Timeline */}
             {dashboardStats?.timeline && (

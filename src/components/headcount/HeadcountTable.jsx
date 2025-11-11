@@ -1,4 +1,5 @@
-// src/components/headcount/HeadcountTable.jsx - FINAL FIX: Company Filter
+
+// src/components/headcount/HeadcountTable.jsx - COMPLETE FIXED VERSION
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
@@ -112,7 +113,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [loading.exporting]);
 
-  // 🎯 CRITICAL FIX: Local filters now store Company ID (not label)
+  // ✅ CRITICAL: Local filters store IDs (not names)
   const [localFilters, setLocalFilters] = useState({
     search: "",
     employee_search: [],
@@ -120,7 +121,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     job_title_search: "",
     status: [],
     department: [],
-    business_function: [], // ✅ Will store IDs like [1, 2, 3]
+    business_function: [], // ✅ Stores IDs like [1, 2, 3]
     position_group: [],
     tags: [],
     grading_level: [],
@@ -183,7 +184,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       setCurrentColorMode(initialMode);
       
     } catch (error) {
-   
       showError('Failed to initialize color system');
       colorSystemInitRef.current = false;
       setColorSystemInitialized(false);
@@ -201,58 +201,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     showError
   ]);
 
-
-  
-  useEffect(() => {
-   
-
-    // ✅ Wait for businessFunctions to load
-    if (!businessFunctions || businessFunctions.length === 0) {
-      console.log('⏳ Waiting for businessFunctions to load...');
-      return;
-    }
-
-    if (businessFunctionFilter) {
-      // Find Company by code
-      const bf = businessFunctions?.find(b => b.code === businessFunctionFilter);
-      
-     
-      
-      if (bf) {
-        // ✅ CRITICAL: Store ID for backend API
-        const bfId = String(bf.id || bf.value);
-        
-       
-        
-        // ✅ FIXED: Check if already applied to prevent infinite loop
-        const currentIds = localFilters.business_function.map(id => String(id));
-        if (!currentIds.includes(bfId)) {
-   
-          setLocalFilters(prev => ({
-            ...prev,
-            business_function: [bfId] // ✅ Store ID for API
-          }));
-          
-          setIsWrapperFilterApplied(true);
-        
-        } else {
-          console.log('✅ Filter already applied, skipping');
-        }
-      } else {
-        console.warn('⚠️ Company not found for code:', businessFunctionFilter);
-      }
-    } else {
-  
-      if (localFilters.business_function.length > 0) {
-        setLocalFilters(prev => ({
-          ...prev,
-          business_function: []
-        }));
-        setIsWrapperFilterApplied(false);
-      }
-    }
-  }, [businessFunctionFilter, businessFunctions]); // ✅ localFilters NOT in deps to prevent loop
-
   // Employees with color grouping
   const employeesWithColorGrouping = useMemo(() => {
     if (!formattedEmployees || formattedEmployees.length === 0) {
@@ -265,8 +213,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }));
   }, [formattedEmployees, currentColorMode]);
 
-
-  
   // Default sorting
   useEffect(() => {
     if (
@@ -333,10 +279,9 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics, showError]);
 
   // ========================================
-  // 🎯 BUILD API PARAMS - Convert labels to backend format
+  // 🎯 BUILD API PARAMS - Convert to backend format
   // ========================================
- 
-  const buildApiParams = useMemo(() => {
+  const buildApiParams = useCallback(() => {
     const params = {
       page: pagination.page || 1,
       page_size: pagination.pageSize || 25
@@ -353,7 +298,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       params.ordering = orderingFields.join(',');
     }
 
-    // Multi-select Filters
     const multiSelectFilters = [
       'business_function', 'department', 'unit', 'job_function', 'position_group',
       'status', 'grading_level', 'contract_duration', 'line_manager', 'tags', 'gender', 'employee_search'
@@ -366,6 +310,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
             val !== null && val !== undefined && val !== ''
           );
           if (cleanValues.length > 0) {
+            // ✅ CRITICAL: Convert to comma-separated string
             params[filterKey] = cleanValues.join(',');
           }
         } else if (typeof localFilters[filterKey] === 'string') {
@@ -377,7 +322,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       }
     });
 
-    // Other filters
     if (localFilters.line_manager_search?.trim()) {
       params.line_manager_search = localFilters.line_manager_search.trim();
     }
@@ -406,33 +350,40 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
     }
 
-  
+    console.log('📦 Built params:', params);
+    
     return params;
   }, [localFilters, pagination.page, pagination.pageSize, sorting]);
 
   const apiParamsChanged = useMemo(() => {
-  if (!lastApiParamsRef.current) {
-
-    return true;
-  }
-  
-  const currentParams = JSON.stringify(buildApiParams);
-  const lastParams = JSON.stringify(lastApiParamsRef.current);
-  
-  const changed = currentParams !== lastParams;
-  
-
-  
-  return changed;
-}, [buildApiParams]);
-
-
+    if (!lastApiParamsRef.current) {
+      return true;
+    }
+    
+    const currentParams = buildApiParams();
+    const lastParams = lastApiParamsRef.current;
+    
+    const currentStr = JSON.stringify(currentParams);
+    const lastStr = JSON.stringify(lastParams);
+    
+    const changed = currentStr !== lastStr;
+    
+    if (changed) {
+      console.log('📊 Params CHANGED:', {
+        old: lastParams,
+        new: currentParams
+      });
+    }
+    
+    return changed;
+  }, [buildApiParams]);
 
   const debouncedFetchEmployees = useCallback((params, immediate = false) => {
-    const paramsString = JSON.stringify(params);
-    const lastParamsString = JSON.stringify(lastApiParamsRef.current);
+    const paramsStr = JSON.stringify(params);
+    const lastParamsStr = lastApiParamsRef.current ? JSON.stringify(lastApiParamsRef.current) : null;
     
-    if (paramsString === lastParamsString && !immediate) {
+    if (paramsStr === lastParamsStr && !immediate) {
+      console.log('⏭️ Skipping duplicate fetch');
       return;
     }
 
@@ -445,55 +396,138 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     debounceRef.current = setTimeout(() => {
       const now = Date.now();
       if (now - lastFetchTime.current > 100) {
+        console.log('✅ Fetching employees:', params);
         lastFetchTime.current = now;
-        lastApiParamsRef.current = { ...params };
+        lastApiParamsRef.current = params;
         fetchEmployees(params);
+      } else {
+        console.log('⏭️ Skipping - too soon');
       }
     }, delay);
   }, [fetchEmployees]);
 
+  // ✅ WRAPPER FILTER EFFECT - Set business_function ID
   useEffect(() => {
-  const initializeData = async () => {
-    if (initialized.current) return;
-    
-    // ✅ CRITICAL: Wait for businessFunctions to load if we have a wrapper filter
-    if (businessFunctionFilter && (!businessFunctions || businessFunctions.length === 0)) {
-      console.log('⏳ Waiting for businessFunctions to load before initializing...');
+    if (!businessFunctions || businessFunctions.length === 0) {
       return;
     }
 
-    // ✅ CRITICAL: Wait for wrapper filter to be applied if needed
-    if (businessFunctionFilter && localFilters.business_function.length === 0) {
-      console.log('⏳ Waiting for wrapper filter to be applied...');
+    if (businessFunctionFilter) {
+      const bf = businessFunctions.find(b => b.code === businessFunctionFilter);
+      
+      if (bf) {
+        // ✅ CRITICAL: Get ID as NUMBER
+        const bfId = Number(bf.id || bf.value);
+        
+        setLocalFilters(prev => {
+          const currentIds = prev.business_function.map(id => Number(id));
+          
+          if (currentIds.length === 1 && currentIds[0] === bfId) {
+            console.log('✅ Filter already set, skipping');
+            return prev;
+          }
+          
+          console.log('🔧 Setting wrapper filter ID:', bfId, 'for code:', businessFunctionFilter);
+          return {
+            ...prev,
+            business_function: [bfId] // ✅ Array with single NUMBER ID
+          };
+        });
+        
+        setIsWrapperFilterApplied(true);
+      } else {
+        console.warn('⚠️ Business function not found for code:', businessFunctionFilter);
+      }
+    } else {
+      setLocalFilters(prev => {
+        if (prev.business_function.length === 0) {
+          return prev;
+        }
+        
+        console.log('🧹 Clearing wrapper filter');
+        return {
+          ...prev,
+          business_function: []
+        };
+      });
+      
+      setIsWrapperFilterApplied(false);
+    }
+  }, [businessFunctionFilter, businessFunctions]);
+
+  // ✅ INITIALIZATION EFFECT
+  useEffect(() => {
+    const initializeData = async () => {
+      if (initialized.current) {
+        return;
+      }
+      
+      // ✅ Wait for businessFunctions to load
+      if (!businessFunctions || businessFunctions.length === 0) {
+        console.log('⏳ Waiting for BFs...');
+        return;
+      }
+      
+      // ✅ CRITICAL: If wrapper filter exists, wait for it to be applied
+      if (businessFunctionFilter) {
+        if (localFilters.business_function.length === 0) {
+          console.log('⏳ Waiting for wrapper filter to be applied...');
+          return;
+        }
+        console.log('✅ Wrapper filter applied:', localFilters.business_function);
+      }
+      
+      try {
+        console.log('✅ INITIALIZING NOW');
+        initialized.current = true;
+        clearErrors();
+        
+        // Fetch statistics first
+        await fetchStatistics();
+        
+        // Build params and fetch employees
+        const params = buildApiParams();
+        console.log('🚀 Initial fetch with params:', params);
+        
+        lastApiParamsRef.current = params;
+        await fetchEmployees(params);
+        
+        console.log('✅ Initialization complete');
+        
+      } catch (error) {
+        console.error('❌ Initialize failed:', error);
+        showError('Failed to initialize data');
+        initialized.current = false;
+      }
+    };
+
+    initializeData();
+  }, [
+    businessFunctionFilter, 
+    businessFunctions, 
+    localFilters.business_function,
+    buildApiParams,
+    fetchEmployees,
+    fetchStatistics, 
+    clearErrors, 
+    showError
+  ]);
+
+  // ✅ DATA FETCHING EFFECT - Only after initialization
+  useEffect(() => {
+    if (!initialized.current) {
       return;
     }
-    
-    try {
-      initialized.current = true;
-      clearErrors();
-  
-      
-      // ✅ Don't call fetchEmployees here - let the DATA FETCHING useEffect handle it
-      await fetchStatistics();
-      
-    } catch (error) {
-      console.error('Failed to initialize HeadcountTable:', error);
-      showError('Failed to initialize data');
-      initialized.current = false;
+
+    if (!apiParamsChanged) {
+      return;
     }
-  };
 
-  initializeData();
-}, [businessFunctionFilter, businessFunctions, localFilters.business_function, fetchStatistics, clearErrors, showError]);
-
- useEffect(() => {
-
-  
-  if (initialized.current && apiParamsChanged) {
-
-    debouncedFetchEmployees(buildApiParams);
-  }
-}, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
+    const params = buildApiParams();
+    console.log('🔄 Fetching (after init):', params);
+    
+    debouncedFetchEmployees(params);
+  }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
 
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     try {
@@ -501,14 +535,12 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         lastApiParamsRef.current = null;
       }
       
-    
-      
       await Promise.all([
         fetchStatistics(),
-        fetchEmployees(buildApiParams)
+        fetchEmployees(buildApiParams())
       ]);
       
-      lastApiParamsRef.current = { ...buildApiParams };
+      lastApiParamsRef.current = { ...buildApiParams() };
      
     } catch (error) {
       console.error('Data refresh failed:', error);
@@ -524,7 +556,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setIsExportModalOpen(false);
     setIsBulkUploadOpen(false);
     clearSelection();
-
   }, [clearSelection, showInfo]);
 
   const combinedStatistics = useMemo(() => ({
@@ -555,9 +586,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [clearSorting, setCurrentPage, showInfo]);
 
   // ========================================
-  // 🎯 FILTER HANDLERS - Store LABELS
+  // 🎯 FILTER HANDLERS
   // ========================================
-
   const handleSearchChange = useCallback((value) => {
     setLocalFilters(prev => ({ ...prev, search: value }));
     setCurrentPage(1);
@@ -573,14 +603,12 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setCurrentPage(1);
   }, [setCurrentPage]);
 
-  // ✅ CRITICAL: This receives IDs from QuickFilterBar
   const handleBusinessFunctionChange = useCallback((selectedBFs) => {
     if (isWrapperFilterApplied) {
       showWarning('Company is filtered by company selection');
       return;
     }
     
-
     setLocalFilters(prev => ({ ...prev, business_function: Array.isArray(selectedBFs) ? selectedBFs : [] }));
     setCurrentPage(1);
   }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
@@ -726,220 +754,203 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [getSortDirection, addSort, removeSort, setSorting]);
 
   const handleBulkAction = useCallback(async (action, options = {}) => {
-  setIsActionMenuOpen(false);
+    setIsActionMenuOpen(false);
 
-  if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport', 'refresh'].includes(action)) {
-    showWarning("Please select employees first!");
-    return;
-  }
-
-  try {
-    let result;
-    
-    switch (action) {
-      case "refresh":
-        await refreshAllData(true);
-        break;
-
-      case "export":
-        setIsExportModalOpen(true);
-        break;
-
-      case "bulkImport":
-        setIsBulkUploadOpen(true);
-        break;
-
-      case "downloadTemplate":
-        try {
-          result = await downloadEmployeeTemplate();
-          showSuccess('Template downloaded successfully!');
-        } catch (error) {
-          console.error('Template download failed:', error);
-          showError('Template download failed: ' + error.message);
-        }
-        break;
-
-      // ENHANCED: Proper soft delete with vacancy creation
-      case "softDelete":
-        const softDeleteMessage = `Are you sure you want to soft delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Mark employees as inactive\n- Create vacant positions for their roles\n- Allow future restoration`;
-        
-        if (confirm(softDeleteMessage)) {
-          try {
-         
-            result = await archiveEmployeesService.bulkSoftDeleteEmployees(selectedEmployees);
-
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} soft deleted successfully`);
-
-          } catch (error) {
-            console.error('⛔ SOFT DELETE: Operation failed:', error);
-            const errorMessage = error.message || 'Soft delete operation failed';
-            showError(`Soft delete failed: ${errorMessage}`);
-          }
-        }
-        break;
-
-      // ENHANCED: Proper hard delete with archiving
-   
-      case "hardDelete":
-        const hardDeleteMessage = `⚠️ WARNING: PERMANENT DELETION\n\nAre you sure you want to permanently delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Permanently remove employees from the system\n- Create archive records for audit purposes\n- CANNOT be undone\n\nType "DELETE" to confirm this permanent action.`;
-        
-        const confirmation = prompt(hardDeleteMessage);
-        
-        if (confirmation === "DELETE") {
-          try {
-            const notes = "hard delete";
-            showWarning('Processing permanent deletion...');
-            
-            // Use the dedicated archive service for hard delete with archiving
-            result = await archiveEmployeesService.bulkHardDeleteEmployees(
-              selectedEmployees, 
-              notes, 
-              true // confirmHardDelete = true
-            );
-            
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} permanently deleted`);
-            
-          } catch (error) {
-            console.error('⛔ HARD DELETE: Operation failed:', error);
-            const errorMessage = error.message || 'Hard delete operation failed';
-            showError(`Hard delete failed: ${errorMessage}`);
-          }
-        } else if (confirmation !== null) {
-          showWarning('Hard delete cancelled. You must type "DELETE" exactly to confirm permanent deletion.');
-        }
-        break;
-
-     
-      case "showInOrgChart":
-        try {
-    
-          await showInOrgChart(selectedEmployees);
-          clearSelection();
-          await refreshAllData(true);
-          showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
-        } catch (error) {
-          console.error('Show in org chart failed:', error);
-          showError('Show in org chart failed: ' + error.message);
-        }
-        break;
-
-      case "hideFromOrgChart":
-        try {
-  
-          await hideFromOrgChart(selectedEmployees);
-          clearSelection();
-          await refreshAllData(true);
-          showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
-        } catch (error) {
-          console.error('Hide from org chart failed:', error);
-          showError('Hide from org chart failed: ' + error.message);
-        }
-        break;
-
-      case "bulkAddTags":
-        try {
-          const payload = {
-            employee_ids: options.employee_ids || selectedEmployees,
-            tag_id: options.tag_id
-          };
-          
-          showInfo('Adding tags...');
-          result = await bulkAddTags(payload.employee_ids, payload.tag_id);
-          clearSelection();
-          await refreshAllData(true);
-          showSuccess(`Tags added to ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
-         
-        } catch (error) {
-          console.error('Tag addition failed:', error);
-          showError('Tag addition failed: ' + error.message);
-        }
-        break;
-
-      case "bulkRemoveTags":
-        try {
-          const payload = {
-            employee_ids: options.employee_ids || selectedEmployees,
-            tag_id: options.tag_id
-          };
-          
-    
-          result = await bulkRemoveTags(payload.employee_ids, payload.tag_id);
-          clearSelection();
-          await refreshAllData(true);
-          showSuccess(`Tags removed from ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
-
-        } catch (error) {
-          showError('Tag removal failed: ' + error.message);
-        }
-        break;
-
-      case "bulkAssignLineManager":
-        try {
-          const payload = {
-            employee_ids: options.employee_ids || selectedEmployees,
-            line_manager_id: options.line_manager_id
-          };
-
-          result = await bulkAssignLineManager(payload.employee_ids, payload.line_manager_id);
-          clearSelection();
-          await refreshAllData(true);
-          
-          const managerName = result?.line_manager_info?.name || 'Line Manager';
-
-        } catch (error) {
-          console.error('Line manager assignment failed:', error);
-          showError('Line manager assignment failed: ' + error.message);
-        }
-        break;
-
-      case "bulkExtendContracts":
-        try {
-     
-          result = await bulkExtendContracts({
-            employee_ids: selectedEmployees,
-            new_contract_type: options.new_contract_type,
-            new_start_date: options.new_start_date,
-            reason: options.reason
-          });
-          
-          clearSelection();
-          await refreshAllData(true);
-          showSuccess(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
-        } catch (error) {
-          console.error('Contract extension failed:', error);
-          showError('Contract extension failed: ' + error.message);
-        }
-        break;
-
-      default:
-        console.warn('Unknown bulk action:', action);
-        showWarning(`"${action}" operation not implemented yet`);
+    if (selectedEmployees.length === 0 && !['export', 'downloadTemplate', 'bulkImport', 'refresh'].includes(action)) {
+      showWarning("Please select employees first!");
+      return;
     }
-  } catch (error) {
-    console.error(`Bulk action ${action} failed:`, error);
-    showError(`${action} failed. Error: ${error.message}`);
-  }
-}, [
-  selectedEmployees,
-  clearSelection,
-  refreshAllData,
-  bulkAddTags,
-  bulkRemoveTags,
-  bulkAssignLineManager,
-  bulkExtendContracts,
-  downloadEmployeeTemplate,
-  showInOrgChart,
-  hideFromOrgChart,
-  showInfo,
-  showSuccess,
-  showError,
-  showWarning
-]);
 
+    try {
+      let result;
+      
+      switch (action) {
+        case "refresh":
+          await refreshAllData(true);
+          break;
+
+        case "export":
+          setIsExportModalOpen(true);
+          break;
+
+        case "bulkImport":
+          setIsBulkUploadOpen(true);
+          break;
+
+        case "downloadTemplate":
+          try {
+            result = await downloadEmployeeTemplate();
+            showSuccess('Template downloaded successfully!');
+          } catch (error) {
+            console.error('Template download failed:', error);
+            showError('Template download failed: ' + error.message);
+          }
+          break;
+
+        case "softDelete":
+          const softDeleteMessage = `Are you sure you want to soft delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Mark employees as inactive\n- Create vacant positions for their roles\n- Allow future restoration`;
+          
+          if (confirm(softDeleteMessage)) {
+            try {
+              result = await archiveEmployeesService.bulkSoftDeleteEmployees(selectedEmployees);
+              clearSelection();
+              await refreshAllData(true);
+              showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} soft deleted successfully`);
+            } catch (error) {
+              console.error('Soft delete failed:', error);
+              showError(`Soft delete failed: ${error.message}`);
+            }
+          }
+          break;
+
+        case "hardDelete":
+          const hardDeleteMessage = `⚠️ WARNING: PERMANENT DELETION\n\nAre you sure you want to permanently delete ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}?\n\nThis will:\n- Permanently remove employees from the system\n- Create archive records for audit purposes\n- CANNOT be undone\n\nType "DELETE" to confirm this permanent action.`;
+          
+          const confirmation = prompt(hardDeleteMessage);
+          
+          if (confirmation === "DELETE") {
+            try {
+              const notes = "hard delete";
+              showWarning('Processing permanent deletion...');
+              
+              result = await archiveEmployeesService.bulkHardDeleteEmployees(
+                selectedEmployees, 
+                notes, 
+                true
+              );
+              
+              clearSelection();
+              await refreshAllData(true);
+              showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} permanently deleted`);
+              
+            } catch (error) {
+              console.error('Hard delete failed:', error);
+              showError(`Hard delete failed: ${error.message}`);
+            }
+          } else if (confirmation !== null) {
+            showWarning('Hard delete cancelled. You must type "DELETE" exactly to confirm permanent deletion.');
+          }
+          break;
+
+        case "showInOrgChart":
+          try {
+            await showInOrgChart(selectedEmployees);
+            clearSelection();
+            await refreshAllData(true);
+            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} now visible in org chart!`);
+          } catch (error) {
+            console.error('Show in org chart failed:', error);
+            showError('Show in org chart failed: ' + error.message);
+          }
+          break;
+
+        case "hideFromOrgChart":
+          try {
+            await hideFromOrgChart(selectedEmployees);
+            clearSelection();
+            await refreshAllData(true);
+            showSuccess(`${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''} hidden from org chart!`);
+          } catch (error) {
+            console.error('Hide from org chart failed:', error);
+            showError('Hide from org chart failed: ' + error.message);
+          }
+          break;
+
+        case "bulkAddTags":
+          try {
+            const payload = {
+              employee_ids: options.employee_ids || selectedEmployees,
+              tag_id: options.tag_id
+            };
+            
+            showInfo('Adding tags...');
+            result = await bulkAddTags(payload.employee_ids, payload.tag_id);
+            clearSelection();
+            await refreshAllData(true);
+            showSuccess(`Tags added to ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
+          } catch (error) {
+            console.error('Tag addition failed:', error);
+            showError('Tag addition failed: ' + error.message);
+          }
+          break;
+
+        case "bulkRemoveTags":
+          try {
+            const payload = {
+              employee_ids: options.employee_ids || selectedEmployees,
+              tag_id: options.tag_id
+            };
+            
+            result = await bulkRemoveTags(payload.employee_ids, payload.tag_id);
+            clearSelection();
+            await refreshAllData(true);
+            showSuccess(`Tags removed from ${payload.employee_ids.length} employee${payload.employee_ids.length !== 1 ? 's' : ''}!`);
+          } catch (error) {
+            showError('Tag removal failed: ' + error.message);
+          }
+          break;
+
+        case "bulkAssignLineManager":
+          try {
+            const payload = {
+              employee_ids: options.employee_ids || selectedEmployees,
+              line_manager_id: options.line_manager_id
+            };
+
+            result = await bulkAssignLineManager(payload.employee_ids, payload.line_manager_id);
+            clearSelection();
+            await refreshAllData(true);
+            
+            const managerName = result?.line_manager_info?.name || 'Line Manager';
+            showSuccess(`Line manager assigned to ${payload.employee_ids.length} employees!`);
+          } catch (error) {
+            console.error('Line manager assignment failed:', error);
+            showError('Line manager assignment failed: ' + error.message);
+          }
+          break;
+
+        case "bulkExtendContracts":
+          try {
+            result = await bulkExtendContracts({
+              employee_ids: selectedEmployees,
+              new_contract_type: options.new_contract_type,
+              new_start_date: options.new_start_date,
+              reason: options.reason
+            });
+            
+            clearSelection();
+            await refreshAllData(true);
+            showSuccess(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
+          } catch (error) {
+            console.error('Contract extension failed:', error);
+            showError('Contract extension failed: ' + error.message);
+          }
+          break;
+
+        default:
+          console.warn('Unknown bulk action:', action);
+          showWarning(`"${action}" operation not implemented yet`);
+      }
+    } catch (error) {
+      console.error(`Bulk action ${action} failed:`, error);
+      showError(`${action} failed. Error: ${error.message}`);
+    }
+  }, [
+    selectedEmployees,
+    clearSelection,
+    refreshAllData,
+    bulkAddTags,
+    bulkRemoveTags,
+    bulkAssignLineManager,
+    bulkExtendContracts,
+    downloadEmployeeTemplate,
+    showInOrgChart,
+    hideFromOrgChart,
+    showInfo,
+    showSuccess,
+    showError,
+    showWarning
+  ]);
 
   const handleToggleActionMenu = useCallback(() => {
     setIsActionMenuOpen(prev => !prev);
@@ -949,128 +960,105 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setIsActionMenuOpen(false);
   }, []);
 
-  // Export handlers (keeping existing)
   const handleExport = useCallback(async (exportOptions) => {
-  try {
-    setIsExporting(true);
+    try {
+      setIsExporting(true);
 
-    
-    // COMPLETELY FIXED: Build backend API request
-    let apiEndpoint;
-    let apiPayload;
-    let queryParams = {};
+      let apiEndpoint;
+      let apiPayload;
+      let queryParams = {};
 
-    // Build API request based on export type
-    switch (exportOptions.type) {
-      case "selected":
-        if (!selectedEmployees || selectedEmployees.length === 0) {
-          throw new Error("No employees selected for export!");
-        }
-        
-        // Use export_selected endpoint for selected employees
-        apiEndpoint = 'export_selected';
-        apiPayload = {
-          employee_ids: selectedEmployees,
-          export_format: exportOptions.format || 'excel'
-        };
-        
-        // Add field selection if provided
-        if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-          apiPayload.include_fields = exportOptions.include_fields;
-        }
-        
- 
-        break;
+      switch (exportOptions.type) {
+        case "selected":
+          if (!selectedEmployees || selectedEmployees.length === 0) {
+            throw new Error("No employees selected for export!");
+          }
+          
+          apiEndpoint = 'export_selected';
+          apiPayload = {
+            employee_ids: selectedEmployees,
+            export_format: exportOptions.format || 'excel'
+          };
+          
+          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
+            apiPayload.include_fields = exportOptions.include_fields;
+          }
+          break;
 
-      case "filtered":
-        // Use export_selected endpoint with current filter params
-        apiEndpoint = 'export_selected';
-        
-        // Get current filter parameters (exclude pagination)
-        const filterParams = { ...buildApiParams };
-        delete filterParams.page;
-        delete filterParams.page_size;
-        
-        apiPayload = {
-          export_format: exportOptions.format || 'excel'
-        };
-        
-        // Add field selection if provided
-        if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-          apiPayload.include_fields = exportOptions.include_fields;
-        }
-        
-        // Add filters as query parameters for filtered export
-        queryParams = filterParams;
-        
+        case "filtered":
+          apiEndpoint = 'export_selected';
+          
+          const filterParams = { ...buildApiParams() };
+          delete filterParams.page;
+          delete filterParams.page_size;
+          
+          apiPayload = {
+            export_format: exportOptions.format || 'excel'
+          };
+          
+          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
+            apiPayload.include_fields = exportOptions.include_fields;
+          }
+          
+          queryParams = filterParams;
+          break;
 
-        break;
+        case "all":
+          apiEndpoint = 'export_selected';
+          apiPayload = {
+            export_format: exportOptions.format || 'excel'
+          };
+          
+          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
+            apiPayload.include_fields = exportOptions.include_fields;
+          }
+          break;
 
-      case "all":
-        // Use export_selected endpoint without filters
-        apiEndpoint = 'export_selected';
-        apiPayload = {
-          export_format: exportOptions.format || 'excel'
-        };
-        
-        // Add field selection if provided
-        if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-          apiPayload.include_fields = exportOptions.include_fields;
-        }
+        default:
+          throw new Error(`Unknown export type: ${exportOptions.type}`);
+      }
 
-        break;
+      const result = await exportEmployees(exportOptions.format || 'excel', {
+        ...apiPayload,
+        _queryParams: queryParams
+      });
+      
+      const exportTypeLabel = exportOptions.type === "selected" 
+        ? `${selectedEmployees?.length || 0} selected` 
+        : exportOptions.type === "filtered" 
+        ? "filtered"
+        : "all";
+      
+      const fieldsCount = exportOptions.include_fields?.length || 'default';
+      showSuccess(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
+      
+      return result;
 
-      default:
-        throw new Error(`Unknown export type: ${exportOptions.type}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      
+      let userFriendlyMessage = error.message || "Export failed. Please try again.";
+      
+      if (error.message?.includes('No employees selected')) {
+        userFriendlyMessage = "Please select at least one employee to export.";
+      } else if (error.message?.includes('Invalid fields')) {
+        userFriendlyMessage = "Some selected fields are not available. Please check your field selection.";
+      } else if (error.message?.includes('No data received')) {
+        userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
+      }
+      
+      showError(`Export failed: ${userFriendlyMessage}`);
+      throw error;
+    } finally {
+      setIsExporting(false);
     }
-
-
-    
-    // Call the backend API
-    const result = await exportEmployees(exportOptions.format || 'excel', {
-      ...apiPayload,
-      _queryParams: queryParams // Send query params for filtered export
-    });
-    
-    // Success feedback
-    const exportTypeLabel = exportOptions.type === "selected" 
-      ? `${selectedEmployees?.length || 0} selected` 
-      : exportOptions.type === "filtered" 
-      ? "filtered"
-      : "all";
-    
-    const fieldsCount = exportOptions.include_fields?.length || 'default';
-    showSuccess(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
-    
-    return result;
-
-  } catch (error) {
-    console.error('⛔ FIXED Export error:', error);
-    
-    let userFriendlyMessage = error.message || "Export failed. Please try again.";
-    
-    // Better error handling
-    if (error.message?.includes('No employees selected')) {
-      userFriendlyMessage = "Please select at least one employee to export.";
-    } else if (error.message?.includes('Invalid fields')) {
-      userFriendlyMessage = "Some selected fields are not available. Please check your field selection.";
-    } else if (error.message?.includes('No data received')) {
-      userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
-       }
-    
-    showError(`Export failed: ${userFriendlyMessage}`);
-    throw error;
-  } finally {
-    setIsExporting(false);
-  }
-}, [selectedEmployees, buildApiParams, exportEmployees, showInfo, showSuccess, showError]);
+  }, [selectedEmployees, buildApiParams, exportEmployees, showInfo, showSuccess, showError]);
 
   const handleQuickExport = useCallback(async (exportOptions) => {
     try {
       setIsExporting(true);
       await handleExport(exportOptions);
     } catch (error) {
-   
       showError(`Export failed: ${error.message}`);
     } finally {
       setIsExporting(false);
@@ -1088,7 +1076,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         showSuccess('Bulk import completed successfully!');
       }
     } catch (error) {
-    
       setIsBulkUploadOpen(false);
       showError('Import completed but failed to refresh data');
     }
@@ -1098,7 +1085,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setIsExportModalOpen(prev => !prev);
   }, []);
 
-  // Modal handlers (keeping existing)
   const fetchAllEmployeesForModal = useCallback(async (options = {}) => {
     const shouldSkipCache = options?.skipCache;
     
@@ -1117,7 +1103,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         page: 1,
         page_size: 10000
       };
-     
+      
       const response = await fetchEmployees(params);
       
       let employees = [];
@@ -1178,122 +1164,116 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [allEmployeesForModal, fetchEmployees, formattedEmployees, showError]);
 
   const handleEmployeeAction = useCallback(async (employeeId, action) => {
-  const employee = formattedEmployees.find(emp => emp.id === employeeId);
-  
-  try {
-    switch (action) {
-      case "changeManager":
-        setCurrentModalEmployee(employee);
-        setShowLineManagerModal(true);
-        
-        if (!allEmployeesForModal) {
-          fetchAllEmployeesForModal().catch(error => {
-            console.warn('Pre-fetch failed, will try again when modal opens:', error);
-          });
-        }
-        break;
-
-      case "manageTag":
-        setCurrentModalEmployee(employee);
-        setShowTagModal(true);
-        break;
-
-      case "toggleVisibility":
-        const currentVisibility = employee?.is_visible_in_org_chart !== false;
-        const newVisibility = !currentVisibility;
-        
-        await handleVisibilityChange(employeeId, newVisibility);
-        break;
-
-      // ENHANCED: Individual soft delete
-      case "softDelete":
-        const employeeName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
-        
-        if (confirm(`Soft delete ${employeeName}?\n\nThis will create a vacant position and allow future restoration.`)) {
-          try {
-            const reason = prompt("Please provide a reason for soft deletion (optional):");
-         
-            
-            await archiveEmployeesService.bulkSoftDeleteEmployees([employeeId], reason);
-            await refreshAllData(true);
-            showSuccess(`${employeeName} soft deleted successfully`);
-            
-          } catch (error) {
-            console.error('Individual soft delete failed:', error);
-            showError(`Failed to soft delete ${employeeName}: ${error.message}`);
+    const employee = formattedEmployees.find(emp => emp.id === employeeId);
+    
+    try {
+      switch (action) {
+        case "changeManager":
+          setCurrentModalEmployee(employee);
+          setShowLineManagerModal(true);
+          
+          if (!allEmployeesForModal) {
+            fetchAllEmployeesForModal().catch(error => {
+              console.warn('Pre-fetch failed, will try again when modal opens:', error);
+            });
           }
-        }
-        break;
+          break;
 
-      // ENHANCED: Individual hard delete
-      case "delete":
-      case "hardDelete":
-        const empName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
-        const confirmation = prompt(`⚠️ WARNING: PERMANENT DELETION\n\nType "DELETE" to permanently delete ${empName}:`);
-        
-        if (confirmation === "DELETE") {
-          try {
-            const notes = prompt("Please provide notes for this deletion (optional but recommended):");
-            showWarning('Processing permanent deletion...');
-            
-            await archiveEmployeesService.bulkHardDeleteEmployees([employeeId], notes, true);
-            await refreshAllData(true);
-            showSuccess(`${empName} permanently deleted`);
-            
-          } catch (error) {
-       
-            showError(`Failed to delete ${empName}: ${error.message}`);
+        case "manageTag":
+          setCurrentModalEmployee(employee);
+          setShowTagModal(true);
+          break;
+
+        case "toggleVisibility":
+          const currentVisibility = employee?.is_visible_in_org_chart !== false;
+          const newVisibility = !currentVisibility;
+          
+          await handleVisibilityChange(employeeId, newVisibility);
+          break;
+
+        case "softDelete":
+          const employeeName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
+          
+          if (confirm(`Soft delete ${employeeName}?\n\nThis will create a vacant position and allow future restoration.`)) {
+            try {
+              const reason = prompt("Please provide a reason for soft deletion (optional):");
+              
+              await archiveEmployeesService.bulkSoftDeleteEmployees([employeeId], reason);
+              await refreshAllData(true);
+              showSuccess(`${employeeName} soft deleted successfully`);
+              
+            } catch (error) {
+              console.error('Individual soft delete failed:', error);
+              showError(`Failed to soft delete ${employeeName}: ${error.message}`);
+            }
           }
-        } else if (confirmation !== null) {
-          showWarning('Deletion cancelled. You must type "DELETE" exactly to confirm.');
-        }
-        break;
+          break;
 
-      case "viewTeam":
-        showInfo(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
-        break;
+        case "delete":
+        case "hardDelete":
+          const empName = employee?.name || employee?.employee_name || `Employee ${employeeId}`;
+          const confirmation = prompt(`⚠️ WARNING: PERMANENT DELETION\n\nType "DELETE" to permanently delete ${empName}:`);
+          
+          if (confirmation === "DELETE") {
+            try {
+              const notes = prompt("Please provide notes for this deletion (optional but recommended):");
+              showWarning('Processing permanent deletion...');
+              
+              await archiveEmployeesService.bulkHardDeleteEmployees([employeeId], notes, true);
+              await refreshAllData(true);
+              showSuccess(`${empName} permanently deleted`);
+              
+            } catch (error) {
+              showError(`Failed to delete ${empName}: ${error.message}`);
+            }
+          } else if (confirmation !== null) {
+            showWarning('Deletion cancelled. You must type "DELETE" exactly to confirm.');
+          }
+          break;
 
-      case "edit":
-        break;
+        case "viewTeam":
+          showInfo(`Team view for ${employee?.name || employeeId} - Feature coming soon!`);
+          break;
 
-      case "viewJobDescription":
-        showInfo(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
-        break;
+        case "edit":
+          break;
 
-      case "competencyMatrix":
-        showInfo(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
-        break;
+        case "viewJobDescription":
+          showInfo(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
+          break;
 
-      case "performanceManagement":
-        showInfo(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
-        break;
+        case "competencyMatrix":
+          showInfo(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
+          break;
 
-      default:
-        showWarning(`Action "${action}" is not implemented yet`);
+        case "performanceManagement":
+          showInfo(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
+          break;
+
+        default:
+          showWarning(`Action "${action}" is not implemented yet`);
+      }
+    } catch (error) {
+      showError(`Failed to ${action}: ${error.message}`);
     }
-  } catch (error) {
+  }, [
+    formattedEmployees, 
+    refreshAllData, 
+    handleVisibilityChange,
+    allEmployeesForModal, 
+    fetchAllEmployeesForModal,
+    showInfo,
+    showSuccess,
+    showError,
+    showWarning
+  ]);
 
-    showError(`Failed to ${action}: ${error.message}`);
-  }
-}, [
-  formattedEmployees, 
-  refreshAllData, 
-  handleVisibilityChange,
-  allEmployeesForModal, 
-  fetchAllEmployeesForModal,
-  showInfo,
-  showSuccess,
-  showError,
-  showWarning
-]);
-
-   const handleLineManagerAssign = useCallback(async (managerId) => {
+  const handleLineManagerAssign = useCallback(async (managerId) => {
     try {
       if (!currentModalEmployee) {
         throw new Error('No employee selected for line manager assignment');
       }
       
-
       await bulkAssignLineManager([currentModalEmployee.id], managerId);
       
       setShowLineManagerModal(false);
@@ -1339,7 +1319,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       console.error(`Tag ${operation} failed:`, error);
       showError(`Failed to ${operation} tag: ${error.message}`);
     }
-    // ... existing logic ...
   }, [currentModalEmployee, bulkAddTags, bulkRemoveTags, refreshAllData, showInfo, showSuccess, showError]);
 
   const handleLineManagerModalClose = useCallback(() => {
@@ -1394,7 +1373,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         label: `Hierarchy: ${localFilters.position_group.length} selected`
       });
     }
-     if (localFilters.tags?.length > 0) {
+    if (localFilters.tags?.length > 0) {
       filters.push({ 
         key: "tags", 
         label: `Tags: ${localFilters.tags.length} selected`
@@ -1489,7 +1468,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       }
     };
   }, []);
-
   const availableFieldsForSorting = useMemo(() => [
     { value: 'name', label: 'Full Name', description: 'Employee full name' },
     { value: 'employee_name', label: 'Employee Name', description: 'Employee display name' },
