@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
-export const JobDescriptionModal = ({ 
+ const JobDescriptionModal = ({ 
     showJobDescriptionModal,
     setShowJobDescriptionModal,
     jobDetail,

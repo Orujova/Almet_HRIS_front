@@ -31,7 +31,7 @@ const cleanEmployeeData = (employee) => {
     };
 };
 
-export const EmployeeModal = ({
+ const EmployeeModal = ({
     selectedEmployee,
     clearSelectedEmployee,
     fetchJobDescription,

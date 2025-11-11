@@ -3,7 +3,7 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
 
-export const Avatar = ({ employee, size = 'md', darkMode = false }) => {
+ const Avatar = ({ employee, size = 'md', darkMode = false }) => {
     const sizes = {
         sm: 'w-8 h-8 text-xs',
         md: 'w-12 h-12 text-sm',

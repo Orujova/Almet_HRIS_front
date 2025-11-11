@@ -6,7 +6,7 @@ import {
     Expand, Shrink, RefreshCw, AlertCircle, Globe 
 } from 'lucide-react';
 
-export const OrgChartHeader = ({
+ const OrgChartHeader = ({
     summary,
     orgChart,
     filteredOrgChart,

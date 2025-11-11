@@ -8,11 +8,11 @@ import { useOrgChart } from '@/hooks/useOrgChart';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
 // Import all components
-import Avatar from '@/components/orgChart/Avatar';
+
 import OrgChartHeader from '@/components/orgChart/OrgChartHeader';
 import OrgChartFilters from '@/components/orgChart/OrgChartFilters';
-import { EmployeeModal } from '@/components/orgChart/EmployeeModalCards';
-import { JobDescriptionModal } from '@/components/orgChart/JobDescriptionModal';
+import  EmployeeModal  from '@/components/orgchart/EmployeeModal';
+import  JobDescriptionModal  from '@/components/orgChart/JobDescriptionModal';
 import GridView from '@/components/orgChart/OrgChartGridView';
 import { ReactFlowProvider } from 'reactflow';
 import TreeView from '@/components/orgChart/OrgChartTreeView';

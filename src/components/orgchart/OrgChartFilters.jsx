@@ -4,7 +4,7 @@ import React from 'react';
 import { Filter, X } from 'lucide-react';
 import Select from 'react-select';
 
-export const OrgChartFilters = ({ 
+const OrgChartFilters = ({ 
     showFilters,
     filters,
     filterOptions,
