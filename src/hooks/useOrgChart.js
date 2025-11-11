@@ -195,78 +195,152 @@ export const useOrgChart = () => {
   }, [activeFilters]);
 
 
-  const filterOptions = useMemo(() => {
-    const businessFunctionCounts = {};
-    const departmentCounts = {};
-    const unitCounts = {};
-    const jobFunctionCounts = {};
-    const positionGroupCounts = {};
-    const statusCounts = {};
+ // 1. Check useReferenceData hook is working properly
+// Add this debug in useOrgChart.js or main page:
 
-    if (Array.isArray(orgChart)) {
-      orgChart.forEach(emp => {
-        if (emp && typeof emp === 'object') {
-          if (emp.business_function) businessFunctionCounts[emp.business_function] = (businessFunctionCounts[emp.business_function] || 0) + 1;
-          if (emp.department) departmentCounts[emp.department] = (departmentCounts[emp.department] || 0) + 1;
-          if (emp.unit) unitCounts[emp.unit] = (unitCounts[emp.unit] || 0) + 1;
-          if (emp.job_function) jobFunctionCounts[emp.job_function] = (jobFunctionCounts[emp.job_function] || 0) + 1;
-          if (emp.position_group) positionGroupCounts[emp.position_group] = (positionGroupCounts[emp.position_group] || 0) + 1;
-          if (emp.status) statusCounts[emp.status] = (statusCounts[emp.status] || 0) + 1;
-        }
-      });
-    }
+useEffect(() => {
+    console.log('🔍 DEBUGGING Reference Data:');
+    console.log('businessFunctionsDropdown:', businessFunctionsDropdown?.length, businessFunctionsDropdown);
+    console.log('departmentsDropdown:', departmentsDropdown?.length, departmentsDropdown);
+    console.log('unitsDropdown:', unitsDropdown?.length, unitsDropdown);
+    console.log('positionGroupsDropdown:', positionGroupsDropdown?.length, positionGroupsDropdown);
+    console.log('employeeStatusesDropdown:', employeeStatusesDropdown?.length, employeeStatusesDropdown);
+}, [businessFunctionsDropdown, departmentsDropdown, unitsDropdown, positionGroupsDropdown, employeeStatusesDropdown]);
 
-    return {
-      businessFunctions: (businessFunctionsDropdown || []).map(bf => ({
-        value: bf.value,
-        label: bf.label,
-        count: businessFunctionCounts[bf.value] || 0
-      })),
-      departments: (departmentsDropdown || []).map(dept => ({
-        value: dept.value,
-        label: dept.label,
-        count: departmentCounts[dept.value] || 0
-      })),
-      units: (unitsDropdown || []).map(unit => ({
-        value: unit.value,
-        label: unit.label,
-        count: unitCounts[unit.value] || 0
-      })),
-      jobFunctions: (jobFunctionsDropdown || []).map(jf => ({
-        value: jf.value,
-        label: jf.label,
-        count: jobFunctionCounts[jf.value] || 0
-      })),
-      positionGroups: (positionGroupsDropdown || []).map(pg => ({
-        value: pg.value,
-        label: pg.label,
-        count: positionGroupCounts[pg.value] || 0
-      })),
-      statuses: (employeeStatusesDropdown || []).map(status => ({
-        value: status.value,
-        label: status.label,
-        count: statusCounts[status.value] || 0
-      })),
-      managers: Array.isArray(orgChart)
-        ? orgChart
-          .filter(emp => emp && emp.direct_reports && emp.direct_reports > 0)
-          .map(manager => ({
-            value: manager.employee_id,
-            label: manager.name,
-            count: manager.direct_reports
-          }))
-        : []
+// 2. FIXED: If dropdowns are empty, build from orgChart data directly
+
+const filterOptions = useMemo(() => {
+    console.log('🔨 Building filter options...');
+    
+    // Build from employee data directly if reference data is missing
+    const buildFromEmployeeData = (field) => {
+        if (!Array.isArray(orgChart) || orgChart.length === 0) return [];
+        
+        const uniqueValues = new Map();
+        
+        orgChart.forEach(emp => {
+            if (emp && emp[field]) {
+                const value = String(emp[field]);
+                if (!uniqueValues.has(value)) {
+                    uniqueValues.set(value, 0);
+                }
+                uniqueValues.set(value, uniqueValues.get(value) + 1);
+            }
+        });
+        
+        return Array.from(uniqueValues.entries())
+            .map(([value, count]) => ({
+                value: value,
+                label: value,
+                count: count
+            }))
+            .sort((a, b) => b.count - a.count);
     };
-  }, [
+
+    const options = {
+        // Companies
+        businessFunctions: businessFunctionsDropdown && businessFunctionsDropdown.length > 0
+            ? businessFunctionsDropdown.map(bf => {
+                const count = orgChart?.filter(emp => emp.business_function === bf.label).length || 0;
+                return {
+                    value: bf.label,
+                    label: bf.label,
+                    count: count
+                };
+            }).filter(opt => opt.count > 0)
+            : buildFromEmployeeData('business_function'),
+        
+        // Departments
+        departments: departmentsDropdown && departmentsDropdown.length > 0
+            ? departmentsDropdown.map(dept => {
+                const count = orgChart?.filter(emp => emp.department === dept.label).length || 0;
+                return {
+                    value: dept.label,
+                    label: dept.label,
+                    count: count
+                };
+            }).filter(opt => opt.count > 0)
+            : buildFromEmployeeData('department'),
+        
+        // Units
+        units: unitsDropdown && unitsDropdown.length > 0
+            ? unitsDropdown.map(unit => {
+                const count = orgChart?.filter(emp => emp.unit === unit.label).length || 0;
+                return {
+                    value: unit.label,
+                    label: unit.label,
+                    count: count
+                };
+            }).filter(opt => opt.count > 0)
+            : buildFromEmployeeData('unit'),
+        
+        // Position Groups
+        positionGroups: positionGroupsDropdown && positionGroupsDropdown.length > 0
+            ? positionGroupsDropdown.map(pg => {
+                const count = orgChart?.filter(emp => emp.position_group === pg.label).length || 0;
+                return {
+                    value: pg.label,
+                    label: pg.label,
+                    count: count
+                };
+            }).filter(opt => opt.count > 0)
+            : buildFromEmployeeData('position_group'),
+        
+        // Statuses
+        statuses: employeeStatusesDropdown && employeeStatusesDropdown.length > 0
+            ? employeeStatusesDropdown.map(status => {
+                const count = orgChart?.filter(emp => emp.status === status.label).length || 0;
+                return {
+                    value: status.label,
+                    label: status.label,
+                    count: count
+                };
+            }).filter(opt => opt.count > 0)
+            : buildFromEmployeeData('status'),
+        
+        // Job Functions
+        jobFunctions: buildFromEmployeeData('job_function'),
+        
+        // Grading Levels
+        gradingLevels: buildFromEmployeeData('grading_level'),
+        
+        // Genders
+        genders: buildFromEmployeeData('gender'),
+        
+        // Managers
+        managers: Array.isArray(orgChart)
+            ? orgChart
+                .filter(emp => emp && emp.direct_reports && emp.direct_reports > 0)
+                .map(manager => ({
+                    value: manager.employee_id,
+                    label: `${manager.name} (${manager.title || 'No Title'})`,
+                    count: manager.direct_reports
+                }))
+                .sort((a, b) => b.count - a.count)
+            : []
+    };
+
+    console.log('✅ Filter options result:', {
+        businessFunctions: options.businessFunctions.length,
+        departments: options.departments.length,
+        units: options.units.length,
+        statuses: options.statuses.length,
+        positionGroups: options.positionGroups.length,
+        managers: options.managers.length
+    });
+
+    return options;
+}, [
+    orgChart,
     businessFunctionsDropdown,
     departmentsDropdown,
     unitsDropdown,
-    jobFunctionsDropdown,
     positionGroupsDropdown,
-    employeeStatusesDropdown,
-    orgChart
-  ]);
+    employeeStatusesDropdown
+]);
 
+
+console.log('Filter Options:', filterOptions);
 
   const exportToPNG = useCallback(async () => {
     try {

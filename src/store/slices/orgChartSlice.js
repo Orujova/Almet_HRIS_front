@@ -8,6 +8,7 @@ const cleanEmployeeForRedux = (employee) => {
     
     // Create a clean copy with only serializable data
     const cleanEmployee = {
+        id: employee.id,
         employee_id: employee.employee_id,
         name: employee.name,
         title: employee.title,
@@ -836,21 +837,36 @@ export const selectPagination = createSelector(
 );
 
 // FIXED: Safe filtered org chart selector
+// FIXED: Safe filtered org chart selector
 export const selectFilteredOrgChart = createSelector(
   [selectOrgChart, selectActiveFilters],
   (orgChart, activeFilters) => {
-  
+    console.log('🔍 Filtering orgChart:', {
+      totalEmployees: orgChart?.length,
+      activeFilters: activeFilters
+    });
     
-    if (!Array.isArray(orgChart) || Object.keys(activeFilters).length === 0) {
+    if (!Array.isArray(orgChart) || orgChart.length === 0) {
+      console.log('❌ No orgChart data to filter');
+      return [];
+    }
+    
+    if (!activeFilters || Object.keys(activeFilters).length === 0) {
+      console.log('✅ No active filters, returning all employees');
       return orgChart;
     }
     
     const filtered = orgChart.filter(employee => {
-      if (!employee || typeof employee !== 'object') return false;
+      if (!employee || typeof employee !== 'object') {
+        console.log('⚠️ Invalid employee object:', employee);
+        return false;
+      }
       
-      // Text search filters
+      // Text search filters - Case insensitive search
       if (activeFilters.search) {
-        const searchTerm = activeFilters.search.toLowerCase();
+        const searchTerm = String(activeFilters.search).toLowerCase().trim();
+        if (!searchTerm) return true; // Empty search, skip filter
+        
         const searchableFields = [
           employee.name,
           employee.employee_id,
@@ -859,100 +875,258 @@ export const selectFilteredOrgChart = createSelector(
           employee.department,
           employee.unit,
           employee.business_function
-        ].filter(Boolean);
+        ].filter(Boolean).map(field => String(field).toLowerCase());
         
         const matchesSearch = searchableFields.some(field => 
-          field && field.toString().toLowerCase().includes(searchTerm)
+          field.includes(searchTerm)
         );
-        if (!matchesSearch) return false;
+        
+        if (!matchesSearch) {
+          console.log('❌ Search filter failed for:', employee.name, 'with term:', searchTerm);
+          return false;
+        }
       }
       
       // Employee specific search
       if (activeFilters.employee_search) {
-        const searchTerm = activeFilters.employee_search.toLowerCase();
+        const searchTerm = String(activeFilters.employee_search).toLowerCase().trim();
+        if (!searchTerm) return true;
+        
         const employeeFields = [
           employee.name,
           employee.employee_id,
           employee.email
-        ].filter(Boolean);
+        ].filter(Boolean).map(field => String(field).toLowerCase());
         
         const matchesEmployeeSearch = employeeFields.some(field =>
-          field && field.toString().toLowerCase().includes(searchTerm)
+          field.includes(searchTerm)
         );
-        if (!matchesEmployeeSearch) return false;
+        
+        if (!matchesEmployeeSearch) {
+          console.log('❌ Employee search failed for:', employee.name);
+          return false;
+        }
       }
       
       // Job title search
       if (activeFilters.job_title_search) {
-        const searchTerm = activeFilters.job_title_search.toLowerCase();
-        if (!employee.title || !employee.title.toString().toLowerCase().includes(searchTerm)) {
+        const searchTerm = String(activeFilters.job_title_search).toLowerCase().trim();
+        if (!searchTerm) return true;
+        
+        if (!employee.title || !String(employee.title).toLowerCase().includes(searchTerm)) {
+          console.log('❌ Job title search failed for:', employee.name);
           return false;
         }
       }
       
       // Department search
       if (activeFilters.department_search) {
-        const searchTerm = activeFilters.department_search.toLowerCase();
-        if (!employee.department || !employee.department.toString().toLowerCase().includes(searchTerm)) {
+        const searchTerm = String(activeFilters.department_search).toLowerCase().trim();
+        if (!searchTerm) return true;
+        
+        if (!employee.department || !String(employee.department).toLowerCase().includes(searchTerm)) {
+          console.log('❌ Department search failed for:', employee.name);
           return false;
         }
       }
       
-      // Multi-select filters
-      if (activeFilters.business_function && Array.isArray(activeFilters.business_function) && activeFilters.business_function.length > 0) {
-        if (!employee.business_function || !activeFilters.business_function.includes(employee.business_function)) {
-          return false;
+      // Multi-select filters - FIXED: Handle both string and array values
+      if (activeFilters.business_function) {
+        const filterValues = Array.isArray(activeFilters.business_function) 
+          ? activeFilters.business_function 
+          : [activeFilters.business_function];
+        
+        if (filterValues.length > 0) {
+          if (!employee.business_function) {
+            console.log('❌ No business_function for:', employee.name);
+            return false;
+          }
+          
+          const matches = filterValues.some(filterValue => {
+            // Handle both ID and name matching
+            return String(employee.business_function).toLowerCase() === String(filterValue).toLowerCase() ||
+                   (employee.business_function_id && String(employee.business_function_id) === String(filterValue));
+          });
+          
+          if (!matches) {
+            console.log('❌ Business function filter failed for:', employee.name, employee.business_function);
+            return false;
+          }
         }
       }
       
-      if (activeFilters.department && Array.isArray(activeFilters.department) && activeFilters.department.length > 0) {
-        if (!employee.department || !activeFilters.department.includes(employee.department)) {
-          return false;
+      if (activeFilters.department) {
+        const filterValues = Array.isArray(activeFilters.department) 
+          ? activeFilters.department 
+          : [activeFilters.department];
+        
+        if (filterValues.length > 0) {
+          if (!employee.department) {
+            console.log('❌ No department for:', employee.name);
+            return false;
+          }
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.department).toLowerCase() === String(filterValue).toLowerCase() ||
+                   (employee.department_id && String(employee.department_id) === String(filterValue));
+          });
+          
+          if (!matches) {
+            console.log('❌ Department filter failed for:', employee.name, employee.department);
+            return false;
+          }
         }
       }
       
-      if (activeFilters.unit && Array.isArray(activeFilters.unit) && activeFilters.unit.length > 0) {
-        if (!employee.unit || !activeFilters.unit.includes(employee.unit)) {
-          return false;
+      if (activeFilters.unit) {
+        const filterValues = Array.isArray(activeFilters.unit) 
+          ? activeFilters.unit 
+          : [activeFilters.unit];
+        
+        if (filterValues.length > 0) {
+          if (!employee.unit) {
+            console.log('❌ No unit for:', employee.name);
+            return false;
+          }
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.unit).toLowerCase() === String(filterValue).toLowerCase() ||
+                   (employee.unit_id && String(employee.unit_id) === String(filterValue));
+          });
+          
+          if (!matches) {
+            console.log('❌ Unit filter failed for:', employee.name, employee.unit);
+            return false;
+          }
         }
       }
       
-      if (activeFilters.position_group && Array.isArray(activeFilters.position_group) && activeFilters.position_group.length > 0) {
-        if (!employee.position_group || !activeFilters.position_group.includes(employee.position_group)) {
-          return false;
+      if (activeFilters.position_group) {
+        const filterValues = Array.isArray(activeFilters.position_group) 
+          ? activeFilters.position_group 
+          : [activeFilters.position_group];
+        
+        if (filterValues.length > 0) {
+          if (!employee.position_group) {
+            console.log('❌ No position_group for:', employee.name);
+            return false;
+          }
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.position_group).toLowerCase() === String(filterValue).toLowerCase() ||
+                   (employee.position_group_id && String(employee.position_group_id) === String(filterValue));
+          });
+          
+          if (!matches) {
+            console.log('❌ Position group filter failed for:', employee.name, employee.position_group);
+            return false;
+          }
         }
       }
       
-      if (activeFilters.line_manager && Array.isArray(activeFilters.line_manager) && activeFilters.line_manager.length > 0) {
-        if (!employee.line_manager_id || !activeFilters.line_manager.includes(employee.line_manager_id)) {
-          return false;
+      if (activeFilters.line_manager) {
+        const filterValues = Array.isArray(activeFilters.line_manager) 
+          ? activeFilters.line_manager 
+          : [activeFilters.line_manager];
+        
+        if (filterValues.length > 0) {
+          if (!employee.line_manager_id) {
+            console.log('❌ No line_manager_id for:', employee.name);
+            return false;
+          }
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.line_manager_id) === String(filterValue);
+          });
+          
+          if (!matches) {
+            console.log('❌ Line manager filter failed for:', employee.name, employee.line_manager_id);
+            return false;
+          }
+        }
+      }
+      
+      if (activeFilters.status) {
+        const filterValues = Array.isArray(activeFilters.status) 
+          ? activeFilters.status 
+          : [activeFilters.status];
+        
+        if (filterValues.length > 0) {
+          if (!employee.status) return false;
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.status).toLowerCase() === String(filterValue).toLowerCase();
+          });
+          
+          if (!matches) return false;
+        }
+      }
+      
+      if (activeFilters.grading_level) {
+        const filterValues = Array.isArray(activeFilters.grading_level) 
+          ? activeFilters.grading_level 
+          : [activeFilters.grading_level];
+        
+        if (filterValues.length > 0) {
+          if (!employee.grading_level) return false;
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.grading_level).toLowerCase() === String(filterValue).toLowerCase();
+          });
+          
+          if (!matches) return false;
+        }
+      }
+      
+      if (activeFilters.gender) {
+        const filterValues = Array.isArray(activeFilters.gender) 
+          ? activeFilters.gender 
+          : [activeFilters.gender];
+        
+        if (filterValues.length > 0) {
+          if (!employee.gender) return false;
+          
+          const matches = filterValues.some(filterValue => {
+            return String(employee.gender).toLowerCase() === String(filterValue).toLowerCase();
+          });
+          
+          if (!matches) return false;
         }
       }
       
       // Boolean filters
       if (activeFilters.show_top_level_only) {
         if (employee.line_manager_id) {
+          console.log('❌ Top level filter failed for:', employee.name, '- has manager:', employee.line_manager_id);
           return false;
         }
       }
       
       if (activeFilters.managers_only) {
         if (!employee.direct_reports || employee.direct_reports === 0) {
+          console.log('❌ Managers only filter failed for:', employee.name, '- reports:', employee.direct_reports);
           return false;
         }
       }
       
       // Manager team filter
       if (activeFilters.manager_team) {
-        if (employee.line_manager_id !== activeFilters.manager_team) {
+        if (String(employee.line_manager_id) !== String(activeFilters.manager_team)) {
+          console.log('❌ Manager team filter failed for:', employee.name);
           return false;
         }
       }
       
+      console.log('✅ Employee passed all filters:', employee.name);
       return true;
     });
-    
 
+    console.log('📊 Filter results:', {
+      original: orgChart.length,
+      filtered: filtered.length,
+      percentage: ((filtered.length / orgChart.length) * 100).toFixed(1) + '%'
+    });
+    
     return filtered;
   }
 );
