@@ -9,13 +9,13 @@ import jobDescriptionService from '@/services/jobDescriptionService';
 
 // Import all components
 
-import OrgChartHeader from '@/components/orgChart/OrgChartHeader';
-import OrgChartFilters from '@/components/orgChart/OrgChartFilters';
+import OrgChartHeader from '@/components/orgchart/OrgChartHeader';
+import OrgChartFilters from '@/components/orgchart/OrgChartFilters';
 import  EmployeeModal  from '@/components/orgchart/EmployeeModal';
-import  JobDescriptionModal  from '@/components/orgChart/JobDescriptionModal';
-import GridView from '@/components/orgChart/OrgChartGridView';
+import  JobDescriptionModal  from '@/components/orgchart/JobDescriptionModal';
+import GridView from '@/components/orgchart/OrgChartGridView';
 import { ReactFlowProvider } from 'reactflow';
-import TreeView from '@/components/orgChart/OrgChartTreeView';
+import TreeView from '@/components/orgchart/OrgChartTreeView';
 
 const OrgChart = () => {
     const { darkMode } = useTheme();
