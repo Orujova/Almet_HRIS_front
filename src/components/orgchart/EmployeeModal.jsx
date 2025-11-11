@@ -31,7 +31,7 @@ const cleanEmployeeData = (employee) => {
     };
 };
 
- const EmployeeModal = ({
+const EmployeeModal = ({
     selectedEmployee,
     clearSelectedEmployee,
     fetchJobDescription,

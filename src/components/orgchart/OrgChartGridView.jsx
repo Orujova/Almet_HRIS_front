@@ -28,7 +28,7 @@ const cleanEmployeeData = (employee) => {
     };
 };
 
- const GridView = ({ 
+const GridView = ({ 
     filteredOrgChart, 
     setSelectedEmployee, 
     darkMode 

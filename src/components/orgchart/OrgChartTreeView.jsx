@@ -348,7 +348,7 @@ const EnhancedControlsPanel = ({ darkMode }) => {
 };
 
 // Main TreeView Component
- const TreeView = ({ 
+const TreeView = ({ 
     filteredOrgChart, 
     expandedNodes, 
     layoutDirection, 
