@@ -34,70 +34,76 @@ export default function PerformanceDashboard({
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  // PerformanceDashboard.jsx - getTruelyCompletedCount
-
-const getTruelyCompletedCount = () => {
+  // ✅ FIXED: Proper completed check with correct field names
+  const getTruelyCompletedCount = () => {
     let completedCount = 0;
     
-    employees.forEach(emp => {
-      console.log(`\n🔍 Checking ${emp.name}:`, {
-        approval_status: emp.approval_status,
-        competencies_submitted: emp.competencies_submitted,
-        objectives_count: emp.objectives?.length || 0,
-        has_end_year_rating: emp.objectives?.some(o => o.end_year_rating) || false
+    console.log('\n🔍 === CHECKING COMPLETED STATUS ===');
+    console.log('📊 Total employees to check:', employees.length);
+    
+    employees.forEach((emp, index) => {
+      // ✅ Use correct field names from API
+      const name = emp.employee_name || emp.name || 'Unknown';
+      const objPercentage = parseFloat(emp.objectives_percentage);
+      const compPercentage = parseFloat(emp.competencies_percentage);
+      const overallPercentage = parseFloat(emp.overall_weighted_percentage);
+      
+      console.log(`\n[${index + 1}] ${name}:`, {
+        status: emp.approval_status,
+        obj_pct: emp.objectives_percentage,
+        comp_pct: emp.competencies_percentage,
+        overall_pct: emp.overall_weighted_percentage,
+        final_rating: emp.final_rating
       });
       
-      // ✅ Condition 1: Must have COMPLETED status
-      if (emp.approval_status !== 'COMPLETED') {
-        console.log(`❌ Not COMPLETED status: ${emp.approval_status}`);
+      // ✅ Check 1: Must have COMPLETED or APPROVED status
+      if (emp.approval_status !== 'COMPLETED' && emp.approval_status !== 'APPROVED') {
+        console.log(`  ❌ Wrong status: ${emp.approval_status}`);
         return;
       }
       
-      // ✅ Condition 2: Must have competencies submitted
-      if (!emp.competencies_submitted) {
-        console.log(`❌ Competencies not submitted`);
+      // ✅ Check 2: Objectives must be rated (percentage > 0)
+      if (isNaN(objPercentage) || objPercentage <= 0) {
+        console.log(`  ❌ Objectives not rated: ${emp.objectives_percentage}`);
         return;
       }
       
-      // ✅ Condition 3: All non-cancelled objectives must have end_year_rating
-      if (emp.objectives && emp.objectives.length > 0) {
-        const activeObjectives = emp.objectives.filter(obj => !obj.is_cancelled);
-        
-        if (activeObjectives.length > 0) {
-          const allObjectivesRated = activeObjectives.every(obj => {
-            const hasRating = obj.end_year_rating !== null && 
-                            obj.end_year_rating !== undefined && 
-                            obj.end_year_rating !== '';
-            
-            if (!hasRating) {
-              console.log(`❌ Objective "${obj.title}" missing rating`);
-            }
-            
-            return hasRating;
-          });
-          
-          if (!allObjectivesRated) {
-            console.log(`❌ Not all objectives rated`);
-            return;
-          }
-          
-          console.log(`✅ All ${activeObjectives.length} objectives rated`);
-        }
+      // ✅ Check 3: Competencies must be rated (percentage > 0)
+      if (isNaN(compPercentage) || compPercentage <= 0) {
+        console.log(`  ❌ Competencies not rated: ${emp.competencies_percentage}`);
+        return;
       }
       
-      // ✅ All conditions met
-      console.log(`✅ Employee COMPLETED: ${emp.name}`);
+      // ✅ Check 4: Overall must be calculated (percentage > 0)
+      if (isNaN(overallPercentage) || overallPercentage <= 0) {
+        console.log(`  ❌ Overall not calculated: ${emp.overall_weighted_percentage}`);
+        return;
+      }
+      
+      // ✅ Check 5: Must have valid final rating
+      if (!emp.final_rating || emp.final_rating === 'N/A' || emp.final_rating.trim() === '') {
+        console.log(`  ❌ No final rating`);
+        return;
+      }
+      
+      // ✅ Check 6: E-- with 0% is invalid
+      if (emp.final_rating === 'E--' && overallPercentage === 0) {
+        console.log(`  ❌ Invalid: E-- rating with 0%`);
+        return;
+      }
+      
+      // ✅ All checks passed
+      console.log(`  ✅ COMPLETED!`);
       completedCount++;
     });
     
-    console.log(`\n📊 Total completed: ${completedCount} out of ${employees.length}`);
+    console.log(`\n📊 FINAL: ${completedCount} completed out of ${employees.length} employees`);
     return completedCount;
   };
 
   const completedCount = getTruelyCompletedCount();
   const totalEmployees = employees.length;
 
-  
 
   // Pagination
   const totalPages = Math.ceil(employees.length / itemsPerPage);
@@ -322,14 +328,13 @@ const getTruelyCompletedCount = () => {
                   title="Fully Completed"
                   value={completedCount}
                   total={totalEmployees}
-                  subtitle="Objectives rated & competencies submitted"
+                  subtitle="All ratings with valid scores"
                   color="green"
                 />
               </div>
             )}
 
-            {/* Status Distribution */}
-         
+       
 
             {/* Timeline */}
             {dashboardStats?.timeline && (
@@ -401,6 +406,7 @@ const getTruelyCompletedCount = () => {
                   {currentEmployees.map(employee => {
                     const hasAccess = canViewEmployee(employee.id);
                     const badge = getStatusBadge(employee.approval_status);
+                    const displayName = employee.employee_name || employee.name;
                     
                     return (
                       <div
@@ -413,20 +419,20 @@ const getTruelyCompletedCount = () => {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                              {employee.name.charAt(0)}
+                              {displayName.charAt(0)}
                             </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1">
                                 <h4 className={`text-sm font-semibold truncate ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                                  {employee.name}
+                                  {displayName}
                                 </h4>
                                 {!hasAccess && <Lock className="w-3 h-3 text-almet-waterloo flex-shrink-0" />}
                               </div>
                               <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                                <span className="truncate">{employee.position}</span>
+                                <span className="truncate">{employee.employee_position_group || employee.position}</span>
                                 <span>•</span>
-                                <span className="truncate">{employee.department}</span>
+                                <span className="truncate">{employee.employee_department || employee.department}</span>
                               </div>
                             </div>
                           </div>

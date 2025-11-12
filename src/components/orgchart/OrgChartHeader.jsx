@@ -1,9 +1,9 @@
-// components/orgChart/OrgChartHeader.jsx - UPDATED VERSION
+// components/orgChart/OrgChartHeader.jsx - COMPLETE VERSION with Back Button
 'use client'
 import React from 'react';
 import { 
     Building2, Search, TreePine, Grid, Filter, Download, 
-    Expand, Shrink, RefreshCw, AlertCircle, Globe 
+    Expand, Shrink, RefreshCw, AlertCircle, Globe, ArrowLeft 
 } from 'lucide-react';
 
 const OrgChartHeader = ({
@@ -26,7 +26,8 @@ const OrgChartHeader = ({
     fetchOrgChart,
     hasActiveFilters,
     darkMode,
-    selectedCompany
+    selectedCompany,
+    onBackToCompanySelection  // NEW PROP
 }) => {
     const bgCard = darkMode ? "bg-slate-800" : "bg-white";
     const borderColor = darkMode ? "border-slate-600" : "border-gray-200";
@@ -42,6 +43,17 @@ const OrgChartHeader = ({
                 <div className="flex items-center justify-between">
                     {/* Left Side - Title & Stats */}
                     <div className="flex items-center gap-3">
+                        {/* Back Button - only show when company is selected */}
+                        {selectedCompany && (
+                            <button
+                                onClick={onBackToCompanySelection}
+                                className={`p-2 hover:${bgAccent} rounded-lg transition-colors ${textMuted} hover:${textPrimary} flex items-center justify-center`}
+                                title="Back to company selection"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                        )}
+                        
                         <div className="w-8 h-8 bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst rounded-lg flex items-center justify-center shadow-lg">
                             {selectedCompany === 'ALL' ? (
                                 <Globe className="w-4 h-4 text-white" />
@@ -145,10 +157,15 @@ const OrgChartHeader = ({
                         {/* Export Button */}
                         <button 
                             onClick={handleExportToPNG} 
+                            disabled={exportLoading}
                             title="Export Chart"
-                            className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm flex items-center gap-1`}
+                            className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
-                            <Download size={14} />
+                            {exportLoading ? (
+                                <RefreshCw size={14} className="animate-spin" />
+                            ) : (
+                                <Download size={14} />
+                            )}
                             <span className="text-xs hidden sm:inline">Export</span>
                         </button>
                         

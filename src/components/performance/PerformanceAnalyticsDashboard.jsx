@@ -56,68 +56,51 @@ export default function PerformanceAnalyticsDashboard({
     }
   };
 
-  // PerformanceAnalyticsDashboard.jsx - calculateGradeDistribution method
-
-const calculateGradeDistribution = () => {
+  const calculateGradeDistribution = () => {
     if (!settings?.evaluationScale || !employees || employees.length === 0) {
       console.log('❌ No data for grade distribution');
       return [];
     }
 
     console.log('📊 Calculating grade distribution for', employees.length, 'employees');
-    console.log('📊 Employees data:', employees.map(e => ({
-      name: e.name,
-      final_rating: e.final_rating,
-      approval_status: e.approval_status,
-      overall_percentage: e.overall_weighted_percentage
-    })));
 
-    // ✅ Sort scales by value descending
+    // ✅ Sort scales by value descending (E++ highest, E-- lowest)
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
     console.log('📊 Scales:', sortedScales.map(s => `${s.name} (${s.range_min}-${s.range_max}%)`));
 
-    // ✅ Calculate normal distribution
+    // ✅ Calculate normal distribution based on range sizes
     const totalRange = 100;
     const normalDist = sortedScales.map(scale => {
       const rangeSize = (parseFloat(scale.range_max) - parseFloat(scale.range_min)) + 1;
       const normalPercentage = (rangeSize / totalRange) * 100;
       return {
         grade: scale.name,
-        norm: Math.round(normalPercentage * 10) / 10,
+        norm: Math.round(normalPercentage * 10) / 10, // One decimal
         value: scale.value
       };
     });
 
-    // ✅ Initialize grade counts
+    console.log('📊 Normal distribution:', normalDist);
+
+    // ✅ Calculate actual distribution from employees
     const gradeCounts = {};
     sortedScales.forEach(scale => {
       gradeCounts[scale.name] = 0;
     });
 
-    // ✅ CRITICAL FIX: Count employees with final_rating
+    // ✅ Count employees by final_rating
     let employeesWithRatings = 0;
-    
     employees.forEach(emp => {
-      // Check if employee has final_rating (string like "E++", "E+", etc.)
-      if (emp.final_rating && emp.final_rating !== 'N/A' && emp.final_rating.trim() !== '') {
-        // Check if this rating exists in our scales
-        if (gradeCounts.hasOwnProperty(emp.final_rating)) {
-          gradeCounts[emp.final_rating]++;
-          employeesWithRatings++;
-          console.log(`✅ Counted ${emp.name}: ${emp.final_rating}`);
-        } else {
-          console.log(`⚠️ Unknown rating for ${emp.name}: ${emp.final_rating}`);
-        }
-      } else {
-        console.log(`⚠️ No rating for ${emp.name} (status: ${emp.approval_status})`);
+      if (emp.final_rating && gradeCounts[emp.final_rating] !== undefined) {
+        gradeCounts[emp.final_rating]++;
+        employeesWithRatings++;
       }
     });
 
     console.log('📊 Grade counts:', gradeCounts);
-    console.log('📊 Total with ratings:', employeesWithRatings, 'out of', employees.length);
+    console.log('📊 Total with ratings:', employeesWithRatings);
 
-    // ✅ Calculate percentages
     const result = sortedScales.map(scale => {
       const actualPercentage = employeesWithRatings > 0 
         ? Math.round((gradeCounts[scale.name] / employeesWithRatings) * 1000) / 10 
@@ -145,7 +128,7 @@ const calculateGradeDistribution = () => {
     const deptMap = {};
     
     employees.forEach(emp => {
-      const dept = emp.department || 'Unknown';
+      const dept = emp.employee_department || emp.department || 'Unknown';
       if (!deptMap[dept]) {
         deptMap[dept] = {
           department: dept,
@@ -186,7 +169,7 @@ const calculateGradeDistribution = () => {
     const posMap = {};
     
     employees.forEach(emp => {
-      const pos = emp.position || 'Unknown';
+      const pos = emp.employee_position_group || emp.position || 'Unknown';
       if (!posMap[pos]) {
         posMap[pos] = {
           position: pos,
@@ -465,7 +448,7 @@ const calculateGradeDistribution = () => {
             <option value="">-- Select Employee --</option>
             {employees.map(emp => (
               <option key={emp.id} value={emp.id}>
-                {emp.name} - {emp.position}
+                {emp.employee_name || emp.name} - {emp.employee_position_group || emp.position}
               </option>
             ))}
           </select>
@@ -474,7 +457,7 @@ const calculateGradeDistribution = () => {
         {selectedEmployee && (
           <>
             <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Competency Radar: {selectedEmployee.name}
+              Competency Radar: {selectedEmployee.employee_name || selectedEmployee.name}
             </h3>
             <ResponsiveContainer width="100%" height={500}>
               <RadarChart data={getEmployeeCompetencyData(selectedEmployee)}>

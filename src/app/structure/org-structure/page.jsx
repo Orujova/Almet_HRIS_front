@@ -1,4 +1,4 @@
-// app/org-chart/page.jsx - FIXED VERSION
+// app/org-chart/page.jsx - COMPLETE VERSION with Back Button & Persistence
 'use client'
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { RefreshCw, Building2 } from 'lucide-react';
@@ -8,11 +8,10 @@ import { useOrgChart } from '@/hooks/useOrgChart';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
 // Import all components
-
 import OrgChartHeader from '@/components/orgchart/OrgChartHeader';
 import OrgChartFilters from '@/components/orgchart/OrgChartFilters';
-import  EmployeeModal  from '@/components/orgchart/EmployeeModal';
-import  JobDescriptionModal  from '@/components/orgchart/JobDescriptionModal';
+import EmployeeModal from '@/components/orgchart/EmployeeModal';
+import JobDescriptionModal from '@/components/orgchart/JobDescriptionModal';
 import GridView from '@/components/orgchart/OrgChartGridView';
 import { ReactFlowProvider } from 'reactflow';
 import TreeView from '@/components/orgchart/OrgChartTreeView';
@@ -26,8 +25,15 @@ const OrgChart = () => {
     const [jobDetail, setJobDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     
-    // FIXED: Company filter state - NULL by default (no company selected)
-    const [selectedCompany, setSelectedCompany] = useState(null);
+    // Company filter state WITH localStorage persistence
+    const [selectedCompany, setSelectedCompany] = useState(() => {
+        // Load from localStorage on initial render
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('orgchart_selected_company');
+            return saved || null;
+        }
+        return null;
+    });
     
     // Get all org chart data and methods from hook
     const {
@@ -133,6 +139,26 @@ const OrgChart = () => {
         })
     };
 
+    // Save selected company to localStorage whenever it changes
+    useEffect(() => {
+        if (typeof window !== 'undefined' && selectedCompany) {
+            localStorage.setItem('orgchart_selected_company', selectedCompany);
+        }
+    }, [selectedCompany]);
+
+    // Back to company selection handler
+    const handleBackToCompanySelection = useCallback(() => {
+        setSelectedCompany(null);
+        // Clear localStorage
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem('orgchart_selected_company');
+        }
+        // Clear all filters
+        clearFilters();
+        // Reset expanded nodes
+        setExpandedNodes([]);
+    }, [clearFilters, setExpandedNodes]);
+
     // Company options from orgChart data
     const companyOptions = useMemo(() => {
         if (!orgChart || orgChart.length === 0) {
@@ -169,24 +195,21 @@ const OrgChart = () => {
         
         options.push(...companyList);
         
-        console.log('🏢 Company options:', options);
         return options;
     }, [orgChart]);
 
-    // FIXED: Filter orgChart by selected company
+    // Filter orgChart by selected company
     const companyFilteredOrgChart = useMemo(() => {
         // If no company selected, return empty array
         if (!selectedCompany || !orgChart) return [];
         
         // If "ALL" selected, return all employees
         if (selectedCompany === 'ALL') {
-            console.log('🏢 Showing all companies:', orgChart.length, 'employees');
             return orgChart;
         }
         
         // Filter by specific company
         const filtered = orgChart.filter(emp => emp.business_function === selectedCompany);
-        console.log(`🏢 Filtered by company "${selectedCompany}":`, filtered.length, 'employees');
         return filtered;
     }, [orgChart, selectedCompany]);
 
@@ -227,7 +250,7 @@ const OrgChart = () => {
         emp.vacant || emp.name?.toLowerCase().includes('vacant')
     ).length || 0;
 
-    // FIXED: Calculate summary stats from search filtered data
+    // Calculate summary stats from search filtered data
     const companySummary = useMemo(() => {
         if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
             return {
@@ -263,12 +286,10 @@ const OrgChart = () => {
         };
     }, [searchFilteredOrgChart]);
 
-    // FIXED: Fetch Job Description with Database ID
+    // Fetch Job Description with Database ID
     const fetchJobDescription = async (employeeId) => {
         try {
             setDetailLoading(true);
-            
-            console.log('🔍 Fetching job description for employee_id:', employeeId);
             
             if (!employeeId) {
                 alert('Employee ID is missing.');
@@ -289,8 +310,6 @@ const OrgChart = () => {
                 alert('Employee database ID is missing.');
                 return;
             }
-            
-            console.log('📡 Using database ID:', databaseId);
             
             let jobDescriptions;
             try {
@@ -327,7 +346,7 @@ const OrgChart = () => {
             setShowJobDescriptionModal(true);
             
         } catch (error) {
-            console.error('❌ Error:', error);
+            console.error('Error:', error);
             
             if (error.response) {
                 const status = error.response.status;
@@ -352,7 +371,7 @@ const OrgChart = () => {
         }
     };
 
-    // BEST FIX: Export to PNG using html-to-image (React Flow recommended)
+    // Export to PNG using html-to-image
     const [exportLoading, setExportLoading] = useState(false);
     
     const handleExportToPNG = useCallback(async () => {
@@ -369,8 +388,6 @@ const OrgChart = () => {
                 return;
             }
 
-            console.log('📸 Starting export...');
-
             const dataUrl = await toPng(container, {
                 backgroundColor: darkMode ? '#0f172a' : '#e7ebf1',
                 cacheBust: true,
@@ -383,10 +400,9 @@ const OrgChart = () => {
                         'react-flow__controls',
                         'react-flow__minimap',
                         'react-flow__attribution',
-                        'react-flow__panel' // Exclude all panels (buttons)
+                        'react-flow__panel'
                     ];
                     
-                    // Check if node has any exclusion class
                     if (node.classList) {
                         for (const className of exclusionClasses) {
                             if (node.classList.contains(className)) {
@@ -405,10 +421,8 @@ const OrgChart = () => {
             link.href = dataUrl;
             link.click();
             
-            console.log('✅ Export successful!');
-            
         } catch (error) {
-            console.error('❌ Export failed:', error);
+            console.error('Export failed:', error);
             alert('Export failed. Please ensure you have installed html-to-image package.');
         } finally {
             setExportLoading(false);
@@ -456,8 +470,6 @@ const OrgChart = () => {
     // Auto-expand initial nodes when company changes
     useEffect(() => {
         if (selectedCompany && searchFilteredOrgChart && searchFilteredOrgChart.length > 0) {
-            console.log('🔄 Company changed, auto-expanding roots...');
-            
             let rootEmployees = searchFilteredOrgChart.filter(emp => 
                 !emp.line_manager_id && !emp.manager_id && !emp.parent_id
             );
@@ -475,7 +487,6 @@ const OrgChart = () => {
             
             const initialExpanded = rootEmployees.map(emp => emp.employee_id).filter(Boolean);
             if (initialExpanded.length > 0) {
-                console.log('✅ Auto-expanding:', initialExpanded.length, 'root nodes');
                 setExpandedNodes(initialExpanded);
             }
         }
@@ -495,7 +506,7 @@ const OrgChart = () => {
         );
     }
 
-    // FIXED: Show company selection screen if no company selected
+    // Show company selection screen if no company selected
     if (!selectedCompany) {
         return (
             <DashboardLayout>
@@ -556,7 +567,7 @@ const OrgChart = () => {
     return (
         <DashboardLayout>
             <div ref={containerRef} className={`${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'} ${bgApp} flex flex-col org-chart-container`}>
-                {/* Header with Company Selector */}
+                {/* Header with Company Selector and Back Button */}
                 <OrgChartHeader
                     summary={companySummary}
                     orgChart={searchFilteredOrgChart}
@@ -578,6 +589,7 @@ const OrgChart = () => {
                     hasActiveFilters={hasActiveFilters}
                     darkMode={darkMode}
                     selectedCompany={selectedCompany}
+                    onBackToCompanySelection={handleBackToCompanySelection}
                 />
 
                 {/* Advanced Filters Panel */}
