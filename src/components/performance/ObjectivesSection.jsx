@@ -293,8 +293,7 @@ export default function ObjectivesSection({
                     </div>
                   ) : (
                     <div className={`text-xs ${darkMode ? 'text-almet-bali-hai/70' : 'text-almet-waterloo/70'} italic`}>
-                      Not Rated
-                    </div>
+Completed                    </div>
                   )}
                 </div>
 
