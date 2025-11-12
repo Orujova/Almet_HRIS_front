@@ -183,12 +183,7 @@ export default function CelebrationsPage() {
               Celebrate milestones together
             </p>
           </div>
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-colors self-start"
-          >
-            Toggle Mode
-          </button>
+        
         </div>
       </div>
 
