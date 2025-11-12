@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar, TrendingUp, PieChart, BarChart3 } from 'lucide-react';
+import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar, TrendingUp, BarChart3, Search, X } from 'lucide-react';
 import Pagination from '@/components/common/Pagination';
-import PerformanceAnalyticsDashboard from './PerformanceAnalyticsDashboard';
+
+// ✅ Import New Components
+import TeamMembersWithSearch from './TeamMembersWithSearch';
+import FixedStatCards from './FixedStatCards';
+import FixedAnalyticsDashboard from './PerformanceAnalyticsDashboard';
 
 export default function PerformanceDashboard({ 
   dashboardStats, 
@@ -14,10 +18,56 @@ export default function PerformanceDashboard({
   darkMode 
 }) {
   const [activeTab, setActiveTab] = useState('overview');
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 9;
 
-  const getStatusBadge = (status) => {
+  console.log('📊 Dashboard Props:', { 
+    employeeCount: employees?.length, 
+    hasStats: !!dashboardStats,
+    currentUserId: permissions?.employee?.id
+  });
+
+  // ✅ GET COMPLETED COUNT - FIXED LOGIC
+  const getCompletedCount = () => {
+    if (!employees || employees.length === 0) return 0;
+
+    let completedCount = 0;
+
+    employees.forEach(emp => {
+      const objPct = parseFloat(emp.objectives_percentage);
+      const compPct = parseFloat(emp.competencies_percentage);
+
+      // ✅ COMPLETED = both percentages exist and > 0
+      const isCompleted = !isNaN(objPct) && objPct > 0 && 
+                         !isNaN(compPct) && compPct > 0;
+
+      if (isCompleted) {
+        completedCount++;
+      }
+    });
+
+    return completedCount;
+  };
+
+  const getObjectivesSetCount = () => {
+    if (!employees || employees.length === 0) return 0;
+    return employees.filter(emp => emp.objectives_manager_approved === true).length;
+  };
+
+  const getMidYearCompletedCount = () => {
+    if (!employees || employees.length === 0) return 0;
+    return employees.filter(emp => emp.mid_year_completed === true).length;
+  };
+
+  const getStatusBadge = (employee) => {
+    const objPct = parseFloat(employee.objectives_percentage);
+    const compPct = parseFloat(employee.competencies_percentage);
+    
+    let status = employee.approval_status || 'NOT_STARTED';
+    
+    // ✅ Override to COMPLETED if both percentages exist
+    if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
+      status = 'COMPLETED';
+    }
+    
     const badges = {
       'DRAFT': { text: 'Draft', class: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
       'NOT_STARTED': { text: 'Not Started', class: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' },
@@ -27,6 +77,7 @@ export default function PerformanceDashboard({
       'COMPLETED': { text: 'Completed', class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
       'NEED_CLARIFICATION': { text: 'Clarification', class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
     };
+    
     return badges[status] || badges['NOT_STARTED'];
   };
 
@@ -34,164 +85,59 @@ export default function PerformanceDashboard({
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  // ✅ FIXED: Proper completed check with correct field names
-  const getTruelyCompletedCount = () => {
-    let completedCount = 0;
-    
-    console.log('\n🔍 === CHECKING COMPLETED STATUS ===');
-    console.log('📊 Total employees to check:', employees.length);
-    
-    employees.forEach((emp, index) => {
-      // ✅ Use correct field names from API
-      const name = emp.employee_name || emp.name || 'Unknown';
-      const objPercentage = parseFloat(emp.objectives_percentage);
-      const compPercentage = parseFloat(emp.competencies_percentage);
-      const overallPercentage = parseFloat(emp.overall_weighted_percentage);
+  const completedCount = getCompletedCount();
+  const objectivesSetCount = getObjectivesSetCount();
+  const midYearCount = getMidYearCompletedCount();
+  const totalEmployees = employees?.length || 0;
+
+  // ✅ Status distribution with COMPLETED override
+  const getStatusDistribution = () => {
+    if (!employees || employees.length === 0) return {};
+
+    const dist = {
+      'NOT_STARTED': 0,
+      'DRAFT': 0,
+      'PENDING': 0,
+      'NEED_CLARIFICATION': 0,
+      'APPROVED': 0,
+      'COMPLETED': 0
+    };
+
+    employees.forEach(emp => {
+      const objPct = parseFloat(emp.objectives_percentage);
+      const compPct = parseFloat(emp.competencies_percentage);
       
-      console.log(`\n[${index + 1}] ${name}:`, {
-        status: emp.approval_status,
-        obj_pct: emp.objectives_percentage,
-        comp_pct: emp.competencies_percentage,
-        overall_pct: emp.overall_weighted_percentage,
-        final_rating: emp.final_rating
-      });
-      
-      // ✅ Check 1: Must have COMPLETED or APPROVED status
-      if (emp.approval_status !== 'COMPLETED' && emp.approval_status !== 'APPROVED') {
-        console.log(`  ❌ Wrong status: ${emp.approval_status}`);
-        return;
+      // ✅ Check if COMPLETED first
+      if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
+        dist['COMPLETED']++;
+      } else {
+        const status = emp.approval_status || 'NOT_STARTED';
+        
+        if (status === 'NOT_STARTED' || !status) {
+          dist['NOT_STARTED']++;
+        } else if (status === 'DRAFT') {
+          dist['DRAFT']++;
+        } else if (['PENDING_EMPLOYEE_APPROVAL', 'PENDING_MANAGER_APPROVAL'].includes(status)) {
+          dist['PENDING']++;
+        } else if (status === 'NEED_CLARIFICATION') {
+          dist['NEED_CLARIFICATION']++;
+        } else if (status === 'APPROVED') {
+          dist['APPROVED']++;
+        }
       }
-      
-      // ✅ Check 2: Objectives must be rated (percentage > 0)
-      if (isNaN(objPercentage) || objPercentage <= 0) {
-        console.log(`  ❌ Objectives not rated: ${emp.objectives_percentage}`);
-        return;
-      }
-      
-      // ✅ Check 3: Competencies must be rated (percentage > 0)
-      if (isNaN(compPercentage) || compPercentage <= 0) {
-        console.log(`  ❌ Competencies not rated: ${emp.competencies_percentage}`);
-        return;
-      }
-      
-      // ✅ Check 4: Overall must be calculated (percentage > 0)
-      if (isNaN(overallPercentage) || overallPercentage <= 0) {
-        console.log(`  ❌ Overall not calculated: ${emp.overall_weighted_percentage}`);
-        return;
-      }
-      
-      // ✅ Check 5: Must have valid final rating
-      if (!emp.final_rating || emp.final_rating === 'N/A' || emp.final_rating.trim() === '') {
-        console.log(`  ❌ No final rating`);
-        return;
-      }
-      
-      // ✅ Check 6: E-- with 0% is invalid
-      if (emp.final_rating === 'E--' && overallPercentage === 0) {
-        console.log(`  ❌ Invalid: E-- rating with 0%`);
-        return;
-      }
-      
-      // ✅ All checks passed
-      console.log(`  ✅ COMPLETED!`);
-      completedCount++;
     });
-    
-    console.log(`\n📊 FINAL: ${completedCount} completed out of ${employees.length} employees`);
-    return completedCount;
+
+    return dist;
   };
 
-  const completedCount = getTruelyCompletedCount();
-  const totalEmployees = employees.length;
+  const statusDistribution = getStatusDistribution();
 
-
-  // Pagination
-  const totalPages = Math.ceil(employees.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentEmployees = employees.slice(startIndex, endIndex);
-
-  // Tab configuration
+  // ✅ Tab configuration
   const tabs = [
-    {
-      id: 'overview',
-      label: 'Overview',
-      icon: Target,
-      badge: null
-    },
-    {
-      id: 'employees',
-      label: 'Team Members',
-      icon: Users,
-      badge: totalEmployees
-    },
-    {
-      id: 'analytics',
-      label: 'Analytics',
-      icon: BarChart3,
-      badge: null
-    }
+    { id: 'overview', label: 'Overview', icon: Target, badge: null },
+    { id: 'employees', label: 'Team Members', icon: Users, badge: totalEmployees },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, badge: null }
   ];
-
-  const StatCard = ({ icon: Icon, title, value, total, subtitle, color }) => {
-    const progress = calcProgress(value, total);
-    
-    return (
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5 hover:shadow-lg transition-all`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className={`p-3 rounded-xl ${
-            color === 'blue' ? 'bg-almet-sapphire/10 dark:bg-almet-sapphire/20' : 
-            color === 'orange' ? 'bg-orange-100 dark:bg-orange-900/30' : 
-            color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
-            'bg-emerald-100 dark:bg-emerald-900/30'
-          }`}>
-            <Icon className={`w-6 h-6 ${
-              color === 'blue' ? 'text-almet-sapphire' : 
-              color === 'orange' ? 'text-orange-600 dark:text-orange-400' : 
-              color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
-              'text-emerald-600 dark:text-emerald-400'
-            }`} />
-          </div>
-          <div className="text-right">
-            <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-              {value}
-              {total && <span className="text-base text-almet-waterloo dark:text-almet-bali-hai">/{total}</span>}
-            </div>
-          </div>
-        </div>
-        
-        <h3 className={`text-sm font-bold mb-1 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-          {title}
-        </h3>
-        
-        {subtitle && (
-          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
-            {subtitle}
-          </p>
-        )}
-        
-        {total && (
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-almet-waterloo dark:text-almet-bali-hai">
-              <span>Progress</span>
-              <span className="font-bold">{progress}%</span>
-            </div>
-            <div className={`w-full h-2 rounded-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'}`}>
-              <div 
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  color === 'blue' ? 'bg-almet-sapphire' : 
-                  color === 'orange' ? 'bg-orange-500' : 
-                  color === 'purple' ? 'bg-purple-500' :
-                  'bg-emerald-500'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
 
   const TimelineItem = ({ label, data, color, isLast }) => (
     <div className="flex gap-3">
@@ -244,7 +190,7 @@ export default function PerformanceDashboard({
                 Limited Access Mode
               </h3>
               <p className="text-xs text-blue-700 dark:text-blue-400">
-                Viewing {employees.length} employees (you and direct reports)
+                Viewing {totalEmployees} employees (you and direct reports)
               </p>
             </div>
           </div>
@@ -264,9 +210,7 @@ export default function PerformanceDashboard({
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all flex-1 ${
                   isActive 
-                    ? darkMode 
-                      ? 'bg-almet-sapphire text-white shadow-lg' 
-                      : 'bg-almet-sapphire text-white shadow-lg'
+                    ? 'bg-almet-sapphire text-white shadow-lg' 
                     : darkMode
                       ? 'bg-almet-san-juan/30 text-almet-bali-hai hover:bg-almet-san-juan/50'
                       : 'bg-almet-mystic text-almet-waterloo hover:bg-almet-mystic/80'
@@ -294,47 +238,13 @@ export default function PerformanceDashboard({
 
       {/* Tab Content */}
       <div className="min-h-[600px]">
-        {/* Overview Tab */}
+        {/* ✅ OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* Stats Grid */}
-            {dashboardStats && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                  icon={Users}
-                  title="Total Employees"
-                  value={totalEmployees}
-                  subtitle="Total employees in system"
-                  color="blue"
-                />
-                <StatCard
-                  icon={Target}
-                  title="Objectives Set"
-                  value={dashboardStats.objectives_completed}
-                  total={totalEmployees}
-                  subtitle="Employees with objectives"
-                  color="blue"
-                />
-                <StatCard
-                  icon={FileText}
-                  title="Mid-Year Reviews"
-                  value={dashboardStats.mid_year_completed}
-                  total={totalEmployees}
-                  subtitle="Completed mid-year"
-                  color="orange"
-                />
-                <StatCard
-                  icon={Award}
-                  title="Fully Completed"
-                  value={completedCount}
-                  total={totalEmployees}
-                  subtitle="All ratings with valid scores"
-                  color="green"
-                />
-              </div>
-            )}
+            {/* ✅ Stats Grid - Using New Component */}
+            <FixedStatCards employees={employees} darkMode={darkMode} />
 
-       
+        
 
             {/* Timeline */}
             {dashboardStats?.timeline && (
@@ -378,95 +288,20 @@ export default function PerformanceDashboard({
           </div>
         )}
 
-        {/* Employees Tab */}
+        {/* ✅ EMPLOYEES TAB - Using New Component */}
         {activeTab === 'employees' && (
-          <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/20">
-                <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                  Team Members
-                </h3>
-                <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
-                  {employees.length} total employees
-                </p>
-              </div>
-            </div>
-            
-            {employees.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-12 h-12 mx-auto mb-3 text-almet-waterloo dark:text-almet-comet" />
-                <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No team members</p>
-              </div>
-            ) : (
-              <>
-                <div className="space-y-2 mb-4">
-                  {currentEmployees.map(employee => {
-                    const hasAccess = canViewEmployee(employee.id);
-                    const badge = getStatusBadge(employee.approval_status);
-                    const displayName = employee.employee_name || employee.name;
-                    
-                    return (
-                      <div
-                        key={employee.id}
-                        onClick={() => hasAccess && onSelectEmployee(employee)}
-                        className={`${
-                          darkMode ? 'bg-almet-san-juan hover:bg-almet-comet' : 'bg-almet-mystic hover:bg-gray-100'
-                        } rounded-xl p-4 transition-all ${hasAccess ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-sm font-bold flex-shrink-0">
-                              {displayName.charAt(0)}
-                            </div>
-                            
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <h4 className={`text-sm font-semibold truncate ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                                  {displayName}
-                                </h4>
-                                {!hasAccess && <Lock className="w-3 h-3 text-almet-waterloo flex-shrink-0" />}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                                <span className="truncate">{employee.employee_position_group || employee.position}</span>
-                                <span>•</span>
-                                <span className="truncate">{employee.employee_department || employee.department}</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className={`px-2 py-1 rounded-lg text-xs font-medium ${badge.class}`}>
-                              {badge.text}
-                            </span>
-                            {hasAccess && (
-                              <ChevronRight className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  totalItems={employees.length}
-                  itemsPerPage={itemsPerPage}
-                  onPageChange={setCurrentPage}
-                  darkMode={darkMode}
-                />
-              </>
-            )}
-          </div>
+          <TeamMembersWithSearch
+            employees={employees}
+            currentUserId={permissions.employee?.id}
+            canViewEmployee={canViewEmployee}
+            onSelectEmployee={onSelectEmployee}
+            darkMode={darkMode}
+          />
         )}
 
-        {/* Analytics Tab */}
+        {/* ✅ ANALYTICS TAB - Using New Component */}
         {activeTab === 'analytics' && (
-          <PerformanceAnalyticsDashboard
+          <FixedAnalyticsDashboard
             employees={employees}
             settings={settings}
             darkMode={darkMode}
