@@ -570,6 +570,30 @@ export default function PerformanceManagementPage() {
     }, 1000);
   }, []);
 
+
+  const handleLoadEmployeePerformance = async (employeeId, year) => {
+  try {
+    const response = await performanceApi.performances.list({
+      employee_id: employeeId,
+      year: year
+    });
+    
+    const perfs = response.results || response;
+    
+    if (perfs.length > 0) {
+      const performance = perfs[0];
+      const detailData = await performanceApi.performances.get(performance.id);
+      
+      console.log('✅ Loaded performance detail:', detailData);
+      return detailData;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('❌ Error loading performance for analytics:', error);
+    throw error;
+  }
+};
   const handleUpdateObjective = (index, field, value) => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
@@ -1086,6 +1110,7 @@ export default function PerformanceManagementPage() {
             permissions={permissions}
             onSelectEmployee={handleSelectEmployee}
             canViewEmployee={canViewEmployee}
+            onLoadEmployeePerformance={handleLoadEmployeePerformance}
             darkMode={darkMode}
           />
         ) : (

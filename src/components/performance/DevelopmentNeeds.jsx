@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Plus, Trash2, Save, Send, Loader } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Save, Send, Loader, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 
 export default function DevelopmentNeeds({
   developmentNeeds,
@@ -13,11 +13,10 @@ export default function DevelopmentNeeds({
   onSaveDraft,
   onSubmit
 }) {
-  // ✅ Track if any changes were made
   const [hasChanges, setHasChanges] = useState(false);
   const [initialData, setInitialData] = useState(JSON.stringify(developmentNeeds));
+  const [expandedRows, setExpandedRows] = useState({});
 
-  // ✅ Check if data changed
   const checkForChanges = (newNeeds) => {
     const currentData = JSON.stringify(newNeeds);
     setHasChanges(currentData !== initialData);
@@ -26,7 +25,6 @@ export default function DevelopmentNeeds({
   const handleUpdate = (index, field, value) => {
     onUpdate(index, field, value);
     
-    // Check if changes were made
     const updatedNeeds = [...developmentNeeds];
     updatedNeeds[index] = {
       ...updatedNeeds[index],
@@ -47,7 +45,6 @@ export default function DevelopmentNeeds({
 
   const handleSaveDraft = async () => {
     await onSaveDraft();
-    // ✅ Reset after save
     setInitialData(JSON.stringify(developmentNeeds));
     setHasChanges(false);
   };
@@ -56,6 +53,181 @@ export default function DevelopmentNeeds({
     await onSubmit();
     setInitialData(JSON.stringify(developmentNeeds));
     setHasChanges(false);
+  };
+
+  const toggleRow = (index) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const DevelopmentNeedRow = ({ need, index }) => {
+    const isExpanded = expandedRows[index];
+
+    const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all ${
+      darkMode 
+        ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
+        : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
+    } disabled:opacity-40`;
+
+    return (
+      <div className={`border-b ${darkMode ? 'border-almet-comet/20' : 'border-almet-mystic'}`}>
+        {/* Compact Row */}
+        <div className={`p-4 ${darkMode ? 'hover:bg-almet-san-juan/20' : 'hover:bg-almet-mystic/30'} transition-colors`}>
+          <div className="flex items-start gap-4">
+            {/* Index Badge */}
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-bold flex-shrink-0">
+              {index + 1}
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 min-w-0">
+              {/* Title Row */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  {canEdit && isExpanded ? (
+                    <input
+                      type="text"
+                      value={need.competency_gap || ''}
+                      onChange={(e) => handleUpdate(index, 'competency_gap', e.target.value)}
+                      className={`${inputClass} w-full font-medium`}
+                      placeholder="Identify competency gap..."
+                    />
+                  ) : (
+                    <>
+                      <h4 className={`text-sm font-bold mb-1 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} ${isExpanded ? '' : 'line-clamp-1'}`}>
+                        {need.competency_gap || 'Untitled Development Need'}
+                      </h4>
+                      {!isExpanded && (
+                        <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} line-clamp-2`}>
+                          {need.development_activity || 'No development activity described'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Expand/Collapse Button */}
+                <button
+                  onClick={() => toggleRow(index)}
+                  className={`p-2 rounded-lg ${darkMode ? 'hover:bg-almet-comet/30' : 'hover:bg-gray-100'} transition-colors flex-shrink-0`}
+                  title={isExpanded ? 'Collapse' : 'Expand'}
+                >
+                  {isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-almet-waterloo" />
+                  )}
+                </button>
+              </div>
+
+              {/* Stats Grid - Always Visible */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* Progress */}
+                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1 flex items-center gap-1.5`}>
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    Progress
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                      {need.progress || 0}%
+                    </div>
+                    <div className={`flex-1 h-2 rounded-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'}`}>
+                      <div 
+                        className="h-2 rounded-full bg-indigo-500 transition-all duration-300"
+                        style={{ width: `${need.progress || 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Comment Preview */}
+                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                    Comment
+                  </div>
+                  <div className={`text-xs ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} ${isExpanded ? '' : 'line-clamp-1'}`}>
+                    {need.comment || <span className="italic text-almet-waterloo/70">No comment</span>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded Content */}
+              {isExpanded && (
+                <div className={`mt-4 ${darkMode ? 'bg-almet-san-juan/20 border-almet-comet/30' : 'bg-gray-50 border-gray-200'} border rounded-xl p-4 space-y-4`}>
+                  {/* Development Activity */}
+                  <div>
+                    <h5 className={`text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} uppercase tracking-wide mb-2`}>
+                      Development Activity
+                    </h5>
+                    {canEdit ? (
+                      <textarea
+                        value={need.development_activity || ''}
+                        onChange={(e) => handleUpdate(index, 'development_activity', e.target.value)}
+                        rows={4}
+                        className={`${inputClass} w-full resize-none py-2 leading-relaxed`}
+                        placeholder="Describe development activity in detail (e.g., training courses, mentorship, workshops, certifications)..."
+                      />
+                    ) : (
+                      <p className={`text-sm ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} leading-relaxed whitespace-pre-wrap`}>
+                        {need.development_activity || 'No development activity described'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Edit Controls Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                        Progress %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={need.progress || 0}
+                        onChange={(e) => handleUpdate(index, 'progress', parseInt(e.target.value) || 0)}
+                        disabled={!canEdit}
+                        className={`${inputClass} w-full text-center font-semibold`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                        Comment
+                      </label>
+                      <input
+                        type="text"
+                        value={need.comment || ''}
+                        onChange={(e) => handleUpdate(index, 'comment', e.target.value)}
+                        disabled={!canEdit}
+                        className={`${inputClass} w-full`}
+                        placeholder="Additional notes..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  {canEdit && (
+                    <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-almet-comet/30">
+                      <button
+                        onClick={() => handleDelete(index)}
+                        className="h-9 px-4 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -72,7 +244,7 @@ export default function DevelopmentNeeds({
                 Development Needs
               </h3>
               <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mt-0.5`}>
-                Identify gaps and development activities
+                Identify competency gaps and plan development activities
               </p>
             </div>
           </div>
@@ -90,7 +262,7 @@ export default function DevelopmentNeeds({
         </div>
       </div>
 
-      {/* Table */}
+      {/* Development Needs List */}
       {developmentNeeds.length === 0 ? (
         <div className="text-center py-16">
           <BookOpen className="w-16 h-16 mx-auto mb-4 text-almet-waterloo/30" />
@@ -104,32 +276,10 @@ export default function DevelopmentNeeds({
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'}`}>
-              <tr className="text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai uppercase tracking-wide">
-                <th className="px-4 py-3 text-left w-12">#</th>
-                <th className="px-4 py-3 text-left min-w-[200px]">Competency Gap</th>
-                <th className="px-4 py-3 text-left min-w-[250px]">Development Activity</th>
-                <th className="px-4 py-3 text-center w-24">Progress %</th>
-                <th className="px-4 py-3 text-left min-w-[200px]">Comment</th>
-                {canEdit && <th className="px-4 py-3 text-center w-16">Action</th>}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${darkMode ? 'divide-almet-comet/20' : 'divide-almet-mystic'}`}>
-              {developmentNeeds.map((need, index) => (
-                <DevelopmentNeedRow
-                  key={index}
-                  need={need}
-                  index={index}
-                  canEdit={canEdit}
-                  darkMode={darkMode}
-                  onUpdate={handleUpdate}
-                  onDelete={handleDelete}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div>
+          {developmentNeeds.map((need, index) => (
+            <DevelopmentNeedRow key={index} need={need} index={index} />
+          ))}
         </div>
       )}
 
@@ -167,75 +317,5 @@ export default function DevelopmentNeeds({
         </div>
       )}
     </div>
-  );
-}
-
-function DevelopmentNeedRow({ need, index, canEdit, darkMode, onUpdate, onDelete }) {
-  const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all ${
-    darkMode 
-      ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
-      : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
-  } disabled:opacity-40`;
-
-  return (
-    <tr className={`${darkMode ? 'hover:bg-almet-san-juan/20' : 'hover:bg-almet-mystic/30'} transition-colors`}>
-      <td className="px-4 py-3">
-        <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">
-          {index + 1}
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <input
-          type="text"
-          value={need.competency_gap || ''}
-          onChange={(e) => onUpdate(index, 'competency_gap', e.target.value)}
-          disabled={!canEdit}
-          className={`${inputClass} w-full`}
-          placeholder="Identify competency gap..."
-        />
-      </td>
-      <td className="px-4 py-3">
-        <textarea
-          value={need.development_activity || ''}
-          onChange={(e) => onUpdate(index, 'development_activity', e.target.value)}
-          disabled={!canEdit}
-          rows={2}
-          className={`${inputClass} w-full resize-none py-2`}
-          placeholder="Describe development activity..."
-        />
-      </td>
-      <td className="px-4 py-3">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          value={need.progress || 0}
-          onChange={(e) => onUpdate(index, 'progress', parseInt(e.target.value) || 0)}
-          disabled={!canEdit}
-          className={`${inputClass} w-full text-center font-semibold`}
-        />
-      </td>
-      <td className="px-4 py-3">
-        <input
-          type="text"
-          value={need.comment || ''}
-          onChange={(e) => onUpdate(index, 'comment', e.target.value)}
-          disabled={!canEdit}
-          className={`${inputClass} w-full`}
-          placeholder="Add comment..."
-        />
-      </td>
-      {canEdit && (
-        <td className="px-4 py-3 text-center">
-          <button
-            onClick={() => onDelete(index)}
-            className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
-            title="Delete"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </td>
-      )}
-    </tr>
   );
 }

@@ -1,22 +1,53 @@
 import { useState, useEffect,useRef  } from 'react';
 import { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Award, Users, Target, BarChart3, Loader, User } from 'lucide-react';
+import { TrendingUp, Award, Users, Target, BarChart3, Loader, User, AlertCircle } from 'lucide-react';
 
 export default function FixedAnalyticsDashboard({ 
   employees, 
   settings,
   darkMode,
-  selectedYear 
+  selectedYear,
+  onLoadEmployeePerformance // ✅ NEW: Callback to load full performance data
 }) {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+  const [selectedEmployeeData, setSelectedEmployeeData] = useState(null);
+  const [loadingEmployeeData, setLoadingEmployeeData] = useState(false);
 
   useEffect(() => {
     if (employees && employees.length > 0 && settings?.evaluationScale) {
       calculateAnalytics();
     }
   }, [employees, settings]);
+
+  // ✅ Load full employee performance data when selected
+  useEffect(() => {
+    if (selectedEmployeeId && onLoadEmployeePerformance) {
+      loadEmployeePerformanceData(selectedEmployeeId);
+    }
+  }, [selectedEmployeeId]);
+
+  const loadEmployeePerformanceData = async (employeeId) => {
+    setLoadingEmployeeData(true);
+    try {
+      console.log('📊 Loading full performance data for employee:', employeeId);
+      const performanceData = await onLoadEmployeePerformance(employeeId, selectedYear);
+      
+      if (performanceData && performanceData.competency_ratings) {
+        console.log('✅ Loaded competency ratings:', performanceData.competency_ratings.length);
+        setSelectedEmployeeData(performanceData);
+      } else {
+        console.warn('⚠️ No competency ratings found');
+        setSelectedEmployeeData(null);
+      }
+    } catch (error) {
+      console.error('❌ Error loading employee performance:', error);
+      setSelectedEmployeeData(null);
+    } finally {
+      setLoadingEmployeeData(false);
+    }
+  };
 
   const calculateAnalytics = () => {
     setLoading(true);
@@ -47,20 +78,16 @@ export default function FixedAnalyticsDashboard({
       return [];
     }
 
-    // ✅ Sort scales by value descending (E++ -> E--)
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
-    // ✅ PROPER BELL CURVE - Based on Excel example
-    // E++ = 5%, E+ = 15%, E = 60%, E- = 15%, E-- = 5%
     const bellCurveDistribution = {
-      5: 5,   // E++ (highest grade) = 5%
+      5: 5,   // E++ = 5%
       4: 15,  // E+ = 15%
-      3: 60,  // E (middle/average) = 60%
+      3: 60,  // E = 60%
       2: 15,  // E- = 15%
-      1: 5    // E-- (lowest grade) = 5%
+      1: 5    // E-- = 5%
     };
 
-    // ✅ Count actual distribution
     const gradeCounts = {};
     sortedScales.forEach(scale => {
       gradeCounts[scale.name] = 0;
@@ -72,7 +99,6 @@ export default function FixedAnalyticsDashboard({
       const objPct = parseFloat(emp.objectives_percentage);
       const compPct = parseFloat(emp.competencies_percentage);
       
-      // ✅ Only count if BOTH percentages exist and > 0
       if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
         employeesWithRatings++;
         
@@ -96,16 +122,11 @@ export default function FixedAnalyticsDashboard({
       }
     });
 
-    console.log('📊 Grade counts:', gradeCounts);
-    console.log('📊 Employees with ratings:', employeesWithRatings);
-
-    // ✅ Build final distribution with PROPER bell curve
     const result = sortedScales.map((scale) => {
       const actualPercentage = employeesWithRatings > 0 
         ? Math.round((gradeCounts[scale.name] / employeesWithRatings) * 1000) / 10 
         : 0;
       
-      // Map scale value to bell curve percentage
       const normPercentage = bellCurveDistribution[scale.value] || 0;
       
       return {
@@ -140,7 +161,6 @@ export default function FixedAnalyticsDashboard({
       
       deptMap[dept].totalEmployees++;
       
-      // ✅ Check if COMPLETED
       const objPct = parseFloat(emp.objectives_percentage);
       const compPct = parseFloat(emp.competencies_percentage);
       
@@ -217,14 +237,18 @@ export default function FixedAnalyticsDashboard({
     return result;
   };
 
-  const getEmployeeCompetencyData = (employeeId) => {
-    const employee = employees.find(e => e.id === employeeId);
-    if (!employee?.competency_ratings) return [];
+  // ✅ FIXED: Get competency data from loaded performance data
+  const getEmployeeCompetencyData = () => {
+    if (!selectedEmployeeData?.competency_ratings) {
+      console.warn('⚠️ No competency ratings in selected employee data');
+      return [];
+    }
 
     const groupMap = {};
     
-    employee.competency_ratings.forEach(comp => {
-      const groupName = comp.competency_group_name || comp.main_group_name || 'Other';
+    selectedEmployeeData.competency_ratings.forEach(comp => {
+      // ✅ Handle both leadership and behavioral
+      const groupName = comp.main_group_name || comp.competency_group_name || 'Other';
       
       if (!groupMap[groupName]) {
         groupMap[groupName] = {
@@ -235,12 +259,15 @@ export default function FixedAnalyticsDashboard({
         };
       }
       
-      groupMap[groupName].totalRequired += parseFloat(comp.required_level) || 0;
-      groupMap[groupName].totalActual += parseFloat(comp.end_year_rating_value) || 0;
+      const required = parseFloat(comp.required_level) || 0;
+      const actual = parseFloat(comp.end_year_rating_value) || 0;
+      
+      groupMap[groupName].totalRequired += required;
+      groupMap[groupName].totalActual += actual;
       groupMap[groupName].count++;
     });
 
-    return Object.values(groupMap).map(group => ({
+    const result = Object.values(groupMap).map(group => ({
       competency: group.group,
       percentage: group.totalRequired > 0 
         ? Math.round((group.totalActual / group.totalRequired) * 100)
@@ -248,9 +275,11 @@ export default function FixedAnalyticsDashboard({
       required: group.totalRequired,
       actual: group.totalActual
     }));
+
+    console.log('📊 Competency radar data:', result);
+    return result;
   };
 
-  // ✅ Get eligible employees (with completed performance)
   const getEligibleEmployees = () => {
     return employees.filter(emp => {
       const objPct = parseFloat(emp.objectives_percentage);
@@ -259,7 +288,6 @@ export default function FixedAnalyticsDashboard({
     });
   };
 
-  // ✅ Prepare options for SearchableDropdown
   const employeeOptions = getEligibleEmployees().map(emp => ({
     value: emp.id,
     label: `${emp.employee_name || emp.name} - ${emp.employee_position_group || emp.position}`,
@@ -418,11 +446,6 @@ export default function FixedAnalyticsDashboard({
                   border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
                   borderRadius: '8px'
                 }}
-                formatter={(value, name) => {
-                  if (name === 'avgScore') return [`${value}%`, 'Average Score'];
-                  if (name === 'completedCount') return [value, 'Completed'];
-                  return [value, name];
-                }}
               />
               <Legend />
               <Bar dataKey="avgScore" fill={COLORS.primary} name="Average Score (%)" />
@@ -462,20 +485,22 @@ export default function FixedAnalyticsDashboard({
         </div>
       )}
 
-      {/* Employee Competency Selector - SEARCHABLE DROPDOWN */}
+      {/* Employee Competency Selector */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
         <div className="mb-6">
           <label className={`block text-sm font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             Select Employee for Competency Analysis
           </label>
           
-          {/* ✅ SEARCHABLE DROPDOWN */}
           <SearchableDropdown
             options={employeeOptions}
             value={selectedEmployeeId}
             onChange={(value) => {
               console.log('Selected employee ID:', value);
               setSelectedEmployeeId(value);
+              if (!value) {
+                setSelectedEmployeeData(null);
+              }
             }}
             placeholder="-- Search and select an employee --"
             searchPlaceholder="Search by name or position..."
@@ -493,7 +518,16 @@ export default function FixedAnalyticsDashboard({
           )}
         </div>
 
-        {selectedEmployeeId && selectedEmployee && (
+        {/* Loading State */}
+        {loadingEmployeeData && (
+          <div className="flex items-center justify-center py-12">
+            <Loader className="w-8 h-8 animate-spin text-almet-sapphire mr-3" />
+            <p className="text-sm text-gray-500">Loading competency data...</p>
+          </div>
+        )}
+
+        {/* Radar Chart */}
+        {!loadingEmployeeData && selectedEmployeeId && selectedEmployee && selectedEmployeeData && (
           <>
             <div className="mb-4">
               <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -502,10 +536,23 @@ export default function FixedAnalyticsDashboard({
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {selectedEmployee.employee_position_group || selectedEmployee.position} • {selectedEmployee.employee_department || selectedEmployee.department}
               </p>
+              
+              {/* ✅ Show competency type */}
+              {selectedEmployeeData.metadata && (
+                <div className="mt-2">
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
+                    selectedEmployeeData.metadata.competency_type === 'LEADERSHIP'
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                      : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                  }`}>
+                    {selectedEmployeeData.metadata.competency_type === 'LEADERSHIP' ? '👔 Leadership' : '🎯 Behavioral'} Competencies
+                  </span>
+                </div>
+              )}
             </div>
             
             <ResponsiveContainer width="100%" height={500}>
-              <RadarChart data={getEmployeeCompetencyData(selectedEmployeeId)}>
+              <RadarChart data={getEmployeeCompetencyData()}>
                 <PolarGrid stroke={darkMode ? '#374151' : '#e5e7eb'} />
                 <PolarAngleAxis 
                   dataKey="competency" 
@@ -537,10 +584,24 @@ export default function FixedAnalyticsDashboard({
           </>
         )}
 
-        {!selectedEmployeeId && (
+        {/* Empty State */}
+        {!loadingEmployeeData && !selectedEmployeeId && (
           <div className="text-center py-12">
             <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
             <p className="text-sm text-gray-500">Select an employee to view their competency radar chart</p>
+          </div>
+        )}
+
+        {/* Error State */}
+        {!loadingEmployeeData && selectedEmployeeId && !selectedEmployeeData && (
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-400" />
+            <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+              Failed to load competency data
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Please try selecting another employee
+            </p>
           </div>
         )}
       </div>
@@ -548,7 +609,7 @@ export default function FixedAnalyticsDashboard({
   );
 }
 
-// ✅ SEARCHABLE DROPDOWN COMPONENT (Embedded)
+// ✅ SEARCHABLE DROPDOWN COMPONENT
 function SearchableDropdown({ 
   options = [], 
   value, 

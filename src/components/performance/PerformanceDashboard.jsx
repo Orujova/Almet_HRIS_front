@@ -15,6 +15,7 @@ export default function PerformanceDashboard({
   selectedYear,
   onSelectEmployee,
   canViewEmployee,
+  onLoadEmployeePerformance,
   darkMode 
 }) {
   const [activeTab, setActiveTab] = useState('overview');
@@ -203,6 +204,7 @@ export default function PerformanceDashboard({
             employees={employees}
             settings={settings}
             darkMode={darkMode}
+            onLoadEmployeePerformance={onLoadEmployeePerformance}
             selectedYear={selectedYear}
           />
         )}
