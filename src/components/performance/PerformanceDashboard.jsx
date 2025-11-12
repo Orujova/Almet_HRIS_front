@@ -34,49 +34,70 @@ export default function PerformanceDashboard({
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
-  // ✅ FIXED: Count ONLY truly completed performances
-  // A performance is completed when:
-  // 1. All objectives have end_year_rating (not null)
-  // 2. Competencies are submitted (competencies_submitted = true)
-  // 3. approval_status = 'COMPLETED'
-  const getTruelyCompletedCount = () => {
-    return employees.filter(emp => {
-      // Must have COMPLETED status
+  // PerformanceDashboard.jsx - getTruelyCompletedCount
+
+const getTruelyCompletedCount = () => {
+    let completedCount = 0;
+    
+    employees.forEach(emp => {
+      console.log(`\n🔍 Checking ${emp.name}:`, {
+        approval_status: emp.approval_status,
+        competencies_submitted: emp.competencies_submitted,
+        objectives_count: emp.objectives?.length || 0,
+        has_end_year_rating: emp.objectives?.some(o => o.end_year_rating) || false
+      });
+      
+      // ✅ Condition 1: Must have COMPLETED status
       if (emp.approval_status !== 'COMPLETED') {
-        return false;
+        console.log(`❌ Not COMPLETED status: ${emp.approval_status}`);
+        return;
       }
       
-      // Must have competencies submitted
+      // ✅ Condition 2: Must have competencies submitted
       if (!emp.competencies_submitted) {
-        return false;
+        console.log(`❌ Competencies not submitted`);
+        return;
       }
       
-      // Must have all objectives rated (if has objectives)
+      // ✅ Condition 3: All non-cancelled objectives must have end_year_rating
       if (emp.objectives && emp.objectives.length > 0) {
-        const allObjectivesRated = emp.objectives
-          .filter(obj => !obj.is_cancelled)
-          .every(obj => obj.end_year_rating !== null && obj.end_year_rating !== undefined);
+        const activeObjectives = emp.objectives.filter(obj => !obj.is_cancelled);
         
-        if (!allObjectivesRated) {
-          return false;
+        if (activeObjectives.length > 0) {
+          const allObjectivesRated = activeObjectives.every(obj => {
+            const hasRating = obj.end_year_rating !== null && 
+                            obj.end_year_rating !== undefined && 
+                            obj.end_year_rating !== '';
+            
+            if (!hasRating) {
+              console.log(`❌ Objective "${obj.title}" missing rating`);
+            }
+            
+            return hasRating;
+          });
+          
+          if (!allObjectivesRated) {
+            console.log(`❌ Not all objectives rated`);
+            return;
+          }
+          
+          console.log(`✅ All ${activeObjectives.length} objectives rated`);
         }
       }
       
-      return true;
-    }).length;
+      // ✅ All conditions met
+      console.log(`✅ Employee COMPLETED: ${emp.name}`);
+      completedCount++;
+    });
+    
+    console.log(`\n📊 Total completed: ${completedCount} out of ${employees.length}`);
+    return completedCount;
   };
 
   const completedCount = getTruelyCompletedCount();
   const totalEmployees = employees.length;
 
-  const statusDistribution = {
-    'NOT_STARTED': employees.filter(e => e.approval_status === 'NOT_STARTED' || !e.approval_status).length,
-    'DRAFT': employees.filter(e => e.approval_status === 'DRAFT').length,
-    'PENDING': employees.filter(e => ['PENDING_EMPLOYEE_APPROVAL', 'PENDING_MANAGER_APPROVAL'].includes(e.approval_status)).length,
-    'NEED_CLARIFICATION': employees.filter(e => e.approval_status === 'NEED_CLARIFICATION').length,
-    'APPROVED': employees.filter(e => e.approval_status === 'APPROVED').length,
-    'COMPLETED': completedCount
-  };
+  
 
   // Pagination
   const totalPages = Math.ceil(employees.length / itemsPerPage);
@@ -308,39 +329,7 @@ export default function PerformanceDashboard({
             )}
 
             {/* Status Distribution */}
-            <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
-              <h3 className={`text-base font-bold mb-4 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                Status Distribution
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {Object.entries(statusDistribution).map(([status, count]) => {
-                  const badge = getStatusBadge(status);
-                  const percentage = totalEmployees > 0 ? Math.round((count / totalEmployees) * 100) : 0;
-                  
-                  return (
-                    <div key={status} className={`${darkMode ? 'bg-almet-san-juan' : 'bg-almet-mystic'} rounded-lg p-3`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`text-xs px-2 py-1 rounded-lg ${badge.class} font-medium`}>
-                          {badge.text}
-                        </span>
-                        <span className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                          {count}
-                        </span>
-                      </div>
-                      <div className={`w-full h-1.5 rounded-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'}`}>
-                        <div 
-                          className="h-1.5 rounded-full bg-almet-sapphire transition-all duration-500"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                        {percentage}% of total
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+         
 
             {/* Timeline */}
             {dashboardStats?.timeline && (

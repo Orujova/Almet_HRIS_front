@@ -56,51 +56,68 @@ export default function PerformanceAnalyticsDashboard({
     }
   };
 
-  const calculateGradeDistribution = () => {
+  // PerformanceAnalyticsDashboard.jsx - calculateGradeDistribution method
+
+const calculateGradeDistribution = () => {
     if (!settings?.evaluationScale || !employees || employees.length === 0) {
       console.log('❌ No data for grade distribution');
       return [];
     }
 
     console.log('📊 Calculating grade distribution for', employees.length, 'employees');
+    console.log('📊 Employees data:', employees.map(e => ({
+      name: e.name,
+      final_rating: e.final_rating,
+      approval_status: e.approval_status,
+      overall_percentage: e.overall_weighted_percentage
+    })));
 
-    // ✅ Sort scales by value descending (E++ highest, E-- lowest)
+    // ✅ Sort scales by value descending
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
     console.log('📊 Scales:', sortedScales.map(s => `${s.name} (${s.range_min}-${s.range_max}%)`));
 
-    // ✅ Calculate normal distribution based on range sizes
+    // ✅ Calculate normal distribution
     const totalRange = 100;
     const normalDist = sortedScales.map(scale => {
       const rangeSize = (parseFloat(scale.range_max) - parseFloat(scale.range_min)) + 1;
       const normalPercentage = (rangeSize / totalRange) * 100;
       return {
         grade: scale.name,
-        norm: Math.round(normalPercentage * 10) / 10, // One decimal
+        norm: Math.round(normalPercentage * 10) / 10,
         value: scale.value
       };
     });
 
-    console.log('📊 Normal distribution:', normalDist);
-
-    // ✅ Calculate actual distribution from employees
+    // ✅ Initialize grade counts
     const gradeCounts = {};
     sortedScales.forEach(scale => {
       gradeCounts[scale.name] = 0;
     });
 
-    // ✅ Count employees by final_rating
+    // ✅ CRITICAL FIX: Count employees with final_rating
     let employeesWithRatings = 0;
+    
     employees.forEach(emp => {
-      if (emp.final_rating && gradeCounts[emp.final_rating] !== undefined) {
-        gradeCounts[emp.final_rating]++;
-        employeesWithRatings++;
+      // Check if employee has final_rating (string like "E++", "E+", etc.)
+      if (emp.final_rating && emp.final_rating !== 'N/A' && emp.final_rating.trim() !== '') {
+        // Check if this rating exists in our scales
+        if (gradeCounts.hasOwnProperty(emp.final_rating)) {
+          gradeCounts[emp.final_rating]++;
+          employeesWithRatings++;
+          console.log(`✅ Counted ${emp.name}: ${emp.final_rating}`);
+        } else {
+          console.log(`⚠️ Unknown rating for ${emp.name}: ${emp.final_rating}`);
+        }
+      } else {
+        console.log(`⚠️ No rating for ${emp.name} (status: ${emp.approval_status})`);
       }
     });
 
     console.log('📊 Grade counts:', gradeCounts);
-    console.log('📊 Total with ratings:', employeesWithRatings);
+    console.log('📊 Total with ratings:', employeesWithRatings, 'out of', employees.length);
 
+    // ✅ Calculate percentages
     const result = sortedScales.map(scale => {
       const actualPercentage = employeesWithRatings > 0 
         ? Math.round((gradeCounts[scale.name] / employeesWithRatings) * 1000) / 10 
