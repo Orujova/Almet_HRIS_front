@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect,useRef  } from 'react';
 import { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Award, Users, Target, BarChart3, Loader } from 'lucide-react';
+import { TrendingUp, Award, Users, Target, BarChart3, Loader, User } from 'lucide-react';
 
 export default function FixedAnalyticsDashboard({ 
   employees, 
@@ -10,7 +10,7 @@ export default function FixedAnalyticsDashboard({
 }) {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
 
   useEffect(() => {
     if (employees && employees.length > 0 && settings?.evaluationScale) {
@@ -47,22 +47,20 @@ export default function FixedAnalyticsDashboard({
       return [];
     }
 
-    // ✅ Sort scales by value descending
+    // ✅ Sort scales by value descending (E++ -> E--)
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
-    // ✅ Calculate normal distribution
-    const totalRange = 100;
-    const normalDist = sortedScales.map(scale => {
-      const rangeSize = (parseFloat(scale.range_max) - parseFloat(scale.range_min)) + 1;
-      const normalPercentage = (rangeSize / totalRange) * 100;
-      return {
-        grade: scale.name,
-        norm: Math.round(normalPercentage * 10) / 10,
-        value: scale.value
-      };
-    });
+    // ✅ PROPER BELL CURVE - Based on Excel example
+    // E++ = 5%, E+ = 15%, E = 60%, E- = 15%, E-- = 5%
+    const bellCurveDistribution = {
+      5: 5,   // E++ (highest grade) = 5%
+      4: 15,  // E+ = 15%
+      3: 60,  // E (middle/average) = 60%
+      2: 15,  // E- = 15%
+      1: 5    // E-- (lowest grade) = 5%
+    };
 
-    // ✅ Count actual distribution - FIXED LOGIC
+    // ✅ Count actual distribution
     const gradeCounts = {};
     sortedScales.forEach(scale => {
       gradeCounts[scale.name] = 0;
@@ -74,11 +72,10 @@ export default function FixedAnalyticsDashboard({
       const objPct = parseFloat(emp.objectives_percentage);
       const compPct = parseFloat(emp.competencies_percentage);
       
-      // ✅ Only count if BOTH percentages exist and > 0 (COMPLETED status)
+      // ✅ Only count if BOTH percentages exist and > 0
       if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
         employeesWithRatings++;
         
-        // ✅ Use final_rating if available, otherwise calculate from overall_weighted_percentage
         let grade = emp.final_rating;
         
         if (!grade) {
@@ -102,15 +99,18 @@ export default function FixedAnalyticsDashboard({
     console.log('📊 Grade counts:', gradeCounts);
     console.log('📊 Employees with ratings:', employeesWithRatings);
 
-    // ✅ Build final distribution
-    const result = sortedScales.map(scale => {
+    // ✅ Build final distribution with PROPER bell curve
+    const result = sortedScales.map((scale) => {
       const actualPercentage = employeesWithRatings > 0 
         ? Math.round((gradeCounts[scale.name] / employeesWithRatings) * 1000) / 10 
         : 0;
       
+      // Map scale value to bell curve percentage
+      const normPercentage = bellCurveDistribution[scale.value] || 0;
+      
       return {
         grade: scale.name,
-        norm: normalDist.find(n => n.grade === scale.name)?.norm || 0,
+        norm: normPercentage,
         actual: actualPercentage,
         employeeCount: gradeCounts[scale.name],
         value: scale.value
@@ -217,7 +217,8 @@ export default function FixedAnalyticsDashboard({
     return result;
   };
 
-  const getEmployeeCompetencyData = (employee) => {
+  const getEmployeeCompetencyData = (employeeId) => {
+    const employee = employees.find(e => e.id === employeeId);
     if (!employee?.competency_ratings) return [];
 
     const groupMap = {};
@@ -248,6 +249,24 @@ export default function FixedAnalyticsDashboard({
       actual: group.totalActual
     }));
   };
+
+  // ✅ Get eligible employees (with completed performance)
+  const getEligibleEmployees = () => {
+    return employees.filter(emp => {
+      const objPct = parseFloat(emp.objectives_percentage);
+      const compPct = parseFloat(emp.competencies_percentage);
+      return !isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0;
+    });
+  };
+
+  // ✅ Prepare options for SearchableDropdown
+  const employeeOptions = getEligibleEmployees().map(emp => ({
+    value: emp.id,
+    label: `${emp.employee_name || emp.name} - ${emp.employee_position_group || emp.position}`,
+    id: emp.id
+  }));
+
+  const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
   if (loading) {
     return (
@@ -443,40 +462,50 @@ export default function FixedAnalyticsDashboard({
         </div>
       )}
 
-      {/* Employee Selector */}
+      {/* Employee Competency Selector - SEARCHABLE DROPDOWN */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-        <div className="mb-4">
-          <label className={`block text-sm font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+        <div className="mb-6">
+          <label className={`block text-sm font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             Select Employee for Competency Analysis
           </label>
-          <select
-            value={selectedEmployee?.id || ''}
-            onChange={(e) => {
-              const emp = employees.find(emp => emp.id === e.target.value);
-              setSelectedEmployee(emp);
+          
+          {/* ✅ SEARCHABLE DROPDOWN */}
+          <SearchableDropdown
+            options={employeeOptions}
+            value={selectedEmployeeId}
+            onChange={(value) => {
+              console.log('Selected employee ID:', value);
+              setSelectedEmployeeId(value);
             }}
-            className={`w-full px-4 py-2 rounded-xl border ${
-              darkMode 
-                ? 'bg-gray-800 border-gray-700 text-white' 
-                : 'bg-white border-gray-300 text-gray-900'
-            }`}
-          >
-            <option value="">-- Select Employee --</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.id}>
-                {emp.employee_name || emp.name} - {emp.employee_position_group || emp.position}
-              </option>
-            ))}
-          </select>
+            placeholder="-- Search and select an employee --"
+            searchPlaceholder="Search by name or position..."
+            darkMode={darkMode}
+            icon={<User size={16} />}
+            portal={false}
+            allowUncheck={true}
+            className="w-full"
+          />
+          
+          {employeeOptions.length === 0 && (
+            <p className={`text-xs mt-2 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+              ⚠️ No employees with completed performance found
+            </p>
+          )}
         </div>
 
-        {selectedEmployee && (
+        {selectedEmployeeId && selectedEmployee && (
           <>
-            <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Competency Radar: {selectedEmployee.employee_name || selectedEmployee.name}
-            </h3>
+            <div className="mb-4">
+              <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Competency Radar: {selectedEmployee.employee_name || selectedEmployee.name}
+              </h3>
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                {selectedEmployee.employee_position_group || selectedEmployee.position} • {selectedEmployee.employee_department || selectedEmployee.department}
+              </p>
+            </div>
+            
             <ResponsiveContainer width="100%" height={500}>
-              <RadarChart data={getEmployeeCompetencyData(selectedEmployee)}>
+              <RadarChart data={getEmployeeCompetencyData(selectedEmployeeId)}>
                 <PolarGrid stroke={darkMode ? '#374151' : '#e5e7eb'} />
                 <PolarAngleAxis 
                   dataKey="competency" 
@@ -507,7 +536,135 @@ export default function FixedAnalyticsDashboard({
             </ResponsiveContainer>
           </>
         )}
+
+        {!selectedEmployeeId && (
+          <div className="text-center py-12">
+            <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+            <p className="text-sm text-gray-500">Select an employee to view their competency radar chart</p>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+// ✅ SEARCHABLE DROPDOWN COMPONENT (Embedded)
+function SearchableDropdown({ 
+  options = [], 
+  value, 
+  onChange, 
+  placeholder, 
+  searchPlaceholder = "Search...",
+  className = "",
+  darkMode = false,
+  icon = null,
+  allowUncheck = true
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
+  const textPrimary = darkMode ? "text-white" : "text-gray-900";
+  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
+  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
+  const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
+
+  const filteredOptions = options.filter(option =>
+    option.label.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedOption = options.find(option => option.value === value);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
+          buttonRef.current && !buttonRef.current.contains(event.target)) {
+        setIsOpen(false);
+        setSearchTerm("");
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleOptionClick = (optionValue) => {
+    if (allowUncheck && value === optionValue) {
+      onChange(null);
+    } else {
+      onChange(optionValue);
+    }
+    setIsOpen(false);
+    setSearchTerm("");
+  };
+
+  return (
+    <div className={`relative ${className}`}>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm text-left flex items-center justify-between transition-all duration-200 hover:border-almet-sapphire/50`}
+      >
+        <div className="flex items-center">
+          {icon && <span className="mr-2 text-almet-sapphire">{icon}</span>}
+          <span className={selectedOption ? textPrimary : textMuted}>
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+        </div>
+        <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div 
+          className={`absolute z-50 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-60 overflow-hidden`}
+          ref={dropdownRef}
+        >
+          <div className={`p-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="relative">
+              <svg className={`absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder={searchPlaceholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full pl-8 pr-2 py-1.5 outline-0 border ${borderColor} rounded focus:ring-1 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs`}
+                autoFocus
+              />
+            </div>
+          </div>
+          <div className="max-h-44 overflow-y-auto">
+            {filteredOptions.length === 0 ? (
+              <div className={`px-3 py-2 ${textMuted} text-xs text-center`}>
+                No options found
+              </div>
+            ) : (
+              filteredOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => handleOptionClick(option.value)}
+                  className={`w-full px-3 py-2 text-left ${hoverBg} ${textPrimary} text-xs transition-colors duration-150 ${
+                    value === option.value ? 'bg-almet-sapphire/10 text-almet-sapphire font-medium' : ''
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

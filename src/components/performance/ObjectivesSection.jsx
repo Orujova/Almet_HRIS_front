@@ -1,4 +1,5 @@
-import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, Loader, XCircle, Clock, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, XCircle, Clock, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function ObjectivesSection({
   objectives,
@@ -20,6 +21,8 @@ export default function ObjectivesSection({
   onSubmit,
   onCancelObjective
 }) {
+  const [expandedRows, setExpandedRows] = useState({});
+  
   const activeObjectives = objectives.filter(obj => !obj.is_cancelled);
   const canAddMore = activeObjectives.length < settings.goalLimits?.max && totalWeight < 100;
   
@@ -170,6 +173,312 @@ export default function ObjectivesSection({
   
   const periodStatus = getPeriodStatusMessage();
 
+  const toggleRow = (index) => {
+    setExpandedRows(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+
+  const ObjectiveRow = ({ objective, index }) => {
+    const isExpanded = expandedRows[index];
+    const isCancelled = objective.is_cancelled || false;
+    const isTitleMissing = !objective.title?.trim();
+    const isStatusMissing = !objective.status;
+    const isWeightMissing = !objective.weight || objective.weight <= 0;
+
+    // ✅ FIXED: Properly get selected rating
+    const selectedRating = objective.end_year_rating 
+      ? settings.evaluationScale?.find(s => s.id === objective.end_year_rating)
+      : null;
+
+    const selectedStatus = settings.statusTypes?.find(s => s.id === objective.status);
+
+    const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
+      darkMode 
+        ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
+        : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
+    } disabled:opacity-40`;
+
+    return (
+      <div className={`border-b ${darkMode ? 'border-almet-comet/20' : 'border-almet-mystic'} ${isCancelled ? 'opacity-50' : ''}`}>
+        {/* Compact Row */}
+        <div className={`p-4 ${darkMode ? 'hover:bg-almet-san-juan/20' : 'hover:bg-almet-mystic/30'} transition-colors`}>
+          <div className="flex items-start gap-4">
+            {/* Index Badge */}
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+              isCancelled 
+                ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' 
+                : 'bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-sapphire/20'
+            }`}>
+              {isCancelled ? <XCircle className="w-5 h-5" /> : index + 1}
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 min-w-0">
+              {/* Title Row */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  {canEditGoals && !isCancelled && isExpanded ? (
+                    <input
+                      type="text"
+                      value={objective.title || ''}
+                      onChange={(e) => onUpdate(index, 'title', e.target.value)}
+                      className={`${inputClass} w-full font-medium ${isTitleMissing ? 'border-red-500' : ''}`}
+                      placeholder="Enter objective title..."
+                    />
+                  ) : (
+                    <>
+                      <h4 className={`text-sm font-bold mb-1 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} ${isExpanded ? '' : 'line-clamp-1'}`}>
+                        {objective.title || 'Untitled Objective'}
+                      </h4>
+                      {!isExpanded && (
+                        <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} line-clamp-2`}>
+                          {objective.description || 'No description provided'}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Expand/Collapse Button */}
+                <button
+                  onClick={() => toggleRow(index)}
+                  className={`p-2 rounded-lg ${darkMode ? 'hover:bg-almet-comet/30' : 'hover:bg-gray-100'} transition-colors flex-shrink-0`}
+                  title={isExpanded ? 'Collapse' : 'Expand'}
+                >
+                  {isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-almet-sapphire" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-almet-waterloo" />
+                  )}
+                </button>
+              </div>
+
+              {/* Stats Grid - Always Visible */}
+              <div className="grid grid-cols-5 gap-3">
+                {/* Weight */}
+                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                    Weight
+                  </div>
+                  <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                    {objective.weight || 0}%
+                  </div>
+                </div>
+
+                {/* Progress */}
+                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                    Progress
+                  </div>
+                  <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                    {objective.progress || 0}%
+                  </div>
+                </div>
+
+                {/* Rating */}
+                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                    Rating
+                  </div>
+                  {selectedRating ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className={`text-sm font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                        {selectedRating.name}
+                      </span>
+                      <span className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                        ({selectedRating.value})
+                      </span>
+                    </div>
+                  ) : (
+                    <div className={`text-xs ${darkMode ? 'text-almet-bali-hai/70' : 'text-almet-waterloo/70'} italic`}>
+                      Not Rated
+                    </div>
+                  )}
+                </div>
+
+                {/* Score */}
+                <div className={`${darkMode ? 'bg-almet-sapphire/10' : 'bg-almet-sapphire/5'} rounded-lg p-2.5 border ${darkMode ? 'border-almet-sapphire/20' : 'border-almet-sapphire/10'}`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                    Score
+                  </div>
+                  <div className="text-base font-bold text-almet-sapphire">
+                    {formatNumber(objective.calculated_score || 0)}
+                  </div>
+                </div>
+
+                {/* Status */}
+                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                    Status
+                  </div>
+                  <div className={`text-xs font-semibold ${
+                    !selectedStatus ? (darkMode ? 'text-almet-bali-hai/70 italic' : 'text-almet-waterloo/70 italic') :
+                    selectedStatus.label?.includes('Track') ? 'text-emerald-600 dark:text-emerald-400' :
+                    selectedStatus.label?.includes('Risk') ? 'text-amber-600 dark:text-amber-400' :
+                    selectedStatus.label?.includes('Complete') ? 'text-blue-600 dark:text-blue-400' :
+                    darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
+                  }`}>
+                    {selectedStatus?.label || 'Not Set'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Expanded Content */}
+              {isExpanded && (
+                <div className={`mt-4 ${darkMode ? 'bg-almet-san-juan/20 border-almet-comet/30' : 'bg-gray-50 border-gray-200'} border rounded-xl p-4 space-y-4`}>
+                  {/* Full Description */}
+                  <div>
+                    <h5 className={`text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} uppercase tracking-wide mb-2`}>
+                      Description
+                    </h5>
+                    {canEditGoals && !isCancelled ? (
+                      <textarea
+                        value={objective.description || ''}
+                        onChange={(e) => onUpdate(index, 'description', e.target.value)}
+                        rows={4}
+                        className={`${inputClass} w-full resize-none py-2 leading-relaxed`}
+                        placeholder="Describe the objective in detail..."
+                      />
+                    ) : (
+                      <p className={`text-sm ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} leading-relaxed whitespace-pre-wrap`}>
+                        {objective.description || 'No description provided'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Edit Controls Grid */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                        Weight %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={objective.weight || 0}
+                        onChange={(e) => onUpdate(index, 'weight', parseFloat(e.target.value) || 0)}
+                        disabled={!canEditGoals || isCancelled}
+                        className={`${inputClass} w-full text-center font-semibold ${isWeightMissing && canEditGoals ? 'border-red-500' : ''}`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                        Progress %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={objective.progress || 0}
+                        onChange={(e) => onUpdate(index, 'progress', parseInt(e.target.value) || 0)}
+                        disabled={isCancelled}
+                        className={`${inputClass} w-full text-center font-semibold`}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                        Status
+                      </label>
+                      <select
+                        value={objective.status || ''}
+                        onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
+                        disabled={isCancelled}
+                        className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500' : ''}`}
+                      >
+                        <option value="">Select Status</option>
+                        {settings.statusTypes?.map(status => (
+                          <option key={status.id} value={status.id}>{status.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* End Year Rating */}
+                  <div>
+                    <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                      End Year Rating
+                    </label>
+                    {canRateEndYear && !isCancelled ? (
+                      <select
+                        value={objective.end_year_rating || ''}
+                        onChange={(e) => {
+                          const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
+                          if (selectedScaleId) {
+                            const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+                            if (selectedScale) {
+                              const weight = parseFloat(objective.weight) || 0;
+                              const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+                              const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+                              
+                              onUpdate(index, 'end_year_rating', selectedScaleId);
+                              onUpdate(index, 'calculated_score', calculatedScore);
+                            }
+                          } else {
+                            onUpdate(index, 'end_year_rating', null);
+                            onUpdate(index, 'calculated_score', 0);
+                          }
+                        }}
+                        className={`${inputClass} w-full`}
+                      >
+                        <option value="">-- Select Rating --</option>
+                        {settings.evaluationScale?.map(scale => (
+                          <option key={scale.id} value={scale.id}>
+                            {scale.name} • {scale.value}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className={`${inputClass} w-full flex items-center justify-center`}>
+                        {selectedRating ? (
+                          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                            {selectedRating.name} ({selectedRating.value})
+                          </span>
+                        ) : (
+                          <span className="text-xs italic text-almet-waterloo/70 dark:text-almet-bali-hai/70">
+                            Not Rated
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  {(canEditGoals || canCancelGoals) && (
+                    <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-almet-comet/30">
+                      {canEditGoals && !isCancelled && (
+                        <button
+                          onClick={() => onDelete(index)}
+                          className="h-9 px-4 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete
+                        </button>
+                      )}
+                      {canCancelGoals && !isCancelled && objective.id && (
+                        <button
+                          onClick={() => onCancelObjective(objective.id, 'Cancelled during mid-year review')}
+                          className="h-9 px-4 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
+                        >
+                          <XCircle className="w-4 h-4" />
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60' : 'bg-white'} border ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'} rounded-xl overflow-hidden shadow-sm`}>
       <div className={`p-5 border-b ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'}`}>
@@ -258,40 +567,10 @@ export default function ObjectivesSection({
           )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'}`}>
-              <tr className="text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai uppercase tracking-wide">
-                <th className="px-4 py-3 text-left w-12">#</th>
-                <th className="px-4 py-3 text-left min-w-[250px]">Title</th>
-                <th className="px-4 py-3 text-left min-w-[300px]">Description</th>
-                <th className="px-4 py-3 text-center w-24">Weight %</th>
-                <th className="px-4 py-3 text-center w-24">Progress</th>
-                <th className="px-4 py-3 text-center w-32">Rating</th>
-                <th className="px-4 py-3 text-center w-24">Score</th>
-                <th className="px-4 py-3 text-center w-28">Status</th>
-                {(canEditGoals || canCancelGoals) && <th className="px-4 py-3 text-center w-20">Action</th>}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${darkMode ? 'divide-almet-comet/20' : 'divide-almet-mystic'}`}>
-              {objectives.map((objective, index) => (
-                <ObjectiveRow
-                  key={objective.id || index}
-                  objective={objective}
-                  index={index}
-                  settings={settings}
-                  currentPeriod={currentPeriod}
-                  canEditGoals={canEditGoals}
-                  canCancelGoals={canCancelGoals}
-                  canRateEndYear={canRateEndYear}
-                  darkMode={darkMode}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                  onCancel={onCancelObjective}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div>
+          {objectives.map((objective, index) => (
+            <ObjectiveRow key={objective.id || index} objective={objective} index={index} />
+          ))}
         </div>
       )}
 
@@ -334,7 +613,7 @@ export default function ObjectivesSection({
                     : 'bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst'
                 } disabled:opacity-40`}
               >
-                {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {loading ? <AlertCircle className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Save Draft
               </button>
             )}
@@ -405,211 +684,5 @@ export default function ObjectivesSection({
         </div>
       )}
     </div>
-  );
-}
-
-function ObjectiveRow({ 
-  objective, 
-  index, 
-  settings, 
-  currentPeriod, 
-  canEditGoals, 
-  canCancelGoals,
-  canRateEndYear,
-  darkMode, 
-  onUpdate, 
-  onDelete,
-  onCancel 
-}) {
-  const formatNumber = (value, decimals = 2) => {
-    const num = parseFloat(value);
-    return isNaN(num) ? '0.00' : num.toFixed(decimals);
-  };
-
-  const isCancelled = objective.is_cancelled || false;
-  const isTitleMissing = !objective.title?.trim();
-  const isStatusMissing = !objective.status;
-  const isWeightMissing = !objective.weight || objective.weight <= 0;
-
-  const getSelectedRating = () => {
-    if (!objective.end_year_rating) return null;
-    return settings.evaluationScale?.find(s => s.id === objective.end_year_rating);
-  };
-
-  const selectedRating = getSelectedRating();
-
-  const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
-    darkMode 
-      ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
-      : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
-  } disabled:opacity-40`;
-
-  return (
-    <tr className={`${darkMode ? 'hover:bg-almet-san-juan/20' : 'hover:bg-almet-mystic/30'} transition-colors ${isCancelled ? 'opacity-50' : ''}`}>
-      <td className="px-4 py-3">
-        <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold ${
-          isCancelled 
-            ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' 
-            : 'bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-sapphire/20'
-        }`}>
-          {isCancelled ? <XCircle className="w-4 h-4" /> : index + 1}
-        </div>
-      </td>
-      
-      <td className="px-4 py-3">
-        <input
-          type="text"
-          value={objective.title || ''}
-          onChange={(e) => onUpdate(index, 'title', e.target.value)}
-          disabled={!canEditGoals || isCancelled}
-          className={`${inputClass} w-full font-medium ${isTitleMissing && canEditGoals ? 'border-red-500' : ''}`}
-          placeholder="Enter objective title..."
-        />
-      </td>
-      
-      <td className="px-4 py-3">
-        <textarea
-          value={objective.description || ''}
-          onChange={(e) => onUpdate(index, 'description', e.target.value)}
-          disabled={!canEditGoals || isCancelled}
-          rows={3}
-          className={`${inputClass} w-full resize-none py-2 leading-relaxed`}
-          placeholder="Describe the objective in detail..."
-        />
-      </td>
-      
-      <td className="px-4 py-3">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          value={objective.weight || 0}
-          onChange={(e) => onUpdate(index, 'weight', parseFloat(e.target.value) || 0)}
-          disabled={!canEditGoals || isCancelled}
-          className={`${inputClass} w-full text-center font-semibold ${isWeightMissing && canEditGoals ? 'border-red-500' : ''}`}
-        />
-      </td>
-      
-      <td className="px-4 py-3">
-        <input
-          type="number"
-          min="0"
-          max="100"
-          value={objective.progress || 0}
-          onChange={(e) => onUpdate(index, 'progress', parseInt(e.target.value) || 0)}
-          disabled={isCancelled}
-          className={`${inputClass} w-full text-center font-semibold`}
-        />
-      </td>
-      
-      <td className="px-4 py-3">
-        {canRateEndYear && !isCancelled ? (
-          <select
-            value={objective.end_year_rating || ''}
-            onChange={(e) => {
-              const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
-              if (selectedScaleId) {
-                const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-                if (selectedScale) {
-                  const weight = parseFloat(objective.weight) || 0;
-                  const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-                  const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-                  
-                  onUpdate(index, 'end_year_rating', selectedScaleId);
-                  onUpdate(index, 'calculated_score', calculatedScore);
-                }
-              } else {
-                onUpdate(index, 'end_year_rating', null);
-                onUpdate(index, 'calculated_score', 0);
-              }
-            }}
-            className={`${inputClass} w-full text-center font-semibold`}
-          >
-            <option value="">-- Select Rating --</option>
-            {settings.evaluationScale?.map(scale => (
-              <option key={scale.id} value={scale.id}>
-                {scale.name} • {scale.value}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <div className="flex items-center justify-center w-full">
-            {objective.end_year_rating && selectedRating ? (
-              <div className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 ${
-                darkMode 
-                  ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30' 
-                  : 'bg-blue-50 text-blue-700 border border-blue-200'
-              }`}>
-                <span>{selectedRating.name}</span>
-                <span className="opacity-60">•</span>
-                <span>{selectedRating.value}</span>
-              </div>
-            ) : (
-              <div className={`px-3 py-2 rounded-xl text-xs font-medium ${
-                darkMode
-                  ? 'bg-almet-comet/30 text-almet-bali-hai border border-almet-comet/30'
-                  : 'bg-gray-50 text-gray-500 border border-gray-200'
-              }`}>
-                Not Rated
-              </div>
-            )}
-          </div>
-        )}
-      </td>
-      
-      <td className="px-4 py-3">
-        <div className={`px-3 py-2 text-xs font-bold text-center rounded-xl ${
-          objective.calculated_score > 0
-            ? darkMode 
-              ? 'bg-almet-sapphire/20 text-almet-sapphire border border-almet-sapphire/30' 
-              : 'bg-almet-sapphire/5 text-almet-sapphire border border-almet-sapphire/20'
-            : darkMode
-              ? 'bg-almet-comet/30 text-almet-bali-hai'
-              : 'bg-gray-50 text-gray-400'
-        }`}>
-          {formatNumber(objective.calculated_score || 0)}
-        </div>
-      </td>
-      
-      <td className="px-4 py-3">
-        <select
-          value={objective.status || ''}
-          onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
-          disabled={isCancelled}
-          className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500 bg-red-50 dark:bg-red-900/10' : ''}`}
-        >
-          <option value="">⚠️ Select Status</option>
-          {settings.statusTypes?.map(status => (
-            <option key={status.id} value={status.id}>{status.label}</option>
-          ))}
-        </select>
-      </td>
-      
-      {(canEditGoals || canCancelGoals) && (
-        <td className="px-4 py-3 text-center">
-          {canEditGoals && !isCancelled && (
-            <button
-              onClick={() => onDelete(index)}
-              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
-              title="Delete"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
-          {canCancelGoals && !isCancelled && objective.id && (
-            <button
-              onClick={() => onCancel(objective.id, 'Cancelled during mid-year review')}
-              className="p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-xl transition-colors"
-              title="Cancel Objective"
-            >
-              <XCircle className="w-4 h-4" />
-            </button>
-          )}
-          {isCancelled && (
-            <span className="text-xs text-red-600 dark:text-red-400 font-medium">Cancelled</span>
-          )}
-        </td>
-      )}
-    </tr>
   );
 }
