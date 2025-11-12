@@ -19,118 +19,16 @@ export default function PerformanceDashboard({
 }) {
   const [activeTab, setActiveTab] = useState('overview');
 
-  console.log('📊 Dashboard Props:', { 
-    employeeCount: employees?.length, 
-    hasStats: !!dashboardStats,
-    currentUserId: permissions?.employee?.id
-  });
 
-  // ✅ GET COMPLETED COUNT - FIXED LOGIC
-  const getCompletedCount = () => {
-    if (!employees || employees.length === 0) return 0;
 
-    let completedCount = 0;
 
-    employees.forEach(emp => {
-      const objPct = parseFloat(emp.objectives_percentage);
-      const compPct = parseFloat(emp.competencies_percentage);
 
-      // ✅ COMPLETED = both percentages exist and > 0
-      const isCompleted = !isNaN(objPct) && objPct > 0 && 
-                         !isNaN(compPct) && compPct > 0;
 
-      if (isCompleted) {
-        completedCount++;
-      }
-    });
 
-    return completedCount;
-  };
 
-  const getObjectivesSetCount = () => {
-    if (!employees || employees.length === 0) return 0;
-    return employees.filter(emp => emp.objectives_manager_approved === true).length;
-  };
-
-  const getMidYearCompletedCount = () => {
-    if (!employees || employees.length === 0) return 0;
-    return employees.filter(emp => emp.mid_year_completed === true).length;
-  };
-
-  const getStatusBadge = (employee) => {
-    const objPct = parseFloat(employee.objectives_percentage);
-    const compPct = parseFloat(employee.competencies_percentage);
-    
-    let status = employee.approval_status || 'NOT_STARTED';
-    
-    // ✅ Override to COMPLETED if both percentages exist
-    if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
-      status = 'COMPLETED';
-    }
-    
-    const badges = {
-      'DRAFT': { text: 'Draft', class: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
-      'NOT_STARTED': { text: 'Not Started', class: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' },
-      'PENDING_EMPLOYEE_APPROVAL': { text: 'Pending', class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
-      'PENDING_MANAGER_APPROVAL': { text: 'Review', class: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-      'APPROVED': { text: 'Approved', class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-      'COMPLETED': { text: 'Completed', class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-      'NEED_CLARIFICATION': { text: 'Clarification', class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
-    };
-    
-    return badges[status] || badges['NOT_STARTED'];
-  };
-
-  const calcProgress = (completed, total) => {
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-  };
-
-  const completedCount = getCompletedCount();
-  const objectivesSetCount = getObjectivesSetCount();
-  const midYearCount = getMidYearCompletedCount();
   const totalEmployees = employees?.length || 0;
 
-  // ✅ Status distribution with COMPLETED override
-  const getStatusDistribution = () => {
-    if (!employees || employees.length === 0) return {};
-
-    const dist = {
-      'NOT_STARTED': 0,
-      'DRAFT': 0,
-      'PENDING': 0,
-      'NEED_CLARIFICATION': 0,
-      'APPROVED': 0,
-      'COMPLETED': 0
-    };
-
-    employees.forEach(emp => {
-      const objPct = parseFloat(emp.objectives_percentage);
-      const compPct = parseFloat(emp.competencies_percentage);
-      
-      // ✅ Check if COMPLETED first
-      if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
-        dist['COMPLETED']++;
-      } else {
-        const status = emp.approval_status || 'NOT_STARTED';
-        
-        if (status === 'NOT_STARTED' || !status) {
-          dist['NOT_STARTED']++;
-        } else if (status === 'DRAFT') {
-          dist['DRAFT']++;
-        } else if (['PENDING_EMPLOYEE_APPROVAL', 'PENDING_MANAGER_APPROVAL'].includes(status)) {
-          dist['PENDING']++;
-        } else if (status === 'NEED_CLARIFICATION') {
-          dist['NEED_CLARIFICATION']++;
-        } else if (status === 'APPROVED') {
-          dist['APPROVED']++;
-        }
-      }
-    });
-
-    return dist;
-  };
-
-  const statusDistribution = getStatusDistribution();
+  
 
   // ✅ Tab configuration
   const tabs = [

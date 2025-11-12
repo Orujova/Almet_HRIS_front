@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Search, Filter, ChevronRight, Lock, X } from 'lucide-react';
+import { Users, Search, ChevronRight, Lock, X, Building2 } from 'lucide-react';
 
 export default function TeamMembersWithSearch({ 
   employees = [], 
@@ -11,26 +11,16 @@ export default function TeamMembersWithSearch({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCompany, setFilterCompany] = useState('');
 
-  // ✅ Get unique departments and positions for filters
+  // ✅ Get unique departments, positions, and companies for filters
   const departments = [...new Set(employees.map(e => e.employee_department || e.department))].filter(Boolean).sort();
   const positions = [...new Set(employees.map(e => e.employee_position_group || e.position))].filter(Boolean).sort();
-  
-  const statuses = [
-    { value: '', label: 'All Statuses' },
-    { value: 'NOT_STARTED', label: 'Not Started' },
-    { value: 'DRAFT', label: 'Draft' },
-    { value: 'PENDING_EMPLOYEE_APPROVAL', label: 'Pending Employee' },
-    { value: 'PENDING_MANAGER_APPROVAL', label: 'Pending Manager' },
-    { value: 'APPROVED', label: 'Approved' },
-    { value: 'COMPLETED', label: 'Completed' },
-    { value: 'NEED_CLARIFICATION', label: 'Clarification' }
-  ];
+  const companies = [...new Set(employees.map(e => e.employee_company || e.company))].filter(Boolean).sort();
 
   // ✅ Filter logic
   const filteredEmployees = employees.filter(emp => {
-    // ❌ Hide current user from seeing themselves
+    // ⛔ Hide current user from seeing themselves
     if (emp.id === currentUserId) return false;
     
     // Search filter
@@ -47,20 +37,11 @@ export default function TeamMembersWithSearch({
     const matchesPosition = !filterPosition || 
       (emp.employee_position_group || emp.position) === filterPosition;
     
-    // Status filter - CRITICAL: Check for COMPLETED status
-    let empStatus = emp.approval_status || 'NOT_STARTED';
+    // Company filter
+    const matchesCompany = !filterCompany || 
+      (emp.employee_company || emp.company) === filterCompany;
     
-    // ✅ Override status to COMPLETED if both percentages exist
-    const objPct = parseFloat(emp.objectives_percentage);
-    const compPct = parseFloat(emp.competencies_percentage);
-    
-    if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
-      empStatus = 'COMPLETED';
-    }
-    
-    const matchesStatus = !filterStatus || empStatus === filterStatus;
-    
-    return matchesSearch && matchesDepartment && matchesPosition && matchesStatus;
+    return matchesSearch && matchesDepartment && matchesPosition && matchesCompany;
   });
 
   const getStatusBadge = (employee) => {
@@ -92,10 +73,10 @@ export default function TeamMembersWithSearch({
     setSearchTerm('');
     setFilterDepartment('');
     setFilterPosition('');
-    setFilterStatus('');
+    setFilterCompany('');
   };
 
-  const hasActiveFilters = searchTerm || filterDepartment || filterPosition || filterStatus;
+  const hasActiveFilters = searchTerm || filterDepartment || filterPosition || filterCompany;
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
@@ -132,8 +113,8 @@ export default function TeamMembersWithSearch({
           />
         </div>
 
-        {/* Filter Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {/* Filter Row - Department & Position only */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Department Filter */}
           <select
             value={filterDepartment}
@@ -165,21 +146,48 @@ export default function TeamMembersWithSearch({
               <option key={pos} value={pos}>{pos}</option>
             ))}
           </select>
+        </div>
 
-          {/* Status Filter */}
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className={`h-10 px-3 text-sm rounded-xl border ${
-              darkMode 
-                ? 'bg-almet-san-juan border-almet-comet text-white' 
-                : 'bg-white border-gray-300 text-gray-900'
-            } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30`}
-          >
-            {statuses.map(status => (
-              <option key={status.value} value={status.value}>{status.label}</option>
+        {/* ✅ Company Filter - Chip/Button Style */}
+        <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/30'} rounded-xl p-3`}>
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-4 h-4 text-almet-sapphire" />
+            <h4 className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+              Filter by Company
+            </h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {/* All Companies Button */}
+            <button
+              onClick={() => setFilterCompany('')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                filterCompany === ''
+                  ? 'bg-almet-sapphire text-white shadow-sm'
+                  : darkMode
+                    ? 'bg-almet-comet/50 text-almet-bali-hai hover:bg-almet-comet'
+                    : 'bg-white text-almet-waterloo hover:bg-gray-100 border border-gray-200'
+              }`}
+            >
+              All Companies
+            </button>
+
+            {/* Company Chips */}
+            {companies.map(company => (
+              <button
+                key={company}
+                onClick={() => setFilterCompany(company)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  filterCompany === company
+                    ? 'bg-almet-sapphire text-white shadow-sm'
+                    : darkMode
+                      ? 'bg-almet-comet/50 text-almet-bali-hai hover:bg-almet-comet'
+                      : 'bg-white text-almet-waterloo hover:bg-gray-100 border border-gray-200'
+                }`}
+              >
+                {company}
+              </button>
             ))}
-          </select>
+          </div>
         </div>
 
         {/* Clear Filters */}
@@ -193,7 +201,7 @@ export default function TeamMembersWithSearch({
             } transition-colors`}
           >
             <X className="w-4 h-4" />
-            Clear Filters
+            Clear All Filters
           </button>
         )}
       </div>
@@ -233,10 +241,20 @@ export default function TeamMembersWithSearch({
                         </h4>
                         {!hasAccess && <Lock className="w-3 h-3 text-almet-waterloo flex-shrink-0" />}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                      <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai flex-wrap">
                         <span className="truncate">{employee.employee_position_group || employee.position}</span>
                         <span>•</span>
                         <span className="truncate">{employee.employee_department || employee.department}</span>
+                        {/* ✅ Company Display with Icon */}
+                        {(employee.employee_company || employee.company) && (
+                          <>
+                            <span>•</span>
+                            <span className="inline-flex items-center gap-1 font-medium text-almet-sapphire dark:text-almet-sapphire">
+                              <Building2 className="w-3 h-3" />
+                              {employee.employee_company || employee.company}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

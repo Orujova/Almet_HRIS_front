@@ -95,7 +95,7 @@ const LeadershipAssessmentCharts = ({ assessment }) => {
   return (
     <div className="space-y-4">
       {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-1 gap-4">
         {/* Main Groups: Bars + percentage trend line */}
         <ChartContainer title="Main Group Performance" icon={Target}>
           <ResponsiveContainer width="100%" height={300}>
@@ -155,47 +155,7 @@ const LeadershipAssessmentCharts = ({ assessment }) => {
           </ResponsiveContainer>
         </ChartContainer>
 
-        {/* Child Groups: Bar + trend line */}
-        <ChartContainer title="Child Group Grades" icon={Activity}>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart
-              data={childGroupData}
-              margin={{ top: 8, right: 16, bottom: 40, left: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: '#6b7280', fontSize: 10 }}
-                angle={-15}
-                textAnchor="end"
-                height={60}
-              />
-              <YAxis
-                domain={[0, 100]}
-                tick={{ fill: '#6b7280', fontSize: 11 }}
-              />
-              <Tooltip content={renderChildTooltip} />
-              <Bar dataKey="percentage" radius={[4, 4, 0, 0]} barSize={18} name="Score %">
-                {childGroupData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={getGradeColor(entry.grade)} />
-                ))}
-              </Bar>
-           
-              <Line
-  type="monotone"
-  dataKey="percentage"
-  stroke="#111827"
-  strokeWidth={2}
-  strokeDasharray="5 5"
-  dot={{ r: 4, strokeWidth: 2, stroke: '#111827', fill: '#fff' }}
-  isAnimationActive={true}
-  animationDuration={700}
-/>
-
-              <Legend wrapperStyle={{ fontSize: '12px' }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </ChartContainer>
+      
       </div>
     </div>
   );

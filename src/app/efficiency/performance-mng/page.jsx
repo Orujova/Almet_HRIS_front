@@ -256,55 +256,66 @@ export default function PerformanceManagementPage() {
   };
 
   const loadEmployees = async () => {
-    try {
-      let employeesResponse;
-      
-      if (permissions.can_view_all) {
-        employeesResponse = await performanceApi.employees.list({ page_size: 1000 });
-      } else {
-        employeesResponse = await performanceApi.employees.list({ 
-          page_size: 1000,
-          line_manager_id: permissions.employee?.id
-        });
-      }
-      
-      const allEmployees = employeesResponse.results || employeesResponse;
-      
-      const perfsResponse = await performanceApi.performances.list({ 
-        year: selectedYear 
+  try {
+    let employeesResponse;
+    
+    if (permissions.can_view_all) {
+      employeesResponse = await performanceApi.employees.list({ page_size: 1000 });
+    } else {
+      employeesResponse = await performanceApi.employees.list({ 
+        page_size: 1000,
+        line_manager_id: permissions.employee?.id
       });
-      const perfs = perfsResponse.results || perfsResponse;
-      
-      let filteredEmployees = allEmployees;
-      
-      if (!permissions.can_view_all && permissions.employee) {
-        filteredEmployees = allEmployees.filter(emp => 
-          emp.id === permissions.employee.id || 
-          emp.line_manager_email === permissions.employee.email
-        );
-      }
-      
-      const employeesWithPerformance = filteredEmployees.map(emp => {
-        const perf = perfs.find(p => p.employee === emp.id);
-        return {
-          id: emp.id,
-          employee_id: emp.employee_id,
-          name: emp.name,
-          position: emp.position_group_name,
-          department: emp.department_name,
-          line_manager: emp.line_manager_name,
-          performanceId: perf?.id || null,
-          approval_status: perf?.approval_status || 'NOT_STARTED'
-        };
-      });
-      
-      setEmployees(employeesWithPerformance);
-      console.log('✅ Employees loaded:', employeesWithPerformance.length);
-    } catch (error) {
-      console.error('❌ Error loading employees:', error);
-      showError('Error loading employees');
     }
-  };
+    
+    const allEmployees = employeesResponse.results || employeesResponse;
+    
+    const perfsResponse = await performanceApi.performances.list({ 
+      year: selectedYear 
+    });
+    const perfs = perfsResponse.results || perfsResponse;
+    
+    let filteredEmployees = allEmployees;
+    
+    if (!permissions.can_view_all && permissions.employee) {
+      filteredEmployees = allEmployees.filter(emp => 
+        emp.id === permissions.employee.id || 
+        emp.line_manager_email === permissions.employee.email
+      );
+    }
+    
+    // ✅ Company field-ini düzgün map et
+    const employeesWithPerformance = filteredEmployees.map(emp => {
+      const perf = perfs.find(p => p.employee === emp.id);
+      return {
+        id: emp.id,
+        employee_id: emp.employee_id,
+        name: emp.name,
+        company: emp.business_function_name, // ✅ API-dən gələn field
+        employee_company: emp.business_function_name, // ✅ TeamMembers üçün
+        objectives_percentage: perf ? perf.objectives_percentage : 0,
+        competencies_percentage: perf ? perf.competencies_percentage : 0,
+        position: emp.position_group_name,
+        employee_position_group: emp.position_group_name, // ✅ TeamMembers üçün
+        department: emp.department_name,
+        employee_department: emp.department_name, // ✅ TeamMembers üçün
+        employee_name: emp.name, // ✅ TeamMembers üçün
+        line_manager: emp.line_manager_name,
+        performanceId: perf?.id || null,
+        objectives_employee_approved: perf?.objectives_employee_approved || false,
+        objectives_manager_approved: perf?.objectives_manager_approved || false,
+        mid_year_completed: perf?.mid_year_completed || false,
+        approval_status: perf?.approval_status || 'NOT_STARTED'
+      };
+    });
+    
+    setEmployees(employeesWithPerformance);
+    console.log('✅ Employees loaded:', employeesWithPerformance.length);
+  } catch (error) {
+    console.error('⛔ Error loading employees:', error);
+    showError('Error loading employees');
+  }
+};
 
   const loadPerformanceData = async (employeeId, year) => {
     const key = `${employeeId}_${year}`;

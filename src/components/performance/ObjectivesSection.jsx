@@ -263,9 +263,8 @@ export default function ObjectivesSection({
             <thead className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'}`}>
               <tr className="text-xs font-semibold text-almet-waterloo dark:text-almet-bali-hai uppercase tracking-wide">
                 <th className="px-4 py-3 text-left w-12">#</th>
-                <th className="px-4 py-3 text-left min-w-[200px]">Title</th>
-                <th className="px-4 py-3 text-left min-w-[250px]">Description</th>
-                <th className="px-4 py-3 text-left min-w-[180px]">Dept. Objective</th>
+                <th className="px-4 py-3 text-left min-w-[250px]">Title</th>
+                <th className="px-4 py-3 text-left min-w-[300px]">Description</th>
                 <th className="px-4 py-3 text-center w-24">Weight %</th>
                 <th className="px-4 py-3 text-center w-24">Progress</th>
                 <th className="px-4 py-3 text-center w-32">Rating</th>
@@ -463,8 +462,8 @@ function ObjectiveRow({
           value={objective.title || ''}
           onChange={(e) => onUpdate(index, 'title', e.target.value)}
           disabled={!canEditGoals || isCancelled}
-          className={`${inputClass} w-full ${isTitleMissing && canEditGoals ? 'border-red-500 dark:border-red-500' : ''}`}
-          placeholder="Objective title..."
+          className={`${inputClass} w-full font-medium ${isTitleMissing && canEditGoals ? 'border-red-500' : ''}`}
+          placeholder="Enter objective title..."
         />
       </td>
       
@@ -473,24 +472,10 @@ function ObjectiveRow({
           value={objective.description || ''}
           onChange={(e) => onUpdate(index, 'description', e.target.value)}
           disabled={!canEditGoals || isCancelled}
-          rows={2}
-          className={`${inputClass} w-full resize-none py-2`}
-          placeholder="Description..."
+          rows={3}
+          className={`${inputClass} w-full resize-none py-2 leading-relaxed`}
+          placeholder="Describe the objective in detail..."
         />
-      </td>
-      
-      <td className="px-4 py-3">
-        <select
-          value={objective.linked_department_objective || ''}
-          onChange={(e) => onUpdate(index, 'linked_department_objective', e.target.value || null)}
-          disabled={!canEditGoals || isCancelled}
-          className={`${inputClass} w-full`}
-        >
-          <option value="">-- Optional --</option>
-          {settings.departmentObjectives?.map(dept => (
-            <option key={dept.id} value={dept.id}>{dept.title}</option>
-          ))}
-        </select>
       </td>
       
       <td className="px-4 py-3">
@@ -529,16 +514,13 @@ function ObjectiveRow({
                   const weight = parseFloat(objective.weight) || 0;
                   const targetScore = settings.evaluationTargets?.objective_score_target || 21;
                   const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+                  
                   onUpdate(index, 'end_year_rating', selectedScaleId);
-                  setTimeout(() => {
-                    onUpdate(index, 'calculated_score', calculatedScore);
-                  }, 0);
+                  onUpdate(index, 'calculated_score', calculatedScore);
                 }
               } else {
                 onUpdate(index, 'end_year_rating', null);
-                setTimeout(() => {
-                  onUpdate(index, 'calculated_score', 0);
-                }, 0);
+                onUpdate(index, 'calculated_score', 0);
               }
             }}
             className={`${inputClass} w-full text-center font-semibold`}
@@ -552,7 +534,7 @@ function ObjectiveRow({
           </select>
         ) : (
           <div className="flex items-center justify-center w-full">
-            {selectedRating ? (
+            {objective.end_year_rating && selectedRating ? (
               <div className={`px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2 ${
                 darkMode 
                   ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30' 
@@ -561,15 +543,6 @@ function ObjectiveRow({
                 <span>{selectedRating.name}</span>
                 <span className="opacity-60">•</span>
                 <span>{selectedRating.value}</span>
-              </div>
-            ) : objective.end_year_rating ? (
-              <div className={`px-3 py-2 rounded-xl text-xs font-medium inline-flex items-center gap-2 ${
-                darkMode
-                  ? 'bg-red-900/20 text-red-400 border border-red-800/30'
-                  : 'bg-red-50 text-red-600 border border-red-200'
-              }`}>
-                <span>⚠️</span>
-                <span>Invalid Rating</span>
               </div>
             ) : (
               <div className={`px-3 py-2 rounded-xl text-xs font-medium ${

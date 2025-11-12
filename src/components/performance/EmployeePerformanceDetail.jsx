@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Download, Star, TrendingUp, Award, Target, FileText, BookOpen, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Download, Star, TrendingUp, Award, Target, FileText, BookOpen, CheckCircle, Clock } from 'lucide-react';
 import ObjectivesSection from './ObjectivesSection';
 import CompetenciesSection from './CompetenciesSection';
 import PerformanceReviews from './PerformanceReviews';
@@ -85,8 +85,9 @@ export default function EmployeePerformanceDetail({
   const finalRating = performanceData.final_rating || 
                       getLetterGradeFromScale(overallPercentage);
 
-  // ✅ Check if performance is completed
-  const isCompleted = performanceData?.approval_status === 'COMPLETED';
+  // ✅ Check if performance is completed - SAME LOGIC AS DASHBOARD
+  const isCompleted = !isNaN(objectivesPercentage) && objectivesPercentage > 0 && 
+                      !isNaN(competenciesPercentage) && competenciesPercentage > 0;
 
   // ✅ Tab Configuration
   const tabs = [
@@ -211,8 +212,43 @@ export default function EmployeePerformanceDetail({
                 <span className="text-sm font-semibold text-almet-sapphire">{finalRating}</span>
               </div>
             </div>
+
+            {/* ✅ COMPLETION STATUS BADGE */}
+            {isCompleted ? (
+              <div className={`px-4 py-2 rounded-xl flex items-center gap-2 ${
+                darkMode 
+                  ? 'bg-emerald-900/30 border border-emerald-800/30' 
+                  : 'bg-emerald-50 border border-emerald-200'
+              }`}>
+                <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <div>
+                  <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                    Completed
+                  </div>
+                  <div className="text-xs text-emerald-600 dark:text-emerald-500">
+                    Ready for export
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className={`px-4 py-2 rounded-xl flex items-center gap-2 ${
+                darkMode 
+                  ? 'bg-amber-900/20 border border-amber-800/30' 
+                  : 'bg-amber-50 border border-amber-200'
+              }`}>
+                <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <div className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                    In Progress
+                  </div>
+                  <div className="text-xs text-amber-600 dark:text-amber-500">
+                    {objectivesPercentage === 0 ? 'Add objectives' : 'Add competencies'}
+                  </div>
+                </div>
+              </div>
+            )}
             
-            {/* ✅ Only show export button if performance is completed */}
+            {/* ✅ Export button - only if completed */}
             {canEdit && isCompleted && (
               <button
                 onClick={onExport}
@@ -222,17 +258,6 @@ export default function EmployeePerformanceDetail({
                 <Download className="w-4 h-4" />
                 Export
               </button>
-            )}
-            
-            {/* ✅ Show completion status badge */}
-            {!isCompleted && canEdit && (
-              <div className={`px-3 py-2 rounded-xl text-xs font-medium ${
-                darkMode 
-                  ? 'bg-amber-900/20 text-amber-400 border border-amber-800/30' 
-                  : 'bg-amber-50 text-amber-700 border border-amber-200'
-              }`}>
-                Export available after completion
-              </div>
             )}
           </div>
         </div>

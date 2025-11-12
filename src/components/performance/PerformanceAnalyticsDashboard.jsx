@@ -50,76 +50,33 @@ export default function FixedAnalyticsDashboard({
     // ✅ Sort scales by value descending
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
-    // ✅ Calculate normal distribution
-    const totalRange = 100;
-    const normalDist = sortedScales.map(scale => {
-      const rangeSize = (parseFloat(scale.range_max) - parseFloat(scale.range_min)) + 1;
-      const normalPercentage = (rangeSize / totalRange) * 100;
-      return {
-        grade: scale.name,
-        norm: Math.round(normalPercentage * 10) / 10,
-        value: scale.value
-      };
-    });
-
-    // ✅ Count actual distribution - FIXED LOGIC
-    const gradeCounts = {};
-    sortedScales.forEach(scale => {
-      gradeCounts[scale.name] = 0;
-    });
-
-    let employeesWithRatings = 0;
-    
-    employees.forEach(emp => {
-      const objPct = parseFloat(emp.objectives_percentage);
-      const compPct = parseFloat(emp.competencies_percentage);
+    // ✅ Calculate REAL normal distribution (bell curve)
+    // Bell curve tənliyi: ortada ən yüksək, kənarlarda aşağı
+    const normalDist = sortedScales.map((scale, index, array) => {
+      let normalPercentage;
       
-      // ✅ Only count if BOTH percentages exist and > 0 (COMPLETED status)
-      if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
-        employeesWithRatings++;
+      // 5 grade varsa: E--, E-, E, E+, E++
+      if (array.length === 5) {
+        const percentages = [5, 15, 60, 15, 5]; // Bell curve
+        normalPercentage = percentages[index];
+      } 
+      // Başqa sayda grade varsa, dinamik hesablama
+      else {
+        const middle = Math.floor(array.length / 2);
+        const distance = Math.abs(index - middle);
         
-        // ✅ Use final_rating if available, otherwise calculate from overall_weighted_percentage
-        let grade = emp.final_rating;
-        
-        if (!grade) {
-          const overallPct = parseFloat(emp.overall_weighted_percentage) || 
-                           ((objPct * 70 + compPct * 30) / 100);
-          
-          const matchingScale = sortedScales.find(s => 
-            overallPct >= parseFloat(s.range_min) && 
-            overallPct <= parseFloat(s.range_max)
-          );
-          
-          grade = matchingScale?.name || 'N/A';
-        }
-        
-        if (gradeCounts[grade] !== undefined) {
-          gradeCounts[grade]++;
-        }
+        // Ortadan nə qədər uzaqsa, bir o qədər az
+        if (distance === 0) normalPercentage = 60; // Orta
+        else if (distance === 1) normalPercentage = 15; // Ortaya yaxın
+        else normalPercentage = 5; // Kənar
       }
-    });
-
-    console.log('📊 Grade counts:', gradeCounts);
-    console.log('📊 Employees with ratings:', employeesWithRatings);
-
-    // ✅ Build final distribution
-    const result = sortedScales.map(scale => {
-      const actualPercentage = employeesWithRatings > 0 
-        ? Math.round((gradeCounts[scale.name] / employeesWithRatings) * 1000) / 10 
-        : 0;
       
       return {
         grade: scale.name,
-        norm: normalDist.find(n => n.grade === scale.name)?.norm || 0,
-        actual: actualPercentage,
-        employeeCount: gradeCounts[scale.name],
+        norm: normalPercentage,
         value: scale.value
       };
-    });
-
-    return result;
-  };
-
+    });}
   const calculateDepartmentStats = () => {
     if (!employees || employees.length === 0) return [];
 

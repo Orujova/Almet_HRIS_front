@@ -30,7 +30,7 @@ export default function FixedStatCards({ employees, darkMode }) {
 
     employees.forEach(emp => {
       // Count if objectives_manager_approved is true
-      if (emp.objectives_manager_approved === true) {
+      if (emp.objectives_employee_approved === true) {
         count++;
       }
     });
