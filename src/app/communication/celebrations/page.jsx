@@ -98,7 +98,7 @@ export default function CelebrationsPage() {
           department: 'Human Resources',
           date: '2024-10-28',
           images: [
-            'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'
+            'https://www.sugar.org/wp-content/uploads/Birthday-Cake-1.png'
           ],
           message: 'Wishing you a wonderful birthday filled with joy and happiness! Thank you for all your contributions to the team.',
           wishes: 67
