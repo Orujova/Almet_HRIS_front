@@ -323,24 +323,7 @@ export default function FixedAnalyticsDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-5`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-purple-500/10">
-              <BarChart3 className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Performance Analytics Dashboard
-              </h2>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {selectedYear} • {analyticsData.totalEmployees} Employees
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+     
 
       {/* Grade Distribution Chart */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>

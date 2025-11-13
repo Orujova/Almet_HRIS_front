@@ -353,15 +353,7 @@ export const positionBehavioralApi = {
     }
   },
 
-  duplicate: async (id, data) => {
-    try {
-      const response = await api.post(`/assessments/position-behavioral/${id}/duplicate/`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error duplicating position behavioral assessment:', error);
-      throw error;
-    }
-  },
+
    // YENİ: Get grade levels for position group
   getGradeLevels: async (positionGroupId) => {
     try {
@@ -442,15 +434,7 @@ export const positionCoreApi = {
     }
   },
 
-  duplicate: async (id, data) => {
-    try {
-      const response = await api.post(`/assessments/position-core/${id}/duplicate/`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error duplicating position core assessment:', error);
-      throw error;
-    }
-  },
+
 
   getForEmployee: async (employeeId) => {
     try {
@@ -784,15 +768,7 @@ export const positionLeadershipApi = {
     }
   },
 
-  duplicate: async (id, data) => {
-    try {
-      const response = await api.post(`/assessments/position-leadership/${id}/duplicate/`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error duplicating position leadership assessment:', error);
-      throw error;
-    }
-  },
+
 
   // ✅ DÜZƏLDILDI: position_group_id parametri əlavə edildi
   getGradeLevels: async (positionGroupId) => {

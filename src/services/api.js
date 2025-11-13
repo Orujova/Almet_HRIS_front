@@ -330,7 +330,7 @@ export const apiService = {
     return api.get(`/contract-configs/?${queryString}`);
   },
   getContractConfig: (id) => api.get(`/contract-configs/${id}/`),
-  testContractCalculations: (id) => api.get(`/contract-configs/${id}/test_calculations/`),
+
   createContractConfig: (data) => api.post("/contract-configs/", data),
   updateContractConfig: (id, data) => api.put(`/contract-configs/${id}/`, data),
   deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
@@ -577,7 +577,7 @@ export const apiService = {
   // ========================================
   // EMPLOYEE GRADING
   // ========================================
-  getEmployeeGrading: () => api.get("/employee-grading/"),
+
   bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
 
   // ========================================

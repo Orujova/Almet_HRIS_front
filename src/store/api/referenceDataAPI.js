@@ -266,7 +266,7 @@ export const referenceDataAPI = {
   createContractConfig: (data) => apiService.createContractConfig(data),
   updateContractConfig: (id, data) => apiService.updateContractConfig(id, data),
   deleteContractConfig: (id) => apiService.deleteContractConfig(id),
-  testContractCalculations: (id) => apiService.testContractCalculations(id),
+
 
   // ========================================
   // HELPER FUNCTIONS

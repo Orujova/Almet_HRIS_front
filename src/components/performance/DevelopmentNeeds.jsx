@@ -36,6 +36,12 @@ export default function DevelopmentNeeds({
   const handleAdd = () => {
     onAdd();
     setHasChanges(true);
+    // ✅ Auto-expand the newly added row (last index)
+    const newIndex = developmentNeeds.length;
+    setExpandedRows(prev => ({
+      ...prev,
+      [newIndex]: true
+    }));
   };
 
   const handleDelete = (index) => {

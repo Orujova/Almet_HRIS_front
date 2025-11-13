@@ -111,7 +111,7 @@ export const orgChartAPI = {
    */
   getOrgChartStatistics: (params = {}) => {
     const queryString = buildQueryParams(params);
-    return orgChartApi.get(`/org-chart/statistics/${queryString ? `?${queryString}` : ''}`);
+    return orgChartApi.get(`/org-chart/get_statistics/${queryString ? `?${queryString}` : ''}`);
   },
 
   // ========================================
