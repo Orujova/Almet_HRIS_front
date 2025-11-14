@@ -481,6 +481,16 @@ const AssessmentMatrixInner = () => {
 
           {/* Assessment Types Navigation */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+           
+                  <NavigationCard
+              icon={Crown}
+              title="Leadership Assessment"
+              subtitle="Comprehensive leadership evaluation for senior positions including Manager, Vice Chairman, Director, Vice President, and HOD"
+              color="from-amber-100 via-amber-200 to-amber-300"
+              count={dashboardData.leadershipAssessments}
+              isActive={false}
+              onClick={() => setActiveView('leadership')}
+            />
             <NavigationCard
               icon={Users}
               title="Behavioral Competency Assessment"
@@ -501,15 +511,7 @@ const AssessmentMatrixInner = () => {
               onClick={() => setActiveView('core')}
             />
             
-            <NavigationCard
-              icon={Crown}
-              title="Leadership Assessment"
-              subtitle="Comprehensive leadership evaluation for senior positions including Manager, Vice Chairman, Director, Vice President, and HOD"
-              color="from-amber-100 via-amber-200 to-amber-300"
-              count={dashboardData.leadershipAssessments}
-              isActive={false}
-              onClick={() => setActiveView('leadership')}
-            />
+     
           </div>
         </div>
       )}
