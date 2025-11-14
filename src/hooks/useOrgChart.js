@@ -6,7 +6,7 @@ import {
   fetchOrgChart,
   fetchOrgChartEmployee,
   fetchFullTreeWithVacancies,
-  fetchOrgChartStatistics,
+
   searchOrgChart,
   fetchManagerTeam,
   setFilters,
@@ -131,7 +131,7 @@ export const useOrgChart = () => {
     fetchOrgChart: (params = {}) => dispatch(fetchOrgChart(params)),
     fetchEmployee: (employeeId) => dispatch(fetchOrgChartEmployee(employeeId)),
     fetchFullTree: (params = {}) => dispatch(fetchFullTreeWithVacancies(params)),
-    fetchStatistics: (params = {}) => dispatch(fetchOrgChartStatistics(params)),
+  
     searchOrgChart: (searchParams) => dispatch(searchOrgChart(searchParams)),
     fetchManagerTeam: (managerId, params = {}) => dispatch(fetchManagerTeam({ managerId, params })),
     setFilters: (newFilters) => dispatch(setFilters(newFilters)),
@@ -195,22 +195,10 @@ export const useOrgChart = () => {
   }, [activeFilters]);
 
 
- // 1. Check useReferenceData hook is working properly
-// Add this debug in useOrgChart.js or main page:
-
-useEffect(() => {
-    console.log('🔍 DEBUGGING Reference Data:');
-    console.log('businessFunctionsDropdown:', businessFunctionsDropdown?.length, businessFunctionsDropdown);
-    console.log('departmentsDropdown:', departmentsDropdown?.length, departmentsDropdown);
-    console.log('unitsDropdown:', unitsDropdown?.length, unitsDropdown);
-    console.log('positionGroupsDropdown:', positionGroupsDropdown?.length, positionGroupsDropdown);
-    console.log('employeeStatusesDropdown:', employeeStatusesDropdown?.length, employeeStatusesDropdown);
-}, [businessFunctionsDropdown, departmentsDropdown, unitsDropdown, positionGroupsDropdown, employeeStatusesDropdown]);
 
 // 2. FIXED: If dropdowns are empty, build from orgChart data directly
 
 const filterOptions = useMemo(() => {
-    console.log('🔨 Building filter options...');
     
     // Build from employee data directly if reference data is missing
     const buildFromEmployeeData = (field) => {
@@ -320,14 +308,7 @@ const filterOptions = useMemo(() => {
             : []
     };
 
-    console.log('✅ Filter options result:', {
-        businessFunctions: options.businessFunctions.length,
-        departments: options.departments.length,
-        units: options.units.length,
-        statuses: options.statuses.length,
-        positionGroups: options.positionGroups.length,
-        managers: options.managers.length
-    });
+  
 
     return options;
 }, [
@@ -340,7 +321,7 @@ const filterOptions = useMemo(() => {
 ]);
 
 
-console.log('Filter Options:', filterOptions);
+
 
   const exportToPNG = useCallback(async () => {
     try {
@@ -391,9 +372,9 @@ console.log('Filter Options:', filterOptions);
   
   useEffect(() => {
     if (Array.isArray(orgChart) && orgChart.length === 0 && !loading.orgChart && !errors.orgChart) {
-      console.log('Initializing org chart data...');
+    
       actions.fetchOrgChart();
-      actions.fetchStatistics();
+  
     }
   }, [orgChart, loading.orgChart, errors.orgChart, actions]);
 
@@ -466,24 +447,8 @@ console.log('Filter Options:', filterOptions);
     }
   }, [orgChart, expandedNodes, actions]);
 
-  // FIXED: Safe periodic statistics refresh
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isLoading) {
-        actions.fetchStatistics();
-      }
-    }, 5 * 60 * 1000); // 5 minutes
 
-    return () => clearInterval(interval);
-  }, [isLoading, actions]);
 
-  // FIXED: Memory cleanup on unmount
-  useEffect(() => {
-    return () => {
-      // Clear any pending timeouts or intervals
-      console.log('Cleaning up useOrgChart hook');
-    };
-  }, []);
 
   return {
     // Data

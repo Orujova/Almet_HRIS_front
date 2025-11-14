@@ -662,7 +662,7 @@ export default function CompanyNewsPage() {
                       onClick={() => handleViewNews(item)}
                     >
                       <img
-                        src={item.image_url || 'https://via.placeholder.com/800x400?text=No+Image'}
+                        src={item.image_url }
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />

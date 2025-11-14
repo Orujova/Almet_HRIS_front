@@ -13,7 +13,7 @@ import {
   Newspaper,
   Gift,
   Package,
-
+RefreshCw,
   UserCog,
   Building2,
   TicketsPlane,
@@ -97,6 +97,12 @@ const Sidebar = ({ collapsed = false }) => {
       path: "/requests/vacation",
       id: "vacation",
     },
+     {
+      label: "Handover/Takeover",
+      icon: <RefreshCw className="w-4 h-4" />,
+      path: "/requests/handover-takeover",
+      id: "handover-takeover",
+    },
     {
       label: "Business Trip",
       icon: <Plane className="w-4 h-4" />,
@@ -164,20 +170,28 @@ const Sidebar = ({ collapsed = false }) => {
       {/* Logo Section - clicking takes you to home page */}
       <Link 
         href="/" 
-        className={`flex items-center ${collapsed ? 'justify-center' : 'px-3'} py-2 border-b border-gray-200 dark:border-almet-comet`}
+        className={`flex items-center justify-center ${collapsed ? 'justify-center' : 'px-3'} py-2 border-b border-gray-200 dark:border-almet-comet`}
       >
         {collapsed ? (
-          <div className="bg-almet-sapphire text-white h-7 w-7 rounded flex items-center justify-center font-bold">
-            A
-          </div>
-        ) : (
-          <div className="flex items-center">
-            <div className="bg-almet-sapphire text-white h-7 w-7 rounded flex items-center justify-center font-bold mr-2">
-              A
+           <div >
+               <img src="/logoSmall.png" alt="" className="h-6" /> 
             </div>
-            <span className="text-almet-cloud-burst dark:text-white text-sm font-medium">
-               MY ALMET
-            </span>
+     
+        ) : (
+          //   <div className="flex items-center">
+          //   <div className="bg-almet-sapphire text-white h-7 w-7 rounded flex items-center justify-center font-bold mr-2">
+          //     A
+          //   </div>
+          //   <span className="text-almet-cloud-burst dark:text-white text-sm font-medium">
+          //      MY ALMET
+          //   </span>
+          // </div>
+          <div className="flex items-center justify-center">
+            {/* <div className="mr-4">
+               <img src="/logoSmall.png" alt="" className="h-6" /> 
+            </div> */}
+     
+           <img src="/logo.png" alt="Almet Logo" className="h-6" />
           </div>
         )}
       </Link>

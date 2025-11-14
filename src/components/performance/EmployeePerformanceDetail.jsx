@@ -133,7 +133,7 @@ export default function EmployeePerformanceDetail({
       <button
         onClick={() => {
           setActiveTab(tab.id);
-          showInfo(`Switched to ${tab.label} tab`);
+
         }}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
           isActive 

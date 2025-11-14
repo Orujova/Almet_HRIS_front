@@ -323,7 +323,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
 
     
     if (isInitialized.current) {
-      console.log('⚠️ Filter options already loaded');
+  
       return Promise.resolve();
     }
     

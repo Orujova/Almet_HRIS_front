@@ -513,7 +513,11 @@ const AssessmentMatrixInner = () => {
           </div>
         </div>
       )}
-
+ {activeView === 'leadership' && (
+        <div className="space-y-4">
+          <LeadershipAssessmentCalculation />
+        </div>
+      )}
       {/* Assessment Components */}
       {activeView === 'behavioral' && (
         <div className="space-y-4">
@@ -521,18 +525,14 @@ const AssessmentMatrixInner = () => {
         </div>
       )}
 
+
       {activeView === 'core' && (
         <div className="space-y-4">
           <CoreEmployeeCalculation />
         </div>
       )}
 
-      {activeView === 'leadership' && (
-        <div className="space-y-4">
-          <LeadershipAssessmentCalculation />
-        </div>
-      )}
-
+     
       {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmModal.isOpen}

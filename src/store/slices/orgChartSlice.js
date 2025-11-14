@@ -135,17 +135,7 @@ export const fetchFullTreeWithVacancies = createAsyncThunk(
   }
 );
 
-export const fetchOrgChartStatistics = createAsyncThunk(
-  'orgChart/fetchOrgChartStatistics',
-  async (params = {}, { rejectWithValue }) => {
-    try {
-      const response = await orgChartAPI.getOrgChartStatistics(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || error.message);
-    }
-  }
-);
+
 
 export const searchOrgChart = createAsyncThunk(
   'orgChart/searchOrgChart',
@@ -583,20 +573,6 @@ const orgChartSlice = createSlice({
         state.error.fullTree = action.payload;
       });
 
-    // Fetch statistics
-    builder
-      .addCase(fetchOrgChartStatistics.pending, (state) => {
-        state.loading.statistics = true;
-        state.error.statistics = null;
-      })
-      .addCase(fetchOrgChartStatistics.fulfilled, (state, action) => {
-        state.loading.statistics = false;
-        state.statistics = action.payload;
-      })
-      .addCase(fetchOrgChartStatistics.rejected, (state, action) => {
-        state.loading.statistics = false;
-        state.error.statistics = action.payload;
-      });
 
     // Search org chart
     builder
@@ -836,15 +812,11 @@ export const selectPagination = createSelector(
   (orgChartState) => orgChartState.pagination || initialState.pagination
 );
 
-// FIXED: Safe filtered org chart selector
-// FIXED: Safe filtered org chart selector
+
 export const selectFilteredOrgChart = createSelector(
   [selectOrgChart, selectActiveFilters],
   (orgChart, activeFilters) => {
-    console.log('🔍 Filtering orgChart:', {
-      totalEmployees: orgChart?.length,
-      activeFilters: activeFilters
-    });
+ 
     
     if (!Array.isArray(orgChart) || orgChart.length === 0) {
       console.log('❌ No orgChart data to filter');
@@ -1138,7 +1110,7 @@ export const selectOrgChartForReactFlow = createSelector(
   
     
     if (!Array.isArray(filteredChart) || filteredChart.length === 0) {
-      console.log('No filtered chart data available');
+     
       return { nodes: [], edges: [] };
     }
     
