@@ -868,9 +868,7 @@ const getAssignmentPreviewDisplay = () => {
             {counts.gradingLevels > 0 && (
               <span className={`text-xs ${textMuted} ml-1`}>({counts.gradingLevels} available)</span>
             )}
-            <span className={`text-xs ${textMuted} block mt-1`}>
-              💡 Select multiple grading levels to find employees across different grades
-            </span>
+            
           </label>
           <MultiSelect
             options={getFilteredGradingLevels()}
