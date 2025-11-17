@@ -43,21 +43,7 @@ export default function CompanyFolderManager() {
       fullName: "ALMET Technologies",
       color: "from-almet-sapphire to-almet-cloud-burst",
       folderCount: 3,
-    },
-    {
-      id: "pasha",
-      name: "PASHA",
-      fullName: "PASHA Holding",
-      color: "from-purple-500 to-purple-600",
-      folderCount: 2,
-    },
-    {
-      id: "azercell",
-      name: "Azercell",
-      fullName: "Azercell Telecom",
-      color: "from-green-500 to-green-600",
-      folderCount: 2,
-    },
+    }
   ]);
 
   const [foldersData, setFoldersData] = useState({
@@ -83,39 +69,7 @@ export default function CompanyFolderManager() {
         icon: "🎁",
         policyCount: 3,
       },
-    ],
-    pasha: [
-      {
-        id: "corp-standards",
-        name: "Corporate Standards",
-        description: "Brand guidelines, email signatures",
-        icon: "📋",
-        policyCount: 2,
-      },
-      {
-        id: "travel",
-        name: "Travel & Expenses",
-        description: "Business trips, taxi usage",
-        icon: "✈️",
-        policyCount: 2,
-      },
-    ],
-    azercell: [
-      {
-        id: "hr-policies",
-        name: "HR Policies",
-        description: "Employee management policies",
-        icon: "📁",
-        policyCount: 3,
-      },
-      {
-        id: "operations",
-        name: "Operations",
-        description: "Operational procedures",
-        icon: "⚙️",
-        policyCount: 2,
-      },
-    ],
+    ]
   });
 
   const [policiesData, setPoliciesData] = useState({
