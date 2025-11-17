@@ -766,15 +766,7 @@ const handleViewScheduleDetail = (scheduleId) => {
           
           <div className="flex items-center gap-2 flex-wrap">
 
-            <button
-      onClick={() => router.push('/requests/handover-takeover')}
-      className="flex items-center gap-1.5 bg-almet-astral hover:bg-almet-steel-blue text-white px-3 py-1.5 rounded-md transition-all shadow-sm"
-    >
-      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-      </svg>
-      <span className="text-xs font-medium">Handover</span>
-    </button>
+       
             {userPermissions.is_admin && (
               <>
                 <button

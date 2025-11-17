@@ -1,19 +1,27 @@
-import { useState, useEffect,useRef  } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Award, Users, Target, BarChart3, Loader, User, AlertCircle } from 'lucide-react';
+import { TrendingUp, Award, Users, Target, BarChart3, Loader, User, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function FixedAnalyticsDashboard({ 
   employees, 
   settings,
   darkMode,
   selectedYear,
-  onLoadEmployeePerformance // ✅ NEW: Callback to load full performance data
+  onLoadEmployeePerformance
 }) {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
   const [selectedEmployeeData, setSelectedEmployeeData] = useState(null);
   const [loadingEmployeeData, setLoadingEmployeeData] = useState(false);
+  
+  // Accordion states
+  const [expandedSections, setExpandedSections] = useState({
+    distribution: true,
+    department: false,
+    position: false,
+    competency: false
+  });
 
   useEffect(() => {
     if (employees && employees.length > 0 && settings?.evaluationScale) {
@@ -21,12 +29,18 @@ export default function FixedAnalyticsDashboard({
     }
   }, [employees, settings]);
 
-  // ✅ Load full employee performance data when selected
   useEffect(() => {
     if (selectedEmployeeId && onLoadEmployeePerformance) {
       loadEmployeePerformanceData(selectedEmployeeId);
     }
   }, [selectedEmployeeId]);
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   const loadEmployeePerformanceData = async (employeeId) => {
     setLoadingEmployeeData(true);
@@ -81,11 +95,11 @@ export default function FixedAnalyticsDashboard({
     const sortedScales = [...settings.evaluationScale].sort((a, b) => b.value - a.value);
     
     const bellCurveDistribution = {
-      5: 5,   // E++ = 5%
-      4: 15,  // E+ = 15%
-      3: 60,  // E = 60%
-      2: 15,  // E- = 15%
-      1: 5    // E-- = 5%
+      5: 5,
+      4: 15,
+      3: 60,
+      2: 15,
+      1: 5
     };
 
     const gradeCounts = {};
@@ -237,7 +251,6 @@ export default function FixedAnalyticsDashboard({
     return result;
   };
 
-  // ✅ FIXED: Get competency data from loaded performance data
   const getEmployeeCompetencyData = () => {
     if (!selectedEmployeeData?.competency_ratings) {
       console.warn('⚠️ No competency ratings in selected employee data');
@@ -247,7 +260,6 @@ export default function FixedAnalyticsDashboard({
     const groupMap = {};
     
     selectedEmployeeData.competency_ratings.forEach(comp => {
-      // ✅ Handle both leadership and behavioral
       const groupName = comp.main_group_name || comp.competency_group_name || 'Other';
       
       if (!groupMap[groupName]) {
@@ -322,269 +334,278 @@ export default function FixedAnalyticsDashboard({
   };
 
   return (
-    <div className="space-y-6">
-     
-
-      {/* Grade Distribution Chart */}
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-        <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Normal Distribution vs Real Distribution
-        </h3>
-        <ResponsiveContainer width="100%" height={400}>
-          <LineChart data={analyticsData.gradeDistribution}>
-            <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-            <XAxis 
-              dataKey="grade" 
-              stroke={darkMode ? '#9ca3af' : '#6b7280'}
-            />
-            <YAxis 
-              stroke={darkMode ? '#9ca3af' : '#6b7280'}
-              label={{ value: 'Percentage (%)', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                borderRadius: '8px'
-              }}
-              formatter={(value, name) => {
-                if (name === 'norm') return [`${value}%`, 'Expected Distribution'];
-                if (name === 'actual') return [`${value}%`, 'Actual Distribution'];
-                return [value, name];
-              }}
-            />
-            <Legend />
-            <Line 
-              type="monotone" 
-              dataKey="norm" 
-              stroke={COLORS.norm} 
-              strokeWidth={3}
-              name="Expected Distribution"
-              dot={{ r: 5 }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="actual" 
-              stroke={COLORS.actual} 
-              strokeWidth={3}
-              name="Actual Distribution"
-              dot={{ r: 5 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-        
-        {/* Distribution Table */}
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
-              <tr>
-                <th className="px-4 py-2 text-left font-semibold">Grade</th>
-                <th className="px-4 py-2 text-right font-semibold">Expected %</th>
-                <th className="px-4 py-2 text-right font-semibold">Actual %</th>
-                <th className="px-4 py-2 text-right font-semibold">Employees</th>
-                <th className="px-4 py-2 text-right font-semibold">Variance</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {analyticsData.gradeDistribution.map((item) => {
-                const variance = (item.actual - item.norm).toFixed(1);
-                return (
-                  <tr key={item.grade} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                    <td className="px-4 py-2 font-bold text-almet-sapphire">{item.grade}</td>
-                    <td className="px-4 py-2 text-right">{item.norm}%</td>
-                    <td className="px-4 py-2 text-right font-semibold">{item.actual}%</td>
-                    <td className="px-4 py-2 text-right">{item.employeeCount}</td>
-                    <td className={`px-4 py-2 text-right font-semibold ${
-                      variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-600' : 'text-gray-500'
-                    }`}>
-                      {variance > 0 ? '+' : ''}{variance}%
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Department Performance */}
-      {analyticsData.departmentStats && analyticsData.departmentStats.length > 0 && (
-        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-          <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Performance by Department
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={analyticsData.departmentStats} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-              <XAxis type="number" stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-              <YAxis 
-                dataKey="department" 
-                type="category" 
-                width={150}
-                stroke={darkMode ? '#9ca3af' : '#6b7280'}
-              />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                  border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '8px'
-                }}
-              />
-              <Legend />
-              <Bar dataKey="avgScore" fill={COLORS.primary} name="Average Score (%)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Position Performance */}
-      {analyticsData.positionStats && analyticsData.positionStats.length > 0 && (
-        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-          <h3 className={`text-lg font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Performance by Position
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={analyticsData.positionStats}>
-              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
-              <XAxis 
-                dataKey="position" 
-                stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                angle={-45}
-                textAnchor="end"
-                height={100}
-              />
-              <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} />
-              <Tooltip 
-                contentStyle={{
-                  backgroundColor: darkMode ? '#1f2937' : '#ffffff',
-                  border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '8px'
-                }}
-              />
-              <Legend />
-              <Bar dataKey="avgScore" fill={COLORS.secondary} name="Average Score (%)" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Employee Competency Selector */}
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border p-6`}>
-        <div className="mb-6">
-          <label className={`block text-sm font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-            Select Employee for Competency Analysis
-          </label>
-          
-          <SearchableDropdown
-            options={employeeOptions}
-            value={selectedEmployeeId}
-            onChange={(value) => {
-              console.log('Selected employee ID:', value);
-              setSelectedEmployeeId(value);
-              if (!value) {
-                setSelectedEmployeeData(null);
-              }
-            }}
-            placeholder="-- Search and select an employee --"
-            searchPlaceholder="Search by name or position..."
-            darkMode={darkMode}
-            icon={<User size={16} />}
-            portal={false}
-            allowUncheck={true}
-            className="w-full"
-          />
-          
-          {employeeOptions.length === 0 && (
-            <p className={`text-xs mt-2 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>
-              ⚠️ No employees with completed performance found
-            </p>
-          )}
-        </div>
-
-        {/* Loading State */}
-        {loadingEmployeeData && (
-          <div className="flex items-center justify-center py-12">
-            <Loader className="w-8 h-8 animate-spin text-almet-sapphire mr-3" />
-            <p className="text-sm text-gray-500">Loading competency data...</p>
+    <div className="space-y-4">
+      {/* Grade Distribution Section */}
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border overflow-hidden`}>
+        <button
+          onClick={() => toggleSection('distribution')}
+          className={`w-full px-5 py-3 flex items-center justify-between ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50'} transition-colors`}
+        >
+          <div className="flex items-center gap-3">
+            <TrendingUp className="w-5 h-5 text-almet-sapphire" />
+            <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Grade Distribution Analysis
+            </h3>
           </div>
-        )}
-
-        {/* Radar Chart */}
-        {!loadingEmployeeData && selectedEmployeeId && selectedEmployee && selectedEmployeeData && (
-          <>
-            <div className="mb-4">
-              <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Competency Radar: {selectedEmployee.employee_name || selectedEmployee.name}
-              </h3>
-              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                {selectedEmployee.employee_position_group || selectedEmployee.position} • {selectedEmployee.employee_department || selectedEmployee.department}
-              </p>
-              
-              {/* ✅ Show competency type */}
-              {selectedEmployeeData.metadata && (
-                <div className="mt-2">
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
-                    selectedEmployeeData.metadata.competency_type === 'LEADERSHIP'
-                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
-                      : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                  }`}>
-                    {selectedEmployeeData.metadata.competency_type === 'LEADERSHIP' ? '👔 Leadership' : '🎯 Behavioral'} Competencies
-                  </span>
-                </div>
-              )}
-            </div>
-            
-            <ResponsiveContainer width="100%" height={500}>
-              <RadarChart data={getEmployeeCompetencyData()}>
-                <PolarGrid stroke={darkMode ? '#374151' : '#e5e7eb'} />
-                <PolarAngleAxis 
-                  dataKey="competency" 
-                  stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                />
-                <PolarRadiusAxis 
-                  angle={90} 
-                  domain={[0, 100]}
-                  stroke={darkMode ? '#9ca3af' : '#6b7280'}
-                />
-                <Radar 
-                  name="Competency Score" 
-                  dataKey="percentage" 
-                  stroke={COLORS.primary} 
-                  fill={COLORS.primary} 
-                  fillOpacity={0.6}
-                  strokeWidth={2}
-                />
+          {expandedSections.distribution ? 
+            <ChevronUp className="w-5 h-5 text-gray-400" /> : 
+            <ChevronDown className="w-5 h-5 text-gray-400" />
+          }
+        </button>
+        
+        {expandedSections.distribution && (
+          <div className="px-5 pb-5">
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={analyticsData.gradeDistribution}>
+                <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                <XAxis dataKey="grade" stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '12px' }} />
+                <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '12px' }} />
                 <Tooltip 
                   contentStyle={{
                     backgroundColor: darkMode ? '#1f2937' : '#ffffff',
                     border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
-                    borderRadius: '8px'
+                    borderRadius: '8px',
+                    fontSize: '12px'
+                  }}
+                  formatter={(value, name) => {
+                    if (name === 'norm') return [`${value}%`, 'Expected'];
+                    if (name === 'actual') return [`${value}%`, 'Actual'];
+                    return [value, name];
                   }}
                 />
-                <Legend />
-              </RadarChart>
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Line type="monotone" dataKey="norm" stroke={COLORS.norm} strokeWidth={2} name="Expected" dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="actual" stroke={COLORS.actual} strokeWidth={2} name="Actual" dot={{ r: 4 }} />
+              </LineChart>
             </ResponsiveContainer>
-          </>
-        )}
-
-        {/* Empty State */}
-        {!loadingEmployeeData && !selectedEmployeeId && (
-          <div className="text-center py-12">
-            <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-            <p className="text-sm text-gray-500">Select an employee to view their competency radar chart</p>
+            
+            <div className="mt-4 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className={`${darkMode ? 'bg-gray-800' : 'bg-gray-50'}`}>
+                  <tr>
+                    <th className="px-3 py-2 text-left font-semibold">Grade</th>
+                    <th className="px-3 py-2 text-right font-semibold">Expected</th>
+                    <th className="px-3 py-2 text-right font-semibold">Actual</th>
+                    <th className="px-3 py-2 text-right font-semibold">Count</th>
+                    <th className="px-3 py-2 text-right font-semibold">Variance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {analyticsData.gradeDistribution.map((item) => {
+                    const variance = (item.actual - item.norm).toFixed(1);
+                    return (
+                      <tr key={item.grade} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                        <td className="px-3 py-2 font-bold text-almet-sapphire">{item.grade}</td>
+                        <td className="px-3 py-2 text-right">{item.norm}%</td>
+                        <td className="px-3 py-2 text-right font-semibold">{item.actual}%</td>
+                        <td className="px-3 py-2 text-right">{item.employeeCount}</td>
+                        <td className={`px-3 py-2 text-right font-semibold ${
+                          variance > 0 ? 'text-red-600' : variance < 0 ? 'text-green-600' : 'text-gray-500'
+                        }`}>
+                          {variance > 0 ? '+' : ''}{variance}%
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
+      </div>
 
-        {/* Error State */}
-        {!loadingEmployeeData && selectedEmployeeId && !selectedEmployeeData && (
-          <div className="text-center py-12">
-            <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-400" />
-            <p className="text-sm text-red-600 dark:text-red-400 font-medium">
-              Failed to load competency data
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Please try selecting another employee
-            </p>
+      {/* Department Performance Section */}
+      {analyticsData.departmentStats && analyticsData.departmentStats.length > 0 && (
+        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border overflow-hidden`}>
+          <button
+            onClick={() => toggleSection('department')}
+            className={`w-full px-5 py-3 flex items-center justify-between ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50'} transition-colors`}
+          >
+            <div className="flex items-center gap-3">
+              <Users className="w-5 h-5 text-almet-sapphire" />
+              <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Department Performance
+              </h3>
+            </div>
+            {expandedSections.department ? 
+              <ChevronUp className="w-5 h-5 text-gray-400" /> : 
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            }
+          </button>
+          
+          {expandedSections.department && (
+            <div className="px-5 pb-5">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyticsData.departmentStats} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                  <XAxis type="number" stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '11px' }} />
+                  <YAxis dataKey="department" type="category" width={120} stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '11px' }} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Bar dataKey="avgScore" fill={COLORS.primary} name="Avg Score %" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Position Performance Section */}
+      {analyticsData.positionStats && analyticsData.positionStats.length > 0 && (
+        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border overflow-hidden`}>
+          <button
+            onClick={() => toggleSection('position')}
+            className={`w-full px-5 py-3 flex items-center justify-between ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50'} transition-colors`}
+          >
+            <div className="flex items-center gap-3">
+              <Target className="w-5 h-5 text-almet-sapphire" />
+              <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Position Performance
+              </h3>
+            </div>
+            {expandedSections.position ? 
+              <ChevronUp className="w-5 h-5 text-gray-400" /> : 
+              <ChevronDown className="w-5 h-5 text-gray-400" />
+            }
+          </button>
+          
+          {expandedSections.position && (
+            <div className="px-5 pb-5">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={analyticsData.positionStats}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                  <XAxis dataKey="position" stroke={darkMode ? '#9ca3af' : '#6b7280'} angle={-45} textAnchor="end" height={80} style={{ fontSize: '10px' }} />
+                  <YAxis stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '11px' }} />
+                  <Tooltip 
+                    contentStyle={{
+                      backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                      border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                      borderRadius: '8px',
+                      fontSize: '12px'
+                    }}
+                  />
+                  <Bar dataKey="avgScore" fill={COLORS.secondary} name="Avg Score %" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Employee Competency Section */}
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border overflow-hidden`}>
+        <button
+          onClick={() => toggleSection('competency')}
+          className={`w-full px-5 py-3 flex items-center justify-between ${darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-50'} transition-colors`}
+        >
+          <div className="flex items-center gap-3">
+            <Award className="w-5 h-5 text-almet-sapphire" />
+            <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              Employee Competency Analysis
+            </h3>
+          </div>
+          {expandedSections.competency ? 
+            <ChevronUp className="w-5 h-5 text-gray-400" /> : 
+            <ChevronDown className="w-5 h-5 text-gray-400" />
+          }
+        </button>
+        
+        {expandedSections.competency && (
+          <div className="px-5 pb-5">
+            <div className="mb-4">
+              <SearchableDropdown
+                options={employeeOptions}
+                value={selectedEmployeeId}
+                onChange={(value) => {
+                  console.log('Selected employee ID:', value);
+                  setSelectedEmployeeId(value);
+                  if (!value) {
+                    setSelectedEmployeeData(null);
+                  }
+                }}
+                placeholder="-- Search and select an employee --"
+                searchPlaceholder="Search by name or position..."
+                darkMode={darkMode}
+                icon={<User size={14} />}
+                allowUncheck={true}
+                className="w-full"
+              />
+              
+              {employeeOptions.length === 0 && (
+                <p className={`text-xs mt-2 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                  ⚠️ No employees with completed performance found
+                </p>
+              )}
+            </div>
+
+            {loadingEmployeeData && (
+              <div className="flex items-center justify-center py-8">
+                <Loader className="w-6 h-6 animate-spin text-almet-sapphire mr-2" />
+                <p className="text-xs text-gray-500">Loading...</p>
+              </div>
+            )}
+
+            {!loadingEmployeeData && selectedEmployeeId && selectedEmployee && selectedEmployeeData && (
+              <>
+                <div className="mb-3">
+                  <p className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {selectedEmployee.employee_name || selectedEmployee.name}
+                  </p>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    {selectedEmployee.employee_position_group || selectedEmployee.position} • {selectedEmployee.employee_department || selectedEmployee.department}
+                  </p>
+                  
+                  {selectedEmployeeData.metadata && (
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                        selectedEmployeeData.metadata.competency_type === 'LEADERSHIP'
+                          ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+                          : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                      }`}>
+                        {selectedEmployeeData.metadata.competency_type === 'LEADERSHIP' ? '👔 Leadership' : '🎯 Behavioral'}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <ResponsiveContainer width="100%" height={350}>
+                  <RadarChart data={getEmployeeCompetencyData()}>
+                    <PolarGrid stroke={darkMode ? '#374151' : '#e5e7eb'} />
+                    <PolarAngleAxis dataKey="competency" stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '11px' }} />
+                    <PolarRadiusAxis angle={90} domain={[0, 100]} stroke={darkMode ? '#9ca3af' : '#6b7280'} style={{ fontSize: '10px' }} />
+                    <Radar name="Score" dataKey="percentage" stroke={COLORS.primary} fill={COLORS.primary} fillOpacity={0.6} strokeWidth={2} />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: darkMode ? '#1f2937' : '#ffffff',
+                        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+                        borderRadius: '8px',
+                        fontSize: '12px'
+                      }}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </>
+            )}
+
+            {!loadingEmployeeData && !selectedEmployeeId && (
+              <div className="text-center py-8">
+                <Users className="w-10 h-10 mx-auto mb-2 text-gray-300" />
+                <p className="text-xs text-gray-500">Select an employee to view competency analysis</p>
+              </div>
+            )}
+
+            {!loadingEmployeeData && selectedEmployeeId && !selectedEmployeeData && (
+              <div className="text-center py-8">
+                <AlertCircle className="w-10 h-10 mx-auto mb-2 text-red-400" />
+                <p className="text-xs text-red-600 dark:text-red-400 font-medium">Failed to load data</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -592,7 +613,7 @@ export default function FixedAnalyticsDashboard({
   );
 }
 
-// ✅ SEARCHABLE DROPDOWN COMPONENT
+// Searchable Dropdown Component
 function SearchableDropdown({ 
   options = [], 
   value, 
@@ -655,7 +676,7 @@ function SearchableDropdown({
         ref={buttonRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm text-left flex items-center justify-between transition-all duration-200 hover:border-almet-sapphire/50`}
+        className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs text-left flex items-center justify-between transition-all duration-200 hover:border-almet-sapphire/50`}
       >
         <div className="flex items-center">
           {icon && <span className="mr-2 text-almet-sapphire">{icon}</span>}
