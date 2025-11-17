@@ -563,9 +563,16 @@ const JobDescriptionForm = ({
         job_function: jobFunctionId,
         position_group: positionGroupId,
         
-        ...(formData.grading_level && formData.grading_level.trim() && { 
-          grading_level: formData.grading_level.trim() 
-        }),
+         // 🔥 UPDATED: Send grading_levels as array (or single value for backward compat)
+      ...(formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0 && {
+        grading_levels: formData.grading_levels.map(level => level.trim())
+      }),
+      
+      // 🔥 Fallback: If grading_levels not set but grading_level is, convert to array
+      ...((!formData.grading_levels || formData.grading_levels.length === 0) && 
+          formData.grading_level && formData.grading_level.trim() && {
+        grading_levels: [formData.grading_level.trim()]
+      }),
         
         ...(unitId && !isNaN(unitId) && { unit: unitId }),
         

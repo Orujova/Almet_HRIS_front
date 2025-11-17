@@ -6,13 +6,11 @@ import {
   AlertCircle,
   CheckCircle,
   Info,
-  Target,
-  RefreshCw,
-  Eye,
   Loader,
   UserX // For vacancy icon
 } from 'lucide-react';
 import SearchableDropdown from '../common/SearchableDropdown'; // UPDATED: Import from common
+import MultiSelect from '../common/MultiSelect';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
 const PositionInformationTab = ({
@@ -178,7 +176,9 @@ const PositionInformationTab = ({
     )];
     
     return gradingLevels.map(level => ({
+      id: level,      // 🔥 IMPORTANT: Use level as id
       value: level,
+      name: level,    // 🔥 IMPORTANT: Use level as name
       label: level
     }));
   };
@@ -703,11 +703,11 @@ const getAssignmentPreviewDisplay = () => {
 };
   const assignmentDisplay = getAssignmentPreviewDisplay();
 
-  return (
+   return (
     <div className="space-y-6">
       {/* Basic Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* UPDATED: Job Title with SearchableDropdown */}
+        {/* Job Title */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Job Title <span className="text-red-500">*</span>
@@ -722,14 +722,14 @@ const getAssignmentPreviewDisplay = () => {
             placeholder={counts.jobTitles > 0 ? "Select job title from records" : "Enter job title"}
             className={validationErrors.job_title ? 'border-red-500' : ''}
             darkMode={darkMode}
-             allowUncheck={true}
+            allowUncheck={true}
           />
           {validationErrors.job_title && (
             <p className="text-red-500 text-xs mt-1">{validationErrors.job_title}</p>
           )}
         </div>
         
-        {/* UPDATED: Company with SearchableDropdown */}
+        {/* Company */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Company <span className="text-red-500">*</span>
@@ -741,17 +741,17 @@ const getAssignmentPreviewDisplay = () => {
             options={getUniqueBusinessFunctions()}
             value={formData.business_function}
             onChange={handleBusinessFunctionChange}
-            placeholder={counts.businessFunctions > 0 ? "Select Company" : "No Companys available"}
+            placeholder={counts.businessFunctions > 0 ? "Select Company" : "No Companies available"}
             className={validationErrors.business_function ? 'border-red-500' : ''}
             darkMode={darkMode}
-             allowUncheck={true}
+            allowUncheck={true}
           />
           {validationErrors.business_function && (
             <p className="text-red-500 text-xs mt-1">{validationErrors.business_function}</p>
           )}
         </div>
         
-        {/* UPDATED: Department with SearchableDropdown */}
+        {/* Department */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Department <span className="text-red-500">*</span>
@@ -775,7 +775,7 @@ const getAssignmentPreviewDisplay = () => {
           )}
         </div>
         
-        {/* UPDATED: Unit with SearchableDropdown */}
+        {/* Unit */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Unit
@@ -799,7 +799,7 @@ const getAssignmentPreviewDisplay = () => {
           )}
         </div>
 
-        {/* UPDATED: Job Function with SearchableDropdown */}
+        {/* Job Function */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Job Function <span className="text-red-500">*</span>
@@ -823,7 +823,7 @@ const getAssignmentPreviewDisplay = () => {
           )}
         </div>
         
-        {/* UPDATED: Hierarchy with SearchableDropdown */}
+        {/* Hierarchy */}
         <div>
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
             Hierarchy <span className="text-red-500">*</span>
@@ -836,7 +836,7 @@ const getAssignmentPreviewDisplay = () => {
             value={formData.position_group}
             onChange={handlePositionGroupChange}
             placeholder={formData.job_function ? 
-              (counts.positionGroups > 0 ? "Select Hierarchy" : "No Hierarchys available") : 
+              (counts.positionGroups > 0 ? "Select Hierarchy" : "No Hierarchies available") : 
               "Select Job Function First"
             }
             className={validationErrors.position_group ? 'border-red-500' : ''}
@@ -847,24 +847,51 @@ const getAssignmentPreviewDisplay = () => {
           )}
         </div>
         
-        {/* UPDATED: Grading Level with SearchableDropdown */}
+        {/* 🔥 UPDATED: Grading Levels - Now Multi-Select */}
         <div className="md:col-span-2">
           <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-            Grading Level
+            Grading Levels
             {counts.gradingLevels > 0 && (
               <span className={`text-xs ${textMuted} ml-1`}>({counts.gradingLevels} available)</span>
             )}
+            <span className={`text-xs ${textMuted} block mt-1`}>
+              💡 Select multiple grading levels to find employees across different grades
+            </span>
           </label>
-          <SearchableDropdown
+          <MultiSelect
             options={getFilteredGradingLevels()}
-            value={formData.grading_level}
-            onChange={(value) => onFormDataChange({...formData, grading_level: value})}
+            selected={Array.isArray(formData.grading_levels) ? formData.grading_levels : (formData.grading_level ? [formData.grading_level] : [])}
+            onChange={(fieldName, value) => {
+              // Toggle selection
+              const currentSelection = Array.isArray(formData.grading_levels) 
+                ? formData.grading_levels 
+                : (formData.grading_level ? [formData.grading_level] : []);
+              
+              const newSelection = currentSelection.includes(value)
+                ? currentSelection.filter(level => level !== value)
+                : [...currentSelection, value];
+              
+              onFormDataChange({
+                ...formData, 
+                grading_levels: newSelection,
+                grading_level: newSelection[0] || '' // Keep first for backward compat
+              });
+            }}
             placeholder={formData.position_group ? 
-              (counts.gradingLevels > 0 ? "Select Grading Level" : "No grading levels available") : 
+              (counts.gradingLevels > 0 ? "Select one or more grading levels" : "No grading levels available") : 
               "Select Hierarchy First"
             }
+            fieldName="grading_levels"
             darkMode={darkMode}
           />
+          {formData.grading_levels && formData.grading_levels.length > 0 && (
+            <div className="mt-2 flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+              <CheckCircle size={12} />
+              <span>
+                Will search for employees with grade{formData.grading_levels.length > 1 ? 's' : ''}: {formData.grading_levels.join(', ')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 

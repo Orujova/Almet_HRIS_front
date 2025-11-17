@@ -2,21 +2,35 @@
 
 import axios from 'axios';
 
-// Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-// Axios instance with auth token
+// ✅ Token Manager (performanceService.js kimi)
+const TokenManager = {
+  getAccessToken: () => typeof window !== 'undefined' ? localStorage.getItem("accessToken") : null,
+  getRefreshToken: () => typeof window !== 'undefined' ? localStorage.getItem("refreshToken") : null,
+  setAccessToken: (token) => typeof window !== 'undefined' && localStorage.setItem("accessToken", token),
+  setRefreshToken: (token) => typeof window !== 'undefined' && localStorage.setItem("refreshToken", token),
+  removeTokens: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+    }
+  }
+};
+
+// Axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 30000,
 });
 
-// Add auth token to requests
+// ✅ Request Interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
+    const token = TokenManager.getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,6 +41,21 @@ api.interceptors.request.use(
   }
 );
 
+// ✅ Response Interceptor (401 xətası üçün)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      TokenManager.removeTokens();
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+
 // ==================== POLICY CRUD ====================
 
 /**
@@ -36,7 +65,7 @@ api.interceptors.request.use(
  */
 export const getAllPolicies = async (params = {}) => {
   try {
-    const response = await api.get('/api/policies/', { params });
+    const response = await api.get('/policies/policies/', { params });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -50,7 +79,7 @@ export const getAllPolicies = async (params = {}) => {
  */
 export const getPolicyDetail = async (id) => {
   try {
-    const response = await api.get(`/api/policies/${id}/`);
+    const response = await api.get(`/policies/policies/${id}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -73,7 +102,7 @@ export const createPolicy = async (policyData) => {
       }
     });
     
-    const response = await api.post('/api/policies/', formData, {
+    const response = await api.post('/policies/policies/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -102,7 +131,7 @@ export const updatePolicy = async (id, policyData) => {
       }
     });
     
-    const response = await api.put(`/api/policies/${id}/`, formData, {
+    const response = await api.put(`/policies/policies/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -130,7 +159,7 @@ export const partialUpdatePolicy = async (id, policyData) => {
       }
     });
     
-    const response = await api.patch(`/api/policies/${id}/`, formData, {
+    const response = await api.patch(`/policies/policies/${id}/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -149,7 +178,7 @@ export const partialUpdatePolicy = async (id, policyData) => {
  */
 export const deletePolicy = async (id) => {
   try {
-    const response = await api.delete(`/api/policies/${id}/`);
+    const response = await api.delete(`/policies/policies/${id}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -165,7 +194,7 @@ export const deletePolicy = async (id) => {
  */
 export const getAllFolders = async (params = {}) => {
   try {
-    const response = await api.get('/api/policy-folders/', { params });
+    const response = await api.get('/policies/policy-folders/', { params });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -179,7 +208,7 @@ export const getAllFolders = async (params = {}) => {
  */
 export const getFolderDetail = async (id) => {
   try {
-    const response = await api.get(`/api/policy-folders/${id}/`);
+    const response = await api.get(`/policies/policy-folders/${id}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -193,7 +222,7 @@ export const getFolderDetail = async (id) => {
  */
 export const createFolder = async (folderData) => {
   try {
-    const response = await api.post('/api/policy-folders/', folderData);
+    const response = await api.post('/policies/policy-folders/', folderData);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -208,7 +237,7 @@ export const createFolder = async (folderData) => {
  */
 export const updateFolder = async (id, folderData) => {
   try {
-    const response = await api.put(`/api/policy-folders/${id}/`, folderData);
+    const response = await api.put(`/policies/policy-folders/${id}/`, folderData);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -222,7 +251,7 @@ export const updateFolder = async (id, folderData) => {
  */
 export const deleteFolder = async (id) => {
   try {
-    const response = await api.delete(`/api/policy-folders/${id}/`);
+    const response = await api.delete(`/policies/policy-folders/${id}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -236,7 +265,7 @@ export const deleteFolder = async (id) => {
  */
 export const getFoldersByBusinessFunction = async (bfId) => {
   try {
-    const response = await api.get(`/api/policy-folders/by-business-function/${bfId}/`);
+    const response = await api.get(`/policies/policy-folders/by-business-function/${bfId}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -250,7 +279,7 @@ export const getFoldersByBusinessFunction = async (bfId) => {
  */
 export const getPoliciesInFolder = async (folderId) => {
   try {
-    const response = await api.get(`/api/policy-folders/${folderId}/policies/`);
+    const response = await api.get(`/policies/policy-folders/${folderId}/policies/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -264,7 +293,7 @@ export const getPoliciesInFolder = async (folderId) => {
  */
 export const getFolderStatistics = async (folderId) => {
   try {
-    const response = await api.get(`/api/policy-folders/${folderId}/statistics/`);
+    const response = await api.get(`/policies/policy-folders/${folderId}/statistics/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -280,7 +309,7 @@ export const getFolderStatistics = async (folderId) => {
  */
 export const getPoliciesByFolder = async (folderId) => {
   try {
-    const response = await api.get(`/api/policies/by-folder/${folderId}/`);
+    const response = await api.get(`/policies/policies/by-folder/${folderId}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -294,7 +323,7 @@ export const getPoliciesByFolder = async (folderId) => {
  */
 export const trackPolicyView = async (policyId) => {
   try {
-    const response = await api.post(`/api/policies/${policyId}/view/`);
+    const response = await api.post(`/policies/policies/${policyId}/view/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -308,27 +337,14 @@ export const trackPolicyView = async (policyId) => {
  */
 export const trackPolicyDownload = async (policyId) => {
   try {
-    const response = await api.post(`/api/policies/${policyId}/download/`);
+    const response = await api.post(`/policies/policies/${policyId}/download/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
   }
 };
 
-/**
- * Get policy access logs
- * @param {number} policyId - Policy ID
- * @param {Object} params - Query parameters
- * @returns {Promise}
- */
-export const getPolicyAccessLogs = async (policyId, params = {}) => {
-  try {
-    const response = await api.get(`/api/policies/${policyId}/access_logs/`, { params });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error.message;
-  }
-};
+
 
 /**
  * Acknowledge policy
@@ -338,7 +354,7 @@ export const getPolicyAccessLogs = async (policyId, params = {}) => {
  */
 export const acknowledgePolicy = async (policyId, notes = '') => {
   try {
-    const response = await api.post(`/api/policies/${policyId}/acknowledge/`, { notes });
+    const response = await api.post(`/policies/policies/${policyId}/acknowledge/`, { notes });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -353,58 +369,17 @@ export const acknowledgePolicy = async (policyId, notes = '') => {
  */
 export const getPolicyAcknowledgments = async (policyId, params = {}) => {
   try {
-    const response = await api.get(`/api/policies/${policyId}/acknowledgments/`, { params });
+    const response = await api.get(`/policies/policies/${policyId}/acknowledgments/`, { params });
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
   }
 };
 
-/**
- * Get policy version history
- * @param {number} policyId - Policy ID
- * @returns {Promise}
- */
-export const getPolicyVersionHistory = async (policyId) => {
-  try {
-    const response = await api.get(`/api/policies/${policyId}/version_history/`);
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error.message;
-  }
-};
 
-/**
- * Create policy version
- * @param {number} policyId - Policy ID
- * @param {string} changesSummary - Changes summary
- * @returns {Promise}
- */
-export const createPolicyVersion = async (policyId, changesSummary = '') => {
-  try {
-    const response = await api.post(`/api/policies/${policyId}/create_version/`, {
-      changes_summary: changesSummary,
-    });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error.message;
-  }
-};
 
-/**
- * Change policy status
- * @param {number} policyId - Policy ID
- * @param {string} status - New status (DRAFT, REVIEW, APPROVED, PUBLISHED, ARCHIVED)
- * @returns {Promise}
- */
-export const changePolicyStatus = async (policyId, status) => {
-  try {
-    const response = await api.post(`/api/policies/${policyId}/change_status/`, { status });
-    return response.data;
-  } catch (error) {
-    throw error.response?.data || error.message;
-  }
-};
+
+
 
 // ==================== BUSINESS FUNCTIONS ====================
 
@@ -414,7 +389,7 @@ export const changePolicyStatus = async (policyId, status) => {
  */
 export const getBusinessFunctionsWithPolicies = async () => {
   try {
-    const response = await api.get('/api/business-functions-policies/');
+    const response = await api.get('/policies/business-functions-policies/');
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -428,7 +403,7 @@ export const getBusinessFunctionsWithPolicies = async () => {
  */
 export const getBusinessFunctionPoliciesDetail = async (id) => {
   try {
-    const response = await api.get(`/api/business-functions-policies/${id}/`);
+    const response = await api.get(`/policies/business-functions-policies/${id}/`);
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -441,7 +416,7 @@ export const getBusinessFunctionPoliciesDetail = async (id) => {
  */
 export const getBusinessFunctionsWithStats = async () => {
   try {
-    const response = await api.get('/api/business-functions-policies/with_stats/');
+    const response = await api.get('/policies/business-functions-policies/with_stats/');
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -456,7 +431,7 @@ export const getBusinessFunctionsWithStats = async () => {
  */
 export const getPolicyStatisticsOverview = async () => {
   try {
-    const response = await api.get('/api/policy-statistics/overview/');
+    const response = await api.get('/policies/policy-statistics/overview/');
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -469,7 +444,7 @@ export const getPolicyStatisticsOverview = async () => {
  */
 export const getStatisticsByBusinessFunction = async () => {
   try {
-    const response = await api.get('/api/policy-statistics/by_business_function/');
+    const response = await api.get('/policies/policy-statistics/by_business_function/');
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -483,7 +458,7 @@ export const getStatisticsByBusinessFunction = async () => {
  */
 export const getMostViewedPolicies = async (limit = 10) => {
   try {
-    const response = await api.get('/api/policy-statistics/most_viewed/', {
+    const response = await api.get('/policies/policy-statistics/most_viewed/', {
       params: { limit },
     });
     return response.data;
@@ -499,7 +474,7 @@ export const getMostViewedPolicies = async (limit = 10) => {
  */
 export const getMostDownloadedPolicies = async (limit = 10) => {
   try {
-    const response = await api.get('/api/policy-statistics/most_downloaded/', {
+    const response = await api.get('/policies/policy-statistics/most_downloaded/', {
       params: { limit },
     });
     return response.data;
@@ -514,7 +489,7 @@ export const getMostDownloadedPolicies = async (limit = 10) => {
  */
 export const getAcknowledgmentStatus = async () => {
   try {
-    const response = await api.get('/api/policy-statistics/acknowledgment_status/');
+    const response = await api.get('/policies/policy-statistics/acknowledgment_status/');
     return response.data;
   } catch (error) {
     throw error.response?.data || error.message;
@@ -538,21 +513,7 @@ export const downloadPolicyFile = (fileUrl, filename) => {
   document.body.removeChild(link);
 };
 
-/**
- * Get policy status badge color
- * @param {string} status - Policy status
- * @returns {string} - Tailwind color class
- */
-export const getPolicyStatusColor = (status) => {
-  const statusColors = {
-    DRAFT: 'gray',
-    REVIEW: 'yellow',
-    APPROVED: 'green',
-    PUBLISHED: 'blue',
-    ARCHIVED: 'red',
-  };
-  return statusColors[status] || 'gray';
-};
+
 
 /**
  * Format file size
@@ -620,12 +581,10 @@ export default {
   getPoliciesByFolder,
   trackPolicyView,
   trackPolicyDownload,
-  getPolicyAccessLogs,
+
   acknowledgePolicy,
   getPolicyAcknowledgments,
-  getPolicyVersionHistory,
-  createPolicyVersion,
-  changePolicyStatus,
+
   
   // Business Functions
   getBusinessFunctionsWithPolicies,
@@ -641,7 +600,7 @@ export default {
   
   // Utilities
   downloadPolicyFile,
-  getPolicyStatusColor,
+
   formatFileSize,
   validatePDFFile,
 };

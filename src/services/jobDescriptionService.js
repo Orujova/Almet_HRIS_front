@@ -162,7 +162,17 @@ cleanJobDescriptionData(data) {
     position_group: parseInt(data.position_group) || null,
     
     // Optional ID fields
-    grading_level: data.grading_level?.trim() || null,
+    ...(data.grading_levels && Array.isArray(data.grading_levels) && data.grading_levels.length > 0 && {
+      grading_levels: data.grading_levels
+        .map(level => level?.trim())
+        .filter(level => level && level.length > 0)
+    }),
+    
+    // 🔥 Fallback: Convert single grading_level to array if grading_levels not provided
+    ...((!data.grading_levels || data.grading_levels.length === 0) && 
+        data.grading_level && data.grading_level.trim() && {
+      grading_levels: [data.grading_level.trim()]
+    }),
     
     // Employee selection support
     selected_employee_ids: Array.isArray(data.selected_employee_ids) 
@@ -388,7 +398,17 @@ cleanJobDescriptionData(data) {
         department: parseInt(criteria.department),
         job_function: parseInt(criteria.job_function),
         position_group: parseInt(criteria.position_group),
-        grading_level: criteria.grading_level?.trim() || null,
+       
+      // 🔥 UPDATED: Handle grading_levels array
+      ...(criteria.grading_levels && Array.isArray(criteria.grading_levels) && criteria.grading_levels.length > 0 && {
+        grading_levels: criteria.grading_levels.map(level => level?.trim()).filter(Boolean)
+      }),
+      
+      // 🔥 Fallback: Single grading_level to array
+      ...((!criteria.grading_levels || criteria.grading_levels.length === 0) && 
+          criteria.grading_level && criteria.grading_level.trim() && {
+        grading_levels: [criteria.grading_level.trim()]
+      }),
         max_preview: criteria.max_preview || 50,
         include_vacancies: true
       };
