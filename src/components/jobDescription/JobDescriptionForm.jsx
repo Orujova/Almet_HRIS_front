@@ -563,9 +563,9 @@ const JobDescriptionForm = ({
         job_function: jobFunctionId,
         position_group: positionGroupId,
         
-         // 🔥 UPDATED: Send grading_levels as array (or single value for backward compat)
+          // 🔥 FIX: Send grading_levels correctly
       ...(formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0 && {
-        grading_levels: formData.grading_levels.map(level => level.trim())
+        grading_levels: formData.grading_levels.map(level => level.trim()).filter(Boolean)
       }),
       
       // 🔥 Fallback: If grading_levels not set but grading_level is, convert to array

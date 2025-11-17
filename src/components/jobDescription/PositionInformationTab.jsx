@@ -395,6 +395,7 @@ const updateAssignmentPreview = async () => {
     const positionGroupId = getPositionGroupId(formData.position_group);
     const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
+   // 🔥 FIX: Send grading_levels as array, not single value
     const previewCriteria = {
       job_title: formData.job_title.trim(),
       business_function: businessFunctionId,
@@ -402,12 +403,25 @@ const updateAssignmentPreview = async () => {
       unit: unitId,
       job_function: jobFunctionId,
       position_group: positionGroupId,
-      grading_level: formData.grading_level?.trim() || null,
       max_preview: 50,
       include_vacancies: true
     };
 
+    // 🔥 CRITICAL FIX: Send grading_levels array correctly
+    if (formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0) {
+      // Send the full array
+      previewCriteria.grading_levels = formData.grading_levels;
+      console.log('🔥 Sending grading_levels array:', formData.grading_levels);
+    } else if (formData.grading_level && formData.grading_level.trim()) {
+      // Fallback: Convert single to array
+      previewCriteria.grading_levels = [formData.grading_level.trim()];
+      console.log('🔥 Sending single grading_level as array:', [formData.grading_level]);
+    }
+
+    console.log('📤 Preview Criteria:', JSON.stringify(previewCriteria, null, 2));
+
     const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
+    
     
     // FIXED: Better handling of response arrays with proper fallbacks
     const employees = Array.isArray(response.employees) ? response.employees : [];
