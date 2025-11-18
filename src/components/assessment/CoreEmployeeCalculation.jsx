@@ -70,7 +70,15 @@ const CoreEmployeeCalculation = () => {
     }
     return 'employee';
   });
-
+  const toTitleCase = (str) => {
+    if (!str) return '-';
+    return str
+      .trim()
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
   // Basic states
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
@@ -153,17 +161,22 @@ const CoreEmployeeCalculation = () => {
 
   // Helper function to filter job titles based on position group
   const getJobTitlesForPositionGroup = (positionGroupId) => {
-    if (!positionGroupId) return uniqueJobTitles;
-    
-    const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
-    const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))];
-    
-    return jobTitlesInGroup.map((title, index) => ({ 
-      value: title,
-      name: title,
-      uniqueId: `${positionGroupId}-${title}-${index}`
-    }));
-  };
+  if (!positionGroupId) return uniqueJobTitles;
+  
+  // ✅ Filter employees by position group
+  const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
+  
+  // ✅ Get unique job titles and sort
+  const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))]
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'az')); // ✅ Düzgün sort
+  
+  // ✅ Map to dropdown format with title case
+  return jobTitlesInGroup.map((title, index) => ({ 
+    value: title,
+    name: toTitleCase(title),
+    uniqueId: `${positionGroupId}-${title}-${index}`
+  }));
+};
 
   // Update filtered job titles when position group changes in create modal
   useEffect(() => {
@@ -215,8 +228,13 @@ const CoreEmployeeCalculation = () => {
       setCoreScales(coreScalesRes.results || []);
       
       // Extract unique job titles from employees
-      const jobTitles = [...new Set(employeesList.map(emp => emp.job_title).filter(Boolean))];
-      setUniqueJobTitles(jobTitles.map(title => ({ name: title, value: title })));
+      const jobTitles = [...new Set(employeesList.map(emp => emp.job_title).filter(Boolean))]
+  .sort((a, b) => a.localeCompare(b, 'az')); // ✅ Azərbaycan əlifbası ilə sort
+
+setUniqueJobTitles(jobTitles.map(title => ({ 
+  name: toTitleCase(title), 
+  value: title 
+})));
       
       const skillGroupsList = skillGroupsRes.results || [];
       const skillGroupsDetails = await Promise.all(
@@ -696,7 +714,7 @@ const CoreEmployeeCalculation = () => {
                   filteredPositionAssessments.map((assessment) => (
                     <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-gray-900">{assessment.position_group_name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{assessment.job_title}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{toTitleCase(assessment.job_title)}</td>
                       <td className="px-4 py-3 text-sm text-gray-500">{assessment.competency_ratings?.length || 0} skills</td>
                       <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.created_at).toLocaleDateString()}</td>
                       <td className="px-4 py-3">
@@ -763,7 +781,7 @@ const CoreEmployeeCalculation = () => {
                         <div className="text-sm font-medium text-gray-900">{assessment.employee_name}</div>
                         <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{assessment.position_assessment_title}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{toTitleCase(assessment.position_assessment_title)}</td>
                       <td className="px-4 py-3"><StatusBadge status={assessment.status} /></td>
                       <td className="px-4 py-3"><GapIndicator gap={assessment.gap_score || 0} /></td>
                       <td className="px-4 py-3"><CompletionIndicator percentage={assessment.completion_percentage} /></td>
@@ -887,7 +905,7 @@ const CoreEmployeeCalculation = () => {
                   <SearchableDropdown
                     options={filteredJobTitles.map(title => ({
                       value: title.value,
-                      label: title.name
+                      label: toTitleCase(title.name)
                     }))}
                      portal={true}
                   zIndex="z-[60]"
@@ -1099,7 +1117,7 @@ const CoreEmployeeCalculation = () => {
                   <SearchableDropdown
                     options={editFilteredJobTitles.map(title => ({
                       value: title.value,
-                      label: title.name
+                      label: toTitleCase(title.name)
                     }))}
                      portal={true}
                   zIndex="z-[60]"
@@ -1321,7 +1339,7 @@ const CoreEmployeeCalculation = () => {
                       </div>
                       <div>
                         <span className="text-xs font-medium text-blue-700">Job Title:</span>
-                        <p className="text-sm text-blue-900">{selectedEmployeeInfo.job_title}</p>
+                        <p className="text-sm text-blue-900">{toTitleCase(selectedEmployeeInfo.job_title)}</p>
                       </div>
                       <div>
                         <span className="text-xs font-medium text-blue-700">Hierarchy:</span>
@@ -1617,7 +1635,7 @@ const CoreEmployeeCalculation = () => {
                     </div>
                     <div>
                       <span className="text-xs font-medium text-blue-700">Job Title:</span>
-                      <p className="text-sm text-blue-900">{selectedEmployeeInfo.job_title}</p>
+                      <p className="text-sm text-blue-900">{toTitleCase(selectedEmployeeInfo.job_title)}</p>
                     </div>
                     <div>
                       <span className="text-xs font-medium text-blue-700">Hierarchy:</span>
@@ -1832,7 +1850,7 @@ const CoreEmployeeCalculation = () => {
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Job Title</label>
-                      <p className="text-sm font-medium text-gray-900">{selectedAssessment.job_title}</p>
+                      <p className="text-sm font-medium text-gray-900">{toTitleCase(selectedAssessment.job_title)}</p>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Created By</label>
@@ -1895,7 +1913,7 @@ const CoreEmployeeCalculation = () => {
               </div>
               <div>
                 <div className="text-xs font-medium text-gray-600">Job Title</div>
-                <div className="text-sm text-gray-700 mt-1">{selectedAssessment.position_assessment_title}</div>
+                <div className="text-sm text-gray-700 mt-1">{toTitleCase(selectedAssessment.position_assessment_title)}</div>
               </div>
               <div>
                 <div className="text-xs font-medium text-gray-600">Status</div>

@@ -1,12 +1,13 @@
-// components/orgChart/EmployeeModal.jsx - Part 1
+// components/orgChart/EmployeeModal.jsx
 'use client'
-import React from 'react';
+import React, { useState } from 'react';
 import { 
     X, User, Phone, Mail, Building2, Layers, Briefcase, Target, 
     Crown, Users, UsersRound, ArrowUp, ArrowDown, AlertCircle, 
     FileText, RefreshCw, XCircle
 } from 'lucide-react';
 import Avatar from './Avatar';
+import Pagination from '../common/Pagination';
 
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
@@ -40,6 +41,11 @@ const EmployeeModal = ({
     setSelectedEmployee,
     darkMode
 }) => {
+    // Pagination states
+    const [reportsPage, setReportsPage] = useState(1);
+    const [colleaguesPage, setColleaguesPage] = useState(1);
+    const itemsPerPage = 5;
+
     if (!selectedEmployee) return null;
 
     const bgCard = darkMode ? "bg-slate-800" : "bg-white";
@@ -49,6 +55,12 @@ const EmployeeModal = ({
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const textPrimary = darkMode ? "text-gray-200" : "text-almet-comet";
     const bgAccent = darkMode ? "bg-slate-700" : "bg-almet-mystic";
+
+    // Reset pagination when employee changes
+    React.useEffect(() => {
+        setReportsPage(1);
+        setColleaguesPage(1);
+    }, [selectedEmployee.employee_id]);
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity duration-200 ease-in-out">
@@ -181,7 +193,7 @@ const EmployeeModal = ({
                                 />
                             )}
 
-                            {/* Direct Reports Card */}
+                            {/* Direct Reports Card with Pagination */}
                             {!selectedEmployee.vacant && selectedEmployee.direct_reports > 0 && (
                                 <DirectReportsCard
                                     selectedEmployee={selectedEmployee}
@@ -195,10 +207,13 @@ const EmployeeModal = ({
                                     textHeader={textHeader}
                                     textPrimary={textPrimary}
                                     textSecondary={textSecondary}
+                                    currentPage={reportsPage}
+                                    onPageChange={setReportsPage}
+                                    itemsPerPage={itemsPerPage}
                                 />
                             )}
 
-                            {/* Unit Colleagues Card */}
+                            {/* Unit Colleagues Card with Pagination */}
                             {selectedEmployee.unit && !selectedEmployee.vacant && (
                                 <UnitColleaguesCard
                                     selectedEmployee={selectedEmployee}
@@ -212,6 +227,9 @@ const EmployeeModal = ({
                                     textHeader={textHeader}
                                     textPrimary={textPrimary}
                                     textSecondary={textSecondary}
+                                    currentPage={colleaguesPage}
+                                    onPageChange={setColleaguesPage}
+                                    itemsPerPage={itemsPerPage}
                                 />
                             )}
                         </div>
@@ -223,7 +241,7 @@ const EmployeeModal = ({
 };
 
 // Detail Row Component
-export const  DetailRow = ({ icon: Icon, label, value, isVacant = false }) => (
+export const DetailRow = ({ icon: Icon, label, value, isVacant = false }) => (
     <div className="flex items-center gap-2 py-1.5">
         <div className={`flex-shrink-0 w-6 h-6 rounded-lg flex items-center justify-center ${
             isVacant 
@@ -248,9 +266,6 @@ export const  DetailRow = ({ icon: Icon, label, value, isVacant = false }) => (
         </div>
     </div>
 );
-
-
-
 
 // Employee Details Card
 export const EmployeeDetailsCard = ({ selectedEmployee, bgAccent, borderColor, textHeader }) => (
@@ -393,21 +408,25 @@ export const ReportsToCard = ({
     );
 };
 
-// Direct Reports Card
+// Direct Reports Card with Pagination
 export const DirectReportsCard = ({ 
     selectedEmployee, orgChart, setSelectedEmployee, cleanEmployeeData, 
-    darkMode, bgAccent, bgCard, borderColor, textHeader, textPrimary, textSecondary 
+    darkMode, bgAccent, bgCard, borderColor, textHeader, textPrimary, textSecondary,
+    currentPage, onPageChange, itemsPerPage 
 }) => {
-    const reports = orgChart?.filter(emp => emp.line_manager_id === selectedEmployee.employee_id) || [];
+    const allReports = orgChart?.filter(emp => emp.line_manager_id === selectedEmployee.employee_id) || [];
+    const totalPages = Math.ceil(allReports.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedReports = allReports.slice(startIndex, startIndex + itemsPerPage);
     
     return (
         <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
             <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
                 <Users size={14} />
-                Direct Reports ({selectedEmployee.direct_reports})
+                Direct Reports ({allReports.length})
             </h4>
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-                {reports.map(report => {
+            <div className="space-y-2">
+                {paginatedReports.map(report => {
                     const isReportVacant = cleanEmployeeData(report).vacant;
                     return (
                         <div 
@@ -441,28 +460,46 @@ export const DirectReportsCard = ({
                     );
                 })}
             </div>
+            
+            {totalPages > 1 && (
+                <div className="mt-3">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={allReports.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={onPageChange}
+                        darkMode={darkMode}
+                    />
+                </div>
+            )}
         </div>
     );
 };
 
-// Unit Colleagues Card
+// Unit Colleagues Card with Pagination
 export const UnitColleaguesCard = ({ 
     selectedEmployee, orgChart, setSelectedEmployee, cleanEmployeeData, 
-    darkMode, bgAccent, bgCard, borderColor, textHeader, textPrimary, textSecondary 
+    darkMode, bgAccent, bgCard, borderColor, textHeader, textPrimary, textSecondary,
+    currentPage, onPageChange, itemsPerPage 
 }) => {
-    const colleagues = orgChart?.filter(emp => 
+    const allColleagues = orgChart?.filter(emp => 
         emp.unit === selectedEmployee.unit && 
         emp.employee_id !== selectedEmployee.employee_id
-    ).slice(0, 6) || [];
+    ) || [];
+    
+    const totalPages = Math.ceil(allColleagues.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedColleagues = allColleagues.slice(startIndex, startIndex + itemsPerPage);
     
     return (
         <div className={`${bgAccent} rounded-lg p-3 border ${borderColor}`}>
             <h4 className={`font-bold ${textHeader} mb-3 text-sm uppercase tracking-wider flex items-center gap-2`}>
                 <Building2 size={14} />
-                Unit Colleagues
+                Unit Colleagues ({allColleagues.length})
             </h4>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-                {colleagues.map(colleague => (
+            <div className="space-y-2">
+                {paginatedColleagues.map(colleague => (
                     <div 
                         key={colleague.employee_id}
                         className={`flex items-center gap-2 p-2 ${bgCard} rounded-lg cursor-pointer hover:shadow-md transition-all duration-200 hover:scale-[1.01] border ${borderColor}`}
@@ -479,6 +516,19 @@ export const UnitColleaguesCard = ({
                     </div>
                 ))}
             </div>
+            
+            {totalPages > 1 && (
+                <div className="mt-3">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        totalItems={allColleagues.length}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={onPageChange}
+                        darkMode={darkMode}
+                    />
+                </div>
+            )}
         </div>
     );
 };

@@ -20,7 +20,7 @@ import JobDescriptionList from '@/components/jobDescription/JobDescriptionList';
 import JobDescriptionForm from '@/components/jobDescription/JobDescriptionForm';
 import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
-import BulkUploadModal from '@/components/jobDescription/BulkUploadModal';
+
 import StatCard from '@/components/jobDescription/StatCard';
 
 const JobDescriptionPageContent = () => {
@@ -42,7 +42,7 @@ const JobDescriptionPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   
-  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+
   
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -379,21 +379,7 @@ const JobDescriptionPageContent = () => {
     setShowSubmissionModal(true);
   };
 
-  const handleBulkUploadComplete = async (result) => {
-    await fetchJobDescriptions();
-    await fetchStats();
-    
-    const message = result.successful > 0 
-      ? `Successfully created ${result.successful} job description${result.successful > 1 ? 's' : ''}!`
-      : 'Bulk upload completed';
-    
-    showSuccess(message);
-    
-    setTimeout(() => {
-      setShowBulkUploadModal(false);
-      setActiveView('list');
-    }, 2000);
-  };
+ 
 
   const handleSubmitForApproval = async () => {
     if (!createdJobsData) return;
@@ -767,16 +753,7 @@ const JobDescriptionPageContent = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
-                <button
-                  onClick={() => setShowBulkUploadModal(true)}
-                  className={`flex items-center justify-center gap-2 px-5 py-3 
-                    bg-emerald-500 hover:bg-emerald-600 text-white
-                    border border-transparent rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md`}
-                >
-                  <FileSpreadsheet size={16} />
-                  <span className="hidden sm:inline">Bulk Upload</span>
-                  <span className="sm:hidden">Upload</span>
-                </button>
+                
 
                 <button
                   onClick={() => router.push('/structure/job-descriptions/JobDescriptionSettings/')}
@@ -961,15 +938,7 @@ const JobDescriptionPageContent = () => {
             />
           )}
 
-          {/* Bulk Upload Modal */}
-          {showBulkUploadModal && (
-            <BulkUploadModal
-              isOpen={showBulkUploadModal}
-              onClose={() => setShowBulkUploadModal(false)}
-              onUploadComplete={handleBulkUploadComplete}
-              darkMode={darkMode}
-            />
-          )}
+        
 
           {/* Confirmation Modal */}
           <ConfirmationModal

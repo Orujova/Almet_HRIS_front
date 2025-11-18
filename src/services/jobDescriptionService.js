@@ -277,101 +277,8 @@ cleanJobDescriptionData(data) {
     }
   }
 
-  async downloadBulkUploadTemplate() {
-    try {
-   
-      const response = await api.get('/job-descriptions/download_template/', {
-        responseType: 'blob'
-      });
-      
-      // Create blob link to download
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      
-      // Extract filename from response headers or use default
-      const contentDisposition = response.headers['content-disposition'];
-      let filename = 'Job_Description_Bulk_Upload_Template.xlsx';
-      
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1];
-        }
-      }
-      
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
 
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error downloading bulk upload template:', error);
-      throw error;
-    }
-  }
 
-  async bulkUploadJobDescriptions(file, options = {}) {
-    try {
-     
-      
-      // Validate file
-      if (!file) {
-        throw new Error('File is required for bulk upload');
-      }
-      
-      const allowedTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'application/vnd.ms-excel'
-      ];
-      
-      if (!allowedTypes.includes(file.type)) {
-        throw new Error('Invalid file type. Please upload an Excel file (.xlsx or .xls)');
-      }
-      
-      // Create FormData
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('validate_only', options.validate_only ?? false);
-      formData.append('auto_assign_employees', options.auto_assign_employees ?? true);
-      formData.append('skip_duplicates', options.skip_duplicates ?? true);
-      
-      // Upload with progress tracking
-      const response = await api.post('/job-descriptions/bulk-upload/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        timeout: 120000, // 2 minutes for large files
-       
-      });
-      
-
-      return response.data;
-    } catch (error) {
-    
-      
-      if (error.response?.data) {
-        const errorData = error.response.data;
-     
-        
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map(err => 
-            `Row ${err.row}: ${err.errors.join(', ')}`
-          );
-          throw new Error(`Bulk upload failed:\n${errorMessages.join('\n')}`);
-        }
-      }
-      
-      throw error;
-    }
-  }
-
-  async validateBulkUpload(file) {
-    return this.bulkUploadJobDescriptions(file, { validate_only: true });
-  }
 
   async getJobDescription(id) {
     try {
@@ -697,19 +604,7 @@ cleanJobDescriptionData(data) {
     }
   }
 
-  // ========================================
-  // JOB DESCRIPTION ACTIVITY AND HISTORY
-  // ========================================
 
-  async getJobDescriptionActivities(id) {
-    try {
-      const response = await api.get(`/job-descriptions/${id}/activities/`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching job description activities:', error);
-      throw error;
-    }
-  }
 
   // ========================================
   // PDF EXPORT FUNCTIONALITY

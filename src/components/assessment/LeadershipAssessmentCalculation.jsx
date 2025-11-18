@@ -824,7 +824,7 @@ const toggleChildGroup = (groupId) => {
         </div>
       </div>
 
-      {/* ✅ Main Content Table - JOB TITLE COLUMN SİLİNDİ */}
+    
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {activeTab === 'position' ? (
           <div className="overflow-x-auto">
@@ -833,7 +833,7 @@ const toggleChildGroup = (groupId) => {
                 <tr>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Hierarchy</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Grade Levels</th>
-                  {/* ❌ Job Title column SİLİNDİ */}
+                
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Competencies</th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Created</th>
                   <th className="text-center px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
@@ -956,7 +956,7 @@ const toggleChildGroup = (groupId) => {
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* ✅ 2 COLUMN GRID - Job Title SİLİNDİ */}
+            
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
