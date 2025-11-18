@@ -1,21 +1,10 @@
-// pages/structure/job-descriptions/page.jsx - COMPLETE FIXED VERSION WITH DEBUG
+// pages/structure/job-descriptions/page.jsx - COMPLETE WITH LEADERSHIP SUPPORT
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  Plus, 
-  Edit, 
-  Eye, 
-  Trash2, 
-  FileText, 
-  Clock,
-  CheckCircle,
-  Settings,
-  Send,
-  X,
-  Users,
-  AlertCircle,
-  FileSpreadsheet
+  Plus, Edit, Eye, Trash2, FileText, Clock,
+  CheckCircle, Settings, Send, X, Users, AlertCircle, FileSpreadsheet
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -39,7 +28,6 @@ const JobDescriptionPageContent = () => {
   const router = useRouter();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   
-  // Theme classes
   const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
@@ -54,14 +42,11 @@ const JobDescriptionPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   
-  // Bulk Upload state
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // Submission workflow state
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionComments, setSubmissionComments] = useState('');
   const [submissionLoading, setSubmissionLoading] = useState(false);
@@ -73,7 +58,6 @@ const JobDescriptionPageContent = () => {
   const [availableSkills, setAvailableSkills] = useState([]);
   const [availableCompetencies, setAvailableCompetencies] = useState([]);
   
-  // Confirmation modal states
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: 'default',
@@ -83,22 +67,22 @@ const JobDescriptionPageContent = () => {
     loading: false
   });
 
-  // Data states
   const [jobDescriptions, setJobDescriptions] = useState([]);
   const [stats, setStats] = useState({});
   
-  // Enhanced dropdown data
+  // 🔥 Enhanced dropdown data with leadership groups
   const [dropdownData, setDropdownData] = useState({
     employees: [],
     employeeMap: new Map(),
     skillGroups: [],
     behavioralGroups: [],
+    leadershipMainGroups: [], // 🔥 NEW
     businessResources: [],
     accessMatrix: [],
     companyBenefits: []
   });
 
-  // Form state
+  // 🔥 Enhanced form state with leadership competencies
   const [formData, setFormData] = useState({
     job_title: '',
     job_purpose: '',
@@ -107,14 +91,15 @@ const JobDescriptionPageContent = () => {
     unit: '',
     job_function: '',
     position_group: '',
-        grading_level: '', // Keep for backward compatibility
-    grading_levels: [], // 🔥 NEW: Array for multiple selection
+    grading_level: '',
+    grading_levels: [],
     criticalDuties: [''],
     positionMainKpis: [''],
     jobDuties: [''],
     requirements: [''],
     required_skills_data: [],
     behavioral_competencies_data: [],
+    leadership_competencies_data: [], // 🔥 NEW
     business_resources_ids: [],
     access_rights_ids: [],
     company_benefits_ids: []
@@ -160,7 +145,7 @@ const JobDescriptionPageContent = () => {
     setCurrentPage(1);
   }, [searchTerm, selectedDepartment]);
 
-   const filterMatchingEmployees = () => {
+  const filterMatchingEmployees = () => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
       setMatchingEmployees([]);
       return;
@@ -200,13 +185,11 @@ const JobDescriptionPageContent = () => {
         return false;
       }
 
-      // 🔥 UPDATED: Check if employee matches ANY of the selected grading levels
       if (formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0) {
         if (!employee.grading_level || !formData.grading_levels.includes(employee.grading_level)) {
           return false;
         }
       } else if (formData.grading_level && employee.grading_level) {
-        // Fallback to single grading_level for backward compatibility
         if (employee.grading_level !== formData.grading_level) {
           return false;
         }
@@ -257,6 +240,7 @@ const JobDescriptionPageContent = () => {
     }
   };
 
+  // 🔥 UPDATED: Fetch dropdown data with leadership groups
   const fetchDropdownData = async () => {
     try {
       const fetchOptions = (endpoint) => ({
@@ -273,6 +257,7 @@ const JobDescriptionPageContent = () => {
         employeesRes,
         skillGroupsRes,
         behavioralGroupsRes,
+        leadershipMainGroupsRes, // 🔥 NEW
         businessResourcesRes,
         accessMatrixRes,
         companyBenefitsRes
@@ -280,6 +265,7 @@ const JobDescriptionPageContent = () => {
         fetch(`${baseUrl}/employees/?page_size=1000`, fetchOptions()),
         competencyApi.skillGroups.getAll(),
         competencyApi.behavioralGroups.getAll(),
+        competencyApi.leadershipMainGroups.getAll(), // 🔥 NEW
         jobDescriptionService.getBusinessResources({ page_size: 1000 }),
         jobDescriptionService.getAccessMatrix({ page_size: 1000 }),
         jobDescriptionService.getCompanyBenefits({ page_size: 1000 })
@@ -306,6 +292,9 @@ const JobDescriptionPageContent = () => {
 
       console.log('📚 Dropdown Data Loaded:', {
         employees: employeeList.length,
+        skillGroups: skillGroupsRes.results?.length || 0,
+        behavioralGroups: behavioralGroupsRes.results?.length || 0,
+        leadershipMainGroups: leadershipMainGroupsRes.results?.length || 0, // 🔥 NEW
         businessResources: businessResourcesRes.results?.length || 0,
         accessMatrix: accessMatrixRes.results?.length || 0,
         companyBenefits: companyBenefitsRes.results?.length || 0
@@ -316,6 +305,7 @@ const JobDescriptionPageContent = () => {
         employeeMap: employeeMap,
         skillGroups: skillGroupsRes.results || [],
         behavioralGroups: behavioralGroupsRes.results || [],
+        leadershipMainGroups: leadershipMainGroupsRes.results || [], // 🔥 NEW
         businessResources: businessResourcesRes.results || [],
         accessMatrix: accessMatrixRes.results || [],
         companyBenefits: companyBenefitsRes.results || []
@@ -471,8 +461,6 @@ const JobDescriptionPageContent = () => {
     setActiveView('list');
   };
 
-
-
   const handleTabNavigation = (targetView) => {
     if (targetView === 'create') {
       if (activeView === 'list' || editingJob) {
@@ -505,232 +493,178 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // pages/structure/job-descriptions/page.jsx
-
-const handleEdit = async (job) => {
-  try {
-    setActionLoading(true);
-    
-    console.log('\n' + '='.repeat(80));
-    console.log('🚀 STARTING EDIT PROCESS');
-    console.log('='.repeat(80));
-    console.log('Job ID:', job.id);
-    console.log('Job Title:', job.job_title);
-    
-    // Fetch full job data
-    const fullJob = await jobDescriptionService.getJobDescription(job.id);
-    
-    console.log('\n📋 FULL JOB DATA RECEIVED:');
-    console.log('Business Resources:', fullJob.business_resources?.length || 0, 'items');
-    console.log('Access Rights:', fullJob.access_rights?.length || 0, 'items');
-    console.log('Company Benefits:', fullJob.company_benefits?.length || 0, 'items');
-    console.log('Grading Levels:', fullJob.grading_levels || fullJob.grading_level);
-    
-    // ====================================================================
-    // 🔥 STEP 1: EXTRACT SECTIONS FIRST (BEFORE using them)
-    // ====================================================================
-    const criticalDuties = [];
-    const positionMainKpis = [];
-    const jobDuties = [];
-    const requirements = [];
-    
-    if (fullJob.sections && Array.isArray(fullJob.sections)) {
-      fullJob.sections.forEach(section => {
-        const content = section.content || '';
-        const lines = content.split('\n')
-          .map(line => line.replace(/^\d+\.\s*/, '').trim())
-          .filter(line => line);
-        
-        switch(section.section_type) {
-          case 'CRITICAL_DUTIES':
-            criticalDuties.push(...lines);
-            break;
-          case 'MAIN_KPIS':
-            positionMainKpis.push(...lines);
-            break;
-          case 'JOB_DUTIES':
-            jobDuties.push(...lines);
-            break;
-          case 'REQUIREMENTS':
-            requirements.push(...lines);
-            break;
-        }
-      });
-    }
-    
-    console.log('📝 Sections extracted:', {
-      criticalDuties: criticalDuties.length,
-      positionMainKpis: positionMainKpis.length,
-      jobDuties: jobDuties.length,
-      requirements: requirements.length
-    });
-    
-    // ====================================================================
-    // 🔥 STEP 2: EXTRACT RESOURCE IDs
-    // ====================================================================
-    const extractAllIds = (resourceArray, parentFieldName, categoryName) => {
-      console.log(`\n🔍 EXTRACTING ${categoryName.toUpperCase()} IDs`);
-      console.log('-'.repeat(60));
+  // 🔥 UPDATED: handleEdit with Leadership competencies support
+  const handleEdit = async (job) => {
+    try {
+      setActionLoading(true);
       
-      const allIds = new Set();
+      console.log('\n' + '='.repeat(80));
+      console.log('🚀 STARTING EDIT PROCESS');
+      console.log('='.repeat(80));
+      console.log('Job ID:', job.id);
+      console.log('Job Title:', job.job_title);
       
-      if (!Array.isArray(resourceArray) || resourceArray.length === 0) {
-        console.log(`⚠️  No ${categoryName} found (empty array)`);
-        return [];
+      const fullJob = await jobDescriptionService.getJobDescription(job.id);
+      
+      console.log('\n📋 FULL JOB DATA RECEIVED');
+      
+      // Extract sections
+      const criticalDuties = [];
+      const positionMainKpis = [];
+      const jobDuties = [];
+      const requirements = [];
+      
+      if (fullJob.sections && Array.isArray(fullJob.sections)) {
+        fullJob.sections.forEach(section => {
+          const content = section.content || '';
+          const lines = content.split('\n')
+            .map(line => line.replace(/^\d+\.\s*/, '').trim())
+            .filter(line => line);
+          
+          switch(section.section_type) {
+            case 'CRITICAL_DUTIES':
+              criticalDuties.push(...lines);
+              break;
+            case 'MAIN_KPIS':
+              positionMainKpis.push(...lines);
+              break;
+            case 'JOB_DUTIES':
+              jobDuties.push(...lines);
+              break;
+            case 'REQUIREMENTS':
+              requirements.push(...lines);
+              break;
+          }
+        });
       }
       
-      console.log(`Found ${resourceArray.length} ${categoryName} link(s) in backend data`);
-      
-      resourceArray.forEach((item, index) => {
-        console.log(`\n  Item ${index + 1}:`);
-        console.log(`  - Link ID: ${item.id}`);
+      // Extract resource IDs
+      const extractAllIds = (resourceArray, parentFieldName) => {
+        const allIds = new Set();
+        if (!Array.isArray(resourceArray)) return [];
         
-        // 🔥 CRITICAL: Extract parent ID first
-        const parentId = item[parentFieldName] || item.resource || item.access_matrix || item.benefit;
-        if (parentId) {
-          console.log(`  - Parent ID (${parentFieldName}): ${parentId} ✓`);
-          allIds.add(String(parentId));
-        } else {
-          console.log(`  - ⚠️  NO PARENT ID FOUND`);
-        }
+        resourceArray.forEach(item => {
+          const parentId = item[parentFieldName] || item.resource || item.access_matrix || item.benefit;
+          if (parentId) allIds.add(String(parentId));
+          
+          if (item.specific_items_detail && Array.isArray(item.specific_items_detail)) {
+            item.specific_items_detail.forEach(childItem => {
+              if (childItem.id) allIds.add(String(childItem.id));
+            });
+          }
+        });
         
-        // Then extract child IDs from specific_items_detail
-        if (item.specific_items_detail && Array.isArray(item.specific_items_detail)) {
-          console.log(`  - Specific items: ${item.specific_items_detail.length} child(ren)`);
-          item.specific_items_detail.forEach((childItem, childIndex) => {
-            if (childItem.id) {
-              console.log(`    ${childIndex + 1}. Child ID: ${childItem.id} (${childItem.name || 'unnamed'})`);
-              allIds.add(String(childItem.id));
-            }
-          });
-        } else {
-          console.log(`  - No specific items (will use all parent items)`);
-        }
+        return Array.from(allIds);
+      };
+      
+      const businessResourceIds = extractAllIds(fullJob.business_resources, 'resource');
+      const accessRightIds = extractAllIds(fullJob.access_rights, 'access_matrix');
+      const companyBenefitIds = extractAllIds(fullJob.company_benefits, 'benefit');
+      
+      // 🔥 Extract Skills IDs
+      const skillIds = [];
+      if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
+        fullJob.required_skills.forEach(skill => {
+          if (skill.skill_id) {
+            skillIds.push(String(skill.skill_id));
+          } else if (skill.skill) {
+            skillIds.push(String(skill.skill));
+          }
+        });
+      }
+      
+      console.log('🎯 Extracted Skill IDs:', skillIds);
+      
+      // 🔥 NEW: Extract Behavioral Competencies IDs
+      const behavioralCompetencyIds = [];
+      if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
+        fullJob.behavioral_competencies.forEach(comp => {
+          if (comp.competency_id) {
+            behavioralCompetencyIds.push(String(comp.competency_id));
+          } else if (comp.competency) {
+            behavioralCompetencyIds.push(String(comp.competency));
+          }
+        });
+      }
+      
+      console.log('🎯 Extracted Behavioral Competency IDs:', behavioralCompetencyIds);
+      
+      // 🔥 NEW: Extract Leadership Competencies IDs (from leadership_items)
+      const leadershipCompetencyIds = [];
+      if (fullJob.leadership_competencies && Array.isArray(fullJob.leadership_competencies)) {
+        fullJob.leadership_competencies.forEach(item => {
+          // Leadership competencies point to leadership_items
+          if (item.leadership_item_id) {
+            leadershipCompetencyIds.push(String(item.leadership_item_id));
+          } else if (item.leadership_item) {
+            leadershipCompetencyIds.push(String(item.leadership_item));
+          } else if (item.id) {
+            leadershipCompetencyIds.push(String(item.id));
+          }
+        });
+      }
+      
+      console.log('🎯 Extracted Leadership Competency IDs:', leadershipCompetencyIds);
+      
+      // Handle grading levels
+      let gradingLevels = [];
+      if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels)) {
+        gradingLevels = fullJob.grading_levels;
+        console.log('📊 Using grading_levels array:', gradingLevels);
+      } else if (fullJob.grading_level) {
+        gradingLevels = [fullJob.grading_level];
+        console.log('📊 Converting single grading_level to array:', gradingLevels);
+      }
+      
+      // 🔥 Build form data
+      const transformedData = {
+        job_title: fullJob.job_title || '',
+        job_purpose: fullJob.job_purpose || '',
+        business_function: fullJob.business_function?.name || '',
+        department: fullJob.department?.name || '',
+        unit: fullJob.unit?.name || '',
+        job_function: fullJob.job_function?.name || '',
+        position_group: fullJob.position_group?.name || '',
+        grading_level: fullJob.grading_level || '',
+        grading_levels: gradingLevels,
         
-        // Fallback: check resource_detail/access_detail/benefit_detail
-        const detailKey = `${parentFieldName}_detail`;
-        if (item[detailKey] && item[detailKey].items) {
-          console.log(`  - Found ${detailKey}.items array with ${item[detailKey].items.length} items`);
-          item[detailKey].items.forEach((childItem, childIndex) => {
-            if (childItem.id) {
-              console.log(`    ${childIndex + 1}. Child ID from detail: ${childItem.id}`);
-              allIds.add(String(childItem.id));
-            }
-          });
-        }
-      });
+        criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
+        positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
+        jobDuties: jobDuties.length > 0 ? jobDuties : [''],
+        requirements: requirements.length > 0 ? requirements : [''],
+        
+        required_skills_data: skillIds,
+        behavioral_competencies_data: behavioralCompetencyIds, // 🔥 Behavioral
+        leadership_competencies_data: leadershipCompetencyIds, // 🔥 Leadership
+        
+        business_resources_ids: businessResourceIds,
+        access_rights_ids: accessRightIds,
+        company_benefits_ids: companyBenefitIds
+      };
       
-      const result = Array.from(allIds);
-      console.log(`\n✅ TOTAL EXTRACTED ${categoryName.toUpperCase()} IDs: ${result.length}`);
-      console.log('IDs:', result);
-      console.log('-'.repeat(60));
+      console.log('\n✅ TRANSFORMED DATA:');
+      console.log('- Behavioral Competencies:', transformedData.behavioral_competencies_data.length);
+      console.log('- Leadership Competencies:', transformedData.leadership_competencies_data.length);
+      console.log('='.repeat(80) + '\n');
       
-      return result;
-    };
-    
-    const businessResourceIds = extractAllIds(fullJob.business_resources, 'resource', 'Business Resources');
-    const accessRightIds = extractAllIds(fullJob.access_rights, 'access_matrix', 'Access Rights');
-    const companyBenefitIds = extractAllIds(fullJob.company_benefits, 'benefit', 'Company Benefits');
-    
-    console.log('\n' + '='.repeat(80));
-    console.log('✅ FINAL EXTRACTION SUMMARY');
-    console.log('='.repeat(80));
-    console.log('Business Resources IDs:', businessResourceIds);
-    console.log('Access Rights IDs:', accessRightIds);
-    console.log('Company Benefits IDs:', companyBenefitIds);
-    console.log('='.repeat(80) + '\n');
-    
-    // ====================================================================
-    // 🔥 STEP 3: EXTRACT SKILLS IDs
-    // ====================================================================
-    const skillIds = [];
-    if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
-      fullJob.required_skills.forEach(skill => {
-        if (skill.skill_id) {
-          skillIds.push(String(skill.skill_id));
-        } else if (skill.skill) {
-          skillIds.push(String(skill.skill));
-        }
-      });
+      setFormData(transformedData);
+      setEditingJob(fullJob);
+      
+      if (transformedData.position_group) {
+        setSelectedPositionGroup(transformedData.position_group);
+      }
+      
+      setActiveView('create');
+      
+    } catch (error) {
+      console.error('❌ Error loading job for edit:', error);
+      showError('Error loading job description. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
-    
-    console.log('🎯 Extracted Skill IDs:', skillIds);
-    
-    // ====================================================================
-    // 🔥 STEP 4: EXTRACT COMPETENCIES IDs
-    // ====================================================================
-    const competencyIds = [];
-    if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
-      fullJob.behavioral_competencies.forEach(comp => {
-        if (comp.competency_id) {
-          competencyIds.push(String(comp.competency_id));
-        } else if (comp.competency) {
-          competencyIds.push(String(comp.competency));
-        }
-      });
-    }
-    
-    console.log('🎯 Extracted Competency IDs:', competencyIds);
-    
-    // ====================================================================
-    // 🔥 STEP 5: HANDLE GRADING LEVELS (NEW MULTI-SELECT SUPPORT)
-    // ====================================================================
-    let gradingLevels = [];
-    if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels)) {
-      gradingLevels = fullJob.grading_levels;
-      console.log('📊 Using grading_levels array:', gradingLevels);
-    } else if (fullJob.grading_level) {
-      gradingLevels = [fullJob.grading_level];
-      console.log('📊 Converting single grading_level to array:', gradingLevels);
-    }
-    
-    // ====================================================================
-    // 🔥 STEP 6: BUILD FORM DATA
-    // ====================================================================
-    const transformedData = {
-      job_title: fullJob.job_title || '',
-      job_purpose: fullJob.job_purpose || '',
-      business_function: fullJob.business_function?.name || '',
-      department: fullJob.department?.name || '',
-      unit: fullJob.unit?.name || '',
-      job_function: fullJob.job_function?.name || '',
-      position_group: fullJob.position_group?.name || '',
-      grading_level: fullJob.grading_level || '', // Keep for backward compat
-      grading_levels: gradingLevels, // 🔥 NEW: Array of levels
-      
-      criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
-      positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
-      jobDuties: jobDuties.length > 0 ? jobDuties : [''],
-      requirements: requirements.length > 0 ? requirements : [''],
-      
-      required_skills_data: skillIds,
-      behavioral_competencies_data: competencyIds,
-      
-      business_resources_ids: businessResourceIds,
-      access_rights_ids: accessRightIds,
-      company_benefits_ids: companyBenefitIds
-    };
-    
-    
-    
-    setFormData(transformedData);
-    setEditingJob(fullJob);
-    
-    if (transformedData.position_group) {
-      setSelectedPositionGroup(transformedData.position_group);
-    }
-    
-    setActiveView('create');
-    
-  } catch (error) {
-    console.error('❌ Error loading job for edit:', error);
-    showError('Error loading job description. Please try again.');
-  } finally {
-    setActionLoading(false);
-  }
-};
+  };
 
-  // 🔥 UPDATED: resetForm - reset grading_levels array
+  // 🔥 UPDATED: resetForm with leadership_competencies_data
   const resetForm = () => {
     console.log('🔄 Resetting form to initial state');
     
@@ -743,13 +677,14 @@ const handleEdit = async (job) => {
       job_function: '',
       position_group: '',
       grading_level: '',
-      grading_levels: [], // 🔥 Reset array
+      grading_levels: [],
       criticalDuties: [''],
       positionMainKpis: [''],
       jobDuties: [''],
       requirements: [''],
       required_skills_data: [],
       behavioral_competencies_data: [],
+      leadership_competencies_data: [], // 🔥 Reset leadership
       business_resources_ids: [],
       access_rights_ids: [],
       company_benefits_ids: []

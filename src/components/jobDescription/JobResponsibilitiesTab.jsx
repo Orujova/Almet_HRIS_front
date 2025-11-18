@@ -1,7 +1,6 @@
-// components/jobDescription/JobResponsibilitiesTab.jsx - WITH Hierarchical Multi-Select
+// components/jobDescription/JobResponsibilitiesTab.jsx - WITH Dynamic Leadership/Behavioral Competencies
 import React, { useState, useEffect } from 'react';
-import { Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
-import SearchableDropdown from '../common/SearchableDropdown';
+import { Plus, X, Award, Users } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
 
 const JobResponsibilitiesTab = ({
@@ -24,11 +23,55 @@ const JobResponsibilitiesTab = ({
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-comet" : "bg-almet-mystic";
 
+  // 🔥 NEW: Determine if position is leadership
+  const [isLeadershipPosition, setIsLeadershipPosition] = useState(false);
+  
   // State for hierarchical data
   const [skillGroupsHierarchical, setSkillGroupsHierarchical] = useState([]);
   const [behavioralGroupsHierarchical, setBehavioralGroupsHierarchical] = useState([]);
+  const [leadershipGroupsHierarchical, setLeadershipGroupsHierarchical] = useState([]);
+  
   const [isLoadingSkills, setIsLoadingSkills] = useState(false);
   const [isLoadingCompetencies, setIsLoadingCompetencies] = useState(false);
+  const [isLoadingLeadership, setIsLoadingLeadership] = useState(false);
+
+  // 🔥 Leadership position keywords
+  const LEADERSHIP_POSITIONS = [
+    'manager',
+    'vice chairman',
+    'director',
+    'vice president',
+    'hod',
+    'head of department',
+    'chief',
+    'ceo',
+    'cfo',
+    'cto',
+    'coo',
+    'executive',
+    'president',
+    'chairman'
+  ];
+
+  // 🔥 Check if position is leadership based on position_group
+  useEffect(() => {
+    const checkLeadershipPosition = () => {
+      if (!formData.position_group) {
+        setIsLeadershipPosition(false);
+        return;
+      }
+
+      const positionLower = formData.position_group.toLowerCase().trim();
+      const isLeadership = LEADERSHIP_POSITIONS.some(keyword => 
+        positionLower.includes(keyword)
+      );
+      
+      console.log(`🎯 Position "${formData.position_group}" is ${isLeadership ? 'LEADERSHIP' : 'REGULAR'}`);
+      setIsLeadershipPosition(isLeadership);
+    };
+
+    checkLeadershipPosition();
+  }, [formData.position_group]);
 
   // Load skills in hierarchical format
   useEffect(() => {
@@ -79,8 +122,13 @@ const JobResponsibilitiesTab = ({
     loadSkillsHierarchical();
   }, [dropdownData.skillGroups]);
 
-  // Load competencies in hierarchical format
+  // 🔥 Load BEHAVIORAL competencies (for non-leadership)
   useEffect(() => {
+    if (isLeadershipPosition) {
+      setBehavioralGroupsHierarchical([]);
+      return;
+    }
+
     const loadCompetenciesHierarchical = async () => {
       if (!dropdownData.behavioralGroups?.length) return;
       
@@ -126,7 +174,101 @@ const JobResponsibilitiesTab = ({
     };
 
     loadCompetenciesHierarchical();
-  }, [dropdownData.behavioralGroups]);
+  }, [dropdownData.behavioralGroups, isLeadershipPosition]);
+
+  // 🔥 Load LEADERSHIP competencies (for leadership positions) - 3 LEVELS
+  useEffect(() => {
+    if (!isLeadershipPosition) {
+      setLeadershipGroupsHierarchical([]);
+      return;
+    }
+
+    const loadLeadershipHierarchical = async () => {
+      if (!dropdownData.leadershipMainGroups?.length) {
+        console.warn('⚠️ No leadership main groups available in dropdownData');
+        return;
+      }
+      
+      setIsLoadingLeadership(true);
+      try {
+        const competencyApi = (await import('@/services/competencyApi')).default;
+        
+        console.log(`🔄 Loading ${dropdownData.leadershipMainGroups.length} leadership main groups...`);
+        
+        const hierarchicalData = await Promise.all(
+          dropdownData.leadershipMainGroups.map(async (mainGroup) => {
+            try {
+              // Get child groups for this main group
+              const childGroupsResponse = await competencyApi.leadershipMainGroups.getChildGroups(mainGroup.id);
+              const childGroups = Array.isArray(childGroupsResponse) 
+                ? childGroupsResponse 
+                : (childGroupsResponse.child_groups || childGroupsResponse.results || []);
+              
+              console.log(`  📁 Main Group "${mainGroup.name}": ${childGroups.length} child groups`);
+              
+              // For each child group, get its items
+              const childGroupsWithItems = await Promise.all(
+                childGroups.map(async (childGroup) => {
+                  try {
+                    const itemsResponse = await competencyApi.leadershipChildGroups.getItems(childGroup.id);
+                    const items = Array.isArray(itemsResponse) 
+                      ? itemsResponse 
+                      : (itemsResponse.items || itemsResponse.results || []);
+                    
+                    return {
+                      id: String(childGroup.id),
+                      name: childGroup.name || `Child Group ${childGroup.id}`,
+                      description: childGroup.description || `${items.length} items`,
+                      items: items.map(item => ({
+                        id: String(item.id),
+                        name: item.name || item.title,
+                        description: item.description || '',
+                        full_path: `${mainGroup.name} > ${childGroup.name} > ${item.name}`
+                      }))
+                    };
+                  } catch (error) {
+                    console.error(`Error loading items for child group ${childGroup.id}:`, error);
+                    return {
+                      id: String(childGroup.id),
+                      name: childGroup.name || `Child Group ${childGroup.id}`,
+                      description: 'Error loading items',
+                      items: []
+                    };
+                  }
+                })
+              );
+              
+              return {
+                id: String(mainGroup.id),
+                name: mainGroup.name || `Main Group ${mainGroup.id}`,
+                description: mainGroup.description || `${childGroupsWithItems.length} categories`,
+                items: childGroupsWithItems
+              };
+              
+            } catch (error) {
+              console.error(`Error loading child groups for main group ${mainGroup.id}:`, error);
+              return {
+                id: String(mainGroup.id),
+                name: mainGroup.name || `Main Group ${mainGroup.id}`,
+                description: 'Error loading leadership data',
+                items: []
+              };
+            }
+          })
+        );
+        
+        console.log('✅ Leadership hierarchy loaded successfully');
+        setLeadershipGroupsHierarchical(hierarchicalData);
+        
+      } catch (error) {
+        console.error('❌ Error loading leadership groups:', error);
+      } finally {
+        setIsLoadingLeadership(false);
+      }
+    };
+
+    loadLeadershipHierarchical();
+  }, [dropdownData.leadershipMainGroups, isLeadershipPosition]);
 
   // Handle array field changes
   const handleArrayFieldChange = (fieldName, index, value) => {
@@ -136,7 +278,6 @@ const JobResponsibilitiesTab = ({
     }));
   };
 
-  // Add new item to array field
   const addArrayItem = (fieldName) => {
     onFormDataChange(prev => ({
       ...prev,
@@ -144,7 +285,6 @@ const JobResponsibilitiesTab = ({
     }));
   };
 
-  // Remove item from array field
   const removeArrayItem = (fieldName, index) => {
     if (formData[fieldName].length > 1) {
       onFormDataChange(prev => ({
@@ -154,7 +294,6 @@ const JobResponsibilitiesTab = ({
     }
   };
 
-  // Handle skill selection change
   const handleSkillsChange = (selectedIds) => {
     onFormDataChange(prev => ({
       ...prev,
@@ -162,12 +301,23 @@ const JobResponsibilitiesTab = ({
     }));
   };
 
-  // Handle competency selection change
+  // 🔥 Handle competency changes (behavioral OR leadership)
   const handleCompetenciesChange = (selectedIds) => {
-    onFormDataChange(prev => ({
-      ...prev,
-      behavioral_competencies_data: selectedIds
-    }));
+    if (isLeadershipPosition) {
+      // Store as leadership_competencies_data
+      onFormDataChange(prev => ({
+        ...prev,
+        leadership_competencies_data: selectedIds,
+        behavioral_competencies_data: [] // Clear behavioral
+      }));
+    } else {
+      // Store as behavioral_competencies_data
+      onFormDataChange(prev => ({
+        ...prev,
+        behavioral_competencies_data: selectedIds,
+        leadership_competencies_data: [] // Clear leadership
+      }));
+    }
   };
 
   return (
@@ -220,7 +370,7 @@ const JobResponsibilitiesTab = ({
         </div>
       ))}
 
-      {/* Technical Skills - Hierarchical Multi-Select */}
+      {/* Technical Skills */}
       <div>
         <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
           Technical Skills <span className="text-red-500">*</span>
@@ -251,43 +401,67 @@ const JobResponsibilitiesTab = ({
         {validationErrors.required_skills_data && (
           <p className="text-red-500 text-xs mt-1">{validationErrors.required_skills_data}</p>
         )}
-        
-     
       </div>
 
-      {/* Behavioral Competencies - Hierarchical Multi-Select */}
+      {/* 🔥 DYNAMIC: Leadership OR Behavioral Competencies */}
       <div>
+        
+
         <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-          Behavioral Competencies <span className="text-red-500">*</span>
+          {isLeadershipPosition ? 'Leadership Competencies' : 'Behavioral Competencies'} 
+          <span className="text-red-500">*</span>
         </label>
         
-        {isLoadingCompetencies ? (
-          <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-            <span className={`text-sm ${textSecondary}`}>Loading competency groups...</span>
-          </div>
+        {isLeadershipPosition ? (
+          // LEADERSHIP COMPETENCIES (3-LEVEL)
+          isLoadingLeadership ? (
+            <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+              <span className={`text-sm ${textSecondary}`}>Loading leadership competencies...</span>
+            </div>
+          ) : (
+            <HierarchicalMultiSelect
+              title="Leadership Competencies"
+              icon={() => <Award className="w-4 h-4" />}
+              data={leadershipGroupsHierarchical}
+              selectedIds={formData.leadership_competencies_data || []}
+              onChange={handleCompetenciesChange}
+              searchPlaceholder="Search leadership competencies..."
+              emptyMessage="No leadership competencies available"
+              darkMode={darkMode}
+            />
+          )
         ) : (
-          <HierarchicalMultiSelect
-            title="Competencies"
-            icon={() => (
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-              </svg>
-            )}
-            data={behavioralGroupsHierarchical}
-            selectedIds={formData.behavioral_competencies_data || []}
-            onChange={handleCompetenciesChange}
-            searchPlaceholder="Search competencies and groups..."
-            emptyMessage="No competency groups available"
-            darkMode={darkMode}
-          />
+          // BEHAVIORAL COMPETENCIES (2-LEVEL)
+          isLoadingCompetencies ? (
+            <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+              <span className={`text-sm ${textSecondary}`}>Loading behavioral competencies...</span>
+            </div>
+          ) : (
+            <HierarchicalMultiSelect
+              title="Competencies"
+              icon={() => (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                </svg>
+              )}
+              data={behavioralGroupsHierarchical}
+              selectedIds={formData.behavioral_competencies_data || []}
+              onChange={handleCompetenciesChange}
+              searchPlaceholder="Search competencies and groups..."
+              emptyMessage="No competency groups available"
+              darkMode={darkMode}
+            />
+          )
         )}
         
         {validationErrors.behavioral_competencies_data && (
           <p className="text-red-500 text-xs mt-1">{validationErrors.behavioral_competencies_data}</p>
         )}
-        
-  
+        {validationErrors.leadership_competencies_data && (
+          <p className="text-red-500 text-xs mt-1">{validationErrors.leadership_competencies_data}</p>
+        )}
       </div>
     </div>
   );

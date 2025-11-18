@@ -52,7 +52,7 @@ export default function CompanyPoliciesPage() {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedPolicy, setSelectedPolicy] = useState(null);
-  
+     const [activeTab, setActiveTab] = useState("document");
   // Data state
   const [companies, setCompanies] = useState([]);
   const [folders, setFolders] = useState([]);
@@ -938,7 +938,21 @@ if (viewMode === "policies") {
                           <Download className="w-3 h-3" />
                           <span>{policy.download_count || 0}</span>
                         </div>
-                      
+                       {policy.requires_acknowledgment && (
+    <div className={`flex items-center gap-1 ${
+      policy.acknowledgment_percentage >= 80 
+        ? 'text-green-500' 
+        : policy.acknowledgment_percentage >= 50 
+          ? 'text-yellow-500' 
+          : 'text-red-500'
+    }`}>
+      <CheckCircle className="w-3 h-3" />
+      <span>{policy.acknowledgment_count || 0} acked</span>
+      {policy.acknowledgment_percentage !== null && (
+        <span className="text-xs">({policy.acknowledgment_percentage}%)</span>
+      )}
+    </div>
+  )}
                       </div>
                     </div>
                   </div>
@@ -1242,6 +1256,7 @@ if (viewMode === "policies") {
   // ==================== PDF VIEWER ====================
   // ==================== PDF VIEWER ====================
 if (viewMode === "pdf" && selectedPolicy) {
+
   const getPDFUrl = () => {
     const url = selectedPolicy.policy_url || selectedPolicy.policy_file;
     if (!url) return null;
@@ -1296,6 +1311,42 @@ if (viewMode === "pdf" && selectedPolicy) {
           </div>
 
           <div className="flex items-center gap-2">
+            
+              <div className={`flex border-b ${
+          darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
+        }`}>
+          <button
+            onClick={() => setActiveTab("document")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === "document"
+                ? darkMode
+                  ? 'border-almet-sapphire text-white'
+                  : 'border-almet-sapphire text-almet-sapphire'
+                : darkMode
+                  ? 'border-transparent text-gray-400 hover:text-white'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Document
+          </button>
+          
+          {selectedPolicy.requires_acknowledgment && (
+            <button
+              onClick={() => setActiveTab("acknowledgments")}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "acknowledgments"
+                  ? darkMode
+                    ? 'border-almet-sapphire text-white'
+                    : 'border-almet-sapphire text-almet-sapphire'
+                  : darkMode
+                    ? 'border-transparent text-gray-400 hover:text-white'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Acknowledgments
+            </button>
+          )}
+        </div>
             <div className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs ${
               darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-600'
             }`}>
@@ -1340,11 +1391,13 @@ if (viewMode === "pdf" && selectedPolicy) {
               loading="lazy"
             />
           ) : (
-            <div className="flex items-center justify-center h-full">
-              <div className={`text-center ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
-                <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">PDF file not available</p>
-              </div>
+                <div className={`h-full overflow-y-auto p-4 ${
+              darkMode ? 'bg-gray-900' : 'bg-gray-100'
+            }`}>
+              <PolicyAcknowledgmentsList 
+                policyId={selectedPolicy.id} 
+                darkMode={darkMode} 
+              />
             </div>
           )}
         </div>
