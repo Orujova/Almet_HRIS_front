@@ -5,7 +5,9 @@ import {
   Check,
   Search,
   X,
-  Package
+  Package,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 const HierarchicalMultiSelect = ({
@@ -51,7 +53,6 @@ const HierarchicalMultiSelect = ({
   const hasThreeLevels = React.useMemo(() => {
     if (!data || data.length === 0) return false;
     
-    // Check if first parent has items that also have items (3 levels)
     const firstParent = data[0];
     if (!firstParent || !firstParent.items || firstParent.items.length === 0) return false;
     
@@ -78,7 +79,6 @@ const HierarchicalMultiSelect = ({
             item.description?.toLowerCase().includes(term)
           );
           
-          // Include child group if it matches or has matching items
           if (childGroupMatch || filteredItems.length > 0) {
             return {
               ...childGroup,
@@ -88,7 +88,6 @@ const HierarchicalMultiSelect = ({
           return null;
         }).filter(Boolean);
         
-        // Include main group if it matches or has matching child groups
         if (mainGroupMatch || filteredChildGroups.length > 0) {
           return {
             ...mainGroup,
@@ -190,6 +189,29 @@ const HierarchicalMultiSelect = ({
     return selectedIds.some(selectedId => String(selectedId) === strId);
   };
 
+  // 🔥 Get all item IDs from entire data structure
+  const getAllAvailableItemIds = () => {
+    const ids = [];
+    
+    if (hasThreeLevels) {
+      filteredData.forEach(mainGroup => {
+        (mainGroup.items || []).forEach(childGroup => {
+          (childGroup.items || []).forEach(item => {
+            ids.push(String(item.id));
+          });
+        });
+      });
+    } else {
+      filteredData.forEach(parent => {
+        (parent.items || []).forEach(item => {
+          ids.push(String(item.id));
+        });
+      });
+    }
+    
+    return ids;
+  };
+
   // 🔥 Get all item IDs from a structure (handles both 2-level and 3-level)
   const getAllItemIds = (parent) => {
     const ids = [];
@@ -246,6 +268,21 @@ const HierarchicalMultiSelect = ({
     
     const selectedCount = itemIds.filter(id => isIdSelected(id)).length;
     return selectedCount > 0 && selectedCount < itemIds.length;
+  };
+
+  // 🔥 Check if all items are selected
+  const areAllItemsSelected = () => {
+    const allIds = getAllAvailableItemIds();
+    if (allIds.length === 0) return false;
+    return allIds.every(id => isIdSelected(id));
+  };
+
+  // 🔥 Check if some items are selected
+  const areSomeItemsSelected = () => {
+    const allIds = getAllAvailableItemIds();
+    if (allIds.length === 0) return false;
+    const selectedCount = allIds.filter(id => isIdSelected(id)).length;
+    return selectedCount > 0 && selectedCount < allIds.length;
   };
 
   // Handle parent toggle
@@ -312,11 +349,32 @@ const HierarchicalMultiSelect = ({
     }
   };
 
+  // 🔥 Handle Select All
+  const handleSelectAll = () => {
+    const allIds = getAllAvailableItemIds();
+    
+    if (areAllItemsSelected()) {
+      // Deselect all
+      onChange(selectedIds.filter(id => !allIds.includes(String(id))));
+    } else {
+      // Select all
+      const newSelection = [...selectedIds];
+      allIds.forEach(itemId => {
+        if (!isIdSelected(itemId)) {
+          newSelection.push(itemId);
+        }
+      });
+      onChange(newSelection);
+    }
+  };
+
   const handleClearAll = () => {
     onChange([]);
   };
 
   const selectedCount = selectedIds.length;
+  const allItemsSelected = areAllItemsSelected();
+  const someItemsSelected = areSomeItemsSelected();
 
   const getButtonText = () => {
     if (selectedCount === 0) {
@@ -699,18 +757,47 @@ const HierarchicalMultiSelect = ({
             )}
           </div>
 
-          {filteredData.length > 0 && selectedCount > 0 && (
+          {filteredData.length > 0 && (
             <div className={`p-2.5 border-t ${borderColor} ${bgAccent}`}>
-              <div className="flex items-center justify-between text-[10px]">
-                <span className={textSecondary}>
-                  {selectedCount} item{selectedCount > 1 ? 's' : ''} selected
-                </span>
-                <button
-                  onClick={handleClearAll}
-                  className="text-red-500 hover:text-red-600 font-semibold transition-colors"
-                >
-                  Clear All
-                </button>
+              <div className="flex items-center justify-between gap-3 text-[10px]">
+                <div className="flex items-center gap-2">
+                  {/* 🔥 Select All Button */}
+                  <button
+                    onClick={handleSelectAll}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded ${
+                      allItemsSelected 
+                        ? 'bg-almet-sapphire text-white hover:bg-almet-astral' 
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                    } font-semibold transition-colors`}
+                  >
+                    {allItemsSelected ? (
+                      <>
+                        <CheckSquare size={12} />
+                        <span>Deselect All</span>
+                      </>
+                    ) : (
+                      <>
+                        <Square size={12} />
+                        <span>Select All</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {selectedCount > 0 && (
+                    <span className={textSecondary}>
+                      {selectedCount} item{selectedCount > 1 ? 's' : ''} selected
+                    </span>
+                  )}
+                </div>
+                
+                {selectedCount > 0 && (
+                  <button
+                    onClick={handleClearAll}
+                    className="text-red-500 hover:text-red-600 font-semibold transition-colors"
+                  >
+                    Clear All
+                  </button>
+                )}
               </div>
             </div>
           )}
