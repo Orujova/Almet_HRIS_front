@@ -226,115 +226,122 @@ export const apiService = {
   refreshToken: (refreshToken) => api.post("/auth/refresh/", { refresh: refreshToken }),
 
   // ========================================
-  // Companys
-  // ========================================
-  getBusinessFunctions: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/business-functions/?${queryString}`);
-  },
-  getBusinessFunction: (id) => api.get(`/business-functions/${id}/`),
-  createBusinessFunction: (data) => api.post("/business-functions/", data),
-  updateBusinessFunction: (id, data) => api.put(`/business-functions/${id}/`, data),
-  deleteBusinessFunction: (id) => api.delete(`/business-functions/${id}/`),
+// Companys
+// ========================================
+getBusinessFunctions: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/business-functions/?${queryString}`);
+},
+getBusinessFunction: (id) => api.get(`/business-functions/${id}/`),
+createBusinessFunction: (data) => api.post("/business-functions/", data),
+updateBusinessFunction: (id, data) => api.put(`/business-functions/${id}/`, data),
+deleteBusinessFunction: (id) => api.delete(`/business-functions/${id}/`),
 
-  // ========================================
-  // DEPARTMENTS
-  // ========================================
-  getDepartments: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/departments/?${queryString}`);
-  },
-  getDepartment: (id) => api.get(`/departments/${id}/`),
-  createDepartment: (data) => api.post("/departments/", data),
-  updateDepartment: (id, data) => api.put(`/departments/${id}/`, data),
-  deleteDepartment: (id) => api.delete(`/departments/${id}/`),
+// ========================================
+// DEPARTMENTS
+// ========================================
+getDepartments: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/departments/?${queryString}`);
+},
+getDepartment: (id) => api.get(`/departments/${id}/`),
+createDepartment: (data) => api.post("/departments/", data),
+updateDepartment: (id, data) => api.put(`/departments/${id}/`, data),
+deleteDepartment: (id) => api.delete(`/departments/${id}/`),
 
-  // ========================================
-  // UNITS
-  // ========================================
-  getUnits: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/units/?${queryString}`);
-  },
-  getUnit: (id) => api.get(`/units/${id}/`),
-  createUnit: (data) => api.post("/units/", data),
-  updateUnit: (id, data) => api.put(`/units/${id}/`, data),
-  deleteUnit: (id) => api.delete(`/units/${id}/`),
+// ========================================
+// UNITS
+// ========================================
+getUnits: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/units/?${queryString}`);
+},
+getUnit: (id) => api.get(`/units/${id}/`),
+createUnit: (data) => api.post("/units/", data),
+updateUnit: (id, data) => api.put(`/units/${id}/`, data),
+deleteUnit: (id) => api.delete(`/units/${id}/`),
 
-  // ========================================
-  // JOB FUNCTIONS
-  // ========================================
-  getJobFunctions: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/job-functions/?${queryString}`);
-  },
-  getJobFunction: (id) => api.get(`/job-functions/${id}/`),
-  createJobFunction: (data) => api.post("/job-functions/", data),
-  updateJobFunction: (id, data) => api.put(`/job-functions/${id}/`, data),
-  deleteJobFunction: (id) => api.delete(`/job-functions/${id}/`),
+// ========================================
+// JOB FUNCTIONS
+// ========================================
+getJobFunctions: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/job-functions/?${queryString}`);
+},
+getJobFunction: (id) => api.get(`/job-functions/${id}/`),
+createJobFunction: (data) => api.post("/job-functions/", data),
+updateJobFunction: (id, data) => api.put(`/job-functions/${id}/`, data),
+deleteJobFunction: (id) => api.delete(`/job-functions/${id}/`),
 
-  // ========================================
-  // JOB TITLES (NEW)
-  // ========================================
-  getJobTitles: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/job-titles/?${queryString}`);
-  },
-  getJobTitle: (id) => api.get(`/job-titles/${id}/`),
-  createJobTitle: (data) => api.post("/job-titles/", data),
-  updateJobTitle: (id, data) => api.put(`/job-titles/${id}/`, data),
-  deleteJobTitle: (id) => api.delete(`/job-titles/${id}/`),
+// ========================================
+// JOB TITLES (NEW)
+// ========================================
+getJobTitles: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/job-titles/?${queryString}`);
+},
+getJobTitle: (id) => api.get(`/job-titles/${id}/`),
+createJobTitle: (data) => api.post("/job-titles/", data),
+updateJobTitle: (id, data) => api.put(`/job-titles/${id}/`, data),
+deleteJobTitle: (id) => api.delete(`/job-titles/${id}/`),
 
-  // ========================================
-  // POSITION GROUPS
-  // ========================================
-  getPositionGroups: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/position-groups/?${queryString}`);
-  },
-  getPositionGroup: (id) => api.get(`/position-groups/${id}/`),
-  getPositionGroupGradingLevels: (id) => api.get(`/position-groups/${id}/grading_levels/`),
-  createPositionGroup: (data) => api.post("/position-groups/", data),
-  updatePositionGroup: (id, data) => api.put(`/position-groups/${id}/`, data),
-  deletePositionGroup: (id) => api.delete(`/position-groups/${id}/`),
+// ========================================
+// POSITION GROUPS
+// ========================================
+getPositionGroups: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/position-groups/?${queryString}`);
+},
+getPositionGroup: (id) => api.get(`/position-groups/${id}/`),
+getPositionGroupGradingLevels: (id) => api.get(`/position-groups/${id}/grading_levels/`),
+createPositionGroup: (data) => api.post("/position-groups/", data),
+updatePositionGroup: (id, data) => api.put(`/position-groups/${id}/`, data),
+deletePositionGroup: (id) => api.delete(`/position-groups/${id}/`),
 
-  // ========================================
-  // EMPLOYEE STATUSES
-  // ========================================
-  getEmployeeStatuses: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employee-statuses/?${queryString}`);
-  },
-  getEmployeeStatus: (id) => api.get(`/employee-statuses/${id}/`),
-  createEmployeeStatus: (data) => api.post("/employee-statuses/", data),
-  updateEmployeeStatus: (id, data) => api.put(`/employee-statuses/${id}/`, data),
-  deleteEmployeeStatus: (id) => api.delete(`/employee-statuses/${id}/`),
+// ========================================
+// EMPLOYEE STATUSES
+// ========================================
+getEmployeeStatuses: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/employee-statuses/?${queryString}`);
+},
+getEmployeeStatus: (id) => api.get(`/employee-statuses/${id}/`),
+createEmployeeStatus: (data) => api.post("/employee-statuses/", data),
+updateEmployeeStatus: (id, data) => api.put(`/employee-statuses/${id}/`, data),
+deleteEmployeeStatus: (id) => api.delete(`/employee-statuses/${id}/`),
 
-  // ========================================
-  // EMPLOYEE TAGS
-  // ========================================
-  getEmployeeTags: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employee-tags/?${queryString}`);
-  },
-  getEmployeeTag: (id) => api.get(`/employee-tags/${id}/`),
-  createEmployeeTag: (data) => api.post("/employee-tags/", data),
-  updateEmployeeTag: (id, data) => api.put(`/employee-tags/${id}/`, data),
-  deleteEmployeeTag: (id) => api.delete(`/employee-tags/${id}/`),
+// ========================================
+// EMPLOYEE TAGS
+// ========================================
+getEmployeeTags: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/employee-tags/?${queryString}`);
+},
+getEmployeeTag: (id) => api.get(`/employee-tags/${id}/`),
+createEmployeeTag: (data) => api.post("/employee-tags/", data),
+updateEmployeeTag: (id, data) => api.put(`/employee-tags/${id}/`, data),
+deleteEmployeeTag: (id) => api.delete(`/employee-tags/${id}/`),
 
-  // ========================================
-  // CONTRACT CONFIGS
-  // ========================================
-  getContractConfigs: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/contract-configs/?${queryString}`);
-  },
-  getContractConfig: (id) => api.get(`/contract-configs/${id}/`),
-
-  createContractConfig: (data) => api.post("/contract-configs/", data),
-  updateContractConfig: (id, data) => api.put(`/contract-configs/${id}/`, data),
-  deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
-
+// ========================================
+// CONTRACT CONFIGS
+// ========================================
+getContractConfigs: (params = {}) => {
+  const defaultParams = { page_size: 1000, ...params }; // ✅ Add default page_size
+  const queryString = buildQueryParams(defaultParams);
+  return api.get(`/contract-configs/?${queryString}`);
+},
+getContractConfig: (id) => api.get(`/contract-configs/${id}/`),
+createContractConfig: (data) => api.post("/contract-configs/", data),
+updateContractConfig: (id, data) => api.put(`/contract-configs/${id}/`, data),
+deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   // ========================================
   // EMPLOYEES
   // ========================================

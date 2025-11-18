@@ -1,34 +1,17 @@
-// components/jobDescription/JobViewModal.jsx - COMPLETE with full items display
+// components/jobDescription/JobViewModal.jsx - WITH Leadership Competencies Support
 import React, { useState } from 'react';
 import { 
-  X, 
-  Download, 
-  UserCheck, 
-  UserX as UserVacant,
-  Clock,
-  CheckCircle,
-  XCircle,
-  RotateCcw,
-  AlertCircle,
-  Edit,
-  Building,
-  User,
-  Target,
-  BookOpen,
-  Shield,
-  Package,
-  Gift,
-  ChevronDown,
-  ChevronUp,
-  Check,
-  Layers
+  X, Download, UserCheck, UserX as UserVacant, Clock, CheckCircle, XCircle, RotateCcw,
+  AlertCircle, Edit, Building, User, Target, BookOpen, Shield, Package, Gift,
+  ChevronDown, ChevronUp, Check, Layers, Award, Crown
 } from 'lucide-react';
 
 const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
   const [expandedSections, setExpandedSections] = useState({
     sections: true,
     skills: true,
-    competencies: true,
+    behavioral: true,
+    leadership: true,
     resources: true,
     access: true,
     benefits: true
@@ -95,7 +78,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
     }).filter(line => line).join('\n');
   };
 
-  const CollapsibleSection = ({ title, icon: Icon, isExpanded, onToggle, children, count = null, isEmpty = false }) => (
+  const CollapsibleSection = ({ title, icon: Icon, isExpanded, onToggle, children, count = null, isEmpty = false, color = 'almet-sapphire' }) => (
     <div className={`border ${borderColor} rounded-lg overflow-hidden`}>
       <button
         onClick={onToggle}
@@ -103,10 +86,10 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
           flex items-center justify-between text-left`}
       >
         <div className="flex items-center gap-3">
-          <Icon size={16} className={isEmpty ? textMuted : 'text-almet-sapphire'} />
+          <Icon size={16} className={isEmpty ? textMuted : `text-${color}`} />
           <span className={`font-medium ${textPrimary} text-sm`}>{title}</span>
           {count !== null && count > 0 && (
-            <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-almet-sapphire text-white`}>
+            <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-${color} text-white`}>
               {count}
             </span>
           )}
@@ -147,6 +130,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
     sections: job?.sections || [],
     required_skills: job?.required_skills || [],
     behavioral_competencies: job?.behavioral_competencies || [],
+    leadership_competencies: job?.leadership_competencies || [], // 🔥 NEW
     business_resources: job?.business_resources || [],
     access_rights: job?.access_rights || [],
     company_benefits: job?.company_benefits || [],
@@ -292,11 +276,11 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       </div>
                     </div>
                   ))}
-                </div>
-              </CollapsibleSection>
-            )}
+              </div>
+            </CollapsibleSection>
+            )} 
 
-            {/* Required Skills */}
+             {/* Required Skills */}
             {safeJobData.required_skills.length > 0 && (
               <CollapsibleSection
                 title="Required Skills"
@@ -322,18 +306,19 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               </CollapsibleSection>
             )}
 
-            {/* Behavioral Competencies */}
+            {/* 🔥 Behavioral Competencies */}
             {safeJobData.behavioral_competencies.length > 0 && (
               <CollapsibleSection
                 title="Behavioral Competencies"
                 icon={User}
-                isExpanded={expandedSections.competencies}
-                onToggle={() => toggleSection('competencies')}
+                isExpanded={expandedSections.behavioral}
+                onToggle={() => toggleSection('behavioral')}
                 count={safeJobData.behavioral_competencies.length}
+                color="blue-600"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {safeJobData.behavioral_competencies.map((compItem, index) => (
-                    <div key={compItem.id || index} className={`p-3 ${bgAccent} rounded-lg`}>
+                    <div key={compItem.id || index} className={`p-3 ${bgAccent} rounded-lg border-l-2 border-blue-500`}>
                       <div className="flex items-center justify-between mb-2">
                         <span className={`font-medium ${textPrimary} text-sm`}>
                           {compItem.competency_detail?.name || `Competency ${index + 1}`}
@@ -341,6 +326,45 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       </div>
                       <div className={`text-xs ${textMuted}`}>
                         <p>Group: <span className="font-medium">{compItem.competency_detail?.group_name || 'N/A'}</span></p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
+
+            {/* 🔥 Leadership Competencies */}
+            {safeJobData.leadership_competencies.length > 0 && (
+              <CollapsibleSection
+                title="Leadership Competencies"
+                icon={Crown}
+                isExpanded={expandedSections.leadership}
+                onToggle={() => toggleSection('leadership')}
+                count={safeJobData.leadership_competencies.length}
+                color="purple-600"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {safeJobData.leadership_competencies.map((leadershipItem, index) => (
+                    <div key={leadershipItem.id || index} className={`p-3 ${bgAccent} rounded-lg border-l-2 border-purple-500`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`font-medium ${textPrimary} text-sm flex items-center gap-1`}>
+                          <Crown size={14} className="text-purple-600" />
+                          {leadershipItem.leadership_item_detail?.name || 
+                           leadershipItem.item_detail?.name || 
+                           `Leadership Item ${index + 1}`}
+                        </span>
+                      </div>
+                      <div className={`text-xs ${textMuted} space-y-1`}>
+                        {leadershipItem.leadership_item_detail?.child_group_name && (
+                          <p>
+                            Category: <span className="font-medium">{leadershipItem.leadership_item_detail.child_group_name}</span>
+                          </p>
+                        )}
+                        {leadershipItem.leadership_item_detail?.main_group_name && (
+                          <p>
+                            Main Group: <span className="font-medium">{leadershipItem.leadership_item_detail.main_group_name}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -383,7 +407,6 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       )}
                     </div>
                     
-                    {/* Show specific items if available */}
                     {resourceItem.has_specific_items && resourceItem.specific_items_detail && resourceItem.specific_items_detail.length > 0 ? (
                       <div className={`mt-3 pt-3 border-t ${borderColor}`}>
                         <div className="flex items-center gap-2 mb-2">
@@ -454,7 +477,6 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       )}
                     </div>
                     
-                    {/* Show specific items if available */}
                     {accessItem.has_specific_items && accessItem.specific_items_detail && accessItem.specific_items_detail.length > 0 ? (
                       <div className={`mt-3 pt-3 border-t ${borderColor}`}>
                         <div className="flex items-center gap-2 mb-2">
@@ -528,7 +550,6 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       )}
                     </div>
                     
-                    {/* Show specific items if available */}
                     {benefitItem.has_specific_items && benefitItem.specific_items_detail && benefitItem.specific_items_detail.length > 0 ? (
                       <div className={`mt-3 pt-3 border-t ${borderColor}`}>
                         <div className="flex items-center gap-2 mb-2">
@@ -558,13 +579,11 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                           </span>
                         </div>
                       </div>
-                    )}
+                     )}
                   </div>
                 ))}
               </div>
             </CollapsibleSection>
-
-           
           </div>
         </div>
       </div>
@@ -573,3 +592,6 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
 };
 
 export default JobViewModal;
+                
+           
+ 

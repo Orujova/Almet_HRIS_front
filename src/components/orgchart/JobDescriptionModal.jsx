@@ -1,10 +1,10 @@
-// components/orgChart/JobDescriptionModal.jsx - Part 1
+// components/orgChart/JobDescriptionModal.jsx - WITH Leadership Competencies Support
 'use client'
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { 
     X, Download, CheckCircle, Clock, AlertCircle, 
-    Target, Briefcase, Award, Building2, Shield 
+    Target, Briefcase, Award, Building2, Shield, Crown, User
 } from 'lucide-react';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
@@ -170,6 +170,27 @@ const JobDescriptionModal = ({
                                 />
                             )}
 
+                            {/* 🔥 Behavioral Competencies */}
+                            {jobDetail.behavioral_competencies && jobDetail.behavioral_competencies.length > 0 && (
+                                <BehavioralCompetenciesCard
+                                    competencies={jobDetail.behavioral_competencies}
+                                    bgAccent={bgAccent}
+                                    borderColor={borderColor}
+                                    textHeader={textHeader}
+                                />
+                            )}
+
+                            {/* 🔥 Leadership Competencies */}
+                            {jobDetail.leadership_competencies && jobDetail.leadership_competencies.length > 0 && (
+                                <LeadershipCompetenciesCard
+                                    competencies={jobDetail.leadership_competencies}
+                                    bgAccent={bgAccent}
+                                    borderColor={borderColor}
+                                    textHeader={textHeader}
+                                    textMuted={textMuted}
+                                />
+                            )}
+
                             {/* Business Resources */}
                             {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
                                 <ListCard
@@ -254,7 +275,6 @@ const InfoItem = ({ label, value, textMuted, textPrimary, isVacant }) => (
     </div>
 );
 
-// Job Purpose Card
 export const JobPurposeCard = ({ jobDetail, bgAccent, textHeader, textSecondary }) => (
     <div>
         <h4 className={`text-base font-bold ${textHeader} mb-2 flex items-center gap-2`}>
@@ -267,7 +287,6 @@ export const JobPurposeCard = ({ jobDetail, bgAccent, textHeader, textSecondary 
     </div>
 );
 
-// Job Sections Card
 export const JobSectionsCard = ({ sections, bgAccent, textHeader, textSecondary }) => (
     <div className="space-y-5">
         {sections.map((section, index) => (
@@ -286,7 +305,6 @@ export const JobSectionsCard = ({ sections, bgAccent, textHeader, textSecondary 
     </div>
 );
 
-// Approval Status Card
 export const ApprovalStatusCard = ({ 
     jobDetail, bgAccent, bgCard, borderColor, textHeader, textMuted, textSecondary 
 }) => (
@@ -350,7 +368,6 @@ const CommentBox = ({ title, comment, bgCard, textMuted, textSecondary }) => (
     </div>
 );
 
-// Next Action Card
 export const NextActionCard = ({ jobDetail, bgAccent, borderColor, textHeader, textSecondary }) => (
     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
         <h4 className={`font-bold ${textHeader} mb-2 flex items-center gap-2 text-sm`}>
@@ -363,7 +380,6 @@ export const NextActionCard = ({ jobDetail, bgAccent, borderColor, textHeader, t
     </div>
 );
 
-// Required Skills Card
 export const RequiredSkillsCard = ({ skills, bgAccent, borderColor, textHeader }) => (
     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
         <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
@@ -382,7 +398,55 @@ export const RequiredSkillsCard = ({ skills, bgAccent, borderColor, textHeader }
     </div>
 );
 
-// Generic List Card (for Business Resources, Access Rights, Company Benefits)
+// 🔥 NEW: Behavioral Competencies Card
+export const BehavioralCompetenciesCard = ({ competencies, bgAccent, borderColor, textHeader }) => (
+    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+            <User size={16} className="text-blue-600" />
+            Behavioral Competencies
+        </h4>
+        <div className="space-y-2">
+            {competencies.map((comp, index) => (
+                <div key={index} className="flex items-center justify-between py-0.5">
+                    <span className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                        {comp.competency_detail?.name || comp.name}
+                    </span>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+// 🔥 NEW: Leadership Competencies Card
+export const LeadershipCompetenciesCard = ({ competencies, bgAccent, borderColor, textHeader, textMuted }) => (
+    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor} border-l-4 border-l-purple-500`}>
+        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+            <Crown size={16} className="text-purple-600" />
+            Leadership Competencies
+        </h4>
+        <div className="space-y-2">
+            {competencies.map((comp, index) => (
+                <div key={index} className="space-y-1">
+                    <span className="inline-block bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                        <Crown size={10} className="inline mr-1" />
+                        {comp.leadership_item_detail?.name || comp.item_detail?.name || comp.name}
+                    </span>
+                    {(comp.leadership_item_detail?.child_group_name || comp.leadership_item_detail?.main_group_name) && (
+                        <div className={`text-[9px] ${textMuted} pl-2`}>
+                            {comp.leadership_item_detail?.main_group_name && (
+                                <span>{comp.leadership_item_detail.main_group_name}</span>
+                            )}
+                            {comp.leadership_item_detail?.child_group_name && (
+                                <span> › {comp.leadership_item_detail.child_group_name}</span>
+                            )}
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
 export const ListCard = ({ title, icon: Icon, items, bgAccent, borderColor, textHeader, textSecondary }) => (
     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
         <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>

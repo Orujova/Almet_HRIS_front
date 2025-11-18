@@ -1,10 +1,10 @@
-// src/components/headcount/ActionsDropdown.jsx - Enhanced with Job Description Modal
+// src/components/headcount/ActionsDropdown.jsx - WITH Leadership Competencies Support
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { 
   MoreVertical, Edit, Users, FileText, BarChart2, Trash2, UserPlus, 
   TagIcon, Archive, X, Download, CheckCircle, Clock, Building, 
-  Briefcase, Target, Award, Shield, UserCheck, UserX as UserVacant 
+  Briefcase, Target, Award, Shield, UserCheck, UserX as UserVacant, Crown
 } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useToast } from "../common/Toast";
@@ -19,6 +19,7 @@ import ConfirmationModal from "../common/ConfirmationModal";
 
 /**
  * Enhanced Actions Dropdown with Portal Rendering and Job Description Modal
+ * WITH Leadership Competencies Support
  */
 const ActionsDropdown = ({ 
   employeeId, 
@@ -189,9 +190,8 @@ const ActionsDropdown = ({
   const fetchJobDescription = async () => {
     try {
       setDetailLoading(true);
-      setIsOpen(false); // Close dropdown
+      setIsOpen(false);
       
-      // First get employee's job descriptions
       const jobDescriptions = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
       
       if (!jobDescriptions || jobDescriptions.length === 0) {
@@ -199,12 +199,10 @@ const ActionsDropdown = ({
         return;
       }
 
-      // Get the most recent/active job description
       const activeJob = jobDescriptions.find(job => 
         job.status === 'ACTIVE' || job.status === 'APPROVED'
       ) || jobDescriptions[0];
 
-      // Fetch full details
       const detail = await jobDescriptionService.getJobDescription(activeJob.id);
       setJobDetail(detail);
       setShowJobDescriptionModal(true);
@@ -250,6 +248,13 @@ const ActionsDropdown = ({
         {job.status_display?.status || statusInfo.label}
       </span>
     );
+  };
+
+  // 🔥 Check if job has leadership competencies
+  const isLeadershipPosition = (job) => {
+    return job.leadership_competencies && 
+           Array.isArray(job.leadership_competencies) && 
+           job.leadership_competencies.length > 0;
   };
 
   // ========================================
@@ -365,13 +370,11 @@ const ActionsDropdown = ({
   const handleAction = (action) => {
     setIsOpen(false);
     
-    // Handle job description viewing
     if (action === "viewJobDescription") {
       fetchJobDescription();
       return;
     }
     
-    // Handle delete actions with confirmation modals
     if (action === "softDelete") {
       handleSoftDelete();
       return;
@@ -382,7 +385,6 @@ const ActionsDropdown = ({
       return;
     }
     
-    // Handle other actions normally
     if (onAction) {
       onAction(employeeId, action);
     }
@@ -600,6 +602,10 @@ const ActionsDropdown = ({
   const JobDescriptionModal = () => {
     if (!showJobDescriptionModal || !jobDetail) return null;
 
+    const hasLeadershipComp = isLeadershipPosition(jobDetail);
+    const hasBehavioralComp = jobDetail.behavioral_competencies && 
+                              jobDetail.behavioral_competencies.length > 0;
+
     return createPortal(
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000] p-4">
         <div className={`${bgCard} rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-2xl`}>
@@ -610,6 +616,12 @@ const ActionsDropdown = ({
                 <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>Job Description Details</h2>
                 <div className="flex items-center gap-3 flex-wrap">
                   {getStatusDisplay(jobDetail)}
+                  {hasLeadershipComp && (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                      <Crown size={10} />
+                      Leadership Position
+                    </span>
+                  )}
                   <span className={`text-xs ${textMuted}`}>Created {jobDescriptionService.formatDate(jobDetail.created_at)}</span>
                   <span className={`text-xs ${textMuted}`}>
                     Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
@@ -792,6 +804,44 @@ const ActionsDropdown = ({
                   </div>
                 )}
 
+                {/* 🔥 Behavioral Competencies */}
+                {hasBehavioralComp && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Users size={16} className="text-blue-600" />
+                      Behavioral Competencies
+                    </h4>
+                    <div className="space-y-2">
+                      {jobDetail.behavioral_competencies.map((comp, index) => (
+                        <div key={index} className="flex items-center justify-between py-0.5">
+                          <span className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                            {comp.competency_detail?.name || comp.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 🔥 Leadership Competencies */}
+                {hasLeadershipComp && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Crown size={16} className="text-purple-600" />
+                      Leadership Competencies
+                    </h4>
+                    <div className="space-y-2">
+                      {jobDetail.leadership_competencies.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between py-0.5">
+                          <span className="inline-block bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                            {item.leadership_item_detail?.name || item.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Business Resources */}
                 {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
@@ -803,7 +853,7 @@ const ActionsDropdown = ({
                       {jobDetail.business_resources.map((resource, index) => (
                         <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                           <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                          {resource.name}
+                          {resource.name || resource.resource_detail?.name}
                         </div>
                       ))}
                     </div>
@@ -821,7 +871,7 @@ const ActionsDropdown = ({
                       {jobDetail.access_rights.map((access, index) => (
                         <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                           <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                          {access.name}
+                          {access.name || access.access_detail?.name}
                         </div>
                       ))}
                     </div>
@@ -839,7 +889,7 @@ const ActionsDropdown = ({
                       {jobDetail.company_benefits.map((benefit, index) => (
                         <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                           <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                          {benefit.name}
+                          {benefit.name || benefit.benefit_detail?.name}
                         </div>
                       ))}
                     </div>
