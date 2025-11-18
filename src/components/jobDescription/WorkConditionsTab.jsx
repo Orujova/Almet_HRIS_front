@@ -1,4 +1,4 @@
-// components/jobDescription/WorkConditionsTab.jsx - COMPLETE FIXED VERSION
+// components/jobDescription/WorkConditionsTab.jsx - FIXED with ID Prefixes
 import React, { useEffect } from 'react';
 import { Package, Shield, Gift } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
@@ -26,28 +26,45 @@ const WorkConditionsTab = ({
     });
   }, [dropdownData, formData]);
 
-  // Handle selection changes for each category
+  // 🔥 Helper function to remove prefix from IDs
+  const removePrefix = (ids, prefix) => {
+    return ids.map(id => {
+      const strId = String(id);
+      if (strId.startsWith(`${prefix}_`)) {
+        return strId.replace(`${prefix}_`, '');
+      }
+      return strId;
+    });
+  };
+
+  // 🔥 Handle selection changes for each category
   const handleResourcesChange = (selectedIds) => {
-    console.log('✅ Resources selected:', selectedIds);
+    // Remove 'res_' prefix before saving
+    const cleanIds = removePrefix(selectedIds, 'res');
+    console.log('✅ Resources selected (cleaned):', cleanIds);
     onFormDataChange(prev => ({
       ...prev,
-      business_resources_ids: selectedIds
+      business_resources_ids: cleanIds
     }));
   };
 
   const handleAccessChange = (selectedIds) => {
-    console.log('✅ Access selected:', selectedIds);
+    // Remove 'acc_' prefix before saving
+    const cleanIds = removePrefix(selectedIds, 'acc');
+    console.log('✅ Access selected (cleaned):', cleanIds);
     onFormDataChange(prev => ({
       ...prev,
-      access_rights_ids: selectedIds
+      access_rights_ids: cleanIds
     }));
   };
 
   const handleBenefitsChange = (selectedIds) => {
-    console.log('✅ Benefits selected:', selectedIds);
+    // Remove 'ben_' prefix before saving
+    const cleanIds = removePrefix(selectedIds, 'ben');
+    console.log('✅ Benefits selected (cleaned):', cleanIds);
     onFormDataChange(prev => ({
       ...prev,
-      company_benefits_ids: selectedIds
+      company_benefits_ids: cleanIds
     }));
   };
 
@@ -64,23 +81,18 @@ const WorkConditionsTab = ({
     ? dropdownData.companyBenefits 
     : [];
 
-  // Safe formData extraction with fallbacks
-  const selectedResourceIds = Array.isArray(formData?.business_resources_ids) 
-    ? formData.business_resources_ids 
-    : [];
-    
-  const selectedAccessIds = Array.isArray(formData?.access_rights_ids) 
-    ? formData.access_rights_ids 
-    : [];
-    
-  const selectedBenefitIds = Array.isArray(formData?.company_benefits_ids) 
-    ? formData.company_benefits_ids 
-    : [];
+  // 🔥 Add prefixes to selected IDs for display
+  const addPrefix = (ids, prefix) => {
+    if (!Array.isArray(ids)) return [];
+    return ids.map(id => `${prefix}_${id}`);
+  };
+
+  const selectedResourceIds = addPrefix(formData?.business_resources_ids || [], 'res');
+  const selectedAccessIds = addPrefix(formData?.access_rights_ids || [], 'acc');
+  const selectedBenefitIds = addPrefix(formData?.company_benefits_ids || [], 'ben');
 
   return (
     <div className="space-y-6">
-     
-
       {/* Three Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Business Resources */}
@@ -97,9 +109,10 @@ const WorkConditionsTab = ({
             searchPlaceholder="Search resources..."
             emptyMessage="No business resources available"
             darkMode={darkMode}
+            idPrefix="res" // 🔥 Unique prefix
           />
           <p className={`mt-2 text-xs ${textSecondary}`}>
-            {selectedResourceIds.length} item(s) selected
+            {formData?.business_resources_ids?.length || 0} item(s) selected
           </p>
         </div>
 
@@ -117,9 +130,10 @@ const WorkConditionsTab = ({
             searchPlaceholder="Search access rights..."
             emptyMessage="No access rights available"
             darkMode={darkMode}
+            idPrefix="acc" // 🔥 Unique prefix
           />
           <p className={`mt-2 text-xs ${textSecondary}`}>
-            {selectedAccessIds.length} item(s) selected
+            {formData?.access_rights_ids?.length || 0} item(s) selected
           </p>
         </div>
 
@@ -137,14 +151,13 @@ const WorkConditionsTab = ({
             searchPlaceholder="Search benefits..."
             emptyMessage="No company benefits available"
             darkMode={darkMode}
+            idPrefix="ben" // 🔥 Unique prefix
           />
           <p className={`mt-2 text-xs ${textSecondary}`}>
-            {selectedBenefitIds.length} item(s) selected
+            {formData?.company_benefits_ids?.length || 0} item(s) selected
           </p>
         </div>
       </div>
-
-   
     </div>
   );
 };

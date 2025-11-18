@@ -1,4 +1,4 @@
-// components/orgChart/OrgChartTreeView.jsx - Complete Single File
+// components/orgChart/OrgChartTreeView.jsx - Improved Layout
 'use client'
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
@@ -39,7 +39,8 @@ const cleanEmployeeData = (employee) => {
         employee_details: employee.employee_details
     };
 };
-// Layout algorithm using Dagre
+
+// IMPROVED: Better spacing for clearer hierarchy
 const getLayoutedElements = (nodes, edges, direction = 'TB') => {
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -47,26 +48,27 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
     if (direction === 'LR') {
         dagreGraph.setGraph({ 
             rankdir: direction, 
-            ranksep: 200,
-            nodesep: 80,
-            edgesep: 20,
-            marginx: 40,
-            marginy: 40
+            ranksep: 180,      // Reduced from 200
+            nodesep: 60,       // Reduced from 80
+            edgesep: 15,
+            marginx: 30,
+            marginy: 30
         });
     } else {
         dagreGraph.setGraph({ 
             rankdir: direction, 
-            ranksep: 150,
-            nodesep: 100,
-            edgesep: 20,
-            marginx: 40,
-            marginy: 40
+            ranksep: 120,      // Reduced from 150 for tighter vertical spacing
+            nodesep: 80,       // Reduced from 100
+            edgesep: 15,
+            marginx: 30,
+            marginy: 30
         });
     }
 
+    // IMPROVED: Smaller node dimensions to match new design
     nodes.forEach((node) => {
-        const nodeWidth = direction === 'LR' ? 300 : 320;
-        const nodeHeight = direction === 'LR' ? 160 : 180;
+        const nodeWidth = 260;   // Matches new width
+        const nodeHeight = 140;  // Reduced height
         dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
     });
 
@@ -78,8 +80,8 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
 
     const layoutedNodes = nodes.map((node) => {
         const nodeWithPosition = dagreGraph.node(node.id);
-        const nodeWidth = direction === 'LR' ? 300 : 320;
-        const nodeHeight = direction === 'LR' ? 160 : 180;
+        const nodeWidth = 260;
+        const nodeHeight = 140;
         
         return {
             ...node,
@@ -93,30 +95,14 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
     return { nodes: layoutedNodes, edges };
 };
 
-// Build hierarchy from flat employee list
+// Build hierarchy (unchanged)
 const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSelectedEmployee, navigateToEmployee) => {
     if (!Array.isArray(employees) || employees.length === 0) {
-        console.log('❌ No employees to build hierarchy');
         return { visibleNodes: [], edges: [] };
     }
 
     const cleanEmployees = employees.map(cleanEmployeeData).filter(Boolean);
     
-    console.log('🏗️ Building hierarchy for', cleanEmployees.length, 'employees');
-    
-    // Group by company to understand structure
-    const companiesMap = new Map();
-    cleanEmployees.forEach(emp => {
-        const company = emp.business_function || 'Unknown';
-        if (!companiesMap.has(company)) {
-            companiesMap.set(company, []);
-        }
-        companiesMap.get(company).push(emp);
-    });
-
-    console.log('🏢 Companies in data:', Array.from(companiesMap.keys()));
-    
-    // Build employee map
     const employeeMap = new Map();
     cleanEmployees.forEach(emp => {
         employeeMap.set(emp.employee_id, { 
@@ -126,39 +112,26 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
         });
     });
 
-    // Find root employees
-    // Root = no line_manager_id OR manager not in this filtered dataset
     const rootEmployees = [];
-    const managersInDataset = new Set(cleanEmployees.map(emp => emp.employee_id));
     
     cleanEmployees.forEach(emp => {
         const managerId = emp.line_manager_id;
         
         if (managerId && employeeMap.has(managerId)) {
-            // Has manager in dataset - add as child
             const manager = employeeMap.get(managerId);
             const employee = employeeMap.get(emp.employee_id);
             manager.children.push(employee);
             employee.parent = manager;
         } else {
-            // Root: no manager OR manager not in filtered data
             const employee = employeeMap.get(emp.employee_id);
             rootEmployees.push(employee);
-            console.log('🌳 Root found:', employee.name, '(', employee.business_function, ')');
         }
     });
 
-    console.log('✅ Root employees:', rootEmployees.length);
-
-    // If no roots found, find by other criteria
     if (rootEmployees.length === 0) {
-        console.warn('⚠️ No roots found by line_manager_id, trying fallback methods...');
-        
-        // Fallback 1: Find by max direct reports
         const maxReports = Math.max(...cleanEmployees.map(emp => emp.direct_reports || 0));
         if (maxReports > 0) {
             const candidates = cleanEmployees.filter(emp => (emp.direct_reports || 0) === maxReports);
-            console.log('📊 Found by max reports:', candidates.length, 'candidates');
             candidates.forEach(emp => {
                 const employee = employeeMap.get(emp.employee_id);
                 if (employee && !rootEmployees.includes(employee)) {
@@ -167,12 +140,10 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
             });
         }
         
-        // Fallback 2: Find by level_to_ceo
         if (rootEmployees.length === 0) {
             const minLevel = Math.min(...cleanEmployees.map(emp => emp.level_to_ceo || 999));
             if (minLevel < 999) {
                 const candidates = cleanEmployees.filter(emp => (emp.level_to_ceo || 999) === minLevel);
-                console.log('📊 Found by min level:', candidates.length, 'candidates');
                 candidates.forEach(emp => {
                     const employee = employeeMap.get(emp.employee_id);
                     if (employee && !rootEmployees.includes(employee)) {
@@ -182,9 +153,7 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
             }
         }
         
-        // Fallback 3: Take first few employees
         if (rootEmployees.length === 0) {
-            console.warn('⚠️ Using first 3 employees as roots');
             cleanEmployees.slice(0, 3).forEach(emp => {
                 const employee = employeeMap.get(emp.employee_id);
                 if (employee) {
@@ -197,7 +166,6 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
     const expandedSet = new Set(expandedNodeIds || []);
     const visibleEmployees = [];
 
-    // Mark visible employees based on expansion
     const markVisible = (employee, shouldShow = true) => {
         if (!employee) return;
         
@@ -205,7 +173,6 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
             employee.isVisible = true;
             visibleEmployees.push(employee);
             
-            // If expanded and has children, show them
             if (expandedSet.has(employee.employee_id) && employee.children.length > 0) {
                 employee.children.forEach(child => {
                     markVisible(child, true);
@@ -214,14 +181,10 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
         }
     };
 
-    // Start from roots
     rootEmployees.forEach(root => {
         markVisible(root, true);
     });
 
-    console.log('👁️ Visible employees:', visibleEmployees.length);
-
-    // Create React Flow nodes
     const nodes = visibleEmployees.map(emp => ({
         id: emp.employee_id.toString(),
         type: 'employee',
@@ -235,7 +198,7 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
         }
     }));
 
-    // Create edges between visible employees
+    // IMPROVED: Thinner, more elegant edges
     const edges = visibleEmployees
         .filter(emp => emp.parent && emp.parent.isVisible)
         .map(emp => ({
@@ -246,24 +209,22 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
             animated: false,
             style: { 
                 stroke: emp.vacant ? '#ef4444' : '#30539b', 
-                strokeWidth: emp.vacant ? 3 : 2,
-                opacity: emp.vacant ? 1 : 0.8,
+                strokeWidth: emp.vacant ? 2 : 1.5,  // Thinner lines
+                opacity: emp.vacant ? 0.9 : 0.6,
                 strokeDasharray: emp.vacant ? '5,5' : 'none'
             },
             markerEnd: {
                 type: 'arrowclosed',
                 color: emp.vacant ? '#ef4444' : '#30539b',
-                width: 20,
-                height: 20
+                width: 16,
+                height: 16
             }
         }));
-
-    console.log('📊 Result:', nodes.length, 'nodes,', edges.length, 'edges');
 
     return { visibleNodes: nodes, edges };
 };
 
-// Enhanced Controls Panel
+// Enhanced Controls Panel (unchanged)
 const EnhancedControlsPanel = ({ darkMode }) => {
     const { zoomIn, zoomOut, fitView, getViewport } = useReactFlow();
     const [currentZoom, setCurrentZoom] = useState(1);
@@ -288,7 +249,7 @@ const EnhancedControlsPanel = ({ darkMode }) => {
     const handleZoomToFit = useCallback(() => {
         fitView({ 
             duration: 800,
-            padding: 0.1,
+            padding: 0.15,  // Slightly more padding
             includeHiddenNodes: false,
             minZoom: 0.1,
             maxZoom: 1.5
@@ -372,6 +333,7 @@ const TreeView = ({
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
 
+    // IMPROVED: Smooth transitions with fade-in effect
     useEffect(() => {
         if (Array.isArray(filteredOrgChart) && filteredOrgChart.length > 0) {
             const hierarchy = buildOrgHierarchy(
@@ -389,10 +351,59 @@ const TreeView = ({
                     layoutDirection
                 );
                 
-                setNodes(layoutedNodes);
-                setEdges(layoutedEdges);
+                // Add fade-in animation to new nodes
+                const nodesWithAnimation = layoutedNodes.map(node => ({
+                    ...node,
+                    style: {
+                        ...node.style,
+                        opacity: 0,
+                        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }
+                }));
                 
-                setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 100);
+                const edgesWithAnimation = layoutedEdges.map(edge => ({
+                    ...edge,
+                    style: {
+                        ...edge.style,
+                        opacity: 0,
+                        transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }
+                }));
+                
+                setNodes(nodesWithAnimation);
+                setEdges(edgesWithAnimation);
+                
+                // Fade in after a tiny delay
+                setTimeout(() => {
+                    const visibleNodes = layoutedNodes.map(node => ({
+                        ...node,
+                        style: {
+                            ...node.style,
+                            opacity: 1,
+                            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }
+                    }));
+                    
+                    const visibleEdges = layoutedEdges.map(edge => ({
+                        ...edge,
+                        style: {
+                            ...edge.style,
+                            opacity: edge.style?.opacity || 0.6,
+                            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }
+                    }));
+                    
+                    setNodes(visibleNodes);
+                    setEdges(visibleEdges);
+                    
+                    // Gentle fit view
+                    setTimeout(() => fitView({ 
+                        padding: 0.15, 
+                        minZoom: 0.1, 
+                        maxZoom: 1.5,
+                        duration: 600
+                    }), 100);
+                }, 50);
             } else {
                 setNodes([]);
                 setEdges([]);
@@ -404,15 +415,51 @@ const TreeView = ({
     }, [filteredOrgChart, expandedNodes, layoutDirection, toggleExpandedNode, setSelectedEmployee, navigateToEmployee, setNodes, setEdges, fitView]);
 
     const onLayout = useCallback((direction) => {
-        const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
-            nodes,
-            edges,
-            direction
-        );
-        setNodes([...layoutedNodes]);
-        setEdges([...layoutedEdges]);
-        setLayoutDirection(direction);
-        setTimeout(() => fitView({ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }), 0);
+        // Smooth layout transition
+        const currentNodes = nodes.map(node => ({
+            ...node,
+            style: { ...node.style, opacity: 0.3, transition: 'all 0.4s ease-out' }
+        }));
+        const currentEdges = edges.map(edge => ({
+            ...edge,
+            style: { ...edge.style, opacity: 0.2, transition: 'all 0.4s ease-out' }
+        }));
+        
+        setNodes(currentNodes);
+        setEdges(currentEdges);
+        
+        setTimeout(() => {
+            const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+                nodes,
+                edges,
+                direction
+            );
+            
+            const animatedNodes = layoutedNodes.map(node => ({
+                ...node,
+                style: { ...node.style, opacity: 1, transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' }
+            }));
+            
+            const animatedEdges = layoutedEdges.map(edge => ({
+                ...edge,
+                style: { 
+                    ...edge.style, 
+                    opacity: edge.style?.opacity || 0.6, 
+                    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)' 
+                }
+            }));
+            
+            setNodes(animatedNodes);
+            setEdges(animatedEdges);
+            setLayoutDirection(direction);
+            
+            setTimeout(() => fitView({ 
+                padding: 0.15, 
+                minZoom: 0.1, 
+                maxZoom: 1.5,
+                duration: 600
+            }), 100);
+        }, 200);
     }, [nodes, edges, setNodes, setEdges, fitView, setLayoutDirection]);
 
     const handleExpandAll = useCallback(() => {
@@ -478,14 +525,15 @@ const TreeView = ({
             fitView
             className={darkMode ? 'dark' : ''}
             style={{ backgroundColor: darkMode ? '#0f172a' : '#e7ebf1' }}
-            fitViewOptions={{ padding: 0.1, minZoom: 0.1, maxZoom: 1.5 }}
+            fitViewOptions={{ padding: 0.15, minZoom: 0.1, maxZoom: 1.5, duration: 600 }}
             defaultEdgeOptions={{
                 type: 'smoothstep',
                 animated: false,
                 style: { 
                     stroke: '#30539b', 
-                    strokeWidth: 2,
-                    opacity: 0.8
+                    strokeWidth: 1.5,
+                    opacity: 0.6,
+                    transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
                 },
                 markerEnd: {
                     type: 'arrowclosed',
@@ -494,6 +542,23 @@ const TreeView = ({
                     height: 16
                 }
             }}
+            // Smooth interactions
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={true}
+            // Mouse controls - ENABLED
+            panOnScroll={false}
+            panOnScrollMode="vertical"
+            zoomOnScroll={true}
+            zoomOnPinch={true}
+            zoomOnDoubleClick={true}
+            zoomActivationKeyCode={null}
+            minZoom={0.1}
+            maxZoom={1.5}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+            translateExtent={[[-Infinity, -Infinity], [Infinity, Infinity]]}
+            // Smooth zoom
+            proOptions={{ hideAttribution: true }}
         >
             <Background 
                 color={darkMode ? '#334155' : '#90a0b9'} 
@@ -506,13 +571,13 @@ const TreeView = ({
             <Panel position="top-right" className="space-x-2">
                 <button 
                     onClick={() => onLayout('TB')}
-                    className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'TB' ? 'bg-almet-sapphire text-white' : ''}`}
+                    className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'TB' ? 'bg-almet-sapphire text-sky-400' : ''}`}
                 >
                     Vertical
                 </button>
                 <button 
                     onClick={() => onLayout('LR')}
-                    className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'LR' ? 'bg-almet-sapphire text-white' : ''}`}
+                    className={`px-3 py-2 ${bgCard} ${textPrimary} border ${borderColor} rounded-lg hover:${bgCardHover} transition-colors text-sm font-medium ${layoutDirection === 'LR' ? 'bg-almet-sapphire text-sky-400' : ''}`}
                 >
                     Horizontal
                 </button>

@@ -18,7 +18,8 @@ const HierarchicalMultiSelect = ({
   onChange,
   searchPlaceholder = "Search...",
   emptyMessage = "No items available",
-  darkMode = false
+  darkMode = false,
+  idPrefix = '' // 🔥 NEW: Prefix to make IDs unique across different dropdowns
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -35,6 +36,26 @@ const HierarchicalMultiSelect = ({
   const bgAccent = darkMode ? "bg-gray-700" : "bg-almet-mystic/30";
   const bgHover = darkMode ? "bg-gray-600" : "bg-almet-mystic";
 
+  // 🔥 Helper functions to add/remove prefix from IDs
+  const addPrefix = (id) => {
+    if (!idPrefix) return String(id);
+    return `${idPrefix}_${id}`;
+  };
+
+  const removePrefix = (id) => {
+    if (!idPrefix) return String(id);
+    const strId = String(id);
+    if (strId.startsWith(`${idPrefix}_`)) {
+      return strId.replace(`${idPrefix}_`, '');
+    }
+    return strId;
+  };
+
+  const hasPrefix = (id) => {
+    if (!idPrefix) return true;
+    return String(id).startsWith(`${idPrefix}_`);
+  };
+
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event) => {
@@ -49,7 +70,7 @@ const HierarchicalMultiSelect = ({
     }
   }, [isOpen]);
 
-  // 🔥 Detect if data has 3 levels (Main Group > Child Group > Items)
+  // 🔥 Detect if data has 3 levels
   const hasThreeLevels = React.useMemo(() => {
     if (!data || data.length === 0) return false;
     
@@ -67,7 +88,6 @@ const HierarchicalMultiSelect = ({
     const term = searchTerm.toLowerCase();
     
     if (hasThreeLevels) {
-      // 3-level filtering: Main Group > Child Group > Items
       return data.map(mainGroup => {
         const mainGroupMatch = mainGroup.name?.toLowerCase().includes(term);
         
@@ -97,7 +117,6 @@ const HierarchicalMultiSelect = ({
         return null;
       }).filter(Boolean);
     } else {
-      // 2-level filtering: Parent > Items
       return data.filter(parent => {
         const parentMatch = parent.name?.toLowerCase().includes(term);
         const childMatch = parent.items?.some(child => 
@@ -119,8 +138,6 @@ const HierarchicalMultiSelect = ({
     
     if (hasThreeLevels) {
       filteredData.forEach(mainGroup => {
-        let hasMatchInMainGroup = false;
-        
         (mainGroup.items || []).forEach(childGroup => {
           const hasMatchingItem = (childGroup.items || []).some(item =>
             item.name?.toLowerCase().includes(term) ||
@@ -130,7 +147,6 @@ const HierarchicalMultiSelect = ({
           if (hasMatchingItem || childGroup.name?.toLowerCase().includes(term)) {
             newExpandedParents.add(mainGroup.id);
             newExpandedChildren.add(`${mainGroup.id}-${childGroup.id}`);
-            hasMatchInMainGroup = true;
           }
         });
         
@@ -184,9 +200,10 @@ const HierarchicalMultiSelect = ({
     });
   };
 
+  // 🔥 Check if ID is selected (with prefix support)
   const isIdSelected = (id) => {
-    const strId = String(id);
-    return selectedIds.some(selectedId => String(selectedId) === strId);
+    const prefixedId = addPrefix(id);
+    return selectedIds.some(selectedId => String(selectedId) === prefixedId);
   };
 
   // 🔥 Get all item IDs from entire data structure
@@ -197,14 +214,14 @@ const HierarchicalMultiSelect = ({
       filteredData.forEach(mainGroup => {
         (mainGroup.items || []).forEach(childGroup => {
           (childGroup.items || []).forEach(item => {
-            ids.push(String(item.id));
+            ids.push(addPrefix(item.id));
           });
         });
       });
     } else {
       filteredData.forEach(parent => {
         (parent.items || []).forEach(item => {
-          ids.push(String(item.id));
+          ids.push(addPrefix(item.id));
         });
       });
     }
@@ -212,76 +229,74 @@ const HierarchicalMultiSelect = ({
     return ids;
   };
 
-  // 🔥 Get all item IDs from a structure (handles both 2-level and 3-level)
+  // Get all item IDs from a structure
   const getAllItemIds = (parent) => {
     const ids = [];
     
     if (hasThreeLevels) {
-      // 3-level: collect from child groups
       (parent.items || []).forEach(childGroup => {
         (childGroup.items || []).forEach(item => {
-          ids.push(String(item.id));
+          ids.push(addPrefix(item.id));
         });
       });
     } else {
-      // 2-level: collect from parent items
       (parent.items || []).forEach(item => {
-        ids.push(String(item.id));
+        ids.push(addPrefix(item.id));
       });
     }
     
     return ids;
   };
 
-  // 🔥 Get all item IDs from a child group (3-level only)
+  // Get all item IDs from a child group
   const getChildGroupItemIds = (childGroup) => {
-    return (childGroup.items || []).map(item => String(item.id));
+    return (childGroup.items || []).map(item => addPrefix(item.id));
   };
 
-  // Check if parent is fully selected
   const isParentChecked = (parent) => {
     const itemIds = getAllItemIds(parent);
     if (itemIds.length === 0) return isIdSelected(parent.id);
-    return itemIds.every(id => isIdSelected(id));
+    return itemIds.every(id => selectedIds.some(selectedId => String(selectedId) === id));
   };
 
-  // Check if parent is partially selected
   const isParentIndeterminate = (parent) => {
     const itemIds = getAllItemIds(parent);
     if (itemIds.length === 0) return false;
     
-    const selectedCount = itemIds.filter(id => isIdSelected(id)).length;
+    const selectedCount = itemIds.filter(id => 
+      selectedIds.some(selectedId => String(selectedId) === id)
+    ).length;
     return selectedCount > 0 && selectedCount < itemIds.length;
   };
 
-  // 🔥 Check if child group is fully selected (3-level only)
   const isChildGroupChecked = (childGroup) => {
     const itemIds = getChildGroupItemIds(childGroup);
     if (itemIds.length === 0) return false;
-    return itemIds.every(id => isIdSelected(id));
+    return itemIds.every(id => selectedIds.some(selectedId => String(selectedId) === id));
   };
 
-  // 🔥 Check if child group is partially selected (3-level only)
   const isChildGroupIndeterminate = (childGroup) => {
     const itemIds = getChildGroupItemIds(childGroup);
     if (itemIds.length === 0) return false;
     
-    const selectedCount = itemIds.filter(id => isIdSelected(id)).length;
+    const selectedCount = itemIds.filter(id => 
+      selectedIds.some(selectedId => String(selectedId) === id)
+    ).length;
     return selectedCount > 0 && selectedCount < itemIds.length;
   };
 
-  // 🔥 Check if all items are selected
   const areAllItemsSelected = () => {
     const allIds = getAllAvailableItemIds();
     if (allIds.length === 0) return false;
-    return allIds.every(id => isIdSelected(id));
+    return allIds.every(id => selectedIds.some(selectedId => String(selectedId) === id));
   };
 
-  // 🔥 Check if some items are selected
   const areSomeItemsSelected = () => {
     const allIds = getAllAvailableItemIds();
     if (allIds.length === 0) return false;
-    const selectedCount = allIds.filter(id => isIdSelected(id)).length;
+    const selectedCount = allIds.filter(id => 
+      selectedIds.some(selectedId => String(selectedId) === id)
+    ).length;
     return selectedCount > 0 && selectedCount < allIds.length;
   };
 
@@ -290,25 +305,25 @@ const HierarchicalMultiSelect = ({
     const itemIds = getAllItemIds(parent);
     
     if (itemIds.length === 0) {
-      // No items, toggle parent itself
-      const parentId = String(parent.id);
+      const prefixedParentId = addPrefix(parent.id);
       const isSelected = isIdSelected(parent.id);
 
       if (isSelected) {
-        onChange(selectedIds.filter(id => String(id) !== parentId));
+        onChange(selectedIds.filter(id => String(id) !== prefixedParentId));
       } else {
-        onChange([...selectedIds, parentId]);
+        onChange([...selectedIds, prefixedParentId]);
       }
     } else {
-      // Has items, toggle all items
-      const allSelected = itemIds.every(id => isIdSelected(id));
+      const allSelected = itemIds.every(id => 
+        selectedIds.some(selectedId => String(selectedId) === id)
+      );
 
       if (allSelected) {
         onChange(selectedIds.filter(id => !itemIds.includes(String(id))));
       } else {
         const newSelection = [...selectedIds];
         itemIds.forEach(itemId => {
-          if (!isIdSelected(itemId)) {
+          if (!selectedIds.some(selectedId => String(selectedId) === itemId)) {
             newSelection.push(itemId);
           }
         });
@@ -317,19 +332,21 @@ const HierarchicalMultiSelect = ({
     }
   };
 
-  // 🔥 Handle child group toggle (3-level only)
+  // Handle child group toggle
   const handleChildGroupToggle = (childGroup) => {
     const itemIds = getChildGroupItemIds(childGroup);
     if (itemIds.length === 0) return;
 
-    const allSelected = itemIds.every(id => isIdSelected(id));
+    const allSelected = itemIds.every(id => 
+      selectedIds.some(selectedId => String(selectedId) === id)
+    );
 
     if (allSelected) {
       onChange(selectedIds.filter(id => !itemIds.includes(String(id))));
     } else {
       const newSelection = [...selectedIds];
       itemIds.forEach(itemId => {
-        if (!isIdSelected(itemId)) {
+        if (!selectedIds.some(selectedId => String(selectedId) === itemId)) {
           newSelection.push(itemId);
         }
       });
@@ -339,28 +356,26 @@ const HierarchicalMultiSelect = ({
 
   // Handle item toggle
   const handleItemToggle = (item) => {
-    const itemId = String(item.id);
+    const prefixedItemId = addPrefix(item.id);
     const isSelected = isIdSelected(item.id);
 
     if (isSelected) {
-      onChange(selectedIds.filter(id => String(id) !== itemId));
+      onChange(selectedIds.filter(id => String(id) !== prefixedItemId));
     } else {
-      onChange([...selectedIds, itemId]);
+      onChange([...selectedIds, prefixedItemId]);
     }
   };
 
-  // 🔥 Handle Select All
+  // Handle Select All
   const handleSelectAll = () => {
     const allIds = getAllAvailableItemIds();
     
     if (areAllItemsSelected()) {
-      // Deselect all
       onChange(selectedIds.filter(id => !allIds.includes(String(id))));
     } else {
-      // Select all
       const newSelection = [...selectedIds];
       allIds.forEach(itemId => {
-        if (!isIdSelected(itemId)) {
+        if (!selectedIds.some(selectedId => String(selectedId) === itemId)) {
           newSelection.push(itemId);
         }
       });
@@ -369,12 +384,20 @@ const HierarchicalMultiSelect = ({
   };
 
   const handleClearAll = () => {
-    onChange([]);
+    // 🔥 Only clear items with this component's prefix
+    if (idPrefix) {
+      onChange(selectedIds.filter(id => !hasPrefix(id)));
+    } else {
+      onChange([]);
+    }
   };
 
-  const selectedCount = selectedIds.length;
+  // 🔥 Count only items with correct prefix
+  const selectedCount = idPrefix 
+    ? selectedIds.filter(id => hasPrefix(id)).length
+    : selectedIds.length;
+
   const allItemsSelected = areAllItemsSelected();
-  const someItemsSelected = areSomeItemsSelected();
 
   const getButtonText = () => {
     if (selectedCount === 0) {
@@ -383,18 +406,19 @@ const HierarchicalMultiSelect = ({
     return `${selectedCount} Selected`;
   };
 
-  // 🔥 Render 3-level structure
+  // Render 3-level structure
   const renderThreeLevel = () => {
     return filteredData.map(mainGroup => {
       const isMainExpanded = expandedParents.has(mainGroup.id);
       const mainChecked = isParentChecked(mainGroup);
       const mainIndeterminate = isParentIndeterminate(mainGroup);
       const totalItems = getAllItemIds(mainGroup).length;
-      const selectedItems = getAllItemIds(mainGroup).filter(id => isIdSelected(id)).length;
+      const selectedItems = getAllItemIds(mainGroup).filter(id => 
+        selectedIds.some(selectedId => String(selectedId) === id)
+      ).length;
 
       return (
         <div key={mainGroup.id} className={`border ${borderColor} rounded overflow-hidden transition-all`}>
-          {/* Main Group Header */}
           <div 
             className={`flex items-center gap-2 p-2 cursor-pointer transition-all duration-150 ${
               mainChecked || mainIndeterminate
@@ -450,7 +474,6 @@ const HierarchicalMultiSelect = ({
             )}
           </div>
 
-          {/* Child Groups */}
           {isMainExpanded && (mainGroup.items || []).length > 0 && (
             <div className={`border-t ${borderColor} ${bgAccent} p-1.5 space-y-1`}>
               {(mainGroup.items || []).map(childGroup => {
@@ -459,11 +482,12 @@ const HierarchicalMultiSelect = ({
                 const childChecked = isChildGroupChecked(childGroup);
                 const childIndeterminate = isChildGroupIndeterminate(childGroup);
                 const childItems = getChildGroupItemIds(childGroup);
-                const selectedChildItems = childItems.filter(id => isIdSelected(id)).length;
+                const selectedChildItems = childItems.filter(id => 
+                  selectedIds.some(selectedId => String(selectedId) === id)
+                ).length;
 
                 return (
                   <div key={childGroup.id} className={`border ${borderColor} rounded overflow-hidden`}>
-                    {/* Child Group Header */}
                     <div 
                       className={`flex items-center gap-2 p-1.5 cursor-pointer transition-all duration-150 ${
                         childChecked || childIndeterminate
@@ -514,7 +538,6 @@ const HierarchicalMultiSelect = ({
                       )}
                     </div>
 
-                    {/* Items */}
                     {isChildExpanded && (childGroup.items || []).length > 0 && (
                       <div className={`border-t ${borderColor} ${bgAccent} p-1 space-y-0.5`}>
                         {(childGroup.items || []).map(item => {
@@ -569,7 +592,7 @@ const HierarchicalMultiSelect = ({
     });
   };
 
-  // 🔥 Render 2-level structure (original)
+  // Render 2-level structure
   const renderTwoLevel = () => {
     return filteredData.map(parent => {
       const isExpanded = expandedParents.has(parent.id);
@@ -761,7 +784,7 @@ const HierarchicalMultiSelect = ({
             <div className={`p-2.5 border-t ${borderColor} ${bgAccent}`}>
               <div className="flex items-center justify-between gap-3 text-[10px]">
                 <div className="flex items-center gap-2">
-                  {/* 🔥 Select All Button */}
+                  {/* Select All Button */}
                   <button
                     onClick={handleSelectAll}
                     className={`flex items-center gap-1.5 px-2 py-1 rounded ${
