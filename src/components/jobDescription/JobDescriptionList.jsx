@@ -1,4 +1,4 @@
-// components/jobDescription/JobDescriptionList.jsx - UPDATED: Multi-assignment support
+// components/jobDescription/JobDescriptionList.jsx - Add View Assignments button
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Search, 
@@ -22,7 +22,8 @@ import {
   User,
   Briefcase,
   Users,
-  ChevronRight
+  ChevronRight,
+  List // 🔥 NEW
 } from 'lucide-react';
 
 const JobDescriptionList = ({
@@ -35,6 +36,7 @@ const JobDescriptionList = ({
   onJobSelect,
   onJobEdit,
   onJobDelete,
+  onViewAssignments, // 🔥 NEW
   onDirectSubmission,
   onDownloadPDF,
   actionLoading,
@@ -52,7 +54,6 @@ const JobDescriptionList = ({
   const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (departmentDropdownRef.current && !departmentDropdownRef.current.contains(event.target)) {
@@ -67,7 +68,6 @@ const JobDescriptionList = ({
     };
   }, []);
 
-  // Get unique departments
   const getUniqueDepartments = () => {
     if (!dropdownData.employees) return [];
     
@@ -85,7 +85,6 @@ const JobDescriptionList = ({
     dept.toLowerCase().includes(departmentSearchTerm.toLowerCase())
   );
 
-  // Toggle assignments expanded state
   const toggleAssignments = (jobId, event) => {
     event.stopPropagation();
     setExpandedAssignments(prev => ({
@@ -94,7 +93,6 @@ const JobDescriptionList = ({
     }));
   };
 
-  // Overall status color (for job description level)
   const getOverallStatusColor = (overallStatus) => {
     switch (overallStatus) {
       case 'ALL_APPROVED':
@@ -112,7 +110,6 @@ const JobDescriptionList = ({
     }
   };
 
-  // Assignment status color
   const getAssignmentStatusColor = (status) => {
     switch (status) {
       case 'DRAFT':
@@ -154,7 +151,6 @@ const JobDescriptionList = ({
     }
   };
 
-  // Format overall status for display
   const formatOverallStatus = (status) => {
     switch (status) {
       case 'ALL_APPROVED': return 'All Approved';
@@ -167,14 +163,14 @@ const JobDescriptionList = ({
     }
   };
 
-  // Check if job can be edited
-  const canEditJob = (job) => {
-    // JD itself can always be edited (content, skills, etc.)
-    // Individual assignments have their own edit rules
-    return true;
+  // 🔥 NEW: Handle view assignments click
+  const handleViewAssignmentsClick = (job, event) => {
+    event.stopPropagation();
+    if (onViewAssignments) {
+      onViewAssignments(job);
+    }
   };
 
-  // Event handlers
   const handleDownloadPDF = (jobId, event) => {
     event.stopPropagation();
     if (onDownloadPDF) {
@@ -388,6 +384,14 @@ const JobDescriptionList = ({
                           
                           {/* Action Buttons */}
                           <div className="flex items-center gap-1">
+                            {/* 🔥 NEW: View Assignments Button */}
+                            <button
+                              onClick={(e) => handleViewAssignmentsClick(job, e)}
+                              className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                              title="View Assignments"
+                            >
+                              <List size={14} />
+                            </button>
                             <button
                               onClick={(e) => handleViewClick(job, e)}
                               className="p-2 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors"
@@ -445,7 +449,7 @@ const JobDescriptionList = ({
                                   <UserCheck size={12} className="text-green-600" />
                                   {job.employee_assignments_count} employee{job.employee_assignments_count !== 1 ? 's' : ''}
                                 </span>
-                              )}
+                                )}
                               {job.vacancy_assignments_count > 0 && (
                                 <span className="flex items-center gap-1">
                                   <UserVacant size={12} className="text-orange-600" />

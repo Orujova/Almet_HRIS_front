@@ -3,15 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
+import ConfirmationModal from "@/components/common/ConfirmationModal";
+import Pagination from "@/components/common/Pagination";
+import { useToast } from "@/components/common/Toast";
 import celebrationService from "@/services/celebrationService";
 import { 
   Plus, Search, Calendar, Cake, Award, Gift, PartyPopper,
   Edit, Trash2, X, Loader2, TrendingUp, ChevronLeft, ChevronRight,
-  Building2, Briefcase, Image as ImageIcon, Heart
+  Building2, Briefcase, Image as ImageIcon, Heart, Users
 } from 'lucide-react';
 
 export default function CelebrationsPage() {
   const { darkMode } = useTheme();
+  const { showSuccess, showError, showWarning } = useToast();
   const [celebrations, setCelebrations] = useState([]);
   const [selectedCelebration, setSelectedCelebration] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +26,7 @@ export default function CelebrationsPage() {
   const [loading, setLoading] = useState(true);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null });
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, loading: false });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [statistics, setStatistics] = useState({
     total_celebrations: 0,
@@ -33,14 +37,13 @@ export default function CelebrationsPage() {
   const [formData, setFormData] = useState({
     type: 'company_event',
     title: '',
-
     date: '',
     message: ''
   });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreview, setImagePreview] = useState([]);
-  const [wishMessage, setWishMessage] = useState('');
-  const [showWishModal, setShowWishModal] = useState(false);
+  const [celebratedItems, setCelebratedItems] = useState(new Set());
+  const [celebrationWishes, setCelebrationWishes] = useState([]);
 
   const celebrationTypes = [
     { id: 'all', name: 'All Celebrations', icon: PartyPopper, color: 'bg-almet-sapphire' },
@@ -63,7 +66,23 @@ export default function CelebrationsPage() {
   useEffect(() => { 
     loadCelebrations(); 
     loadStatistics();
+    loadCelebratedItems();
   }, []);
+
+  const loadCelebratedItems = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(`celebrated_${today}`);
+    if (stored) {
+      setCelebratedItems(new Set(JSON.parse(stored)));
+    }
+  };
+
+  const saveCelebratedItem = (itemId) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newCelebrated = new Set([...celebratedItems, itemId]);
+    setCelebratedItems(newCelebrated);
+    localStorage.setItem(`celebrated_${today}`, JSON.stringify([...newCelebrated]));
+  };
 
   const loadCelebrations = async () => {
     setLoading(true);
@@ -72,7 +91,7 @@ export default function CelebrationsPage() {
       setCelebrations(data);
     } catch (error) {
       console.error('Error loading celebrations:', error);
-      alert('Error loading celebrations. Please try again.');
+      showError('Error loading celebrations. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -103,14 +122,13 @@ export default function CelebrationsPage() {
   const handleCreateCelebration = async () => {
     try {
       if (!formData.title || !formData.date || !formData.message) {
-        alert('Please fill in all required fields');
+        showWarning('Please fill in all required fields');
         return;
       }
 
       const celebrationData = {
         type: formData.type,
         title: formData.title,
-
         date: formData.date,
         message: formData.message,
         images: imageFiles
@@ -123,10 +141,10 @@ export default function CelebrationsPage() {
       loadCelebrations();
       loadStatistics();
       
-      alert('Celebration created successfully!');
+      showSuccess('Celebration created successfully!');
     } catch (error) {
       console.error('Error creating celebration:', error);
-      alert('Error creating celebration. Please try again.');
+      showError('Error creating celebration. Please try again.');
     }
   };
 
@@ -134,7 +152,6 @@ export default function CelebrationsPage() {
     setFormData({
       type: 'company_event',
       title: '',
-  
       date: '',
       message: ''
     });
@@ -142,43 +159,93 @@ export default function CelebrationsPage() {
     setImagePreview([]);
   };
 
-  const handleAddWish = async () => {
-    try {
-      if (!wishMessage.trim()) {
-        alert('Please enter a wish message');
-        return;
-      }
+  const handleCelebrate = async (item, e) => {
+    e.stopPropagation();
+    
+    if (celebratedItems.has(item.id)) {
+      return;
+    }
 
-      if (selectedCelebration.is_auto) {
-        // Auto celebration (birthday or work anniversary)
+    const celebrationDate = new Date(item.date).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (celebrationDate !== today) {
+      showWarning('You can only celebrate on the celebration day!');
+      return;
+    }
+
+    try {
+      const celebrateMessage = '🎉';
+      
+      if (item.is_auto) {
         await celebrationService.addAutoWish(
-          selectedCelebration.employee_id,
-          selectedCelebration.type,
-          wishMessage
+          item.employee_id,
+          item.type,
+          celebrateMessage
         );
       } else {
-        // Manual celebration
         await celebrationService.addWish(
-          selectedCelebration.id,
-          wishMessage
+          item.id,
+          celebrateMessage
         );
       }
 
-      setWishMessage('');
-      setShowWishModal(false);
+      saveCelebratedItem(item.id);
       loadCelebrations();
       loadStatistics();
       
-      alert('Wish added successfully!');
+      if (showDetailModal && selectedCelebration && selectedCelebration.id === item.id) {
+        loadCelebrationWishes(item);
+      }
+      
+      showSuccess('Celebration sent! 🎉');
     } catch (error) {
-      console.error('Error adding wish:', error);
-      alert('Error adding wish. Please try again.');
+      console.error('Error celebrating:', error);
+      showError('Error celebrating. Please try again.');
     }
+  };
+
+  const loadCelebrationWishes = async (celebration) => {
+    try {
+      if (celebration.is_auto) {
+        const data = await celebrationService.getAutoCelebrationWishes(
+          celebration.employee_id,
+          celebration.type
+        );
+        setCelebrationWishes(data);
+      } else {
+        const data = await celebrationService.getCelebrationWishes(celebration.id);
+        setCelebrationWishes(data);
+      }
+    } catch (error) {
+      console.error('Error loading wishes:', error);
+      setCelebrationWishes([]);
+    }
+  };
+
+  const formatWishTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  };
+
+  const isCelebrationDay = (dateString) => {
+    const celebrationDate = new Date(dateString).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    return celebrationDate === today;
   };
 
   const filteredCelebrations = celebrations.filter(item => {
     const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         item.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) 
+                         item.employee_name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = selectedType === 'all' || item.type === selectedType;
     const matchesMonth = selectedMonth === 'all' || item.date.split('-')[1] === selectedMonth;
     return matchesSearch && matchesType && matchesMonth;
@@ -204,31 +271,33 @@ export default function CelebrationsPage() {
   const handleEditCelebration = (item, e) => { 
     e.stopPropagation(); 
     if (item.is_auto) {
-      alert('Cannot edit auto-generated celebrations (birthdays and work anniversaries)');
+      showWarning('Cannot edit auto-generated celebrations (birthdays and work anniversaries)');
       return;
     }
-    alert('Edit functionality - To be implemented');
+    showWarning('Edit functionality - To be implemented');
   };
 
   const handleDeleteCelebration = (item, e) => { 
     e.stopPropagation();
     if (item.is_auto) {
-      alert('Cannot delete auto-generated celebrations (birthdays and work anniversaries)');
+      showWarning('Cannot delete auto-generated celebrations (birthdays and work anniversaries)');
       return;
     }
-    setConfirmModal({ isOpen: true, item }); 
+    setConfirmModal({ isOpen: true, item, loading: false }); 
   };
 
   const confirmDelete = async () => { 
+    setConfirmModal(prev => ({ ...prev, loading: true }));
     try {
       await celebrationService.deleteCelebration(confirmModal.item.id);
-      setConfirmModal({ isOpen: false, item: null });
+      setConfirmModal({ isOpen: false, item: null, loading: false });
       loadCelebrations();
       loadStatistics();
-      alert('Celebration deleted successfully!');
+      showSuccess('Celebration deleted successfully!');
     } catch (error) {
       console.error('Error deleting celebration:', error);
-      alert('Error deleting celebration. Please try again.');
+      showError('Error deleting celebration. Please try again.');
+      setConfirmModal(prev => ({ ...prev, loading: false }));
     }
   };
 
@@ -248,20 +317,21 @@ export default function CelebrationsPage() {
 
   return (
     <DashboardLayout>
-      <div className={`p-4 min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-almet-mystic'}`}>
+      <div className={`p-6 min-h-screen `}>
+        {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h1 className={`text-2xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Company Celebrations
               </h1>
-              <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                Celebrate milestones together
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Celebrate milestones and achievements together
               </p>
             </div>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
             >
               <Plus size={18} />
               Create Celebration
@@ -271,98 +341,102 @@ export default function CelebrationsPage() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className={`rounded-xl p-4 border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
+          <div className={`rounded-xl p-5 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} hover:shadow-lg transition-shadow`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-xs mb-1 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>Total</p>
+                <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Celebrations</p>
                 <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.total_celebrations}</p>
               </div>
-              <div className="p-3 bg-almet-sapphire/10 rounded-lg">
+              <div className="p-3 bg-almet-sapphire/10 rounded-xl">
                 <PartyPopper className="h-6 w-6 text-almet-sapphire" />
               </div>
             </div>
           </div>
 
-          <div className={`rounded-xl p-4 border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
+          <div className={`rounded-xl p-5 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} hover:shadow-lg transition-shadow`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-xs mb-1 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>This Month</p>
+                <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>This Month</p>
                 <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.this_month}</p>
               </div>
-              <div className={`p-3 rounded-lg ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+              <div className={`p-3 rounded-xl ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
                 <Calendar className={`h-6 w-6 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               </div>
             </div>
           </div>
 
-          <div className={`rounded-xl p-4 border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
+          <div className={`rounded-xl p-5 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} hover:shadow-lg transition-shadow`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-xs mb-1 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>Upcoming</p>
+                <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Upcoming</p>
                 <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.upcoming}</p>
               </div>
-              <div className={`p-3 rounded-lg ${darkMode ? 'bg-green-900/30' : 'bg-green-100'}`}>
+              <div className={`p-3 rounded-xl ${darkMode ? 'bg-green-900/30' : 'bg-green-100'}`}>
                 <TrendingUp className={`h-6 w-6 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
               </div>
             </div>
           </div>
 
-          <div className={`rounded-xl p-4 border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
+          <div className={`rounded-xl p-5 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} hover:shadow-lg transition-shadow`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-xs mb-1 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>Wishes</p>
+                <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Wishes</p>
                 <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{statistics.total_wishes}</p>
               </div>
-              <div className={`p-3 rounded-lg ${darkMode ? 'bg-pink-900/30' : 'bg-pink-100'}`}>
-                <Gift className={`h-6 w-6 ${darkMode ? 'text-pink-400' : 'text-pink-600'}`} />
+              <div className={`p-3 rounded-xl ${darkMode ? 'bg-pink-900/30' : 'bg-pink-100'}`}>
+                <Heart className={`h-6 w-6 ${darkMode ? 'text-pink-400' : 'text-pink-600'}`} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Type Filters */}
-        <div className={`rounded-xl p-4 mb-4 border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
-          <div className="flex flex-wrap gap-2">
-            {celebrationTypes.map(type => {
-              const Icon = type.icon;
-              const isActive = selectedType === type.id;
-              const count = type.id === 'all' ? celebrations.length : celebrations.filter(c => c.type === type.id).length;
-              return (
-                <button
-                  key={type.id}
-                  onClick={() => { setSelectedType(type.id); setCurrentPage(1); }}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    isActive 
-                      ? `${type.color} text-white shadow-md` 
-                      : darkMode 
-                        ? 'bg-almet-san-juan text-almet-bali-hai hover:bg-almet-comet'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {type.name}
-                  <span className={`px-1.5 py-0.5 rounded text-xs ${
-                    isActive ? 'bg-white/20' : darkMode ? 'bg-almet-comet' : 'bg-gray-200'
-                  }`}>
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+        {/* Filters */}
+        <div className={`rounded-xl p-4 mb-6 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+          {/* Type Filters */}
+          <div className="mb-4">
+            <label className={`block text-xs font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              Filter by Type
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {celebrationTypes.map(type => {
+                const Icon = type.icon;
+                const isActive = selectedType === type.id;
+                const count = type.id === 'all' ? celebrations.length : celebrations.filter(c => c.type === type.id).length;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => { setSelectedType(type.id); setCurrentPage(1); }}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                      isActive 
+                        ? `${type.color} text-white shadow-md scale-105` 
+                        : darkMode 
+                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {type.name}
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      isActive ? 'bg-white/20' : darkMode ? 'bg-gray-600' : 'bg-gray-200'
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* Search and Month Filter */}
-        <div className={`rounded-xl p-4 mb-4 border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
+          {/* Search and Month */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-5" />
               <input
                 type="text"
                 placeholder="Search celebrations..."
-                className={`w-full pl-10 pr-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire outline-none ${
+                className={`w-full pl-10 pr-4 py-2 text-xs border rounded-xl focus:ring-2 focus:ring-almet-sapphire outline-none ${
                   darkMode 
-                    ? 'border-almet-comet bg-almet-san-juan text-white' 
+                    ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' 
                     : 'border-gray-300 bg-white text-gray-900'
                 }`}
                 value={searchTerm}
@@ -372,9 +446,9 @@ export default function CelebrationsPage() {
             <select
               value={selectedMonth}
               onChange={(e) => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
-              className={`px-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire outline-none ${
+              className={`px-4 py-2 text-xs border rounded-xl focus:ring-2 focus:ring-almet-sapphire outline-none ${
                 darkMode 
-                  ? 'border-almet-comet bg-almet-san-juan text-white' 
+                  ? 'border-gray-600 bg-gray-700 text-white' 
                   : 'border-gray-300 bg-white text-gray-900'
               }`}
             >
@@ -389,107 +463,136 @@ export default function CelebrationsPage() {
             <Loader2 className="h-8 w-8 animate-spin text-almet-sapphire" />
           </div>
         ) : paginatedCelebrations.length === 0 ? (
-          <div className={`rounded-xl p-12 text-center border ${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'}`}>
-            <PartyPopper className={`h-16 w-16 mx-auto mb-4 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-400'}`} />
+          <div className={`rounded-xl p-12 text-center border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+            <PartyPopper className={`h-16 w-16 mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
             <h3 className={`text-lg font-semibold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               No Celebrations Found
             </h3>
-            <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
+            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Try adjusting your filters or create a new celebration
             </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               {paginatedCelebrations.map((item) => {
                 const typeInfo = getTypeInfo(item.type);
                 const TypeIcon = typeInfo.icon;
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-xl overflow-hidden border hover:shadow-lg transition-all group relative ${
-                      darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'
+                    className={`rounded-xl overflow-hidden border hover:shadow-xl transition-all duration-300 group relative transform hover:-translate-y-1 ${
+                      darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                     }`}
                   >
                     <div 
-                      className="relative h-48 overflow-hidden cursor-pointer" 
+                      className="relative h-52 overflow-hidden cursor-pointer" 
                       onClick={() => { 
                         setSelectedCelebration(item); 
                         setCurrentImageIndex(0);
-                        setShowDetailModal(true); 
+                        setShowDetailModal(true);
+                        loadCelebrationWishes(item);
                       }}
                     >
                       <img
                         src={item.images[0]}
                         alt={item.title || item.employee_name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      
                       {item.images.length > 1 && (
-                        <div className="absolute bottom-3 left-3 bg-black/60 text-white px-2 py-1 rounded text-xs font-medium">
+                        <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1">
+                          <ImageIcon size={12} />
                           {item.images.length} photos
                         </div>
                       )}
-                      <div className={`absolute top-3 right-3 ${typeInfo.color} text-white px-2 py-1 rounded-lg text-xs font-medium flex items-center gap-1 shadow-lg`}>
-                        <TypeIcon size={12} />
+                      <div className={`absolute top-3 right-3 ${typeInfo.color} text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg`}>
+                        <TypeIcon size={14} />
                         {typeInfo.name}
                       </div>
                     </div>
 
                     {!item.is_auto && (
-                      <div className="absolute top-52 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="absolute top-56 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => handleEditCelebration(item, e)}
-                          className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+                          className="p-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
                           title="Edit"
                         >
-                          <Edit size={14} />
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={(e) => handleDeleteCelebration(item, e)}
-                          className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+                          className="p-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
                           title="Delete"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={16} />
                         </button>
                       </div>
                     )}
 
                     <div 
-                      className="p-4 cursor-pointer" 
+                      className="p-5 cursor-pointer" 
                       onClick={() => { 
                         setSelectedCelebration(item); 
                         setCurrentImageIndex(0);
-                        setShowDetailModal(true); 
+                        setShowDetailModal(true);
+                        loadCelebrationWishes(item);
                       }}
                     >
-                      <h3 className={`font-semibold mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      <h3 className={`font-semibold text-lg mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                         {item.title || item.employee_name}
                       </h3>
                       {item.position && (
-                        <p className={`text-sm mb-2 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                          {item.position} 
+                        <p className={`text-sm mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          {item.position}
                         </p>
                       )}
-                   
+                 
                       {item.years && (
-                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium mb-2 ${
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium mb-3 ${
                           darkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'
                         }`}>
-                          <Award size={12} />
+                          <Award size={14} />
                           {item.years} years
                         </div>
                       )}
-                      <p className={`text-sm mb-3 line-clamp-2 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-700'}`}>
+                      <p className={`text-sm mb-4 line-clamp-2 ${darkMode ? 'text-gray-400' : 'text-gray-700'}`}>
                         {item.message}
                       </p>
-                      <div className={`flex items-center justify-between pt-3 border-t ${darkMode ? 'border-almet-comet' : 'border-gray-200'}`}>
-                        <div className={`flex items-center gap-2 text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                          <Calendar size={12} />
+                      <div className={`flex items-center justify-between pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <div className={`flex items-center gap-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <Calendar size={14} />
                           {formatDate(item.date)}
                         </div>
-                        <div className={`flex items-center gap-1 text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                          <Heart size={12} />
-                          {item.wishes} wishes
+                        <div className="flex items-center gap-3">
+                          <div className={`flex items-center gap-1.5 text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            <Users size={14} />
+                            {item.wishes}
+                          </div>
+                          <button
+                            onClick={(e) => handleCelebrate(item, e)}
+                            disabled={celebratedItems.has(item.id) || !isCelebrationDay(item.date)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                              celebratedItems.has(item.id)
+                                ? darkMode 
+                                  ? 'bg-green-900/30 text-green-400 cursor-default'
+                                  : 'bg-green-100 text-green-700 cursor-default'
+                                : !isCelebrationDay(item.date)
+                                ? 'opacity-50 cursor-not-allowed bg-gray-400 text-gray-600'
+                                : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-md'
+                            }`}
+                            title={
+                              celebratedItems.has(item.id) 
+                                ? 'Already celebrated' 
+                                : !isCelebrationDay(item.date)
+                                ? 'Can only celebrate on the celebration day'
+                                : 'Celebrate'
+                            }
+                          >
+                            {celebratedItems.has(item.id) ? '✓' : '🎉'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -498,73 +601,52 @@ export default function CelebrationsPage() {
               })}
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 mt-6">
-                <button
-                  onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    currentPage === 1
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-almet-sapphire hover:text-white'
-                  } ${darkMode ? 'bg-almet-cloud-burst text-white border border-almet-comet' : 'bg-white text-gray-900 border border-gray-300'}`}
-                >
-                  Previous
-                </button>
-                <div className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-almet-cloud-burst text-white' : 'bg-white text-gray-900'}`}>
-                  Page {currentPage} of {totalPages}
-                </div>
-                <button
-                  onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    currentPage === totalPages
-                      ? 'opacity-50 cursor-not-allowed'
-                      : 'hover:bg-almet-sapphire hover:text-white'
-                  } ${darkMode ? 'bg-almet-cloud-burst text-white border border-almet-comet' : 'bg-white text-gray-900 border border-gray-300'}`}
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={sortedCelebrations.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={handlePageChange}
+              darkMode={darkMode}
+            />
           </>
         )}
 
         {/* Create Modal */}
         {showCreateModal && (
           <div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
             onClick={() => setShowCreateModal(false)}
           >
             <div 
-              className={`rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
-                darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
-              }`}
+              className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
+                darkMode ? 'bg-gray-800' : 'bg-white'
+              } shadow-2xl`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className={`sticky top-0 z-10 flex items-center justify-between p-6 border-b ${
-                darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'
+              <div className={`sticky top-0 z-10 flex items-center justify-between p-4 border-b ${
+                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
               }`}>
-                <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h2 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   Create Celebration
                 </h2>
                 <button
                   onClick={() => setShowCreateModal(false)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    darkMode ? 'hover:bg-almet-comet' : 'hover:bg-gray-100'
+                  className={`p-2 rounded-xl transition-colors ${
+                    darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
                   }`}
                 >
-                  <X size={20} className={darkMode ? 'text-almet-bali-hai' : 'text-gray-600'} />
+                  <X size={20} />
                 </button>
               </div>
 
-              <div className="p-6 space-y-4">
+              <div className="p-6 space-y-5">
                 {/* Type Selection */}
                 <div>
-                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     Celebration Type *
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {celebrationTypes.filter(t => !['all', 'birthday', 'work_anniversary'].includes(t.id)).map(type => {
                       const Icon = type.icon;
                       const isActive = formData.type === type.id;
@@ -573,11 +655,11 @@ export default function CelebrationsPage() {
                           key={type.id}
                           type="button"
                           onClick={() => setFormData({ ...formData, type: type.id })}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all ${
                             isActive 
                               ? `${type.color} text-white shadow-md` 
                               : darkMode 
-                                ? 'bg-almet-san-juan text-almet-bali-hai hover:bg-almet-comet'
+                                ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                         >
@@ -599,15 +681,13 @@ export default function CelebrationsPage() {
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="Enter celebration title"
-                    className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire outline-none ${
+                    className={`w-full px-4 py-2 text-sm border rounded-xl focus:ring-2 focus:ring-almet-sapphire outline-none ${
                       darkMode 
-                        ? 'border-almet-comet bg-almet-san-juan text-white' 
+                        ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   />
                 </div>
-
-           
 
                 {/* Date */}
                 <div>
@@ -618,9 +698,9 @@ export default function CelebrationsPage() {
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire outline-none ${
+                    className={`w-full px-4 py-2 text-sm border rounded-xl focus:ring-2 focus:ring-almet-sapphire outline-none ${
                       darkMode 
-                        ? 'border-almet-comet bg-almet-san-juan text-white' 
+                        ? 'border-gray-600 bg-gray-700 text-white' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   />
@@ -636,9 +716,9 @@ export default function CelebrationsPage() {
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                     placeholder="Enter celebration message"
                     rows={4}
-                    className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire outline-none resize-none ${
+                    className={`w-full px-4 py-3 text-sm border rounded-xl focus:ring-2 focus:ring-almet-sapphire outline-none resize-none ${
                       darkMode 
-                        ? 'border-almet-comet bg-almet-san-juan text-white' 
+                        ? 'border-gray-600 bg-gray-700 text-white placeholder-gray-400' 
                         : 'border-gray-300 bg-white text-gray-900'
                     }`}
                   />
@@ -649,8 +729,8 @@ export default function CelebrationsPage() {
                   <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     Images
                   </label>
-                  <div className={`border-2 border-dashed rounded-lg p-6 text-center ${
-                    darkMode ? 'border-almet-comet bg-almet-san-juan' : 'border-gray-300 bg-gray-50'
+                  <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
+                    darkMode ? 'border-gray-600 bg-gray-700/50 hover:border-almet-sapphire' : 'border-gray-300 bg-gray-50 hover:border-almet-sapphire'
                   }`}>
                     <input
                       type="file"
@@ -661,11 +741,11 @@ export default function CelebrationsPage() {
                       id="image-upload"
                     />
                     <label htmlFor="image-upload" className="cursor-pointer">
-                      <ImageIcon className={`h-12 w-12 mx-auto mb-2 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-400'}`} />
-                      <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
+                      <ImageIcon className={`h-8 w-8 mx-auto mb-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                      <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                         Click to upload images
                       </p>
-                      <p className={`text-xs mt-1 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-500'}`}>
+                      <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
                         PNG, JPG up to 10MB
                       </p>
                     </label>
@@ -673,18 +753,18 @@ export default function CelebrationsPage() {
 
                   {/* Image Previews */}
                   {imagePreview.length > 0 && (
-                    <div className="grid grid-cols-3 gap-3 mt-3">
+                    <div className="grid grid-cols-3 gap-3 mt-4">
                       {imagePreview.map((preview, index) => (
                         <div key={index} className="relative group">
                           <img
                             src={preview}
                             alt={`Preview ${index + 1}`}
-                            className="w-full h-24 object-cover rounded-lg"
+                            className="w-full h-28 object-cover rounded-xl"
                           />
                           <button
                             type="button"
                             onClick={() => removeImage(index)}
-                            className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                           >
                             <X size={14} />
                           </button>
@@ -696,17 +776,17 @@ export default function CelebrationsPage() {
               </div>
 
               {/* Footer */}
-              <div className={`sticky bottom-0 flex justify-end gap-3 p-6 border-t ${
-                darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'
+              <div className={`sticky bottom-0 flex justify-end gap-3 p-4 border-t ${
+                darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
               }`}>
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
                     resetForm();
                   }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-5 py-2 text-xs rounded-xl font-medium transition-colors ${
                     darkMode 
-                      ? 'bg-almet-san-juan text-white hover:bg-almet-comet' 
+                      ? 'bg-gray-700 text-white hover:bg-gray-600' 
                       : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                   }`}
                 >
@@ -715,10 +795,10 @@ export default function CelebrationsPage() {
                 <button
                   onClick={handleCreateCelebration}
                   disabled={!formData.title || !formData.date || !formData.message}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-6 py-2 text-xs rounded-xl font-medium transition-all shadow-lg ${
                     !formData.title || !formData.date || !formData.message
                       ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-almet-sapphire text-white hover:bg-blue-700'
+                      : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-xl'
                   }`}
                 >
                   Create Celebration
@@ -731,16 +811,19 @@ export default function CelebrationsPage() {
         {/* Detail Modal */}
         {showDetailModal && selectedCelebration && (
           <div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowDetailModal(false)}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => {
+              setShowDetailModal(false);
+              setCelebrationWishes([]);
+            }}
           >
             <div 
-              className={`rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
-                darkMode ? 'bg-almet-cloud-burst' : 'bg-white'
-              }`}
+              className={`rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto ${
+                darkMode ? 'bg-gray-800' : 'bg-white'
+              } shadow-2xl`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="relative h-64">
+              <div className="relative h-80">
                 <img
                   src={selectedCelebration.images[currentImageIndex]}
                   alt={selectedCelebration.title || selectedCelebration.employee_name}
@@ -752,23 +835,23 @@ export default function CelebrationsPage() {
                   <>
                     <button
                       onClick={prevImage}
-                      className={`absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-lg shadow-lg transition-colors ${
-                        darkMode ? 'bg-almet-cloud-burst hover:bg-almet-comet' : 'bg-white hover:bg-gray-100'
+                      className={`absolute left-3 top-1/2 -translate-y-1/2 p-3 rounded-xl shadow-lg transition-all ${
+                        darkMode ? 'bg-gray-800/90 hover:bg-gray-700' : 'bg-white/90 hover:bg-white'
                       }`}
                     >
-                      <ChevronLeft size={20} className={darkMode ? 'text-white' : 'text-gray-600'} />
+                      <ChevronLeft size={24} className={darkMode ? 'text-white' : 'text-gray-600'} />
                     </button>
                     <button
                       onClick={nextImage}
-                      className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg shadow-lg transition-colors ${
-                        darkMode ? 'bg-almet-cloud-burst hover:bg-almet-comet' : 'bg-white hover:bg-gray-100'
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 p-3 rounded-xl shadow-lg transition-all ${
+                        darkMode ? 'bg-gray-800/90 hover:bg-gray-700' : 'bg-white/90 hover:bg-white'
                       }`}
                     >
-                      <ChevronRight size={20} className={darkMode ? 'text-white' : 'text-gray-600'} />
+                      <ChevronRight size={24} className={darkMode ? 'text-white' : 'text-gray-600'} />
                     </button>
                     
                     {/* Image Counter */}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-lg text-sm">
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-xl text-sm font-medium">
                       {currentImageIndex + 1} / {selectedCelebration.images.length}
                     </div>
                   </>
@@ -776,12 +859,15 @@ export default function CelebrationsPage() {
 
                 {/* Close Button */}
                 <button
-                  onClick={() => setShowDetailModal(false)}
-                  className={`absolute top-4 right-4 p-2 rounded-lg shadow-lg transition-colors ${
-                    darkMode ? 'bg-almet-cloud-burst hover:bg-almet-comet' : 'bg-white hover:bg-gray-100'
+                  onClick={() => {
+                    setShowDetailModal(false);
+                    setCelebrationWishes([]);
+                  }}
+                  className={`absolute top-4 right-4 p-2.5 rounded-xl shadow-lg transition-all ${
+                    darkMode ? 'bg-gray-800/90 hover:bg-gray-700' : 'bg-white/90 hover:bg-white'
                   }`}
                 >
-                  <X size={20} className={darkMode ? 'text-almet-bali-hai' : 'text-gray-600'} />
+                  <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
                 </button>
 
                 {/* Edit and Delete Buttons */}
@@ -792,174 +878,157 @@ export default function CelebrationsPage() {
                         setShowDetailModal(false);
                         handleEditCelebration(selectedCelebration, e);
                       }}
-                      className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg"
+                      className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
                       title="Edit"
                     >
-                      <Edit size={16} />
+                      <Edit size={18} />
                     </button>
                     <button
                       onClick={(e) => {
                         setShowDetailModal(false);
                         handleDeleteCelebration(selectedCelebration, e);
                       }}
-                      className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors shadow-lg"
+                      className="p-2.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors shadow-lg"
                       title="Delete"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </button>
                   </div>
                 )}
 
                 {/* Type Badge */}
-                <div className={`absolute bottom-4 left-4 ${getTypeInfo(selectedCelebration.type).color} text-white px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 shadow-lg`}>
-                  {React.createElement(getTypeInfo(selectedCelebration.type).icon, { size: 16 })}
+                <div className={`absolute bottom-4 left-4 ${getTypeInfo(selectedCelebration.type).color} text-white px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 shadow-lg`}>
+                  {React.createElement(getTypeInfo(selectedCelebration.type).icon, { size: 18 })}
                   {getTypeInfo(selectedCelebration.type).name}
                 </div>
               </div>
 
               <div className="p-6">
-                <h2 className={`text-2xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h2 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   {selectedCelebration.title || selectedCelebration.employee_name}
                 </h2>
                 {selectedCelebration.position && (
-                  <p className={`text-sm mb-4 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
+                  <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                     {selectedCelebration.position} 
                   </p>
                 )}
-               
+              
                 {selectedCelebration.years && (
-                  <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium mb-4 ${
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium mb-4 ${
                     darkMode ? 'bg-purple-900/30 text-purple-400' : 'bg-purple-100 text-purple-700'
                   }`}>
-                    <Award size={16} />
-                    {selectedCelebration.years} years
+                    <Award size={18} />
+                    {selectedCelebration.years} years with us
                   </div>
                 )}
                 
-                <div className={`rounded-lg p-4 mb-4 ${darkMode ? 'bg-almet-san-juan' : 'bg-gray-50'}`}>
-                  <p className={`leading-relaxed ${darkMode ? 'text-almet-bali-hai' : 'text-gray-700'}`}>
+                <div className={`rounded-xl p-5 mb-6 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                  <p className={`leading-relaxed ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     {selectedCelebration.message}
                   </p>
                 </div>
 
-                <div className={`flex items-center justify-between pt-4 border-t ${darkMode ? 'border-almet-comet' : 'border-gray-200'}`}>
-                  <div className={`flex items-center gap-2 text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                    <Calendar size={16} />
+                <div className={`flex items-center justify-between pt-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                  <div className={`flex items-center gap-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    <Calendar size={18} />
                     {formatDate(selectedCelebration.date)}
                   </div>
-                  <div className={`flex items-center gap-2 text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                    <Heart size={16} />
-                    {selectedCelebration.wishes} wishes
+                  <div className="flex items-center gap-4">
+                    <div className={`flex items-center gap-2 text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      <Users size={18} />
+                      {selectedCelebration.wishes} celebrations
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCelebrate(selectedCelebration, e);
+                      }}
+                      disabled={celebratedItems.has(selectedCelebration.id) || !isCelebrationDay(selectedCelebration.date)}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg ${
+                        celebratedItems.has(selectedCelebration.id)
+                          ? darkMode 
+                            ? 'bg-green-900/30 text-green-400 cursor-default'
+                            : 'bg-green-100 text-green-700 cursor-default'
+                          : !isCelebrationDay(selectedCelebration.date)
+                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                          : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-xl'
+                      }`}
+                      title={
+                        celebratedItems.has(selectedCelebration.id) 
+                          ? 'Already celebrated' 
+                          : !isCelebrationDay(selectedCelebration.date)
+                          ? 'Can only celebrate on the celebration day'
+                          : 'Celebrate'
+                      }
+                    >
+                      {celebratedItems.has(selectedCelebration.id) ? '✓ Celebrated' : '🎉 Celebrate'}
+                    </button>
                   </div>
                 </div>
 
-                {/* Add Wish Button */}
-                <button
-                  onClick={() => setShowWishModal(true)}
-                  className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                >
-                  <Heart size={18} />
-                  Send Your Wishes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+                {/* Wishes Section */}
+                {selectedCelebration.wishes > 0 && (
+                  <div className={`mt-6 pt-6 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        Celebrations ({selectedCelebration.wishes})
+                      </h3>
+                      {celebrationWishes.length === 0 && (
+                        <button
+                          onClick={() => loadCelebrationWishes(selectedCelebration)}
+                          className="text-sm text-almet-sapphire hover:underline font-medium"
+                        >
+                          Load wishes
+                        </button>
+                      )}
+                    </div>
 
-        {/* Wish Modal */}
-        {showWishModal && selectedCelebration && (
-          <div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
-            onClick={() => setShowWishModal(false)}
-          >
-            <div 
-              className={`rounded-xl p-6 max-w-md w-full ${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className={`text-xl font-bold mb-4 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Send Your Wishes
-              </h3>
-              <p className={`text-sm mb-4 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                To: {selectedCelebration.title || selectedCelebration.employee_name}
-              </p>
-              <textarea
-                value={wishMessage}
-                onChange={(e) => setWishMessage(e.target.value)}
-                placeholder="Write your wishes here..."
-                rows={4}
-                className={`w-full px-4 py-2.5 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire outline-none resize-none mb-4 ${
-                  darkMode 
-                    ? 'border-almet-comet bg-almet-san-juan text-white' 
-                    : 'border-gray-300 bg-white text-gray-900'
-                }`}
-              />
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => {
-                    setShowWishModal(false);
-                    setWishMessage('');
-                  }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    darkMode 
-                      ? 'bg-almet-san-juan text-white hover:bg-almet-comet' 
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddWish}
-                  disabled={!wishMessage.trim()}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    !wishMessage.trim()
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-almet-sapphire text-white hover:bg-blue-700'
-                  }`}
-                >
-                  Send Wish
-                </button>
+                    {celebrationWishes.length > 0 && (
+                      <div className={`rounded-xl p-5 max-h-64 overflow-y-auto ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
+                        <div className="space-y-3">
+                          {celebrationWishes.map((wish, index) => (
+                            <div 
+                              key={index}
+                              className={`flex items-start gap-3 pb-3 ${
+                                index !== celebrationWishes.length - 1 
+                                  ? darkMode ? 'border-b border-gray-600' : 'border-b border-gray-200' 
+                                  : ''
+                              }`}
+                            >
+                              <div className="text-2xl">🎉</div>
+                              <div className="flex-1">
+                                <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {wish.user_name || 'Anonymous'}
+                                </p>
+                                <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                  {formatWishTime(wish.created_at)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
         )}
 
         {/* Confirmation Modal */}
-        {confirmModal.isOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setConfirmModal({ isOpen: false, item: null })}
-          >
-            <div 
-              className={`rounded-xl p-6 max-w-md w-full ${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className={`text-xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                Delete Celebration
-              </h3>
-              <p className={`mb-6 ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
-                Are you sure you want to delete "{confirmModal.item?.title || confirmModal.item?.employee_name}"?
-              </p>
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setConfirmModal({ isOpen: false, item: null })}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    darkMode 
-                      ? 'bg-almet-san-juan text-white hover:bg-almet-comet' 
-                      : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmDelete}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmationModal
+          isOpen={confirmModal.isOpen}
+          onClose={() => setConfirmModal({ isOpen: false, item: null, loading: false })}
+          onConfirm={confirmDelete}
+          title="Delete Celebration"
+          message={`Are you sure you want to delete "${confirmModal.item?.title || confirmModal.item?.employee_name}"? This action cannot be undone.`}
+          confirmText="Delete"
+          cancelText="Cancel"
+          type="danger"
+          loading={confirmModal.loading}
+          darkMode={darkMode}
+        />
       </div>
     </DashboardLayout>
   );

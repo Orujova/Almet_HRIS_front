@@ -90,7 +90,7 @@ const celebrationService = {
       
       formData.append('type', celebrationData.type);
       formData.append('title', celebrationData.title);
- 
+      formData.append('department', celebrationData.department || '');
       formData.append('date', celebrationData.date);
       formData.append('message', celebrationData.message);
       
@@ -121,7 +121,7 @@ const celebrationService = {
       
       if (celebrationData.type) formData.append('type', celebrationData.type);
       if (celebrationData.title) formData.append('title', celebrationData.title);
-   
+      if (celebrationData.department) formData.append('department', celebrationData.department);
       if (celebrationData.date) formData.append('date', celebrationData.date);
       if (celebrationData.message) formData.append('message', celebrationData.message);
       
@@ -215,6 +215,22 @@ const celebrationService = {
       return response.data.wishes || [];
     } catch (error) {
       console.error('Error fetching wishes:', error);
+      throw error;
+    }
+  },
+
+  // ✅ Get wishes for auto celebration (birthday or work anniversary)
+  getAutoCelebrationWishes: async (employeeId, celebrationType) => {
+    try {
+      const response = await api.get('/celebrations/get_auto_wishes/', {
+        params: {
+          employee_id: employeeId,
+          celebration_type: celebrationType
+        }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching auto wishes:', error);
       throw error;
     }
   },

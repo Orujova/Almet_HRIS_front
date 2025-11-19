@@ -1,11 +1,10 @@
-// pages/structure/job-descriptions/page.jsx - UPDATED FOR MULTI-ASSIGNMENT SUPPORT
+// pages/structure/job-descriptions/page.jsx - UPDATED handlers
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Plus, Edit, Eye, Trash2, FileText, Clock,
-  CheckCircle, Settings, Send, X, Users, AlertCircle, FileSpreadsheet,
-  UserPlus, UserMinus, RefreshCw
+  CheckCircle, Settings, Send, X, Users,
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -16,12 +15,11 @@ import Pagination from '@/components/common/Pagination';
 import jobDescriptionService from '@/services/jobDescriptionService';
 import competencyApi from '@/services/competencyApi';
 
-// Import child components
 import JobDescriptionList from '@/components/jobDescription/JobDescriptionList';
 import JobDescriptionForm from '@/components/jobDescription/JobDescriptionForm';
 import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
-import AssignmentsModal from '@/components/jobDescription/AssignmentsModal'; // 🔥 NEW
+import AssignmentsModal from '@/components/jobDescription/AssignmentsModal';
 import StatCard from '@/components/jobDescription/StatCard';
 
 const JobDescriptionPageContent = () => {
@@ -46,7 +44,7 @@ const JobDescriptionPageContent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // 🔥 NEW: Assignments modal state
+  // 🔥 Assignments modal state
   const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
   const [selectedJobForAssignments, setSelectedJobForAssignments] = useState(null);
   const [assignmentsData, setAssignmentsData] = useState(null);
@@ -56,9 +54,6 @@ const JobDescriptionPageContent = () => {
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
-  
-  // 🔥 NEW: Selected assignment for individual approval
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
   
   const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
   const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
@@ -358,6 +353,7 @@ const JobDescriptionPageContent = () => {
     try {
       setActionLoading(true);
       const response = await jobDescriptionService.getJobDescriptionAssignments(job.id);
+      console.log('📥 Assignments response:', response);
       setAssignmentsData(response);
       setSelectedJobForAssignments(job);
       setShowAssignmentsModal(true);
@@ -370,11 +366,11 @@ const JobDescriptionPageContent = () => {
   };
 
   // 🔥 NEW: Submit single assignment for approval
-  const handleSubmitAssignmentForApproval = async (jobId, assignmentId) => {
+  const handleSubmitAssignmentForApproval = async (jobId, assignmentId, comments = '') => {
     try {
       setActionLoading(true);
       await jobDescriptionService.submitAssignmentForApproval(jobId, assignmentId, {
-        comments: ''
+        comments: comments
       });
       showSuccess('Assignment submitted for approval');
       
@@ -388,7 +384,64 @@ const JobDescriptionPageContent = () => {
       await fetchStats();
     } catch (error) {
       console.error('Error submitting assignment:', error);
-      showError('Error submitting for approval');
+      showError(error.response?.data?.error || 'Error submitting for approval');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 🔥 NEW: Approve assignment
+  const handleApproveAssignment = async (jobId, assignmentId, approverType, comments = '') => {
+    try {
+      setActionLoading(true);
+      
+      if (approverType === 'line_manager') {
+        await jobDescriptionService.approveAssignmentByLineManager(jobId, assignmentId, {
+          comments: comments
+        });
+        showSuccess('Assignment approved as line manager');
+      } else {
+        await jobDescriptionService.approveAssignmentAsEmployee(jobId, assignmentId, {
+          comments: comments
+        });
+        showSuccess('Assignment approved as employee');
+      }
+      
+      // Refresh
+      const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
+      setAssignmentsData(response);
+      await fetchJobDescriptions();
+      await fetchStats();
+    } catch (error) {
+      console.error('Error approving assignment:', error);
+      showError(error.response?.data?.error || 'Error approving assignment');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 🔥 NEW: Reject assignment
+  const handleRejectAssignment = async (jobId, assignmentId, reason) => {
+    try {
+      if (!reason || !reason.trim()) {
+        showError('Please provide a reason for rejection');
+        return;
+      }
+      
+      setActionLoading(true);
+      await jobDescriptionService.rejectAssignment(jobId, assignmentId, {
+        reason: reason
+      });
+      showSuccess('Assignment rejected');
+      
+      // Refresh
+      const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
+      setAssignmentsData(response);
+      await fetchJobDescriptions();
+      await fetchStats();
+    } catch (error) {
+      console.error('Error rejecting assignment:', error);
+      showError(error.response?.data?.error || 'Error rejecting assignment');
     } finally {
       setActionLoading(false);
     }
@@ -410,7 +463,7 @@ const JobDescriptionPageContent = () => {
       await fetchStats();
     } catch (error) {
       console.error('Error submitting all assignments:', error);
-      showError('Error submitting assignments');
+      showError(error.response?.data?.error || 'Error submitting assignments');
     } finally {
       setActionLoading(false);
     }
@@ -445,6 +498,28 @@ const JobDescriptionPageContent = () => {
     });
   };
 
+  // 🔥 NEW: Reassign employee
+  const handleReassignEmployee = async (assignmentId) => {
+    showInfo('Reassignment feature coming soon');
+    // TODO: Implement employee selection modal for reassignment
+  };
+
+  // 🔥 NEW: Refresh assignments
+  const handleRefreshAssignments = async () => {
+    if (!selectedJobForAssignments) return;
+    
+    try {
+      setActionLoading(true);
+      const response = await jobDescriptionService.getJobDescriptionAssignments(selectedJobForAssignments.id);
+      setAssignmentsData(response);
+    } catch (error) {
+      console.error('Error refreshing assignments:', error);
+      showError('Error refreshing assignments');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleDownloadSinglePDF = async (jobId) => {
     try {
       setActionLoading(true);
@@ -458,7 +533,7 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 UPDATED: Now submits all assignments
+  // 🔥 UPDATED: Direct submission now opens modal to submit all
   const handleDirectSubmissionForApproval = async (jobId) => {
     setCreatedJobsData({ id: jobId, isExisting: true });
     setIsExistingJobSubmission(true);
@@ -472,11 +547,9 @@ const JobDescriptionPageContent = () => {
       setSubmissionLoading(true);
       
       if (createdJobsData.isExisting) {
-        // 🔥 Submit all assignments for existing job
         await jobDescriptionService.submitAllAssignmentsForApproval(createdJobsData.id);
         showSuccess('All assignments submitted for approval!');
       } else {
-        // New job - assignments already created, submit them all
         const jobId = createdJobsData.id || createdJobsData.job_description_id;
         await jobDescriptionService.submitAllAssignmentsForApproval(jobId);
         showSuccess('Job description and assignments submitted for approval!');
@@ -493,7 +566,7 @@ const JobDescriptionPageContent = () => {
       setActiveView('list');
     } catch (error) {
       console.error('Error submitting for approval:', error);
-      showError('Error submitting for approval. Please try again.');
+      showError(error.response?.data?.error || 'Error submitting for approval. Please try again.');
     } finally {
       setSubmissionLoading(false);
     }
@@ -830,9 +903,9 @@ const JobDescriptionPageContent = () => {
                 darkMode={darkMode}
               />
               <StatCard 
-                title="Employees/Vacancies" 
-                value={`${stats.assignment_type_breakdown?.employees || 0}/${stats.assignment_type_breakdown?.vacancies || 0}`}
-                subtitle="Assigned positions"
+                title="Draft Assignments" 
+                     value={stats.assignment_status_breakdown?.Draft || 0} 
+                subtitle="Assignments in draft"
                 icon={Users}
                 color="gray-600"
                 darkMode={darkMode}
@@ -958,21 +1031,26 @@ const JobDescriptionPageContent = () => {
             />
           )}
 
-          {/* 🔥 NEW: Assignments Modal */}
-          {showAssignmentsModal && assignmentsData && (
+          {/* 🔥 Assignments Modal */}
+          {showAssignmentsModal && assignmentsData && selectedJobForAssignments && (
             <AssignmentsModal
-              job={selectedJobForAssignments}
-              assignmentsData={assignmentsData}
+              isOpen={showAssignmentsModal}
               onClose={() => {
                 setShowAssignmentsModal(false);
                 setSelectedJobForAssignments(null);
                 setAssignmentsData(null);
               }}
+              job={selectedJobForAssignments}
+              assignmentsData={assignmentsData}
               onSubmitAssignment={handleSubmitAssignmentForApproval}
               onSubmitAll={handleSubmitAllAssignments}
+              onApprove={handleApproveAssignment}
+              onReject={handleRejectAssignment}
               onRemoveAssignment={handleRemoveAssignment}
+              onReassignEmployee={handleReassignEmployee}
+              onRefresh={handleRefreshAssignments}
+              currentUser={{ id: 1 }} // TODO: Get from auth context
               actionLoading={actionLoading}
-              darkMode={darkMode}
             />
           )}
 

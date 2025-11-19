@@ -70,7 +70,7 @@ const EmployeeSelectionModal = ({
       setExpandedEmployee(null);
       setIsInitialized(true);
     }
-  }, [isOpen, isInitialized]);
+  }, [isOpen, isInitialized, eligibleEmployees, preSelectedEmployeeIds]);
 
   // Update selection if preSelectedEmployeeIds changes while modal is open
   useEffect(() => {
@@ -79,7 +79,7 @@ const EmployeeSelectionModal = ({
       setSelectedEmployees(preSelectedEmployeeIds);
       setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length);
     }
-  }, [preSelectedEmployeeIds, isOpen, isInitialized]);
+  }, [preSelectedEmployeeIds, isOpen, isInitialized, eligibleEmployees]);
 
   // Filter employees based on search
   const filteredEmployees = eligibleEmployees.filter(emp => {
@@ -144,12 +144,11 @@ const EmployeeSelectionModal = ({
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
   };
 
-  // Helper function to check if record is a vacancy
+  // Helper functions
   const isVacancy = (record) => {
     return record.is_vacancy || record.record_type === 'vacancy' || record.name === 'VACANT';
   };
 
-  // Helper function to get display name
   const getDisplayName = (record) => {
     if (isVacancy(record)) {
       return `Vacant Position (${record.employee_id})`;
@@ -157,7 +156,6 @@ const EmployeeSelectionModal = ({
     return record.full_name || record.name || 'Unknown';
   };
 
-  // Helper function to get appropriate icon
   const getRecordIcon = (record) => {
     return isVacancy(record) ? UserX : User;
   };

@@ -1,10 +1,11 @@
 "use client";
-import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X } from "lucide-react";
+import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X, Cake, Award, Sparkles } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
 import { useState, useEffect } from "react";
 import { newsService } from "@/services/newsService";
+import celebrationService from "@/services/celebrationService";
 import { useTheme } from "@/components/common/ThemeProvider";
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
@@ -132,6 +133,141 @@ const NewsCard = ({ news, darkMode, onClick }) => {
               {news.view_count}
             </span>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isToday }) => {
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    const diffDays = Math.ceil((date - today) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays < 7) return `In ${diffDays} days`;
+    
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric'
+    });
+  };
+
+  const getIcon = () => {
+    if (celebration.type === 'birthday') return <Cake className="h-4 w-4" />;
+    if (celebration.type === 'work_anniversary') return <Award className="h-4 w-4" />;
+    return null;
+  };
+
+  const getTypeLabel = () => {
+    if (celebration.type === 'birthday') return 'Birthday';
+    if (celebration.type === 'work_anniversary') return 'Work Anniversary';
+    return '';
+  };
+
+  const getTypeColor = () => {
+    if (celebration.type === 'birthday') return 'text-pink-600 dark:text-pink-400';
+    if (celebration.type === 'work_anniversary') return 'text-purple-600 dark:text-purple-400';
+    return 'text-blue-600 dark:text-blue-400';
+  };
+
+  return (
+    <div className={`bg-white dark:bg-almet-cloud-burst rounded-lg shadow-md hover:shadow-lg transition-all duration-300 border ${
+      isToday 
+        ? 'border-almet-sapphire dark:border-almet-steel-blue ring-2 ring-almet-sapphire/30 dark:ring-almet-steel-blue/30' 
+        : 'border-almet-mystic dark:border-almet-san-juan'
+    } relative overflow-hidden`}>
+      
+      {/* Today Indicator */}
+      {isToday && (
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue"></div>
+      )}
+
+      <div className="p-4">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-lg ${
+              celebration.type === 'birthday' 
+                ? 'bg-pink-100 dark:bg-pink-900/20 text-pink-600 dark:text-pink-400'
+                : 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400'
+            }`}>
+              {getIcon()}
+            </div>
+            <div>
+              <p className={`text-xs font-medium ${getTypeColor()}`}>
+                {getTypeLabel()}
+              </p>
+              {celebration.years && (
+                <p className="text-[10px] text-almet-waterloo dark:text-almet-bali-hai">
+                  {celebration.years} {celebration.years === 1 ? 'year' : 'years'}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          {isToday && (
+            <div className="bg-almet-sapphire dark:bg-almet-steel-blue text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+              Today
+            </div>
+          )}
+        </div>
+
+        {/* Employee Info */}
+        <div className="mb-3">
+          <h3 className={`font-semibold text-sm mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            {celebration.employee_name}
+          </h3>
+          <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
+            {celebration.position}
+          </p>
+          <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-500'}`}>
+            {celebration.department}
+          </p>
+        </div>
+
+        {/* Footer */}
+        <div className={`flex items-center justify-between pt-3 border-t ${darkMode ? 'border-almet-comet' : 'border-gray-200'}`}>
+          <div className={`flex items-center gap-1.5 text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
+            <Calendar size={12} />
+            {formatDate(celebration.date)}
+          </div>
+          
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCelebrate(celebration);
+            }}
+            disabled={isCelebrated || !isToday}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              isCelebrated
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 cursor-default'
+                : !isToday
+                ? 'bg-gray-50 dark:bg-almet-comet/50 text-gray-400 dark:text-almet-bali-hai cursor-not-allowed'
+                : 'bg-almet-sapphire/10 dark:bg-almet-steel-blue/10 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire hover:text-white dark:hover:bg-almet-steel-blue dark:hover:text-white'
+            }`}
+            title={
+              isCelebrated 
+                ? 'Already celebrated' 
+                : !isToday
+                ? 'Available on celebration day'
+                : 'Send wishes'
+            }
+          >
+            {isCelebrated ? (
+              <>
+                <CheckCircle size={12} />
+                <span>Sent</span>
+              </>
+            ) : (
+              <>
+                <span>🎉</span>
+                <span>{celebration.wishes}</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -295,26 +431,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
   );
 };
 
-const EventCard = ({ icon, type, title, date, image }) => {
-  return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-4 shadow hover:shadow-lg transition-all duration-300 cursor-pointer border border-almet-mystic dark:border-almet-san-juan">
-      <div className="flex items-center mb-3">
-        <div className="h-9 w-9 rounded-full overflow-hidden mr-3 ring-2 ring-almet-mystic dark:ring-almet-san-juan">
-          <img src={image} alt={type} className="h-full w-full object-cover" />
-        </div>
-        <div>
-          <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs">{type}</p>
-          <h3 className="text-almet-cloud-burst dark:text-white font-medium text-sm">{title}</h3>
-        </div>
-      </div>
-      <div className="flex items-center text-almet-waterloo dark:text-almet-bali-hai text-xs">
-        <Calendar className="h-3 w-3 mr-1" />
-        {date}
-      </div>
-    </div>
-  );
-};
-
 export default function Home() {
   const { account } = useAuth();
   const { darkMode } = useTheme();
@@ -323,9 +439,14 @@ export default function Home() {
   const [loadingNews, setLoadingNews] = useState(true);
   const [selectedNews, setSelectedNews] = useState(null);
   const [showNewsModal, setShowNewsModal] = useState(false);
+  const [upcomingCelebrations, setUpcomingCelebrations] = useState([]);
+  const [loadingCelebrations, setLoadingCelebrations] = useState(true);
+  const [celebratedItems, setCelebratedItems] = useState(new Set());
   
   useEffect(() => {
     loadLatestNews();
+    loadUpcomingCelebrations();
+    loadCelebratedItems();
   }, []);
 
   const loadLatestNews = async () => {
@@ -345,15 +466,84 @@ export default function Home() {
     }
   };
 
+  const loadUpcomingCelebrations = async () => {
+    setLoadingCelebrations(true);
+    try {
+      const allCelebrations = await celebrationService.getAllCelebrations();
+      
+      // Filter only birthdays and work anniversaries
+      const celebrations = allCelebrations.filter(c => 
+        c.type === 'birthday' || c.type === 'work_anniversary'
+      );
+      
+      // Sort by date
+      celebrations.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      // Take first 4
+      setUpcomingCelebrations(celebrations.slice(0, 4));
+    } catch (error) {
+      console.error('Failed to load celebrations:', error);
+    } finally {
+      setLoadingCelebrations(false);
+    }
+  };
+
+  const loadCelebratedItems = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const stored = localStorage.getItem(`celebrated_${today}`);
+    if (stored) {
+      setCelebratedItems(new Set(JSON.parse(stored)));
+    }
+  };
+
+  const saveCelebratedItem = (itemId) => {
+    const today = new Date().toISOString().split('T')[0];
+    const newCelebrated = new Set([...celebratedItems, itemId]);
+    setCelebratedItems(newCelebrated);
+    localStorage.setItem(`celebrated_${today}`, JSON.stringify([...newCelebrated]));
+  };
+
+  const handleCelebrate = async (celebration) => {
+    if (celebratedItems.has(celebration.id)) return;
+
+    const celebrationDate = new Date(celebration.date).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (celebrationDate !== today) {
+      alert('You can only celebrate on the celebration day!');
+      return;
+    }
+
+    try {
+      const celebrateMessage = '🎉';
+      
+      await celebrationService.addAutoWish(
+        celebration.employee_id,
+        celebration.type,
+        celebrateMessage
+      );
+
+      saveCelebratedItem(celebration.id);
+      loadUpcomingCelebrations();
+    } catch (error) {
+      console.error('Error celebrating:', error);
+      alert('Error celebrating. Please try again.');
+    }
+  };
+
+  const isCelebrationToday = (dateString) => {
+    const celebrationDate = new Date(dateString).toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    return celebrationDate === today;
+  };
+
   const handleNewsClick = async (news) => {
     try {
-      // Load full news details
       const fullNews = await newsService.getNewsById(news.id);
       setSelectedNews(fullNews);
       setShowNewsModal(true);
     } catch (error) {
       console.error('Failed to load news details:', error);
-      // Fallback to basic news data
       setSelectedNews(news);
       setShowNewsModal(true);
     }
@@ -549,37 +739,67 @@ export default function Home() {
         )}
       </div>
 
-      {/* Upcoming Events */}
+      {/* Upcoming Celebrations */}
       <div>
-        <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white mb-3">
-          Upcoming Events
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <EventCard
-            type="Birthday"
-            title="Sarah Johnson"
-            date="January 18"
-            image="https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1974&q=80"
-          />
-          <EventCard
-            type="Company Event"
-            title="Annual Meeting"
-            date="January 20"
-            image="https://images.unsplash.com/photo-1543269865-cbf427effbad?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-          />
-          <EventCard
-            type="Training"
-            title="Leadership Workshop"
-            date="January 25"
-            image="https://images.unsplash.com/photo-1542744173-8e7e53415bb0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-          />
-          <EventCard
-            type="Deadline"
-            title="Project Milestone"
-            date="January 30"
-            image="https://images.unsplash.com/photo-1586282391129-76a6df230234?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
-          />
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-yellow-500" />
+            Upcoming Celebrations
+          </h2>
+          <Link 
+            href="/communication/celebrations" 
+            className="text-almet-sapphire dark:text-almet-steel-blue flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
+          >
+            View All
+            <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
+        
+        {loadingCelebrations ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="bg-white dark:bg-almet-cloud-burst rounded-xl overflow-hidden shadow-md animate-pulse border border-almet-mystic dark:border-almet-san-juan">
+                <div className="h-20 bg-almet-mystic dark:bg-almet-san-juan"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-almet-mystic dark:bg-almet-san-juan rounded mb-2"></div>
+                  <div className="h-3 bg-almet-mystic dark:bg-almet-san-juan rounded mb-2"></div>
+                  <div className="h-8 bg-almet-mystic dark:bg-almet-san-juan rounded"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : upcomingCelebrations.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {upcomingCelebrations.map((celebration) => (
+              <CelebrationCard
+                key={celebration.id}
+                celebration={celebration}
+                darkMode={darkMode}
+                onCelebrate={handleCelebrate}
+                isCelebrated={celebratedItems.has(celebration.id)}
+                isToday={isCelebrationToday(celebration.date)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className={`rounded-lg p-8 text-center border ${
+            darkMode ? 'bg-almet-cloud-burst border-almet-san-juan' : 'bg-white border-almet-mystic'
+          }`}>
+            <Cake className={`h-12 w-12 mx-auto mb-3 ${
+              darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
+            }`} />
+            <h3 className={`text-sm font-semibold mb-1 ${
+              darkMode ? 'text-white' : 'text-almet-cloud-burst'
+            }`}>
+              No Upcoming Celebrations
+            </h3>
+            <p className={`text-xs ${
+              darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
+            }`}>
+              Check back later for birthdays and anniversaries
+            </p>
+          </div>
+        )}
       </div>
 
       {/* News Detail Modal */}

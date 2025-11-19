@@ -1,4 +1,4 @@
-// components/JobDescription/AssignmentsModal.jsx
+// components/JobDescription/AssignmentsModal.jsx - FIXED
 import React, { useState, useEffect } from 'react';
 import {
   X,
@@ -28,7 +28,6 @@ import {
   Search
 } from 'lucide-react';
 
-// Status rəngləri və ikonları
 const statusConfig = {
   DRAFT: {
     color: 'bg-gray-100 text-gray-700 border-gray-300',
@@ -71,6 +70,7 @@ const statusConfig = {
 // Assignment Card komponenti
 const AssignmentCard = ({ 
   assignment, 
+  jobDescriptionId,
   onSubmit, 
   onApprove, 
   onReject, 
@@ -89,35 +89,45 @@ const AssignmentCard = ({
 
   const isVacancy = assignment.is_vacancy;
   const canSubmit = assignment.status === 'DRAFT' || assignment.status === 'REVISION_REQUIRED';
-  const canApproveLM = assignment.status === 'PENDING_LINE_MANAGER' && 
-    assignment.reports_to?.user_id === currentUser?.id;
-  const canApproveEmp = assignment.status === 'PENDING_EMPLOYEE' && 
-    assignment.employee?.user_id === currentUser?.id;
+  const canApproveLM = assignment.can_be_approved_by_line_manager || 
+    (assignment.status === 'PENDING_LINE_MANAGER' && assignment.reports_to?.user_id === currentUser?.id);
+  const canApproveEmp = assignment.can_be_approved_by_employee || 
+    (assignment.status === 'PENDING_EMPLOYEE' && assignment.employee?.user_id === currentUser?.id);
 
-  const handleAction = async (action, data = {}) => {
+  const handleAction = async (action) => {
     setActionLoading(action);
     try {
       switch (action) {
         case 'submit':
-          await onSubmit(assignment.id, comment);
+          await onSubmit(jobDescriptionId, assignment.id, comment);
           break;
         case 'approve_lm':
-          await onApprove(assignment.id, 'line_manager', comment);
+          await onApprove(jobDescriptionId, assignment.id, 'line_manager', comment);
           break;
         case 'approve_emp':
-          await onApprove(assignment.id, 'employee', comment);
+          await onApprove(jobDescriptionId, assignment.id, 'employee', comment);
           break;
         case 'reject':
-          await onReject(assignment.id, comment);
+          if (!comment.trim()) {
+            alert('Please provide a reason for rejection');
+            setActionLoading(null);
+            return;
+          }
+          await onReject(jobDescriptionId, assignment.id, comment);
           break;
         case 'remove':
-          await onRemove(assignment.id);
+          if (!window.confirm('Are you sure you want to remove this assignment?')) {
+            setActionLoading(null);
+            return;
+          }
+          await onRemove(jobDescriptionId, assignment.id);
           break;
       }
       setComment('');
       setShowComments(false);
     } catch (error) {
       console.error('Action failed:', error);
+      alert('Action failed: ' + (error.message || 'Unknown error'));
     } finally {
       setActionLoading(null);
     }
@@ -149,7 +159,7 @@ const AssignmentCard = ({
                     VACANT - {assignment.vacancy_position?.position_id || 'Unknown'}
                   </span>
                 ) : (
-                  assignment.employee_name || assignment.employee?.full_name
+                  assignment.employee_name || assignment.employee?.full_name || 'Unknown'
                 )}
               </h4>
               <p className="text-sm text-gray-500">
@@ -205,7 +215,7 @@ const AssignmentCard = ({
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
                   <div>
                     <p className="text-gray-700">
-                      Line Manager approved by {assignment.line_manager_approved_by_detail?.first_name || 'Unknown'}
+                      Line Manager approved
                     </p>
                     <p className="text-gray-500 text-xs">
                       {new Date(assignment.line_manager_approved_at).toLocaleString()}
@@ -224,7 +234,7 @@ const AssignmentCard = ({
                   <CheckCircle className="w-4 h-4 text-green-500 mt-0.5" />
                   <div>
                     <p className="text-gray-700">
-                      Employee approved by {assignment.employee_approved_by_detail?.first_name || 'Unknown'}
+                      Employee approved
                     </p>
                     <p className="text-gray-500 text-xs">
                       {new Date(assignment.employee_approved_at).toLocaleString()}
@@ -246,7 +256,7 @@ const AssignmentCard = ({
               <textarea
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Add a comment (optional)..."
+                placeholder="Add a comment..."
                 className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 rows={2}
               />
@@ -257,7 +267,8 @@ const AssignmentCard = ({
           <div className="flex flex-wrap gap-2 pt-2 border-t">
             {canSubmit && (
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (showComments) {
                     handleAction('submit');
                   } else {
@@ -279,7 +290,8 @@ const AssignmentCard = ({
             {canApproveLM && (
               <>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (showComments) {
                       handleAction('approve_lm');
                     } else {
@@ -297,8 +309,9 @@ const AssignmentCard = ({
                   Approve
                 </button>
                 <button
-                  onClick={() => {
-                    if (showComments && comment) {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (showComments && comment.trim()) {
                       handleAction('reject');
                     } else {
                       setShowComments(true);
@@ -319,7 +332,8 @@ const AssignmentCard = ({
 
             {canApproveEmp && (
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (showComments) {
                     handleAction('approve_emp');
                   } else {
@@ -340,7 +354,10 @@ const AssignmentCard = ({
 
             {isVacancy && (
               <button
-                onClick={() => onReassign(assignment.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReassign(assignment.id);
+                }}
                 className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 transition-colors"
               >
                 <UserCheck className="w-4 h-4" />
@@ -349,7 +366,10 @@ const AssignmentCard = ({
             )}
 
             <button
-              onClick={() => handleAction('remove')}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAction('remove');
+              }}
               disabled={actionLoading === 'remove'}
               className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-lg hover:bg-gray-200 disabled:opacity-50 transition-colors ml-auto"
             >
@@ -371,24 +391,34 @@ const AssignmentCard = ({
 const AssignmentsModal = ({
   isOpen,
   onClose,
-  jobDescription,
-  assignments = [],
+  job,
+  assignmentsData,
   onSubmitAssignment,
-  onApproveAssignment,
-  onRejectAssignment,
+  onSubmitAll,
+  onApprove,
+  onReject,
   onRemoveAssignment,
   onReassignEmployee,
   onAddAssignments,
   onRefresh,
   currentUser,
-  loading = false
+  actionLoading = false
 }) => {
   const [expandedId, setExpandedId] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || !job || !assignmentsData) return null;
+
+  const assignments = assignmentsData.assignments || [];
+  const summary = assignmentsData.assignments_summary || assignmentsData.summary || {
+    total: 0,
+    employees: 0,
+    vacancies: 0,
+    approved: 0,
+    pending: 0,
+    draft: 0
+  };
 
   // Filter assignments
   const filteredAssignments = assignments.filter(a => {
@@ -398,16 +428,6 @@ const AssignmentsModal = ({
       (a.employee_id_number || a.employee?.employee_id || '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   });
-
-  // Summary stats
-  const summary = {
-    total: assignments.length,
-    employees: assignments.filter(a => !a.is_vacancy).length,
-    vacancies: assignments.filter(a => a.is_vacancy).length,
-    approved: assignments.filter(a => a.status === 'APPROVED').length,
-    pending: assignments.filter(a => ['PENDING_LINE_MANAGER', 'PENDING_EMPLOYEE'].includes(a.status)).length,
-    draft: assignments.filter(a => a.status === 'DRAFT').length
-  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -428,7 +448,7 @@ const AssignmentsModal = ({
                 Assignments
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                {jobDescription?.job_title}
+                {job.job_title}
               </p>
             </div>
             <button
@@ -496,26 +516,20 @@ const AssignmentsModal = ({
               <option value="REVISION_REQUIRED">Revision Required</option>
             </select>
 
-            <button
-              onClick={onRefresh}
-              disabled={loading}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`w-5 h-5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Add Assignment
-            </button>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                disabled={actionLoading}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-5 h-5 text-gray-500 ${actionLoading ? 'animate-spin' : ''}`} />
+              </button>
+            )}
           </div>
 
           {/* Assignments List */}
           <div className="flex-1 overflow-y-auto p-6 space-y-3">
-            {loading ? (
+            {actionLoading && assignments.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin" />
               </div>
@@ -523,7 +537,7 @@ const AssignmentsModal = ({
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500">No assignments found</p>
-                {searchTerm || filterStatus !== 'all' ? (
+                {(searchTerm || filterStatus !== 'all') && (
                   <button
                     onClick={() => {
                       setSearchTerm('');
@@ -533,13 +547,6 @@ const AssignmentsModal = ({
                   >
                     Clear filters
                   </button>
-                ) : (
-                  <button
-                    onClick={() => setShowAddModal(true)}
-                    className="text-indigo-600 text-sm mt-2 hover:underline"
-                  >
-                    Add first assignment
-                  </button>
                 )}
               </div>
             ) : (
@@ -547,9 +554,10 @@ const AssignmentsModal = ({
                 <AssignmentCard
                   key={assignment.id}
                   assignment={assignment}
+                  jobDescriptionId={job.id}
                   onSubmit={onSubmitAssignment}
-                  onApprove={onApproveAssignment}
-                  onReject={onRejectAssignment}
+                  onApprove={onApprove}
+                  onReject={onReject}
                   onRemove={onRemoveAssignment}
                   onReassign={onReassignEmployee}
                   currentUser={currentUser}
@@ -564,9 +572,21 @@ const AssignmentsModal = ({
 
           {/* Footer */}
           <div className="flex items-center justify-between p-4 border-t bg-gray-50">
-            <p className="text-sm text-gray-500">
-              Showing {filteredAssignments.length} of {assignments.length} assignments
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-500">
+                Showing {filteredAssignments.length} of {assignments.length} assignments
+              </p>
+              {summary.draft > 0 && onSubmitAll && (
+                <button
+                  onClick={() => onSubmitAll(job.id)}
+                  disabled={actionLoading}
+                  className="ml-4 px-4 py-2 bg-indigo-600 text-white text-sm rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" />
+                  Submit All ({summary.draft})
+                </button>
+              )}
+            </div>
             <button
               onClick={onClose}
               className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
@@ -574,66 +594,6 @@ const AssignmentsModal = ({
               Close
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Add Assignment Modal - bunu ayrı komponent kimi yazmaq olar */}
-      {showAddModal && (
-        <AddAssignmentModal
-          isOpen={showAddModal}
-          onClose={() => setShowAddModal(false)}
-          jobDescriptionId={jobDescription?.id}
-          onAdd={onAddAssignments}
-        />
-      )}
-    </div>
-  );
-};
-
-// Add Assignment Modal (sadə versiya)
-const AddAssignmentModal = ({ isOpen, onClose, jobDescriptionId, onAdd }) => {
-  const [selectedEmployees, setSelectedEmployees] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleAdd = async () => {
-    setLoading(true);
-    try {
-      await onAdd(jobDescriptionId, selectedEmployees);
-      onClose();
-    } catch (error) {
-      console.error('Failed to add assignments:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md p-6">
-        <h3 className="text-lg font-semibold mb-4">Add Assignments</h3>
-        
-        {/* Burada employee selection komponenti olacaq */}
-        <p className="text-gray-500 text-sm mb-4">
-          Select employees to add to this job description...
-        </p>
-        
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAdd}
-            disabled={loading || selectedEmployees.length === 0}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {loading ? 'Adding...' : 'Add'}
-          </button>
         </div>
       </div>
     </div>
