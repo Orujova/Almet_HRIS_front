@@ -1,44 +1,12 @@
-// components/headcount/EmployeeDetailJobDescriptions.jsx - Reduced font sizes
+// components/headcount/EmployeeDetailJobDescriptions.jsx - WITH Leadership Competencies Support
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  FileText, 
-  Clock, 
-  CheckCircle, 
-  XCircle,
-  AlertCircle,
-  User,
-  Plus,
-  Eye,
-  Users,
-  Calendar,
-  RotateCcw,
-  CheckSquare,
-  Download,
-  X,
-  Building,
-  Briefcase,
-  Target,
-  Award,
-
-  Shield,
-  Search,
-  Filter,
-  ChevronDown,
-  UserCheck,
-  UserX as UserVacant,
- 
-  ChevronLeft,
-  ChevronRight,
-
-  Grid3X3,
-  List,
-  SortAsc,
-  SortDesc,
-  RefreshCw,
-
-  BookOpen,
- 
+  FileText, Clock, CheckCircle, XCircle, AlertCircle, User, Plus, Eye, Users,
+  Calendar, RotateCcw, CheckSquare, Download, X, Building, Briefcase, Target,
+  Award, Shield, Search, Filter, ChevronDown, UserCheck, UserX as UserVacant,
+  ChevronLeft, ChevronRight, Grid3X3, List, SortAsc, SortDesc, RefreshCw,
+  BookOpen, Crown
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import jobDescriptionService from '@/services/jobDescriptionService';
@@ -72,11 +40,11 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     order: 'desc'
   });
   const [teamCurrentPage, setTeamCurrentPage] = useState(1);
-  const [teamItemsPerPage] = useState(6); // Reduced from 8 to 6 for better 2-column layout
+  const [teamItemsPerPage] = useState(6);
   const [teamViewMode, setTeamViewMode] = useState('grid');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Almet Theme classes - smaller fonts and better colors
+  // Almet Theme classes
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const bgCardHover = darkMode ? "bg-almet-san-juan" : "bg-almet-mystic";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
@@ -84,27 +52,21 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const textMuted = darkMode ? "text-almet-santas-gray" : "text-almet-bali-hai";
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
   const bgAccent = darkMode ? "bg-almet-san-juan/30" : "bg-almet-mystic/50";
-  const bgSuccess = darkMode ? "bg-green-900/20" : "bg-green-50";
-  const bgWarning = darkMode ? "bg-orange-900/20" : "bg-orange-50";
-  const bgDanger = darkMode ? "bg-red-900/20" : "bg-red-50";
 
   useEffect(() => {
     fetchJobDescriptions();
   }, [employeeId]);
 
-  // Filtered and sorted team jobs
   const processedTeamJobs = useMemo(() => {
     let processed = jobDescriptionService.filterJobDescriptions(teamJobDescriptions, teamFilters);
     processed = jobDescriptionService.sortJobDescriptions(processed, teamSorting.field, teamSorting.order);
     return processed;
   }, [teamJobDescriptions, teamFilters, teamSorting]);
 
-  // Paginated team jobs
   const paginatedTeamJobs = useMemo(() => {
     return jobDescriptionService.paginateJobDescriptions(processedTeamJobs, teamCurrentPage, teamItemsPerPage);
   }, [processedTeamJobs, teamCurrentPage, teamItemsPerPage]);
 
-  // Filter options
   const filterOptions = useMemo(() => {
     return {
       statuses: jobDescriptionService.getUniqueFilterValues(teamJobDescriptions, 'status'),
@@ -117,20 +79,15 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     try {
       setLoading(true);
       
-      
-      // Always fetch employee's own job descriptions
       const myJobsResponse = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
-    
       setMyJobDescriptions(Array.isArray(myJobsResponse) ? myJobsResponse : []);
       
-      // If manager, also fetch team job descriptions
       if (isManager) {
         const teamJobsResponse = await jobDescriptionService.getTeamJobDescriptions(employeeId);
-        console.log('👥 Team jobs response:', teamJobsResponse);
         setTeamJobDescriptions(Array.isArray(teamJobsResponse) ? teamJobsResponse : []);
       }
     } catch (error) {
-      console.error('❌ Error fetching job descriptions:', error);
+      console.error('Error fetching job descriptions:', error);
       setMyJobDescriptions([]);
       setTeamJobDescriptions([]);
     } finally {
@@ -176,7 +133,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           throw new Error('Invalid action');
       }
       
-      // Refresh data
       await fetchJobDescriptions();
       setShowApprovalModal(false);
       setComments('');
@@ -232,7 +188,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     let statusColor = '';
     let statusBg = '';
     
-    // Almet status colors
     switch (job.status) {
       case 'DRAFT':
         statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
@@ -288,22 +243,19 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     }
   };
 
-  // Enhanced Job Description Card - More compact and professional
+  // Enhanced Job Description Card
   const JobDescriptionCard = ({ job, showManagerActions = false, compact = false }) => {
     const canApproveManager = showManagerActions && 
       jobDescriptionService.canApproveAsLineManager(job);
     const canApproveEmployee = !showManagerActions && 
       jobDescriptionService.canApproveAsEmployee(job);
-    const canReject = jobDescriptionService.canReject(job);
     
     const isVacant = jobDescriptionService.isVacantPosition(job);
     const employeeName = jobDescriptionService.getEmployeeDisplayName(job);
-    const nextAction = jobDescriptionService.getNextAction(job);
     
     return (
       <div className={`relative ${bgCard} rounded-xl border ${borderColor} hover:shadow-lg transition-all duration-300 overflow-hidden group`}>
         <div className="p-4">
-          {/* Header */}
           <div className="flex items-start gap-3 mb-3">
             <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral text-white p-2.5 rounded-xl flex-shrink-0 shadow-md">
               <FileText size={16} />
@@ -336,21 +288,16 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
             </div>
           </div>
 
-          {/* Status and Priority Row */}
           <div className="flex items-center justify-between mb-3">
             {getStatusDisplay(job)}
           </div>
 
-          {/* Job Purpose - Compact */}
           <div className="mb-3">
             <p className={`text-[10px] ${textMuted} line-clamp-2 leading-relaxed`}>
               {job.job_purpose || 'No job purpose provided.'}
             </p>
           </div>
 
-          
-
-          {/* Approval Status - More compact */}
           <div className={`flex items-center justify-between p-2.5 ${bgAccent} rounded-lg text-[10px] mb-3`}>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1">
@@ -373,7 +320,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
             </span>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <button 
@@ -385,9 +331,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                 View
               </button>
               <button 
-                onClick={() => {
-                  jobDescriptionService.downloadJobDescriptionPDF(job.id);
-                }}
+                onClick={() => jobDescriptionService.downloadJobDescriptionPDF(job.id)}
                 className="flex items-center gap-1 px-2.5 py-1.5 text-almet-waterloo hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-lg transition-colors text-[10px] font-medium"
               >
                 <Download size={10} />
@@ -395,7 +339,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               </button>
             </div>
 
-            {/* Approval Action Buttons */}
             <div className="flex items-center gap-1">
               {canApproveManager && (
                 <div className="flex items-center gap-1">
@@ -515,7 +458,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     <div className={`${bgCard} rounded-xl border ${borderColor} mb-6 overflow-hidden transition-all ${showFilters ? 'block' : 'hidden'}`}>
       <div className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-          {/* Search */}
           <div>
             <label className={`block text-[10px] font-semibold ${textSecondary} mb-1.5`}>Search</label>
             <div className="relative">
@@ -530,7 +472,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
             </div>
           </div>
 
-          {/* Status Filter */}
           <div>
             <label className={`block text-[10px] font-semibold ${textSecondary} mb-1.5`}>Status</label>
             <select
@@ -547,7 +488,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
             </select>
           </div>
 
-          {/* Department Filter */}
           <div>
             <label className={`block text-[10px] font-semibold ${textSecondary} mb-1.5`}>Department</label>
             <select
@@ -563,7 +503,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           </div>
         </div>
 
-        {/* Toggle Filters */}
         <div className="flex flex-wrap gap-3 mb-3">
           <label className="flex items-center gap-2">
             <input
@@ -585,7 +524,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           </label>
         </div>
 
-        {/* Filter Actions */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className={`text-xs ${textMuted}`}>
@@ -613,7 +551,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     </div>
   );
 
-  // Main loading state
   if (loading) {
     return (
       <div className={`${bgCard} rounded-xl border ${borderColor} p-6`}>
@@ -626,7 +563,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     );
   }
 
-  // Count pending approvals
   const myPendingCount = myJobDescriptions.filter(job => 
     job.status === 'PENDING_EMPLOYEE'
   ).length;
@@ -648,11 +584,8 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                 Manage your job descriptions and approvals
               </p>
             </div>
-            
-         
           </div>
 
-          {/* Tabs - Only show if manager */}
           {isManager && (
             <div className="flex space-x-1 bg-gray-100 dark:bg-almet-comet/50 rounded-xl p-1 mb-5">
               <button
@@ -694,11 +627,9 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
             </div>
           )}
 
-          {/* Enhanced Team Jobs Controls */}
           {isManager && activeTab === 'team-jobs' && teamJobDescriptions.length > 0 && (
             <div className="mb-5">
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-3">
-                {/* Quick Actions */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
@@ -713,7 +644,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     <ChevronDown size={14} className={`transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                   </button>
                   
-                  {/* Sort Options */}
                   <div className="flex items-center border ${borderColor} rounded-xl overflow-hidden">
                     <button
                       onClick={() => handleSortChange('created_at')}
@@ -740,7 +670,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                   </div>
                 </div>
 
-                {/* View Mode Toggle */}
                 <div className="flex items-center gap-2">
                   <div className="flex border ${borderColor} rounded-xl overflow-hidden">
                     <button
@@ -769,14 +698,11 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                 </div>
               </div>
 
-              {/* Filters Panel */}
               <TeamFiltersPanel />
             </div>
           )}
 
-          {/* Job Descriptions List */}
           <div className="space-y-5">
-            {/* My Job Descriptions */}
             {(!isManager || activeTab === 'my-jobs') && (
               <>
                 {myJobDescriptions.length > 0 ? (
@@ -794,7 +720,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         </div>
                       )}
                     </div>
-                    {/* Use 2-column grid for My Jobs */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       {myJobDescriptions.map(job => (
                         <JobDescriptionCard 
@@ -821,7 +746,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               </>
             )}
 
-            {/* Team Job Descriptions */}
             {isManager && activeTab === 'team-jobs' && (
               <>
                 {paginatedTeamJobs.totalItems > 0 ? (
@@ -843,7 +767,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       )}
                     </div>
 
-                    {/* Team Jobs Display - Use 2-column grid */}
                     {teamViewMode === 'grid' ? (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                         {paginatedTeamJobs.items.map(job => (
@@ -863,7 +786,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       </div>
                     )}
 
-                    {/* Pagination */}
                     {paginatedTeamJobs.totalPages > 1 && (
                       <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-200 dark:border-almet-comet">
                         <div className={`text-xs ${textMuted}`}>
@@ -963,23 +885,19 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               </>
             )}
           </div>
-
-       
         </div>
       </div>
 
-      {/* Enhanced Job Description Detail Modal - Keep existing modal code but update styling */}
+      {/* 🔥 Enhanced Job Description Detail Modal with Leadership Support */}
       {showDetailModal && jobDetail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className={`${bgCard} rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-2xl`}>
             <div className="p-5">
-              {/* Modal Header */}
               <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-200 dark:border-almet-comet">
                 <div>
                   <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>Job Description Details</h2>
                   <div className="flex items-center gap-3 flex-wrap">
                     {getStatusDisplay(jobDetail)}
-                
                     <span className={`text-xs ${textMuted}`}>Created {jobDescriptionService.formatDate(jobDetail.created_at)}</span>
                     <span className={`text-xs ${textMuted}`}>
                       Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
@@ -988,9 +906,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id);
-                    }}
+                    onClick={() => jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id)}
                     className="flex items-center gap-2 px-3.5 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-colors text-xs font-semibold"
                   >
                     <Download size={14} />
@@ -1008,10 +924,8 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                 </div>
               </div>
 
-              {/* Job Overview */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
                 <div className="lg:col-span-2 space-y-5">
-                  {/* Basic Information */}
                   <div className={`p-4 ${bgAccent} rounded-xl`}>
                     <h3 className={`text-lg font-bold ${textPrimary} mb-3`}>{jobDetail.job_title}</h3>
                     <div className="grid grid-cols-2 gap-3 text-xs">
@@ -1062,7 +976,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   </div>
 
-                  {/* Job Purpose */}
                   <div>
                     <h4 className={`text-base font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
                       <Target size={16} className="text-almet-sapphire" />
@@ -1073,7 +986,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   </div>
 
-                  {/* Job Sections */}
                   {jobDetail.sections && jobDetail.sections.length > 0 && (
                     <div className="space-y-5">
                       {jobDetail.sections.map((section, index) => (
@@ -1093,9 +1005,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                   )}
                 </div>
 
-                {/* Sidebar with additional info */}
                 <div className="space-y-5">
-                  {/* Approval Status */}
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <CheckCircle size={16} className="text-almet-sapphire" />
@@ -1117,7 +1027,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         </span>
                       </div>
                       
-                      {/* Show approval comments if available */}
                       {jobDetail.line_manager_comments && (
                         <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
                           <span className={`text-xs font-semibold ${textMuted}`}>Manager Comments:</span>
@@ -1133,7 +1042,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   </div>
 
-                  {/* Next Action Required */}
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2 text-sm`}>
                       <Target size={16} className="text-almet-sapphire" />
@@ -1144,12 +1052,12 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </p>
                   </div>
 
-                  {/* Required Skills */}
+                  {/* 🔥 Technical Skills */}
                   {jobDetail.required_skills && jobDetail.required_skills.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                         <Award size={16} className="text-almet-sapphire" />
-                        Required Skills
+                        Technical Skills
                       </h4>
                       <div className="space-y-2">
                         {jobDetail.required_skills.map((skill, index) => (
@@ -1157,14 +1065,48 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                             <span className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
                               {skill.skill_detail?.name || skill.name}
                             </span>
-    
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Business Resources */}
+                  {/* 🔥 Behavioral Competencies */}
+                  {jobDetail.behavioral_competencies && jobDetail.behavioral_competencies.length > 0 && (
+                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                      <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                        <Users size={16} className="text-blue-600" />
+                        Behavioral Competencies
+                      </h4>
+                      <div className="space-y-1.5">
+                        {jobDetail.behavioral_competencies.map((comp, index) => (
+                          <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                            <div className="w-1 h-1 bg-blue-600 rounded-full flex-shrink-0"></div>
+                            {comp.competency_detail?.name || comp.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 🔥 Leadership Competencies */}
+                  {jobDetail.leadership_competencies && jobDetail.leadership_competencies.length > 0 && (
+                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                      <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                        <Crown size={16} className="text-purple-600" />
+                        Leadership Competencies
+                      </h4>
+                      <div className="space-y-1.5">
+                        {jobDetail.leadership_competencies.map((comp, index) => (
+                          <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
+                            <div className="w-1 h-1 bg-purple-600 rounded-full flex-shrink-0"></div>
+                            {comp.leadership_item_detail?.name || comp.name}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1182,7 +1124,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   )}
 
-                  {/* Access Rights */}
                   {jobDetail.access_rights && jobDetail.access_rights.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1200,7 +1141,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   )}
 
-                  {/* Company Benefits */}
                   {jobDetail.company_benefits && jobDetail.company_benefits.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1224,7 +1164,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
         </div>
       )}
 
-      {/* Enhanced Approval Modal */}
+      {/* Approval Modal */}
       {showApprovalModal && selectedJob && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className={`${bgCard} rounded-2xl w-full max-w-md border ${borderColor} shadow-2xl`}>

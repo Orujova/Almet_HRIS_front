@@ -1,10 +1,11 @@
-// pages/structure/job-descriptions/page.jsx - COMPLETE WITH LEADERSHIP SUPPORT
+// pages/structure/job-descriptions/page.jsx - UPDATED FOR MULTI-ASSIGNMENT SUPPORT
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Plus, Edit, Eye, Trash2, FileText, Clock,
-  CheckCircle, Settings, Send, X, Users, AlertCircle, FileSpreadsheet
+  CheckCircle, Settings, Send, X, Users, AlertCircle, FileSpreadsheet,
+  UserPlus, UserMinus, RefreshCw
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -20,7 +21,7 @@ import JobDescriptionList from '@/components/jobDescription/JobDescriptionList';
 import JobDescriptionForm from '@/components/jobDescription/JobDescriptionForm';
 import JobViewModal from '@/components/jobDescription/JobViewModal';
 import SubmissionModal from '@/components/jobDescription/SubmissionModal';
-
+import AssignmentsModal from '@/components/jobDescription/AssignmentsModal'; // 🔥 NEW
 import StatCard from '@/components/jobDescription/StatCard';
 
 const JobDescriptionPageContent = () => {
@@ -42,16 +43,22 @@ const JobDescriptionPageContent = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   
-
-  
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  
+  // 🔥 NEW: Assignments modal state
+  const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
+  const [selectedJobForAssignments, setSelectedJobForAssignments] = useState(null);
+  const [assignmentsData, setAssignmentsData] = useState(null);
   
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
   const [submissionComments, setSubmissionComments] = useState('');
   const [submissionLoading, setSubmissionLoading] = useState(false);
   const [createdJobsData, setCreatedJobsData] = useState(null);
   const [isExistingJobSubmission, setIsExistingJobSubmission] = useState(false);
+  
+  // 🔥 NEW: Selected assignment for individual approval
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null);
   
   const [selectedSkillGroup, setSelectedSkillGroup] = useState('');
   const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
@@ -70,19 +77,17 @@ const JobDescriptionPageContent = () => {
   const [jobDescriptions, setJobDescriptions] = useState([]);
   const [stats, setStats] = useState({});
   
-  // 🔥 Enhanced dropdown data with leadership groups
   const [dropdownData, setDropdownData] = useState({
     employees: [],
     employeeMap: new Map(),
     skillGroups: [],
     behavioralGroups: [],
-    leadershipMainGroups: [], // 🔥 NEW
+    leadershipMainGroups: [],
     businessResources: [],
     accessMatrix: [],
     companyBenefits: []
   });
 
-  // 🔥 Enhanced form state with leadership competencies
   const [formData, setFormData] = useState({
     job_title: '',
     job_purpose: '',
@@ -99,7 +104,7 @@ const JobDescriptionPageContent = () => {
     requirements: [''],
     required_skills_data: [],
     behavioral_competencies_data: [],
-    leadership_competencies_data: [], // 🔥 NEW
+    leadership_competencies_data: [],
     business_resources_ids: [],
     access_rights_ids: [],
     company_benefits_ids: []
@@ -240,7 +245,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 UPDATED: Fetch dropdown data with leadership groups
   const fetchDropdownData = async () => {
     try {
       const fetchOptions = (endpoint) => ({
@@ -257,7 +261,7 @@ const JobDescriptionPageContent = () => {
         employeesRes,
         skillGroupsRes,
         behavioralGroupsRes,
-        leadershipMainGroupsRes, // 🔥 NEW
+        leadershipMainGroupsRes,
         businessResourcesRes,
         accessMatrixRes,
         companyBenefitsRes
@@ -265,7 +269,7 @@ const JobDescriptionPageContent = () => {
         fetch(`${baseUrl}/employees/?page_size=1000`, fetchOptions()),
         competencyApi.skillGroups.getAll(),
         competencyApi.behavioralGroups.getAll(),
-        competencyApi.leadershipMainGroups.getAll(), // 🔥 NEW
+        competencyApi.leadershipMainGroups.getAll(),
         jobDescriptionService.getBusinessResources({ page_size: 1000 }),
         jobDescriptionService.getAccessMatrix({ page_size: 1000 }),
         jobDescriptionService.getCompanyBenefits({ page_size: 1000 })
@@ -290,22 +294,12 @@ const JobDescriptionPageContent = () => {
         }
       });
 
-      console.log('📚 Dropdown Data Loaded:', {
-        employees: employeeList.length,
-        skillGroups: skillGroupsRes.results?.length || 0,
-        behavioralGroups: behavioralGroupsRes.results?.length || 0,
-        leadershipMainGroups: leadershipMainGroupsRes.results?.length || 0, // 🔥 NEW
-        businessResources: businessResourcesRes.results?.length || 0,
-        accessMatrix: accessMatrixRes.results?.length || 0,
-        companyBenefits: companyBenefitsRes.results?.length || 0
-      });
-
       setDropdownData({
         employees: employeeList,
         employeeMap: employeeMap,
         skillGroups: skillGroupsRes.results || [],
         behavioralGroups: behavioralGroupsRes.results || [],
-        leadershipMainGroups: leadershipMainGroupsRes.results || [], // 🔥 NEW
+        leadershipMainGroups: leadershipMainGroupsRes.results || [],
         businessResources: businessResourcesRes.results || [],
         accessMatrix: accessMatrixRes.results || [],
         companyBenefits: companyBenefitsRes.results || []
@@ -343,8 +337,7 @@ const JobDescriptionPageContent = () => {
     return jobDescriptions.filter(job => {
       const matchesSearch = !searchTerm || 
         job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.department_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.employee_info?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        job.department_name?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesDepartment = !selectedDepartment || job.department_name === selectedDepartment;
       
@@ -360,6 +353,98 @@ const JobDescriptionPageContent = () => {
 
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
 
+  // 🔥 NEW: View assignments for a job description
+  const handleViewAssignments = async (job) => {
+    try {
+      setActionLoading(true);
+      const response = await jobDescriptionService.getJobDescriptionAssignments(job.id);
+      setAssignmentsData(response);
+      setSelectedJobForAssignments(job);
+      setShowAssignmentsModal(true);
+    } catch (error) {
+      console.error('Error fetching assignments:', error);
+      showError('Error loading assignments');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 🔥 NEW: Submit single assignment for approval
+  const handleSubmitAssignmentForApproval = async (jobId, assignmentId) => {
+    try {
+      setActionLoading(true);
+      await jobDescriptionService.submitAssignmentForApproval(jobId, assignmentId, {
+        comments: ''
+      });
+      showSuccess('Assignment submitted for approval');
+      
+      // Refresh assignments
+      if (selectedJobForAssignments) {
+        const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
+        setAssignmentsData(response);
+      }
+      
+      await fetchJobDescriptions();
+      await fetchStats();
+    } catch (error) {
+      console.error('Error submitting assignment:', error);
+      showError('Error submitting for approval');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 🔥 NEW: Submit all draft assignments
+  const handleSubmitAllAssignments = async (jobId) => {
+    try {
+      setActionLoading(true);
+      const response = await jobDescriptionService.submitAllAssignmentsForApproval(jobId);
+      showSuccess(response.message || 'All assignments submitted for approval');
+      
+      if (selectedJobForAssignments) {
+        const assignmentsResponse = await jobDescriptionService.getJobDescriptionAssignments(jobId);
+        setAssignmentsData(assignmentsResponse);
+      }
+      
+      await fetchJobDescriptions();
+      await fetchStats();
+    } catch (error) {
+      console.error('Error submitting all assignments:', error);
+      showError('Error submitting assignments');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // 🔥 NEW: Remove assignment
+  const handleRemoveAssignment = async (jobId, assignmentId) => {
+    setConfirmModal({
+      isOpen: true,
+      type: 'warning',
+      title: 'Remove Assignment',
+      message: 'Are you sure you want to remove this assignment? The employee will be unassigned from this job description.',
+      onConfirm: async () => {
+        try {
+          setConfirmModal({ ...confirmModal, loading: true });
+          await jobDescriptionService.removeAssignment(jobId, assignmentId);
+          showSuccess('Assignment removed');
+          
+          // Refresh
+          const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
+          setAssignmentsData(response);
+          await fetchJobDescriptions();
+          await fetchStats();
+          
+          setConfirmModal({ ...confirmModal, isOpen: false, loading: false });
+        } catch (error) {
+          console.error('Error removing assignment:', error);
+          showError('Error removing assignment');
+          setConfirmModal({ ...confirmModal, loading: false });
+        }
+      }
+    });
+  };
+
   const handleDownloadSinglePDF = async (jobId) => {
     try {
       setActionLoading(true);
@@ -373,13 +458,12 @@ const JobDescriptionPageContent = () => {
     }
   };
 
+  // 🔥 UPDATED: Now submits all assignments
   const handleDirectSubmissionForApproval = async (jobId) => {
     setCreatedJobsData({ id: jobId, isExisting: true });
     setIsExistingJobSubmission(true);
     setShowSubmissionModal(true);
   };
-
- 
 
   const handleSubmitForApproval = async () => {
     if (!createdJobsData) return;
@@ -388,27 +472,14 @@ const JobDescriptionPageContent = () => {
       setSubmissionLoading(true);
       
       if (createdJobsData.isExisting) {
-        await jobDescriptionService.submitForApproval(createdJobsData.id, {
-          comments: submissionComments,
-          submit_to_line_manager: true
-        });
-        
-        showSuccess('Job description submitted for approval successfully!');
+        // 🔥 Submit all assignments for existing job
+        await jobDescriptionService.submitAllAssignmentsForApproval(createdJobsData.id);
+        showSuccess('All assignments submitted for approval!');
       } else {
-        const jobsToSubmit = createdJobsData.created_job_descriptions || [{ id: createdJobsData.id }];
-        
-        for (const job of jobsToSubmit) {
-          await jobDescriptionService.submitForApproval(job.id, {
-            comments: submissionComments,
-            submit_to_line_manager: true
-          });
-        }
-        
-        const message = jobsToSubmit.length > 1 
-          ? `${jobsToSubmit.length} job descriptions submitted for approval successfully!`
-          : 'Job description submitted for approval successfully!';
-        
-        showSuccess(message);
+        // New job - assignments already created, submit them all
+        const jobId = createdJobsData.id || createdJobsData.job_description_id;
+        await jobDescriptionService.submitAllAssignmentsForApproval(jobId);
+        showSuccess('Job description and assignments submitted for approval!');
       }
       
       await fetchJobDescriptions();
@@ -429,9 +500,12 @@ const JobDescriptionPageContent = () => {
   };
 
   const handleKeepAsDraft = async () => {
-    const message = createdJobsData?.summary?.total_job_descriptions_created > 1 
-      ? `${createdJobsData.summary.total_job_descriptions_created} job descriptions saved as drafts successfully!`
-      : 'Job description saved as draft successfully!';
+    const totalAssignments = createdJobsData?.total_assignments || 
+                            createdJobsData?.assignments_created?.length || 1;
+    
+    const message = totalAssignments > 1 
+      ? `Job description with ${totalAssignments} assignments saved as draft!`
+      : 'Job description saved as draft!';
     
     showSuccess(message);
     
@@ -464,7 +538,7 @@ const JobDescriptionPageContent = () => {
           isOpen: true,
           type: 'warning',
           title: 'Unsaved Changes',
-          message: 'You have unsaved changes. Are you sure you want to leave? All changes will be lost.',
+          message: 'You have unsaved changes. Are you sure you want to leave?',
           onConfirm: () => {
             setConfirmModal({ ...confirmModal, isOpen: false });
             resetForm();
@@ -479,20 +553,10 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 UPDATED: handleEdit with Leadership competencies support
   const handleEdit = async (job) => {
     try {
       setActionLoading(true);
-      
-      console.log('\n' + '='.repeat(80));
-      console.log('🚀 STARTING EDIT PROCESS');
-      console.log('='.repeat(80));
-      console.log('Job ID:', job.id);
-      console.log('Job Title:', job.job_title);
-      
       const fullJob = await jobDescriptionService.getJobDescription(job.id);
-      
-      console.log('\n📋 FULL JOB DATA RECEIVED');
       
       // Extract sections
       const criticalDuties = [];
@@ -547,62 +611,41 @@ const JobDescriptionPageContent = () => {
       const accessRightIds = extractAllIds(fullJob.access_rights, 'access_matrix');
       const companyBenefitIds = extractAllIds(fullJob.company_benefits, 'benefit');
       
-      // 🔥 Extract Skills IDs
+      // Extract Skills
       const skillIds = [];
       if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
         fullJob.required_skills.forEach(skill => {
-          if (skill.skill_id) {
-            skillIds.push(String(skill.skill_id));
-          } else if (skill.skill) {
-            skillIds.push(String(skill.skill));
-          }
+          const id = skill.skill_id || skill.skill;
+          if (id) skillIds.push(String(id));
         });
       }
       
-      console.log('🎯 Extracted Skill IDs:', skillIds);
-      
-      // 🔥 NEW: Extract Behavioral Competencies IDs
+      // Extract Behavioral Competencies
       const behavioralCompetencyIds = [];
       if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
         fullJob.behavioral_competencies.forEach(comp => {
-          if (comp.competency_id) {
-            behavioralCompetencyIds.push(String(comp.competency_id));
-          } else if (comp.competency) {
-            behavioralCompetencyIds.push(String(comp.competency));
-          }
+          const id = comp.competency_id || comp.competency;
+          if (id) behavioralCompetencyIds.push(String(id));
         });
       }
       
-      console.log('🎯 Extracted Behavioral Competency IDs:', behavioralCompetencyIds);
-      
-      // 🔥 NEW: Extract Leadership Competencies IDs (from leadership_items)
+      // Extract Leadership Competencies
       const leadershipCompetencyIds = [];
       if (fullJob.leadership_competencies && Array.isArray(fullJob.leadership_competencies)) {
         fullJob.leadership_competencies.forEach(item => {
-          // Leadership competencies point to leadership_items
-          if (item.leadership_item_id) {
-            leadershipCompetencyIds.push(String(item.leadership_item_id));
-          } else if (item.leadership_item) {
-            leadershipCompetencyIds.push(String(item.leadership_item));
-          } else if (item.id) {
-            leadershipCompetencyIds.push(String(item.id));
-          }
+          const id = item.leadership_item_id || item.leadership_item || item.id;
+          if (id) leadershipCompetencyIds.push(String(id));
         });
       }
-      
-      console.log('🎯 Extracted Leadership Competency IDs:', leadershipCompetencyIds);
       
       // Handle grading levels
       let gradingLevels = [];
       if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels)) {
         gradingLevels = fullJob.grading_levels;
-        console.log('📊 Using grading_levels array:', gradingLevels);
       } else if (fullJob.grading_level) {
         gradingLevels = [fullJob.grading_level];
-        console.log('📊 Converting single grading_level to array:', gradingLevels);
       }
       
-      // 🔥 Build form data
       const transformedData = {
         job_title: fullJob.job_title || '',
         job_purpose: fullJob.job_purpose || '',
@@ -620,18 +663,13 @@ const JobDescriptionPageContent = () => {
         requirements: requirements.length > 0 ? requirements : [''],
         
         required_skills_data: skillIds,
-        behavioral_competencies_data: behavioralCompetencyIds, // 🔥 Behavioral
-        leadership_competencies_data: leadershipCompetencyIds, // 🔥 Leadership
+        behavioral_competencies_data: behavioralCompetencyIds,
+        leadership_competencies_data: leadershipCompetencyIds,
         
         business_resources_ids: businessResourceIds,
         access_rights_ids: accessRightIds,
         company_benefits_ids: companyBenefitIds
       };
-      
-      console.log('\n✅ TRANSFORMED DATA:');
-      console.log('- Behavioral Competencies:', transformedData.behavioral_competencies_data.length);
-      console.log('- Leadership Competencies:', transformedData.leadership_competencies_data.length);
-      console.log('='.repeat(80) + '\n');
       
       setFormData(transformedData);
       setEditingJob(fullJob);
@@ -643,17 +681,14 @@ const JobDescriptionPageContent = () => {
       setActiveView('create');
       
     } catch (error) {
-      console.error('❌ Error loading job for edit:', error);
+      console.error('Error loading job for edit:', error);
       showError('Error loading job description. Please try again.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // 🔥 UPDATED: resetForm with leadership_competencies_data
   const resetForm = () => {
-    console.log('🔄 Resetting form to initial state');
-    
     setFormData({
       job_title: '',
       job_purpose: '',
@@ -670,7 +705,7 @@ const JobDescriptionPageContent = () => {
       requirements: [''],
       required_skills_data: [],
       behavioral_competencies_data: [],
-      leadership_competencies_data: [], // 🔥 Reset leadership
+      leadership_competencies_data: [],
       business_resources_ids: [],
       access_rights_ids: [],
       company_benefits_ids: []
@@ -690,7 +725,7 @@ const JobDescriptionPageContent = () => {
       isOpen: true,
       type: 'danger',
       title: 'Delete Job Description',
-      message: 'Are you sure you want to delete this job description? This action cannot be undone.',
+      message: 'Are you sure you want to delete this job description? This will remove all assignments. This action cannot be undone.',
       onConfirm: async () => {
         try {
           setConfirmModal({ ...confirmModal, loading: true });
@@ -738,7 +773,7 @@ const JobDescriptionPageContent = () => {
   return (
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} transition-colors duration-300`}>
-        <div className=" mx-auto p-4 lg:p-6">
+        <div className="mx-auto p-4 lg:p-6">
           
           {/* Header Section */}
           <div className="mb-8">
@@ -748,13 +783,11 @@ const JobDescriptionPageContent = () => {
                   Job Descriptions
                 </h1>
                 <p className={`${textSecondary} text-xs lg:text-base leading-relaxed`}>
-                  Create job descriptions based on your organizational structure and employee data
+                  Create job descriptions and assign to multiple employees
                 </p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
-                
-
                 <button
                   onClick={() => router.push('/structure/job-descriptions/JobDescriptionSettings/')}
                   className={`flex items-center justify-center gap-2 px-5 py-3 
@@ -770,11 +803,12 @@ const JobDescriptionPageContent = () => {
               </div>
             </div>
 
+            {/* Stats Cards - Updated for multi-assignment */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
               <StatCard 
                 title="Total Jobs" 
                 value={stats.total_job_descriptions || 0} 
-                subtitle={`${filteredJobs.length} visible`}
+                subtitle={`${stats.total_assignments || 0} assignments`}
                 icon={FileText}
                 color="almet-sapphire"
                 darkMode={darkMode}
@@ -788,23 +822,24 @@ const JobDescriptionPageContent = () => {
                 darkMode={darkMode}
               />
               <StatCard 
-                title="Approved & Active" 
-                value={stats.status_breakdown?.Approved || 0} 
-                subtitle="Ready to use"
+                title="Approved" 
+                value={stats.assignment_status_breakdown?.Approved || 0} 
+                subtitle="Assignments approved"
                 icon={CheckCircle}
                 color="green-600"
                 darkMode={darkMode}
               />
               <StatCard 
-                title="Draft Status" 
-                value={stats.status_breakdown?.Draft || 0} 
-                subtitle="In progress"
-                icon={Edit}
+                title="Employees/Vacancies" 
+                value={`${stats.assignment_type_breakdown?.employees || 0}/${stats.assignment_type_breakdown?.vacancies || 0}`}
+                subtitle="Assigned positions"
+                icon={Users}
                 color="gray-600"
                 darkMode={darkMode}
               />
             </div>
 
+            {/* Tab Navigation */}
             <div className={`flex items-center justify-between p-1 
               ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'} rounded-lg shadow-inner`}>
               {[
@@ -861,6 +896,7 @@ const JobDescriptionPageContent = () => {
                   onJobSelect={handleViewJob}
                   onJobEdit={handleEdit}
                   onJobDelete={handleDelete}
+                  onViewAssignments={handleViewAssignments}
                   onDirectSubmission={handleDirectSubmissionForApproval}
                   onDownloadPDF={handleDownloadSinglePDF}
                   actionLoading={actionLoading}
@@ -914,6 +950,28 @@ const JobDescriptionPageContent = () => {
               job={selectedJob}
               onClose={() => setSelectedJob(null)}
               onDownloadPDF={() => handleDownloadSinglePDF(selectedJob.id)}
+              onViewAssignments={() => {
+                setSelectedJob(null);
+                handleViewAssignments(selectedJob);
+              }}
+              darkMode={darkMode}
+            />
+          )}
+
+          {/* 🔥 NEW: Assignments Modal */}
+          {showAssignmentsModal && assignmentsData && (
+            <AssignmentsModal
+              job={selectedJobForAssignments}
+              assignmentsData={assignmentsData}
+              onClose={() => {
+                setShowAssignmentsModal(false);
+                setSelectedJobForAssignments(null);
+                setAssignmentsData(null);
+              }}
+              onSubmitAssignment={handleSubmitAssignmentForApproval}
+              onSubmitAll={handleSubmitAllAssignments}
+              onRemoveAssignment={handleRemoveAssignment}
+              actionLoading={actionLoading}
               darkMode={darkMode}
             />
           )}
@@ -937,8 +995,6 @@ const JobDescriptionPageContent = () => {
               darkMode={darkMode}
             />
           )}
-
-        
 
           {/* Confirmation Modal */}
           <ConfirmationModal
