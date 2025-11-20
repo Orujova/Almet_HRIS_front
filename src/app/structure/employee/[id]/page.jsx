@@ -774,15 +774,7 @@ const EmployeeDetailPageContent = () => {
 
                   {activeTab === 'job-descriptions' && (
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <h3 className={`${textPrimary} text-lg font-bold`}>Job Descriptions</h3>
-                        <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
-                          <ClipboardList size={16} className="text-almet-sapphire" />
-                          <span className={`text-xs font-semibold ${textMuted}`}>
-                            Management & Approval
-                          </span>
-                        </div>
-                      </div>
+                 
                       <EmployeeDetailJobDescriptions 
                         employeeId={id} 
                         isManager={isManager}

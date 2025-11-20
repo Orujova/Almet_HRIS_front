@@ -235,39 +235,31 @@ const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isT
             {formatDate(celebration.date)}
           </div>
           
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onCelebrate(celebration);
-            }}
-            disabled={isCelebrated || !isToday}
-            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              isCelebrated
-                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 cursor-default'
-                : !isToday
-                ? 'bg-gray-50 dark:bg-almet-comet/50 text-gray-400 dark:text-almet-bali-hai cursor-not-allowed'
-                : 'bg-almet-sapphire/10 dark:bg-almet-steel-blue/10 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire hover:text-white dark:hover:bg-almet-steel-blue dark:hover:text-white'
-            }`}
-            title={
-              isCelebrated 
-                ? 'Already celebrated' 
-                : !isToday
-                ? 'Available on celebration day'
-                : 'Send wishes'
-            }
-          >
-            {isCelebrated ? (
-              <>
-                <CheckCircle size={12} />
-                <span>Sent</span>
-              </>
-            ) : (
-              <>
-                <span>🎉</span>
-                <span>{celebration.wishes}</span>
-              </>
-            )}
-          </button>
+           <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onCelebrate(celebration);
+        }}
+        disabled={isCelebrated}
+        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          isCelebrated
+            ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 cursor-default'
+            : 'bg-almet-sapphire/10 dark:bg-almet-steel-blue/10 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire hover:text-white dark:hover:bg-almet-steel-blue dark:hover:text-white'
+        }`}
+        title={isCelebrated ? 'Already celebrated' : 'Send wishes'}
+      >
+        {isCelebrated ? (
+          <>
+            <CheckCircle size={12} />
+            <span>Sent</span>
+          </>
+        ) : (
+          <>
+            <span>🎉</span>
+            <span>{celebration.wishes}</span>
+          </>
+        )}
+      </button>
         </div>
       </div>
     </div>
@@ -509,26 +501,22 @@ export default function Home() {
     const celebrationDate = new Date(celebration.date).toISOString().split('T')[0];
     const today = new Date().toISOString().split('T')[0];
     
-    if (celebrationDate !== today) {
-      alert('You can only celebrate on the celebration day!');
-      return;
-    }
+    
+   try {
+    const celebrateMessage = '🎉';
+    
+    await celebrationService.addAutoWish(
+      celebration.employee_id,
+      celebration.type,
+      celebrateMessage
+    );
 
-    try {
-      const celebrateMessage = '🎉';
-      
-      await celebrationService.addAutoWish(
-        celebration.employee_id,
-        celebration.type,
-        celebrateMessage
-      );
-
-      saveCelebratedItem(celebration.id);
-      loadUpcomingCelebrations();
-    } catch (error) {
-      console.error('Error celebrating:', error);
-      alert('Error celebrating. Please try again.');
-    }
+    saveCelebratedItem(celebration.id);
+    loadUpcomingCelebrations();
+  } catch (error) {
+    console.error('Error celebrating:', error);
+    alert('Error celebrating. Please try again.');
+  }
   };
 
   const isCelebrationToday = (dateString) => {

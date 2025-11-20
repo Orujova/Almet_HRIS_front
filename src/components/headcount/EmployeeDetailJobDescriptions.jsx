@@ -1,12 +1,12 @@
-// components/headcount/EmployeeDetailJobDescriptions.jsx - WITH Leadership Competencies Support
+// components/headcount/EmployeeDetailJobDescriptions.jsx - COMPLETE Multi-Assignment Support
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  FileText, Clock, CheckCircle, XCircle, AlertCircle, User, Plus, Eye, Users,
+  FileText, Clock, CheckCircle, XCircle, AlertCircle, User, Eye, Users,
   Calendar, RotateCcw, CheckSquare, Download, X, Building, Briefcase, Target,
   Award, Shield, Search, Filter, ChevronDown, UserCheck, UserX as UserVacant,
   ChevronLeft, ChevronRight, Grid3X3, List, SortAsc, SortDesc, RefreshCw,
-  BookOpen, Crown
+  BookOpen, Crown, Layers
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import jobDescriptionService from '@/services/jobDescriptionService';
@@ -15,9 +15,14 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [myJobDescriptions, setMyJobDescriptions] = useState([]);
-  const [teamJobDescriptions, setTeamJobDescriptions] = useState([]);
-  const [selectedJob, setSelectedJob] = useState(null);
+  
+  // 🔥 NEW: Assignment-based state
+  const [myAssignments, setMyAssignments] = useState([]);
+  const [teamAssignments, setTeamAssignments] = useState([]);
+  const [assignmentsSummary, setAssignmentsSummary] = useState(null);
+  const [teamSummary, setTeamSummary] = useState(null);
+  
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
   const [jobDetail, setJobDetail] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -26,7 +31,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const [actionLoading, setActionLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('my-jobs');
 
-  // Enhanced Team Job Descriptions State
+  // Enhanced Team View State
   const [teamFilters, setTeamFilters] = useState({
     search: '',
     status: '',
@@ -54,46 +59,59 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
   const bgAccent = darkMode ? "bg-almet-san-juan/30" : "bg-almet-mystic/50";
 
   useEffect(() => {
-    fetchJobDescriptions();
+    fetchAssignments();
   }, [employeeId]);
 
-  const processedTeamJobs = useMemo(() => {
-    let processed = jobDescriptionService.filterJobDescriptions(teamJobDescriptions, teamFilters);
-    processed = jobDescriptionService.sortJobDescriptions(processed, teamSorting.field, teamSorting.order);
-    return processed;
-  }, [teamJobDescriptions, teamFilters, teamSorting]);
-
-  const paginatedTeamJobs = useMemo(() => {
-    return jobDescriptionService.paginateJobDescriptions(processedTeamJobs, teamCurrentPage, teamItemsPerPage);
-  }, [processedTeamJobs, teamCurrentPage, teamItemsPerPage]);
-
-  const filterOptions = useMemo(() => {
-    return {
-      statuses: jobDescriptionService.getUniqueFilterValues(teamJobDescriptions, 'status'),
-      departments: jobDescriptionService.getUniqueFilterValues(teamJobDescriptions, 'department'),
-      businessFunctions: jobDescriptionService.getUniqueFilterValues(teamJobDescriptions, 'business_function')
-    };
-  }, [teamJobDescriptions]);
-
-  const fetchJobDescriptions = async () => {
+  // 🔥 UPDATED: Fetch assignments from employee detail
+  const fetchAssignments = async () => {
     try {
       setLoading(true);
       
-      const myJobsResponse = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
-      setMyJobDescriptions(Array.isArray(myJobsResponse) ? myJobsResponse : []);
+      // Get employee details which includes job_description_assignments
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/employees/${employeeId}/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch employee data');
+      
+      const employeeData = await response.json();
+      console.log('Fetched Employee Data:', employeeData);
+      // 🔥 Extract assignments from employee data
+      setMyAssignments(employeeData.job_description_assignments || []);
+      setAssignmentsSummary(employeeData.job_description_summary || null);
       
       if (isManager) {
-        const teamJobsResponse = await jobDescriptionService.getTeamJobDescriptions(employeeId);
-        setTeamJobDescriptions(Array.isArray(teamJobsResponse) ? teamJobsResponse : []);
+        setTeamAssignments(employeeData.team_job_description_assignments || []);
+        setTeamSummary(employeeData.team_jd_summary || null);
       }
     } catch (error) {
-      console.error('Error fetching job descriptions:', error);
-      setMyJobDescriptions([]);
-      setTeamJobDescriptions([]);
+      console.error('Error fetching assignments:', error);
+      setMyAssignments([]);
+      setTeamAssignments([]);
     } finally {
       setLoading(false);
     }
   };
+
+  const processedTeamAssignments = useMemo(() => {
+    let processed = jobDescriptionService.filterAssignments(teamAssignments, teamFilters);
+    processed = jobDescriptionService.sortAssignments(processed, teamSorting.field, teamSorting.order);
+    return processed;
+  }, [teamAssignments, teamFilters, teamSorting]);
+
+  const paginatedTeamAssignments = useMemo(() => {
+    return jobDescriptionService.paginateAssignments(processedTeamAssignments, teamCurrentPage, teamItemsPerPage);
+  }, [processedTeamAssignments, teamCurrentPage, teamItemsPerPage]);
+
+  const filterOptions = useMemo(() => {
+    return {
+      statuses: jobDescriptionService.getUniqueFilterValues(teamAssignments, 'status'),
+      departments: jobDescriptionService.getUniqueFilterValues(teamAssignments, 'department'),
+      businessFunctions: jobDescriptionService.getUniqueFilterValues(teamAssignments, 'business_function')
+    };
+  }, [teamAssignments]);
 
   const fetchJobDetail = async (jobId) => {
     try {
@@ -109,23 +127,35 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     }
   };
 
-  const handleApproval = async (jobDescriptionId, action) => {
+  // 🔥 UPDATED: Handle approval with assignment-based API
+  const handleApproval = async (assignment, action) => {
     try {
       setActionLoading(true);
       
+      const jobId = assignment.job_description_id;
+      const assignmentId = assignment.id;
+      
+      if (!jobId || !assignmentId) {
+        throw new Error('Missing job or assignment ID');
+      }
+      
       switch (action) {
         case 'approve_manager':
-          await jobDescriptionService.approveByLineManager(jobDescriptionId, {
+          await jobDescriptionService.approveAssignmentByLineManager(jobId, assignmentId, {
             comments: comments.trim()
           });
           break;
         case 'approve_employee':
-          await jobDescriptionService.approveAsEmployee(jobDescriptionId, {
+          await jobDescriptionService.approveAssignmentAsEmployee(jobId, assignmentId, {
             comments: comments.trim()
           });
           break;
         case 'reject':
-          await jobDescriptionService.rejectJobDescription(jobDescriptionId, {
+          if (!comments.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+          }
+          await jobDescriptionService.rejectAssignment(jobId, assignmentId, {
             reason: comments.trim()
           });
           break;
@@ -133,24 +163,25 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           throw new Error('Invalid action');
       }
       
-      await fetchJobDescriptions();
+      await fetchAssignments();
       setShowApprovalModal(false);
       setComments('');
-      setSelectedJob(null);
+      setSelectedAssignment(null);
       setApprovalType(null);
       
       const actionText = action === 'reject' ? 'rejected' : 'approved';
-      alert(`Job description ${actionText} successfully!`);
+      alert(`Assignment ${actionText} successfully!`);
     } catch (error) {
       console.error('Error processing approval:', error);
-      alert('Error processing request. Please try again.');
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || error.message || 'Error processing request. Please try again.';
+      alert(errorMsg);
     } finally {
       setActionLoading(false);
     }
   };
 
-  const openApprovalModal = (job, type) => {
-    setSelectedJob(job);
+  const openApprovalModal = (assignment, type) => {
+    setSelectedAssignment(assignment);
     setApprovalType(type);
     setShowApprovalModal(true);
     setComments('');
@@ -183,43 +214,24 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     setTeamCurrentPage(1);
   };
 
-  const getStatusDisplay = (job) => {
-    const statusInfo = jobDescriptionService.getStatusInfo(job.status);
-    let statusColor = '';
-    let statusBg = '';
+  const getStatusDisplay = (assignment) => {
+    const statusInfo = jobDescriptionService.getStatusInfo(assignment.status);
     
-    switch (job.status) {
-      case 'DRAFT':
-        statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
-        statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
-        break;
-      case 'PENDING_LINE_MANAGER':
-      case 'PENDING_EMPLOYEE':
-        statusColor = 'text-orange-600 dark:text-orange-400';
-        statusBg = 'bg-orange-100 dark:bg-orange-900/20';
-        break;
-      case 'APPROVED':
-      case 'ACTIVE':
-        statusColor = 'text-green-600 dark:text-green-400';
-        statusBg = 'bg-green-100 dark:bg-green-900/20';
-        break;
-      case 'REJECTED':
-        statusColor = 'text-red-600 dark:text-red-400';
-        statusBg = 'bg-red-100 dark:bg-red-900/20';
-        break;
-      case 'REVISION_REQUIRED':
-        statusColor = 'text-almet-sapphire dark:text-almet-steel-blue';
-        statusBg = 'bg-blue-100 dark:bg-almet-sapphire/20';
-        break;
-      default:
-        statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
-        statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
-    }
-
+    // 🔥 Use status_display from backend if available
+    const displayData = assignment.status_display || statusInfo;
+    
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${statusColor} ${statusBg}`}>
-        {getStatusIcon(job.status)}
-        {job.status_display?.status || statusInfo.label}
+      <span 
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium`}
+        style={{
+          color: displayData.color || statusInfo.color,
+          backgroundColor: darkMode 
+            ? (displayData.darkBgColor || statusInfo.darkBgColor)
+            : (displayData.bgColor || statusInfo.bgColor)
+        }}
+      >
+        {getStatusIcon(assignment.status)}
+        {displayData.status || statusInfo.label}
       </span>
     );
   };
@@ -232,7 +244,6 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
       case 'PENDING_EMPLOYEE':
         return <Clock size={9} />;
       case 'APPROVED':
-      case 'ACTIVE':
         return <CheckCircle size={9} />;
       case 'REJECTED':
         return <XCircle size={9} />;
@@ -243,160 +254,210 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     }
   };
 
-  // Enhanced Job Description Card
-  const JobDescriptionCard = ({ job, showManagerActions = false, compact = false }) => {
-    const canApproveManager = showManagerActions && 
-      jobDescriptionService.canApproveAsLineManager(job);
-    const canApproveEmployee = !showManagerActions && 
-      jobDescriptionService.canApproveAsEmployee(job);
-    
-    const isVacant = jobDescriptionService.isVacantPosition(job);
-    const employeeName = jobDescriptionService.getEmployeeDisplayName(job);
-    
-    return (
-      <div className={`relative ${bgCard} rounded-xl border ${borderColor} hover:shadow-lg transition-all duration-300 overflow-hidden group`}>
-        <div className="p-4">
-          <div className="flex items-start gap-3 mb-3">
-            <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral text-white p-2.5 rounded-xl flex-shrink-0 shadow-md">
-              <FileText size={16} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className={`text-xs font-bold ${textPrimary} mb-1.5 line-clamp-2 leading-tight`} title={job.job_title}>
-                {job.job_title}
-              </h3>
-              <div className={`flex items-center gap-2 text-[10px] ${textMuted} mb-1.5`}>
-                <Building size={10} />
-                <span className="truncate">{job.business_function || job.business_function_name}</span>
-                <span>•</span>
-                <span className="truncate">{job.department || job.department_name}</span>
-              </div>
-              <div className={`flex items-center gap-2 text-[10px]`}>
-                {isVacant ? (
-                  <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
-                    <UserVacant size={10} />
-                    <span className="font-medium">Vacant Position</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                    <UserCheck size={10} />
-                    <span className="truncate max-w-[120px]">
-                      {showManagerActions ? employeeName : `Reports to: ${job.reports_to_name || 'N/A'}`}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+  // 🔥 UPDATED: Assignment Card with multi-assignment support
+ // components/headcount/EmployeeDetailJobDescriptions.jsx - AssignmentCard
+
+const AssignmentCard = ({ assignment, showManagerActions = false, compact = false }) => {
+  const canApproveManager = showManagerActions && assignment.can_approve_as_manager;
+  const canApproveEmployee = !showManagerActions && assignment.can_approve_as_employee;
+  
+  const isVacant = assignment.is_vacancy;
+  const employeeName = assignment.employee_name || 'N/A';
+  const jobId = assignment.job_description_id;
+  const urgency = assignment.urgency || 'normal';
+  const daysPending = assignment.days_pending || 0;
+  
+  // ✅ Check if has comments
+  const hasComments = assignment.line_manager_comments || assignment.employee_comments;
+  
+  return (
+    <div className={`relative ${bgCard} rounded-xl border ${borderColor} hover:shadow-lg transition-all duration-300 overflow-hidden group`}>
+      {/* Urgency indicator */}
+      {urgency === 'critical' && (
+        <div className="absolute top-0 right-0 w-0 h-0 border-t-[30px] border-r-[30px] border-t-red-500 border-r-transparent">
+          <AlertCircle size={12} className="absolute -top-6 -right-5 text-white" />
+        </div>
+      )}
+      
+      <div className="p-4">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral text-white p-2.5 rounded-xl flex-shrink-0 shadow-md">
+            <FileText size={16} />
           </div>
-
-          <div className="flex items-center justify-between mb-3">
-            {getStatusDisplay(job)}
-          </div>
-
-          <div className="mb-3">
-            <p className={`text-[10px] ${textMuted} line-clamp-2 leading-relaxed`}>
-              {job.job_purpose || 'No job purpose provided.'}
-            </p>
-          </div>
-
-          <div className={`flex items-center justify-between p-2.5 ${bgAccent} rounded-lg text-[10px] mb-3`}>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                {job.line_manager_approved_at ? 
-                  <CheckCircle size={10} className="text-green-500" /> : 
-                  <Clock size={10} className="text-orange-500" />
-                }
-                <span className={`font-medium ${textMuted}`}>Manager</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {job.employee_approved_at ? 
-                  <CheckCircle size={10} className="text-green-500" /> : 
-                  <Clock size={10} className="text-orange-500" />
-                }
-                <span className={`font-medium ${textMuted}`}>Employee</span>
-              </div>
+          <div className="flex-1 min-w-0">
+            <h3 className={`text-xs font-bold ${textPrimary} mb-1.5 line-clamp-2 leading-tight`} title={assignment.job_title}>
+              {assignment.job_title}
+            </h3>
+            <div className={`flex items-center gap-2 text-[10px] ${textMuted} mb-1.5`}>
+              <Building size={10} />
+              <span className="truncate">{assignment.business_function}</span>
+              <span>•</span>
+              <span className="truncate">{assignment.department}</span>
             </div>
-            <span className={`text-[10px] font-semibold ${textPrimary}`}>
-              {job.line_manager_approved_at && job.employee_approved_at ? 'Complete' : 'In Progress'}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <button 
-                onClick={() => fetchJobDetail(job.id)}
-                disabled={detailLoading}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors text-[10px] font-medium"
-              >
-                <Eye size={10} />
-                View
-              </button>
-              <button 
-                onClick={() => jobDescriptionService.downloadJobDescriptionPDF(job.id)}
-                className="flex items-center gap-1 px-2.5 py-1.5 text-almet-waterloo hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-lg transition-colors text-[10px] font-medium"
-              >
-                <Download size={10} />
-                PDF
-              </button>
-            </div>
-
-            <div className="flex items-center gap-1">
-              {canApproveManager && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => openApprovalModal(job, 'approve_manager')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-medium shadow-sm"
-                  >
-                    <CheckSquare size={10} />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => openApprovalModal(job, 'reject')}
-                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  >
-                    <XCircle size={10} />
-                  </button>
+            <div className={`flex items-center gap-2 text-[10px]`}>
+              {isVacant ? (
+                <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                  <UserVacant size={10} />
+                  <span className="font-medium">Vacant Position</span>
                 </div>
-              )}
-
-              {canApproveEmployee && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => openApprovalModal(job, 'approve_employee')}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-medium shadow-sm"
-                  >
-                    <CheckSquare size={10} />
-                    Approve
-                  </button>
-                  <button
-                    onClick={() => openApprovalModal(job, 'reject')}
-                    className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  >
-                    <XCircle size={10} />
-                  </button>
+              ) : (
+                <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                  <UserCheck size={10} />
+                  <span className="truncate max-w-[120px]">
+                    {showManagerActions ? employeeName : `Reports to: ${assignment.reports_to_name || 'N/A'}`}
+                  </span>
                 </div>
-              )}
-
-              {!canApproveManager && !canApproveEmployee && (
-                <span className={`text-[10px] font-medium px-2.5 py-1.5 rounded-lg ${
-                  job.status === 'APPROVED' || job.status === 'ACTIVE' 
-                    ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' 
-                    : `${textMuted} ${bgAccent}`
-                }`}>
-                  {job.status === 'APPROVED' || job.status === 'ACTIVE' ? 'Complete' : 'Pending'}
-                </span>
               )}
             </div>
           </div>
         </div>
+
+        <div className="flex items-center justify-between mb-3">
+          {getStatusDisplay(assignment)}
+          <div className="flex items-center gap-2">
+            {/* ✅ Comments indicator */}
+            {hasComments && (
+              <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400" title="Has comments">
+                <MessageSquare size={10} />
+              </div>
+            )}
+            {daysPending > 0 && (
+              <span className={`text-[10px] ${daysPending > 14 ? 'text-red-600' : daysPending > 7 ? 'text-orange-600' : textMuted}`}>
+                {daysPending}d pending
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ✅ Approval workflow progress */}
+        <div className={`flex items-center justify-between p-2.5 ${bgAccent} rounded-lg text-[10px] mb-3`}>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              {assignment.line_manager_approved_at ? 
+                <CheckCircle size={10} className="text-green-500" /> : 
+                <Clock size={10} className="text-orange-500" />
+              }
+              <span className={`font-medium ${textMuted}`}>Manager</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {assignment.employee_approved_at ? 
+                <CheckCircle size={10} className="text-green-500" /> : 
+                <Clock size={10} className="text-orange-500" />
+              }
+              <span className={`font-medium ${textMuted}`}>Employee</span>
+            </div>
+          </div>
+          <span className={`text-[10px] font-semibold ${textPrimary}`}>
+            {assignment.line_manager_approved_at && assignment.employee_approved_at ? 'Complete' : 'In Progress'}
+          </span>
+        </div>
+
+        {/* ✅ COMMENTS PREVIEW - Show in card if exists */}
+        {hasComments && (
+          <div className="mb-3 space-y-2">
+            {assignment.line_manager_comments && (
+              <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-1 mb-1">
+                  <User size={9} className="text-blue-600" />
+                  <span className="text-[9px] font-semibold text-blue-700 dark:text-blue-300">Manager:</span>
+                </div>
+                <p className={`text-[10px] ${textSecondary} line-clamp-2`}>
+                  {assignment.line_manager_comments}
+                </p>
+              </div>
+            )}
+            {assignment.employee_comments && (
+              <div className="p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                <div className="flex items-center gap-1 mb-1">
+                  <UserCheck size={9} className="text-green-600" />
+                  <span className="text-[9px] font-semibold text-green-700 dark:text-green-300">Employee:</span>
+                </div>
+                <p className={`text-[10px] ${textSecondary} line-clamp-2`}>
+                  {assignment.employee_comments}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => fetchJobDetail(jobId)}
+              disabled={detailLoading}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors text-[10px] font-medium"
+            >
+              <Eye size={10} />
+              View
+            </button>
+            <button 
+              onClick={() => jobDescriptionService.downloadJobDescriptionPDF(jobId)}
+              className="flex items-center gap-1 px-2.5 py-1.5 text-almet-waterloo hover:bg-gray-100 dark:hover:bg-almet-comet/30 rounded-lg transition-colors text-[10px] font-medium"
+            >
+              <Download size={10} />
+              PDF
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {canApproveManager && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => openApprovalModal(assignment, 'approve_manager')}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-medium shadow-sm"
+                >
+                  <CheckSquare size={10} />
+                  Approve
+                </button>
+                <button
+                  onClick={() => openApprovalModal(assignment, 'reject')}
+                  className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <XCircle size={10} />
+                </button>
+              </div>
+            )}
+
+            {canApproveEmployee && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => openApprovalModal(assignment, 'approve_employee')}
+                  className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-[10px] font-medium shadow-sm"
+                >
+                  <CheckSquare size={10} />
+                  Approve
+                </button>
+                <button
+                  onClick={() => openApprovalModal(assignment, 'reject')}
+                  className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                >
+                  <XCircle size={10} />
+                </button>
+              </div>
+            )}
+
+            {!canApproveManager && !canApproveEmployee && (
+              <span className={`text-[10px] font-medium px-2.5 py-1.5 rounded-lg ${
+                assignment.status === 'APPROVED' 
+                  ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20' 
+                  : `${textMuted} ${bgAccent}`
+              }`}>
+                {assignment.status === 'APPROVED' ? 'Complete' : 'Pending'}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   // Compact List View Component
-  const CompactJobCard = ({ job }) => {
-    const canApproveManager = jobDescriptionService.canApproveAsLineManager(job);
-    const isVacant = jobDescriptionService.isVacantPosition(job);
-    const employeeName = jobDescriptionService.getEmployeeDisplayName(job);
+  const CompactAssignmentCard = ({ assignment }) => {
+    const canApproveManager = assignment.can_approve;
+    const isVacant = assignment.is_vacancy;
+    const employeeName = assignment.employee_name || 'N/A';
+    const jobId = assignment.job_description_id;
     
     return (
       <div className={`p-3.5 ${bgCard} rounded-xl border ${borderColor} hover:shadow-md transition-all relative`}>
@@ -406,22 +467,22 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               <FileText size={14} />
             </div>
             <div className="flex-1 min-w-0">
-              <h4 className={`text-xs font-bold ${textPrimary} truncate mb-1`} title={job.job_title}>
-                {job.job_title}
+              <h4 className={`text-xs font-bold ${textPrimary} truncate mb-1`} title={assignment.job_title}>
+                {assignment.job_title}
               </h4>
               <div className="flex items-center gap-3 text-[10px]">
                 <span className={`${textMuted} truncate`}>
-                  {isVacant ? 'Vacant' : employeeName} • {job.department || job.department_name}
+                  {isVacant ? 'Vacant' : employeeName} • {assignment.department}
                 </span>
               </div>
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            {getStatusDisplay(job)}
+            {getStatusDisplay(assignment)}
             <div className="flex items-center gap-1">
               <button 
-                onClick={() => fetchJobDetail(job.id)}
+                onClick={() => fetchJobDetail(jobId)}
                 className="p-1.5 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors"
                 title="View Details"
               >
@@ -431,14 +492,14 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               {canApproveManager && (
                 <>
                   <button
-                    onClick={() => openApprovalModal(job, 'approve_manager')}
+                    onClick={() => openApprovalModal(assignment, 'approve_manager')}
                     className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
                     title="Approve as Line Manager"
                   >
                     <CheckSquare size={14} />
                   </button>
                   <button
-                    onClick={() => openApprovalModal(job, 'reject')}
+                    onClick={() => openApprovalModal(assignment, 'reject')}
                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                     title="Reject"
                   >
@@ -527,7 +588,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className={`text-xs ${textMuted}`}>
-              Showing {paginatedTeamJobs.totalItems} of {teamJobDescriptions.length} jobs
+              Showing {paginatedTeamAssignments.totalItems} of {teamAssignments.length} assignments
             </span>
             {(teamFilters.search || teamFilters.status || teamFilters.department || teamFilters.vacantOnly || teamFilters.pendingOnly) && (
               <button
@@ -540,7 +601,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           </div>
           
           <button
-            onClick={() => fetchJobDescriptions()}
+            onClick={() => fetchAssignments()}
             className="flex items-center gap-2 px-3 py-1.5 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors text-xs font-medium"
           >
             <RefreshCw size={12} />
@@ -563,13 +624,9 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
     );
   }
 
-  const myPendingCount = myJobDescriptions.filter(job => 
-    job.status === 'PENDING_EMPLOYEE'
-  ).length;
-
-  const teamPendingCount = teamJobDescriptions.filter(job => 
-    job.status === 'PENDING_LINE_MANAGER' || job.status === 'PENDING_APPROVAL'
-  ).length;
+  // 🔥 Use summary data from backend
+  const myPendingCount = assignmentsSummary?.pending_employee || 0;
+  const teamPendingCount = teamSummary?.pending_line_manager || 0;
 
   return (
     <>
@@ -577,11 +634,16 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
         <div className="p-5">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className={`text-xl font-bold ${textPrimary} mb-1.5`}>
-                Job Descriptions
+              <h2 className={`text-xl font-bold ${textPrimary} mb-1.5 flex items-center gap-2`}>
+                <Layers size={20} />
+                Job Description Assignments
               </h2>
               <p className={`${textSecondary} text-xs`}>
-                Manage your job descriptions and approvals
+                {assignmentsSummary ? (
+                  `${assignmentsSummary.total} total assignments • ${assignmentsSummary.approved} approved`
+                ) : (
+                  'Manage your job description assignments and approvals'
+                )}
               </p>
             </div>
           </div>
@@ -598,7 +660,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               >
                 <div className="flex items-center justify-center gap-2">
                   <User size={14} />
-                  My Jobs
+                  My Assignments
                   {myPendingCount > 0 && (
                     <span className="bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center font-bold">
                       {myPendingCount}
@@ -616,7 +678,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
               >
                 <div className="flex items-center justify-center gap-2">
                   <Users size={14} />
-                  Team Jobs ({teamJobDescriptions.length})
+                  Team Assignments ({teamSummary?.total || teamAssignments.length})
                   {teamPendingCount > 0 && (
                     <span className="bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center font-bold">
                       {teamPendingCount}
@@ -627,12 +689,11 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
             </div>
           )}
 
-          {isManager && activeTab === 'team-jobs' && teamJobDescriptions.length > 0 && (
+          {isManager && activeTab === 'team-jobs' && teamAssignments.length > 0 && (
             <div className="mb-5">
               <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
+                  <button onClick={() => setShowFilters(!showFilters)}
                     className={`flex items-center gap-2 px-3.5 py-2 border ${borderColor} rounded-xl transition-all text-xs font-semibold ${
                       showFilters 
                         ? 'bg-almet-sapphire text-white border-almet-sapphire shadow-md' 
@@ -705,11 +766,11 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
           <div className="space-y-5">
             {(!isManager || activeTab === 'my-jobs') && (
               <>
-                {myJobDescriptions.length > 0 ? (
+                {myAssignments.length > 0 ? (
                   <>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className={`text-lg font-bold ${textPrimary}`}>
-                        {isManager ? 'My Job Descriptions' : 'Job Descriptions'}
+                        {isManager ? 'My Assignments' : 'Your Assignments'}
                       </h3>
                       {myPendingCount > 0 && (
                         <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 px-3.5 py-2 rounded-xl">
@@ -721,10 +782,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       )}
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                      {myJobDescriptions.map(job => (
-                        <JobDescriptionCard 
-                          key={job.id} 
-                          job={job} 
+                      {myAssignments.map(assignment => (
+                        <AssignmentCard 
+                          key={assignment.id} 
+                          assignment={assignment} 
                           showManagerActions={false}
                         />
                       ))}
@@ -736,10 +797,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       <FileText className={`h-7 w-7 ${textMuted}`} />
                     </div>
                     <h3 className={`text-base font-bold ${textPrimary} mb-1.5`}>
-                      No Job Descriptions Found
+                      No Job Description Assignments
                     </h3>
                     <p className={`${textMuted} text-xs`}>
-                      You don't have any job descriptions assigned yet.
+                      You don't have any job description assignments yet.
                     </p>
                   </div>
                 )}
@@ -748,13 +809,13 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
 
             {isManager && activeTab === 'team-jobs' && (
               <>
-                {paginatedTeamJobs.totalItems > 0 ? (
+                {paginatedTeamAssignments.totalItems > 0 ? (
                   <>
                     <div className="flex items-center justify-between mb-4">
                       <h3 className={`text-lg font-bold ${textPrimary}`}>
-                       Team Job Descriptions
+                       Team Assignments
                         <span className={`ml-2 text-xs font-normal ${textMuted}`}>
-                          ({paginatedTeamJobs.totalItems}{teamJobDescriptions.length !== paginatedTeamJobs.totalItems && ` of ${teamJobDescriptions.length}`})
+                          ({paginatedTeamAssignments.totalItems}{teamAssignments.length !== paginatedTeamAssignments.totalItems && ` of ${teamAssignments.length}`})
                         </span>
                       </h3>
                       {teamPendingCount > 0 && (
@@ -769,10 +830,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
 
                     {teamViewMode === 'grid' ? (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                        {paginatedTeamJobs.items.map(job => (
-                          <JobDescriptionCard 
-                            key={job.id} 
-                            job={job} 
+                        {paginatedTeamAssignments.items.map(assignment => (
+                          <AssignmentCard 
+                            key={assignment.id} 
+                            assignment={assignment} 
                             showManagerActions={true}
                             compact={true}
                           />
@@ -780,24 +841,24 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {paginatedTeamJobs.items.map(job => (
-                          <CompactJobCard key={job.id} job={job} />
+                        {paginatedTeamAssignments.items.map(assignment => (
+                          <CompactAssignmentCard key={assignment.id} assignment={assignment} />
                         ))}
                       </div>
                     )}
 
-                    {paginatedTeamJobs.totalPages > 1 && (
+                    {paginatedTeamAssignments.totalPages > 1 && (
                       <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-200 dark:border-almet-comet">
                         <div className={`text-xs ${textMuted}`}>
-                          Showing {((teamCurrentPage - 1) * teamItemsPerPage) + 1} to {Math.min(teamCurrentPage * teamItemsPerPage, paginatedTeamJobs.totalItems)} of {paginatedTeamJobs.totalItems} jobs
+                          Showing {((teamCurrentPage - 1) * teamItemsPerPage) + 1} to {Math.min(teamCurrentPage * teamItemsPerPage, paginatedTeamAssignments.totalItems)} of {paginatedTeamAssignments.totalItems} assignments
                         </div>
                         
                         <div className="flex items-center gap-1.5">
                           <button
                             onClick={() => setTeamCurrentPage(prev => Math.max(prev - 1, 1))}
-                            disabled={!paginatedTeamJobs.hasPreviousPage}
+                            disabled={!paginatedTeamAssignments.hasPreviousPage}
                             className={`p-2 border ${borderColor} rounded-lg transition-colors ${
-                              !paginatedTeamJobs.hasPreviousPage 
+                              !paginatedTeamAssignments.hasPreviousPage 
                                 ? 'opacity-50 cursor-not-allowed' 
                                 : `hover:${bgCardHover}`
                             }`}
@@ -806,9 +867,9 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                           </button>
                           
                           <div className="flex items-center gap-1">
-                            {Array.from({ length: Math.min(5, paginatedTeamJobs.totalPages) }, (_, i) => {
+                            {Array.from({ length: Math.min(5, paginatedTeamAssignments.totalPages) }, (_, i) => {
                               let pageNum;
-                              const totalPages = paginatedTeamJobs.totalPages;
+                              const totalPages = paginatedTeamAssignments.totalPages;
                               
                               if (totalPages <= 5) {
                                 pageNum = i + 1;
@@ -837,10 +898,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                           </div>
                           
                           <button
-                            onClick={() => setTeamCurrentPage(prev => Math.min(prev + 1, paginatedTeamJobs.totalPages))}
-                            disabled={!paginatedTeamJobs.hasNextPage}
+                            onClick={() => setTeamCurrentPage(prev => Math.min(prev + 1, paginatedTeamAssignments.totalPages))}
+                            disabled={!paginatedTeamAssignments.hasNextPage}
                             className={`p-2 border ${borderColor} rounded-lg transition-colors ${
-                              !paginatedTeamJobs.hasNextPage 
+                              !paginatedTeamAssignments.hasNextPage 
                                 ? 'opacity-50 cursor-not-allowed' 
                                 : `hover:${bgCardHover}`
                             }`}
@@ -851,13 +912,13 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       </div>
                     )}
                   </>
-                ) : processedTeamJobs.length === 0 && teamJobDescriptions.length > 0 ? (
+                ) : processedTeamAssignments.length === 0 && teamAssignments.length > 0 ? (
                   <div className="text-center py-12">
                     <div className={`w-14 h-14 mx-auto mb-3 ${bgAccent} rounded-2xl flex items-center justify-center`}>
                       <Filter className={`h-7 w-7 ${textMuted}`} />
                     </div>
                     <h3 className={`text-base font-bold ${textPrimary} mb-1.5`}>
-                      No Job Descriptions Match Your Filters
+                      No Assignments Match Your Filters
                     </h3>
                     <p className={`${textMuted} text-xs mb-3`}>
                       Try adjusting your search criteria or clear the filters.
@@ -875,10 +936,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       <Users className={`h-7 w-7 ${textMuted}`} />
                     </div>
                     <h3 className={`text-base font-bold ${textPrimary} mb-1.5`}>
-                      No Team Job Descriptions Found
+                      No Team Assignments Found
                     </h3>
                     <p className={`${textMuted} text-xs`}>
-                      No job descriptions are currently assigned to your team members.
+                      No job description assignments for your team members.
                     </p>
                   </div>
                 )}
@@ -888,7 +949,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
         </div>
       </div>
 
-      {/* 🔥 Enhanced Job Description Detail Modal with Leadership Support */}
+      {/* 🔥 Job Description Detail Modal - Shows all assignments */}
       {showDetailModal && jobDetail && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className={`${bgCard} rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-2xl`}>
@@ -897,11 +958,10 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                 <div>
                   <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>Job Description Details</h2>
                   <div className="flex items-center gap-3 flex-wrap">
-                    {getStatusDisplay(jobDetail)}
                     <span className={`text-xs ${textMuted}`}>Created {jobDescriptionService.formatDate(jobDetail.created_at)}</span>
-                    <span className={`text-xs ${textMuted}`}>
-                      Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
-                    </span>
+                    {jobDetail.version && (
+                      <span className={`text-xs ${textMuted}`}>Version {jobDetail.version}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -947,31 +1007,15 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                       </div>
                       <div>
                         <span className={`font-semibold ${textMuted}`}>Hierarchy:</span>
-                        <p className={`${textPrimary} mt-1`}>{jobDetail.position_group?.display_name || jobDetail.position_group?.name}</p>
+                        <p className={`${textPrimary} mt-1`}>{jobDetail.position_group?.name}</p>
                       </div>
                       <div>
-                        <span className={`font-semibold ${textMuted}`}>Grading Level:</span>
-                        <p className={`${textPrimary} mt-1`}>{jobDetail.grading_level || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className={`font-semibold ${textMuted}`}>Reports To:</span>
-                        <p className={`${textPrimary} mt-1`}>{jobDetail.reports_to?.full_name || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <span className={`font-semibold ${textMuted}`}>Position Type:</span>
-                        <div className="flex items-center gap-2 mt-1">
-                          {jobDescriptionService.isVacantPosition(jobDetail) ? (
-                            <>
-                              <UserVacant size={14} className="text-orange-500" />
-                              <span className={`${textPrimary} text-orange-600 dark:text-orange-400 font-semibold`}>Vacant</span>
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck size={14} className="text-green-500" />
-                              <span className={`${textPrimary} text-green-600 dark:text-green-400 font-semibold`}>Assigned</span>
-                            </>
-                          )}
-                        </div>
+                        <span className={`font-semibold ${textMuted}`}>Grading Levels:</span>
+                        <p className={`${textPrimary} mt-1`}>
+                          {jobDetail.grading_levels && jobDetail.grading_levels.length > 0 
+                            ? jobDetail.grading_levels.join(', ') 
+                            : jobDetail.grading_level || 'N/A'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1005,73 +1049,121 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                   )}
                 </div>
 
+               
                 <div className="space-y-5">
-                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
-                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
-                      <CheckCircle size={16} className="text-almet-sapphire" />
-                      Approval Status
-                    </h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold ${textMuted}`}>Line Manager</span>
-                        <span className={`flex items-center gap-2 text-xs font-semibold ${jobDetail.line_manager_approved_at ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                          {jobDetail.line_manager_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
-                          {jobDetail.line_manager_approved_at ? 'Approved' : 'Pending'}
-                        </span>
+                  {/* 🔥 Assignments Summary */}
+                  {jobDetail.assignments && jobDetail.assignments.length > 0 && (
+                    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                      <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                        <Users size={16} className="text-almet-sapphire" />
+                        Assignments ({jobDetail.assignments.length})
+                      </h4>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                         {jobDetail.assignments.map((assignment, idx) => (
+                    <div key={idx} className={`p-3 bg-white dark:bg-almet-cloud-burst rounded-lg border ${borderColor}`}>
+                      {/* Employee/Vacancy Info */}
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {assignment.is_vacancy ? (
+                            <UserVacant size={14} className="text-orange-500 flex-shrink-0" />
+                          ) : (
+                            <UserCheck size={14} className="text-green-500 flex-shrink-0" />
+                          )}
+                          <span className={`text-xs font-semibold ${textPrimary} truncate`}>
+                            {assignment.employee?.full_name || assignment.employee_name || 'VACANT'}
+                          </span>
+                        </div>
+                        {assignment.status === 'APPROVED' ? (
+                          <CheckCircle size={12} className="text-green-500 flex-shrink-0" />
+                        ) : assignment.status === 'REJECTED' ? (
+                          <XCircle size={12} className="text-red-500 flex-shrink-0" />
+                        ) : (
+                          <Clock size={12} className="text-orange-500 flex-shrink-0" />
+                        )}
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-xs font-semibold ${textMuted}`}>Employee</span>
-                        <span className={`flex items-center gap-2 text-xs font-semibold ${jobDetail.employee_approved_at ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                          {jobDetail.employee_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
-                          {jobDetail.employee_approved_at ? 'Approved' : 'Pending'}
-                        </span>
+
+                      {/* Status */}
+                      <div className="mb-2">
+                        {getStatusDisplay(assignment)}
                       </div>
-                      
-                      {jobDetail.line_manager_comments && (
-                        <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
-                          <span className={`text-xs font-semibold ${textMuted}`}>Manager Comments:</span>
-                          <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.line_manager_comments}</p>
+
+                      {/* ✅ APPROVAL DATES */}
+                      {(assignment.line_manager_approved_at || assignment.employee_approved_at) && (
+                        <div className={`text-[10px] ${textMuted} space-y-1 mb-2`}>
+                          {assignment.line_manager_approved_at && (
+                            <div className="flex items-center gap-1">
+                              <CheckCircle size={8} className="text-green-500" />
+                              <span>Manager: {jobDescriptionService.formatDateTime(assignment.line_manager_approved_at)}</span>
+                            </div>
+                          )}
+                          {assignment.employee_approved_at && (
+                            <div className="flex items-center gap-1">
+                              <CheckCircle size={8} className="text-green-500" />
+                              <span>Employee: {jobDescriptionService.formatDateTime(assignment.employee_approved_at)}</span>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {jobDetail.employee_comments && (
-                        <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
-                          <span className={`text-xs font-semibold ${textMuted}`}>Employee Comments:</span>
-                          <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.employee_comments}</p>
+
+                                {assignment.line_manager_comments && (
+                        <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <div className="flex items-start gap-2 mb-1">
+                            <User size={10} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                            <span className={`text-[10px] font-semibold text-blue-700 dark:text-blue-300`}>
+                              Manager Comment:
+                            </span>
+                          </div>
+                          <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                            {assignment.line_manager_comments}
+                          </p>
                         </div>
                       )}
+
+                      {/* ✅ EMPLOYEE COMMENTS */}
+                      {assignment.employee_comments && (
+                        <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                          <div className="flex items-start gap-2 mb-1">
+                            <UserCheck size={10} className="text-green-600 flex-shrink-0 mt-0.5" />
+                            <span className={`text-[10px] font-semibold text-green-700 dark:text-green-300`}>
+                              Employee Comment:
+                            </span>
+                          </div>
+                          <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                            {assignment.employee_comments}
+                          </p>
+                        </div>
+                      )}
+                          </div>
+                        ))}
+                        {jobDetail.assignments.length > 10 && (
+                          <div className={`text-center text-xs ${textMuted} pt-2`}>
+                            +{jobDetail.assignments.length - 10} more assignments
+                          </div>
+                        )}
+
+                        
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
-                    <h4 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2 text-sm`}>
-                      <Target size={16} className="text-almet-sapphire" />
-                      Next Action
-                    </h4>
-                    <p className={`text-xs ${textSecondary} leading-relaxed`}>
-                      {jobDescriptionService.getNextAction(jobDetail)}
-                    </p>
-                  </div>
-
-                  {/* 🔥 Technical Skills */}
+                  {/* Technical Skills */}
                   {jobDetail.required_skills && jobDetail.required_skills.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                         <Award size={16} className="text-almet-sapphire" />
                         Technical Skills
                       </h4>
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         {jobDetail.required_skills.map((skill, index) => (
-                          <div key={index} className="flex items-center justify-between py-0.5">
-                            <span className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-                              {skill.skill_detail?.name || skill.name}
-                            </span>
-                          </div>
+                          <span key={index} className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
+                            {skill.skill_detail?.name || skill.name}
+                          </span>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* 🔥 Behavioral Competencies */}
+                  {/* Behavioral Competencies */}
                   {jobDetail.behavioral_competencies && jobDetail.behavioral_competencies.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1089,7 +1181,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   )}
 
-                  {/* 🔥 Leadership Competencies */}
+                  {/* Leadership Competencies */}
                   {jobDetail.leadership_competencies && jobDetail.leadership_competencies.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1107,6 +1199,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                     </div>
                   )}
 
+                  {/* Business Resources */}
                   {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1117,13 +1210,14 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         {jobDetail.business_resources.map((resource, index) => (
                           <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                             <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                            {resource.name}
+                            {resource.resource_detail?.name || resource.name}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
+                  {/* Access Rights */}
                   {jobDetail.access_rights && jobDetail.access_rights.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1134,13 +1228,14 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         {jobDetail.access_rights.map((access, index) => (
                           <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                             <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                            {access.name}
+                            {access.access_detail?.name || access.name}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
+                  {/* Company Benefits */}
                   {jobDetail.company_benefits && jobDetail.company_benefits.length > 0 && (
                     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                       <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
@@ -1151,7 +1246,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                         {jobDetail.company_benefits.map((benefit, index) => (
                           <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                             <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                            {benefit.name}
+                            {benefit.benefit_detail?.name || benefit.name}
                           </div>
                         ))}
                       </div>
@@ -1164,30 +1259,42 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
         </div>
       )}
 
-      {/* Approval Modal */}
-      {showApprovalModal && selectedJob && (
+      {/* 🔥 Approval Modal - Assignment-based */}
+      {showApprovalModal && selectedAssignment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className={`${bgCard} rounded-2xl w-full max-w-md border ${borderColor} shadow-2xl`}>
             <div className="p-5">
               <h3 className={`text-lg font-bold ${textPrimary} mb-4`}>
-                {approvalType === 'reject' ? 'Reject Job Description' : 'Approve Job Description'}
+                {approvalType === 'reject' ? 'Reject Assignment' : 'Approve Assignment'}
               </h3>
               
               <div className="mb-3">
                 <p className={`text-xs font-semibold ${textSecondary} mb-1`}>Job Title:</p>
-                <p className={`font-bold ${textPrimary} text-sm`}>{selectedJob.job_title}</p>
+                <p className={`font-bold ${textPrimary} text-sm`}>{selectedAssignment.job_title}</p>
               </div>
 
               <div className="mb-3">
-                <p className={`text-xs font-semibold ${textSecondary} mb-1`}>Employee:</p>
-                <p className={`font-semibold ${textPrimary} text-sm`}>
-                  {jobDescriptionService.getEmployeeDisplayName(selectedJob)}
+                <p className={`text-xs font-semibold ${textSecondary} mb-1`}>
+                  {selectedAssignment.is_vacancy ? 'Position:' : 'Employee:'}
+                </p>
+                <p className={`font-semibold ${textPrimary} text-sm flex items-center gap-1`}>
+                  {selectedAssignment.is_vacancy ? (
+                    <>
+                      <UserVacant size={14} className="text-orange-500" />
+                      Vacant Position
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck size={14} className="text-green-500" />
+                      {selectedAssignment.employee_name || 'N/A'}
+                    </>
+                  )}
                 </p>
               </div>
 
               <div className="mb-4">
                 <p className={`text-xs font-semibold ${textSecondary} mb-1.5`}>Current Status:</p>
-                {getStatusDisplay(selectedJob)}
+                {getStatusDisplay(selectedAssignment)}
               </div>
 
               <div className="mb-5">
@@ -1212,7 +1319,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                   onClick={() => {
                     setShowApprovalModal(false);
                     setComments('');
-                    setSelectedJob(null);
+                    setSelectedAssignment(null);
                     setApprovalType(null);
                   }}
                   className={`px-4 py-2 ${textSecondary} hover:${textPrimary} transition-colors font-semibold rounded-xl hover:bg-gray-100 dark:hover:bg-almet-comet/30 text-xs`}
@@ -1221,7 +1328,7 @@ const EmployeeDetailJobDescriptions = ({ employeeId, isManager = false }) => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => handleApproval(selectedJob.id, approvalType)}
+                  onClick={() => handleApproval(selectedAssignment, approvalType)}
                   disabled={actionLoading || (approvalType === 'reject' && !comments.trim())}
                   className={`px-4 py-2 rounded-xl transition-colors disabled:opacity-50 flex items-center gap-2 font-semibold shadow-lg text-xs ${
                     approvalType === 'reject' 

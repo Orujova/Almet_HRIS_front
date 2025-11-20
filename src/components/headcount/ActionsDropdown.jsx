@@ -1,10 +1,11 @@
-// src/components/headcount/ActionsDropdown.jsx - WITH Leadership Competencies Support
+// src/components/headcount/ActionsDropdown.jsx - UPDATED: Multiple Assignment Support
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { 
   MoreVertical, Edit, Users, FileText, BarChart2, Trash2, UserPlus, 
   TagIcon, Archive, X, Download, CheckCircle, Clock, Building, 
-  Briefcase, Target, Award, Shield, UserCheck, UserX as UserVacant, Crown
+  Briefcase, Target, Award, Shield, UserCheck, UserX as UserVacant, Crown,
+  AlertCircle, Calendar, Zap
 } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import { useToast } from "../common/Toast";
@@ -18,8 +19,8 @@ import { createPortal } from "react-dom";
 import ConfirmationModal from "../common/ConfirmationModal";
 
 /**
- * Enhanced Actions Dropdown with Portal Rendering and Job Description Modal
- * WITH Leadership Competencies Support
+ * ✅ UPDATED: Enhanced Actions Dropdown with Multiple Assignment Support
+ * Now supports viewing multiple job description assignments for single employee
  */
 const ActionsDropdown = ({ 
   employeeId, 
@@ -35,10 +36,11 @@ const ActionsDropdown = ({
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
   
-  // Job Description Modal State
-  const [showJobDescriptionModal, setShowJobDescriptionModal] = useState(false);
-  const [jobDetail, setJobDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  // ✅ NEW: Multiple Assignments Modal State
+  const [showJobDescriptionsModal, setShowJobDescriptionsModal] = useState(false);
+  const [jobAssignments, setJobAssignments] = useState([]);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   
   // Confirmation modal state
   const [confirmationModal, setConfirmationModal] = useState({
@@ -184,59 +186,85 @@ const ActionsDropdown = ({
   };
 
   // ========================================
-  // JOB DESCRIPTION MODAL FUNCTIONS
+  // ✅ NEW: MULTIPLE JOB ASSIGNMENTS FUNCTIONS
   // ========================================
 
-  const fetchJobDescription = async () => {
+  const fetchJobAssignments = async () => {
     try {
-      setDetailLoading(true);
+      setAssignmentsLoading(true);
       setIsOpen(false);
       
-      const jobDescriptions = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
+      // ✅ Use new endpoint that returns assignments
+      const assignments = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
       
-      if (!jobDescriptions || jobDescriptions.length === 0) {
-        showWarning('No job description found for this employee');
+      if (!assignments || assignments.length === 0) {
+        showWarning('No job descriptions found for this employee');
         return;
       }
 
-      const activeJob = jobDescriptions.find(job => 
-        job.status === 'ACTIVE' || job.status === 'APPROVED'
-      ) || jobDescriptions[0];
-
-      const detail = await jobDescriptionService.getJobDescription(activeJob.id);
-      setJobDetail(detail);
-      setShowJobDescriptionModal(true);
+      setJobAssignments(assignments);
+      setShowJobDescriptionsModal(true);
+      
+      // If only one assignment, show it directly
+      if (assignments.length === 1) {
+        await viewAssignmentDetail(assignments[0].id);
+      }
+      
     } catch (error) {
-      console.error('Error fetching job description:', error);
-      showError('Error loading job description. Please try again.');
+      console.error('Error fetching job assignments:', error);
+      showError('Error loading job descriptions. Please try again.');
     } finally {
-      setDetailLoading(false);
+      setAssignmentsLoading(false);
     }
   };
 
-  const getStatusDisplay = (job) => {
-    const statusInfo = jobDescriptionService.getStatusInfo(job.status);
+  const viewAssignmentDetail = async (assignmentId) => {
+    try {
+      setAssignmentsLoading(true);
+      
+      // ✅ Fetch full assignment details
+      const detail = await jobDescriptionService.getAssignmentDetail(assignmentId);
+      setSelectedAssignment(detail);
+      
+    } catch (error) {
+      console.error('Error fetching assignment detail:', error);
+      showError('Error loading assignment details');
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  };
+
+  const getStatusDisplay = (assignment) => {
+    if (!assignment) return null;
+    
+    const statusInfo = assignment.status_display || {};
     let statusColor = '';
     let statusBg = '';
     
-    switch (job.status) {
+    switch (assignment.status) {
       case 'DRAFT':
         statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
         statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
         break;
       case 'PENDING_LINE_MANAGER':
-      case 'PENDING_EMPLOYEE':
         statusColor = 'text-orange-600 dark:text-orange-400';
         statusBg = 'bg-orange-100 dark:bg-orange-900/20';
         break;
+      case 'PENDING_EMPLOYEE':
+        statusColor = 'text-blue-600 dark:text-blue-400';
+        statusBg = 'bg-blue-100 dark:bg-blue-900/20';
+        break;
       case 'APPROVED':
-      case 'ACTIVE':
         statusColor = 'text-green-600 dark:text-green-400';
         statusBg = 'bg-green-100 dark:bg-green-900/20';
         break;
       case 'REJECTED':
         statusColor = 'text-red-600 dark:text-red-400';
         statusBg = 'bg-red-100 dark:bg-red-900/20';
+        break;
+      case 'REVISION_REQUIRED':
+        statusColor = 'text-purple-600 dark:text-purple-400';
+        statusBg = 'bg-purple-100 dark:bg-purple-900/20';
         break;
       default:
         statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
@@ -245,16 +273,38 @@ const ActionsDropdown = ({
 
     return (
       <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${statusColor} ${statusBg}`}>
-        {job.status_display?.status || statusInfo.label}
+        {statusInfo.status || assignment.status}
       </span>
     );
   };
 
-  // 🔥 Check if job has leadership competencies
-  const isLeadershipPosition = (job) => {
-    return job.leadership_competencies && 
-           Array.isArray(job.leadership_competencies) && 
-           job.leadership_competencies.length > 0;
+  // ✅ Check if job has leadership competencies
+  const hasLeadershipCompetencies = (jobDescription) => {
+    return jobDescription.leadership_competencies && 
+           Array.isArray(jobDescription.leadership_competencies) && 
+           jobDescription.leadership_competencies.length > 0;
+  };
+
+  // ✅ Get urgency badge for assignment
+  const getUrgencyBadge = (assignment) => {
+    const daysOld = assignment.days_pending || 0;
+    
+    if (daysOld > 14) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          <AlertCircle size={10} />
+          Critical
+        </span>
+      );
+    } else if (daysOld > 7) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+          <Clock size={10} />
+          High
+        </span>
+      );
+    }
+    return null;
   };
 
   // ========================================
@@ -291,7 +341,7 @@ const ActionsDropdown = ({
     openConfirmation({
       type: 'danger',
       title: 'Soft Delete Employee',
-      message: `Are you sure you want to soft delete ${employeeName}?`,
+      message: `Are you sure you want to soft delete ${employeeName}? This will create a vacant position.`,
       confirmText: 'Soft Delete',
       action: async () => {
         try {
@@ -329,7 +379,7 @@ const ActionsDropdown = ({
     openConfirmation({
       type: 'danger',
       title: 'Permanent Deletion Warning',
-      message: `⚠️ WARNING: This will permanently delete ${employeeName}`,
+      message: `⚠️ WARNING: This will permanently delete ${employeeName}. This action cannot be undone.`,
       confirmText: 'Continue',
       action: async () => {
         try {
@@ -370,8 +420,8 @@ const ActionsDropdown = ({
   const handleAction = (action) => {
     setIsOpen(false);
     
-    if (action === "viewJobDescription") {
-      fetchJobDescription();
+    if (action === "viewJobDescriptions") {
+      fetchJobAssignments();
       return;
     }
     
@@ -491,18 +541,18 @@ const ActionsDropdown = ({
 
         <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 
-        {/* Job Description - Now opens modal */}
+        {/* ✅ UPDATED: Job Descriptions - Opens assignments modal */}
         <button
           className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
-          onClick={() => handleAction("viewJobDescription")}
-          disabled={detailLoading}
+          onClick={() => handleAction("viewJobDescriptions")}
+          disabled={assignmentsLoading}
         >
           <div className="flex items-center">
             <FileText size={14} className="mr-2 text-amber-500" />
             <div className="flex flex-col items-start">
-              <span>Job Description</span>
+              <span>Job Descriptions</span>
               <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                {detailLoading ? 'Loading...' : 'View detailed job info'}
+                {assignmentsLoading ? 'Loading...' : 'View all assignments'}
               </span>
             </div>
           </div>
@@ -596,15 +646,126 @@ const ActionsDropdown = ({
   );
 
   // ========================================
-  // JOB DESCRIPTION MODAL COMPONENT
+  // ✅ NEW: JOB ASSIGNMENTS MODAL COMPONENT
   // ========================================
 
-  const JobDescriptionModal = () => {
-    if (!showJobDescriptionModal || !jobDetail) return null;
+  const JobAssignmentsModal = () => {
+    if (!showJobDescriptionsModal) return null;
 
-    const hasLeadershipComp = isLeadershipPosition(jobDetail);
-    const hasBehavioralComp = jobDetail.behavioral_competencies && 
-                              jobDetail.behavioral_competencies.length > 0;
+    // If no assignment selected, show list
+    if (!selectedAssignment) {
+      return createPortal(
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000] p-4">
+          <div className={`${bgCard} rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border ${borderColor} shadow-2xl`}>
+            <div className="p-5">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-200 dark:border-almet-comet">
+                <div>
+                  <h2 className={`text-xl font-bold ${textPrimary} mb-1`}>Job Description Assignments</h2>
+                  <p className={`text-xs ${textMuted}`}>
+                    {employeeName} • {jobAssignments.length} assignment{jobAssignments.length !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowJobDescriptionsModal(false);
+                    setJobAssignments([]);
+                    setSelectedAssignment(null);
+                  }}
+                  className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-almet-comet/30`}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Assignments List */}
+              {assignmentsLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-almet-sapphire"></div>
+                </div>
+              ) : jobAssignments.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText size={48} className={`mx-auto mb-3 ${textMuted}`} />
+                  <p className={`${textPrimary} font-semibold mb-1`}>No Job Descriptions</p>
+                  <p className={`text-xs ${textMuted}`}>This employee has no job description assignments</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {jobAssignments.map((assignment, index) => {
+                    const jd = assignment.job_description || {};
+                    const hasLeadership = hasLeadershipCompetencies(jd);
+                    
+                    return (
+                      <div
+                        key={assignment.id}
+                        className={`p-4 rounded-xl border ${borderColor} ${bgAccent} hover:shadow-md transition-all cursor-pointer`}
+                        onClick={() => viewAssignmentDetail(assignment.id)}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h3 className={`text-base font-bold ${textPrimary} mb-1`}>
+                              {jd.job_title || assignment.job_description_title}
+                            </h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-xs ${textMuted}`}>
+                                {jd.business_function?.name || jd.business_function_name}
+                              </span>
+                              <span className={`text-xs ${textMuted}`}>•</span>
+                              <span className={`text-xs ${textMuted}`}>
+                                {jd.department?.name || jd.department_name}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            {getStatusDisplay(assignment)}
+                            {hasLeadership && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
+                                <Crown size={10} />
+                                Leadership
+                              </span>
+                            )}
+                            {getUrgencyBadge(assignment)}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                          <div>
+                            <span className={`font-semibold ${textMuted}`}>Reports To:</span>
+                            <p className={`${textSecondary} mt-0.5`}>
+                              {assignment.reports_to_name || 'N/A'}
+                            </p>
+                          </div>
+                          <div>
+                            <span className={`font-semibold ${textMuted}`}>Created:</span>
+                            <p className={`${textSecondary} mt-0.5 flex items-center gap-1`}>
+                              <Calendar size={12} />
+                              {new Date(assignment.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
+                          <button className="text-xs text-almet-sapphire hover:text-almet-astral font-semibold flex items-center gap-1">
+                            View Details
+                            <Zap size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      );
+    }
+
+    // If assignment selected, show detail view
+    const jd = selectedAssignment.job_description || {};
+    const hasLeadership = hasLeadershipCompetencies(jd);
+    const hasBehavioral = jd.behavioral_competencies && jd.behavioral_competencies.length > 0;
 
     return createPortal(
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100000] p-4">
@@ -613,25 +774,33 @@ const ActionsDropdown = ({
             {/* Modal Header */}
             <div className="flex items-center justify-between mb-5 pb-3 border-b border-gray-200 dark:border-almet-comet">
               <div>
-                <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>Job Description Details</h2>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    onClick={() => setSelectedAssignment(null)}
+                    className={`p-1 ${textMuted} hover:${textPrimary} transition-colors rounded-lg`}
+                  >
+                    ← Back to List
+                  </button>
+                </div>
+                <h2 className={`text-xl font-bold ${textPrimary} mb-2`}>{jd.job_title}</h2>
                 <div className="flex items-center gap-3 flex-wrap">
-                  {getStatusDisplay(jobDetail)}
-                  {hasLeadershipComp && (
+                  {getStatusDisplay(selectedAssignment)}
+                  {hasLeadership && (
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400">
                       <Crown size={10} />
                       Leadership Position
                     </span>
                   )}
-                  <span className={`text-xs ${textMuted}`}>Created {jobDescriptionService.formatDate(jobDetail.created_at)}</span>
+                  {getUrgencyBadge(selectedAssignment)}
                   <span className={`text-xs ${textMuted}`}>
-                    Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
+                    Created {new Date(selectedAssignment.created_at).toLocaleDateString()}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    jobDescriptionService.downloadJobDescriptionPDF(jobDetail.id);
+                    jobDescriptionService.downloadJobDescriptionPDF(jd.id);
                   }}
                   className="flex items-center gap-2 px-3.5 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-colors text-xs font-semibold"
                 >
@@ -640,8 +809,9 @@ const ActionsDropdown = ({
                 </button>
                 <button
                   onClick={() => {
-                    setShowJobDescriptionModal(false);
-                    setJobDetail(null);
+                    setShowJobDescriptionsModal(false);
+                    setJobAssignments([]);
+                    setSelectedAssignment(null);
                   }}
                   className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-xl hover:bg-gray-100 dark:hover:bg-almet-comet/30`}
                 >
@@ -650,53 +820,61 @@ const ActionsDropdown = ({
               </div>
             </div>
 
-            {/* Job Overview */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            {/* Job Detail Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-5">
                 {/* Basic Information */}
                 <div className={`p-4 ${bgAccent} rounded-xl`}>
-                  <h3 className={`text-lg font-bold ${textPrimary} mb-3`}>{jobDetail.job_title}</h3>
+                  <h3 className={`text-base font-bold ${textPrimary} mb-3`}>Position Information</h3>
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
                       <span className={`font-semibold ${textMuted}`}>Company:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.business_function?.name}</p>
+                      <p className={`${textPrimary} mt-1`}>{jd.business_function?.name}</p>
                     </div>
                     <div>
                       <span className={`font-semibold ${textMuted}`}>Department:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.department?.name}</p>
+                      <p className={`${textPrimary} mt-1`}>{jd.department?.name}</p>
                     </div>
                     <div>
                       <span className={`font-semibold ${textMuted}`}>Unit:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.unit?.name || 'N/A'}</p>
+                      <p className={`${textPrimary} mt-1`}>{jd.unit?.name || 'N/A'}</p>
                     </div>
                     <div>
                       <span className={`font-semibold ${textMuted}`}>Job Function:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.job_function?.name || 'N/A'}</p>
+                      <p className={`${textPrimary} mt-1`}>{jd.job_function?.name || 'N/A'}</p>
                     </div>
                     <div>
                       <span className={`font-semibold ${textMuted}`}>Hierarchy:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.position_group?.display_name || jobDetail.position_group?.name}</p>
+                      <p className={`${textPrimary} mt-1`}>
+                        {jd.position_group?.display_name || jd.position_group?.name}
+                      </p>
                     </div>
                     <div>
-                      <span className={`font-semibold ${textMuted}`}>Grading Level:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.grading_level || 'N/A'}</p>
+                      <span className={`font-semibold ${textMuted}`}>Grading Levels:</span>
+                      <p className={`${textPrimary} mt-1`}>
+                        {jd.grading_levels?.join(', ') || jd.grading_level || 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <span className={`font-semibold ${textMuted}`}>Reports To:</span>
-                      <p className={`${textPrimary} mt-1`}>{jobDetail.reports_to?.full_name || 'N/A'}</p>
+                      <p className={`${textPrimary} mt-1`}>{selectedAssignment.reports_to?.full_name || 'N/A'}</p>
                     </div>
                     <div>
-                      <span className={`font-semibold ${textMuted}`}>Position Type:</span>
+                      <span className={`font-semibold ${textMuted}`}>Assignment Type:</span>
                       <div className="flex items-center gap-2 mt-1">
-                        {jobDescriptionService.isVacantPosition(jobDetail) ? (
+                        {selectedAssignment.is_vacancy ? (
                           <>
                             <UserVacant size={14} className="text-orange-500" />
-                            <span className={`${textPrimary} text-orange-600 dark:text-orange-400 font-semibold`}>Vacant</span>
+                            <span className={`${textPrimary} text-orange-600 dark:text-orange-400 font-semibold`}>
+                              Vacant
+                            </span>
                           </>
                         ) : (
                           <>
                             <UserCheck size={14} className="text-green-500" />
-                            <span className={`${textPrimary} text-green-600 dark:text-green-400 font-semibold`}>Assigned</span>
+                            <span className={`${textPrimary} text-green-600 dark:text-green-400 font-semibold`}>
+                              Assigned
+                            </span>
                           </>
                         )}
                       </div>
@@ -711,14 +889,14 @@ const ActionsDropdown = ({
                     Job Purpose
                   </h4>
                   <div className={`p-4 ${bgAccent} rounded-xl`}>
-                    <p className={`${textSecondary} leading-relaxed text-xs`}>{jobDetail.job_purpose}</p>
+                    <p className={`${textSecondary} leading-relaxed text-xs`}>{jd.job_purpose}</p>
                   </div>
                 </div>
 
                 {/* Job Sections */}
-                {jobDetail.sections && jobDetail.sections.length > 0 && (
+                {jd.sections && jd.sections.length > 0 && (
                   <div className="space-y-5">
-                    {jobDetail.sections.map((section, index) => (
+                    {jd.sections.map((section, index) => (
                       <div key={index}>
                         <h4 className={`text-base font-bold ${textPrimary} mb-2 flex items-center gap-2`}>
                           <Briefcase size={16} className="text-almet-sapphire" />
@@ -737,123 +915,165 @@ const ActionsDropdown = ({
 
               {/* Sidebar */}
               <div className="space-y-5">
-                {/* Approval Status */}
+                {/* Assignment Status */}
                 <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                   <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                     <CheckCircle size={16} className="text-almet-sapphire" />
-                    Approval Status
+                    Assignment Status
                   </h4>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <span className={`text-xs font-semibold ${textMuted}`}>Line Manager</span>
-                      <span className={`flex items-center gap-2 text-xs font-semibold ${jobDetail.line_manager_approved_at ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                        {jobDetail.line_manager_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
-                        {jobDetail.line_manager_approved_at ? 'Approved' : 'Pending'}
+                      <span className={`flex items-center gap-2 text-xs font-semibold ${
+                        selectedAssignment.line_manager_approved_at 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-orange-600 dark:text-orange-400'
+                      }`}>
+                        {selectedAssignment.line_manager_approved_at ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <Clock size={12} />
+                        )}
+                        {selectedAssignment.line_manager_approved_at ? 'Approved' : 'Pending'}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className={`text-xs font-semibold ${textMuted}`}>Employee</span>
-                      <span className={`flex items-center gap-2 text-xs font-semibold ${jobDetail.employee_approved_at ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                        {jobDetail.employee_approved_at ? <CheckCircle size={12} /> : <Clock size={12} />}
-                        {jobDetail.employee_approved_at ? 'Approved' : 'Pending'}
+                      <span className={`flex items-center gap-2 text-xs font-semibold ${
+                        selectedAssignment.employee_approved_at 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-orange-600 dark:text-orange-400'
+                      }`}>
+                        {selectedAssignment.employee_approved_at ? (
+                          <CheckCircle size={12} />
+                        ) : (
+                          <Clock size={12} />
+                        )}
+                        {selectedAssignment.employee_approved_at ? 'Approved' : 'Pending'}
                       </span>
                     </div>
-                    
-                    {jobDetail.line_manager_comments && (
+
+                    {selectedAssignment.line_manager_comments && (
                       <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
                         <span className={`text-xs font-semibold ${textMuted}`}>Manager Comments:</span>
-                        <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.line_manager_comments}</p>
+                        <p className={`text-xs ${textSecondary} mt-1`}>
+                          {selectedAssignment.line_manager_comments}
+                        </p>
                       </div>
                     )}
-                    {jobDetail.employee_comments && (
+                    {selectedAssignment.employee_comments && (
                       <div className="mt-3 p-2.5 bg-gray-50 dark:bg-almet-cloud-burst rounded-lg">
                         <span className={`text-xs font-semibold ${textMuted}`}>Employee Comments:</span>
-                        <p className={`text-xs ${textSecondary} mt-1`}>{jobDetail.employee_comments}</p>
+                        <p className={`text-xs ${textSecondary} mt-1`}>
+                          {selectedAssignment.employee_comments}
+                        </p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Next Action Required */}
-                <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
-                  <h4 className={`font-bold ${textPrimary} mb-2 flex items-center gap-2 text-sm`}>
-                    <Target size={16} className="text-almet-sapphire" />
-                    Next Action
-                  </h4>
-                  <p className={`text-xs ${textSecondary} leading-relaxed`}>
-                    {jobDescriptionService.getNextAction(jobDetail)}
-                  </p>
-                </div>
+                {/* Employee Matching */}
+                {selectedAssignment.matching_details && (
+                  <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+                    <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
+                      <Target size={16} className="text-almet-sapphire" />
+                      Criteria Match
+                    </h4>
+                    <div className="space-y-2">
+                      {selectedAssignment.matching_details.overall_match ? (
+                        <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400 font-semibold">
+                          <CheckCircle size={14} />
+                          All Criteria Match
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2 text-xs text-orange-600 dark:text-orange-400">
+                          <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold mb-1">Mismatches Found:</p>
+                            <ul className="space-y-1 text-[10px]">
+                              {selectedAssignment.matching_details.mismatch_details?.map((detail, idx) => (
+                                <li key={idx}>• {detail}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Required Skills */}
-                {jobDetail.required_skills && jobDetail.required_skills.length > 0 && (
+                {jd.required_skills && jd.required_skills.length > 0 && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <Award size={16} className="text-almet-sapphire" />
                       Required Skills
                     </h4>
-                    <div className="space-y-2">
-                      {jobDetail.required_skills.map((skill, index) => (
-                        <div key={index} className="flex items-center justify-between py-0.5">
-                          <span className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-                            {skill.skill_detail?.name || skill.name}
-                          </span>
-                        </div>
+                    <div className="flex flex-wrap gap-2">
+                      {jd.required_skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="inline-block bg-blue-100 dark:bg-almet-sapphire/20 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                        >
+                          {skill.skill_detail?.name || skill.name}
+                        </span>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* 🔥 Behavioral Competencies */}
-                {hasBehavioralComp && (
+                {/* Behavioral Competencies */}
+                {hasBehavioral && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <Users size={16} className="text-blue-600" />
                       Behavioral Competencies
                     </h4>
-                    <div className="space-y-2">
-                      {jobDetail.behavioral_competencies.map((comp, index) => (
-                        <div key={index} className="flex items-center justify-between py-0.5">
-                          <span className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-                            {comp.competency_detail?.name || comp.name}
-                          </span>
-                        </div>
+                    <div className="flex flex-wrap gap-2">
+                      {jd.behavioral_competencies.map((comp, index) => (
+                        <span
+                          key={index}
+                          className="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                        >
+                          {comp.competency_detail?.name || comp.name}
+                        </span>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* 🔥 Leadership Competencies */}
-                {hasLeadershipComp && (
+                {/* Leadership Competencies */}
+                {hasLeadership && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <Crown size={16} className="text-purple-600" />
                       Leadership Competencies
                     </h4>
-                    <div className="space-y-2">
-                      {jobDetail.leadership_competencies.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between py-0.5">
-                          <span className="inline-block bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2.5 py-1 rounded-full text-[10px] font-semibold">
-                            {item.leadership_item_detail?.name || item.name}
-                          </span>
-                        </div>
+                    <div className="flex flex-wrap gap-2">
+                      {jd.leadership_competencies.map((item, index) => (
+                        <span
+                          key={index}
+                          className="inline-block bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 px-2.5 py-1 rounded-full text-[10px] font-semibold"
+                        >
+                          {item.leadership_item_detail?.name || item.name}
+                        </span>
                       ))}
                     </div>
                   </div>
                 )}
 
                 {/* Business Resources */}
-                {jobDetail.business_resources && jobDetail.business_resources.length > 0 && (
+                {jd.business_resources && jd.business_resources.length > 0 && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <Building size={16} className="text-almet-sapphire" />
                       Business Resources
                     </h4>
                     <div className="space-y-1.5">
-                      {jobDetail.business_resources.map((resource, index) => (
+                      {jd.business_resources.map((resource, index) => (
                         <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                           <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                          {resource.name || resource.resource_detail?.name}
+                          {resource.items_display || resource.resource_detail?.name}
                         </div>
                       ))}
                     </div>
@@ -861,17 +1081,17 @@ const ActionsDropdown = ({
                 )}
 
                 {/* Access Rights */}
-                {jobDetail.access_rights && jobDetail.access_rights.length > 0 && (
+                {jd.access_rights && jd.access_rights.length > 0 && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <Shield size={16} className="text-almet-sapphire" />
                       Access Rights
                     </h4>
                     <div className="space-y-1.5">
-                      {jobDetail.access_rights.map((access, index) => (
+                      {jd.access_rights.map((access, index) => (
                         <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                           <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                          {access.name || access.access_detail?.name}
+                          {access.items_display || access.access_detail?.name}
                         </div>
                       ))}
                     </div>
@@ -879,17 +1099,17 @@ const ActionsDropdown = ({
                 )}
 
                 {/* Company Benefits */}
-                {jobDetail.company_benefits && jobDetail.company_benefits.length > 0 && (
+                {jd.company_benefits && jd.company_benefits.length > 0 && (
                   <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
                     <h4 className={`font-bold ${textPrimary} mb-3 flex items-center gap-2 text-sm`}>
                       <Award size={16} className="text-almet-sapphire" />
                       Company Benefits
                     </h4>
                     <div className="space-y-1.5">
-                      {jobDetail.company_benefits.map((benefit, index) => (
+                      {jd.company_benefits.map((benefit, index) => (
                         <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                           <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                          {benefit.name || benefit.benefit_detail?.name}
+                          {benefit.items_display || benefit.benefit_detail?.name}
                         </div>
                       ))}
                     </div>
@@ -911,7 +1131,9 @@ const ActionsDropdown = ({
           ref={buttonRef}
           onClick={toggleDropdown}
           disabled={disabled || isProcessing}
-          className={`p-1 rounded-full ${styles.hoverBg} ${disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''} transition-colors`}
+          className={`p-1 rounded-full ${styles.hoverBg} ${
+            disabled || isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+          } transition-colors`}
           aria-label="Employee Actions"
           title={`Actions for ${employeeName}`}
         >
@@ -923,8 +1145,8 @@ const ActionsDropdown = ({
           createPortal(<DropdownMenu />, document.body)}
       </div>
 
-      {/* Job Description Modal */}
-      {typeof window !== 'undefined' && <JobDescriptionModal />}
+      {/* Job Assignments Modal */}
+      {typeof window !== 'undefined' && <JobAssignmentsModal />}
 
       {/* Confirmation Modal */}
       <ConfirmationModal

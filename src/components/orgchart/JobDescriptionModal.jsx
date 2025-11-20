@@ -1,10 +1,11 @@
-// components/orgChart/JobDescriptionModal.jsx - WITH Leadership Competencies Support
+// components/orgChart/JobDescriptionModal.jsx - UPDATED with Comments Display
 'use client'
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { 
     X, Download, CheckCircle, Clock, AlertCircle, 
-    Target, Briefcase, Award, Building2, Shield, Crown, User
+    Target, Briefcase, Award, Building2, Shield, Crown, User,
+    UserCheck, UserX as UserVacant, Users, MessageSquare, XCircle
 } from 'lucide-react';
 import jobDescriptionService from '@/services/jobDescriptionService';
 
@@ -24,40 +25,43 @@ const JobDescriptionModal = ({
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const textPrimary = darkMode ? "text-gray-200" : "text-almet-comet";
     const bgAccent = darkMode ? "bg-slate-700" : "bg-almet-mystic";
+    const bgHover = darkMode ? "bg-slate-600" : "bg-gray-50";
 
-    // Get Job Status Display
-    const getJobStatusDisplay = (job) => {
-        const statusInfo = jobDescriptionService.getStatusInfo(job.status);
+    // 🔥 Get Overall Status Display for multi-assignment
+    const getOverallStatusDisplay = (job) => {
+        const overallStatus = job.overall_status || 'UNKNOWN';
         let statusColor = '';
         let statusBg = '';
         
-        switch (job.status) {
-            case 'DRAFT':
-                statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
-                statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
-                break;
-            case 'PENDING_LINE_MANAGER':
-            case 'PENDING_EMPLOYEE':
-                statusColor = 'text-orange-600 dark:text-orange-400';
-                statusBg = 'bg-orange-100 dark:bg-orange-900/20';
-                break;
-            case 'APPROVED':
-            case 'ACTIVE':
+        switch (overallStatus) {
+            case 'ALL_APPROVED':
                 statusColor = 'text-green-600 dark:text-green-400';
                 statusBg = 'bg-green-100 dark:bg-green-900/20';
                 break;
-            case 'REJECTED':
+            case 'ALL_DRAFT':
+                statusColor = 'text-gray-600 dark:text-gray-400';
+                statusBg = 'bg-gray-100 dark:bg-gray-900/20';
+                break;
+            case 'PENDING_APPROVALS':
+                statusColor = 'text-orange-600 dark:text-orange-400';
+                statusBg = 'bg-orange-100 dark:bg-orange-900/20';
+                break;
+            case 'HAS_REJECTIONS':
                 statusColor = 'text-red-600 dark:text-red-400';
                 statusBg = 'bg-red-100 dark:bg-red-900/20';
                 break;
+            case 'MIXED':
+                statusColor = 'text-blue-600 dark:text-blue-400';
+                statusBg = 'bg-blue-100 dark:bg-blue-900/20';
+                break;
             default:
-                statusColor = 'text-almet-waterloo dark:text-almet-santas-gray';
-                statusBg = 'bg-gray-100 dark:bg-almet-comet/30';
+                statusColor = 'text-gray-600 dark:text-gray-400';
+                statusBg = 'bg-gray-100 dark:bg-gray-900/20';
         }
 
         return (
             <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium ${statusColor} ${statusBg}`}>
-                {job.status_display?.status || statusInfo.label}
+                {overallStatus.replace(/_/g, ' ')}
             </span>
         );
     };
@@ -78,12 +82,14 @@ const JobDescriptionModal = ({
                                 Job Description Details
                             </h2>
                             <div className="flex items-center gap-3 flex-wrap">
-                                {getJobStatusDisplay(jobDetail)}
+                                {getOverallStatusDisplay(jobDetail)}
                                 <span className={`text-xs ${textMuted}`}>
                                     Created {jobDescriptionService.formatDate(jobDetail.created_at)}
                                 </span>
-                                <span className={`text-xs ${textMuted}`}>
-                                    Employee: {jobDescriptionService.getEmployeeDisplayName(jobDetail)}
+                                {/* 🔥 Show total assignments count */}
+                                <span className={`text-xs ${textMuted} flex items-center gap-1`}>
+                                    <Users size={12} />
+                                    {jobDetail.total_assignments || jobDetail.assignments?.length || 0} Assignments
                                 </span>
                             </div>
                         </div>
@@ -119,6 +125,20 @@ const JobDescriptionModal = ({
                                 textPrimary={textPrimary}
                             />
 
+                            {/* 🔥 Assignments Summary with Comments */}
+                            {jobDetail.assignments && jobDetail.assignments.length > 0 && (
+                                <AssignmentsSummaryCard
+                                    assignments={jobDetail.assignments}
+                                    bgAccent={bgAccent}
+                                    bgHover={bgHover}
+                                    borderColor={borderColor}
+                                    textHeader={textHeader}
+                                    textMuted={textMuted}
+                                    textPrimary={textPrimary}
+                                    textSecondary={textSecondary}
+                                />
+                            )}
+
                             {/* Job Purpose */}
                             <JobPurposeCard
                                 jobDetail={jobDetail}
@@ -140,24 +160,13 @@ const JobDescriptionModal = ({
 
                         {/* Right Column - Sidebar */}
                         <div className="space-y-5">
-                            {/* Approval Status */}
-                            <ApprovalStatusCard
+                            {/* 🔥 Assignment Statistics */}
+                            <AssignmentStatsCard
                                 jobDetail={jobDetail}
                                 bgAccent={bgAccent}
-                                bgCard={bgCard}
                                 borderColor={borderColor}
                                 textHeader={textHeader}
                                 textMuted={textMuted}
-                                textSecondary={textSecondary}
-                            />
-
-                            {/* Next Action Required */}
-                            <NextActionCard
-                                jobDetail={jobDetail}
-                                bgAccent={bgAccent}
-                                borderColor={borderColor}
-                                textHeader={textHeader}
-                                textSecondary={textSecondary}
                             />
 
                             {/* Required Skills */}
@@ -170,7 +179,7 @@ const JobDescriptionModal = ({
                                 />
                             )}
 
-                            {/* 🔥 Behavioral Competencies */}
+                            {/* Behavioral Competencies */}
                             {jobDetail.behavioral_competencies && jobDetail.behavioral_competencies.length > 0 && (
                                 <BehavioralCompetenciesCard
                                     competencies={jobDetail.behavioral_competencies}
@@ -180,7 +189,7 @@ const JobDescriptionModal = ({
                                 />
                             )}
 
-                            {/* 🔥 Leadership Competencies */}
+                            {/* Leadership Competencies */}
                             {jobDetail.leadership_competencies && jobDetail.leadership_competencies.length > 0 && (
                                 <LeadershipCompetenciesCard
                                     competencies={jobDetail.leadership_competencies}
@@ -252,14 +261,11 @@ export const BasicInfoCard = ({ jobDetail, bgAccent, textHeader, textMuted, text
                 textMuted={textMuted} 
                 textPrimary={textPrimary} 
             />
-            <InfoItem label="Grading Level" value={jobDetail.grading_level || 'N/A'} textMuted={textMuted} textPrimary={textPrimary} />
-            <InfoItem label="Reports To" value={jobDetail.reports_to?.full_name || 'N/A'} textMuted={textMuted} textPrimary={textPrimary} />
             <InfoItem 
-                label="Position Type" 
-                value={jobDescriptionService.isVacantPosition(jobDetail) ? 'Vacant' : 'Assigned'}
+                label="Grading Levels" 
+                value={jobDetail.grading_levels?.length > 0 ? jobDetail.grading_levels.join(', ') : jobDetail.grading_level || 'N/A'} 
                 textMuted={textMuted} 
-                textPrimary={textPrimary}
-                isVacant={jobDescriptionService.isVacantPosition(jobDetail)}
+                textPrimary={textPrimary} 
             />
         </div>
     </div>
@@ -272,6 +278,198 @@ const InfoItem = ({ label, value, textMuted, textPrimary, isVacant }) => (
             {isVacant && <AlertCircle size={14} className="inline mr-1" />}
             {value}
         </p>
+    </div>
+);
+
+// 🔥 UPDATED: Assignments Summary Card with Comments
+export const AssignmentsSummaryCard = ({ 
+    assignments, bgAccent, bgHover, borderColor, textHeader, textMuted, textPrimary, textSecondary 
+}) => (
+    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+        <h4 className={`text-base font-bold ${textHeader} mb-3 flex items-center gap-2`}>
+            <Users size={16} className="text-almet-sapphire" />
+            Assignments ({assignments.length})
+        </h4>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+            {assignments.map((assignment, index) => {
+                const isVacant = assignment.is_vacancy || assignment.employee_name === 'VACANT';
+                const employeeName = isVacant 
+                    ? (assignment.vacancy_position?.position_id || 'VACANT')
+                    : (assignment.employee?.full_name || assignment.employee_name || 'Unknown');
+                
+                // Check if has comments
+                const hasComments = assignment.line_manager_comments || assignment.employee_comments;
+                
+                return (
+                    <div key={assignment.id || index} className={`p-3 ${bgHover} rounded-lg border ${borderColor}`}>
+                        {/* Employee/Vacancy Info */}
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-1">
+                                {isVacant ? (
+                                    <UserVacant size={14} className="text-orange-600 flex-shrink-0" />
+                                ) : (
+                                    <UserCheck size={14} className="text-green-600 flex-shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-xs font-semibold ${textPrimary} truncate`}>
+                                        {employeeName}
+                                    </p>
+                                    {assignment.employee?.employee_id && (
+                                        <p className={`text-[10px] ${textMuted}`}>
+                                            ID: {assignment.employee.employee_id}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {/* Comment indicator */}
+                                {hasComments && (
+                                    <MessageSquare size={12} className="text-blue-600" />
+                                )}
+                                {/* Status icon */}
+                                {assignment.status === 'APPROVED' ? (
+                                    <CheckCircle size={12} className="text-green-600" />
+                                ) : assignment.status === 'REJECTED' ? (
+                                    <XCircle size={12} className="text-red-600" />
+                                ) : (
+                                    <Clock size={12} className="text-orange-600" />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Status Badge */}
+                        {assignment.status_display && (
+                            <div className="mb-2">
+                                <span 
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium"
+                                    style={{
+                                        color: assignment.status_display.color,
+                                        backgroundColor: assignment.status_display.color + '20'
+                                    }}
+                                >
+                                    {assignment.status_display.status}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* ✅ APPROVAL DATES */}
+                        {(assignment.line_manager_approved_at || assignment.employee_approved_at) && (
+                            <div className={`text-[10px] ${textMuted} space-y-1 mb-2`}>
+                                {assignment.line_manager_approved_at && (
+                                    <div className="flex items-center gap-1">
+                                        <CheckCircle size={8} className="text-green-500" />
+                                        <span>Manager: {jobDescriptionService.formatDateTime(assignment.line_manager_approved_at)}</span>
+                                    </div>
+                                )}
+                                {assignment.employee_approved_at && (
+                                    <div className="flex items-center gap-1">
+                                        <CheckCircle size={8} className="text-green-500" />
+                                        <span>Employee: {jobDescriptionService.formatDateTime(assignment.employee_approved_at)}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ✅ LINE MANAGER COMMENTS */}
+                        {assignment.line_manager_comments && (
+                            <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                                <div className="flex items-start gap-2 mb-1">
+                                    <User size={10} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                                    <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                                        Manager Comment:
+                                    </span>
+                                </div>
+                                <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                                    {assignment.line_manager_comments}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* ✅ EMPLOYEE COMMENTS */}
+                        {assignment.employee_comments && (
+                            <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                                <div className="flex items-start gap-2 mb-1">
+                                    <UserCheck size={10} className="text-green-600 flex-shrink-0 mt-0.5" />
+                                    <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">
+                                        Employee Comment:
+                                    </span>
+                                </div>
+                                <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                                    {assignment.employee_comments}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
+            
+            {assignments.length > 10 && (
+                <p className={`text-center text-[10px] ${textMuted} pt-2`}>
+                    +{assignments.length - 10} more assignments
+                </p>
+            )}
+        </div>
+    </div>
+);
+
+// 🔥 Assignment Statistics Card
+export const AssignmentStatsCard = ({ jobDetail, bgAccent, borderColor, textHeader, textMuted }) => {
+    const totalAssignments = jobDetail.total_assignments || jobDetail.assignments?.length || 0;
+    const employeeCount = jobDetail.employee_assignments_count || 0;
+    const vacancyCount = jobDetail.vacancy_assignments_count || 0;
+    const approvedCount = jobDetail.approved_count || 0;
+    const pendingCount = jobDetail.pending_count || 0;
+
+    return (
+        <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
+            <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
+                <Users size={16} className="text-almet-sapphire" />
+                Assignment Statistics
+            </h4>
+            <div className="space-y-2">
+                <StatItem
+                    label="Total Assignments"
+                    value={totalAssignments}
+                    textMuted={textMuted}
+                />
+                <StatItem
+                    label="Employees"
+                    value={employeeCount}
+                    icon={<UserCheck size={12} className="text-green-600" />}
+                    textMuted={textMuted}
+                />
+                <StatItem
+                    label="Vacancies"
+                    value={vacancyCount}
+                    icon={<UserVacant size={12} className="text-orange-600" />}
+                    textMuted={textMuted}
+                />
+                <StatItem
+                    label="Approved"
+                    value={approvedCount}
+                    icon={<CheckCircle size={12} className="text-green-600" />}
+                    textMuted={textMuted}
+                />
+                <StatItem
+                    label="Pending"
+                    value={pendingCount}
+                    icon={<Clock size={12} className="text-orange-600" />}
+                    textMuted={textMuted}
+                />
+            </div>
+        </div>
+    );
+};
+
+const StatItem = ({ label, value, icon, textMuted }) => (
+    <div className="flex items-center justify-between">
+        <span className={`text-xs font-semibold ${textMuted} flex items-center gap-1`}>
+            {icon}
+            {label}
+        </span>
+        <span className="text-xs font-bold text-almet-sapphire dark:text-almet-steel-blue">
+            {value}
+        </span>
     </div>
 );
 
@@ -305,81 +503,6 @@ export const JobSectionsCard = ({ sections, bgAccent, textHeader, textSecondary 
     </div>
 );
 
-export const ApprovalStatusCard = ({ 
-    jobDetail, bgAccent, bgCard, borderColor, textHeader, textMuted, textSecondary 
-}) => (
-    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
-        <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
-            <CheckCircle size={16} className="text-almet-sapphire" />
-            Approval Status
-        </h4>
-        <div className="space-y-3">
-            <ApprovalItem
-                label="Line Manager"
-                approved={!!jobDetail.line_manager_approved_at}
-            />
-            <ApprovalItem
-                label="Employee"
-                approved={!!jobDetail.employee_approved_at}
-            />
-            
-            {jobDetail.line_manager_comments && (
-                <CommentBox
-                    title="Manager Comments"
-                    comment={jobDetail.line_manager_comments}
-                    bgCard={bgCard}
-                    textMuted={textMuted}
-                    textSecondary={textSecondary}
-                />
-            )}
-            {jobDetail.employee_comments && (
-                <CommentBox
-                    title="Employee Comments"
-                    comment={jobDetail.employee_comments}
-                    bgCard={bgCard}
-                    textMuted={textMuted}
-                    textSecondary={textSecondary}
-                />
-            )}
-        </div>
-    </div>
-);
-
-const ApprovalItem = ({ label, approved }) => (
-    <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-almet-waterloo dark:text-almet-santas-gray">
-            {label}
-        </span>
-        <span className={`flex items-center gap-2 text-xs font-semibold ${
-            approved 
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-orange-600 dark:text-orange-400'
-        }`}>
-            {approved ? <CheckCircle size={12} /> : <Clock size={12} />}
-            {approved ? 'Approved' : 'Pending'}
-        </span>
-    </div>
-);
-
-const CommentBox = ({ title, comment, bgCard, textMuted, textSecondary }) => (
-    <div className={`mt-3 p-2.5 ${bgCard} rounded-lg`}>
-        <span className={`text-xs font-semibold ${textMuted}`}>{title}:</span>
-        <p className={`text-xs ${textSecondary} mt-1`}>{comment}</p>
-    </div>
-);
-
-export const NextActionCard = ({ jobDetail, bgAccent, borderColor, textHeader, textSecondary }) => (
-    <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
-        <h4 className={`font-bold ${textHeader} mb-2 flex items-center gap-2 text-sm`}>
-            <Target size={16} className="text-almet-sapphire" />
-            Next Action
-        </h4>
-        <p className={`text-xs ${textSecondary} leading-relaxed`}>
-            {jobDescriptionService.getNextAction(jobDetail)}
-        </p>
-    </div>
-);
-
 export const RequiredSkillsCard = ({ skills, bgAccent, borderColor, textHeader }) => (
     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
         <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
@@ -398,7 +521,6 @@ export const RequiredSkillsCard = ({ skills, bgAccent, borderColor, textHeader }
     </div>
 );
 
-// 🔥 NEW: Behavioral Competencies Card
 export const BehavioralCompetenciesCard = ({ competencies, bgAccent, borderColor, textHeader }) => (
     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor}`}>
         <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
@@ -417,7 +539,6 @@ export const BehavioralCompetenciesCard = ({ competencies, bgAccent, borderColor
     </div>
 );
 
-// 🔥 NEW: Leadership Competencies Card
 export const LeadershipCompetenciesCard = ({ competencies, bgAccent, borderColor, textHeader, textMuted }) => (
     <div className={`p-4 ${bgAccent} rounded-xl border ${borderColor} border-l-4 border-l-purple-500`}>
         <h4 className={`font-bold ${textHeader} mb-3 flex items-center gap-2 text-sm`}>
@@ -457,7 +578,7 @@ export const ListCard = ({ title, icon: Icon, items, bgAccent, borderColor, text
             {items.map((item, index) => (
                 <div key={index} className={`text-xs ${textSecondary} flex items-center gap-2`}>
                     <div className="w-1 h-1 bg-almet-sapphire rounded-full flex-shrink-0"></div>
-                    {item.name}
+                    {item.resource_detail?.name || item.access_detail?.name || item.benefit_detail?.name || item.name}
                 </div>
             ))}
         </div>

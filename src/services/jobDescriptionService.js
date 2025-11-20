@@ -260,7 +260,6 @@ class JobDescriptionService {
     }
   }
 
-  // 🔥 FIXED: Preview employees endpoint
   async previewEligibleEmployees(criteria) {
     try {
       if (!criteria.job_title || !criteria.business_function || !criteria.department || 
@@ -415,7 +414,7 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // 🔥 NEW: MULTI-ASSIGNMENT ENDPOINTS
+  // 🔥 MULTI-ASSIGNMENT ENDPOINTS
   // ========================================
 
   async getJobDescriptionAssignments(jobId, params = {}) {
@@ -477,7 +476,6 @@ class JobDescriptionService {
     }
   }
 
-  // 🔥 Individual assignment approval
   async submitAssignmentForApproval(jobId, assignmentId, data = {}) {
     try {
       const response = await api.post(`/job-descriptions/${jobId}/submit_assignment_for_approval/`, {
@@ -566,7 +564,7 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // LEGACY WORKFLOW ENDPOINTS (kept for backwards compatibility)
+  // LEGACY WORKFLOW ENDPOINTS
   // ========================================
 
   async submitForApproval(id, data) {
@@ -691,7 +689,7 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // SUPPORTING DATA ENDPOINTS - ACCESS MATRIX
+  // ACCESS MATRIX - PARENT
   // ========================================
 
   async getAccessMatrix(params = {}) {
@@ -714,7 +712,7 @@ class JobDescriptionService {
       const response = await api.get(`/job-description/access-matrix/${id}/`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching access matrix item:', error);
+      console.error('Error fetching access matrix:', error);
       throw error;
     }
   }
@@ -762,7 +760,90 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // SUPPORTING DATA ENDPOINTS - BUSINESS RESOURCES
+  // ACCESS MATRIX ITEMS - CHILD (Nested Structure via Parent)
+  // ========================================
+
+  async getAccessMatrixItems(accessMatrixId, params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params.search) queryParams.append('search', params.search);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      
+      // Use nested endpoint: /access-matrix/{id}/items/
+      const response = await api.get(`/job-description/access-matrix/${accessMatrixId}/items/?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching access matrix items:', error);
+      throw error;
+    }
+  }
+
+  async getAccessMatrixItemById(accessMatrixId, itemId) {
+    try {
+      // If you need specific item, fetch all and filter, or use flat structure
+      const response = await api.get(`/job-description/access-matrix/${accessMatrixId}/items/`);
+      const items = response.data.items || response.data;
+      return items.find(item => item.id === itemId);
+    } catch (error) {
+      console.error('Error fetching access matrix item:', error);
+      throw error;
+    }
+  }
+
+  async addAccessMatrixItem(accessMatrixId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      // Use nested endpoint: /access-matrix/{id}/add_item/
+      const response = await api.post(`/job-description/access-matrix/${accessMatrixId}/add_item/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding access matrix item:', error);
+      throw error;
+    }
+  }
+
+  async updateAccessMatrixItem(accessMatrixId, itemId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      // Typically you'd need to implement this in backend or fetch all, update, and save
+      // For now, let's use a workaround - delete and recreate
+      console.warn('Update item: consider implementing PUT endpoint in backend');
+      
+      // Alternative: if backend supports it
+      const response = await api.put(`/job-description/access-matrix/${accessMatrixId}/items/${itemId}/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating access matrix item:', error);
+      throw error;
+    }
+  }
+
+  async deleteAccessMatrixItem(accessMatrixId, itemId) {
+    try {
+      // Use nested endpoint: /access-matrix/{id}/delete_item/
+      const response = await api.delete(`/job-description/access-matrix/${accessMatrixId}/delete_item/`, {
+        data: { item_id: itemId }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting access matrix item:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // BUSINESS RESOURCES - PARENT
   // ========================================
 
   async getBusinessResources(params = {}) {
@@ -833,7 +914,80 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // SUPPORTING DATA ENDPOINTS - COMPANY BENEFITS
+  // BUSINESS RESOURCE ITEMS - CHILD (Flat Structure)
+  // ========================================
+
+  async getBusinessResourceItems(businessResourceId, params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('resource', businessResourceId);
+      if (params.search) queryParams.append('search', params.search);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      
+      const response = await api.get(`/job-description/business-resource-items/?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching business resource items:', error);
+      throw error;
+    }
+  }
+
+  async getBusinessResourceItemById(itemId) {
+    try {
+      const response = await api.get(`/job-description/business-resource-items/${itemId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching business resource item:', error);
+      throw error;
+    }
+  }
+
+  async addBusinessResourceItem(businessResourceId, data) {
+    try {
+      const cleanData = {
+        resource: parseInt(businessResourceId),
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.post('/job-description/business-resource-items/', cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding business resource item:', error);
+      throw error;
+    }
+  }
+
+  async updateBusinessResourceItem(itemId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/business-resource-items/${itemId}/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating business resource item:', error);
+      throw error;
+    }
+  }
+
+  async deleteBusinessResourceItem(itemId) {
+    try {
+      const response = await api.delete(`/job-description/business-resource-items/${itemId}/`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting business resource item:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
+  // COMPANY BENEFITS - PARENT
   // ========================================
 
   async getCompanyBenefits(params = {}) {
@@ -904,6 +1058,79 @@ class JobDescriptionService {
   }
 
   // ========================================
+  // COMPANY BENEFIT ITEMS - CHILD (Flat Structure)
+  // ========================================
+
+  async getCompanyBenefitItems(companyBenefitId, params = {}) {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('benefit', companyBenefitId);
+      if (params.search) queryParams.append('search', params.search);
+      if (params.page) queryParams.append('page', params.page);
+      if (params.page_size) queryParams.append('page_size', params.page_size);
+      
+      const response = await api.get(`/job-description/company-benefit-items/?${queryParams.toString()}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching company benefit items:', error);
+      throw error;
+    }
+  }
+
+  async getCompanyBenefitItemById(itemId) {
+    try {
+      const response = await api.get(`/job-description/company-benefit-items/${itemId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching company benefit item:', error);
+      throw error;
+    }
+  }
+
+  async addCompanyBenefitItem(companyBenefitId, data) {
+    try {
+      const cleanData = {
+        benefit: parseInt(companyBenefitId),
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.post('/job-description/company-benefit-items/', cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding company benefit item:', error);
+      throw error;
+    }
+  }
+
+  async updateCompanyBenefitItem(itemId, data) {
+    try {
+      const cleanData = {
+        name: data.name?.trim() || '',
+        description: data.description?.trim() || '',
+        is_active: Boolean(data.is_active !== false)
+      };
+      
+      const response = await api.put(`/job-description/company-benefit-items/${itemId}/`, cleanData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating company benefit item:', error);
+      throw error;
+    }
+  }
+
+  async deleteCompanyBenefitItem(itemId) {
+    try {
+      const response = await api.delete(`/job-description/company-benefit-items/${itemId}/`);
+      return response;
+    } catch (error) {
+      console.error('Error deleting company benefit item:', error);
+      throw error;
+    }
+  }
+
+  // ========================================
   // JOB DESCRIPTION STATISTICS
   // ========================================
 
@@ -918,8 +1145,286 @@ class JobDescriptionService {
   }
 
   // ========================================
-  // STATUS UTILITIES
+  // HELPER METHODS FOR EMPLOYEE DETAIL VIEW
   // ========================================
+
+  canApproveAsLineManager(job) {
+    return job.status === 'PENDING_LINE_MANAGER' || job.status === 'PENDING_APPROVAL';
+  }
+
+  canApproveAsEmployee(job) {
+    return job.status === 'PENDING_EMPLOYEE';
+  }
+
+  isVacantPosition(job) {
+    return job.is_vacant || job.is_vacancy || 
+           job.employee_name === 'VACANT' || 
+           job.full_name === 'VACANT' ||
+           (job.employee_name && job.employee_name.includes('VACANT'));
+  }
+
+  getEmployeeDisplayName(job) {
+    if (this.isVacantPosition(job)) {
+      return job.employee_id || job.position_id || 'VACANT';
+    }
+    return job.employee_name || job.full_name || job.name || 'N/A';
+  }
+
+  getNextAction(job) {
+    const status = job.status;
+    
+    if (status === 'DRAFT') {
+      return 'Job description needs to be submitted for approval.';
+    }
+    if (status === 'PENDING_LINE_MANAGER' || status === 'PENDING_APPROVAL') {
+      return 'Waiting for line manager approval.';
+    }
+    if (status === 'PENDING_EMPLOYEE') {
+      return 'Waiting for employee approval.';
+    }
+    if (status === 'APPROVED' || status === 'ACTIVE') {
+      return 'Job description is fully approved and active.';
+    }
+    if (status === 'REJECTED') {
+      return 'Job description has been rejected and needs revision.';
+    }
+    if (status === 'REVISION_REQUIRED') {
+      return 'Job description requires revision before resubmission.';
+    }
+    
+    return 'Status unknown.';
+  }
+
+  // ========================================
+  // FILTERING & SORTING FOR JOB DESCRIPTIONS
+  // ========================================
+
+  filterJobDescriptions(jobs, filters) {
+    let filtered = [...jobs];
+    
+    if (filters.search && filters.search.trim()) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(job => 
+        (job.job_title && job.job_title.toLowerCase().includes(searchLower)) ||
+        (job.employee_name && job.employee_name.toLowerCase().includes(searchLower)) ||
+        (job.full_name && job.full_name.toLowerCase().includes(searchLower)) ||
+        (job.department_name && job.department_name.toLowerCase().includes(searchLower)) ||
+        (job.business_function_name && job.business_function_name.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    if (filters.status) {
+      filtered = filtered.filter(job => job.status === filters.status);
+    }
+    
+    if (filters.department) {
+      filtered = filtered.filter(job => 
+        job.department === filters.department || 
+        job.department_name === filters.department
+      );
+    }
+    
+    if (filters.businessFunction) {
+      filtered = filtered.filter(job => 
+        job.business_function === filters.businessFunction || 
+        job.business_function_name === filters.businessFunction
+      );
+    }
+    
+    if (filters.vacantOnly) {
+      filtered = filtered.filter(job => this.isVacantPosition(job));
+    }
+    
+    if (filters.pendingOnly) {
+      filtered = filtered.filter(job => 
+        job.status === 'PENDING_LINE_MANAGER' || 
+        job.status === 'PENDING_EMPLOYEE' ||
+        job.status === 'PENDING_APPROVAL'
+      );
+    }
+    
+    return filtered;
+  }
+
+  // 🔥 FILTER ASSIGNMENTS - For assignment-based data structure
+  filterAssignments(assignments, filters) {
+    let filtered = [...assignments];
+    
+    if (filters.search && filters.search.trim()) {
+      const searchLower = filters.search.toLowerCase();
+      filtered = filtered.filter(assignment => 
+        (assignment.job_title && assignment.job_title.toLowerCase().includes(searchLower)) ||
+        (assignment.employee_name && assignment.employee_name.toLowerCase().includes(searchLower)) ||
+        (assignment.department && assignment.department.toLowerCase().includes(searchLower)) ||
+        (assignment.business_function && assignment.business_function.toLowerCase().includes(searchLower))
+      );
+    }
+    
+    if (filters.status) {
+      filtered = filtered.filter(assignment => assignment.status === filters.status);
+    }
+    
+    if (filters.department) {
+      filtered = filtered.filter(assignment => 
+        assignment.department === filters.department
+      );
+    }
+    
+    if (filters.businessFunction) {
+      filtered = filtered.filter(assignment => 
+        assignment.business_function === filters.businessFunction
+      );
+    }
+    
+    if (filters.vacantOnly) {
+      filtered = filtered.filter(assignment => assignment.is_vacancy === true);
+    }
+    
+    if (filters.pendingOnly) {
+      filtered = filtered.filter(assignment => 
+        assignment.status === 'PENDING_LINE_MANAGER' || 
+        assignment.status === 'PENDING_EMPLOYEE' ||
+        assignment.status === 'PENDING_APPROVAL'
+      );
+    }
+    
+    return filtered;
+  }
+
+  sortJobDescriptions(jobs, field, order = 'desc') {
+    const sorted = [...jobs];
+    
+    sorted.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (field) {
+        case 'job_title':
+          aVal = (a.job_title || '').toLowerCase();
+          bVal = (b.job_title || '').toLowerCase();
+          break;
+        case 'created_at':
+          aVal = new Date(a.created_at || 0);
+          bVal = new Date(b.created_at || 0);
+          break;
+        case 'employee_name':
+          aVal = (a.employee_name || a.full_name || '').toLowerCase();
+          bVal = (b.employee_name || b.full_name || '').toLowerCase();
+          break;
+        case 'status':
+          aVal = a.status || '';
+          bVal = b.status || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aVal < bVal) return order === 'asc' ? -1 : 1;
+      if (aVal > bVal) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
+    return sorted;
+  }
+
+  // 🔥 SORT ASSIGNMENTS
+  sortAssignments(assignments, field, order = 'desc') {
+    const sorted = [...assignments];
+    
+    sorted.sort((a, b) => {
+      let aVal, bVal;
+      
+      switch (field) {
+        case 'job_title':
+          aVal = (a.job_title || '').toLowerCase();
+          bVal = (b.job_title || '').toLowerCase();
+          break;
+        case 'created_at':
+          aVal = new Date(a.created_at || 0);
+          bVal = new Date(b.created_at || 0);
+          break;
+        case 'employee_name':
+          aVal = (a.employee_name || '').toLowerCase();
+          bVal = (b.employee_name || '').toLowerCase();
+          break;
+        case 'status':
+          aVal = a.status || '';
+          bVal = b.status || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (aVal < bVal) return order === 'asc' ? -1 : 1;
+      if (aVal > bVal) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
+    
+    return sorted;
+  }
+
+  paginateJobDescriptions(jobs, currentPage, itemsPerPage) {
+    const totalItems = jobs.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const items = jobs.slice(startIndex, endIndex);
+    
+    return {
+      items,
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1
+    };
+  }
+
+  // 🔥 PAGINATE ASSIGNMENTS
+  paginateAssignments(assignments, currentPage, itemsPerPage) {
+    const totalItems = assignments.length;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const items = assignments.slice(startIndex, endIndex);
+    
+    return {
+      items,
+      currentPage,
+      totalPages,
+      totalItems,
+      itemsPerPage,
+      hasNextPage: currentPage < totalPages,
+      hasPreviousPage: currentPage > 1
+    };
+  }
+
+  getUniqueFilterValues(jobs, field) {
+    const values = new Set();
+    
+    jobs.forEach(job => {
+      let value;
+      switch (field) {
+        case 'status':
+          value = job.status;
+          break;
+        case 'department':
+          value = job.department_name || job.department;
+          break;
+        case 'business_function':
+          value = job.business_function_name || job.business_function;
+          break;
+        default:
+          value = job[field];
+      }
+      
+      if (value && value !== '') {
+        values.add(value);
+      }
+    });
+    
+    return Array.from(values).sort();
+  }
 
   getStatusInfo(status) {
     const statusMap = {

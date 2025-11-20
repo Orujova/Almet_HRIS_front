@@ -566,6 +566,8 @@ const PositionInformationTab = ({
         emp.job_title && 
         emp.job_title.toLowerCase().includes(formData.job_title.toLowerCase())
       );
+
+    
       
       if (!filteredEmployees || filteredEmployees.length === 0) {
         newFormData.job_title = '';

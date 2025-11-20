@@ -27,7 +27,8 @@ export default function CelebrationsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, loading: false });
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [statistics, setStatistics] = useState({
     total_celebrations: 0,
     this_month: 0,
@@ -42,8 +43,11 @@ export default function CelebrationsPage() {
   });
   const [imageFiles, setImageFiles] = useState([]);
   const [imagePreview, setImagePreview] = useState([]);
+  const [existingImages, setExistingImages] = useState([]);
+  const [imagesToRemove, setImagesToRemove] = useState([]);
   const [celebratedItems, setCelebratedItems] = useState(new Set());
   const [celebrationWishes, setCelebrationWishes] = useState([]);
+  const [formLoading, setFormLoading] = useState(false);
 
   const celebrationTypes = [
     { id: 'all', name: 'All Celebrations', icon: PartyPopper, color: 'bg-almet-sapphire' },
@@ -114,38 +118,105 @@ export default function CelebrationsPage() {
     setImagePreview(prev => [...prev, ...newPreviews]);
   };
 
-  const removeImage = (index) => {
+  const removeNewImage = (index) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
     setImagePreview(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleCreateCelebration = async () => {
+  const removeExistingImage = (imageUrl) => {
+    setExistingImages(prev => prev.filter(img => img !== imageUrl));
+    setImagesToRemove(prev => [...prev, imageUrl]);
+  };
+
+  const openCreateModal = () => {
+    setIsEditMode(false);
+    resetForm();
+    setShowFormModal(true);
+  };
+
+  const openEditModal = (celebration) => {
+    setIsEditMode(true);
+    setSelectedCelebration(celebration);
+    
+    setFormData({
+      type: celebration.type,
+      title: celebration.title,
+      date: celebration.date,
+      message: celebration.message
+    });
+    
+    setExistingImages(celebration.images || []);
+    setImageFiles([]);
+    setImagePreview([]);
+    setImagesToRemove([]);
+    
+    setShowFormModal(true);
+  };
+
+  const handleSubmit = async () => {
     try {
       if (!formData.title || !formData.date || !formData.message) {
         showWarning('Please fill in all required fields');
         return;
       }
 
-      const celebrationData = {
-        type: formData.type,
-        title: formData.title,
-        date: formData.date,
-        message: formData.message,
-        images: imageFiles
-      };
+      setFormLoading(true);
 
-      await celebrationService.createCelebration(celebrationData);
-      
-      setShowCreateModal(false);
+      if (isEditMode) {
+        await handleUpdateCelebration();
+      } else {
+        await handleCreateCelebration();
+      }
+
+      setShowFormModal(false);
       resetForm();
       loadCelebrations();
       loadStatistics();
       
-      showSuccess('Celebration created successfully!');
+      showSuccess(isEditMode ? 'Celebration updated successfully!' : 'Celebration created successfully!');
     } catch (error) {
-      console.error('Error creating celebration:', error);
-      showError('Error creating celebration. Please try again.');
+      console.error('Error submitting celebration:', error);
+      showError('Error submitting celebration. Please try again.');
+    } finally {
+      setFormLoading(false);
     }
+  };
+
+  const handleCreateCelebration = async () => {
+    const celebrationData = {
+      type: formData.type,
+      title: formData.title,
+      date: formData.date,
+      message: formData.message,
+      images: imageFiles
+    };
+
+    await celebrationService.createCelebration(celebrationData);
+  };
+
+  const handleUpdateCelebration = async () => {
+    if (!selectedCelebration) return;
+
+    // Remove images that user deleted
+    for (const imageUrl of imagesToRemove) {
+      try {
+        const imageId = imageUrl.split('/').pop().split('.')[0];
+        await celebrationService.removeImage(selectedCelebration.id, imageId);
+      } catch (error) {
+        console.error('Error removing image:', error);
+      }
+    }
+
+    // Update celebration data
+    const updateData = {
+      type: formData.type,
+      title: formData.title,
+      date: formData.date,
+      message: formData.message,
+      images: imageFiles
+    };
+
+    await celebrationService.updateCelebration(selectedCelebration.id, updateData);
   };
 
   const resetForm = () => {
@@ -157,6 +228,10 @@ export default function CelebrationsPage() {
     });
     setImageFiles([]);
     setImagePreview([]);
+    setExistingImages([]);
+    setImagesToRemove([]);
+    setSelectedCelebration(null);
+    setIsEditMode(false);
   };
 
   const handleCelebrate = async (item, e) => {
@@ -166,12 +241,16 @@ export default function CelebrationsPage() {
       return;
     }
 
-    const celebrationDate = new Date(item.date).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    
-    if (celebrationDate !== today) {
-      showWarning('You can only celebrate on the celebration day!');
-      return;
+    // ✅ Auto celebrations (birthday və work anniversary) üçün tarix yoxlaması YOX
+    // ✅ Manual celebrations üçün həmin gün olmalıdır
+    if (!item.is_auto) {
+      const celebrationDate = new Date(item.date).toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      
+      if (celebrationDate !== today) {
+        showWarning('You can only celebrate manual events on the celebration day!');
+        return;
+      }
     }
 
     try {
@@ -274,7 +353,7 @@ export default function CelebrationsPage() {
       showWarning('Cannot edit auto-generated celebrations (birthdays and work anniversaries)');
       return;
     }
-    showWarning('Edit functionality - To be implemented');
+    openEditModal(item);
   };
 
   const handleDeleteCelebration = (item, e) => { 
@@ -317,7 +396,7 @@ export default function CelebrationsPage() {
 
   return (
     <DashboardLayout>
-      <div className={`p-6 min-h-screen `}>
+      <div className={`p-6 min-h-screen`}>
         {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -330,7 +409,7 @@ export default function CelebrationsPage() {
               </p>
             </div>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={openCreateModal}
               className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
             >
               <Plus size={18} />
@@ -392,7 +471,6 @@ export default function CelebrationsPage() {
 
         {/* Filters */}
         <div className={`rounded-xl p-4 mb-6 border ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-          {/* Type Filters */}
           <div className="mb-4">
             <label className={`block text-xs font-medium mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
               Filter by Type
@@ -427,7 +505,6 @@ export default function CelebrationsPage() {
             </div>
           </div>
 
-          {/* Search and Month */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-5" />
@@ -612,11 +689,14 @@ export default function CelebrationsPage() {
           </>
         )}
 
-        {/* Create Modal */}
-        {showCreateModal && (
+        {/* Create/Edit Modal */}
+        {showFormModal && (
           <div 
             className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowCreateModal(false)}
+            onClick={() => {
+              setShowFormModal(false);
+              resetForm();
+            }}
           >
             <div 
               className={`rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto ${
@@ -628,10 +708,13 @@ export default function CelebrationsPage() {
                 darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
               }`}>
                 <h2 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Create Celebration
+                  {isEditMode ? 'Edit Celebration' : 'Create Celebration'}
                 </h2>
                 <button
-                  onClick={() => setShowCreateModal(false)}
+                  onClick={() => {
+                    setShowFormModal(false);
+                    resetForm();
+                  }}
                   className={`p-2 rounded-xl transition-colors ${
                     darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
                   }`}
@@ -729,6 +812,35 @@ export default function CelebrationsPage() {
                   <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                     Images
                   </label>
+                  
+                  {/* Existing Images (Edit Mode) */}
+                  {isEditMode && existingImages.length > 0 && (
+                    <div className="mb-4">
+                      <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Current Images
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {existingImages.map((imageUrl, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={imageUrl}
+                              alt={`Existing ${index + 1}`}
+                              className="w-full h-28 object-cover rounded-xl"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeExistingImage(imageUrl)}
+                              className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload New Images */}
                   <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
                     darkMode ? 'border-gray-600 bg-gray-700/50 hover:border-almet-sapphire' : 'border-gray-300 bg-gray-50 hover:border-almet-sapphire'
                   }`}>
@@ -743,7 +855,7 @@ export default function CelebrationsPage() {
                     <label htmlFor="image-upload" className="cursor-pointer">
                       <ImageIcon className={`h-8 w-8 mx-auto mb-3 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
                       <p className={`text-xs font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                        Click to upload images
+                        Click to upload {isEditMode ? 'additional ' : ''}images
                       </p>
                       <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
                         PNG, JPG up to 10MB
@@ -751,25 +863,30 @@ export default function CelebrationsPage() {
                     </label>
                   </div>
 
-                  {/* Image Previews */}
+                  {/* New Image Previews */}
                   {imagePreview.length > 0 && (
-                    <div className="grid grid-cols-3 gap-3 mt-4">
-                      {imagePreview.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <img
-                            src={preview}
-                            alt={`Preview ${index + 1}`}
-                            className="w-full h-28 object-cover rounded-xl"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
+                    <div className="mt-4">
+                      <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        New Images to Upload
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {imagePreview.map((preview, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-28 object-cover rounded-xl"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeNewImage(index)}
+                              className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -781,27 +898,29 @@ export default function CelebrationsPage() {
               }`}>
                 <button
                   onClick={() => {
-                    setShowCreateModal(false);
+                    setShowFormModal(false);
                     resetForm();
                   }}
+                  disabled={formLoading}
                   className={`px-5 py-2 text-xs rounded-xl font-medium transition-colors ${
                     darkMode 
                       ? 'bg-gray-700 text-white hover:bg-gray-600' 
                       : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                  }`}
+                  } ${formLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleCreateCelebration}
-                  disabled={!formData.title || !formData.date || !formData.message}
-                  className={`px-6 py-2 text-xs rounded-xl font-medium transition-all shadow-lg ${
-                    !formData.title || !formData.date || !formData.message
+                  onClick={handleSubmit}
+                  disabled={!formData.title || !formData.date || !formData.message || formLoading}
+                  className={`px-6 py-2 text-xs rounded-xl font-medium transition-all shadow-lg flex items-center gap-2 ${
+                    !formData.title || !formData.date || !formData.message || formLoading
                       ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                       : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-xl'
                   }`}
                 >
-                  Create Celebration
+                  {formLoading && <Loader2 size={14} className="animate-spin" />}
+                  {formLoading ? 'Saving...' : isEditMode ? 'Update Celebration' : 'Create Celebration'}
                 </button>
               </div>
             </div>
@@ -875,8 +994,9 @@ export default function CelebrationsPage() {
                   <div className="absolute top-4 left-4 flex gap-2">
                     <button
                       onClick={(e) => {
+                        e.stopPropagation();
                         setShowDetailModal(false);
-                        handleEditCelebration(selectedCelebration, e);
+                        openEditModal(selectedCelebration);
                       }}
                       className="p-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors shadow-lg"
                       title="Edit"

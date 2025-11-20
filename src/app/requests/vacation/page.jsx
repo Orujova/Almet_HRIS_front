@@ -1561,16 +1561,7 @@ const handleViewScheduleDetail = (scheduleId) => {
                   <Download className="w-3 h-3" />
                   My Vacations
                 </button>
-                
-                {(canExportAll || canExportTeam) && (
-                  <button 
-                    onClick={handleExportAllRecords} 
-                    className="px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
-                  >
-                    <Download className="w-3 h-3" />
-                    {canExportAll ? 'All Records' : 'Team Records'}
-                  </button>
-                )}
+            
               </div>
             </div>
             

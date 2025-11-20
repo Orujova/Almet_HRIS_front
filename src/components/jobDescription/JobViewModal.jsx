@@ -1,20 +1,21 @@
-// components/jobDescription/JobViewModal.jsx - WITH Leadership Competencies Support
+// components/jobDescription/JobViewModal.jsx - UPDATED with Comments Display
 import React, { useState } from 'react';
 import { 
   X, Download, UserCheck, UserX as UserVacant, Clock, CheckCircle, XCircle, RotateCcw,
   AlertCircle, Edit, Building, User, Target, BookOpen, Shield, Package, Gift,
-  ChevronDown, ChevronUp, Check, Layers, Award, Crown
+  ChevronDown, ChevronUp, Check, Layers, Award, Crown, Users, Eye, MessageSquare
 } from 'lucide-react';
 
-const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
+const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode }) => {
   const [expandedSections, setExpandedSections] = useState({
+    assignments: true,
     sections: true,
     skills: true,
     behavioral: true,
     leadership: true,
-    resources: true,
-    access: true,
-    benefits: true
+    resources: false,
+    access: false,
+    benefits: false
   });
 
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
@@ -111,7 +112,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
     </div>
   );
 
-  // Safe data extraction
+  // Safe data extraction with multi-assignment support
   const safeJobData = {
     job_title: job?.job_title || 'No Title',
     job_purpose: job?.job_purpose || 'No purpose specified',
@@ -120,22 +121,28 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
     unit_name: job?.unit?.name || null,
     job_function_name: job?.job_function?.name || null,
     position_group_name: job?.position_group?.name || null,
+    grading_levels: job?.grading_levels || (job?.grading_level ? [job.grading_level] : []),
     grading_level: job?.grading_level || null,
-    assigned_employee_name: job?.assigned_employee?.full_name || job?.employee_info?.name || null,
-    assigned_employee_id: job?.assigned_employee?.employee_id || job?.employee_info?.employee_id || null,
-    reports_to_name: job?.reports_to?.full_name || job?.manager_info?.name || null,
-    reports_to_title: job?.reports_to?.job_title || job?.manager_info?.job_title || null,
-    status: job?.status || 'UNKNOWN',
-    status_display: job?.status_display || { status: job?.status || 'UNKNOWN' },
+    
+    // Multi-assignment data
+    assignments: job?.assignments || [],
+    total_assignments: job?.total_assignments || job?.assignments?.length || 0,
+    employee_assignments_count: job?.employee_assignments_count || 0,
+    vacancy_assignments_count: job?.vacancy_assignments_count || 0,
+    approved_count: job?.approved_count || 0,
+    pending_count: job?.pending_count || 0,
+    overall_status: job?.overall_status || 'UNKNOWN',
+    
     sections: job?.sections || [],
     required_skills: job?.required_skills || [],
     behavioral_competencies: job?.behavioral_competencies || [],
-    leadership_competencies: job?.leadership_competencies || [], // 🔥 NEW
+    leadership_competencies: job?.leadership_competencies || [],
     business_resources: job?.business_resources || [],
     access_rights: job?.access_rights || [],
     company_benefits: job?.company_benefits || [],
     created_at: job?.created_at || null,
-    updated_at: job?.updated_at || null
+    updated_at: job?.updated_at || null,
+    version: job?.version || 1
   };
 
   if (!job || !job.id) {
@@ -168,16 +175,25 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
           <div className="flex items-center justify-between mb-6">
             <h2 className={`text-xl font-bold ${textPrimary}`}>Job Description Details</h2>
             <div className="flex items-center gap-2">
+              {onViewAssignments && safeJobData.total_assignments > 0 && (
+                <button
+                  onClick={onViewAssignments}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <Users size={14} />
+                  View All Assignments
+                </button>
+              )}
               <button
                 onClick={onDownloadPDF}
-                className="flex items-center gap-2 px-3 py-1 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium"
               >
-                <Download size={12} />
+                <Download size={14} />
                 Download PDF
               </button>
               <button
                 onClick={onClose}
-                className={`p-2 ${textMuted} hover:${textPrimary} transition-colors`}
+                className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-almet-comet/30`}
               >
                 <X size={20} />
               </button>
@@ -205,45 +221,158 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                     <p className="flex items-center gap-2">
                       <User size={14} />
                       {safeJobData.position_group_name}
-                      {safeJobData.grading_level && ` - ${safeJobData.grading_level}`}
+                    </p>
+                  )}
+                  {safeJobData.grading_levels.length > 0 && (
+                    <p className="flex items-center gap-2">
+                      <Award size={14} />
+                      Grades: {safeJobData.grading_levels.join(', ')}
                     </p>
                   )}
                 </div>
               </div>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Status:</span>
-                  <span className={`px-3 py-1 rounded-full text-xs flex items-center gap-2 ${getStatusColor(safeJobData.status)}`}>
-                    {getStatusIcon(safeJobData.status)}
-                    {safeJobData.status_display?.status || safeJobData.status}
+                  <span className={`font-medium ${textMuted} text-sm`}>Overall Status:</span>
+                  <span className={`px-3 py-1 rounded-full text-xs flex items-center gap-2 ${getStatusColor(safeJobData.overall_status)}`}>
+                    {getStatusIcon(safeJobData.overall_status)}
+                    {safeJobData.overall_status.replace(/_/g, ' ')}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Employee:</span>
-                  {safeJobData.assigned_employee_name ? (
-                    <div className="flex flex-col items-end">
-                      <div className="flex items-center gap-2">
-                        <UserCheck size={12} className="text-green-600" />
-                        <span className={`${textPrimary} text-sm font-medium`}>
-                          {safeJobData.assigned_employee_name}
-                        </span>
-                      </div>
+                  <span className={`font-medium ${textMuted} text-sm`}>Total Assignments:</span>
+                  <span className={`${textPrimary} text-sm font-semibold`}>
+                    {safeJobData.total_assignments}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className={`font-medium ${textMuted} text-sm`}>Employees/Vacancies:</span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <UserCheck size={12} className="text-green-600" />
+                      <span className={`${textPrimary} text-sm`}>{safeJobData.employee_assignments_count}</span>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
+                    <span className={textMuted}>/</span>
+                    <div className="flex items-center gap-1">
                       <UserVacant size={12} className="text-orange-600" />
-                      <span className="text-orange-600 text-sm">Vacant Position</span>
+                      <span className={`${textPrimary} text-sm`}>{safeJobData.vacancy_assignments_count}</span>
                     </div>
-                  )}
+                  </div>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Reports to:</span>
-                  <span className={`${textPrimary} text-sm`}>
-                    {safeJobData.reports_to_name || 'N/A'}
-                  </span>
+                  <span className={`font-medium ${textMuted} text-sm`}>Approved/Pending:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600 text-sm font-semibold">{safeJobData.approved_count}</span>
+                    <span className={textMuted}>/</span>
+                    <span className="text-orange-600 text-sm font-semibold">{safeJobData.pending_count}</span>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Assignments Summary with Comments */}
+            {safeJobData.assignments.length > 0 && (
+              <CollapsibleSection
+                title="Assignments"
+                icon={Users}
+                isExpanded={expandedSections.assignments}
+                onToggle={() => toggleSection('assignments')}
+                count={safeJobData.assignments.length}
+                color="blue-600"
+              >
+                <div className="space-y-3">
+                  {safeJobData.assignments.slice(0, 10).map((assignment, index) => {
+                    const isVacant = assignment.is_vacancy || assignment.employee_name === 'VACANT';
+                    const employeeName = isVacant 
+                      ? (assignment.vacancy_position?.position_id || 'VACANT')
+                      : (assignment.employee?.full_name || assignment.employee_name || 'Unknown');
+                    
+                    // ✅ Check if has comments
+                    const hasComments = assignment.line_manager_comments || assignment.employee_comments;
+                    
+                    return (
+                      <div key={assignment.id || index} className={`p-3 border ${borderColor} rounded-lg ${bgHover}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3 flex-1">
+                            {isVacant ? (
+                              <UserVacant size={16} className="text-orange-600 flex-shrink-0" />
+                            ) : (
+                              <UserCheck size={16} className="text-green-600 flex-shrink-0" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className={`font-medium ${textPrimary} text-sm truncate`}>
+                                {employeeName}
+                              </p>
+                              {assignment.employee?.employee_id && (
+                                <p className={`text-xs ${textMuted}`}>
+                                  ID: {assignment.employee.employee_id}
+                                </p>
+                              )}
+                              {assignment.reports_to?.full_name && (
+                                <p className={`text-xs ${textMuted}`}>
+                                  Reports to: {assignment.reports_to.full_name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {/* ✅ Comment indicator */}
+                            {hasComments && (
+                              <MessageSquare size={14} className="text-blue-600 flex-shrink-0" />
+                            )}
+                            <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${getStatusColor(assignment.status)}`}>
+                              {getStatusIcon(assignment.status)}
+                              {assignment.status_display?.status || assignment.status.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* ✅ LINE MANAGER COMMENTS */}
+                        {assignment.line_manager_comments && (
+                          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <div className="flex items-start gap-2 mb-1">
+                              <User size={10} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                                Manager Comment:
+                              </span>
+                            </div>
+                            <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                              {assignment.line_manager_comments}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* ✅ EMPLOYEE COMMENTS */}
+                        {assignment.employee_comments && (
+                          <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                            <div className="flex items-start gap-2 mb-1">
+                              <UserCheck size={10} className="text-green-600 flex-shrink-0 mt-0.5" />
+                              <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">
+                                Employee Comment:
+                              </span>
+                            </div>
+                            <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                              {assignment.employee_comments}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {safeJobData.assignments.length > 10 && (
+                    <div className="text-center pt-2">
+                      <button
+                        onClick={onViewAssignments}
+                        className="text-almet-sapphire hover:text-almet-astral font-semibold text-sm flex items-center gap-2 mx-auto"
+                      >
+                        <Eye size={14} />
+                        View all {safeJobData.assignments.length} assignments
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </CollapsibleSection>
+            )}
 
             {/* Job Purpose */}
             <div>
@@ -276,11 +405,11 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       </div>
                     </div>
                   ))}
-              </div>
-            </CollapsibleSection>
+                </div>
+              </CollapsibleSection>
             )} 
 
-             {/* Required Skills */}
+            {/* Required Skills */}
             {safeJobData.required_skills.length > 0 && (
               <CollapsibleSection
                 title="Required Skills"
@@ -306,7 +435,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               </CollapsibleSection>
             )}
 
-            {/* 🔥 Behavioral Competencies */}
+            {/* Behavioral Competencies */}
             {safeJobData.behavioral_competencies.length > 0 && (
               <CollapsibleSection
                 title="Behavioral Competencies"
@@ -333,7 +462,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               </CollapsibleSection>
             )}
 
-            {/* 🔥 Leadership Competencies */}
+            {/* Leadership Competencies */}
             {safeJobData.leadership_competencies.length > 0 && (
               <CollapsibleSection
                 title="Leadership Competencies"
@@ -382,21 +511,21 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               isEmpty={safeJobData.business_resources.length === 0}
             >
               <div className="space-y-4">
-                {safeJobData.business_resources.map((resourceItem, index) => (
-                  <div key={resourceItem.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
+                {safeJobData.business_resources.map((resource, index) => (
+                  <div key={resource.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h6 className={`font-semibold ${textPrimary} text-sm mb-1 flex items-center gap-2`}>
                           <Package size={14} className="text-almet-sapphire" />
-                          {resourceItem.resource_detail?.name || `Resource ${index + 1}`}
+                          {resource.resource_detail?.name || `Resource ${index + 1}`}
                         </h6>
-                        {resourceItem.resource_detail?.description && (
+                        {resource.resource_detail?.description && (
                           <p className={`text-xs ${textSecondary} mb-2`}>
-                            {resourceItem.resource_detail.description}
+                            {resource.resource_detail.description}
                           </p>
                         )}
                       </div>
-                      {resourceItem.has_specific_items ? (
+                      {resource.has_specific_items ? (
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">
                           Specific Items
                         </span>
@@ -407,14 +536,14 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       )}
                     </div>
                     
-                    {resourceItem.has_specific_items && resourceItem.specific_items_detail && resourceItem.specific_items_detail.length > 0 ? (
+                    {resource.has_specific_items && resource.specific_items_detail && resource.specific_items_detail.length > 0 ? (
                       <div className={`mt-3 pt-3 border-t ${borderColor}`}>
                         <div className="flex items-center gap-2 mb-2">
                           <Layers size={12} className={textMuted} />
                           <span className={`text-xs font-medium ${textMuted}`}>Selected Items:</span>
                         </div>
                         <div className="space-y-2">
-                          {resourceItem.specific_items_detail.map((item) => (
+                          {resource.specific_items_detail.map((item) => (
                             <div key={item.id} className={`flex items-center gap-2 p-2 rounded ${bgAccent}`}>
                               <Check size={12} className="text-green-600 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
@@ -432,7 +561,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                         <div className="flex items-center gap-2">
                           <Check size={12} className="text-green-600" />
                           <span className={`text-xs ${textSecondary}`}>
-                            All items included ({resourceItem.resource_detail?.items_count || 0} items)
+                            All items included ({resource.resource_detail?.items_count || 0} items)
                           </span>
                         </div>
                       </div>
@@ -452,21 +581,21 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               isEmpty={safeJobData.access_rights.length === 0}
             >
               <div className="space-y-4">
-                {safeJobData.access_rights.map((accessItem, index) => (
-                  <div key={accessItem.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
+                {safeJobData.access_rights.map((access, index) => (
+                  <div key={access.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h6 className={`font-semibold ${textPrimary} text-sm mb-1 flex items-center gap-2`}>
                           <Shield size={14} className="text-almet-sapphire" />
-                          {accessItem.access_detail?.name || `Access ${index + 1}`}
+                          {access.access_detail?.name || `Access ${index + 1}`}
                         </h6>
-                        {accessItem.access_detail?.description && (
+                        {access.access_detail?.description && (
                           <p className={`text-xs ${textSecondary} mb-2`}>
-                            {accessItem.access_detail.description}
+                            {access.access_detail.description}
                           </p>
                         )}
                       </div>
-                      {accessItem.has_specific_items ? (
+                      {access.has_specific_items ? (
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">
                           Specific Items
                         </span>
@@ -477,23 +606,20 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       )}
                     </div>
                     
-                    {accessItem.has_specific_items && accessItem.specific_items_detail && accessItem.specific_items_detail.length > 0 ? (
+                    {access.has_specific_items && access.specific_items_detail && access.specific_items_detail.length > 0 ? (
                       <div className={`mt-3 pt-3 border-t ${borderColor}`}>
                         <div className="flex items-center gap-2 mb-2">
                           <Layers size={12} className={textMuted} />
                           <span className={`text-xs font-medium ${textMuted}`}>Access Granted To:</span>
                         </div>
                         <div className="space-y-2">
-                          {accessItem.specific_items_detail.map((item) => (
+                          {access.specific_items_detail.map((item) => (
                             <div key={item.id} className={`flex items-center gap-2 p-2 rounded ${bgAccent}`}>
                               <Check size={12} className="text-green-600 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className={`text-xs font-medium ${textPrimary}`}>{item.name}</p>
                                 {item.description && (
                                   <p className={`text-xs ${textMuted} truncate`}>{item.description}</p>
-                                )}
-                                {item.full_path && (
-                                  <p className={`text-xs ${textMuted} font-mono mt-1`}>{item.full_path}</p>
                                 )}
                               </div>
                             </div>
@@ -505,7 +631,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                         <div className="flex items-center gap-2">
                           <Check size={12} className="text-green-600" />
                           <span className={`text-xs ${textSecondary}`}>
-                            Full access granted ({accessItem.access_detail?.items_count || 0} items)
+                            Full access granted ({access.access_detail?.items_count || 0} items)
                           </span>
                         </div>
                       </div>
@@ -525,21 +651,21 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
               isEmpty={safeJobData.company_benefits.length === 0}
             >
               <div className="space-y-4">
-                {safeJobData.company_benefits.map((benefitItem, index) => (
-                  <div key={benefitItem.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
+                {safeJobData.company_benefits.map((benefit, index) => (
+                  <div key={benefit.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h6 className={`font-semibold ${textPrimary} text-sm mb-1 flex items-center gap-2`}>
                           <Gift size={14} className="text-almet-sapphire" />
-                          {benefitItem.benefit_detail?.name || `Benefit ${index + 1}`}
+                          {benefit.benefit_detail?.name || `Benefit ${index + 1}`}
                         </h6>
-                        {benefitItem.benefit_detail?.description && (
+                        {benefit.benefit_detail?.description && (
                           <p className={`text-xs ${textSecondary} mb-2`}>
-                            {benefitItem.benefit_detail.description}
+                            {benefit.benefit_detail.description}
                           </p>
                         )}
                       </div>
-                      {benefitItem.has_specific_items ? (
+                      {benefit.has_specific_items ? (
                         <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">
                           Specific Items
                         </span>
@@ -550,14 +676,14 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                       )}
                     </div>
                     
-                    {benefitItem.has_specific_items && benefitItem.specific_items_detail && benefitItem.specific_items_detail.length > 0 ? (
+                    {benefit.has_specific_items && benefit.specific_items_detail && benefit.specific_items_detail.length > 0 ? (
                       <div className={`mt-3 pt-3 border-t ${borderColor}`}>
                         <div className="flex items-center gap-2 mb-2">
                           <Layers size={12} className={textMuted} />
                           <span className={`text-xs font-medium ${textMuted}`}>Selected Benefits:</span>
                         </div>
                         <div className="space-y-2">
-                          {benefitItem.specific_items_detail.map((item) => (
+                          {benefit.specific_items_detail.map((item) => (
                             <div key={item.id} className={`flex items-center gap-2 p-2 rounded ${bgAccent}`}>
                               <Check size={12} className="text-green-600 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
@@ -575,15 +701,43 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
                         <div className="flex items-center gap-2">
                           <Check size={12} className="text-green-600" />
                           <span className={`text-xs ${textSecondary}`}>
-                            All benefits included ({benefitItem.benefit_detail?.items_count || 0} items)
+                            All benefits included ({benefit.benefit_detail?.items_count || 0} items)
                           </span>
                         </div>
                       </div>
-                     )}
+                    )}
                   </div>
                 ))}
               </div>
             </CollapsibleSection>
+
+            {/* Created/Updated Info */}
+            <div className={`flex items-center justify-between p-4 ${bgAccent} rounded-lg text-xs ${textMuted}`}>
+              <div className="flex items-center gap-4">
+                {safeJobData.created_at && (
+                  <span>
+                    Created: {new Date(safeJobData.created_at).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </span>
+                )}
+                {safeJobData.updated_at && (
+                  <span>
+                    Updated: {new Date(safeJobData.updated_at).toLocaleDateString('en-GB', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric'
+                    })}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Version:</span>
+                <span>{safeJobData.version}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -592,6 +746,3 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, darkMode }) => {
 };
 
 export default JobViewModal;
-                
-           
- 

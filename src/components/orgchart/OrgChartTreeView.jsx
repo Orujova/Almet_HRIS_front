@@ -1,4 +1,4 @@
-// components/orgChart/OrgChartTreeView.jsx - Improved Layout
+// components/orgChart/OrgChartTreeView.jsx - Improved Layout with Draggable Nodes
 'use client'
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
@@ -48,8 +48,8 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
     if (direction === 'LR') {
         dagreGraph.setGraph({ 
             rankdir: direction, 
-            ranksep: 180,      // Reduced from 200
-            nodesep: 60,       // Reduced from 80
+            ranksep: 180,
+            nodesep: 60,
             edgesep: 15,
             marginx: 30,
             marginy: 30
@@ -57,18 +57,17 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
     } else {
         dagreGraph.setGraph({ 
             rankdir: direction, 
-            ranksep: 120,      // Reduced from 150 for tighter vertical spacing
-            nodesep: 80,       // Reduced from 100
+            ranksep: 120,
+            nodesep: 80,
             edgesep: 15,
             marginx: 30,
             marginy: 30
         });
     }
 
-    // IMPROVED: Smaller node dimensions to match new design
     nodes.forEach((node) => {
-        const nodeWidth = 260;   // Matches new width
-        const nodeHeight = 140;  // Reduced height
+        const nodeWidth = 260;
+        const nodeHeight = 140;
         dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
     });
 
@@ -95,7 +94,7 @@ const getLayoutedElements = (nodes, edges, direction = 'TB') => {
     return { nodes: layoutedNodes, edges };
 };
 
-// Build hierarchy (unchanged)
+// Build hierarchy
 const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSelectedEmployee, navigateToEmployee) => {
     if (!Array.isArray(employees) || employees.length === 0) {
         return { visibleNodes: [], edges: [] };
@@ -189,6 +188,7 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
         id: emp.employee_id.toString(),
         type: 'employee',
         position: { x: 0, y: 0 },
+        draggable: true, // FIXED: Enable dragging for each node
         data: {
             employee: emp,
             isExpanded: expandedSet.has(emp.employee_id),
@@ -198,7 +198,6 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
         }
     }));
 
-    // IMPROVED: Thinner, more elegant edges
     const edges = visibleEmployees
         .filter(emp => emp.parent && emp.parent.isVisible)
         .map(emp => ({
@@ -209,7 +208,7 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
             animated: false,
             style: { 
                 stroke: emp.vacant ? '#ef4444' : '#30539b', 
-                strokeWidth: emp.vacant ? 2 : 1.5,  // Thinner lines
+                strokeWidth: emp.vacant ? 2 : 1.5,
                 opacity: emp.vacant ? 0.9 : 0.6,
                 strokeDasharray: emp.vacant ? '5,5' : 'none'
             },
@@ -224,7 +223,7 @@ const buildOrgHierarchy = (employees, expandedNodeIds, toggleExpandedNode, setSe
     return { visibleNodes: nodes, edges };
 };
 
-// Enhanced Controls Panel (unchanged)
+// Enhanced Controls Panel
 const EnhancedControlsPanel = ({ darkMode }) => {
     const { zoomIn, zoomOut, fitView, getViewport } = useReactFlow();
     const [currentZoom, setCurrentZoom] = useState(1);
@@ -249,7 +248,7 @@ const EnhancedControlsPanel = ({ darkMode }) => {
     const handleZoomToFit = useCallback(() => {
         fitView({ 
             duration: 800,
-            padding: 0.15,  // Slightly more padding
+            padding: 0.15,
             includeHiddenNodes: false,
             minZoom: 0.1,
             maxZoom: 1.5
@@ -333,7 +332,6 @@ const TreeView = ({
     const textMuted = darkMode ? "text-gray-500" : "text-almet-bali-hai";
     const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
 
-    // IMPROVED: Smooth transitions with fade-in effect
     useEffect(() => {
         if (Array.isArray(filteredOrgChart) && filteredOrgChart.length > 0) {
             const hierarchy = buildOrgHierarchy(
@@ -351,7 +349,6 @@ const TreeView = ({
                     layoutDirection
                 );
                 
-                // Add fade-in animation to new nodes
                 const nodesWithAnimation = layoutedNodes.map(node => ({
                     ...node,
                     style: {
@@ -373,7 +370,6 @@ const TreeView = ({
                 setNodes(nodesWithAnimation);
                 setEdges(edgesWithAnimation);
                 
-                // Fade in after a tiny delay
                 setTimeout(() => {
                     const visibleNodes = layoutedNodes.map(node => ({
                         ...node,
@@ -396,7 +392,6 @@ const TreeView = ({
                     setNodes(visibleNodes);
                     setEdges(visibleEdges);
                     
-                    // Gentle fit view
                     setTimeout(() => fitView({ 
                         padding: 0.15, 
                         minZoom: 0.1, 
@@ -415,7 +410,6 @@ const TreeView = ({
     }, [filteredOrgChart, expandedNodes, layoutDirection, toggleExpandedNode, setSelectedEmployee, navigateToEmployee, setNodes, setEdges, fitView]);
 
     const onLayout = useCallback((direction) => {
-        // Smooth layout transition
         const currentNodes = nodes.map(node => ({
             ...node,
             style: { ...node.style, opacity: 0.3, transition: 'all 0.4s ease-out' }
@@ -542,11 +536,11 @@ const TreeView = ({
                     height: 16
                 }
             }}
-            // Smooth interactions
-            nodesDraggable={false}
+            // FIXED: Enable node dragging
+            nodesDraggable={true}
             nodesConnectable={false}
             elementsSelectable={true}
-            // Mouse controls - ENABLED
+            // Mouse controls
             panOnScroll={false}
             panOnScrollMode="vertical"
             zoomOnScroll={true}
@@ -557,7 +551,6 @@ const TreeView = ({
             maxZoom={1.5}
             defaultViewport={{ x: 0, y: 0, zoom: 1 }}
             translateExtent={[[-Infinity, -Infinity], [Infinity, Infinity]]}
-            // Smooth zoom
             proOptions={{ hideAttribution: true }}
         >
             <Background 
