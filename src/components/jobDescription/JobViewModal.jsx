@@ -1,4 +1,4 @@
-// components/jobDescription/JobViewModal.jsx - UPDATED with Comments Display
+// components/jobDescription/JobViewModal.jsx - UPDATED: Compact Design with Smaller Fonts
 import React, { useState } from 'react';
 import { 
   X, Download, UserCheck, UserX as UserVacant, Clock, CheckCircle, XCircle, RotateCcw,
@@ -55,18 +55,18 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
   const getStatusIcon = (status) => {
     switch (status) {
       case 'DRAFT':
-        return <Edit size={14} />;
+        return <Edit size={12} />;
       case 'PENDING_LINE_MANAGER':
       case 'PENDING_EMPLOYEE':
-        return <Clock size={14} />;
+        return <Clock size={12} />;
       case 'APPROVED':
-        return <CheckCircle size={14} />;
+        return <CheckCircle size={12} />;
       case 'REJECTED':
-        return <XCircle size={14} />;
+        return <XCircle size={12} />;
       case 'REVISION_REQUIRED':
-        return <RotateCcw size={14} />;
+        return <RotateCcw size={12} />;
       default:
-        return <AlertCircle size={14} />;
+        return <AlertCircle size={12} />;
     }
   };
 
@@ -83,29 +83,29 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
     <div className={`border ${borderColor} rounded-lg overflow-hidden`}>
       <button
         onClick={onToggle}
-        className={`w-full px-4 py-3 ${bgAccent} hover:opacity-80 transition-all duration-200 
+        className={`w-full px-3 py-2 ${bgAccent} hover:opacity-80 transition-all duration-200 
           flex items-center justify-between text-left`}
       >
-        <div className="flex items-center gap-3">
-          <Icon size={16} className={isEmpty ? textMuted : `text-${color}`} />
-          <span className={`font-medium ${textPrimary} text-sm`}>{title}</span>
+        <div className="flex items-center gap-2">
+          <Icon size={13} className={isEmpty ? textMuted : `text-${color}`} />
+          <span className={`font-semibold ${textPrimary} text-xs`}>{title}</span>
           {count !== null && count > 0 && (
-            <span className={`px-2 py-1 rounded-full text-xs font-semibold bg-${color} text-white`}>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-${color} text-white`}>
               {count}
             </span>
           )}
           {isEmpty && (
-            <span className={`text-xs ${textMuted} italic`}>No data</span>
+            <span className={`text-[10px] ${textMuted} italic`}>No data</span>
           )}
         </div>
         {!isEmpty && (isExpanded ? (
-          <ChevronUp size={16} className={textMuted} />
+          <ChevronUp size={13} className={textMuted} />
         ) : (
-          <ChevronDown size={16} className={textMuted} />
+          <ChevronDown size={13} className={textMuted} />
         ))}
       </button>
       {isExpanded && !isEmpty && (
-        <div className="p-4">
+        <div className="p-3">
           {children}
         </div>
       )}
@@ -148,16 +148,16 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
   if (!job || !job.id) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className={`${bgCard} rounded-lg w-full max-w-md p-6 border ${borderColor}`}>
+        <div className={`${bgCard} rounded-lg w-full max-w-md p-5 border ${borderColor}`}>
           <div className="text-center">
-            <AlertCircle className="mx-auto mb-4 text-red-500" size={48} />
-            <h3 className={`text-lg font-bold ${textPrimary} mb-2`}>Error Loading Job Description</h3>
-            <p className={`${textSecondary} mb-4`}>
+            <AlertCircle className="mx-auto mb-3 text-red-500" size={40} />
+            <h3 className={`text-base font-bold ${textPrimary} mb-2`}>Error Loading Job Description</h3>
+            <p className={`${textSecondary} mb-3 text-xs`}>
               The job description data could not be loaded. Please try again.
             </p>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors"
+              className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-xs font-semibold"
             >
               Close
             </button>
@@ -170,107 +170,107 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${bgCard} rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto border ${borderColor}`}>
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <h2 className={`text-xl font-bold ${textPrimary}`}>Job Description Details</h2>
+        <div className="p-4">
+          {/* Header - Compact */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className={`text-base font-bold ${textPrimary}`}>Job Description Details</h2>
             <div className="flex items-center gap-2">
               {onViewAssignments && safeJobData.total_assignments > 0 && (
                 <button
                   onClick={onViewAssignments}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-[10px] font-semibold"
                 >
-                  <Users size={14} />
+                  <Users size={12} />
                   View All Assignments
                 </button>
               )}
               <button
                 onClick={onDownloadPDF}
-                className="flex items-center gap-2 px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-[10px] font-semibold"
               >
-                <Download size={14} />
+                <Download size={12} />
                 Download PDF
               </button>
               <button
                 onClick={onClose}
-                className={`p-2 ${textMuted} hover:${textPrimary} transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-almet-comet/30`}
+                className={`p-1.5 ${textMuted} hover:${textPrimary} transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-almet-comet/30`}
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
           </div>
 
-          <div className="space-y-6">
-            {/* Header Information */}
-            <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 p-4 ${bgAccent} rounded-lg`}>
+          <div className="space-y-4">
+            {/* Header Information - Compact */}
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-3 ${bgAccent} rounded-lg`}>
               <div>
-                <h3 className={`text-lg font-semibold ${textPrimary} mb-2`}>{safeJobData.job_title}</h3>
-                <div className={`${textSecondary} text-sm space-y-1`}>
-                  <p className="flex items-center gap-2">
-                    <Building size={14} />
+                <h3 className={`text-sm font-bold ${textPrimary} mb-1.5`}>{safeJobData.job_title}</h3>
+                <div className={`${textSecondary} text-[10px] space-y-0.5`}>
+                  <p className="flex items-center gap-1.5">
+                    <Building size={11} />
                     {safeJobData.business_function_name} • {safeJobData.department_name}
                     {safeJobData.unit_name && ` • ${safeJobData.unit_name}`}
                   </p>
                   {safeJobData.job_function_name && (
-                    <p className="flex items-center gap-2">
-                      <Target size={14} />
+                    <p className="flex items-center gap-1.5">
+                      <Target size={11} />
                       {safeJobData.job_function_name}
                     </p>
                   )}
                   {safeJobData.position_group_name && (
-                    <p className="flex items-center gap-2">
-                      <User size={14} />
+                    <p className="flex items-center gap-1.5">
+                      <User size={11} />
                       {safeJobData.position_group_name}
                     </p>
                   )}
                   {safeJobData.grading_levels.length > 0 && (
-                    <p className="flex items-center gap-2">
-                      <Award size={14} />
+                    <p className="flex items-center gap-1.5">
+                      <Award size={11} />
                       Grades: {safeJobData.grading_levels.join(', ')}
                     </p>
                   )}
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Overall Status:</span>
-                  <span className={`px-3 py-1 rounded-full text-xs flex items-center gap-2 ${getStatusColor(safeJobData.overall_status)}`}>
+                  <span className={`font-semibold ${textMuted} text-[10px]`}>Overall Status:</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] flex items-center gap-1 ${getStatusColor(safeJobData.overall_status)}`}>
                     {getStatusIcon(safeJobData.overall_status)}
                     {safeJobData.overall_status.replace(/_/g, ' ')}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Total Assignments:</span>
-                  <span className={`${textPrimary} text-sm font-semibold`}>
+                  <span className={`font-semibold ${textMuted} text-[10px]`}>Total Assignments:</span>
+                  <span className={`${textPrimary} text-[10px] font-bold`}>
                     {safeJobData.total_assignments}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Employees/Vacancies:</span>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <UserCheck size={12} className="text-green-600" />
-                      <span className={`${textPrimary} text-sm`}>{safeJobData.employee_assignments_count}</span>
+                  <span className={`font-semibold ${textMuted} text-[10px]`}>Employees/Vacancies:</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-0.5">
+                      <UserCheck size={10} className="text-green-600" />
+                      <span className={`${textPrimary} text-[10px] font-semibold`}>{safeJobData.employee_assignments_count}</span>
                     </div>
-                    <span className={textMuted}>/</span>
-                    <div className="flex items-center gap-1">
-                      <UserVacant size={12} className="text-orange-600" />
-                      <span className={`${textPrimary} text-sm`}>{safeJobData.vacancy_assignments_count}</span>
+                    <span className={`${textMuted} text-[10px]`}>/</span>
+                    <div className="flex items-center gap-0.5">
+                      <UserVacant size={10} className="text-orange-600" />
+                      <span className={`${textPrimary} text-[10px] font-semibold`}>{safeJobData.vacancy_assignments_count}</span>
                     </div>
                   </div>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className={`font-medium ${textMuted} text-sm`}>Approved/Pending:</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-green-600 text-sm font-semibold">{safeJobData.approved_count}</span>
-                    <span className={textMuted}>/</span>
-                    <span className="text-orange-600 text-sm font-semibold">{safeJobData.pending_count}</span>
+                  <span className={`font-semibold ${textMuted} text-[10px]`}>Approved/Pending:</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-green-600 text-[10px] font-bold">{safeJobData.approved_count}</span>
+                    <span className={`${textMuted} text-[10px]`}>/</span>
+                    <span className="text-orange-600 text-[10px] font-bold">{safeJobData.pending_count}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Assignments Summary with Comments */}
+            {/* Assignments Summary with Comments - Compact */}
             {safeJobData.assignments.length > 0 && (
               <CollapsibleSection
                 title="Assignments"
@@ -280,78 +280,76 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                 count={safeJobData.assignments.length}
                 color="blue-600"
               >
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {safeJobData.assignments.slice(0, 10).map((assignment, index) => {
                     const isVacant = assignment.is_vacancy || assignment.employee_name === 'VACANT';
                     const employeeName = isVacant 
                       ? (assignment.vacancy_position?.position_id || 'VACANT')
                       : (assignment.employee?.full_name || assignment.employee_name || 'Unknown');
                     
-                    // ✅ Check if has comments
                     const hasComments = assignment.line_manager_comments || assignment.employee_comments;
                     
                     return (
-                      <div key={assignment.id || index} className={`p-3 border ${borderColor} rounded-lg ${bgHover}`}>
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-3 flex-1">
+                      <div key={assignment.id || index} className={`p-2.5 border ${borderColor} rounded-lg ${bgHover}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2 flex-1">
                             {isVacant ? (
-                              <UserVacant size={16} className="text-orange-600 flex-shrink-0" />
+                              <UserVacant size={12} className="text-orange-600 flex-shrink-0" />
                             ) : (
-                              <UserCheck size={16} className="text-green-600 flex-shrink-0" />
+                              <UserCheck size={12} className="text-green-600 flex-shrink-0" />
                             )}
                             <div className="flex-1 min-w-0">
-                              <p className={`font-medium ${textPrimary} text-sm truncate`}>
+                              <p className={`font-semibold ${textPrimary} text-[11px] truncate`}>
                                 {employeeName}
                               </p>
                               {assignment.employee?.employee_id && (
-                                <p className={`text-xs ${textMuted}`}>
+                                <p className={`text-[9px] ${textMuted}`}>
                                   ID: {assignment.employee.employee_id}
                                 </p>
                               )}
                               {assignment.reports_to?.full_name && (
-                                <p className={`text-xs ${textMuted}`}>
+                                <p className={`text-[9px] ${textMuted}`}>
                                   Reports to: {assignment.reports_to.full_name}
                                 </p>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {/* ✅ Comment indicator */}
+                          <div className="flex items-center gap-1.5">
                             {hasComments && (
-                              <MessageSquare size={14} className="text-blue-600 flex-shrink-0" />
+                              <MessageSquare size={11} className="text-blue-600 flex-shrink-0" />
                             )}
-                            <span className={`px-2 py-1 rounded-full text-xs flex items-center gap-1 ${getStatusColor(assignment.status)}`}>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] flex items-center gap-1 ${getStatusColor(assignment.status)}`}>
                               {getStatusIcon(assignment.status)}
                               {assignment.status_display?.status || assignment.status.replace(/_/g, ' ')}
                             </span>
                           </div>
                         </div>
 
-                        {/* ✅ LINE MANAGER COMMENTS */}
+                        {/* LINE MANAGER COMMENTS - Compact */}
                         {assignment.line_manager_comments && (
-                          <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                            <div className="flex items-start gap-2 mb-1">
-                              <User size={10} className="text-blue-600 flex-shrink-0 mt-0.5" />
-                              <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">
+                          <div className="mt-1.5 p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                            <div className="flex items-start gap-1.5 mb-0.5">
+                              <User size={9} className="text-blue-600 flex-shrink-0 mt-0.5" />
+                              <span className="text-[9px] font-bold text-blue-700 dark:text-blue-300">
                                 Manager Comment:
                               </span>
                             </div>
-                            <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                            <p className={`text-[9px] ${textSecondary} leading-snug ml-3`}>
                               {assignment.line_manager_comments}
                             </p>
                           </div>
                         )}
 
-                        {/* ✅ EMPLOYEE COMMENTS */}
+                        {/* EMPLOYEE COMMENTS - Compact */}
                         {assignment.employee_comments && (
-                          <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                            <div className="flex items-start gap-2 mb-1">
-                              <UserCheck size={10} className="text-green-600 flex-shrink-0 mt-0.5" />
-                              <span className="text-[10px] font-semibold text-green-700 dark:text-green-300">
+                          <div className="mt-1.5 p-1.5 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                            <div className="flex items-start gap-1.5 mb-0.5">
+                              <UserCheck size={9} className="text-green-600 flex-shrink-0 mt-0.5" />
+                              <span className="text-[9px] font-bold text-green-700 dark:text-green-300">
                                 Employee Comment:
                               </span>
                             </div>
-                            <p className={`text-[10px] ${textSecondary} leading-relaxed ml-4`}>
+                            <p className={`text-[9px] ${textSecondary} leading-snug ml-3`}>
                               {assignment.employee_comments}
                             </p>
                           </div>
@@ -360,12 +358,12 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                     );
                   })}
                   {safeJobData.assignments.length > 10 && (
-                    <div className="text-center pt-2">
+                    <div className="text-center pt-1.5">
                       <button
                         onClick={onViewAssignments}
-                        className="text-almet-sapphire hover:text-almet-astral font-semibold text-sm flex items-center gap-2 mx-auto"
+                        className="text-almet-sapphire hover:text-almet-astral font-bold text-[10px] flex items-center gap-1.5 mx-auto"
                       >
-                        <Eye size={14} />
+                        <Eye size={11} />
                         View all {safeJobData.assignments.length} assignments
                       </button>
                     </div>
@@ -374,18 +372,18 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </CollapsibleSection>
             )}
 
-            {/* Job Purpose */}
+            {/* Job Purpose - Compact */}
             <div>
-              <h4 className={`text-md font-semibold ${textPrimary} mb-3 flex items-center gap-2`}>
-                <BookOpen size={16} />
+              <h4 className={`text-xs font-bold ${textPrimary} mb-2 flex items-center gap-1.5`}>
+                <BookOpen size={13} />
                 Job Purpose
               </h4>
-              <div className={`p-4 ${bgAccent} rounded-lg`}>
-                <p className={`${textSecondary} leading-relaxed text-wrap text-sm`}>{safeJobData.job_purpose}</p>
+              <div className={`p-2.5 ${bgAccent} rounded-lg`}>
+                <p className={`${textSecondary} leading-relaxed text-[10px]`}>{safeJobData.job_purpose}</p>
               </div>
             </div>
 
-            {/* Job Sections */}
+            {/* Job Sections - Compact */}
             {safeJobData.sections.length > 0 && (
               <CollapsibleSection
                 title="Job Sections"
@@ -394,13 +392,13 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                 onToggle={() => toggleSection('sections')}
                 count={safeJobData.sections.length}
               >
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   {safeJobData.sections.map((section, index) => (
-                    <div key={index} className={`p-4 border ${borderColor} rounded-lg`}>
-                      <h5 className={`font-semibold ${textPrimary} mb-2 text-sm`}>
+                    <div key={index} className={`p-2.5 border ${borderColor} rounded-lg`}>
+                      <h5 className={`font-bold ${textPrimary} mb-1.5 text-[11px]`}>
                         {section.title}
                       </h5>
-                      <div className={`${textSecondary} text-sm whitespace-pre-line`}>
+                      <div className={`${textSecondary} text-[10px] whitespace-pre-line leading-relaxed`}>
                         {formatSectionContent(section.content)}
                       </div>
                     </div>
@@ -409,7 +407,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </CollapsibleSection>
             )} 
 
-            {/* Required Skills */}
+            {/* Required Skills - Compact */}
             {safeJobData.required_skills.length > 0 && (
               <CollapsibleSection
                 title="Required Skills"
@@ -418,16 +416,16 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                 onToggle={() => toggleSection('skills')}
                 count={safeJobData.required_skills.length}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {safeJobData.required_skills.map((skillItem, index) => (
-                    <div key={skillItem.id || index} className={`p-3 ${bgAccent} rounded-lg`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`font-medium ${textPrimary} text-sm`}>
+                    <div key={skillItem.id || index} className={`p-2 ${bgAccent} rounded-lg`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`font-semibold ${textPrimary} text-[10px]`}>
                           {skillItem.skill_detail?.name || `Skill ${index + 1}`}
                         </span>
                       </div>
-                      <div className={`text-xs ${textMuted}`}>
-                        <p>Group: <span className="font-medium">{skillItem.skill_detail?.group_name || 'N/A'}</span></p>
+                      <div className={`text-[9px] ${textMuted}`}>
+                        <p>Group: <span className="font-semibold">{skillItem.skill_detail?.group_name || 'N/A'}</span></p>
                       </div>
                     </div>
                   ))}
@@ -435,7 +433,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </CollapsibleSection>
             )}
 
-            {/* Behavioral Competencies */}
+            {/* Behavioral Competencies - Compact */}
             {safeJobData.behavioral_competencies.length > 0 && (
               <CollapsibleSection
                 title="Behavioral Competencies"
@@ -445,16 +443,16 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                 count={safeJobData.behavioral_competencies.length}
                 color="blue-600"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {safeJobData.behavioral_competencies.map((compItem, index) => (
-                    <div key={compItem.id || index} className={`p-3 ${bgAccent} rounded-lg border-l-2 border-blue-500`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`font-medium ${textPrimary} text-sm`}>
+                    <div key={compItem.id || index} className={`p-2 ${bgAccent} rounded-lg border-l-2 border-blue-500`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`font-semibold ${textPrimary} text-[10px]`}>
                           {compItem.competency_detail?.name || `Competency ${index + 1}`}
                         </span>
                       </div>
-                      <div className={`text-xs ${textMuted}`}>
-                        <p>Group: <span className="font-medium">{compItem.competency_detail?.group_name || 'N/A'}</span></p>
+                      <div className={`text-[9px] ${textMuted}`}>
+                        <p>Group: <span className="font-semibold">{compItem.competency_detail?.group_name || 'N/A'}</span></p>
                       </div>
                     </div>
                   ))}
@@ -462,7 +460,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </CollapsibleSection>
             )}
 
-            {/* Leadership Competencies */}
+            {/* Leadership Competencies - Compact */}
             {safeJobData.leadership_competencies.length > 0 && (
               <CollapsibleSection
                 title="Leadership Competencies"
@@ -472,26 +470,26 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                 count={safeJobData.leadership_competencies.length}
                 color="purple-600"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {safeJobData.leadership_competencies.map((leadershipItem, index) => (
-                    <div key={leadershipItem.id || index} className={`p-3 ${bgAccent} rounded-lg border-l-2 border-purple-500`}>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className={`font-medium ${textPrimary} text-sm flex items-center gap-1`}>
-                          <Crown size={14} className="text-purple-600" />
+                    <div key={leadershipItem.id || index} className={`p-2 ${bgAccent} rounded-lg border-l-2 border-purple-500`}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`font-semibold ${textPrimary} text-[10px] flex items-center gap-1`}>
+                          <Crown size={11} className="text-purple-600" />
                           {leadershipItem.leadership_item_detail?.name || 
                            leadershipItem.item_detail?.name || 
                            `Leadership Item ${index + 1}`}
                         </span>
                       </div>
-                      <div className={`text-xs ${textMuted} space-y-1`}>
+                      <div className={`text-[9px] ${textMuted} space-y-0.5`}>
                         {leadershipItem.leadership_item_detail?.child_group_name && (
                           <p>
-                            Category: <span className="font-medium">{leadershipItem.leadership_item_detail.child_group_name}</span>
+                            Category: <span className="font-semibold">{leadershipItem.leadership_item_detail.child_group_name}</span>
                           </p>
                         )}
                         {leadershipItem.leadership_item_detail?.main_group_name && (
                           <p>
-                            Main Group: <span className="font-medium">{leadershipItem.leadership_item_detail.main_group_name}</span>
+                            Main Group: <span className="font-semibold">{leadershipItem.leadership_item_detail.main_group_name}</span>
                           </p>
                         )}
                       </div>
@@ -501,7 +499,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </CollapsibleSection>
             )}
 
-            {/* Business Resources */}
+            {/* Business Resources - Compact */}
             <CollapsibleSection
               title="Business Resources"
               icon={Package}
@@ -510,46 +508,46 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               count={safeJobData.business_resources.length}
               isEmpty={safeJobData.business_resources.length === 0}
             >
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {safeJobData.business_resources.map((resource, index) => (
-                  <div key={resource.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
-                    <div className="flex items-start justify-between mb-3">
+                  <div key={resource.id || index} className={`p-2.5 border ${borderColor} rounded-lg ${bgHover}`}>
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h6 className={`font-semibold ${textPrimary} text-sm mb-1 flex items-center gap-2`}>
-                          <Package size={14} className="text-almet-sapphire" />
+                        <h6 className={`font-bold ${textPrimary} text-[11px] mb-0.5 flex items-center gap-1.5`}>
+                          <Package size={11} className="text-almet-sapphire" />
                           {resource.resource_detail?.name || `Resource ${index + 1}`}
                         </h6>
                         {resource.resource_detail?.description && (
-                          <p className={`text-xs ${textSecondary} mb-2`}>
+                          <p className={`text-[9px] ${textSecondary} mb-1.5`}>
                             {resource.resource_detail.description}
                           </p>
                         )}
                       </div>
                       {resource.has_specific_items ? (
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] rounded-full font-semibold">
                           Specific Items
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] rounded-full font-semibold">
                           All Items
                         </span>
                       )}
                     </div>
                     
                     {resource.has_specific_items && resource.specific_items_detail && resource.specific_items_detail.length > 0 ? (
-                      <div className={`mt-3 pt-3 border-t ${borderColor}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Layers size={12} className={textMuted} />
-                          <span className={`text-xs font-medium ${textMuted}`}>Selected Items:</span>
+                      <div className={`mt-2 pt-2 border-t ${borderColor}`}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Layers size={10} className={textMuted} />
+                          <span className={`text-[9px] font-bold ${textMuted}`}>Selected Items:</span>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {resource.specific_items_detail.map((item) => (
-                            <div key={item.id} className={`flex items-center gap-2 p-2 rounded ${bgAccent}`}>
-                              <Check size={12} className="text-green-600 flex-shrink-0" />
+                            <div key={item.id} className={`flex items-center gap-1.5 p-1.5 rounded ${bgAccent}`}>
+                              <Check size={10} className="text-green-600 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-medium ${textPrimary}`}>{item.name}</p>
+                                <p className={`text-[10px] font-semibold ${textPrimary}`}>{item.name}</p>
                                 {item.description && (
-                                  <p className={`text-xs ${textMuted} truncate`}>{item.description}</p>
+                                  <p className={`text-[9px] ${textMuted} truncate`}>{item.description}</p>
                                 )}
                               </div>
                             </div>
@@ -557,10 +555,10 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                         </div>
                       </div>
                     ) : (
-                      <div className={`mt-3 pt-3 border-t ${borderColor}`}>
-                        <div className="flex items-center gap-2">
-                          <Check size={12} className="text-green-600" />
-                          <span className={`text-xs ${textSecondary}`}>
+                      <div className={`mt-2 pt-2 border-t ${borderColor}`}>
+                        <div className="flex items-center gap-1.5">
+                          <Check size={10} className="text-green-600" />
+                          <span className={`text-[9px] ${textSecondary}`}>
                             All items included ({resource.resource_detail?.items_count || 0} items)
                           </span>
                         </div>
@@ -571,7 +569,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </div>
             </CollapsibleSection>
 
-            {/* Access Rights */}
+            {/* Access Rights - Compact */}
             <CollapsibleSection
               title="Access Rights"
               icon={Shield}
@@ -580,46 +578,46 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               count={safeJobData.access_rights.length}
               isEmpty={safeJobData.access_rights.length === 0}
             >
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {safeJobData.access_rights.map((access, index) => (
-                  <div key={access.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
-                    <div className="flex items-start justify-between mb-3">
+                  <div key={access.id || index} className={`p-2.5 border ${borderColor} rounded-lg ${bgHover}`}>
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h6 className={`font-semibold ${textPrimary} text-sm mb-1 flex items-center gap-2`}>
-                          <Shield size={14} className="text-almet-sapphire" />
+                        <h6 className={`font-bold ${textPrimary} text-[11px] mb-0.5 flex items-center gap-1.5`}>
+                          <Shield size={11} className="text-almet-sapphire" />
                           {access.access_detail?.name || `Access ${index + 1}`}
                         </h6>
                         {access.access_detail?.description && (
-                          <p className={`text-xs ${textSecondary} mb-2`}>
+                          <p className={`text-[9px] ${textSecondary} mb-1.5`}>
                             {access.access_detail.description}
                           </p>
                         )}
                       </div>
                       {access.has_specific_items ? (
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] rounded-full font-semibold">
                           Specific Items
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] rounded-full font-semibold">
                           Full Access
                         </span>
                       )}
                     </div>
                     
                     {access.has_specific_items && access.specific_items_detail && access.specific_items_detail.length > 0 ? (
-                      <div className={`mt-3 pt-3 border-t ${borderColor}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Layers size={12} className={textMuted} />
-                          <span className={`text-xs font-medium ${textMuted}`}>Access Granted To:</span>
+                      <div className={`mt-2 pt-2 border-t ${borderColor}`}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Layers size={10} className={textMuted} />
+                          <span className={`text-[9px] font-bold ${textMuted}`}>Access Granted To:</span>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {access.specific_items_detail.map((item) => (
-                            <div key={item.id} className={`flex items-center gap-2 p-2 rounded ${bgAccent}`}>
-                              <Check size={12} className="text-green-600 flex-shrink-0" />
+                            <div key={item.id} className={`flex items-center gap-1.5 p-1.5 rounded ${bgAccent}`}>
+                              <Check size={10} className="text-green-600 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-medium ${textPrimary}`}>{item.name}</p>
+                                <p className={`text-[10px] font-semibold ${textPrimary}`}>{item.name}</p>
                                 {item.description && (
-                                  <p className={`text-xs ${textMuted} truncate`}>{item.description}</p>
+                                  <p className={`text-[9px] ${textMuted} truncate`}>{item.description}</p>
                                 )}
                               </div>
                             </div>
@@ -627,10 +625,10 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                         </div>
                       </div>
                     ) : (
-                      <div className={`mt-3 pt-3 border-t ${borderColor}`}>
-                        <div className="flex items-center gap-2">
-                          <Check size={12} className="text-green-600" />
-                          <span className={`text-xs ${textSecondary}`}>
+                      <div className={`mt-2 pt-2 border-t ${borderColor}`}>
+                        <div className="flex items-center gap-1.5">
+                          <Check size={10} className="text-green-600" />
+                          <span className={`text-[9px] ${textSecondary}`}>
                             Full access granted ({access.access_detail?.items_count || 0} items)
                           </span>
                         </div>
@@ -641,7 +639,7 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </div>
             </CollapsibleSection>
 
-            {/* Company Benefits */}
+            {/* Company Benefits - Compact */}
             <CollapsibleSection
               title="Company Benefits"
               icon={Gift}
@@ -650,46 +648,46 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               count={safeJobData.company_benefits.length}
               isEmpty={safeJobData.company_benefits.length === 0}
             >
-              <div className="space-y-4">
+              <div className="space-y-2.5">
                 {safeJobData.company_benefits.map((benefit, index) => (
-                  <div key={benefit.id || index} className={`p-4 border ${borderColor} rounded-lg ${bgHover}`}>
-                    <div className="flex items-start justify-between mb-3">
+                  <div key={benefit.id || index} className={`p-2.5 border ${borderColor} rounded-lg ${bgHover}`}>
+                    <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <h6 className={`font-semibold ${textPrimary} text-sm mb-1 flex items-center gap-2`}>
-                          <Gift size={14} className="text-almet-sapphire" />
+                        <h6 className={`font-bold ${textPrimary} text-[11px] mb-0.5 flex items-center gap-1.5`}>
+                          <Gift size={11} className="text-almet-sapphire" />
                           {benefit.benefit_detail?.name || `Benefit ${index + 1}`}
                         </h6>
                         {benefit.benefit_detail?.description && (
-                          <p className={`text-xs ${textSecondary} mb-2`}>
+                          <p className={`text-[9px] ${textSecondary} mb-1.5`}>
                             {benefit.benefit_detail.description}
                           </p>
                         )}
                       </div>
                       {benefit.has_specific_items ? (
-                        <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[9px] rounded-full font-semibold">
                           Specific Items
                         </span>
                       ) : (
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-[9px] rounded-full font-semibold">
                           All Items
                         </span>
                       )}
                     </div>
                     
                     {benefit.has_specific_items && benefit.specific_items_detail && benefit.specific_items_detail.length > 0 ? (
-                      <div className={`mt-3 pt-3 border-t ${borderColor}`}>
-                        <div className="flex items-center gap-2 mb-2">
-                          <Layers size={12} className={textMuted} />
-                          <span className={`text-xs font-medium ${textMuted}`}>Selected Benefits:</span>
+                      <div className={`mt-2 pt-2 border-t ${borderColor}`}>
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <Layers size={10} className={textMuted} />
+                          <span className={`text-[9px] font-bold ${textMuted}`}>Selected Benefits:</span>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                           {benefit.specific_items_detail.map((item) => (
-                            <div key={item.id} className={`flex items-center gap-2 p-2 rounded ${bgAccent}`}>
-                              <Check size={12} className="text-green-600 flex-shrink-0" />
+                            <div key={item.id} className={`flex items-center gap-1.5 p-1.5 rounded ${bgAccent}`}>
+                              <Check size={10} className="text-green-600 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
-                                <p className={`text-xs font-medium ${textPrimary}`}>{item.name}</p>
+                                <p className={`text-[10px] font-semibold ${textPrimary}`}>{item.name}</p>
                                 {item.description && (
-                                  <p className={`text-xs ${textMuted} truncate`}>{item.description}</p>
+                                  <p className={`text-[9px] ${textMuted} truncate`}>{item.description}</p>
                                 )}
                               </div>
                             </div>
@@ -697,10 +695,10 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                         </div>
                       </div>
                     ) : (
-                      <div className={`mt-3 pt-3 border-t ${borderColor}`}>
-                        <div className="flex items-center gap-2">
-                          <Check size={12} className="text-green-600" />
-                          <span className={`text-xs ${textSecondary}`}>
+                      <div className={`mt-2 pt-2 border-t ${borderColor}`}>
+                        <div className="flex items-center gap-1.5">
+                          <Check size={10} className="text-green-600" />
+                          <span className={`text-[9px] ${textSecondary}`}>
                             All benefits included ({benefit.benefit_detail?.items_count || 0} items)
                           </span>
                         </div>
@@ -711,9 +709,9 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
               </div>
             </CollapsibleSection>
 
-            {/* Created/Updated Info */}
-            <div className={`flex items-center justify-between p-4 ${bgAccent} rounded-lg text-xs ${textMuted}`}>
-              <div className="flex items-center gap-4">
+            {/* Created/Updated Info - Compact */}
+            <div className={`flex items-center justify-between p-2.5 ${bgAccent} rounded-lg text-[9px] ${textMuted}`}>
+              <div className="flex items-center gap-3">
                 {safeJobData.created_at && (
                   <span>
                     Created: {new Date(safeJobData.created_at).toLocaleDateString('en-GB', {
@@ -733,8 +731,8 @@ const JobViewModal = ({ job, onClose, onDownloadPDF, onViewAssignments, darkMode
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">Version:</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold">Version:</span>
                 <span>{safeJobData.version}</span>
               </div>
             </div>

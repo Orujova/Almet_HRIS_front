@@ -287,7 +287,7 @@ const OrgChart = () => {
     }, [searchFilteredOrgChart]);
 
     // Fetch Job Description with Database ID
-    const fetchJobDescription = async (employeeId) => {
+     const fetchJobDescription = async (employeeId) => {
         try {
             setDetailLoading(true);
             
@@ -311,9 +311,10 @@ const OrgChart = () => {
                 return;
             }
             
-            let jobDescriptions;
+            // ✅ Step 1: Get employee's job description assignments
+            let assignmentResponse;
             try {
-                jobDescriptions = await jobDescriptionService.getEmployeeJobDescriptions(databaseId);
+                assignmentResponse = await jobDescriptionService.getEmployeeJobDescriptions(databaseId);
             } catch (apiError) {
                 if (apiError.response?.status === 404) {
                     alert('No job description found for this employee.');
@@ -322,31 +323,61 @@ const OrgChart = () => {
                 throw apiError;
             }
             
+            // ✅ Extract job_descriptions array from response
+            const jobDescriptions = assignmentResponse.job_descriptions || assignmentResponse || [];
+            
             if (!jobDescriptions || jobDescriptions.length === 0) {
                 alert('No job description found for this employee.');
                 return;
             }
 
-            let selectedJob = jobDescriptions.find(job => job.status === 'ACTIVE');
-            if (!selectedJob) {
-                selectedJob = jobDescriptions.find(job => job.status === 'APPROVED');
-            }
-            if (!selectedJob) {
+            // ✅ Step 2: Select the most relevant assignment
+            let selectedAssignment = jobDescriptions.find(job => job.status === 'APPROVED');
+            if (!selectedAssignment) {
                 const sorted = [...jobDescriptions].sort((a, b) => {
                     const dateA = new Date(a.updated_at || a.created_at || 0);
                     const dateB = new Date(b.updated_at || b.created_at || 0);
                     return dateB - dateA;
                 });
-                selectedJob = sorted[0];
+                selectedAssignment = sorted[0];
             }
 
-            const detail = await jobDescriptionService.getJobDescription(selectedJob.id);
+            // ✅ Step 3: Get the job_description_id from the assignment
+            const jobDescriptionId = selectedAssignment.job_description_id || selectedAssignment.job_description;
             
-            setJobDetail(detail);
+            if (!jobDescriptionId) {
+                console.error('Job description ID missing from assignment:', selectedAssignment);
+                alert('Job description ID is missing.');
+                return;
+            }
+
+            // ✅ Step 4: Fetch full job description detail
+            const detail = await jobDescriptionService.getJobDescription(jobDescriptionId);
+            
+            // ✅ Step 5: Fetch all assignments for this job description
+            const assignmentsData = await jobDescriptionService.getJobDescriptionAssignments(jobDescriptionId);
+            
+            // ✅ Step 6: Merge everything together
+            const enrichedDetail = {
+                ...detail,
+                // Add assignment info
+                assignments: assignmentsData.assignments || [],
+                total_assignments: assignmentsData.total_assignments || 0,
+                employee_assignments_count: assignmentsData.summary?.employees || 0,
+                vacancy_assignments_count: assignmentsData.summary?.vacancies || 0,
+                approved_count: assignmentsData.summary?.approved || 0,
+                pending_count: assignmentsData.summary?.pending || 0,
+                overall_status: assignmentsData.summary?.status || detail.status || 'UNKNOWN',
+                
+                // Keep original assignment data for reference
+                current_assignment: selectedAssignment
+            };
+            
+            setJobDetail(enrichedDetail);
             setShowJobDescriptionModal(true);
             
         } catch (error) {
-            console.error('Error:', error);
+            console.error('Error fetching job description:', error);
             
             if (error.response) {
                 const status = error.response.status;
@@ -355,22 +386,23 @@ const OrgChart = () => {
                         alert('Job description not found.');
                         break;
                     case 403:
-                        alert('You do not have permission.');
+                        alert('You do not have permission to view this job description.');
                         break;
                     case 401:
-                        alert('Authentication required.');
+                        alert('Authentication required. Please log in.');
                         break;
                     default:
-                        alert('Error loading job description.');
+                        alert(`Error loading job description: ${error.response.data?.message || 'Unknown error'}`);
                 }
-            } else {
+            } else if (error.message) {
                 alert(`Error: ${error.message}`);
+            } else {
+                alert('An unexpected error occurred while loading the job description.');
             }
         } finally {
             setDetailLoading(false);
         }
     };
-
     // Export to PNG using html-to-image
     const [exportLoading, setExportLoading] = useState(false);
     

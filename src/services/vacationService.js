@@ -1,7 +1,10 @@
+// services/vacationService.js - UPDATED VERSION
+
 import axios from 'axios';
 
 // Base URL
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
 // Token management utility
 const TokenManager = {
   getAccessToken: () => {
@@ -34,7 +37,6 @@ const vacationApi = axios.create({
   timeout: 30000,
 });
 
-
 // Request interceptor to add auth token
 vacationApi.interceptors.request.use(
   (config) => {
@@ -55,7 +57,6 @@ vacationApi.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       TokenManager.removeTokens();
-      // Redirect to login or refresh token
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -74,9 +75,7 @@ export const VacationService = {
     }
   },
 
-  
-
-   // === USER PERMISSIONS ===
+  // === USER PERMISSIONS ===
   getMyPermissions: async () => {
     try {
       const response = await vacationApi.get('/vacation/my-permissions/');
@@ -86,8 +85,7 @@ export const VacationService = {
     }
   },
 
-  // === SETTINGS - ADD THESE ===
-  // Get all settings combined
+  // === SETTINGS ===
   getAllSettings: async () => {
     try {
       const [general, calendar, hrReps] = await Promise.all([
@@ -106,21 +104,42 @@ export const VacationService = {
     }
   },
 
-  // All Vacation Records
+  // ✅ UPDATED: All Vacation Records with Business Function filter
   getAllVacationRecords: async (params = {}) => {
     try {
-      const response = await vacationApi.get('/vacation/all-vacation-records', { params });
+      const response = await vacationApi.get('/vacation/all-vacation-records/', { 
+        params: {
+          status: params.status || '',
+          vacation_type_id: params.vacation_type_id || '',
+          department_id: params.department_id || '',
+          business_function_id: params.business_function_id || '',  // ✅ YENİ
+          start_date: params.start_date || '',
+          end_date: params.end_date || '',
+          employee_name: params.employee_name || '',
+          year: params.year || ''
+        }
+      });
       return response.data;
     } catch (error) {
       throw error;
     }
   },
 
-  // Export All Vacation Records
+  // ✅ UPDATED: Export All Vacation Records with Business Function filter
   exportAllVacationRecords: async (params = {}) => {
     try {
       const response = await vacationApi.get('/vacation/all-records/export/', { 
-        params,
+        params: {
+          status: params.status || '',
+          vacation_type_id: params.vacation_type_id || '',
+          department_id: params.department_id || '',
+          business_function_id: params.business_function_id || '',  // ✅ YENİ
+          start_date: params.start_date || '',
+          end_date: params.end_date || '',
+          employee_name: params.employee_name || '',
+          year: params.year || '',
+          format: params.format || 'combined'
+        },
         responseType: 'blob'
       });
       return response.data;
@@ -161,20 +180,21 @@ export const VacationService = {
     }
   },
 
-// vacationService.js-də
-searchEmployees: async () => {
-  try {
-    const response = await vacationApi.get('/employees/', { 
-      params: { 
-        page_size: 100  // Daha çox employee üçün limiti artırın
-      }
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
- getCurrentUserEmail: () => {
+  // Search Employees
+  searchEmployees: async () => {
+    try {
+      const response = await vacationApi.get('/employees/', { 
+        params: { 
+          page_size: 100
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCurrentUserEmail: () => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem("user_email");
     }
@@ -187,10 +207,9 @@ searchEmployees: async () => {
       const response = await vacationApi.get('/employees/', { 
         params: { 
           page_size: 100,
-          search: email // API-də email search dəstəklənirsə
+          search: email
         }
       });
-      // Email ilə uyğun employee tap
       const employee = response.data.results?.find(emp => 
         emp.email?.toLowerCase() === email?.toLowerCase()
       );
@@ -199,6 +218,7 @@ searchEmployees: async () => {
       throw error;
     }
   },
+
   // === SCHEDULES ===
   
   // Create Schedule
@@ -255,127 +275,122 @@ searchEmployees: async () => {
   
   // Create Immediate Request
   createImmediateRequest: async (data, files = []) => {
-  try {
-    const formData = new FormData();
-    
-    // Append all form fields
-    formData.append('requester_type', data.requester_type);
-    formData.append('vacation_type_id', data.vacation_type_id);
-    formData.append('start_date', data.start_date);
-    formData.append('end_date', data.end_date);
-    
-    if (data.comment) {
-      formData.append('comment', data.comment);
-    }
-    
-    if (data.requester_type === 'for_my_employee') {
-      if (data.employee_id) {
-        formData.append('employee_id', data.employee_id);
-      } else if (data.employee_manual) {
-        formData.append('employee_manual', JSON.stringify(data.employee_manual));
+    try {
+      const formData = new FormData();
+      
+      formData.append('requester_type', data.requester_type);
+      formData.append('vacation_type_id', data.vacation_type_id);
+      formData.append('start_date', data.start_date);
+      formData.append('end_date', data.end_date);
+      
+      if (data.comment) {
+        formData.append('comment', data.comment);
       }
-    }
-    
-    if (data.hr_representative_id) {
-      formData.append('hr_representative_id', data.hr_representative_id);
-    }
-    
-    // Append files (max 10MB each, multiple files allowed)
-    if (files && files.length > 0) {
-      files.forEach((file) => {
-        formData.append('files', file);
-      });
-    }
-    
-    const response = await vacationApi.post('/vacation/requests/immediate/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-    
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
-
-// Add these methods to VacationService in vacationService.js
-
-// === ATTACHMENTS ===
-
-// Get Request Details (includes attachments)
-getRequestDetail: async (id) => {
-  try {
-    const response = await vacationApi.get(`/vacation/requests/${id}/`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
-
-// Get Schedule Details
-getScheduleDetail: async (id) => {
-  try {
-    const response = await vacationApi.get(`/vacation/vacation-schedules/${id}/detail/`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
-
-// Get Request Attachments
-getRequestAttachments: async (requestId) => {
-  try {
-    const response = await vacationApi.get(`/vacation/vacation-requests/${requestId}/attachments/`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
-
-// Bulk Upload Attachments to Request
-bulkUploadAttachments: async (requestId, files) => {
-  try {
-    const formData = new FormData();
-    files.forEach(file => {
-      formData.append('files', file);
-    });
-    
-    const response = await vacationApi.post(
-      `/vacation/vacation-requests/${requestId}/attachments/bulk-upload/`,
-      formData,
-      {
+      
+      if (data.requester_type === 'for_my_employee') {
+        if (data.employee_id) {
+          formData.append('employee_id', data.employee_id);
+        } else if (data.employee_manual) {
+          formData.append('employee_manual', JSON.stringify(data.employee_manual));
+        }
+      }
+      
+      if (data.hr_representative_id) {
+        formData.append('hr_representative_id', data.hr_representative_id);
+      }
+      
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+      
+      const response = await vacationApi.post('/vacation/requests/immediate/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-      }
-    );
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+      });
+      
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 
-// Get Attachment Details
-getAttachmentDetails: async (attachmentId) => {
-  try {
-    const response = await vacationApi.get(`/vacation/vacation-attachments/${attachmentId}/`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+  // === ATTACHMENTS ===
 
-// Delete Attachment
-deleteAttachment: async (attachmentId) => {
-  try {
-    const response = await vacationApi.delete(`/vacation/vacation-attachments/${attachmentId}/delete/`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+  // Get Request Details (includes attachments)
+  getRequestDetail: async (id) => {
+    try {
+      const response = await vacationApi.get(`/vacation/requests/${id}/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 
+  // Get Schedule Details
+  getScheduleDetail: async (id) => {
+    try {
+      const response = await vacationApi.get(`/vacation/vacation-schedules/${id}/detail/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get Request Attachments
+  getRequestAttachments: async (requestId) => {
+    try {
+      const response = await vacationApi.get(`/vacation/vacation-requests/${requestId}/attachments/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Bulk Upload Attachments to Request
+  bulkUploadAttachments: async (requestId, files) => {
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+      
+      const response = await vacationApi.post(
+        `/vacation/vacation-requests/${requestId}/attachments/bulk-upload/`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Get Attachment Details
+  getAttachmentDetails: async (attachmentId) => {
+    try {
+      const response = await vacationApi.get(`/vacation/vacation-attachments/${attachmentId}/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Delete Attachment
+  deleteAttachment: async (attachmentId) => {
+    try {
+      const response = await vacationApi.delete(`/vacation/vacation-attachments/${attachmentId}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 
   // Approve/Reject Request
   approveRejectRequest: async (id, data) => {
@@ -461,7 +476,6 @@ deleteAttachment: async (attachmentId) => {
     }
   },
 
- 
   // === SETTINGS ===
   
   // Get General Settings
@@ -560,59 +574,80 @@ deleteAttachment: async (attachmentId) => {
 
   // === BALANCES ===
   
-getAllBalances: async (params = {}) => {
-  try {
-    const response = await vacationApi.get('/vacation/balances/', { 
-      params: {
-        year: params.year || new Date().getFullYear(),
-        department: params.department || '',
-        min_remaining: params.min_remaining || '',
-        max_remaining: params.max_remaining || ''
-      }
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+  // ✅ UPDATED: Get All Balances with Company filter
+    getAllBalances: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      queryParams.append('year', params.year || new Date().getFullYear());
+      if (params.department_id) queryParams.append('department_id', params.department_id);
+      if (params.business_function_id) queryParams.append('business_function_id', params.business_function_id);
+      if (params.min_remaining) queryParams.append('min_remaining', params.min_remaining);
+      if (params.max_remaining) queryParams.append('max_remaining', params.max_remaining);
 
-// Export Balances
-exportBalances: async (params = {}) => {
-  try {
-    const response = await vacationApi.get('/vacation/balances/export/', { 
-      params: {
-        year: params.year || new Date().getFullYear(),
-        department: params.department || '',
-        min_remaining: params.min_remaining || '',
-        max_remaining: params.max_remaining || ''
-      },
-      responseType: 'blob'
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+      const response = await vacationApi.get(`/vacation/balances/?${queryParams}`);
+      return response.data;
+    } catch (error) {
+      console.error('Get all balances error:', error);
+      throw error;
+    }
+  },
 
-// Update Employee Balance
-updateEmployeeBalance: async (data) => {
-  try {
-    const response = await vacationApi.put('/vacation/balances/update/', data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+  // ✅ DÜZƏLDİLDİ: Export Balances
+  exportBalances: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams();
+      
+      queryParams.append('year', params.year || new Date().getFullYear());
+      if (params.department_id) queryParams.append('department_id', params.department_id);
+      if (params.business_function_id) queryParams.append('business_function_id', params.business_function_id);
+      if (params.min_remaining) queryParams.append('min_remaining', params.min_remaining);
+      if (params.max_remaining) queryParams.append('max_remaining', params.max_remaining);
 
-// Reset Balances
-resetBalances: async (data) => {
-  try {
-    const response = await vacationApi.post('/vacation/balances/reset/', data);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-},
+      const response = await vacationApi.get(`/vacation/balances/export/?${queryParams}`, {
+        responseType: 'blob'
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Export balances error:', error);
+      throw error;
+    }
+  },
+ getCalendarEvents: async (params = {}) => {
+    try {
+      const response = await vacationApi.get('/vacation/calendar/', { 
+        params: {
+          month: params.month || new Date().getMonth() + 1,
+          year: params.year || new Date().getFullYear(),
+          employee_id: params.employee_id || '',
+          department_id: params.department_id || '',
+          business_function_id: params.business_function_id || ''
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  // Update Employee Balance
+  updateEmployeeBalance: async (data) => {
+    try {
+      const response = await vacationApi.put('/vacation/balances/update/', data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Reset Balances
+  resetBalances: async (data) => {
+    try {
+      const response = await vacationApi.post('/vacation/balances/reset/', data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
 
   // Download Balance Template
   downloadBalanceTemplate: async () => {
@@ -639,10 +674,6 @@ resetBalances: async (data) => {
       throw error;
     }
   },
-
-
-
- 
 };
 
 // Helper functions for common operations
@@ -666,25 +697,27 @@ export const VacationHelpers = {
     if (schedule.edit_count >= maxEdits) return false;
     return true;
   },
- canViewAllBalances: (userPermissions) => {
-  if (userPermissions?.is_admin) return true;
-  return userPermissions?.permissions?.includes('vacation.balance.view_all');
-},
 
-canExportBalances: (userPermissions) => {
-  if (userPermissions?.is_admin) return true;
-  return userPermissions?.permissions?.includes('vacation.balance.export');
-},
+  canViewAllBalances: (userPermissions) => {
+    if (userPermissions?.is_admin) return true;
+    return userPermissions?.permissions?.includes('vacation.balance.view_all');
+  },
 
-canUpdateBalances: (userPermissions) => {
-  if (userPermissions?.is_admin) return true;
-  return userPermissions?.permissions?.includes('vacation.balance.update');
-},
+  canExportBalances: (userPermissions) => {
+    if (userPermissions?.is_admin) return true;
+    return userPermissions?.permissions?.includes('vacation.balance.export');
+  },
 
-canResetBalances: (userPermissions) => {
-  if (userPermissions?.is_admin) return true;
-  return userPermissions?.permissions?.includes('vacation.balance.reset');
-},
+  canUpdateBalances: (userPermissions) => {
+    if (userPermissions?.is_admin) return true;
+    return userPermissions?.permissions?.includes('vacation.balance.update');
+  },
+
+  canResetBalances: (userPermissions) => {
+    if (userPermissions?.is_admin) return true;
+    return userPermissions?.permissions?.includes('vacation.balance.reset');
+  },
+
   // Check if request can be created with current balance
   canCreateRequest: (balance, requestDays, allowNegativeBalance) => {
     if (allowNegativeBalance) return true;
@@ -730,57 +763,59 @@ canResetBalances: (userPermissions) => {
       hr_representative_id: data.hr_representative_id || undefined
     };
   },
-// Validate file before upload
-validateFile: (file) => {
-  const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-  const ALLOWED_TYPES = [
-    'application/pdf',
-    'image/jpeg',
-    'image/jpg', 
-    'image/png',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-  ];
 
-  if (file.size > MAX_SIZE) {
-    return {
-      valid: false,
-      error: `"${file.name}" exceeds 10MB limit`
-    };
-  }
+  // Validate file before upload
+  validateFile: (file) => {
+    const MAX_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_TYPES = [
+      'application/pdf',
+      'image/jpeg',
+      'image/jpg', 
+      'image/png',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ];
 
-  const extension = '.' + file.name.split('.').pop().toLowerCase();
-  const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
-  
-  if (!ALLOWED_TYPES.includes(file.type) && !allowedExtensions.includes(extension)) {
-    return {
-      valid: false,
-      error: `"${file.name}" has unsupported format`
-    };
-  }
+    if (file.size > MAX_SIZE) {
+      return {
+        valid: false,
+        error: `"${file.name}" exceeds 10MB limit`
+      };
+    }
 
-  return { valid: true };
-},
+    const extension = '.' + file.name.split('.').pop().toLowerCase();
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx'];
+    
+    if (!ALLOWED_TYPES.includes(file.type) && !allowedExtensions.includes(extension)) {
+      return {
+        valid: false,
+        error: `"${file.name}" has unsupported format`
+      };
+    }
 
-// Format file size
-formatFileSize: (bytes) => {
-  if (bytes === 0) return '0 Bytes';
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-},
+    return { valid: true };
+  },
 
-// Get file icon type
-getFileIcon: (fileType) => {
-  if (fileType.includes('image')) return 'image';
-  if (fileType.includes('pdf')) return 'pdf';
-  if (fileType.includes('word') || fileType.includes('document')) return 'doc';
-  if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'xls';
-  return 'file';
-},
+  // Format file size
+  formatFileSize: (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  },
+
+  // Get file icon type
+  getFileIcon: (fileType) => {
+    if (fileType.includes('image')) return 'image';
+    if (fileType.includes('pdf')) return 'pdf';
+    if (fileType.includes('word') || fileType.includes('document')) return 'doc';
+    if (fileType.includes('excel') || fileType.includes('spreadsheet')) return 'xls';
+    return 'file';
+  },
+
   // Download blob file
   downloadBlobFile: (blob, filename) => {
     const url = window.URL.createObjectURL(blob);

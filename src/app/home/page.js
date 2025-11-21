@@ -1,5 +1,5 @@
 "use client";
-import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X, Cake, Award, Sparkles } from "lucide-react";
+import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X, Cake, Award, Sparkles, BookOpen, Download, ExternalLink } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useAuth } from "@/auth/AuthContext";
@@ -14,13 +14,14 @@ const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = fal
       isHighlight 
         ? 'bg-gradient-to-br from-almet-sapphire to-almet-astral shadow-lg shadow-almet-sapphire/20' 
         : 'bg-white dark:bg-almet-cloud-burst shadow-md'
-    } backdrop-blur-sm rounded-xl p-5 transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border ${
+    } backdrop-blur-sm rounded-xl p-4 transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer border ${
       isHighlight 
         ? 'border-almet-steel-blue' 
         : 'border-almet-mystic dark:border-almet-san-juan'
     }`}>
       <div className="flex items-center justify-between mb-3">
-        <div className={`p-2.5 ${
+        <div className="flex gap-4 items-center">
+          <div className={`p-2 ${
           isHighlight 
             ? 'bg-white/20 text-white' 
             : 'bg-gradient-to-br from-almet-mystic to-white dark:from-almet-san-juan dark:to-almet-comet text-almet-sapphire dark:text-almet-steel-blue'
@@ -35,7 +36,15 @@ const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = fal
       } text-xs font-semibold mb-1 uppercase tracking-wide`}>
         {title}
       </h3>
-      <div className={`text-2xl font-bold mb-1 ${
+        </div>
+        
+      
+      <div className="flex gap-4 items-center mb-3">
+
+     
+
+
+      <div className={`text-xl font-bold mb-1 ${
         isHighlight 
           ? 'text-white' 
           : 'text-almet-cloud-burst dark:text-white'
@@ -46,15 +55,17 @@ const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = fal
         isHighlight 
           ? 'text-white/80' 
           : 'text-almet-waterloo dark:text-almet-bali-hai'
-      } text-sm mb-4`}>
+      } text-sm `}>
         {subtitle}
       </p>
+ </div>
+
       {actionText && (
         <button className={`${
           isHighlight 
             ? 'bg-white/20 hover:bg-white/30 text-white' 
             : 'bg-gradient-to-r from-almet-sapphire to-almet-astral hover:from-almet-astral hover:to-almet-steel-blue text-white shadow-md'
-        } text-xs font-semibold px-4 py-2.5 rounded-lg transition-all duration-300 hover:scale-105 w-full`}>
+        } text-xs font-semibold px-4 py-2 rounded-lg transition-all duration-300 hover:scale-105 w-full`}>
           {actionText}
         </button>
       )}
@@ -180,13 +191,11 @@ const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isT
         : 'border-almet-mystic dark:border-almet-san-juan'
     } relative overflow-hidden`}>
       
-      {/* Today Indicator */}
       {isToday && (
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue"></div>
       )}
 
       <div className="p-4">
-        {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
             <div className={`p-2 rounded-lg ${
@@ -215,7 +224,6 @@ const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isT
           )}
         </div>
 
-        {/* Employee Info */}
         <div className="mb-3">
           <h3 className={`font-semibold text-sm mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
             {celebration.employee_name}
@@ -228,38 +236,200 @@ const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isT
           </p>
         </div>
 
-        {/* Footer */}
         <div className={`flex items-center justify-between pt-3 border-t ${darkMode ? 'border-almet-comet' : 'border-gray-200'}`}>
           <div className={`flex items-center gap-1.5 text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-gray-600'}`}>
             <Calendar size={12} />
             {formatDate(celebration.date)}
           </div>
           
-           <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onCelebrate(celebration);
-        }}
-        disabled={isCelebrated}
-        className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-          isCelebrated
-            ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 cursor-default'
-            : 'bg-almet-sapphire/10 dark:bg-almet-steel-blue/10 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire hover:text-white dark:hover:bg-almet-steel-blue dark:hover:text-white'
-        }`}
-        title={isCelebrated ? 'Already celebrated' : 'Send wishes'}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCelebrate(celebration);
+            }}
+            disabled={isCelebrated}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              isCelebrated
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 cursor-default'
+                : 'bg-almet-sapphire/10 dark:bg-almet-steel-blue/10 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire hover:text-white dark:hover:bg-almet-steel-blue dark:hover:text-white'
+            }`}
+            title={isCelebrated ? 'Already celebrated' : 'Send wishes'}
+          >
+            {isCelebrated ? (
+              <>
+                <CheckCircle size={12} />
+                <span>Sent</span>
+              </>
+            ) : (
+              <>
+                <span>🎉</span>
+                <span>{celebration.wishes}</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const OnboardingTrainingCard = ({ training, darkMode, onClick, onMarkComplete }) => {
+  return (
+    <div className={`bg-white dark:bg-almet-cloud-burst rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border ${
+      training.isCompleted 
+        ? 'border-green-500 dark:border-green-400' 
+        : 'border-almet-mystic dark:border-almet-san-juan'
+    } overflow-hidden group cursor-pointer`}>
+      
+      <div className={`h-1.5 ${
+        training.isCompleted 
+          ? 'bg-gradient-to-r from-green-500 to-green-600' 
+          : 'bg-gradient-to-r from-almet-sapphire to-almet-astral'
+      }`}></div>
+
+      <div className="p-4">
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start gap-3 flex-1">
+            <div className={`p-2 rounded-xl ${
+              training.isCompleted
+                ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                : 'bg-gradient-to-br from-almet-mystic to-white dark:from-almet-san-juan dark:to-almet-comet text-almet-sapphire dark:text-almet-steel-blue'
+            }`}>
+              <BookOpen className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-sm text-almet-cloud-burst dark:text-white group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors">
+                  {training.title}
+                </h3>
+                {training.isCompleted && (
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                )}
+              </div>
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-2 line-clamp-2">
+                {training.description}
+              </p>
+              <div className="flex items-center gap-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                <span className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {training.duration}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick(training);
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral hover:from-almet-astral hover:to-almet-steel-blue text-white rounded-lg text-xs font-medium transition-all duration-300 shadow-md hover:shadow-lg"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            View Training
+          </button>
+          {!training.isCompleted && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onMarkComplete(training.id);
+              }}
+              className="px-3 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg text-xs font-medium transition-all duration-300 border border-green-200 dark:border-green-800"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PDFViewerModal = ({ isOpen, onClose, training, darkMode, onMarkComplete }) => {
+  if (!isOpen || !training) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white dark:bg-almet-cloud-burst rounded-2xl max-w-6xl w-full h-[90vh] overflow-hidden shadow-2xl flex flex-col" 
+        onClick={(e) => e.stopPropagation()}
       >
-        {isCelebrated ? (
-          <>
-            <CheckCircle size={12} />
-            <span>Sent</span>
-          </>
-        ) : (
-          <>
-            <span>🎉</span>
-            <span>{celebration.wishes}</span>
-          </>
-        )}
-      </button>
+        
+        <div className="flex items-center justify-between p-5 border-b border-almet-mystic dark:border-almet-san-juan bg-gradient-to-r from-almet-mystic to-white dark:from-almet-san-juan dark:to-almet-cloud-burst">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-almet-sapphire/10 dark:bg-almet-steel-blue/10">
+              <BookOpen className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-almet-cloud-burst dark:text-white">
+                {training.title}
+              </h2>
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                {training.category} • {training.duration}
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {!training.isCompleted && (
+              <button
+                onClick={() => {
+                  onMarkComplete(training.id);
+                  setTimeout(() => onClose(), 500);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-all shadow-md"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Mark as Complete
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-almet-mystic dark:hover:bg-almet-comet rounded-lg transition-colors text-almet-waterloo dark:text-almet-bali-hai"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-almet-comet">
+          <iframe
+            src={training.pdfUrl}
+            className="w-full h-full"
+            title={training.title}
+          />
+        </div>
+
+        <div className="p-4 border-t border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-cloud-burst">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+              {training.description}
+            </p>
+            <div className="flex gap-2">
+              <a
+                href={training.pdfUrl}
+                download
+                className="flex items-center gap-1.5 px-3 py-2 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-mystic dark:hover:bg-almet-san-juan rounded-lg text-xs font-medium transition-all"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Download
+              </a>
+              <a
+                href={training.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-mystic dark:hover:bg-almet-san-juan rounded-lg text-xs font-medium transition-all"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open in New Tab
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -292,7 +462,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
         onClick={(e) => e.stopPropagation()}
       >
         
-        {/* Modal Header Image */}
         <div className="relative h-72">
           <img
             src={news.image_url || 'https://images.unsplash.com/photo-1573164713619-24c711fe7878?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80'}
@@ -300,7 +469,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             className="w-full h-full object-cover"
           />
           
-          {/* Close Button */}
           <button
             onClick={onClose}
             className={`absolute top-3 right-3 p-2 rounded-xl shadow-lg transition-colors ${
@@ -312,7 +480,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             <X size={18} />
           </button>
 
-          {/* Category Badge */}
           {news.category_name && (
             <div className="absolute bottom-3 left-3 bg-almet-sapphire text-white px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1.5 shadow-lg">
               <FileText size={14} />
@@ -320,7 +487,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             </div>
           )}
 
-          {/* Status Badges */}
           <div className="absolute bottom-3 right-3 flex gap-1.5">
             {news.is_pinned && (
               <div className="bg-orange-500 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium shadow-lg">
@@ -335,9 +501,7 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
           </div>
         </div>
 
-        {/* Modal Content */}
         <div className="p-6">
-          {/* Author Info & Views */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 bg-gradient-to-br from-almet-sapphire to-almet-astral text-white rounded-full flex items-center justify-center text-sm font-medium">
@@ -364,14 +528,12 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             </div>
           </div>
 
-          {/* Title */}
           <h2 className={`text-xl font-bold mb-3 ${
             darkMode ? 'text-white' : 'text-gray-900'
           }`}>
             {news.title}
           </h2>
 
-          {/* Excerpt */}
           {news.excerpt && (
             <p className={`text-sm font-medium mb-3 ${
               darkMode ? 'text-almet-steel-blue' : 'text-almet-sapphire'
@@ -380,14 +542,12 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             </p>
           )}
 
-          {/* Content */}
           <p className={`leading-relaxed mb-5 whitespace-pre-line text-sm ${
             darkMode ? 'text-almet-bali-hai' : 'text-gray-700'
           }`}>
             {news.content}
           </p>
 
-          {/* Tags */}
           {news.tags_list && news.tags_list.length > 0 && (
             <div className={`flex flex-wrap gap-1.5 pt-4 border-t ${
               darkMode ? 'border-almet-comet' : 'border-gray-200'
@@ -407,7 +567,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             </div>
           )}
 
-          {/* View All News Button */}
           <div className="mt-6 pt-4 border-t border-almet-mystic dark:border-almet-comet">
             <Link
               href="/communication/company-news"
@@ -435,12 +594,56 @@ export default function Home() {
   const [loadingCelebrations, setLoadingCelebrations] = useState(true);
   const [celebratedItems, setCelebratedItems] = useState(new Set());
   
+  // Onboarding Training State
+  const [trainings, setTrainings] = useState([]);
+  const [selectedTraining, setSelectedTraining] = useState(null);
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  
   useEffect(() => {
     loadLatestNews();
     loadUpcomingCelebrations();
     loadCelebratedItems();
+    loadTrainings();
   }, []);
 
+  const loadTrainings = () => {
+    const mockTrainings = [
+     
+      {
+        id: 2,
+        title: "Company Overview",
+        description: "Company Overview training to get you acquainted with our mission, vision, and values.",
+        pdfUrl: "/onboarding/Copy of Almet Academy - Company Overview.pdf",
+        duration: "20 min",
+        isCompleted: false,
+        dueDate: "2025-01-20",
+        category: "HR & Policies"
+      }
+    ];
+
+    const stored = localStorage.getItem('onboarding_trainings');
+    if (stored) {
+      setTrainings(JSON.parse(stored));
+    } else {
+      setTrainings(mockTrainings);
+      localStorage.setItem('onboarding_trainings', JSON.stringify(mockTrainings));
+    }
+  };
+
+  const handleViewTraining = (training) => {
+    setSelectedTraining(training);
+    setShowTrainingModal(true);
+  };
+
+  const handleMarkTrainingComplete = (trainingId) => {
+    const updatedTrainings = trainings.map(t => 
+      t.id === trainingId 
+        ? { ...t, isCompleted: true, completedAt: new Date().toISOString() }
+        : t
+    );
+    setTrainings(updatedTrainings);
+    localStorage.setItem('onboarding_trainings', JSON.stringify(updatedTrainings));
+  };
   const loadLatestNews = async () => {
     setLoadingNews(true);
     try {
@@ -458,20 +661,24 @@ export default function Home() {
     }
   };
 
+  const getTrainingStats = () => {
+    const completedCount = trainings.filter(t => t.isCompleted).length;
+    const totalCount = trainings.length;
+    const pendingTrainings = trainings.filter(t => !t.isCompleted).slice(0, 2);
+    return { completedCount, totalCount, pendingTrainings };
+  };
+
   const loadUpcomingCelebrations = async () => {
     setLoadingCelebrations(true);
     try {
       const allCelebrations = await celebrationService.getAllCelebrations();
       
-      // Filter only birthdays and work anniversaries
       const celebrations = allCelebrations.filter(c => 
         c.type === 'birthday' || c.type === 'work_anniversary'
       );
       
-      // Sort by date
       celebrations.sort((a, b) => new Date(a.date) - new Date(b.date));
       
-      // Take first 4
       setUpcomingCelebrations(celebrations.slice(0, 4));
     } catch (error) {
       console.error('Failed to load celebrations:', error);
@@ -501,22 +708,21 @@ export default function Home() {
     const celebrationDate = new Date(celebration.date).toISOString().split('T')[0];
     const today = new Date().toISOString().split('T')[0];
     
-    
-   try {
-    const celebrateMessage = '🎉';
-    
-    await celebrationService.addAutoWish(
-      celebration.employee_id,
-      celebration.type,
-      celebrateMessage
-    );
+    try {
+      const celebrateMessage = '🎉';
+      
+      await celebrationService.addAutoWish(
+        celebration.employee_id,
+        celebration.type,
+        celebrateMessage
+      );
 
-    saveCelebratedItem(celebration.id);
-    loadUpcomingCelebrations();
-  } catch (error) {
-    console.error('Error celebrating:', error);
-    alert('Error celebrating. Please try again.');
-  }
+      saveCelebratedItem(celebration.id);
+      loadUpcomingCelebrations();
+    } catch (error) {
+      console.error('Error celebrating:', error);
+      alert('Error celebrating. Please try again.');
+    }
   };
 
   const isCelebrationToday = (dateString) => {
@@ -541,27 +747,27 @@ export default function Home() {
     <DashboardLayout>
       {/* Enhanced Welcome Banner */}
       <div className="bg-gradient-to-br from-almet-mystic via-white to-almet-mystic dark:from-almet-san-juan dark:via-almet-cloud-burst dark:to-almet-san-juan rounded-2xl overflow-hidden mb-6 shadow-lg border-2 border-almet-sapphire/20 dark:border-almet-steel-blue/20">
-        <div className="p-6">
+        <div className="px-6 py-4">
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start mb-6">
             <div>
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue dark:from-almet-steel-blue dark:via-almet-astral dark:to-almet-sapphire bg-clip-text text-transparent mb-2">
                 {isManager ? "Manager Dashboard" : (account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!")}
               </h1>
-              <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs md:text-sm font-medium">
+              <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs  font-medium">
                 {isManager ? "Approvals and team overview at a glance." : "Your key stats and quick actions for the day."}
               </p>
             </div>
             <div className="flex gap-2 mt-4 md:mt-0">
               <button 
                 onClick={() => setIsManager(false)}
-                className={`${!isManager ? 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white shadow-md shadow-almet-sapphire/30' : 'bg-white/60 dark:bg-almet-comet text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-white/80 dark:hover:bg-almet-comet/80 border border-almet-sapphire/20 dark:border-almet-steel-blue/20'} px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105`}
+                className={`${!isManager ? 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white shadow-md shadow-almet-sapphire/30' : 'bg-white/60 dark:bg-almet-comet text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-white/80 dark:hover:bg-almet-comet/80 border border-almet-sapphire/20 dark:border-almet-steel-blue/20'} px-5 py-2 rounded-xl font-semibold text-xs transition-all duration-300 hover:scale-105`}
               >
                 Employee
               </button>
               <button 
                 onClick={() => setIsManager(true)}
-                className={`${isManager ? 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white shadow-md shadow-almet-sapphire/30' : 'bg-white/60 dark:bg-almet-comet text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-white/80 dark:hover:bg-almet-comet/80 border border-almet-sapphire/20 dark:border-almet-steel-blue/20'} px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-300 hover:scale-105`}
+                className={`${isManager ? 'bg-gradient-to-r from-almet-sapphire to-almet-astral text-white shadow-md shadow-almet-sapphire/30' : 'bg-white/60 dark:bg-almet-comet text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-white/80 dark:hover:bg-almet-comet/80 border border-almet-sapphire/20 dark:border-almet-steel-blue/20'} px-5 py-2 rounded-xl font-semibold text-xs transition-all duration-300 hover:scale-105`}
               >
                 Manager
               </button>
@@ -630,7 +836,7 @@ export default function Home() {
                   icon={<FileText className="h-5 w-5" />}
                   title="Quick Reports"
                   value="Generate"
-                  subtitle="one-click reports for your team"
+                  subtitle="one-click reports "
                   actionText="Go To Reports"
                 />
               </>
@@ -666,6 +872,61 @@ export default function Home() {
           href="/structure/headcount-table"
         />
       </div>
+
+      {/* Onboarding Training Section - Only show if user has pending trainings */}
+      {!isManager && trainings.length > 0 && getTrainingStats().pendingTrainings.length > 0 && (
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-3">
+            <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
+              My Onboarding Training
+            </h2>
+            <Link 
+              href="#" 
+              className="text-almet-sapphire dark:text-almet-steel-blue flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
+            >
+              View All
+              <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 shadow-md border border-almet-mystic dark:border-almet-san-juan mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                  Training Progress
+                </h3>
+                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                  {getTrainingStats().completedCount} of {getTrainingStats().totalCount} completed
+                </p>
+              </div>
+              <div className="text-xl font-bold text-almet-sapphire dark:text-almet-steel-blue">
+                {Math.round((getTrainingStats().completedCount / getTrainingStats().totalCount) * 100)}%
+              </div>
+            </div>
+            <div className="w-full bg-almet-mystic dark:bg-almet-san-juan rounded-full h-2 overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500 rounded-full"
+                style={{ width: `${(getTrainingStats().completedCount / getTrainingStats().totalCount) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Training Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {getTrainingStats().pendingTrainings.map((training) => (
+              <OnboardingTrainingCard
+                key={training.id}
+                training={training}
+                darkMode={darkMode}
+                onClick={handleViewTraining}
+                onMarkComplete={handleMarkTrainingComplete}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Company Updates - REAL NEWS */}
       <div className="mb-6">
@@ -799,6 +1060,18 @@ export default function Home() {
         }}
         news={selectedNews}
         darkMode={darkMode}
+      />
+
+      {/* Training PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={showTrainingModal}
+        onClose={() => {
+          setShowTrainingModal(false);
+          setSelectedTraining(null);
+        }}
+        training={selectedTraining}
+        darkMode={darkMode}
+        onMarkComplete={handleMarkTrainingComplete}
       />
     </DashboardLayout>
   );

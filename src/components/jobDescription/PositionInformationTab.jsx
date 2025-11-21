@@ -84,105 +84,157 @@ const PositionInformationTab = ({
     return filtered;
   };
 
-  const getUniqueJobTitles = () => {
-    const filtered = getFilteredEmployees('job_title');
-    const titles = [...new Set(
-      filtered
-        .map(emp => emp.job_title)
-        .filter(title => title && title.trim() !== '')
-    )];
-    
-    return titles.map(title => ({
-      value: title,
-      label: title
-    }));
-  };
+  // components/jobDescription/PositionInformationTab.jsx - FIXED for Edit Mode
+// Bu faylda yalnız getUniqueJobTitles, getUniqueBusinessFunctions və s. funksiyaları əvəz edin
 
-  const getUniqueBusinessFunctions = () => {
-    const filtered = getFilteredEmployees('business_function');
-    const functions = [...new Set(
-      filtered
-        .map(emp => emp.business_function_name)
-        .filter(func => func && func.trim() !== '')
-    )];
-    
-    return functions.map(func => ({
-      value: func,
-      label: func
-    }));
-  };
+// 🔥 FIXED: Edit mode üçün əlavə fallback
+const getUniqueJobTitles = () => {
+  const filtered = getFilteredEmployees('job_title');
+  const titles = [...new Set(
+    filtered
+      .map(emp => emp.job_title)
+      .filter(title => title && title.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da job_title var amma options-da yoxdursa, əlavə et
+  if (formData.job_title && formData.job_title.trim() && 
+      !titles.includes(formData.job_title)) {
+    titles.unshift(formData.job_title);
+  }
+  
+  return titles.map(title => ({
+    value: title,
+    label: title
+  }));
+};
 
-  const getFilteredDepartments = () => {
-    const filtered = getFilteredEmployees('department');
-    const departments = [...new Set(
-      filtered
-        .map(emp => emp.department_name)
-        .filter(dept => dept && dept.trim() !== '')
-    )];
-    
-    return departments.map(dept => ({
-      value: dept,
-      label: dept
-    }));
-  };
+const getUniqueBusinessFunctions = () => {
+  const filtered = getFilteredEmployees('business_function');
+  const functions = [...new Set(
+    filtered
+      .map(emp => emp.business_function_name)
+      .filter(func => func && func.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da business_function var amma options-da yoxdursa, əlavə et
+  if (formData.business_function && formData.business_function.trim() && 
+      !functions.includes(formData.business_function)) {
+    functions.unshift(formData.business_function);
+  }
+  
+  return functions.map(func => ({
+    value: func,
+    label: func
+  }));
+};
 
-  const getFilteredUnits = () => {
-    const filtered = getFilteredEmployees('unit');
-    const units = [...new Set(
-      filtered
-        .map(emp => emp.unit_name)
-        .filter(unit => unit && unit.trim() !== '')
-    )];
-    
-    return units.map(unit => ({
-      value: unit,
-      label: unit
-    }));
-  };
+const getFilteredDepartments = () => {
+  const filtered = getFilteredEmployees('department');
+  const departments = [...new Set(
+    filtered
+      .map(emp => emp.department_name)
+      .filter(dept => dept && dept.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da department var amma options-da yoxdursa, əlavə et
+  if (formData.department && formData.department.trim() && 
+      !departments.includes(formData.department)) {
+    departments.unshift(formData.department);
+  }
+  
+  return departments.map(dept => ({
+    value: dept,
+    label: dept
+  }));
+};
 
-  const getFilteredJobFunctions = () => {
-    const filtered = getFilteredEmployees('job_function');
-    const jobFunctions = [...new Set(
-      filtered
-        .map(emp => emp.job_function_name)
-        .filter(func => func && func.trim() !== '')
-    )];
-    
-    return jobFunctions.map(func => ({
-      value: func,
-      label: func
-    }));
-  };
+const getFilteredUnits = () => {
+  const filtered = getFilteredEmployees('unit');
+  const units = [...new Set(
+    filtered
+      .map(emp => emp.unit_name)
+      .filter(unit => unit && unit.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da unit var amma options-da yoxdursa, əlavə et
+  if (formData.unit && formData.unit.trim() && 
+      !units.includes(formData.unit)) {
+    units.unshift(formData.unit);
+  }
+  
+  return units.map(unit => ({
+    value: unit,
+    label: unit
+  }));
+};
 
-  const getFilteredPositionGroups = () => {
-    const filtered = getFilteredEmployees('position_group');
-    const positionGroups = [...new Set(
-      filtered
-        .map(emp => emp.position_group_name)
-        .filter(group => group && group.trim() !== '')
-    )];
-    
-    return positionGroups.map(group => ({
-      value: group,
-      label: group
-    }));
-  };
+const getFilteredJobFunctions = () => {
+  const filtered = getFilteredEmployees('job_function');
+  const jobFunctions = [...new Set(
+    filtered
+      .map(emp => emp.job_function_name)
+      .filter(func => func && func.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da job_function var amma options-da yoxdursa, əlavə et
+  if (formData.job_function && formData.job_function.trim() && 
+      !jobFunctions.includes(formData.job_function)) {
+    jobFunctions.unshift(formData.job_function);
+  }
+  
+  return jobFunctions.map(func => ({
+    value: func,
+    label: func
+  }));
+};
 
-  const getFilteredGradingLevels = () => {
-    const filtered = getFilteredEmployees('grading_level');
-    const gradingLevels = [...new Set(
-      filtered
-        .map(emp => emp.grading_level)
-        .filter(level => level && level.trim() !== '')
-    )];
-    
-    return gradingLevels.map(level => ({
-      id: level,
-      value: level,
-      name: level,
-      label: level
-    }));
-  };
+const getFilteredPositionGroups = () => {
+  const filtered = getFilteredEmployees('position_group');
+  const positionGroups = [...new Set(
+    filtered
+      .map(emp => emp.position_group_name)
+      .filter(group => group && group.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da position_group var amma options-da yoxdursa, əlavə et
+  if (formData.position_group && formData.position_group.trim() && 
+      !positionGroups.includes(formData.position_group)) {
+    positionGroups.unshift(formData.position_group);
+  }
+  
+  return positionGroups.map(group => ({
+    value: group,
+    label: group
+  }));
+};
+
+const getFilteredGradingLevels = () => {
+  const filtered = getFilteredEmployees('grading_level');
+  const gradingLevels = [...new Set(
+    filtered
+      .map(emp => emp.grading_level)
+      .filter(level => level && level.trim() !== '')
+  )];
+  
+  // 🔥 Əgər formData-da grading_levels var amma options-da yoxdursa, əlavə et
+  if (formData.grading_levels && Array.isArray(formData.grading_levels)) {
+    formData.grading_levels.forEach(level => {
+      if (level && level.trim() && !gradingLevels.includes(level)) {
+        gradingLevels.push(level);
+      }
+    });
+  } else if (formData.grading_level && formData.grading_level.trim() && 
+             !gradingLevels.includes(formData.grading_level)) {
+    gradingLevels.push(formData.grading_level);
+  }
+  
+  return gradingLevels.map(level => ({
+    id: level,
+    value: level,
+    name: level,
+    label: level
+  }));
+};
 
   const findExactConstraintMatch = (requiredCriteria, debugLabel = '') => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
@@ -211,262 +263,459 @@ const PositionInformationTab = ({
     return chosen;
   };
 
-  const getBusinessFunctionId = (name) => {
-    if (!name || !dropdownData.employees) return null;
-    
-    const employee = findExactConstraintMatch({
-      business_function_name: name
-    });
-    
-    if (employee) {
-      return employee.business_function_id || employee.business_function;
+// PositionInformationTab.jsx - CASE-INSENSITIVE ID Mapping Fix
+
+// 🔥 Helper function to safely extract and convert ID
+const extractId = (employee, ...possibleFields) => {
+  for (const field of possibleFields) {
+    const value = employee[field];
+    if (value !== null && value !== undefined && value !== '') {
+      const parsed = parseInt(value);
+      if (!isNaN(parsed)) {
+        return parsed;
+      }
     }
-    
-    return null;
-  };
+  }
+  return null;
+};
 
-  const getDepartmentId = (name) => {
-    if (!name || !dropdownData.employees) return null;
-    if (!formData.business_function) return null;
-    
-    const employee = findExactConstraintMatch({
-      business_function_name: formData.business_function,
-      department_name: name
-    });
-    
-    if (employee) {
-      return employee.department_id || employee.department;
+// 🔥 Helper for case-insensitive string comparison
+const matchesIgnoreCase = (str1, str2) => {
+  if (!str1 || !str2) return false;
+  return str1.toLowerCase().trim() === str2.toLowerCase().trim();
+};
+
+// 🔥 CASE-INSENSITIVE: Business Function ID lookup
+const getBusinessFunctionId = (name) => {
+  if (!name || !dropdownData.employees) return null;
+  
+  // Strategy 1: Find exact match (case-insensitive)
+  const employee = dropdownData.employees.find(emp => 
+    matchesIgnoreCase(emp.business_function_name, name)
+  );
+  
+  if (employee) {
+    const id = extractId(employee, 'business_function_id', 'business_function');
+    if (id) {
+      console.log(`✅ Business Function "${name}" → ID: ${id}`);
+      return id;
     }
-    
-    return null;
-  };
-
-  const getUnitId = (name) => {
-    if (!name) return null;
-    if (!formData.business_function || !formData.department) return null;
-    
-    const employee = findExactConstraintMatch({
-      business_function_name: formData.business_function,
-      department_name: formData.department,
-      unit_name: name
-    });
-    
-    if (employee) {
-      return employee.unit_id || employee.unit;
+  }
+  
+  // Strategy 2: Try employeeMap with original case
+  const mapEntry = dropdownData.employeeMap?.get(`bf_${name}`);
+  if (mapEntry) {
+    const id = extractId(mapEntry, 'business_function_id', 'business_function');
+    if (id) {
+      console.log(`✅ Business Function "${name}" → ID: ${id} (map)`);
+      return id;
     }
-    
-    return null;
-  };
+  }
+  
+  console.warn(`⚠️ Business Function "${name}" → ID not found`);
+  return null;
+};
 
-  const getJobFunctionId = (name) => {
-    if (!name || !dropdownData.employees) return null;
-    if (!formData.business_function || !formData.department) return null;
-    
-    const employee = findExactConstraintMatch({
-      business_function_name: formData.business_function,
-      department_name: formData.department,
-      job_function_name: name
-    });
-    
-    if (employee) {
-      return employee.job_function_id || employee.job_function;
-    }
-    
-    return null;
-  };
-
-  const getPositionGroupId = (name) => {
-    if (!name || !dropdownData.employees) return null;
-    if (!formData.business_function || !formData.department || !formData.job_function) return null;
-    
-    const employee = findExactConstraintMatch({
-      business_function_name: formData.business_function,
-      department_name: formData.department,
-      job_function_name: formData.job_function,
-      position_group_name: name
-    });
-    
-    if (employee) {
-      return employee.position_group_id || employee.position_group;
-    }
-    
-    return null;
-  };
-
-  const areAllRequiredFieldsFilled = () => {
-    const hasValue = (field) => {
-      if (field === null || field === undefined) return false;
-      if (typeof field === 'string') return field.trim() !== '';
-      if (typeof field === 'number') return true;
-      return !!field;
-    };
-
-    const basicRequirementsMet = !!(
-      hasValue(formData.job_title) &&
-      hasValue(formData.job_purpose) &&
-      hasValue(formData.business_function) &&
-      hasValue(formData.department) &&
-      hasValue(formData.job_function) &&
-      hasValue(formData.position_group)
+// 🔥 CASE-INSENSITIVE: Department ID lookup
+const getDepartmentId = (name) => {
+  if (!name || !dropdownData.employees) return null;
+  
+  // Strategy 1: Match with business function constraint (case-insensitive)
+  if (formData.business_function) {
+    const employee = dropdownData.employees.find(emp => 
+      matchesIgnoreCase(emp.business_function_name, formData.business_function) &&
+      matchesIgnoreCase(emp.department_name, name)
     );
+    
+    if (employee) {
+      const id = extractId(employee, 'department_id', 'department');
+      if (id) {
+        console.log(`✅ Department "${name}" → ID: ${id}`);
+        return id;
+      }
+    }
+  }
+  
+  // Strategy 2: Find ANY employee with this department (case-insensitive, less strict)
+  const anyMatch = dropdownData.employees.find(emp => 
+    matchesIgnoreCase(emp.department_name, name)
+  );
+  
+  if (anyMatch) {
+    const id = extractId(anyMatch, 'department_id', 'department');
+    if (id) {
+      console.log(`✅ Department "${name}" → ID: ${id} (any match)`);
+      return id;
+    }
+  }
+  
+  // Strategy 3: Try employeeMap
+  const mapEntry = dropdownData.employeeMap?.get(`dept_${name}`);
+  if (mapEntry) {
+    const id = extractId(mapEntry, 'department_id', 'department');
+    if (id) {
+      console.log(`✅ Department "${name}" → ID: ${id} (map)`);
+      return id;
+    }
+  }
+  
+  // Debug output - show what's available
+  const availableDepts = [...new Set(dropdownData.employees.map(e => e.department_name).filter(Boolean))];
+  console.warn(`⚠️ Department "${name}" → ID not found. Available departments:`, availableDepts);
+  console.warn(`💡 Looking for case-insensitive match for "${name}" in:`, 
+    availableDepts.filter(d => matchesIgnoreCase(d, name))
+  );
+  
+  return null;
+};
 
-    if (!basicRequirementsMet) return false;
+// 🔥 CASE-INSENSITIVE: Unit ID lookup
+const getUnitId = (name) => {
+  if (!name) return null;
+  
+  // Strategy 1: Match with full constraint (case-insensitive)
+  if (formData.business_function && formData.department) {
+    const employee = dropdownData.employees.find(emp =>
+      matchesIgnoreCase(emp.business_function_name, formData.business_function) &&
+      matchesIgnoreCase(emp.department_name, formData.department) &&
+      matchesIgnoreCase(emp.unit_name, name)
+    );
+    
+    if (employee) {
+      const id = extractId(employee, 'unit_id', 'unit');
+      if (id) {
+        console.log(`✅ Unit "${name}" → ID: ${id}`);
+        return id;
+      }
+    }
+  }
+  
+  // Strategy 2: Find ANY employee with this unit (case-insensitive)
+  const anyMatch = dropdownData.employees?.find(emp => 
+    matchesIgnoreCase(emp.unit_name, name)
+  );
+  
+  if (anyMatch) {
+    const id = extractId(anyMatch, 'unit_id', 'unit');
+    if (id) {
+      console.log(`✅ Unit "${name}" → ID: ${id} (any match)`);
+      return id;
+    }
+  }
+  
+  console.warn(`⚠️ Unit "${name}" → ID not found`);
+  return null;
+};
 
+// 🔥 CASE-INSENSITIVE: Job Function ID lookup
+const getJobFunctionId = (name) => {
+  if (!name || !dropdownData.employees) return null;
+  
+  // Strategy 1: Match with business function and department (case-insensitive)
+  if (formData.business_function && formData.department) {
+    const employee = dropdownData.employees.find(emp =>
+      matchesIgnoreCase(emp.business_function_name, formData.business_function) &&
+      matchesIgnoreCase(emp.department_name, formData.department) &&
+      matchesIgnoreCase(emp.job_function_name, name)
+    );
+    
+    if (employee) {
+      const id = extractId(employee, 'job_function_id', 'job_function');
+      if (id) {
+        console.log(`✅ Job Function "${name}" → ID: ${id}`);
+        return id;
+      }
+    }
+  }
+  
+  // Strategy 2: Find ANY employee with this job function (case-insensitive, less strict)
+  const anyMatch = dropdownData.employees.find(emp => 
+    matchesIgnoreCase(emp.job_function_name, name)
+  );
+  
+  if (anyMatch) {
+    const id = extractId(anyMatch, 'job_function_id', 'job_function');
+    if (id) {
+      console.log(`✅ Job Function "${name}" → ID: ${id} (any match)`);
+      return id;
+    }
+  }
+  
+  // Strategy 3: Try employeeMap
+  const mapEntry = dropdownData.employeeMap?.get(`jf_${name}`);
+  if (mapEntry) {
+    const id = extractId(mapEntry, 'job_function_id', 'job_function');
+    if (id) {
+      console.log(`✅ Job Function "${name}" → ID: ${id} (map)`);
+      return id;
+    }
+  }
+  
+  // Debug output
+  const availableFuncs = [...new Set(dropdownData.employees.map(e => e.job_function_name).filter(Boolean))];
+  console.warn(`⚠️ Job Function "${name}" → ID not found. Available job functions:`, availableFuncs);
+  console.warn(`💡 Looking for case-insensitive match for "${name}" in:`, 
+    availableFuncs.filter(f => matchesIgnoreCase(f, name))
+  );
+  
+  return null;
+};
+
+// 🔥 CASE-INSENSITIVE: Position Group ID lookup
+const getPositionGroupId = (name) => {
+  if (!name || !dropdownData.employees) return null;
+  
+  // Strategy 1: Match with full constraint (case-insensitive)
+  if (formData.business_function && formData.department && formData.job_function) {
+    const employee = dropdownData.employees.find(emp =>
+      matchesIgnoreCase(emp.business_function_name, formData.business_function) &&
+      matchesIgnoreCase(emp.department_name, formData.department) &&
+      matchesIgnoreCase(emp.job_function_name, formData.job_function) &&
+      matchesIgnoreCase(emp.position_group_name, name)
+    );
+    
+    if (employee) {
+      const id = extractId(employee, 'position_group_id', 'position_group');
+      if (id) {
+        console.log(`✅ Position Group "${name}" → ID: ${id}`);
+        return id;
+      }
+    }
+  }
+  
+  // Strategy 2: Find ANY employee with this position group (case-insensitive)
+  const anyMatch = dropdownData.employees.find(emp => 
+    matchesIgnoreCase(emp.position_group_name, name)
+  );
+  
+  if (anyMatch) {
+    const id = extractId(anyMatch, 'position_group_id', 'position_group');
+    if (id) {
+      console.log(`✅ Position Group "${name}" → ID: ${id} (any match)`);
+      return id;
+    }
+  }
+  
+  // Strategy 3: Try employeeMap
+  const mapEntry = dropdownData.employeeMap?.get(`pg_${name}`);
+  if (mapEntry) {
+    const id = extractId(mapEntry, 'position_group_id', 'position_group');
+    if (id) {
+      console.log(`✅ Position Group "${name}" → ID: ${id} (map)`);
+      return id;
+    }
+  }
+  
+  console.warn(`⚠️ Position Group "${name}" → ID not found`);
+  return null;
+};
+
+// 🔥 UPDATED: Better validation in updateAssignmentPreview
+const updateAssignmentPreview = async () => {
+  if (!areAllRequiredFieldsFilled()) {
+    const emptyPreview = {
+      strategy: null,
+      employeeCount: 0,
+      vacancyCount: 0,
+      totalCount: 0,
+      requiresSelection: false,
+      previewMessage: 'Complete all required job information to see assignment preview',
+      records: [],
+      employees: [],
+      criteria: {}
+    };
+    
+    setAssignmentPreview(emptyPreview);
+    
+    if (onAssignmentPreviewUpdate) {
+      onAssignmentPreviewUpdate(null);
+    }
+    return;
+  }
+
+  if (!dropdownData.employees || dropdownData.employees.length === 0) {
+    setAssignmentPreview({
+      strategy: null,
+      employeeCount: 0,
+      vacancyCount: 0,
+      totalCount: 0,
+      requiresSelection: false,
+      previewMessage: 'Loading employee data...',
+      records: [],
+      employees: [],
+      criteria: {}
+    });
+    return;
+  }
+
+  try {
+    setPreviewLoading(true);
+    setPreviewError(null);
+
+    // 🔥 Get IDs with case-insensitive lookup
     const businessFunctionId = getBusinessFunctionId(formData.business_function);
     const departmentId = getDepartmentId(formData.department);
     const jobFunctionId = getJobFunctionId(formData.job_function);
     const positionGroupId = getPositionGroupId(formData.position_group);
+    const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-    const canMapToIds = !!(businessFunctionId && departmentId && jobFunctionId && positionGroupId);
+    console.log('🔍 ID Mapping Results:', {
+      business_function: { name: formData.business_function, id: businessFunctionId },
+      department: { name: formData.department, id: departmentId },
+      job_function: { name: formData.job_function, id: jobFunctionId },
+      position_group: { name: formData.position_group, id: positionGroupId },
+      unit: { name: formData.unit, id: unitId }
+    });
+
+    // 🔥 Enhanced validation with helpful error messages
+    if (!businessFunctionId || !departmentId || !jobFunctionId || !positionGroupId) {
+      const missingFields = [];
+      if (!businessFunctionId) missingFields.push(`Business Function "${formData.business_function}"`);
+      if (!departmentId) missingFields.push(`Department "${formData.department}"`);
+      if (!jobFunctionId) missingFields.push(`Job Function "${formData.job_function}"`);
+      if (!positionGroupId) missingFields.push(`Position Group "${formData.position_group}"`);
+      
+      const errorMsg = `Cannot find IDs for: ${missingFields.join(', ')}\n\n` +
+        `This means no employees currently exist with these exact organizational values.\n\n` +
+        `Possible solutions:\n` +
+        `1. Check if the organizational structure has changed\n` +
+        `2. Update the job's organizational information to match current records\n` +
+        `3. Ensure at least one employee exists with this combination`;
+      
+      throw new Error(errorMsg);
+    }
+
+    // Ensure all IDs are integers
+    const previewCriteria = {
+      job_title: formData.job_title.trim(),
+      business_function: parseInt(businessFunctionId),
+      department: parseInt(departmentId),
+      unit: unitId ? parseInt(unitId) : null,
+      job_function: parseInt(jobFunctionId),
+      position_group: parseInt(positionGroupId),
+      max_preview: 50,
+      include_vacancies: true
+    };
+
+    // Handle grading_levels
+    if (formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0) {
+      previewCriteria.grading_levels = formData.grading_levels.map(level => level.trim()).filter(Boolean);
+    } else if (formData.grading_level && formData.grading_level.trim()) {
+      previewCriteria.grading_levels = [formData.grading_level.trim()];
+    }
+
+    console.log('📤 Sending preview request:', previewCriteria);
+
+    const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
     
-    return canMapToIds;
-  };
+    console.log('📥 Preview response:', response);
 
-  // 🔥 FIXED: Update assignment preview
-  const updateAssignmentPreview = async () => {
-    if (!areAllRequiredFieldsFilled()) {
-      const emptyPreview = {
-        strategy: null,
-        employeeCount: 0,
-        vacancyCount: 0,
-        totalCount: 0,
-        requiresSelection: false,
-        previewMessage: 'Complete all required job information to see assignment preview',
-        records: [],
-        employees: [],
-        criteria: {}
-      };
-      
-      setAssignmentPreview(emptyPreview);
-      
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate(null);
-      }
-      return;
+    const employees = Array.isArray(response.employees) ? response.employees : [];
+    const vacancies = Array.isArray(response.vacancies) ? response.vacancies : [];
+    const unifiedList = Array.isArray(response.unified_list) ? response.unified_list : [];
+    
+    let allRecords = [];
+    if (unifiedList.length > 0) {
+      allRecords = unifiedList;
+    } else {
+      allRecords = [...employees, ...vacancies];
     }
 
-    if (!dropdownData.employees || dropdownData.employees.length === 0) {
-      setAssignmentPreview({
-        strategy: null,
-        employeeCount: 0,
-        vacancyCount: 0,
-        totalCount: 0,
-        requiresSelection: false,
-        previewMessage: 'Loading employee data...',
-        records: [],
-        employees: [],
-        criteria: {}
-      });
-      return;
-    }
+    const newPreview = {
+      strategy: response.assignment_strategy || response.strategy || null,
+      employeeCount: response.eligible_employees_count || response.employees_count || employees.length || 0,
+      vacancyCount: response.eligible_vacancies_count || response.vacancies_count || vacancies.length || 0,
+      totalCount: response.total_eligible_count || response.total_eligible || allRecords.length,
+      requiresSelection: response.requires_manual_selection || false,
+      previewMessage: response.strategy_message || response.message || '',
+      records: allRecords,
+      employees: allRecords,
+      criteria: response.criteria || previewCriteria,
+      nextSteps: response.next_steps || {}
+    };
 
-    try {
-      setPreviewLoading(true);
-      setPreviewError(null);
+    console.log('✅ Processed preview:', newPreview);
 
-      const businessFunctionId = getBusinessFunctionId(formData.business_function);
-      const departmentId = getDepartmentId(formData.department);
-      const jobFunctionId = getJobFunctionId(formData.job_function);
-      const positionGroupId = getPositionGroupId(formData.position_group);
-      const unitId = formData.unit ? getUnitId(formData.unit) : null;
+    setAssignmentPreview(newPreview);
 
-      const previewCriteria = {
-        job_title: formData.job_title.trim(),
-        business_function: businessFunctionId,
-        department: departmentId,
-        unit: unitId,
-        job_function: jobFunctionId,
-        position_group: positionGroupId,
-        max_preview: 50,
-        include_vacancies: true
-      };
-
-      // 🔥 Handle grading_levels correctly
-      if (formData.grading_levels && Array.isArray(formData.grading_levels) && formData.grading_levels.length > 0) {
-        previewCriteria.grading_levels = formData.grading_levels.map(level => level.trim()).filter(Boolean);
-      } else if (formData.grading_level && formData.grading_level.trim()) {
-        previewCriteria.grading_levels = [formData.grading_level.trim()];
-      }
-
-      console.log('📤 Sending preview request:', previewCriteria);
-
-      const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
-      
-      console.log('📥 Preview response:', response);
-
-      // 🔥 FIXED: Better handling of response structure
-      // 🔥 FIXED: Better handling of response structure
-      const employees = Array.isArray(response.employees) ? response.employees : [];
-      const vacancies = Array.isArray(response.vacancies) ? response.vacancies : [];
-      const unifiedList = Array.isArray(response.unified_list) ? response.unified_list : [];
-      
-      let allRecords = [];
-      if (unifiedList.length > 0) {
-        allRecords = unifiedList;
-      } else {
-        allRecords = [...employees, ...vacancies];
-      }
-
-      const newPreview = {
-        strategy: response.assignment_strategy || response.strategy || null,
-        employeeCount: response.eligible_employees_count || response.employees_count || employees.length || 0,
-        vacancyCount: response.eligible_vacancies_count || response.vacancies_count || vacancies.length || 0,
-        totalCount: response.total_eligible_count || response.total_eligible || allRecords.length,
-        requiresSelection: response.requires_manual_selection || false,
-        previewMessage: response.strategy_message || response.message || '',
-        records: allRecords,
+    if (onAssignmentPreviewUpdate) {
+      onAssignmentPreviewUpdate({
+        ...newPreview,
         employees: allRecords,
-        criteria: response.criteria || previewCriteria,
-        nextSteps: response.next_steps || {}
-      };
-
-      console.log('✅ Processed preview:', newPreview);
-
-      setAssignmentPreview(newPreview);
-
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate({
-          ...newPreview,
-          employees: allRecords,
-          requiresSelection: response.requires_manual_selection || false,
-          originalResponse: response
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Error fetching assignment preview:', error);
-      
-      let errorMessage = 'Error loading assignment preview';
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      setPreviewError(errorMessage);
-      const errorPreview = {
-        strategy: 'error',
-        employeeCount: 0,
-        vacancyCount: 0,
-        totalCount: 0,
-        requiresSelection: false,
-        previewMessage: errorMessage,
-        records: [],
-        employees: [],
-        criteria: {}
-      };
-      
-      setAssignmentPreview(errorPreview);
-
-      if (onAssignmentPreviewUpdate) {
-        onAssignmentPreviewUpdate(null);
-      }
-    } finally {
-      setPreviewLoading(false);
+        requiresSelection: response.requires_manual_selection || false,
+        originalResponse: response
+      });
     }
+
+  } catch (error) {
+    console.error('❌ Error fetching assignment preview:', error);
+    
+    let errorMessage = 'Error loading assignment preview';
+    if (error.response?.data?.detail) {
+      errorMessage = error.response.data.detail;
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    setPreviewError(errorMessage);
+    const errorPreview = {
+      strategy: 'error',
+      employeeCount: 0,
+      vacancyCount: 0,
+      totalCount: 0,
+      requiresSelection: false,
+      previewMessage: errorMessage,
+      records: [],
+      employees: [],
+      criteria: {}
+    };
+    
+    setAssignmentPreview(errorPreview);
+
+    if (onAssignmentPreviewUpdate) {
+      onAssignmentPreviewUpdate(null);
+    }
+  } finally {
+    setPreviewLoading(false);
+  }
+};
+
+  // PositionInformationTab.jsx - areAllRequiredFieldsFilled funksiyasını bu ilə əvəz edin
+
+const areAllRequiredFieldsFilled = () => {
+  const hasValue = (field) => {
+    if (field === null || field === undefined) return false;
+    if (typeof field === 'string') return field.trim() !== '';
+    if (typeof field === 'number') return true;
+    return !!field;
   };
+
+  // 🔥 FIXED: Sadəcə name dəyərlərini yoxla, ID mapping-ə ehtiyac yoxdur
+  const basicRequirementsMet = !!(
+    hasValue(formData.job_title) &&
+    hasValue(formData.job_purpose) &&
+    hasValue(formData.business_function) &&
+    hasValue(formData.department) &&
+    hasValue(formData.job_function) &&
+    hasValue(formData.position_group)
+  );
+
+  console.log('✅ Validation check:', {
+    job_title: hasValue(formData.job_title),
+    job_purpose: hasValue(formData.job_purpose),
+    business_function: hasValue(formData.business_function),
+    department: hasValue(formData.department),
+    job_function: hasValue(formData.job_function),
+    position_group: hasValue(formData.position_group),
+    result: basicRequirementsMet
+  });
+
+  return basicRequirementsMet;
+};
+
+
 
   // Watch for changes
   useEffect(() => {

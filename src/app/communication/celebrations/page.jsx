@@ -316,11 +316,7 @@ export default function CelebrationsPage() {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   };
 
-  const isCelebrationDay = (dateString) => {
-    const celebrationDate = new Date(dateString).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    return celebrationDate === today;
-  };
+
 
   const filteredCelebrations = celebrations.filter(item => {
     const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -650,21 +646,19 @@ export default function CelebrationsPage() {
                           </div>
                           <button
                             onClick={(e) => handleCelebrate(item, e)}
-                            disabled={celebratedItems.has(item.id) || !isCelebrationDay(item.date)}
+                            disabled={celebratedItems.has(item.id) }
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                               celebratedItems.has(item.id)
                                 ? darkMode 
                                   ? 'bg-green-900/30 text-green-400 cursor-default'
                                   : 'bg-green-100 text-green-700 cursor-default'
-                                : !isCelebrationDay(item.date)
-                                ? 'opacity-50 cursor-not-allowed bg-gray-400 text-gray-600'
+                           
                                 : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-md'
                             }`}
                             title={
                               celebratedItems.has(item.id) 
                                 ? 'Already celebrated' 
-                                : !isCelebrationDay(item.date)
-                                ? 'Can only celebrate on the celebration day'
+                             
                                 : 'Celebrate'
                             }
                           >
@@ -1063,21 +1057,19 @@ export default function CelebrationsPage() {
                         e.stopPropagation();
                         handleCelebrate(selectedCelebration, e);
                       }}
-                      disabled={celebratedItems.has(selectedCelebration.id) || !isCelebrationDay(selectedCelebration.date)}
+                      disabled={celebratedItems.has(selectedCelebration.id) }
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg ${
                         celebratedItems.has(selectedCelebration.id)
                           ? darkMode 
                             ? 'bg-green-900/30 text-green-400 cursor-default'
                             : 'bg-green-100 text-green-700 cursor-default'
-                          : !isCelebrationDay(selectedCelebration.date)
-                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                       
                           : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-xl'
                       }`}
                       title={
                         celebratedItems.has(selectedCelebration.id) 
                           ? 'Already celebrated' 
-                          : !isCelebrationDay(selectedCelebration.date)
-                          ? 'Can only celebrate on the celebration day'
+                       
                           : 'Celebrate'
                       }
                     >

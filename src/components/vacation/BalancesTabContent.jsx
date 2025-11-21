@@ -13,9 +13,10 @@ import {
   Save,
   Search,
 } from "lucide-react";
-
+import { useCallback } from "react";
 import { VacationService, VacationHelpers } from '@/services/vacationService';
-
+import SearchableDropdown from "@/components/common/SearchableDropdown";
+import {  referenceDataService } from "@/services/vacantPositionsService";
 const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showError }) => {
   const [balances, setBalances] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -25,12 +26,71 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
   const [editingBalance, setEditingBalance] = useState(null);
   const [editValues, setEditValues] = useState({});
 
+  const [businessFunctions, setBusinessFunctions] = useState([]);
+  const [departments, setDepartments] = useState([]);
+
   const [filters, setFilters] = useState({
     year: new Date().getFullYear(),
-    department: "",
+    department_id: "",  // ✅ Changed from department to department_id
+    business_function_id: "",  // ✅ YENİ
     min_remaining: "",
     max_remaining: "",
   });
+
+const fetchReferenceData = useCallback(async () => {
+  
+
+    try {
+      const result = await referenceDataService.getAllReferenceData();
+      
+      if (result.success) {
+        setBusinessFunctions(result.data.businessFunctions || []);
+        setDepartments(result.data.departments || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch reference data:', error);
+  
+    } finally {
+      console.log('Reference data fetch attempt finished.');
+    }
+  }, []);
+ 
+ 
+
+  useEffect(() => {
+    fetchBalances();
+        fetchReferenceData()
+  }, []);
+
+  const handleExport = async () => {
+    try {
+      const params = {
+        year: filters.year,
+        department_id: filters.department_id,  // ✅ Changed
+        business_function_id: filters.business_function_id,  // ✅ YENİ
+        min_remaining: filters.min_remaining,
+        max_remaining: filters.max_remaining,
+      };
+      const blob = await VacationService.exportBalances(params);
+      VacationHelpers.downloadBlobFile(blob, `vacation_balances_${filters.year}.xlsx`);
+      showSuccess?.("Export completed successfully");
+    } catch (error) {
+      console.error("Export error:", error);
+      showError?.("Export failed");
+    }
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      year: new Date().getFullYear(),
+      department_id: "",  // ✅ Changed
+      business_function_id: "",  // ✅ YENİ
+      min_remaining: "",
+      max_remaining: "",
+    });
+    setSearchTerm("");
+    fetchBalances();
+  };
 
   const fetchBalances = async () => {
     setLoading(true);
@@ -51,38 +111,13 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleExport = async () => {
-    try {
-      const params = {
-        year: filters.year,
-        department: filters.department,
-        min_remaining: filters.min_remaining,
-        max_remaining: filters.max_remaining,
-      };
-      const blob = await VacationService.exportBalances(params);
-      VacationHelpers.downloadBlobFile(blob, `vacation_balances_${filters.year}.xlsx`);
-      showSuccess?.("Export completed successfully");
-    } catch (error) {
-      console.error("Export error:", error);
-      showError?.("Export failed");
-    }
-  };
 
   const handleApplyFilters = () => {
     fetchBalances();
     setShowFilters(false);
   };
 
-  const handleClearFilters = () => {
-    setFilters({
-      year: new Date().getFullYear(),
-      department: "",
-      min_remaining: "",
-      max_remaining: "",
-    });
-    setSearchTerm("");
-    fetchBalances();
-  };
+
 
   const handleEditBalance = (balance) => {
     setEditingBalance(balance.id);
@@ -242,7 +277,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
       )}
 
       {/* Filters Panel */}
-      {showFilters && (
+           {showFilters && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
@@ -272,18 +307,45 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
               />
             </div>
 
+            {/* ✅ YENİ: Company Filter */}
+            <div>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                Company
+              </label>
+              <SearchableDropdown
+                options={businessFunctions.map(bf => ({ 
+                  value: bf.id, 
+                  label: bf.name 
+                }))}
+                value={filters.business_function_id}
+                onChange={(value) =>
+                  setFilters((prev) => ({ ...prev, business_function_id: value || '' }))
+                }
+                placeholder="All Companies"
+                allowUncheck={true}
+                searchPlaceholder="Search company..."
+                darkMode={darkMode}
+              />
+            </div>
+
+            {/* ✅ DÜZƏLİŞ: Department Searchable Dropdown */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
                 Department
               </label>
-              <input
-                type="text"
-                value={filters.department}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, department: e.target.value }))
+              <SearchableDropdown
+                options={departments.map(dept => ({ 
+                  value: dept.id, 
+                  label: dept.name 
+                }))}
+                value={filters.department_id}
+                onChange={(value) =>
+                  setFilters((prev) => ({ ...prev, department_id: value || '' }))
                 }
-                placeholder="Filter by department"
-                className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                placeholder="All Departments"
+                allowUncheck={true}
+                searchPlaceholder="Search department..."
+                darkMode={darkMode}
               />
             </div>
 
@@ -356,13 +418,13 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
                 <tr>
                   {[
                     "Employee",
+                    "Company",  // ✅ YENİ column
                     "Department",
                     "Total",
                     "Used",
                     "Scheduled",
                     "Remaining",
                     "To Plan",
-                  
                     ...(canUpdate ? ["Actions"] : []),
                   ].map((h) => (
                     <th
@@ -376,7 +438,6 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                 {filteredBalances.map((balance) => {
-              
                   const isEditing = editingBalance === balance.id;
 
                   return (
@@ -393,6 +454,10 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
                             {balance.employee_id}
                           </p>
                         </div>
+                      </td>
+                      {/* ✅ YENİ: Company column */}
+                      <td className="px-4 py-3 text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                        {balance.business_function_name || '-'}
                       </td>
                       <td className="px-4 py-3 text-sm text-almet-waterloo dark:text-almet-bali-hai">
                         {balance.department_name}
@@ -446,7 +511,6 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
                       <td className="px-4 py-3 text-center text-sm font-semibold text-red-600">
                         {balance.should_be_planned}
                       </td>
-                    
                       {canUpdate && (
                         <td className="px-4 py-3 text-center">
                           {isEditing ? (
@@ -487,7 +551,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
                 {filteredBalances.length === 0 && (
                   <tr>
                     <td
-                      colSpan={canUpdate ? 9 : 8}
+                      colSpan={canUpdate ? 10 : 9}  // ✅ Updated colspan
                       className="px-4 py-12 text-center"
                     >
                       <Calendar className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />

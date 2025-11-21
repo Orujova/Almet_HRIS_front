@@ -1,7 +1,6 @@
-// components/jobDescription/JobDescriptionList.jsx - Add View Assignments button
-import React, { useState, useRef, useEffect } from 'react';
+// components/jobDescription/JobDescriptionList.jsx - Simplified without filters
+import React, { useState } from 'react';
 import { 
-  Search, 
   FileText, 
   Edit, 
   Eye, 
@@ -15,37 +14,25 @@ import {
   AlertCircle,
   UserCheck,
   UserX as UserVacant,
-  ChevronDown,
-  Filter,
-  X,
+  ChevronRight,
   Building,
-  User,
   Briefcase,
   Users,
-  ChevronRight,
-  List // 🔥 NEW
+  List
 } from 'lucide-react';
 
 const JobDescriptionList = ({
   filteredJobs,
-  searchTerm,
-  selectedDepartment,
-  dropdownData,
-  onSearchChange,
-  onDepartmentChange,
   onJobSelect,
   onJobEdit,
   onJobDelete,
-  onViewAssignments, // 🔥 NEW
+  onViewAssignments,
   onDirectSubmission,
   onDownloadPDF,
   actionLoading,
   darkMode
 }) => {
-  const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false);
-  const [departmentSearchTerm, setDepartmentSearchTerm] = useState('');
   const [expandedAssignments, setExpandedAssignments] = useState({});
-  const departmentDropdownRef = useRef(null);
 
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const bgCardHover = darkMode ? "bg-almet-san-juan" : "bg-gray-50";
@@ -53,37 +40,6 @@ const JobDescriptionList = ({
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
   const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
   const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (departmentDropdownRef.current && !departmentDropdownRef.current.contains(event.target)) {
-        setShowDepartmentDropdown(false);
-        setDepartmentSearchTerm('');
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const getUniqueDepartments = () => {
-    if (!dropdownData.employees) return [];
-    
-    const departments = [...new Set(
-      dropdownData.employees
-        .map(emp => emp.department_name)
-        .filter(dept => dept && dept.trim() !== '')
-    )];
-    
-    return departments.sort();
-  };
-
-  const uniqueDepartments = getUniqueDepartments();
-  const filteredDepartments = uniqueDepartments.filter(dept =>
-    dept.toLowerCase().includes(departmentSearchTerm.toLowerCase())
-  );
 
   const toggleAssignments = (jobId, event) => {
     event.stopPropagation();
@@ -163,7 +119,6 @@ const JobDescriptionList = ({
     }
   };
 
-  // 🔥 NEW: Handle view assignments click
   const handleViewAssignmentsClick = (job, event) => {
     event.stopPropagation();
     if (onViewAssignments) {
@@ -213,360 +168,252 @@ const JobDescriptionList = ({
   };
 
   return (
-    <>
-      {/* Search and Filter Bar */}
-      <div className={`${bgCard} rounded-xl p-4 mb-6 border ${borderColor} shadow-sm`}>
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search Input */}
-          <div className="flex-1 relative">
-            <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={18} />
-            <input
-              type="text"
-              placeholder="Search job titles, departments..."
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className={`w-full pl-12 pr-4 py-2 border ${borderColor} rounded-xl ${bgCard} ${textPrimary} 
-                focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent 
-                text-sm transition-all duration-200`}
-            />
-            {searchTerm && (
-              <button
-                onClick={() => onSearchChange('')}
-                className={`absolute right-4 top-1/2 transform -translate-y-1/2 ${textMuted} hover:${textPrimary}`}
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-          
-          {/* Department Filter */}
-          <div className="relative" ref={departmentDropdownRef}>
-            <button
-              onClick={() => setShowDepartmentDropdown(!showDepartmentDropdown)}
-              className={`flex items-center gap-3 px-4 py-2 border ${borderColor} rounded-xl ${bgCard} ${textPrimary} 
-                focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm min-w-[200px] justify-between
-                hover:${bgCardHover} transition-all duration-200`}
-            >
-              <div className="flex items-center gap-3">
-                <Filter size={16} className={textMuted} />
-                <span>{selectedDepartment || 'All Departments'}</span>
-              </div>
-              <ChevronDown size={16} className={`transition-transform duration-200 ${showDepartmentDropdown ? 'rotate-180' : ''}`} />
-            </button>
-            
-            {showDepartmentDropdown && (
-              <div className={`absolute top-full left-0 right-0 mt-2 ${bgCard} border ${borderColor} rounded-xl 
-                shadow-lg max-h-64 overflow-hidden z-20`}>
-                <div className="p-2 border-b border-gray-200 dark:border-almet-comet">
-                  <div className="relative">
-                    <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={12} />
-                    <input
-                      type="text"
-                      placeholder="Search departments..."
-                      value={departmentSearchTerm}
-                      onChange={(e) => setDepartmentSearchTerm(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
-                        focus:outline-none focus:ring-1 focus:ring-almet-sapphire text-xs`}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                </div>
-                
-                <div className="max-h-48 overflow-y-auto">
-                  <button
-                    onClick={() => {
-                      onDepartmentChange('');
-                      setShowDepartmentDropdown(false);
-                    }}
-                    className={`w-full px-4 py-3 text-left hover:${bgCardHover} ${textPrimary} text-xs transition-colors 
-                      ${!selectedDepartment ? 'bg-almet-sapphire text-white' : ''}`}
-                  >
-                    All Departments
-                  </button>
-                  {filteredDepartments.map(dept => (
-                    <button
-                      key={dept}
-                      onClick={() => {
-                        onDepartmentChange(dept);
-                        setShowDepartmentDropdown(false);
-                      }}
-                      className={`w-full px-4 py-2 text-left hover:${bgCardHover} ${textPrimary} text-xs transition-colors
-                        ${selectedDepartment === dept ? 'bg-almet-sapphire text-white' : ''}`}
-                    >
-                      {dept}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Job List */}
-      <div className={`${bgCard} rounded-xl border ${borderColor} shadow-sm overflow-hidden`}>
-        <div className="p-6">
-          {/* List Header */}
-          <div className="mb-6 pb-4 border-b border-gray-200 dark:border-almet-comet">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <h3 className={`text-lg font-semibold ${textPrimary}`}>
-                  Job Descriptions
-                </h3>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium bg-almet-sapphire/10 text-almet-sapphire`}>
-                  {filteredJobs.length} total
-                </span>
-              </div>
+    <div className={`${bgCard} rounded-xl border ${borderColor} shadow-sm overflow-hidden`}>
+      <div className="p-6">
+        {/* List Header */}
+        <div className="mb-6 pb-4 border-b border-gray-200 dark:border-almet-comet">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h3 className={`text-lg font-semibold ${textPrimary}`}>
+                Job Descriptions
+              </h3>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium bg-almet-sapphire/10 text-almet-sapphire`}>
+                {filteredJobs.length} result{filteredJobs.length !== 1 ? 's' : ''}
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* Job Cards Grid */}
-          {filteredJobs.length > 0 ? (
-            <div className="grid gap-4">
-              {filteredJobs.map(job => {
-                const isExpanded = expandedAssignments[job.id];
-                const assignments = job.assignments_preview || [];
-                const summary = job.assignments_summary || {};
-                
-                return (
+        {/* Job Cards Grid */}
+        {filteredJobs.length > 0 ? (
+          <div className="grid gap-4">
+            {filteredJobs.map(job => {
+              const isExpanded = expandedAssignments[job.id];
+              const assignments = job.assignments_preview || [];
+              const summary = job.assignments_summary || {};
+              
+              return (
+                <div 
+                  key={job.id} 
+                  className={`${bgCardHover} rounded-xl border ${borderColor} 
+                    hover:shadow-md transition-all duration-200 group hover:border-almet-sapphire/30`}
+                >
+                  {/* Main Job Card */}
                   <div 
-                    key={job.id} 
-                    className={`${bgCardHover} rounded-xl border ${borderColor} 
-                      hover:shadow-md transition-all duration-200 group hover:border-almet-sapphire/30`}
+                    className="p-4 cursor-pointer"
+                    onClick={() => handleJobCardClick(job)}
                   >
-                    {/* Main Job Card */}
-                    <div 
-                      className="p-4 cursor-pointer"
-                      onClick={() => handleJobCardClick(job)}
-                    >
-                      {/* Job Header */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="bg-almet-sapphire text-white p-3 rounded-xl group-hover:scale-110 
-                            transition-transform duration-200 flex-shrink-0">
-                            <FileText size={16} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className={`text-sm font-bold ${textPrimary} mb-2 group-hover:text-almet-sapphire 
-                              transition-colors duration-200 line-clamp-1`}>
-                              {job.job_title}
-                            </h3>
-                            <div className={`text-xs ${textSecondary} space-y-1`}>
-                              <div className="flex items-center gap-2">
-                                <Building size={12} className={textMuted} />
-                                <span>{job.business_function_name}</span>
-                                <span className={textMuted}>•</span>
-                                <span>{job.department_name}</span>
-                              </div>
-                              {job.job_function_name && (
-                                <div className="flex items-center gap-2">
-                                  <Briefcase size={12} className={textMuted} />
-                                  <span>{job.job_function_name}</span>
-                                  {job.grading_levels && job.grading_levels.length > 0 && (
-                                    <span className={`${textMuted} font-mono`}>
-                                      ({job.grading_levels.join(', ')})
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
+                    {/* Job Header */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="bg-almet-sapphire text-white p-3 rounded-xl group-hover:scale-110 
+                          transition-transform duration-200 flex-shrink-0">
+                          <FileText size={16} />
                         </div>
-                        
-                        {/* Status and Actions */}
-                        <div className="flex flex-col items-end gap-2">
-                          {/* Overall Status Badge */}
-                          <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 
-                            ${getOverallStatusColor(job.overall_status)}`}>
-                            {getStatusIcon(job.overall_status)}
-                            {formatOverallStatus(job.overall_status)}
-                          </span>
-                          
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-1">
-                            {/* 🔥 NEW: View Assignments Button */}
-                            <button
-                              onClick={(e) => handleViewAssignmentsClick(job, e)}
-                              className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
-                              title="View Assignments"
-                            >
-                              <List size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => handleViewClick(job, e)}
-                              className="p-2 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors"
-                              title="View Details"
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => handleDownloadPDF(job.id, e)}
-                              disabled={actionLoading}
-                              className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg 
-                                transition-colors disabled:opacity-50"
-                              title="Download PDF"
-                            >
-                              <Download size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => handleEditClick(job, e)}
-                              disabled={actionLoading}
-                              className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
-                                transition-colors disabled:opacity-50"
-                              title="Edit Job Description"
-                            >
-                              <Edit size={14} />
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteClick(job.id, e)}
-                              disabled={actionLoading}
-                              className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg 
-                                transition-colors disabled:opacity-50"
-                              title="Delete"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                        <div className="flex-1 min-w-0">
+                          <h3 className={`text-sm font-bold ${textPrimary} mb-2 group-hover:text-almet-sapphire 
+                            transition-colors duration-200 line-clamp-1`}>
+                            {job.job_title}
+                          </h3>
+                          <div className={`text-xs ${textSecondary} space-y-1`}>
+                            <div className="flex items-center gap-2">
+                              <Building size={12} className={textMuted} />
+                              <span>{job.business_function_name}</span>
+                              <span className={textMuted}>•</span>
+                              <span>{job.department_name}</span>
+                            </div>
+                            {job.job_function_name && (
+                              <div className="flex items-center gap-2">
+                                <Briefcase size={12} className={textMuted} />
+                                <span>{job.job_function_name}</span>
+                                {job.grading_levels && job.grading_levels.length > 0 && (
+                                  <span className={`${textMuted} font-mono`}>
+                                    ({job.grading_levels.join(', ')})
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                       
-                      {/* Assignment Summary */}
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
-                        <div className="flex items-center gap-4">
-                          {/* Total Assignments */}
-                          <div className="flex items-center gap-2">
-                            <Users size={14} className={textMuted} />
-                            <span className={`text-xs ${textPrimary} font-medium`}>
-                              {job.total_assignments || 0} assignment{(job.total_assignments || 0) !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          
-                          {/* Breakdown */}
-                          {job.total_assignments > 0 && (
-                            <div className={`flex items-center gap-3 text-xs ${textMuted}`}>
-                              {job.employee_assignments_count > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <UserCheck size={12} className="text-green-600" />
-                                  {job.employee_assignments_count} employee{job.employee_assignments_count !== 1 ? 's' : ''}
-                                </span>
-                                )}
-                              {job.vacancy_assignments_count > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <UserVacant size={12} className="text-orange-600" />
-                                  {job.vacancy_assignments_count} vacant
-                                </span>
-                              )}
-                            </div>
-                          )}
-                          
-                          {/* Approval Progress */}
-                          {job.total_assignments > 0 && (
-                            <div className={`flex items-center gap-1 text-xs ${textMuted}`}>
-                              <CheckCircle size={12} className="text-green-600" />
-                              <span>{job.approved_count || 0}/{job.total_assignments} approved</span>
-                            </div>
-                          )}
-                        </div>
+                      {/* Status and Actions */}
+                      <div className="flex flex-col items-end gap-2">
+                        {/* Overall Status Badge */}
+                        <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 
+                          ${getOverallStatusColor(job.overall_status)}`}>
+                          {getStatusIcon(job.overall_status)}
+                          {formatOverallStatus(job.overall_status)}
+                        </span>
                         
-                        {/* Expand/Collapse Button */}
-                        {assignments.length > 0 && (
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={(e) => toggleAssignments(job.id, e)}
-                            className={`flex items-center gap-1 text-xs ${textMuted} hover:text-almet-sapphire transition-colors`}
+                            onClick={(e) => handleViewAssignmentsClick(job, e)}
+                            className="p-2 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg transition-colors"
+                            title="View Assignments"
                           >
-                            <span>{isExpanded ? 'Hide' : 'Show'} assignments</span>
-                            <ChevronRight size={14} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                            <List size={14} />
                           </button>
-                        )}
+                          <button
+                            onClick={(e) => handleViewClick(job, e)}
+                            className="p-2 text-almet-sapphire hover:bg-almet-sapphire/10 rounded-lg transition-colors"
+                            title="View Details"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDownloadPDF(job.id, e)}
+                            disabled={actionLoading}
+                            className="p-2 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg 
+                              transition-colors disabled:opacity-50"
+                            title="Download PDF"
+                          >
+                            <Download size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => handleEditClick(job, e)}
+                            disabled={actionLoading}
+                            className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
+                              transition-colors disabled:opacity-50"
+                            title="Edit Job Description"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteClick(job.id, e)}
+                            disabled={actionLoading}
+                            className="p-2 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg 
+                              transition-colors disabled:opacity-50"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                     
-                    {/* Expanded Assignments List */}
-                    {isExpanded && assignments.length > 0 && (
-                      <div className={`border-t ${borderColor} p-4 bg-gray-50 dark:bg-almet-cloud-burst/50`}>
-                        <div className="space-y-2">
-                          {assignments.map((assignment, index) => (
-                            <div 
-                              key={assignment.id || index}
-                              className={`flex items-center justify-between p-3 ${bgCard} rounded-lg border ${borderColor}`}
-                            >
-                              <div className="flex items-center gap-3">
-                                {assignment.is_vacancy ? (
-                                  <UserVacant size={14} className="text-orange-600" />
-                                ) : (
-                                  <UserCheck size={14} className="text-green-600" />
-                                )}
-                                <span className={`text-sm ${textPrimary}`}>
-                                  {assignment.name || (assignment.is_vacancy ? 'Vacant Position' : 'Unknown')}
-                                </span>
-                              </div>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium 
-                                ${getAssignmentStatusColor(assignment.status)}`}>
-                                {assignment.status_display?.status || assignment.status}
-                              </span>
-                            </div>
-                          ))}
-                          
-                          {job.total_assignments > assignments.length && (
-                            <div className={`text-center text-xs ${textMuted} py-2`}>
-                              +{job.total_assignments - assignments.length} more assignments
-                            </div>
-                          )}
+                    {/* Assignment Summary */}
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
+                      <div className="flex items-center gap-4">
+                        {/* Total Assignments */}
+                        <div className="flex items-center gap-2">
+                          <Users size={14} className={textMuted} />
+                          <span className={`text-xs ${textPrimary} font-medium`}>
+                            {job.total_assignments || 0} assignment{(job.total_assignments || 0) !== 1 ? 's' : ''}
+                          </span>
                         </div>
                         
-                        {/* Submit All Button */}
-                        {summary.draft > 0 && (
-                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
-                            <button
-                              onClick={(e) => handleDirectSubmissionClick(job.id, e)}
-                              disabled={actionLoading}
-                              className="w-full py-2 px-4 bg-almet-sapphire text-white rounded-lg text-sm font-medium
-                                hover:bg-almet-astral transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                            >
-                              <Send size={14} />
-                              Submit All Draft Assignments ({summary.draft})
-                            </button>
+                        {/* Breakdown */}
+                        {job.total_assignments > 0 && (
+                          <div className={`flex items-center gap-3 text-xs ${textMuted}`}>
+                            {job.employee_assignments_count > 0 && (
+                              <span className="flex items-center gap-1">
+                                <UserCheck size={12} className="text-green-600" />
+                                {job.employee_assignments_count} employee{job.employee_assignments_count !== 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {job.vacancy_assignments_count > 0 && (
+                              <span className="flex items-center gap-1">
+                                <UserVacant size={12} className="text-orange-600" />
+                                {job.vacancy_assignments_count} vacant
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* Approval Progress */}
+                        {job.total_assignments > 0 && (
+                          <div className={`flex items-center gap-1 text-xs ${textMuted}`}>
+                            <CheckCircle size={12} className="text-green-600" />
+                            <span>{job.approved_count || 0}/{job.total_assignments} approved</span>
                           </div>
                         )}
                       </div>
-                    )}
+                      
+                      {/* Expand/Collapse Button */}
+                      {assignments.length > 0 && (
+                        <button
+                          onClick={(e) => toggleAssignments(job.id, e)}
+                          className={`flex items-center gap-1 text-xs ${textMuted} hover:text-almet-sapphire transition-colors`}
+                        >
+                          <span>{isExpanded ? 'Hide' : 'Show'} assignments</span>
+                          <ChevronRight size={14} className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                );
-              })}
+                  
+                  {/* Expanded Assignments List */}
+                  {isExpanded && assignments.length > 0 && (
+                    <div className={`border-t ${borderColor} p-4 bg-gray-50 dark:bg-almet-cloud-burst/50`}>
+                      <div className="space-y-2">
+                        {assignments.map((assignment, index) => (
+                          <div 
+                            key={assignment.id || index}
+                            className={`flex items-center justify-between p-3 ${bgCard} rounded-lg border ${borderColor}`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {assignment.is_vacancy ? (
+                                <UserVacant size={14} className="text-orange-600" />
+                              ) : (
+                                <UserCheck size={14} className="text-green-600" />
+                              )}
+                              <span className={`text-sm ${textPrimary}`}>
+                                {assignment.name || (assignment.is_vacancy ? 'Vacant Position' : 'Unknown')}
+                              </span>
+                            </div>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                              ${getAssignmentStatusColor(assignment.status)}`}>
+                              {assignment.status_display?.status || assignment.status}
+                            </span>
+                          </div>
+                        ))}
+                        
+                        {job.total_assignments > assignments.length && (
+                          <div className={`text-center text-xs ${textMuted} py-2`}>
+                            +{job.total_assignments - assignments.length} more assignments
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Submit All Button */}
+                      {summary.draft > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-almet-comet">
+                          <button
+                            onClick={(e) => handleDirectSubmissionClick(job.id, e)}
+                            disabled={actionLoading}
+                            className="w-full py-2 px-4 bg-almet-sapphire text-white rounded-lg text-sm font-medium
+                              hover:bg-almet-astral transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                          >
+                            <Send size={14} />
+                            Submit All Draft Assignments ({summary.draft})
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* Empty State */
+          <div className="text-center py-16">
+            <div className={`mx-auto h-20 w-20 ${textMuted} mb-6 flex items-center justify-center 
+              bg-gray-100 dark:bg-almet-comet rounded-full`}>
+              <FileText size={40} />
             </div>
-          ) : (
-            /* Empty State */
-            <div className="text-center py-16">
-              <div className={`mx-auto h-20 w-20 ${textMuted} mb-6 flex items-center justify-center 
-                bg-gray-100 dark:bg-almet-comet rounded-full`}>
-                <FileText size={40} />
-              </div>
-              <h3 className={`text-xl font-semibold ${textPrimary} mb-3`}>
-                No Job Descriptions Found
-              </h3>
-              <p className={`${textMuted} text-sm max-w-md mx-auto mb-6`}>
-                {searchTerm || selectedDepartment 
-                  ? 'No job descriptions match your current search criteria.' 
-                  : 'Get started by creating your first job description.'
-                }
-              </p>
-              {(searchTerm || selectedDepartment) && (
-                <button
-                  onClick={() => {
-                    onSearchChange('');
-                    onDepartmentChange('');
-                  }}
-                  className="px-6 py-3 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral 
-                    transition-colors duration-200 text-sm font-medium"
-                >
-                  Clear All Filters
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+            <h3 className={`text-xl font-semibold ${textPrimary} mb-3`}>
+              No Job Descriptions Found
+            </h3>
+            <p className={`${textMuted} text-sm max-w-md mx-auto`}>
+              No job descriptions match your current filters.
+            </p>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 };
 

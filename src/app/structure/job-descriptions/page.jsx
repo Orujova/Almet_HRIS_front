@@ -1,10 +1,11 @@
-// pages/structure/job-descriptions/page.jsx - UPDATED handlers
+// pages/structure/job-descriptions/page.jsx - HIERARCHICAL NAVIGATION
 'use client'
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  Plus, Edit, Eye, Trash2, FileText, Clock,
-  CheckCircle, Settings, Send, X, Users,
+  Plus, FileText, Clock,
+  CheckCircle, Settings,  X, Users,
+  Building, ChevronRight, ArrowLeft, Filter, Search
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -29,13 +30,21 @@ const JobDescriptionPageContent = () => {
   
   const bgApp = darkMode ? "bg-gray-900" : "bg-almet-mystic";
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
+  const bgCardHover = darkMode ? "bg-almet-san-juan" : "bg-gray-50";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
+  const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
+  const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
+
+  // 🔥 NEW: View Mode State
+  const [viewMode, setViewMode] = useState('overview'); // 'overview', 'details', 'create'
+  const [selectedBusinessFunction, setSelectedBusinessFunction] = useState(null);
 
   // State management
   const [activeView, setActiveView] = useState('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [selectedJob, setSelectedJob] = useState(null);
   const [editingJob, setEditingJob] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +53,6 @@ const JobDescriptionPageContent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   
-  // 🔥 Assignments modal state
   const [showAssignmentsModal, setShowAssignmentsModal] = useState(false);
   const [selectedJobForAssignments, setSelectedJobForAssignments] = useState(null);
   const [assignmentsData, setAssignmentsData] = useState(null);
@@ -143,7 +151,72 @@ const JobDescriptionPageContent = () => {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, selectedDepartment]);
+  }, [searchTerm, selectedDepartment, selectedStatus]);
+
+  // 🔥 NEW: Group jobs by business function
+  const businessFunctionGroups = useMemo(() => {
+    const groups = {};
+    
+    jobDescriptions.forEach(job => {
+      const bf = job.business_function_name || 'Other';
+      if (!groups[bf]) {
+        groups[bf] = {
+          name: bf,
+          jobs: [],
+          departments: new Set()
+        };
+      }
+      groups[bf].jobs.push(job);
+      if (job.department_name) {
+        groups[bf].departments.add(job.department_name);
+      }
+    });
+    
+    // Calculate stats for each business function
+    return Object.values(groups).map(group => ({
+      ...group,
+      totalJobs: group.jobs.length,
+      totalAssignments: group.jobs.reduce((sum, job) => sum + (job.total_assignments || 0), 0),
+      approvedCount: group.jobs.reduce((sum, job) => sum + (job.approved_count || 0), 0),
+      approvedJobs: group.jobs.filter(job => job.overall_status === 'ALL_APPROVED').length,
+      pendingJobs: group.jobs.filter(job => job.overall_status === 'PENDING_APPROVALS').length,
+      draftJobs: group.jobs.filter(job => job.overall_status === 'ALL_DRAFT').length,
+      departments: Array.from(group.departments).sort()
+    })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [jobDescriptions]);
+
+  // 🔥 NEW: Filter jobs within selected business function
+  const filteredJobsInBusinessFunction = useMemo(() => {
+    if (!selectedBusinessFunction) return [];
+    
+    let filtered = selectedBusinessFunction.jobs;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(job =>
+        job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        job.department_name?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (selectedDepartment) {
+      filtered = filtered.filter(job => job.department_name === selectedDepartment);
+    }
+    
+    if (selectedStatus) {
+      filtered = filtered.filter(job => job.overall_status === selectedStatus);
+    }
+    
+    return filtered;
+  }, [selectedBusinessFunction, searchTerm, selectedDepartment, selectedStatus]);
+
+  const paginatedJobs = useMemo(() => {
+    const jobs = filteredJobsInBusinessFunction;
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return jobs.slice(startIndex, endIndex);
+  }, [filteredJobsInBusinessFunction, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredJobsInBusinessFunction.length / itemsPerPage);
 
   const filterMatchingEmployees = () => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
@@ -328,32 +401,36 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  const filteredJobs = useMemo(() => {
-    return jobDescriptions.filter(job => {
-      const matchesSearch = !searchTerm || 
-        job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.department_name?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesDepartment = !selectedDepartment || job.department_name === selectedDepartment;
-      
-      return matchesSearch && matchesDepartment;
-    });
-  }, [jobDescriptions, searchTerm, selectedDepartment]);
+  // 🔥 NEW: Handle business function selection
+  const handleBusinessFunctionClick = (group) => {
+    setSelectedBusinessFunction(group);
+    setViewMode('details');
+    setSearchTerm('');
+    setSelectedDepartment('');
+    setSelectedStatus('');
+    setCurrentPage(1);
+  };
 
-  const paginatedJobs = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredJobs.slice(startIndex, endIndex);
-  }, [filteredJobs, currentPage, itemsPerPage]);
+  // 🔥 NEW: Back to overview
+  const handleBackToOverview = () => {
+    setViewMode('overview');
+    setSelectedBusinessFunction(null);
+    setSearchTerm('');
+    setSelectedDepartment('');
+    setSelectedStatus('');
+    setCurrentPage(1);
+  };
 
-  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
+  // 🔥 NEW: Handle create new job
+  const handleCreateNewJob = () => {
+    resetForm();
+    setViewMode('create');
+  };
 
-  // 🔥 NEW: View assignments for a job description
   const handleViewAssignments = async (job) => {
     try {
       setActionLoading(true);
       const response = await jobDescriptionService.getJobDescriptionAssignments(job.id);
-      console.log('📥 Assignments response:', response);
       setAssignmentsData(response);
       setSelectedJobForAssignments(job);
       setShowAssignmentsModal(true);
@@ -365,7 +442,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 NEW: Submit single assignment for approval
   const handleSubmitAssignmentForApproval = async (jobId, assignmentId, comments = '') => {
     try {
       setActionLoading(true);
@@ -374,7 +450,6 @@ const JobDescriptionPageContent = () => {
       });
       showSuccess('Assignment submitted for approval');
       
-      // Refresh assignments
       if (selectedJobForAssignments) {
         const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
         setAssignmentsData(response);
@@ -390,7 +465,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 NEW: Approve assignment
   const handleApproveAssignment = async (jobId, assignmentId, approverType, comments = '') => {
     try {
       setActionLoading(true);
@@ -407,7 +481,6 @@ const JobDescriptionPageContent = () => {
         showSuccess('Assignment approved as employee');
       }
       
-      // Refresh
       const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
       setAssignmentsData(response);
       await fetchJobDescriptions();
@@ -420,7 +493,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 NEW: Reject assignment
   const handleRejectAssignment = async (jobId, assignmentId, reason) => {
     try {
       if (!reason || !reason.trim()) {
@@ -434,7 +506,6 @@ const JobDescriptionPageContent = () => {
       });
       showSuccess('Assignment rejected');
       
-      // Refresh
       const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
       setAssignmentsData(response);
       await fetchJobDescriptions();
@@ -447,7 +518,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 NEW: Submit all draft assignments
   const handleSubmitAllAssignments = async (jobId) => {
     try {
       setActionLoading(true);
@@ -469,7 +539,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 NEW: Remove assignment
   const handleRemoveAssignment = async (jobId, assignmentId) => {
     setConfirmModal({
       isOpen: true,
@@ -482,7 +551,6 @@ const JobDescriptionPageContent = () => {
           await jobDescriptionService.removeAssignment(jobId, assignmentId);
           showSuccess('Assignment removed');
           
-          // Refresh
           const response = await jobDescriptionService.getJobDescriptionAssignments(jobId);
           setAssignmentsData(response);
           await fetchJobDescriptions();
@@ -498,13 +566,10 @@ const JobDescriptionPageContent = () => {
     });
   };
 
-  // 🔥 NEW: Reassign employee
   const handleReassignEmployee = async (assignmentId) => {
     showInfo('Reassignment feature coming soon');
-    // TODO: Implement employee selection modal for reassignment
   };
 
-  // 🔥 NEW: Refresh assignments
   const handleRefreshAssignments = async () => {
     if (!selectedJobForAssignments) return;
     
@@ -533,7 +598,6 @@ const JobDescriptionPageContent = () => {
     }
   };
 
-  // 🔥 UPDATED: Direct submission now opens modal to submit all
   const handleDirectSubmissionForApproval = async (jobId) => {
     setCreatedJobsData({ id: jobId, isExisting: true });
     setIsExistingJobSubmission(true);
@@ -563,7 +627,7 @@ const JobDescriptionPageContent = () => {
       setIsExistingJobSubmission(false);
       resetForm();
       
-      setActiveView('list');
+      setViewMode('overview');
     } catch (error) {
       console.error('Error submitting for approval:', error);
       showError(error.response?.data?.error || 'Error submitting for approval. Please try again.');
@@ -591,225 +655,147 @@ const JobDescriptionPageContent = () => {
     setIsExistingJobSubmission(false);
     resetForm();
     
-    setActiveView('list');
+    setViewMode('overview');
   };
 
-  const handleTabNavigation = (targetView) => {
-    if (targetView === 'create') {
-      if (activeView === 'list' || editingJob) {
-        resetForm();
-      }
-      setActiveView('create');
-    } else if (targetView === 'list') {
-      const hasFormData = formData.job_title?.trim() || 
-                         formData.job_purpose?.trim() || 
-                         formData.criticalDuties?.some(d => d?.trim()) ||
-                         formData.required_skills_data?.length > 0;
+  const handleEdit = async (job) => {
+    try {
+      setActionLoading(true);
+      const fullJob = await jobDescriptionService.getJobDescription(job.id);
       
-      if (hasFormData && !editingJob) {
-        setConfirmModal({
-          isOpen: true,
-          type: 'warning',
-          title: 'Unsaved Changes',
-          message: 'You have unsaved changes. Are you sure you want to leave?',
-          onConfirm: () => {
-            setConfirmModal({ ...confirmModal, isOpen: false });
-            resetForm();
-            setActiveView('list');
+      const criticalDuties = [];
+      const positionMainKpis = [];
+      const jobDuties = [];
+      const requirements = [];
+      
+      if (fullJob.sections && Array.isArray(fullJob.sections)) {
+        fullJob.sections.forEach(section => {
+          const content = section.content || '';
+          const lines = content.split('\n')
+            .map(line => line.replace(/^\d+\.\s*/, '').trim())
+            .filter(line => line);
+          
+          switch(section.section_type) {
+            case 'CRITICAL_DUTIES':
+              criticalDuties.push(...lines);
+              break;
+            case 'MAIN_KPIS':
+              positionMainKpis.push(...lines);
+              break;
+            case 'JOB_DUTIES':
+              jobDuties.push(...lines);
+              break;
+            case 'REQUIREMENTS':
+              requirements.push(...lines);
+              break;
           }
         });
-        return;
       }
       
-      resetForm();
-      setActiveView('list');
+      const extractResourceIds = (resourceArray) => {
+        const allIds = [];
+        if (!Array.isArray(resourceArray)) return [];
+        
+        resourceArray.forEach(item => {
+          if (item.specific_items_detail && Array.isArray(item.specific_items_detail) && item.specific_items_detail.length > 0) {
+            item.specific_items_detail.forEach(childItem => {
+              if (childItem.id) allIds.push(String(childItem.id));
+            });
+          } else if (item.specific_items && Array.isArray(item.specific_items) && item.specific_items.length > 0) {
+            item.specific_items.forEach(childItem => {
+              const childId = typeof childItem === 'object' ? childItem.id : childItem;
+              if (childId) allIds.push(String(childId));
+            });
+          } else {
+            const parentId = item.resource || item.access_matrix || item.benefit || 
+                            item.resource_id || item.access_matrix_id || item.benefit_id;
+            if (parentId) allIds.push(String(parentId));
+          }
+        });
+        
+        return allIds;
+      };
+      
+      const businessResourceIds = extractResourceIds(fullJob.business_resources);
+      const accessRightIds = extractResourceIds(fullJob.access_rights);
+      const companyBenefitIds = extractResourceIds(fullJob.company_benefits);
+      
+      const skillIds = [];
+      if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
+        fullJob.required_skills.forEach(skill => {
+          const id = skill.skill_id || skill.skill || skill.skill_detail?.id;
+          if (id) skillIds.push(String(id));
+        });
+      }
+      
+      const behavioralCompetencyIds = [];
+      if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
+        fullJob.behavioral_competencies.forEach(comp => {
+          const id = comp.competency_id || comp.competency || comp.competency_detail?.id;
+          if (id) behavioralCompetencyIds.push(String(id));
+        });
+      }
+      
+      const leadershipCompetencyIds = [];
+      if (fullJob.leadership_competencies && Array.isArray(fullJob.leadership_competencies)) {
+        fullJob.leadership_competencies.forEach(item => {
+          const id = item.leadership_item_id || item.leadership_item || item.leadership_item_detail?.id || item.id;
+          if (id) leadershipCompetencyIds.push(String(id));
+        });
+      }
+      
+      let gradingLevels = [];
+      if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels) && fullJob.grading_levels.length > 0) {
+        gradingLevels = fullJob.grading_levels;
+      } else if (fullJob.grading_level) {
+        gradingLevels = [fullJob.grading_level];
+      }
+      
+      const getFieldValue = (field) => {
+        if (!field) return '';
+        if (typeof field === 'string') return field;
+        if (typeof field === 'object') return field.name || field.display_name || '';
+        return String(field);
+      };
+      
+      const transformedData = {
+        job_title: fullJob.job_title || '',
+        job_purpose: fullJob.job_purpose || '',
+        business_function: getFieldValue(fullJob.business_function),
+        department: getFieldValue(fullJob.department),
+        unit: getFieldValue(fullJob.unit),
+        job_function: getFieldValue(fullJob.job_function),
+        position_group: getFieldValue(fullJob.position_group),
+        grading_level: fullJob.grading_level || (gradingLevels.length > 0 ? gradingLevels[0] : ''),
+        grading_levels: gradingLevels,
+        criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
+        positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
+        jobDuties: jobDuties.length > 0 ? jobDuties : [''],
+        requirements: requirements.length > 0 ? requirements : [''],
+        required_skills_data: skillIds,
+        behavioral_competencies_data: behavioralCompetencyIds,
+        leadership_competencies_data: leadershipCompetencyIds,
+        business_resources_ids: businessResourceIds,
+        access_rights_ids: accessRightIds,
+        company_benefits_ids: companyBenefitIds
+      };
+      
+      setFormData(transformedData);
+      setEditingJob(fullJob);
+      
+      if (transformedData.position_group) {
+        setSelectedPositionGroup(transformedData.position_group);
+      }
+      
+      setViewMode('create');
+      
+    } catch (error) {
+      console.error('Error loading job for edit:', error);
+      showError('Error loading job description. Please try again.');
+    } finally {
+      setActionLoading(false);
     }
   };
-
-  // page.jsx - handleEdit funksiyasını bu versiya ilə əvəz edin
-
-const handleEdit = async (job) => {
-  try {
-    setActionLoading(true);
-    const fullJob = await jobDescriptionService.getJobDescription(job.id);
-    
-    console.log('🔍 Full job data for edit:', fullJob);
-    
-    // Extract sections
-    const criticalDuties = [];
-    const positionMainKpis = [];
-    const jobDuties = [];
-    const requirements = [];
-    
-    if (fullJob.sections && Array.isArray(fullJob.sections)) {
-      fullJob.sections.forEach(section => {
-        const content = section.content || '';
-        const lines = content.split('\n')
-          .map(line => line.replace(/^\d+\.\s*/, '').trim())
-          .filter(line => line);
-        
-        switch(section.section_type) {
-          case 'CRITICAL_DUTIES':
-            criticalDuties.push(...lines);
-            break;
-          case 'MAIN_KPIS':
-            positionMainKpis.push(...lines);
-            break;
-          case 'JOB_DUTIES':
-            jobDuties.push(...lines);
-            break;
-          case 'REQUIREMENTS':
-            requirements.push(...lines);
-            break;
-        }
-      });
-    }
-    
-    // 🔥 Extract resource IDs - FIXED: Handle both nested and flat structures
-    const extractResourceIds = (resourceArray) => {
-      const allIds = [];
-      if (!Array.isArray(resourceArray)) return [];
-      
-      resourceArray.forEach(item => {
-        // Get specific items if they exist
-        if (item.specific_items_detail && Array.isArray(item.specific_items_detail) && item.specific_items_detail.length > 0) {
-          item.specific_items_detail.forEach(childItem => {
-            if (childItem.id) allIds.push(String(childItem.id));
-          });
-        } else if (item.specific_items && Array.isArray(item.specific_items) && item.specific_items.length > 0) {
-          item.specific_items.forEach(childItem => {
-            const childId = typeof childItem === 'object' ? childItem.id : childItem;
-            if (childId) allIds.push(String(childId));
-          });
-        } else {
-          // If no specific items, add parent ID
-          const parentId = item.resource || item.access_matrix || item.benefit || 
-                          item.resource_id || item.access_matrix_id || item.benefit_id;
-          if (parentId) allIds.push(String(parentId));
-        }
-      });
-      
-      return allIds;
-    };
-    
-    const businessResourceIds = extractResourceIds(fullJob.business_resources);
-    const accessRightIds = extractResourceIds(fullJob.access_rights);
-    const companyBenefitIds = extractResourceIds(fullJob.company_benefits);
-    
-    console.log('📦 Extracted resource IDs:', { businessResourceIds, accessRightIds, companyBenefitIds });
-    
-    // Extract Skills
-    const skillIds = [];
-    if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
-      fullJob.required_skills.forEach(skill => {
-        const id = skill.skill_id || skill.skill || skill.skill_detail?.id;
-        if (id) skillIds.push(String(id));
-      });
-    }
-    
-    // Extract Behavioral Competencies
-    const behavioralCompetencyIds = [];
-    if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
-      fullJob.behavioral_competencies.forEach(comp => {
-        const id = comp.competency_id || comp.competency || comp.competency_detail?.id;
-        if (id) behavioralCompetencyIds.push(String(id));
-      });
-    }
-    
-    // Extract Leadership Competencies
-    const leadershipCompetencyIds = [];
-    if (fullJob.leadership_competencies && Array.isArray(fullJob.leadership_competencies)) {
-      fullJob.leadership_competencies.forEach(item => {
-        const id = item.leadership_item_id || item.leadership_item || item.leadership_item_detail?.id || item.id;
-        if (id) leadershipCompetencyIds.push(String(id));
-      });
-    }
-    
-    // Handle grading levels
-    let gradingLevels = [];
-    if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels) && fullJob.grading_levels.length > 0) {
-      gradingLevels = fullJob.grading_levels;
-    } else if (fullJob.grading_level) {
-      gradingLevels = [fullJob.grading_level];
-    }
-    
-    // 🔥 FIXED: Extract position information correctly
-    // Backend might return objects or strings
-    const getFieldValue = (field) => {
-      if (!field) return '';
-      if (typeof field === 'string') return field;
-      if (typeof field === 'object') return field.name || field.display_name || '';
-      return String(field);
-    };
-    
-    const transformedData = {
-      // 🔥 Position Information - FIXED
-      job_title: fullJob.job_title || '',
-      job_purpose: fullJob.job_purpose || '',
-      
-      // Handle both object and string formats
-      business_function: getFieldValue(fullJob.business_function),
-      department: getFieldValue(fullJob.department),
-      unit: getFieldValue(fullJob.unit),
-      job_function: getFieldValue(fullJob.job_function),
-      position_group: getFieldValue(fullJob.position_group),
-      
-      grading_level: fullJob.grading_level || (gradingLevels.length > 0 ? gradingLevels[0] : ''),
-      grading_levels: gradingLevels,
-      
-      // Sections
-      criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
-      positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
-      jobDuties: jobDuties.length > 0 ? jobDuties : [''],
-      requirements: requirements.length > 0 ? requirements : [''],
-      
-      // Skills and Competencies
-      required_skills_data: skillIds,
-      behavioral_competencies_data: behavioralCompetencyIds,
-      leadership_competencies_data: leadershipCompetencyIds,
-      
-      // Resources
-      business_resources_ids: businessResourceIds,
-      access_rights_ids: accessRightIds,
-      company_benefits_ids: companyBenefitIds
-    };
-    
-    console.log('✅ Transformed data for form:', transformedData);
-    
-    // Validate critical fields
-    const missingFields = [];
-    if (!transformedData.job_title) missingFields.push('job_title');
-    if (!transformedData.business_function) missingFields.push('business_function');
-    if (!transformedData.department) missingFields.push('department');
-    if (!transformedData.job_function) missingFields.push('job_function');
-    if (!transformedData.position_group) missingFields.push('position_group');
-    
-    if (missingFields.length > 0) {
-      console.warn('⚠️ Missing fields after transform:', missingFields);
-      console.warn('⚠️ Original fullJob fields:', {
-        business_function: fullJob.business_function,
-        department: fullJob.department,
-        job_function: fullJob.job_function,
-        position_group: fullJob.position_group
-      });
-    }
-    
-    setFormData(transformedData);
-    setEditingJob(fullJob);
-    
-    if (transformedData.position_group) {
-      setSelectedPositionGroup(transformedData.position_group);
-    }
-    
-    setActiveView('create');
-    
-  } catch (error) {
-    console.error('❌ Error loading job for edit:', error);
-    showError('Error loading job description. Please try again.');
-  } finally {
-    setActionLoading(false);
-  }
-};
 
   const resetForm = () => {
     setFormData({
@@ -893,6 +879,21 @@ const handleEdit = async (job) => {
     }
   };
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'ALL_APPROVED':
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'PENDING_APPROVALS':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'ALL_DRAFT':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+      case 'HAS_REJECTIONS':
+        return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      default:
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} transition-colors duration-300`}>
@@ -902,15 +903,40 @@ const handleEdit = async (job) => {
           <div className="mb-8">
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 mb-8">
               <div className="flex-1">
+                {/* Back button if in details or create mode */}
+                {(viewMode === 'details' || viewMode === 'create') && (
+                  <button
+                    onClick={handleBackToOverview}
+                    className="flex items-center gap-2 text-almet-sapphire hover:text-almet-astral font-medium mb-4 transition-colors"
+                  >
+                    <ArrowLeft size={20} />
+                    <span>Back to Overview</span>
+                  </button>
+                )}
+                
                 <h1 className={`text-xl lg:text-2xl font-bold ${textPrimary} mb-2`}>
-                  Job Descriptions
+                  {viewMode === 'overview' && 'Job Descriptions Overview'}
+                  {viewMode === 'details' && selectedBusinessFunction?.name}
+                  {viewMode === 'create' && (editingJob ? 'Edit Job Description' : 'Create New Job Description')}
                 </h1>
                 <p className={`${textSecondary} text-xs lg:text-base leading-relaxed`}>
-                  Create job descriptions and assign to multiple employees
+                  {viewMode === 'overview' && 'Select a business function to view job descriptions'}
+                  {viewMode === 'details' && `${filteredJobsInBusinessFunction.length} job descriptions in ${selectedBusinessFunction?.name}`}
+                  {viewMode === 'create' && (editingJob ? 'Update job description details' : 'Create and assign job descriptions to employees')}
                 </p>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
+                {viewMode === 'overview' && (
+                  <button
+                    onClick={handleCreateNewJob}
+                    className="flex items-center justify-center gap-2 px-5 py-3 bg-almet-sapphire hover:bg-almet-astral 
+                      text-white rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                  >
+                    <Plus size={16} />
+                    <span>Create New</span>
+                  </button>
+                )}
                 <button
                   onClick={() => router.push('/structure/job-descriptions/JobDescriptionSettings/')}
                   className={`flex items-center justify-center gap-2 px-5 py-3 
@@ -926,89 +952,237 @@ const handleEdit = async (job) => {
               </div>
             </div>
 
-            {/* Stats Cards - Updated for multi-assignment */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
-              <StatCard 
-                title="Total Jobs" 
-                value={stats.total_job_descriptions || 0} 
-                subtitle={`${stats.total_assignments || 0} assignments`}
-                icon={FileText}
-                color="almet-sapphire"
-                darkMode={darkMode}
-              />
-              <StatCard 
-                title="Pending Approvals" 
-                value={stats.pending_approvals?.total || 0} 
-                subtitle="Requires attention"
-                icon={Clock}
-                color="yellow-600"
-                darkMode={darkMode}
-              />
-              <StatCard 
-                title="Approved" 
-                value={stats.assignment_status_breakdown?.Approved || 0} 
-                subtitle="Assignments approved"
-                icon={CheckCircle}
-                color="green-600"
-                darkMode={darkMode}
-              />
-              <StatCard 
-                title="Draft Assignments" 
-                     value={stats.assignment_status_breakdown?.Draft || 0} 
-                subtitle="Assignments in draft"
-                icon={Users}
-                color="gray-600"
-                darkMode={darkMode}
-              />
-            </div>
-
-            {/* Tab Navigation */}
-            <div className={`flex items-center justify-between p-1 
-              ${darkMode ? 'bg-almet-comet/50' : 'bg-gray-100'} rounded-lg shadow-inner`}>
-              {[
-                { 
-                  id: 'list', 
-                  name: 'Job Descriptions', 
-                  icon: FileText, 
-                  count: filteredJobs.length 
-                },
-                { 
-                  id: 'create', 
-                  name: editingJob ? 'Edit Job' : 'Create New', 
-                  icon: editingJob ? Edit : Plus,
-                  count: null 
-                }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabNavigation(tab.id)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium 
-                    transition-all duration-200 text-sm relative ${
-                    activeView === tab.id
-                      ? `${bgCard} text-almet-sapphire shadow-md border border-almet-sapphire/20`
-                      : `${textSecondary} hover:${textPrimary} hover:${darkMode ? 'bg-almet-san-juan/50' : 'bg-white/50'}`
-                  }`}
-                >
-                  <tab.icon size={16} />
-                  <span className="font-semibold">{tab.name}</span>
-                  {tab.count !== null && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold min-w-[20px] text-center
-                      ${activeView === tab.id 
-                        ? 'bg-almet-sapphire text-white' 
-                        : darkMode ? 'bg-almet-san-juan text-almet-bali-hai' : 'bg-gray-200 text-gray-600'
-                      }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
+            {/* Stats Cards - Only show in overview */}
+            {viewMode === 'overview' && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+                <StatCard 
+                  title="Total Jobs" 
+                  value={stats.total_job_descriptions || 0} 
+                  subtitle={`${stats.total_assignments || 0} assignments`}
+                  icon={FileText}
+                  color="almet-sapphire"
+                  darkMode={darkMode}
+                />
+                <StatCard 
+                  title="Pending Approvals" 
+                  value={stats.pending_approvals?.total || 0} 
+                  subtitle="Requires attention"
+                  icon={Clock}
+                  color="yellow-600"
+                  darkMode={darkMode}
+                />
+                <StatCard 
+                  title="Approved" 
+                  value={stats.assignment_status_breakdown?.Approved || 0} 
+                  subtitle="Assignments approved"
+                  icon={CheckCircle}
+                  color="green-600"
+                  darkMode={darkMode}
+                />
+                <StatCard 
+                  title="Draft Assignments" 
+                  value={stats.assignment_status_breakdown?.Draft || 0} 
+                  subtitle="Assignments in draft"
+                  icon={Users}
+                  color="gray-600"
+                  darkMode={darkMode}
+                />
+              </div>
+            )}
           </div>
 
           {/* Main Content Area */}
           <div className="space-y-6">
-            {activeView === 'list' ? (
-              <div className="space-y-4">
+            
+            {/* 🔥 OVERVIEW MODE - Business Function Cards */}
+            {viewMode === 'overview' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {businessFunctionGroups.map((group, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleBusinessFunctionClick(group)}
+                    className={`${bgCard} rounded-xl p-6 border ${borderColor} 
+                      hover:shadow-lg hover:border-almet-sapphire/30 transition-all duration-200 cursor-pointer group`}
+                  >
+                    {/* Icon and Title */}
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-almet-sapphire/10 text-almet-sapphire p-3 rounded-xl group-hover:scale-110 transition-transform">
+                          <Building size={24} />
+                        </div>
+                        <div>
+                          <h3 className={`text-lg font-bold ${textPrimary} group-hover:text-almet-sapphire transition-colors`}>
+                            {group.name}
+                          </h3>
+                          <p className={`text-sm ${textMuted}`}>
+                            {group.departments.length} department{group.departments.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className={`${textMuted} group-hover:text-almet-sapphire group-hover:translate-x-1 transition-all`} size={20} />
+                    </div>
+
+                    {/* Stats */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${textSecondary} flex items-center gap-2`}>
+                          <FileText size={16} />
+                          Total Jobs
+                        </span>
+                        <span className={`font-bold ${textPrimary}`}>{group.totalJobs}</span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${textSecondary} flex items-center gap-2`}>
+                          <Users size={16} />
+                          Assignments
+                        </span>
+                        <span className={`font-bold ${textPrimary}`}>{group.totalAssignments}</span>
+                      </div>
+
+                      {/* Approval Progress */}
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${textSecondary} flex items-center gap-2`}>
+                          <CheckCircle size={16} />
+                          Approved
+                        </span>
+                        <span className={`font-bold text-green-600`}>
+                          {group.approvedCount}/{group.totalAssignments}
+                        </span>
+                      </div>
+
+                      {/* Status breakdown */}
+                      <div className="pt-3 border-t border-gray-200 dark:border-almet-comet">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {group.approvedJobs > 0 && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 rounded-full text-xs font-medium">
+                              {group.approvedJobs} Approved
+                            </span>
+                          )}
+                          {group.pendingJobs > 0 && (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 rounded-full text-xs font-medium">
+                              {group.pendingJobs} Pending
+                            </span>
+                          )}
+                          {group.draftJobs > 0 && (
+                            <span className="px-2 py-1 bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400 rounded-full text-xs font-medium">
+                              {group.draftJobs} Draft
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* 🔥 DETAILS MODE - Filtered Job List */}
+            {viewMode === 'details' && selectedBusinessFunction && (
+              <div className="space-y-6">
+                
+                {/* Filter Panel */}
+                <div className={`${bgCard} rounded-xl p-6 border ${borderColor} shadow-sm`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Filter size={20} className="text-almet-sapphire" />
+                    <h3 className={`text-lg font-semibold ${textPrimary}`}>Filters</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Search */}
+                    <div className="relative">
+                      <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${textMuted}`} size={16} />
+                      <input
+                        type="text"
+                        placeholder="Search jobs..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={`w-full pl-10 pr-10 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
+                          focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${textMuted} hover:${textPrimary}`}
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Department Filter */}
+                    <select
+                      value={selectedDepartment}
+                      onChange={(e) => setSelectedDepartment(e.target.value)}
+                      className={`px-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
+                        focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
+                    >
+                      <option value="">All Departments</option>
+                      {selectedBusinessFunction.departments.map((dept, idx) => (
+                        <option key={idx} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+
+                    {/* Status Filter */}
+                    <select
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      className={`px-4 py-2 border ${borderColor} rounded-lg ${bgCard} ${textPrimary} 
+                        focus:outline-none focus:ring-2 focus:ring-almet-sapphire text-sm`}
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="ALL_APPROVED">Approved</option>
+                      <option value="PENDING_APPROVALS">Pending</option>
+                      <option value="ALL_DRAFT">Draft</option>
+                      <option value="HAS_REJECTIONS">Has Rejections</option>
+                    </select>
+                  </div>
+
+                  {/* Active Filters Display */}
+                  {(searchTerm || selectedDepartment || selectedStatus) && (
+                    <div className={`mt-4 pt-4 border-t ${borderColor}`}>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-sm ${textMuted}`}>Active filters:</span>
+                        {searchTerm && (
+                          <span className="px-3 py-1 bg-almet-sapphire/10 text-almet-sapphire rounded-full text-xs font-medium flex items-center gap-1">
+                            Search: {searchTerm}
+                            <button onClick={() => setSearchTerm('')} className="hover:text-almet-astral">
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        {selectedDepartment && (
+                          <span className="px-3 py-1 bg-almet-sapphire/10 text-almet-sapphire rounded-full text-xs font-medium flex items-center gap-1">
+                            Dept: {selectedDepartment}
+                            <button onClick={() => setSelectedDepartment('')} className="hover:text-almet-astral">
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        {selectedStatus && (
+                          <span className="px-3 py-1 bg-almet-sapphire/10 text-almet-sapphire rounded-full text-xs font-medium flex items-center gap-1">
+                            Status: {selectedStatus.replace('_', ' ')}
+                            <button onClick={() => setSelectedStatus('')} className="hover:text-almet-astral">
+                              <X size={12} />
+                            </button>
+                          </span>
+                        )}
+                        <button
+                          onClick={() => {
+                            setSearchTerm('');
+                            setSelectedDepartment('');
+                            setSelectedStatus('');
+                          }}
+                          className="text-sm text-red-600 hover:text-red-700 font-medium"
+                        >
+                          Clear all
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Job List */}
                 <JobDescriptionList
                   filteredJobs={paginatedJobs} 
                   searchTerm={searchTerm}
@@ -1030,14 +1204,17 @@ const handleEdit = async (job) => {
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
-                    totalItems={filteredJobs.length}
+                    totalItems={filteredJobsInBusinessFunction.length}
                     itemsPerPage={itemsPerPage}
                     onPageChange={(page) => setCurrentPage(page)}
                     darkMode={darkMode}
                   />
                 )}
               </div>
-            ) : (
+            )}
+
+            {/* 🔥 CREATE MODE - Job Form */}
+            {viewMode === 'create' && (
               <div className="space-y-4">
                 <JobDescriptionForm
                   formData={formData}
@@ -1055,11 +1232,15 @@ const handleEdit = async (job) => {
                   onBehavioralGroupChange={setSelectedBehavioralGroup}
                   onPositionGroupChange={setSelectedPositionGroup}
                   onSubmit={handleJobSubmit}
-                  onCancel={resetForm}
+                  onCancel={() => {
+                    resetForm();
+                    handleBackToOverview();
+                  }}
                   onUpdate={() => {
                     fetchJobDescriptions();
                     fetchStats();
                     resetForm();
+                    handleBackToOverview();
                   }}
                   darkMode={darkMode}
                 />
@@ -1081,7 +1262,7 @@ const handleEdit = async (job) => {
             />
           )}
 
-          {/* 🔥 Assignments Modal */}
+          {/* Assignments Modal */}
           {showAssignmentsModal && assignmentsData && selectedJobForAssignments && (
             <AssignmentsModal
               isOpen={showAssignmentsModal}
@@ -1099,7 +1280,7 @@ const handleEdit = async (job) => {
               onRemoveAssignment={handleRemoveAssignment}
               onReassignEmployee={handleReassignEmployee}
               onRefresh={handleRefreshAssignments}
-              currentUser={{ id: 1 }} // TODO: Get from auth context
+              currentUser={{ id: 1 }}
               actionLoading={actionLoading}
             />
           )}

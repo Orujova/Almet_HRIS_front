@@ -122,7 +122,7 @@ const OrgChartHeader = ({
                                 placeholder="Search employees..." 
                                 value={filters.search || ''} 
                                 onChange={(e) => updateFilter('search', e.target.value)} 
-                                className={`pl-8 pr-7 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire w-44 ${bgCard} ${textPrimary} text-sm transition-all duration-200 shadow-sm`} 
+                                className={`pl-8 pr-7 py-2 border outline-0 ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-almet-sapphire w-44 ${bgCard} ${textPrimary} text-sm transition-all duration-200 shadow-sm`} 
                             />
                         </div>
                        

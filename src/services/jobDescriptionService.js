@@ -641,7 +641,23 @@ class JobDescriptionService {
       throw error;
     }
   }
+// Add this method in the "EMPLOYEE RELATED JOB DESCRIPTIONS" section or 
+// in the "MULTI-ASSIGNMENT ENDPOINTS" section
 
+/**
+ * Get detailed information about a specific job description assignment
+ * @param {number} assignmentId - The assignment ID
+ * @returns {Promise} Assignment detail with full job description data
+ */
+async getAssignmentDetail(assignmentId) {
+  try {
+    const response = await api.get(`/job-descriptions/${assignmentId}/assignments/`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching assignment detail:', error);
+    throw error;
+  }
+}
   async getTeamJobDescriptions(managerId) {
     try {
       const response = await api.get(`/employees/${managerId}/team_job_descriptions/`);

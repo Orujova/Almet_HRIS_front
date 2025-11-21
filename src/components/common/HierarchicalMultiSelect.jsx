@@ -198,6 +198,10 @@ const HierarchicalMultiSelect = ({
         ids.push(String(item.id));
       });
     }
+    // 🔥 If no children, return parent itself as a selectable item
+    if (ids.length === 0) {
+      ids.push(String(parent.id));
+    }
     return ids;
   };
 

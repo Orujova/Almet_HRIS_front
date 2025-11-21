@@ -189,50 +189,64 @@ const ActionsDropdown = ({
   // ✅ NEW: MULTIPLE JOB ASSIGNMENTS FUNCTIONS
   // ========================================
 
-  const fetchJobAssignments = async () => {
-    try {
-      setAssignmentsLoading(true);
-      setIsOpen(false);
-      
-      // ✅ Use new endpoint that returns assignments
-      const assignments = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
-      
-      if (!assignments || assignments.length === 0) {
-        showWarning('No job descriptions found for this employee');
-        return;
-      }
+  // ========================================
+// ✅ UPDATED: MULTIPLE JOB ASSIGNMENTS FUNCTIONS
+// ========================================
 
-      setJobAssignments(assignments);
-      setShowJobDescriptionsModal(true);
-      
-      // If only one assignment, show it directly
-      if (assignments.length === 1) {
-        await viewAssignmentDetail(assignments[0].id);
-      }
-      
-    } catch (error) {
-      console.error('Error fetching job assignments:', error);
-      showError('Error loading job descriptions. Please try again.');
-    } finally {
-      setAssignmentsLoading(false);
+const fetchJobAssignments = async () => {
+  try {
+    setAssignmentsLoading(true);
+    setIsOpen(false);
+    
+    // ✅ Use endpoint that returns assignments with basic info
+    const response = await jobDescriptionService.getEmployeeJobDescriptions(employeeId);
+    const assignments = response.job_descriptions || response;
+    
+    if (!assignments || assignments.length === 0) {
+      showWarning('No job descriptions found for this employee');
+      return;
     }
-  };
 
-  const viewAssignmentDetail = async (assignmentId) => {
-    try {
-      setAssignmentsLoading(true);
-      
-      // ✅ Fetch full assignment details
-      const detail = await jobDescriptionService.getAssignmentDetail(assignmentId);
-      setSelectedAssignment(detail);
-      
-    } catch (error) {
-      console.error('Error fetching assignment detail:', error);
-      showError('Error loading assignment details');
-    } finally {
-      setAssignmentsLoading(false);
+    setJobAssignments(assignments);
+    setShowJobDescriptionsModal(true);
+    
+    // If only one assignment, fetch its full details
+    if (assignments.length === 1) {
+      await viewAssignmentDetail(assignments[0]);
     }
-  };
+    
+  } catch (error) {
+    console.error('Error fetching job assignments:', error);
+    showError('Error loading job descriptions. Please try again.');
+  } finally {
+    setAssignmentsLoading(false);
+  }
+};
+
+// ✅ UPDATED: Fetch full job description detail using the job_description_id
+const viewAssignmentDetail = async (assignment) => {
+  try {
+    setAssignmentsLoading(true);
+    
+    // ✅ Fetch full job description details using the job_description_id
+    const jobDescriptionId = assignment.job_description_id || assignment.job_description;
+    const jobDetail = await jobDescriptionService.getJobDescription(jobDescriptionId);
+    
+    // ✅ Combine assignment info with full job description
+    const enrichedAssignment = {
+      ...assignment,
+      job_description: jobDetail
+    };
+    
+    setSelectedAssignment(enrichedAssignment);
+    
+  } catch (error) {
+    console.error('Error fetching assignment detail:', error);
+    showError('Error loading assignment details');
+  } finally {
+    setAssignmentsLoading(false);
+  }
+};
 
   const getStatusDisplay = (assignment) => {
     if (!assignment) return null;

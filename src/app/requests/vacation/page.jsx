@@ -11,8 +11,12 @@ import { ApprovalModal } from '@/components/business-trip/ApprovalModal';
 import { RejectionModal } from '@/components/business-trip/RejectionModal';
 import { AttachmentsModal } from '@/components/vacation/AttachmentsModal';
 import { RequestDetailModal } from '@/components/vacation/RequestDetailModal';
+import { ConflictErrorModal } from '@/components/vacation/ConflictErrorModal';
 import { ScheduleDetailModal } from '@/components/vacation/ScheduleDetailModal';
 import BalancesTabContent from '@/components/vacation/BalancesTabContent';
+import {  referenceDataService } from "@/services/vacantPositionsService";
+import { useCallback } from "react";
+import VacationCalendar from '@/components/vacation/VacationCalendar';
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showInfo } = useToast();
@@ -45,13 +49,15 @@ export default function VacationRequestsPage() {
   const [selectedRequestNumber, setSelectedRequestNumber] = useState(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [rejectionReason, setRejectionReason] = useState('');
-  
+   const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictData, setConflictData] = useState([]);
   // File upload states
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [fileErrors, setFileErrors] = useState('');
   const [showScheduleDetailModal, setShowScheduleDetailModal] = useState(false);
 const [selectedScheduleId, setSelectedScheduleId] = useState(null);
-
+const [businessFunctions, setBusinessFunctions] = useState([]);  // ✅ YENİ
+  const [departments, setDepartments] = useState([]);
 // Handler function:
 const handleViewScheduleDetail = (scheduleId) => {
   setSelectedScheduleId(scheduleId);
@@ -62,7 +68,8 @@ const handleViewScheduleDetail = (scheduleId) => {
   const [filters, setFilters] = useState({
     status: '',
     vacation_type_id: '',
-    department_id: '',
+     department_id: '',
+    business_function_id: '',
     start_date: '',
     end_date: '',
     employee_name: '',
@@ -156,6 +163,29 @@ const handleViewScheduleDetail = (scheduleId) => {
     }
   };
 
+  const fetchReferenceData = useCallback(async () => {
+  
+
+    try {
+      const result = await referenceDataService.getAllReferenceData();
+      
+      if (result.success) {
+        setBusinessFunctions(result.data.businessFunctions || []);
+        setDepartments(result.data.departments || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch reference data:', error);
+  
+    } finally {
+      console.log('Reference data fetch attempt finished.');
+    }
+  }, []);
+
+
+  useEffect(() => {
+    initializeData();
+   fetchReferenceData()
+  }, []);
   const fetchUserPermissions = async () => {
     try {
       const data = await VacationService.getMyPermissions();
@@ -548,24 +578,18 @@ const handleViewScheduleDetail = (scheduleId) => {
       setFileErrors('');
     } catch (error) {
       console.error('Submit error:', error);
-      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
-      showError(errorMsg);
+      
+      // ✅ Check for conflict error
+      if (error.response?.data?.conflicts && error.response?.data?.conflicts.length > 0) {
+        setConflictData(error.response.data.conflicts);
+        setShowConflictModal(true);
+      } else {
+        const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to submit';
+        showError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleEditSchedule = (schedule) => {
-    setEditingSchedule({
-      id: schedule.id,
-      vacation_type_id: schedule.vacation_type_id || vacationTypes[0]?.id,
-      start_date: schedule.start_date,
-      end_date: schedule.end_date,
-      comment: schedule.comment || '',
-      numberOfDays: schedule.number_of_days,
-      edit_count: schedule.edit_count
-    });
-    setEditModalOpen(true);
   };
 
   const handleSaveEdit = async () => {
@@ -593,11 +617,33 @@ const handleViewScheduleDetail = (scheduleId) => {
       fetchMyAllRecords();
     } catch (error) {
       console.error('Edit error:', error);
-      showError(error.response?.data?.error || 'Failed to update');
+      
+      // ✅ Check for conflict error
+      if (error.response?.data?.conflicts && error.response?.data?.conflicts.length > 0) {
+        setConflictData(error.response.data.conflicts);
+        setShowConflictModal(true);
+        setEditModalOpen(false); // Close edit modal
+      } else {
+        showError(error.response?.data?.error || 'Failed to update');
+      }
     } finally {
       setLoading(false);
-    }
+    }}
+
+  const handleEditSchedule = (schedule) => {
+    setEditingSchedule({
+      id: schedule.id,
+      vacation_type_id: schedule.vacation_type_id || vacationTypes[0]?.id,
+      start_date: schedule.start_date,
+      end_date: schedule.end_date,
+      comment: schedule.comment || '',
+      numberOfDays: schedule.number_of_days,
+      edit_count: schedule.edit_count
+    });
+    setEditModalOpen(true);
   };
+
+ 
 
   // Modal handlers
   const handleOpenApprovalModal = (request) => {
@@ -796,12 +842,14 @@ const handleViewScheduleDetail = (scheduleId) => {
         </div>
 
         <div className="mb-5 border-b border-almet-mystic dark:border-almet-comet">
+           <div className="mb-5 border-b border-almet-mystic dark:border-almet-comet">
           <div className="flex space-x-8">
             {[
               { key: 'request', label: 'Request', icon: FileText },
               ...(canApprove ? [{ key: 'approval', label: 'Approval', icon: CheckCircle }] : []),
               { key: 'all', label: 'My Records', icon: Calendar },
               ...(canExportAll || canExportTeam ? [{ key: 'records', label: 'All Records', icon: Users }] : []),
+              { key: 'calendar', label: 'Calendar', icon: Calendar },  // ✅ YENİ TAB
               ...(userPermissions.permissions?.includes('vacation.balance.view_all') || userPermissions.is_admin 
                 ? [{ key: 'balances', label: 'Balances', icon: TrendingUp }] 
                 : [])
@@ -820,6 +868,8 @@ const handleViewScheduleDetail = (scheduleId) => {
               </button>
             ))}
           </div>
+        </div>
+
         </div>
 
         {activeTab === 'request' && (
@@ -1699,66 +1749,122 @@ const handleViewScheduleDetail = (scheduleId) => {
             </div>
 
             {showFilters && (
-              <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-5 bg-almet-mystic/10 dark:bg-gray-900/20">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Employee Name</label>
-                    <input 
-                      type="text" 
-                      value={filters.employee_name}
-                      onChange={(e) => setFilters(prev => ({...prev, employee_name: e.target.value}))}
-                      placeholder="Search name"
-                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Start Date</label>
-                    <input 
-                      type="date" 
-                      value={filters.start_date}
-                      onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
-                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">End Date</label>
-                    <input 
-                      type="date" 
-                      value={filters.end_date}
-                      onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
-                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Year</label>
-                    <input 
-                      type="number" 
-                      value={filters.year}
-                      onChange={(e) => setFilters(prev => ({...prev, year: e.target.value}))}
-                      placeholder="2025"
-                      className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
+            <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-5 bg-almet-mystic/10 dark:bg-gray-900/20">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                    Employee Name
+                  </label>
+                  <input 
+                    type="text" 
+                    value={filters.employee_name}
+                    onChange={(e) => setFilters(prev => ({...prev, employee_name: e.target.value}))}
+                    placeholder="Search name"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
                 </div>
-                <div className="flex gap-2 mt-3">
-                  <button 
-                    onClick={fetchAllVacationRecords}
-                    className="px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all"
-                  >
-                    Apply Filters
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setFilters({ status: '', vacation_type_id: '', department_id: '', start_date: '', end_date: '', employee_name: '', year: '' });
-                      fetchAllVacationRecords();
-                    }}
-                    className="px-4 py-2 text-xs border border-almet-mystic dark:border-almet-comet text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
-                  >
-                    Clear
-                  </button>
+
+                {/* ✅ YENİ: Company Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                    Company
+                  </label>
+                  <SearchableDropdown
+                    options={businessFunctions.map(bf => ({ 
+                      value: bf.id, 
+                      label: bf.name 
+                    }))}
+                    value={filters.business_function_id}
+                    onChange={(value) => setFilters(prev => ({...prev, business_function_id: value || ''}))}
+                    placeholder="All Companies"
+                    allowUncheck={true}
+                    darkMode={darkMode}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                    Department
+                  </label>
+                  <SearchableDropdown
+                    options={departments.map(dept => ({ 
+                      value: dept.id, 
+                      label: dept.name 
+                    }))}
+                    value={filters.department_id}
+                    onChange={(value) => setFilters(prev => ({...prev, department_id: value || ''}))}
+                    placeholder="All Departments"
+                    allowUncheck={true}
+                    darkMode={darkMode}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                    Start Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={filters.start_date}
+                    onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                    End Date
+                  </label>
+                  <input 
+                    type="date" 
+                    value={filters.end_date}
+                    onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                    Year
+                  </label>
+                  <input 
+                    type="number" 
+                    value={filters.year}
+                    onChange={(e) => setFilters(prev => ({...prev, year: e.target.value}))}
+                    placeholder="2025"
+                    className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
                 </div>
               </div>
-            )}
+
+              <div className="flex gap-2 mt-3">
+                <button 
+                  onClick={fetchAllVacationRecords}
+                  className="px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all"
+                >
+                  Apply Filters
+                </button>
+                <button 
+                  onClick={() => {
+                    setFilters({ 
+                      status: '', 
+                      vacation_type_id: '', 
+                      department_id: '', 
+                      business_function_id: '',  // ✅ YENİ
+                      start_date: '', 
+                      end_date: '', 
+                      employee_name: '', 
+                      year: '' 
+                    });
+                    fetchAllVacationRecords();
+                  }}
+                  className="px-4 py-2 text-xs border border-almet-mystic dark:border-almet-comet text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          )}
             
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
@@ -2023,7 +2129,13 @@ const handleViewScheduleDetail = (scheduleId) => {
           }
         }}
       />
-
+   {activeTab === 'calendar' && (
+          <VacationCalendar
+            darkMode={darkMode}
+            showSuccess={showSuccess}
+            showError={showError}
+          />
+        )}
       {/* Request Detail Modal */}
       <RequestDetailModal
         show={showDetailModal}
@@ -2036,6 +2148,14 @@ const handleViewScheduleDetail = (scheduleId) => {
           setShowDetailModal(false);
           handleViewAttachments(requestId, requestNumber);
         }}
+      />
+         <ConflictErrorModal
+        show={showConflictModal}
+        onClose={() => {
+          setShowConflictModal(false);
+          setConflictData([]);
+        }}
+        conflicts={conflictData}
       />
       <ScheduleDetailModal
   show={showScheduleDetailModal}
