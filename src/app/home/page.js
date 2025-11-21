@@ -606,9 +606,12 @@ export default function Home() {
     loadTrainings();
   }, []);
 
-  const loadTrainings = () => {
+   const loadTrainings = () => {
+    // Version kontrolu üçün
+    const TRAINING_VERSION = '1.0.0'; // Data dəyişdikdə bunu artır
+    const VERSION_KEY = 'onboarding_trainings_version';
+    
     const mockTrainings = [
-     
       {
         id: 2,
         title: "Company Overview",
@@ -621,12 +624,16 @@ export default function Home() {
       }
     ];
 
+    const storedVersion = localStorage.getItem(VERSION_KEY);
     const stored = localStorage.getItem('onboarding_trainings');
-    if (stored) {
-      setTrainings(JSON.parse(stored));
-    } else {
+    
+    // Əgər version fərqlidirsə və ya data yoxdursa, yeni data yüklə
+    if (storedVersion !== TRAINING_VERSION || !stored) {
       setTrainings(mockTrainings);
       localStorage.setItem('onboarding_trainings', JSON.stringify(mockTrainings));
+      localStorage.setItem(VERSION_KEY, TRAINING_VERSION);
+    } else {
+      setTrainings(JSON.parse(stored));
     }
   };
 
