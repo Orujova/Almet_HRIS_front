@@ -613,7 +613,7 @@ export default function Home() {
         id: 2,
         title: "Company Overview",
         description: "Company Overview training to get you acquainted with our mission, vision, and values.",
-        pdfUrl: "/onboarding/Copy of Almet Academy - Company Overview.pdf",
+        pdfUrl: "/pdfs/Copy of Almet Academy - Company Overview.pdf",
         duration: "20 min",
         isCompleted: false,
         dueDate: "2025-01-20",

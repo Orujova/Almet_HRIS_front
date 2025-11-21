@@ -12,9 +12,8 @@ export default function HierarchicalTableView({ context }) {
   
   // State to track which rows are expanded
   const [expandedRows, setExpandedRows] = useState({
-    companies: {},      // Companies
-    units: {},          // Units
     departments: {},    // Departments
+    units: {},          // Units
     functions: {},      // Job Functions
     hierarchies: {}     // Hierarchies
   });
@@ -27,52 +26,46 @@ export default function HierarchicalTableView({ context }) {
 
     employees.forEach(emp => {
       // Get name for each level
-      const companyName = emp.business_function_name || 'Unassigned';
-      const unitName = emp.unit_name || 'Unassigned';
       const deptName = emp.department_name || 'Unassigned';
+      const unitName = emp.unit_name || 'Unassigned';
       const funcName = emp.job_function_name || 'Unassigned';
       const hierarchyName = emp.position_group_name || 'Unassigned';
       const titleName = emp.job_title || 'Unassigned';
 
       // Create structure level by level
-      if (!structure[companyName]) {
-        structure[companyName] = { units: {}, totalEmployees: 0 };
+      if (!structure[deptName]) {
+        structure[deptName] = { units: {}, totalEmployees: 0 };
       }
       
-      if (!structure[companyName].units[unitName]) {
-        structure[companyName].units[unitName] = { departments: {}, totalEmployees: 0 };
+      if (!structure[deptName].units[unitName]) {
+        structure[deptName].units[unitName] = { functions: {}, totalEmployees: 0 };
       }
       
-      if (!structure[companyName].units[unitName].departments[deptName]) {
-        structure[companyName].units[unitName].departments[deptName] = { functions: {}, totalEmployees: 0 };
+      if (!structure[deptName].units[unitName].functions[funcName]) {
+        structure[deptName].units[unitName].functions[funcName] = { hierarchies: {}, totalEmployees: 0 };
       }
       
-      if (!structure[companyName].units[unitName].departments[deptName].functions[funcName]) {
-        structure[companyName].units[unitName].departments[deptName].functions[funcName] = { hierarchies: {}, totalEmployees: 0 };
-      }
-      
-      if (!structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName]) {
-        structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName] = {
+      if (!structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName]) {
+        structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName] = {
           titles: {},
           totalEmployees: 0,
           employees: []
         };
       }
       
-      if (!structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName].titles[titleName]) {
-        structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName].titles[titleName] = [];
+      if (!structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName].titles[titleName]) {
+        structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName].titles[titleName] = [];
       }
 
       // Add employee
-      structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName].titles[titleName].push(emp);
-      structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName].employees.push(emp);
+      structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName].titles[titleName].push(emp);
+      structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName].employees.push(emp);
       
       // Increment counts
-      structure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies[hierarchyName].totalEmployees++;
-      structure[companyName].units[unitName].departments[deptName].functions[funcName].totalEmployees++;
-      structure[companyName].units[unitName].departments[deptName].totalEmployees++;
-      structure[companyName].units[unitName].totalEmployees++;
-      structure[companyName].totalEmployees++;
+      structure[deptName].units[unitName].functions[funcName].hierarchies[hierarchyName].totalEmployees++;
+      structure[deptName].units[unitName].functions[funcName].totalEmployees++;
+      structure[deptName].units[unitName].totalEmployees++;
+      structure[deptName].totalEmployees++;
     });
 
     return structure;
@@ -92,32 +85,26 @@ export default function HierarchicalTableView({ context }) {
   // Expand all rows
   const expandAll = () => {
     const newExpanded = {
-      companies: {},
-      units: {},
       departments: {},
+      units: {},
       functions: {},
       hierarchies: {}
     };
 
-    Object.keys(tableStructure).forEach(companyName => {
-      newExpanded.companies[companyName] = true;
+    Object.keys(tableStructure).forEach(deptName => {
+      newExpanded.departments[deptName] = true;
       
-      Object.keys(tableStructure[companyName].units).forEach(unitName => {
-        const unitKey = `${companyName}|${unitName}`;
+      Object.keys(tableStructure[deptName].units).forEach(unitName => {
+        const unitKey = `${deptName}|${unitName}`;
         newExpanded.units[unitKey] = true;
         
-        Object.keys(tableStructure[companyName].units[unitName].departments).forEach(deptName => {
-          const deptKey = `${companyName}|${unitName}|${deptName}`;
-          newExpanded.departments[deptKey] = true;
+        Object.keys(tableStructure[deptName].units[unitName].functions).forEach(funcName => {
+          const funcKey = `${deptName}|${unitName}|${funcName}`;
+          newExpanded.functions[funcKey] = true;
           
-          Object.keys(tableStructure[companyName].units[unitName].departments[deptName].functions).forEach(funcName => {
-            const funcKey = `${companyName}|${unitName}|${deptName}|${funcName}`;
-            newExpanded.functions[funcKey] = true;
-            
-            Object.keys(tableStructure[companyName].units[unitName].departments[deptName].functions[funcName].hierarchies).forEach(hierarchyName => {
-              const hierKey = `${companyName}|${unitName}|${deptName}|${funcName}|${hierarchyName}`;
-              newExpanded.hierarchies[hierKey] = true;
-            });
+          Object.keys(tableStructure[deptName].units[unitName].functions[funcName].hierarchies).forEach(hierarchyName => {
+            const hierKey = `${deptName}|${unitName}|${funcName}|${hierarchyName}`;
+            newExpanded.hierarchies[hierKey] = true;
           });
         });
       });
@@ -129,9 +116,8 @@ export default function HierarchicalTableView({ context }) {
   // Collapse all rows
   const collapseAll = () => {
     setExpandedRows({
-      companies: {},
-      units: {},
       departments: {},
+      units: {},
       functions: {},
       hierarchies: {}
     });
@@ -168,7 +154,7 @@ export default function HierarchicalTableView({ context }) {
             Job Catalogue - Hierarchical View
           </h2>
           <p className="text-xs text-gray-600 dark:text-almet-bali-hai">
-            Company → Unit → Department → Job Function → Hierarchy → Title
+            Department → Unit → Job Function → Hierarchy → Title
           </p>
         </div>
         <div className="flex gap-2">
@@ -194,20 +180,14 @@ export default function HierarchicalTableView({ context }) {
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase border-r border-white/20">
                 <div className="flex items-center gap-2">
-                  <Building2 size={14} />
-                  Company
+                  <Target size={14} />
+                  Department
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase border-r border-white/20">
                 <div className="flex items-center gap-2">
                   <Building2 size={14} />
                   Unit
-                </div>
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase border-r border-white/20">
-                <div className="flex items-center gap-2">
-                  <Target size={14} />
-                  Department
                 </div>
               </th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase border-r border-white/20">
@@ -228,37 +208,37 @@ export default function HierarchicalTableView({ context }) {
             </tr>
           </thead>
           <tbody>
-            {Object.entries(tableStructure).map(([companyName, companyData]) => {
-              const isCompanyOpen = expandedRows.companies[companyName];
+            {Object.entries(tableStructure).map(([deptName, deptData]) => {
+              const isDeptOpen = expandedRows.departments[deptName];
               
               return (
-                <React.Fragment key={companyName}>
+                <React.Fragment key={deptName}>
                   
-                  {/* 1. COMPANY ROW (TOP LEVEL) */}
+                  {/* 1. DEPARTMENT ROW (TOP LEVEL) */}
                   <tr 
                     className="border-b border-gray-200 dark:border-almet-comet bg-gray-50 dark:bg-almet-san-juan cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
-                    onClick={() => toggleRow('companies', companyName)}
+                    onClick={() => toggleRow('departments', deptName)}
                   >
-                    <td className="px-4 py-3 font-bold text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="6">
+                    <td className="px-4 py-3 font-bold text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          {isCompanyOpen ? 
+                          {isDeptOpen ? 
                             <ChevronDown size={16} className="text-almet-sapphire" /> : 
                             <ChevronRight size={16} className="text-gray-400" />
                           }
-                          <Building2 size={14} className="text-almet-sapphire" />
-                          <span>{companyName}</span>
+                          <Target size={14} className="text-almet-sapphire" />
+                          <span>{deptName}</span>
                         </div>
                         <span className="px-2.5 py-1 bg-almet-sapphire text-white text-xs rounded-md font-semibold">
-                          {companyData.totalEmployees} employees
+                          {deptData.totalEmployees} employees
                         </span>
                       </div>
                     </td>
                   </tr>
 
-                  {/* If company is open, show Units */}
-                  {isCompanyOpen && Object.entries(companyData.units).map(([unitName, unitData]) => {
-                    const unitKey = `${companyName}|${unitName}`;
+                  {/* If department is open, show Units */}
+                  {isDeptOpen && Object.entries(deptData.units).map(([unitName, unitData]) => {
+                    const unitKey = `${deptName}|${unitName}`;
                     const isUnitOpen = expandedRows.units[unitKey];
                     
                     return (
@@ -270,7 +250,7 @@ export default function HierarchicalTableView({ context }) {
                           onClick={() => toggleRow('units', unitKey)}
                         >
                           <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/50 dark:bg-almet-san-juan/50"></td>
-                          <td className="px-4 py-3 font-semibold text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="5">
+                          <td className="px-4 py-3 font-semibold text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="4">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 pl-4">
                                 {isUnitOpen ? 
@@ -287,156 +267,117 @@ export default function HierarchicalTableView({ context }) {
                           </td>
                         </tr>
 
-                        {/* If unit is open, show Departments */}
-                        {isUnitOpen && Object.entries(unitData.departments).map(([deptName, deptData]) => {
-                          const deptKey = `${companyName}|${unitName}|${deptName}`;
-                          const isDeptOpen = expandedRows.departments[deptKey];
+                        {/* If unit is open, show Functions */}
+                        {isUnitOpen && Object.entries(unitData.functions).map(([funcName, funcData]) => {
+                          const funcKey = `${deptName}|${unitName}|${funcName}`;
+                          const isFuncOpen = expandedRows.functions[funcKey];
                           
                           return (
-                            <React.Fragment key={deptKey}>
+                            <React.Fragment key={funcKey}>
                               
-                              {/* 3. DEPARTMENT ROW */}
+                              {/* 3. JOB FUNCTION ROW */}
                               <tr 
                                 className="border-b border-gray-200 dark:border-almet-comet bg-gray-50 dark:bg-almet-san-juan cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
-                                onClick={() => toggleRow('departments', deptKey)}
+                                onClick={() => toggleRow('functions', funcKey)}
                               >
                                 <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/50 dark:bg-almet-san-juan/50"></td>
                                 <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/50 dark:bg-almet-cloud-burst/50"></td>
-                                <td className="px-4 py-3 font-medium text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="4">
+                                <td className="px-4 py-3 font-medium text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="3">
                                   <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 pl-8">
-                                      {isDeptOpen ? 
+                                      {isFuncOpen ? 
                                         <ChevronDown size={14} className="text-almet-sapphire" /> : 
                                         <ChevronRight size={14} className="text-gray-400" />
                                       }
-                                      <Target size={12} className="text-gray-500" />
-                                      <span>{deptName}</span>
+                                      <Briefcase size={12} className="text-gray-500" />
+                                      <span>{funcName}</span>
                                     </div>
                                     <span className="px-2 py-0.5 bg-gray-200 dark:bg-almet-comet text-gray-700 dark:text-white text-xs rounded-md font-medium">
-                                      {deptData.totalEmployees} employees
+                                      {funcData.totalEmployees} employees
                                     </span>
                                   </div>
                                 </td>
                               </tr>
 
-                              {/* If department is open, show Functions */}
-                              {isDeptOpen && Object.entries(deptData.functions).map(([funcName, funcData]) => {
-                                const funcKey = `${companyName}|${unitName}|${deptName}|${funcName}`;
-                                const isFuncOpen = expandedRows.functions[funcKey];
+                              {/* If function is open, show Hierarchies */}
+                              {isFuncOpen && Object.entries(funcData.hierarchies).map(([hierarchyName, hierarchyData]) => {
+                                const hierKey = `${deptName}|${unitName}|${funcName}|${hierarchyName}`;
+                                const isHierOpen = expandedRows.hierarchies[hierKey];
+                                const colors = getHierarchyColor(hierarchyName, darkMode);
                                 
                                 return (
-                                  <React.Fragment key={funcKey}>
+                                  <React.Fragment key={hierKey}>
                                     
-                                    {/* 4. JOB FUNCTION ROW */}
+                                    {/* 4. HIERARCHY ROW */}
                                     <tr 
                                       className="border-b border-gray-200 dark:border-almet-comet bg-white dark:bg-almet-cloud-burst cursor-pointer hover:bg-gray-50 dark:hover:bg-almet-san-juan transition-colors"
-                                      onClick={() => toggleRow('functions', funcKey)}
+                                      onClick={() => toggleRow('hierarchies', hierKey)}
                                     >
                                       <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/50 dark:bg-almet-san-juan/50"></td>
                                       <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/50 dark:bg-almet-cloud-burst/50"></td>
                                       <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/50 dark:bg-almet-san-juan/50"></td>
-                                      <td className="px-4 py-3 font-medium text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-almet-comet" colSpan="3">
+                                      <td className="px-4 py-3 border-r border-gray-200 dark:border-almet-comet" colSpan="2">
                                         <div className="flex items-center justify-between">
                                           <div className="flex items-center gap-2 pl-12">
-                                            {isFuncOpen ? 
-                                              <ChevronDown size={14} className="text-almet-sapphire" /> : 
-                                              <ChevronRight size={14} className="text-gray-400" />
+                                            {isHierOpen ? 
+                                              <ChevronDown size={12} className="text-almet-sapphire" /> : 
+                                              <ChevronRight size={12} className="text-gray-400" />
                                             }
-                                            <Briefcase size={12} className="text-gray-500" />
-                                            <span>{funcName}</span>
+                                            <span 
+                                              className="px-2.5 py-1 rounded text-xs font-semibold"
+                                              style={{
+                                                backgroundColor: colors.backgroundColor,
+                                                color: colors.textColor,
+                                                border: `1px solid ${colors.borderColor}`
+                                              }}
+                                            >
+                                              {hierarchyName}
+                                            </span>
                                           </div>
                                           <span className="px-2 py-0.5 bg-gray-200 dark:bg-almet-comet text-gray-700 dark:text-white text-xs rounded-md font-medium">
-                                            {funcData.totalEmployees} employees
+                                            {hierarchyData.totalEmployees} employees
                                           </span>
                                         </div>
                                       </td>
                                     </tr>
 
-                                    {/* If function is open, show Hierarchies */}
-                                    {isFuncOpen && Object.entries(funcData.hierarchies).map(([hierarchyName, hierarchyData]) => {
-                                      const hierKey = `${companyName}|${unitName}|${deptName}|${funcName}|${hierarchyName}`;
-                                      const isHierOpen = expandedRows.hierarchies[hierKey];
-                                      const colors = getHierarchyColor(hierarchyName, darkMode);
-                                      
-                                      return (
-                                        <React.Fragment key={hierKey}>
-                                          
-                                          {/* 5. HIERARCHY ROW */}
-                                          <tr 
-                                            className="border-b border-gray-200 dark:border-almet-comet bg-gray-50 dark:bg-almet-san-juan cursor-pointer hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
-                                            onClick={() => toggleRow('hierarchies', hierKey)}
-                                          >
-                                            <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/50 dark:bg-almet-san-juan/50"></td>
-                                            <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/50 dark:bg-almet-cloud-burst/50"></td>
-                                            <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/50 dark:bg-almet-san-juan/50"></td>
-                                            <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/50 dark:bg-almet-cloud-burst/50"></td>
-                                            <td className="px-4 py-3 border-r border-gray-200 dark:border-almet-comet" colSpan="2">
-                                              <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 pl-16">
-                                                  {isHierOpen ? 
-                                                    <ChevronDown size={12} className="text-almet-sapphire" /> : 
-                                                    <ChevronRight size={12} className="text-gray-400" />
-                                                  }
-                                                  <span 
-                                                    className="px-2.5 py-1 rounded text-xs font-semibold"
-                                                    style={{
-                                                      backgroundColor: colors.backgroundColor,
-                                                      color: colors.textColor,
-                                                      border: `1px solid ${colors.borderColor}`
-                                                    }}
-                                                  >
-                                                    {hierarchyName}
-                                                  </span>
-                                                </div>
-                                                <span className="px-2 py-0.5 bg-gray-200 dark:bg-almet-comet text-gray-700 dark:text-white text-xs rounded-md font-medium">
-                                                  {hierarchyData.totalEmployees} employees
-                                                </span>
-                                              </div>
-                                            </td>
-                                          </tr>
-
-                                          {/* If hierarchy is open, show Titles */}
-                                          {isHierOpen && Object.entries(hierarchyData.titles).map(([titleName, empList]) => (
-                                            <tr 
-                                              key={`${hierKey}-${titleName}`}
-                                              className="border-b border-gray-100 dark:border-almet-comet/50 bg-white dark:bg-almet-cloud-burst hover:bg-almet-sapphire/5 dark:hover:bg-almet-sapphire/10 cursor-pointer transition-colors"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                const jobData = {
-                                                  id: `${companyName}-${unitName}-${deptName}-${funcName}-${hierarchyName}-${titleName}`,
-                                                  businessFunction: companyName,
-                                                  unit: unitName,
-                                                  department: deptName,
-                                                  jobFunction: funcName,
-                                                  hierarchy: hierarchyName,
-                                                  title: titleName,
-                                                  currentEmployees: empList.length,
-                                                  employees: empList
-                                                };
-                                                setSelectedJob(jobData);
-                                              }}
-                                            >
-                                              <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/30 dark:bg-almet-san-juan/30"></td>
-                                              <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/30 dark:bg-almet-cloud-burst/30"></td>
-                                              <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/30 dark:bg-almet-san-juan/30"></td>
-                                              <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/30 dark:bg-almet-cloud-burst/30"></td>
-                                              <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/30 dark:bg-almet-san-juan/30"></td>
-                                              <td className="px-4 py-2.5">
-                                                <div className="flex items-center justify-between pl-20">
-                                                  <span className="text-sm text-gray-900 dark:text-white font-medium">
-                                                    {titleName}
-                                                  </span>
-                                                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded-md text-xs font-medium">
-                                                    <Users size={11} />
-                                                    <span>{empList.length}</span>
-                                                  </div>
-                                                </div>
-                                              </td>
-                                            </tr>
-                                          ))}
-                                        </React.Fragment>
-                                      );
-                                    })}
+                                    {/* If hierarchy is open, show Titles */}
+                                    {isHierOpen && Object.entries(hierarchyData.titles).map(([titleName, empList]) => (
+                                      <tr 
+                                        key={`${hierKey}-${titleName}`}
+                                        className="border-b border-gray-100 dark:border-almet-comet/50 bg-white dark:bg-almet-cloud-burst hover:bg-almet-sapphire/5 dark:hover:bg-almet-sapphire/10 cursor-pointer transition-colors"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const jobData = {
+                                            id: `${deptName}-${unitName}-${funcName}-${hierarchyName}-${titleName}`,
+                                            department: deptName,
+                                            unit: unitName,
+                                            jobFunction: funcName,
+                                            hierarchy: hierarchyName,
+                                            title: titleName,
+                                            currentEmployees: empList.length,
+                                            employees: empList
+                                          };
+                                          setSelectedJob(jobData);
+                                        }}
+                                      >
+                                        <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/30 dark:bg-almet-san-juan/30"></td>
+                                        <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/30 dark:bg-almet-cloud-burst/30"></td>
+                                        <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-gray-50/30 dark:bg-almet-san-juan/30"></td>
+                                        <td className="px-4 py-2 border-r border-gray-200 dark:border-almet-comet bg-white/30 dark:bg-almet-cloud-burst/30"></td>
+                                        <td className="px-4 py-2.5">
+                                          <div className="flex items-center justify-between pl-16">
+                                            <span className="text-sm text-gray-900 dark:text-white font-medium">
+                                              {titleName}
+                                            </span>
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire dark:text-almet-steel-blue rounded-md text-xs font-medium">
+                                              <Users size={11} />
+                                              <span>{empList.length}</span>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    ))}
                                   </React.Fragment>
                                 );
                               })}
@@ -458,7 +399,7 @@ export default function HierarchicalTableView({ context }) {
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-4">
             <span className="text-gray-600 dark:text-almet-bali-hai">
-              <strong className="text-gray-900 dark:text-white">{Object.keys(tableStructure).length}</strong> Companies
+              <strong className="text-gray-900 dark:text-white">{Object.keys(tableStructure).length}</strong> Departments
             </span>
             <span className="text-gray-400">•</span>
             <span className="text-gray-600 dark:text-almet-bali-hai">

@@ -45,6 +45,20 @@ const TimeOffPage = () => {
 
   const toast = useToast();
 
+  // Generate time options (00:00 to 23:30 in 30-minute intervals)
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const hourStr = hour.toString().padStart(2, '0');
+        const minuteStr = minute.toString().padStart(2, '0');
+        options.push(`${hourStr}:${minuteStr}`);
+      }
+    }
+    return options;
+  };
+  const timeOptions = generateTimeOptions();
+
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -872,17 +886,18 @@ const TimeOffPage = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Start Time <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="time"
+                    <select
                       value={formData.start_time}
                       onChange={(e) => setFormData({...formData, start_time: e.target.value})}
-                      min="09:00"
-                      max="18:00"
-                      step="1800"
                       className={`w-full px-4 py-2.5 text-sm border outline-0 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                         formErrors.start_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                       }`}
-                    />
+                    >
+                      <option value="">Select time</option>
+                      {timeOptions.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
                     {formErrors.start_time && <p className="mt-1.5 text-xs text-red-500">{formErrors.start_time}</p>}
                   </div>
 
@@ -890,17 +905,18 @@ const TimeOffPage = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       End Time <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="time"
+                    <select
                       value={formData.end_time}
                       onChange={(e) => setFormData({...formData, end_time: e.target.value})}
-                      min="09:00"
-                      max="18:00"
-                      step="1800"
                       className={`w-full px-4 py-2.5 text-sm outline-0 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                         formErrors.end_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                       }`}
-                    />
+                    >
+                      <option value="">Select time</option>
+                      {timeOptions.map(time => (
+                        <option key={time} value={time}>{time}</option>
+                      ))}
+                    </select>
                     {formErrors.end_time && <p className="mt-1.5 text-xs text-red-500">{formErrors.end_time}</p>}
                   </div>
                 </div>
