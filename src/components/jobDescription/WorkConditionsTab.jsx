@@ -1,4 +1,4 @@
-// components/jobDescription/WorkConditionsTab.jsx - FIXED Double Selection Issue
+// components/jobDescription/WorkConditionsTab.jsx - FIXED with Prefix System
 import React, { useEffect } from 'react';
 import { Package, Shield, Gift } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
@@ -19,17 +19,16 @@ const WorkConditionsTab = ({
       companyBenefits: dropdownData?.companyBenefits?.length || 0
     });
 
-    console.log('📝 WorkConditionsTab - formData:', {
+    console.log('📋 WorkConditionsTab - formData:', {
       business_resources_ids: formData?.business_resources_ids || [],
       access_rights_ids: formData?.access_rights_ids || [],
       company_benefits_ids: formData?.company_benefits_ids || []
     });
   }, [dropdownData, formData]);
 
-  // 🔥 Handle selection changes - NO PREFIX needed anymore
-  // HierarchicalMultiSelect artıq öz daxilində prefix idarə edir
+  // 🔥 Handle selection changes
   const handleResourcesChange = (selectedIds) => {
-    console.log('✅ Resources selected:', selectedIds);
+    console.log('✅ Resources selected (with prefix):', selectedIds);
     onFormDataChange(prev => ({
       ...prev,
       business_resources_ids: selectedIds
@@ -37,7 +36,7 @@ const WorkConditionsTab = ({
   };
 
   const handleAccessChange = (selectedIds) => {
-    console.log('✅ Access selected:', selectedIds);
+    console.log('✅ Access selected (with prefix):', selectedIds);
     onFormDataChange(prev => ({
       ...prev,
       access_rights_ids: selectedIds
@@ -45,7 +44,7 @@ const WorkConditionsTab = ({
   };
 
   const handleBenefitsChange = (selectedIds) => {
-    console.log('✅ Benefits selected:', selectedIds);
+    console.log('✅ Benefits selected (with prefix):', selectedIds);
     onFormDataChange(prev => ({
       ...prev,
       company_benefits_ids: selectedIds
@@ -65,7 +64,7 @@ const WorkConditionsTab = ({
     ? dropdownData.companyBenefits 
     : [];
 
-  // Selected IDs - direct usage, no prefix manipulation needed here
+  // Selected IDs - direct usage
   const selectedResourceIds = formData?.business_resources_ids || [];
   const selectedAccessIds = formData?.access_rights_ids || [];
   const selectedBenefitIds = formData?.company_benefits_ids || [];

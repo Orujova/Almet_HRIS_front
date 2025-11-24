@@ -45,20 +45,6 @@ const TimeOffPage = () => {
 
   const toast = useToast();
 
-  // Generate time options (00:00 to 23:30 in 30-minute intervals)
-  const generateTimeOptions = () => {
-    const options = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const hourStr = hour.toString().padStart(2, '0');
-        const minuteStr = minute.toString().padStart(2, '0');
-        options.push(`${hourStr}:${minuteStr}`);
-      }
-    }
-    return options;
-  };
-  const timeOptions = generateTimeOptions();
-
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -108,6 +94,30 @@ const TimeOffPage = () => {
     }
   };
 
+  const formatTimeInput = (value) => {
+    // Remove non-numeric characters
+    const numbers = value.replace(/[^\d]/g, '');
+    
+    if (numbers.length === 0) return '';
+    if (numbers.length <= 2) return numbers;
+    
+    // Format as HH:MM
+    const hours = numbers.slice(0, 2);
+    const minutes = numbers.slice(2, 4);
+    return `${hours}:${minutes}`;
+  };
+
+  const handleTimeChange = (field, value) => {
+    const formatted = formatTimeInput(value);
+    setFormData({...formData, [field]: formatted});
+  };
+
+  const validateTimeFormat = (time) => {
+    if (!time) return false;
+    const timeRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/;
+    return timeRegex.test(time);
+  };
+
   const validateForm = () => {
     const errors = {};
     const today = new Date().toISOString().split('T')[0];
@@ -120,21 +130,21 @@ const TimeOffPage = () => {
 
     if (!formData.start_time) {
       errors.start_time = 'Start time is required';
+    } else if (!validateTimeFormat(formData.start_time)) {
+      errors.start_time = 'Invalid time format. Use HH:MM (00:00 - 23:59)';
     }
 
     if (!formData.end_time) {
       errors.end_time = 'End time is required';
+    } else if (!validateTimeFormat(formData.end_time)) {
+      errors.end_time = 'Invalid time format. Use HH:MM (00:00 - 23:59)';
     }
 
-    if (formData.start_time && formData.end_time && formData.start_time >= formData.end_time) {
-      errors.end_time = 'End time must be after start time';
-    }
+    if (formData.start_time && formData.end_time && validateTimeFormat(formData.start_time) && validateTimeFormat(formData.end_time)) {
+      if (formData.start_time >= formData.end_time) {
+        errors.end_time = 'End time must be after start time';
+      }
 
-    if (!formData.reason || formData.reason.trim().length < 10) {
-      errors.reason = 'Reason must be at least 10 characters';
-    }
-
-    if (formData.start_time && formData.end_time) {
       const start = new Date(`2000-01-01T${formData.start_time}`);
       const end = new Date(`2000-01-01T${formData.end_time}`);
       const duration = (end - start) / (1000 * 60 * 60);
@@ -146,6 +156,10 @@ const TimeOffPage = () => {
       if (balance && duration > parseFloat(balance.current_balance_hours)) {
         errors.duration = `Insufficient balance. Available: ${balance.current_balance_hours}h`;
       }
+    }
+
+    if (!formData.reason || formData.reason.trim().length < 10) {
+      errors.reason = 'Reason must be at least 10 characters';
     }
 
     setFormErrors(errors);
@@ -256,6 +270,7 @@ const TimeOffPage = () => {
   };
 
   const calculateDuration = (start, end) => {
+    if (!start || !end || !validateTimeFormat(start) || !validateTimeFormat(end)) return '0.0';
     const startDate = new Date(`2000-01-01T${start}`);
     const endDate = new Date(`2000-01-01T${end}`);
     return ((endDate - startDate) / (1000 * 60 * 60)).toFixed(1);
@@ -874,7 +889,7 @@ const TimeOffPage = () => {
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
                     min={new Date().toISOString().split('T')[0]}
-                    className={`w-full px-4 py-2.5 text-sm border rounded-lg inline-0 outline-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
+                    className={`w-full px-4 py-2.5 text-sm border rounded-lg outline-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                       formErrors.date ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                     }`}
                   />
@@ -886,42 +901,40 @@ const TimeOffPage = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Start Time <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="text"
                       value={formData.start_time}
-                      onChange={(e) => setFormData({...formData, start_time: e.target.value})}
-                      className={`w-full px-4 py-2.5 text-sm border outline-0 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
+                      onChange={(e) => handleTimeChange('start_time', e.target.value)}
+                      placeholder="HH:MM"
+                      maxLength={5}
+                      className={`w-full px-4 py-2.5 text-sm border outline-0 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                         formErrors.start_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                       }`}
-                    >
-                      <option value="">Select time</option>
-                      {timeOptions.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                    />
                     {formErrors.start_time && <p className="mt-1.5 text-xs text-red-500">{formErrors.start_time}</p>}
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Format: 09:00</p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       End Time <span className="text-red-500">*</span>
                     </label>
-                    <select
+                    <input
+                      type="text"
                       value={formData.end_time}
-                      onChange={(e) => setFormData({...formData, end_time: e.target.value})}
-                      className={`w-full px-4 py-2.5 text-sm outline-0 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
+                      onChange={(e) => handleTimeChange('end_time', e.target.value)}
+                      placeholder="HH:MM"
+                      maxLength={5}
+                      className={`w-full px-4 py-2.5 text-sm outline-0 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-almet-sapphire focus:border-transparent transition-all ${
                         formErrors.end_time ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                       }`}
-                    >
-                      <option value="">Select time</option>
-                      {timeOptions.map(time => (
-                        <option key={time} value={time}>{time}</option>
-                      ))}
-                    </select>
+                    />
                     {formErrors.end_time && <p className="mt-1.5 text-xs text-red-500">{formErrors.end_time}</p>}
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Format: 18:00</p>
                   </div>
                 </div>
 
-                {formData.start_time && formData.end_time && formData.start_time < formData.end_time && (
+                {formData.start_time && formData.end_time && validateTimeFormat(formData.start_time) && validateTimeFormat(formData.end_time) && formData.start_time < formData.end_time && (
                   <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                     <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">
                       Duration: {calculateDuration(formData.start_time, formData.end_time)} hours

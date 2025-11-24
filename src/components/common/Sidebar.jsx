@@ -174,7 +174,7 @@ const Sidebar = ({ collapsed = false }) => {
       >
         {collapsed ? (
            <div >
-               <img src="/logoSmall.png" alt="" className="h-6" /> 
+               <img src="/pdfs/logoSmall.png" alt="" className="h-6" /> 
             </div>
      
         ) : (
@@ -191,7 +191,7 @@ const Sidebar = ({ collapsed = false }) => {
                <img src="/logoSmall.png" alt="" className="h-6" /> 
             </div> */}
      
-           <img src="/logo.png" alt="Almet Logo" className="h-6" />
+           <img src="/pdfs/logo.png" alt="Almet Logo" className="h-6" />
           </div>
         )}
       </Link>

@@ -1,4 +1,4 @@
-// HierarchicalMultiSelect.jsx - FIXED: Only return CHILD IDs, not parent IDs
+// HierarchicalMultiSelect.jsx - FIXED: Prefix-based ID system
 import React, { useState } from 'react';
 import { 
   ChevronDown, 
@@ -20,7 +20,7 @@ const HierarchicalMultiSelect = ({
   searchPlaceholder = "Search...",
   emptyMessage = "No items available",
   darkMode = false,
-  idPrefix = ''
+  idPrefix = 'item'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -59,6 +59,27 @@ const HierarchicalMultiSelect = ({
     const firstChild = firstParent.items[0];
     return firstChild && Array.isArray(firstChild.items);
   }, [data]);
+
+  // 🔥 Helper to create prefixed ID
+  const makePrefixedId = (id) => {
+    return `${idPrefix}_${id}`;
+  };
+
+  // 🔥 Helper to remove prefix from ID
+  const removePrefixFromId = (prefixedId) => {
+    if (typeof prefixedId !== 'string') return String(prefixedId);
+    const parts = prefixedId.split('_');
+    if (parts.length > 1) {
+      return parts.slice(1).join('_');
+    }
+    return prefixedId;
+  };
+
+  // 🔥 Check if ID is selected (compare with prefix)
+  const isIdSelected = (id) => {
+    const prefixedId = makePrefixedId(id);
+    return selectedIds.some(selectedId => String(selectedId) === String(prefixedId));
+  };
 
   // Filter data based on search
   const filteredData = React.useMemo(() => {
@@ -158,94 +179,88 @@ const HierarchicalMultiSelect = ({
     });
   };
 
-  // 🔥 Check if ID is selected
-  const isIdSelected = (id) => {
-    return selectedIds.some(selectedId => String(selectedId) === String(id));
-  };
-
-  // 🔥 Get ALL LEAF item IDs (only actual items, not parents)
+  // 🔥 Get ALL LEAF item IDs (only actual items, not parents) - WITH PREFIX
   const getAllLeafItemIds = () => {
     const ids = [];
     if (hasThreeLevels) {
       filteredData.forEach(mainGroup => {
         (mainGroup.items || []).forEach(childGroup => {
           (childGroup.items || []).forEach(item => {
-            ids.push(String(item.id));
+            ids.push(makePrefixedId(item.id));
           });
         });
       });
     } else {
       filteredData.forEach(parent => {
         (parent.items || []).forEach(item => {
-          ids.push(String(item.id));
+          ids.push(makePrefixedId(item.id));
         });
       });
     }
     return ids;
   };
 
-  // Get leaf item IDs from a parent
+  // Get leaf item IDs from a parent - WITH PREFIX
   const getParentLeafItemIds = (parent) => {
     const ids = [];
     if (hasThreeLevels) {
       (parent.items || []).forEach(childGroup => {
         (childGroup.items || []).forEach(item => {
-          ids.push(String(item.id));
+          ids.push(makePrefixedId(item.id));
         });
       });
     } else {
       (parent.items || []).forEach(item => {
-        ids.push(String(item.id));
+        ids.push(makePrefixedId(item.id));
       });
     }
-    // 🔥 If no children, return parent itself as a selectable item
     if (ids.length === 0) {
-      ids.push(String(parent.id));
+      ids.push(makePrefixedId(parent.id));
     }
     return ids;
   };
 
-  // Get leaf item IDs from a child group
+  // Get leaf item IDs from a child group - WITH PREFIX
   const getChildGroupLeafItemIds = (childGroup) => {
-    return (childGroup.items || []).map(item => String(item.id));
+    return (childGroup.items || []).map(item => makePrefixedId(item.id));
   };
 
   const isParentChecked = (parent) => {
     const itemIds = getParentLeafItemIds(parent);
     if (itemIds.length === 0) return false;
-    return itemIds.every(id => isIdSelected(id));
+    return itemIds.every(id => selectedIds.includes(id));
   };
 
   const isParentIndeterminate = (parent) => {
     const itemIds = getParentLeafItemIds(parent);
     if (itemIds.length === 0) return false;
-    const selectedCount = itemIds.filter(id => isIdSelected(id)).length;
+    const selectedCount = itemIds.filter(id => selectedIds.includes(id)).length;
     return selectedCount > 0 && selectedCount < itemIds.length;
   };
 
   const isChildGroupChecked = (childGroup) => {
     const itemIds = getChildGroupLeafItemIds(childGroup);
     if (itemIds.length === 0) return false;
-    return itemIds.every(id => isIdSelected(id));
+    return itemIds.every(id => selectedIds.includes(id));
   };
 
   const isChildGroupIndeterminate = (childGroup) => {
     const itemIds = getChildGroupLeafItemIds(childGroup);
     if (itemIds.length === 0) return false;
-    const selectedCount = itemIds.filter(id => isIdSelected(id)).length;
+    const selectedCount = itemIds.filter(id => selectedIds.includes(id)).length;
     return selectedCount > 0 && selectedCount < itemIds.length;
   };
 
   const areAllItemsSelected = () => {
     const allIds = getAllLeafItemIds();
     if (allIds.length === 0) return false;
-    return allIds.every(id => isIdSelected(id));
+    return allIds.every(id => selectedIds.includes(id));
   };
 
   const areSomeItemsSelected = () => {
     const allIds = getAllLeafItemIds();
     if (allIds.length === 0) return false;
-    const selectedCount = allIds.filter(id => isIdSelected(id)).length;
+    const selectedCount = allIds.filter(id => selectedIds.includes(id)).length;
     return selectedCount > 0 && selectedCount < allIds.length;
   };
 
@@ -254,16 +269,14 @@ const HierarchicalMultiSelect = ({
     const itemIds = getParentLeafItemIds(parent);
     if (itemIds.length === 0) return;
 
-    const allSelected = itemIds.every(id => isIdSelected(id));
+    const allSelected = itemIds.every(id => selectedIds.includes(id));
 
     if (allSelected) {
-      // Deselect all children
-      onChange(selectedIds.filter(id => !itemIds.includes(String(id))));
+      onChange(selectedIds.filter(id => !itemIds.includes(id)));
     } else {
-      // Select all children
       const newSelection = [...selectedIds];
       itemIds.forEach(itemId => {
-        if (!isIdSelected(itemId)) {
+        if (!selectedIds.includes(itemId)) {
           newSelection.push(itemId);
         }
       });
@@ -276,14 +289,14 @@ const HierarchicalMultiSelect = ({
     const itemIds = getChildGroupLeafItemIds(childGroup);
     if (itemIds.length === 0) return;
 
-    const allSelected = itemIds.every(id => isIdSelected(id));
+    const allSelected = itemIds.every(id => selectedIds.includes(id));
 
     if (allSelected) {
-      onChange(selectedIds.filter(id => !itemIds.includes(String(id))));
+      onChange(selectedIds.filter(id => !itemIds.includes(id)));
     } else {
       const newSelection = [...selectedIds];
       itemIds.forEach(itemId => {
-        if (!isIdSelected(itemId)) {
+        if (!selectedIds.includes(itemId)) {
           newSelection.push(itemId);
         }
       });
@@ -291,15 +304,15 @@ const HierarchicalMultiSelect = ({
     }
   };
 
-  // 🔥 Handle individual item toggle
+  // 🔥 Handle individual item toggle - WITH PREFIX
   const handleItemToggle = (item) => {
-    const itemId = String(item.id);
-    const isSelected = isIdSelected(itemId);
+    const prefixedId = makePrefixedId(item.id);
+    const isSelected = isIdSelected(item.id);
 
     if (isSelected) {
-      onChange(selectedIds.filter(id => String(id) !== itemId));
+      onChange(selectedIds.filter(id => String(id) !== String(prefixedId)));
     } else {
-      onChange([...selectedIds, itemId]);
+      onChange([...selectedIds, prefixedId]);
     }
   };
 
@@ -308,11 +321,11 @@ const HierarchicalMultiSelect = ({
     const allIds = getAllLeafItemIds();
     
     if (areAllItemsSelected()) {
-      onChange(selectedIds.filter(id => !allIds.includes(String(id))));
+      onChange(selectedIds.filter(id => !allIds.includes(id)));
     } else {
       const newSelection = [...selectedIds];
       allIds.forEach(itemId => {
-        if (!isIdSelected(itemId)) {
+        if (!selectedIds.includes(itemId)) {
           newSelection.push(itemId);
         }
       });
@@ -322,10 +335,10 @@ const HierarchicalMultiSelect = ({
 
   const handleClearAll = () => {
     const allIds = getAllLeafItemIds();
-    onChange(selectedIds.filter(id => !allIds.includes(String(id))));
+    onChange(selectedIds.filter(id => !allIds.includes(id)));
   };
 
-  const selectedCount = selectedIds.filter(id => getAllLeafItemIds().includes(String(id))).length;
+  const selectedCount = selectedIds.filter(id => getAllLeafItemIds().includes(id)).length;
   const allItemsSelected = areAllItemsSelected();
 
   const getButtonText = () => {
@@ -430,14 +443,14 @@ const HierarchicalMultiSelect = ({
     });
   };
 
-  // Render 3-level structure (simplified for brevity - same logic applies)
+  // Render 3-level structure
   const renderThreeLevel = () => {
     return filteredData.map(mainGroup => {
       const isMainExpanded = expandedParents.has(mainGroup.id);
       const mainChecked = isParentChecked(mainGroup);
       const mainIndeterminate = isParentIndeterminate(mainGroup);
       const totalItems = getParentLeafItemIds(mainGroup).length;
-      const selectedItems = getParentLeafItemIds(mainGroup).filter(id => isIdSelected(id)).length;
+      const selectedItems = getParentLeafItemIds(mainGroup).filter(id => selectedIds.includes(id)).length;
 
       return (
         <div key={mainGroup.id} className={`border ${borderColor} rounded overflow-hidden`}>
