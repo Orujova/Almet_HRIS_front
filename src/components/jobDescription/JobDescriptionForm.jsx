@@ -786,54 +786,94 @@ const handleSubmit = async (e) => {
 
     let dataSource = [];
     let parentIdField = '';
+    let prefix = '';
     
     if (resourceType === 'business_resources') {
       dataSource = dropdownData.businessResources || [];
       parentIdField = 'resource_id';
+      prefix = 'res';
     } else if (resourceType === 'access_rights') {
       dataSource = dropdownData.accessMatrix || [];
       parentIdField = 'access_matrix_id';
+      prefix = 'acc';
     } else {
       dataSource = dropdownData.companyBenefits || [];
       parentIdField = 'benefit_id';
+      prefix = 'ben';
     }
 
-    const selectedIdsParsed = selectedIds
-      .map(id => parseInt(id))
-      .filter(id => !isNaN(id));
+    // 🔥 Parse unique IDs (format: prefix_parentId_childId or prefix_parentId)
+    const parseUniqueId = (uniqueId) => {
+      const str = String(uniqueId);
+      const parts = str.split('_');
+      
+      if (parts[0] === prefix) {
+        // New format: prefix_parentId_childId or prefix_parentId
+        if (parts.length === 3) {
+          return { parentId: parseInt(parts[1]), childId: parseInt(parts[2]) };
+        } else if (parts.length === 2) {
+          return { parentId: parseInt(parts[1]), childId: null };
+        }
+      }
+      
+      // Fallback: try to parse as raw number
+      const rawId = parseInt(str);
+      if (!isNaN(rawId)) {
+        return { parentId: null, childId: null, rawId: rawId };
+      }
+      
+      return null;
+    };
     
     const parentIds = new Set();
     const childIdsByParent = {};
     const explicitlySelectedParents = new Set();
     
-    selectedIdsParsed.forEach(selectedId => {
-      let foundAsChild = false;
+    selectedIds.forEach(uniqueId => {
+      const parsed = parseUniqueId(uniqueId);
+      if (!parsed) return;
       
-      for (const parentItem of dataSource) {
-        if (parentItem.items && Array.isArray(parentItem.items)) {
-          const childItem = parentItem.items.find(item => item.id === selectedId);
-          if (childItem) {
-            parentIds.add(parentItem.id);
-            
-            if (!childIdsByParent[parentItem.id]) {
-              childIdsByParent[parentItem.id] = [];
+      if (parsed.childId !== null) {
+        // This is a child selection
+        parentIds.add(parsed.parentId);
+        if (!childIdsByParent[parsed.parentId]) {
+          childIdsByParent[parsed.parentId] = [];
+        }
+        childIdsByParent[parsed.parentId].push(parsed.childId);
+      } else if (parsed.parentId !== null) {
+        // This is a parent selection (no children)
+        parentIds.add(parsed.parentId);
+        explicitlySelectedParents.add(parsed.parentId);
+        if (!childIdsByParent[parsed.parentId]) {
+          childIdsByParent[parsed.parentId] = [];
+        }
+      } else if (parsed.rawId !== null) {
+        // Fallback: old format, try to find in data
+        let foundAsChild = false;
+        
+        for (const parentItem of dataSource) {
+          if (parentItem.items && Array.isArray(parentItem.items)) {
+            const childItem = parentItem.items.find(item => item.id === parsed.rawId);
+            if (childItem) {
+              parentIds.add(parentItem.id);
+              if (!childIdsByParent[parentItem.id]) {
+                childIdsByParent[parentItem.id] = [];
+              }
+              childIdsByParent[parentItem.id].push(parsed.rawId);
+              foundAsChild = true;
+              break;
             }
-            childIdsByParent[parentItem.id].push(selectedId);
-            foundAsChild = true;
-            break;
           }
         }
-      }
-      
-      if (!foundAsChild) {
-        const parent = dataSource.find(p => p.id === selectedId);
         
-        if (parent) {
-          parentIds.add(selectedId);
-          explicitlySelectedParents.add(selectedId);
-          
-          if (!childIdsByParent[selectedId]) {
-            childIdsByParent[selectedId] = [];
+        if (!foundAsChild) {
+          const parent = dataSource.find(p => p.id === parsed.rawId);
+          if (parent) {
+            parentIds.add(parsed.rawId);
+            explicitlySelectedParents.add(parsed.rawId);
+            if (!childIdsByParent[parsed.rawId]) {
+              childIdsByParent[parsed.rawId] = [];
+            }
           }
         }
       }
@@ -857,6 +897,11 @@ const handleSubmit = async (e) => {
       
       return null;
     }).filter(Boolean);
+
+    console.log(`🔄 [buildResourcesPayload] ${resourceType}:`, {
+      selectedIds: selectedIds,
+      parsed: withItems
+    });
 
     if (resourceType === 'business_resources') {
       return { business_resources_with_items: withItems };
