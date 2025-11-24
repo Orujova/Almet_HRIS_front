@@ -75,10 +75,16 @@ const HierarchicalMultiSelect = ({
     return prefixedId;
   };
 
-  // 🔥 Check if ID is selected (compare with prefix)
+  // 🔥 Check if ID is selected (compare with prefix OR without prefix for backward compatibility)
   const isIdSelected = (id) => {
     const prefixedId = makePrefixedId(id);
-    return selectedIds.some(selectedId => String(selectedId) === String(prefixedId));
+    const rawId = String(id);
+    
+    return selectedIds.some(selectedId => {
+      const selectedIdStr = String(selectedId);
+      // Check if matches with prefix OR without prefix (backward compatibility)
+      return selectedIdStr === String(prefixedId) || selectedIdStr === rawId;
+    });
   };
 
   // Filter data based on search
@@ -264,7 +270,7 @@ const HierarchicalMultiSelect = ({
     return selectedCount > 0 && selectedCount < allIds.length;
   };
 
-  // 🔥 Handle parent toggle - only toggles LEAF items
+  // 🔥 Handle parent toggle - only toggles LEAF items with cleanup
   const handleParentToggle = (parent) => {
     const itemIds = getParentLeafItemIds(parent);
     if (itemIds.length === 0) return;
@@ -272,15 +278,35 @@ const HierarchicalMultiSelect = ({
     const allSelected = itemIds.every(id => selectedIds.includes(id));
 
     if (allSelected) {
-      onChange(selectedIds.filter(id => !itemIds.includes(id)));
+      // Deselect: remove both prefixed and raw versions
+      onChange(selectedIds.filter(id => {
+        const idStr = String(id);
+        return !itemIds.some(itemId => {
+          const rawId = removePrefixFromId(itemId);
+          return idStr === String(itemId) || idStr === rawId;
+        });
+      }));
     } else {
+      // Select: add only prefixed versions, remove any raw versions first
       const newSelection = [...selectedIds];
+      
+      // Remove raw versions if they exist
+      const cleanedSelection = newSelection.filter(id => {
+        const idStr = String(id);
+        return !itemIds.some(itemId => {
+          const rawId = removePrefixFromId(itemId);
+          return idStr === rawId;
+        });
+      });
+      
+      // Add prefixed versions
       itemIds.forEach(itemId => {
-        if (!selectedIds.includes(itemId)) {
-          newSelection.push(itemId);
+        if (!cleanedSelection.includes(itemId)) {
+          cleanedSelection.push(itemId);
         }
       });
-      onChange(newSelection);
+      
+      onChange(cleanedSelection);
     }
   };
 
@@ -304,14 +330,20 @@ const HierarchicalMultiSelect = ({
     }
   };
 
-  // 🔥 Handle individual item toggle - WITH PREFIX
+  // 🔥 Handle individual item toggle - WITH PREFIX and cleanup
   const handleItemToggle = (item) => {
     const prefixedId = makePrefixedId(item.id);
+    const rawId = String(item.id);
     const isSelected = isIdSelected(item.id);
 
     if (isSelected) {
-      onChange(selectedIds.filter(id => String(id) !== String(prefixedId)));
+      // Remove both prefixed and raw versions (cleanup)
+      onChange(selectedIds.filter(id => {
+        const idStr = String(id);
+        return idStr !== String(prefixedId) && idStr !== rawId;
+      }));
     } else {
+      // Add only prefixed version
       onChange([...selectedIds, prefixedId]);
     }
   };

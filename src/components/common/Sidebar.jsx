@@ -17,7 +17,8 @@ RefreshCw,
   UserCog,
   Building2,
   TicketsPlane,
-  ScrollText
+  ScrollText,
+  BookOpenCheck
 } from "lucide-react";
 
 
@@ -89,6 +90,16 @@ const Sidebar = ({ collapsed = false }) => {
     },
     { 
       type: "section", 
+      label: "Training" 
+    },
+    {
+      label: "Onboarding Training",
+      icon: <BookOpenCheck className="w-4 h-4" />,
+      path: "/training/training",
+      id: "training",
+    },
+    { 
+      type: "section", 
       label: "E-REQUESTS" 
     },
     {
@@ -145,13 +156,7 @@ const Sidebar = ({ collapsed = false }) => {
       label: "SETTINGS" 
     },
    
-    // {
-    //   label: "Access Mng",
-    //   icon: <KeyRound className="w-4 h-4" />,
-    //   path: "/settings/access-mng",
-    //   id: "access-mng",
-    // },
-   
+
     {
       label: "Role Mng",
       icon: <UserCog className="w-4 h-4" />,
@@ -167,7 +172,7 @@ const Sidebar = ({ collapsed = false }) => {
 
   return (
     <div className="h-full bg-white dark:bg-almet-cloud-burst border-r border-gray-200 dark:border-almet-comet flex flex-col w-full">
-      {/* Logo Section - clicking takes you to home page */}
+  
       <Link 
         href="/" 
         className={`flex items-center justify-center ${collapsed ? 'justify-center' : 'px-3'} py-2 border-b border-gray-200 dark:border-almet-comet`}
@@ -178,18 +183,9 @@ const Sidebar = ({ collapsed = false }) => {
             </div>
      
         ) : (
-          //   <div className="flex items-center">
-          //   <div className="bg-almet-sapphire text-white h-7 w-7 rounded flex items-center justify-center font-bold mr-2">
-          //     A
-          //   </div>
-          //   <span className="text-almet-cloud-burst dark:text-white text-sm font-medium">
-          //      MY ALMET
-          //   </span>
-          // </div>
+  
           <div className="flex items-center justify-center">
-            {/* <div className="mr-4">
-               <img src="/logoSmall.png" alt="" className="h-6" /> 
-            </div> */}
+        
      
            <img src="/pdfs/logo.png" alt="Almet Logo" className="h-6" />
           </div>

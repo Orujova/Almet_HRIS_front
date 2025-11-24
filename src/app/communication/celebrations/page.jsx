@@ -247,10 +247,10 @@ export default function CelebrationsPage() {
       const celebrationDate = new Date(item.date).toISOString().split('T')[0];
       const today = new Date().toISOString().split('T')[0];
       
-      if (celebrationDate !== today) {
-        showWarning('You can only celebrate manual events on the celebration day!');
-        return;
-      }
+      // if (celebrationDate !== today) {
+      //   showWarning('You can only celebrate manual events on the celebration day!');
+      //   return;
+      // }
     }
 
     try {
