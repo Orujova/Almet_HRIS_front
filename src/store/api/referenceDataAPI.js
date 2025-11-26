@@ -120,8 +120,13 @@ export const referenceDataAPI = {
 // JOB TITLES - ✅ FINAL FIX
 // ========================================
 getJobTitles: (params = {}) => {
-  const queryParams = { page_size: 1000, ...params };
-  return apiService.getJobTitles(queryParams);
+  console.log('📥 getJobTitles called with params:', params); // ✅ Debug
+  const defaultParams = { page_size: 1000, ...params };
+  console.log('📥 getJobTitles defaultParams:', defaultParams); // ✅ Debug
+  const queryString = buildQueryParams(defaultParams);
+  console.log('📥 getJobTitles queryString:', queryString); // ✅ Debug
+  console.log('📥 getJobTitles FULL URL:', `/job-titles/?${queryString}`); // ✅ Debug
+  return api.get(`/job-titles/?${queryString}`);
 },
 
 getJobTitle: (id) => apiService.getJobTitle(id),
