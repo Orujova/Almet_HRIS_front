@@ -54,8 +54,6 @@ api.interceptors.response.use(
   }
 );
 
-
-
 // ============================================
 // 📚 TRAININGS
 // ============================================
@@ -83,32 +81,45 @@ export const trainingAPI = {
     }
   },
 
-  // services/trainingService.js
+  // ✅ FIXED: Create training - let axios auto-detect FormData
+  create: async (data) => {
+    try {
+      const config = {};
+      
+      // If data is FormData, remove Content-Type to let browser set it with boundary
+      if (data instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+      
+      const response = await api.post(`${TRAINING_BASE}/trainings/`, data, config);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating training:', error);
+      throw error;
+    }
+  },
 
-// ✅ Create training - header avtomatik olmalıdır
-create: async (data) => {
-  try {
-    // FormData göndərəndə Content-Type header-i əlavə ETMƏ
-    // Axios avtomatik olaraq multipart/form-data təyin edəcək
-    const response = await api.post(`${TRAINING_BASE}/trainings/`, data);
-    return response.data;
-  } catch (error) {
-    console.error('Error creating training:', error);
-    throw error;
-  }
-},
-
-// ✅ Update training - header avtomatik olmalıdır
-update: async (id, data) => {
-  try {
-    // FormData göndərəndə Content-Type header-i əlavə ETMƏ
-    const response = await api.put(`${TRAINING_BASE}/trainings/${id}/`, data);
-    return response.data;
-  } catch (error) {
-    console.error('Error updating training:', error);
-    throw error;
-  }
-},
+  // ✅ FIXED: Update training - let axios auto-detect FormData
+  update: async (id, data) => {
+    try {
+      const config = {};
+      
+      // If data is FormData, remove Content-Type to let browser set it with boundary
+      if (data instanceof FormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+      
+      const response = await api.put(`${TRAINING_BASE}/trainings/${id}/`, data, config);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating training:', error);
+      throw error;
+    }
+  },
 
   // Partial update
   patch: async (id, data) => {
@@ -545,7 +556,6 @@ export const trainingHelpers = {
 
 // Export default object with all APIs
 export default {
-
   trainings: trainingAPI,
   assignments: trainingAssignmentAPI,
   materials: trainingMaterialAPI,
