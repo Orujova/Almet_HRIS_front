@@ -31,12 +31,11 @@ export const setPositionGroups = (groups) => {
       const colorIndex = index % COLOR_PALETTE.length;
       colorMap.set(name.toLowerCase(), COLOR_PALETTE[colorIndex]);
       
-      // Debugging
-      console.log(`Position: ${name} -> Color Index: ${colorIndex}`, COLOR_PALETTE[colorIndex]);
+
     }
   });
   
-  console.log('Total position groups mapped:', colorMap.size);
+
 };
 
 export const getHierarchyColor = (hierarchyName, darkMode = false) => {

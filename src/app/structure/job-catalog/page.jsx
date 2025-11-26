@@ -150,7 +150,7 @@ export default function JobCatalogPage() {
       setJobTitles(jobTitlesRes.data || []);
       setPositionGroupsState(positionGroupsData);
       setStatistics(statisticsRes.data || statisticsRes);
-console.log(jobTitlesRes.data);
+
       setPositionGroups(positionGroupsData);
       await loadEmployees();
       

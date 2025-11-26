@@ -59,18 +59,7 @@ export default function CompetenciesSection({
     }
   }, [competencies, settings.evaluationScale]);
 
-  // ✅ Debug logging (only in development)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && competencies.length > 0) {
-      console.log('📊 Competencies Section:', {
-        type: isLeadershipAssessment ? 'LEADERSHIP' : 'BEHAVIORAL',
-        count: competencies.length,
-        groups: Object.keys(groupedCompetencies).length,
-        overallScore: `${overallScore.totalActual}/${overallScore.totalRequired} (${overallScore.percentage}%)`,
-        hasSync: performanceData?.metadata?.had_existing_ratings
-      });
-    }
-  }, [competencies.length]);
+
 
   const calculateAllScores = () => {
     const groupedData = {};

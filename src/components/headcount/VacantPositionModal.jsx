@@ -80,9 +80,6 @@ const VacantPositionModal = ({
     const initializeData = async () => {
       if (!isOpen || isInitialized) return;
 
-      console.log('=== INITIALIZING MODAL ===');
-      console.log('Mode:', mode);
-      console.log('Initial data:', initialData);
 
       try {
         // Load reference data
@@ -91,7 +88,7 @@ const VacantPositionModal = ({
         if (!isMounted) return;
 
         if (mode === 'edit' && initialData) {
-          console.log('=== EDIT MODE INITIALIZATION ===');
+        
           
           // Extract IDs from flattened structure
           const businessFunctionId = initialData.business_function_id;

@@ -381,7 +381,7 @@ const filterOptions = useMemo(() => {
 
   useEffect(() => {
     if (Array.isArray(orgChart) && orgChart.length > 0 && (!expandedNodes || expandedNodes.length === 0)) {
-      console.log('Auto-expanding initial nodes for', orgChart.length, 'employees');
+   
       
       let rootEmployees = [];
       

@@ -1093,11 +1093,7 @@ export const selectFilteredOrgChart = createSelector(
       return true;
     });
 
-    console.log('📊 Filter results:', {
-      original: orgChart.length,
-      filtered: filtered.length,
-      percentage: ((filtered.length / orgChart.length) * 100).toFixed(1) + '%'
-    });
+   
     
     return filtered;
   }

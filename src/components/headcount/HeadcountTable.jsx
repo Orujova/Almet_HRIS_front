@@ -350,7 +350,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
     }
 
-    console.log('📦 Built params:', params);
+    
     
     return params;
   }, [localFilters, pagination.page, pagination.pageSize, sorting]);
@@ -368,12 +368,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     
     const changed = currentStr !== lastStr;
     
-    if (changed) {
-      console.log('📊 Params CHANGED:', {
-        old: lastParams,
-        new: currentParams
-      });
-    }
+  
     
     return changed;
   }, [buildApiParams]);
@@ -383,7 +378,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     const lastParamsStr = lastApiParamsRef.current ? JSON.stringify(lastApiParamsRef.current) : null;
     
     if (paramsStr === lastParamsStr && !immediate) {
-      console.log('⏭️ Skipping duplicate fetch');
+    
       return;
     }
 
@@ -396,7 +391,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     debounceRef.current = setTimeout(() => {
       const now = Date.now();
       if (now - lastFetchTime.current > 100) {
-        console.log('✅ Fetching employees:', params);
+    
         lastFetchTime.current = now;
         lastApiParamsRef.current = params;
         fetchEmployees(params);
@@ -423,11 +418,11 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           const currentIds = prev.business_function.map(id => Number(id));
           
           if (currentIds.length === 1 && currentIds[0] === bfId) {
-            console.log('✅ Filter already set, skipping');
+          
             return prev;
           }
           
-          console.log('🔧 Setting wrapper filter ID:', bfId, 'for code:', businessFunctionFilter);
+          
           return {
             ...prev,
             business_function: [bfId] // ✅ Array with single NUMBER ID
@@ -444,7 +439,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           return prev;
         }
         
-        console.log('🧹 Clearing wrapper filter');
+      
         return {
           ...prev,
           business_function: []
@@ -464,21 +459,21 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       
       // ✅ Wait for businessFunctions to load
       if (!businessFunctions || businessFunctions.length === 0) {
-        console.log('⏳ Waiting for BFs...');
+     
         return;
       }
       
       // ✅ CRITICAL: If wrapper filter exists, wait for it to be applied
       if (businessFunctionFilter) {
         if (localFilters.business_function.length === 0) {
-          console.log('⏳ Waiting for wrapper filter to be applied...');
+
           return;
         }
-        console.log('✅ Wrapper filter applied:', localFilters.business_function);
+     
       }
       
       try {
-        console.log('✅ INITIALIZING NOW');
+       
         initialized.current = true;
         clearErrors();
         
@@ -487,12 +482,12 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         
         // Build params and fetch employees
         const params = buildApiParams();
-        console.log('🚀 Initial fetch with params:', params);
+     
         
         lastApiParamsRef.current = params;
         await fetchEmployees(params);
         
-        console.log('✅ Initialization complete');
+    
         
       } catch (error) {
         console.error('❌ Initialize failed:', error);
@@ -524,7 +519,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
 
     const params = buildApiParams();
-    console.log('🔄 Fetching (after init):', params);
+
     
     debouncedFetchEmployees(params);
   }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
@@ -922,7 +917,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
             await refreshAllData(true);
             showSuccess(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
           } catch (error) {
-            console.error('Contract extension failed:', error);
+          
             showError('Contract extension failed: ' + error.message);
           }
           break;

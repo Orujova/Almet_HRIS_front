@@ -271,7 +271,7 @@ export function AuthProvider({ children }) {
           throw new Error("JWT token storage verification failed");
         }
         
-        console.log("✅ Tokens stored and verified");
+       
         
         setAccount({
           ...msalAccount,
@@ -304,12 +304,12 @@ export function AuthProvider({ children }) {
       isProcessingAuth.current = true;
       
       try {
-        console.log("🚀 Initializing MSAL...");
+       
         console.log("📡 Backend URL:", BACKEND_URL);
         
         const msalApp = new PublicClientApplication(msalConfig);
         await msalApp.initialize();
-        console.log("✅ MSAL initialized");
+     
 
         // Handle redirect response
         const redirectResponse = await msalApp.handleRedirectPromise();
@@ -328,7 +328,7 @@ export function AuthProvider({ children }) {
               account: redirectResponse.account,
             });
 
-            console.log("✅ Tokens acquired after redirect");
+          
 
             await authenticateWithBackend(
               tokenResponse.idToken,
@@ -336,7 +336,7 @@ export function AuthProvider({ children }) {
               redirectResponse.account
             );
 
-            console.log("✅ Authentication complete, redirecting to home...");
+        
             
             setMsalInstance(msalApp);
             setInitialized(true);
@@ -521,7 +521,7 @@ export function AuthProvider({ children }) {
             existingAccounts[0]
           );
 
-          console.log("✅ Silent login successful");
+        
           router.push("/home");
           return;
           
@@ -530,7 +530,6 @@ export function AuthProvider({ children }) {
         }
       }
 
-      console.log("🔀 Redirecting to Microsoft login...");
       
       await msalInstance.loginRedirect({
         ...loginRequest,

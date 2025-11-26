@@ -88,7 +88,7 @@ export default function ClarificationComments({ comments, darkMode }) {
     return 'No comment text';
   };
 
-  console.log('✅ ClarificationComments: Rendering', comments.length, 'comments');
+
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60 border-almet-comet/30' : 'bg-white border-almet-mystic'} rounded-xl border shadow-sm overflow-hidden`}>
@@ -130,11 +130,7 @@ export default function ClarificationComments({ comments, darkMode }) {
               const colorClasses = getColorClasses(typeInfo.color);
               const commentText = getCommentText(comment);
               
-              console.log('🎨 Rendering comment #', index + 1, ':', {
-                type: comment.comment_type,
-                text: commentText,
-                by: comment.created_by_name
-              });
+         
               
               return (
                 <div 

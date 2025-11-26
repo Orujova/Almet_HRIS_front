@@ -66,7 +66,7 @@ const JobResponsibilitiesTab = ({
         positionLower.includes(keyword)
       );
       
-      console.log(`🎯 Position "${formData.position_group}" is ${isLeadership ? 'LEADERSHIP' : 'REGULAR'}`);
+
       setIsLeadershipPosition(isLeadership);
     };
 
@@ -193,7 +193,7 @@ const JobResponsibilitiesTab = ({
       try {
         const competencyApi = (await import('@/services/competencyApi')).default;
         
-        console.log(`🔄 Loading ${dropdownData.leadershipMainGroups.length} leadership main groups...`);
+    
         
         const hierarchicalData = await Promise.all(
           dropdownData.leadershipMainGroups.map(async (mainGroup) => {
@@ -204,7 +204,7 @@ const JobResponsibilitiesTab = ({
                 ? childGroupsResponse 
                 : (childGroupsResponse.child_groups || childGroupsResponse.results || []);
               
-              console.log(`  📁 Main Group "${mainGroup.name}": ${childGroups.length} child groups`);
+
               
               // For each child group, get its items
               const childGroupsWithItems = await Promise.all(
@@ -257,7 +257,7 @@ const JobResponsibilitiesTab = ({
           })
         );
         
-        console.log('✅ Leadership hierarchy loaded successfully');
+     
         setLeadershipGroupsHierarchical(hierarchicalData);
         
       } catch (error) {

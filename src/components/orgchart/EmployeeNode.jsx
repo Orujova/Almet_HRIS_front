@@ -39,7 +39,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
     const handleToggleExpanded = useCallback((e) => {
         e.stopPropagation();
         e.preventDefault();
-        console.log('Toggle expanded for:', employee.name, employee.employee_id);
+       
         data.onToggleExpanded(employee.employee_id);
     }, [employee.employee_id, employee.name, data.onToggleExpanded]);
     

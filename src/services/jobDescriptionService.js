@@ -300,11 +300,11 @@ class JobDescriptionService {
         }
       });
 
-      console.log('📤 Sending preview request:', cleanedCriteria);
+ 
       
       const response = await api.post('/job-descriptions/preview_eligible_employees/', cleanedCriteria);
       
-      console.log('📥 Preview response:', response.data);
+   
       return response.data;
     } catch (error) {
       console.error('❌ Error previewing eligible employees:', error);
@@ -353,11 +353,11 @@ class JobDescriptionService {
       }
 
       const cleanedData = this.cleanJobDescriptionData(data);
-      console.log('📤 Creating job description:', cleanedData);
+
       
       const response = await api.post('/job-descriptions/', cleanedData);
       
-      console.log('✅ Job description created:', response.data);
+
       return response.data;
     } catch (error) {
       if (error.response?.status === 422 && error.response.data?.requires_employee_selection) {
@@ -371,7 +371,7 @@ class JobDescriptionService {
       }
       
       if (error.response) {
-        console.error('❌ Response status:', error.response.status);
+      
         console.error('❌ Response data:', error.response.data);
       }
       
@@ -388,11 +388,11 @@ class JobDescriptionService {
       }
       
       const cleanedData = this.cleanJobDescriptionData(data);
-      console.log('📤 Updating job description:', cleanedData);
+ 
       
       const response = await api.put(`/job-descriptions/${id}/`, cleanedData);
       
-      console.log('✅ Job description updated:', response.data);
+   
       return response.data;
     } catch (error) {
       console.error('Error updating job description:', error);
@@ -569,7 +569,7 @@ class JobDescriptionService {
 
   async submitForApproval(id, data) {
     try {
-      console.log('⚠️ Using legacy submit - consider using submitAllAssignmentsForApproval instead');
+
       const response = await api.post(`/job-descriptions/${id}/submit_for_approval/`, data);
       return response.data;
     } catch (error) {
@@ -580,7 +580,7 @@ class JobDescriptionService {
 
   async approveByLineManager(id, data = {}) {
     try {
-      console.log('⚠️ Using legacy approve - consider using approveAssignmentByLineManager instead');
+  
       const response = await api.post(`/job-descriptions/${id}/approve_by_line_manager/`, {
         comments: data.comments?.trim() || ''
       });
@@ -593,7 +593,7 @@ class JobDescriptionService {
 
   async approveAsEmployee(id, data = {}) {
     try {
-      console.log('⚠️ Using legacy approve - consider using approveAssignmentAsEmployee instead');
+    
       const response = await api.post(`/job-descriptions/${id}/approve_as_employee/`, {
         comments: data.comments?.trim() || ''
       });
@@ -606,7 +606,7 @@ class JobDescriptionService {
 
   async rejectJobDescription(id, data = {}) {
     try {
-      console.log('⚠️ Using legacy reject - consider using rejectAssignment instead');
+      
       const response = await api.post(`/job-descriptions/${id}/reject/`, {
         reason: data.reason?.trim() || data.comments?.trim() || ''
       });
@@ -619,7 +619,7 @@ class JobDescriptionService {
 
   async requestRevision(id, data) {
     try {
-      console.log('⚠️ Using legacy revision - consider using requestAssignmentRevision instead');
+
       const response = await api.post(`/job-descriptions/${id}/request_revision/`, data);
       return response.data;
     } catch (error) {
@@ -832,9 +832,7 @@ async getAssignmentDetail(assignmentId) {
         is_active: Boolean(data.is_active !== false)
       };
       
-      // Typically you'd need to implement this in backend or fetch all, update, and save
-      // For now, let's use a workaround - delete and recreate
-      console.warn('Update item: consider implementing PUT endpoint in backend');
+
       
       // Alternative: if backend supports it
       const response = await api.put(`/job-description/access-matrix/${accessMatrixId}/items/${itemId}/`, cleanData);

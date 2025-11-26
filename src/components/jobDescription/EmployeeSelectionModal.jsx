@@ -51,17 +51,15 @@ const EmployeeSelectionModal = ({
     }
 
     if (isOpen && !isInitialized) {
-      console.log('🔵 Modal opened - initializing selection');
-      console.log('Pre-selected IDs:', preSelectedEmployeeIds);
-      console.log('Eligible employees:', eligibleEmployees.length);
+
       
       if (preSelectedEmployeeIds && preSelectedEmployeeIds.length > 0) {
-        console.log('✅ Using pre-selected IDs:', preSelectedEmployeeIds);
+     
         setSelectedEmployees(preSelectedEmployeeIds);
         setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length && eligibleEmployees.length > 0);
       } else {
         const allEmployeeIds = eligibleEmployees.map(emp => emp.id);
-        console.log('✅ Auto-selecting all:', allEmployeeIds);
+      
         setSelectedEmployees(allEmployeeIds);
         setSelectAll(allEmployeeIds.length > 0);
       }
@@ -75,7 +73,7 @@ const EmployeeSelectionModal = ({
   // Update selection if preSelectedEmployeeIds changes while modal is open
   useEffect(() => {
     if (isOpen && isInitialized && preSelectedEmployeeIds) {
-      console.log('🔄 Pre-selected IDs updated while modal open:', preSelectedEmployeeIds);
+ 
       setSelectedEmployees(preSelectedEmployeeIds);
       setSelectAll(preSelectedEmployeeIds.length === eligibleEmployees.length);
     }
@@ -139,7 +137,7 @@ const EmployeeSelectionModal = ({
       selectedEmployees.includes(emp.id)
     );
 
-    console.log('✅ Confirming selection:', selectedEmployees);
+
     
     onEmployeeSelect(selectedEmployees, selectedEmployeeData);
   };

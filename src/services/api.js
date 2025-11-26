@@ -155,7 +155,7 @@ api.interceptors.response.use(
 // Enhanced query parameters helper
 // api.js
 const buildQueryParams = (params = {}) => {
-  console.log('🔧 buildQueryParams INPUT:', params); // ✅ Debug
+
   
   const searchParams = new URLSearchParams();
   
@@ -193,7 +193,7 @@ const buildQueryParams = (params = {}) => {
   });
   
   const result = searchParams.toString();
-  console.log('🔧 buildQueryParams OUTPUT:', result); // ✅ Debug
+
   
   return result;
 };

@@ -120,12 +120,12 @@ export const referenceDataAPI = {
 // JOB TITLES - ✅ FINAL FIX
 // ========================================
 getJobTitles: (params = {}) => {
-  console.log('📥 getJobTitles called with params:', params); // ✅ Debug
+
   const defaultParams = { page_size: 1000, ...params };
-  console.log('📥 getJobTitles defaultParams:', defaultParams); // ✅ Debug
+
   const queryString = buildQueryParams(defaultParams);
-  console.log('📥 getJobTitles queryString:', queryString); // ✅ Debug
-  console.log('📥 getJobTitles FULL URL:', `/job-titles/?${queryString}`); // ✅ Debug
+ 
+
   return api.get(`/job-titles/?${queryString}`);
 },
 
@@ -133,24 +133,19 @@ getJobTitle: (id) => apiService.getJobTitle(id),
 
 getJobTitleDropdown: () => {
   return apiService.getJobTitles({ page_size: 1000 }).then(response => {
-    // ✅ CRITICAL FIX: response.data-nın strukturunu düzgün handle et
-    console.log('🔍 Job Titles Raw Response:', response.data);
-    
-    // Backend-dən gələn data strukturu:
-    // { count: 72, next: null, previous: null, results: [...] }
+
     let dataArray;
     
     if (response.data.results) {
       // ✅ Pagination formatında (DRF default)
       dataArray = response.data.results;
-      console.log('✅ Found results array, length:', dataArray.length);
+
     } else if (Array.isArray(response.data)) {
       // ✅ Direct array formatında
       dataArray = response.data;
-      console.log('✅ Direct array, length:', dataArray.length);
+
     } else {
-      // ❌ Gözlənilməz format
-      console.error('❌ Unexpected response format:', response.data);
+   
       dataArray = [];
     }
     

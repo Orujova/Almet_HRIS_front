@@ -388,8 +388,7 @@ const handleEditPositionAssessment = async (assessment) => {
   try {
     const detailedAssessment = await assessmentApi.positionLeadership.getById(assessment.id);
     
-    console.log('🔍 Loading leadership assessment for edit:', detailedAssessment);
-    console.log('🔍 Grade levels:', detailedAssessment.grade_levels);
+   
     
     setEditPositionFormData({
       id: assessment.id,
@@ -430,7 +429,7 @@ const handleUpdatePositionAssessment = async () => {
     ? editSelectedGradeLevels 
     : editPositionFormData.grade_levels;
 
-  console.log('📊 Grade levels before validation:', gradeLevelsToSend);
+
 
   if (!gradeLevelsToSend || gradeLevelsToSend.length === 0) {
     showError('Please select at least one grade level');
@@ -464,7 +463,7 @@ const handleUpdatePositionAssessment = async () => {
       }))
     };
     
-    console.log('🚀 Sending update data:', JSON.stringify(updateData, null, 2));
+
     
     await assessmentApi.positionLeadership.update(editPositionFormData.id, updateData);
     

@@ -236,8 +236,7 @@ const handleEditPositionAssessment = async (assessment) => {
   try {
     const detailedAssessment = await assessmentApi.positionBehavioral.getById(assessment.id);
     
-    console.log('🔍 Loading assessment for edit:', detailedAssessment);
-    console.log('🔍 Grade levels:', detailedAssessment.grade_levels);
+
     
     setEditPositionFormData({
       id: assessment.id,
@@ -311,7 +310,7 @@ const handleUpdatePositionAssessment = async () => {
       }))
     };
     
-    console.log('🚀 Sending update:', updateData);
+   
     
     await assessmentApi.positionBehavioral.update(editPositionFormData.id, updateData);
     
@@ -553,7 +552,7 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
       action_type: isDraft ? 'save_draft' : 'submit'
     };
     
-    console.log('🚀 Creating behavioral assessment:', data);
+   
     
     // ✅ Düzgün API - employeeBehavioral
     await assessmentApi.employeeBehavioral.create(data);
@@ -600,7 +599,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
       action_type: isDraft ? 'save_draft' : 'submit'
     };
     
-    console.log('🚀 Updating behavioral assessment:', data);
+
     
     // ✅ Düzgün API - employeeBehavioral
     await assessmentApi.employeeBehavioral.update(editFormData.id, data);

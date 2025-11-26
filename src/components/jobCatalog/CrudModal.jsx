@@ -34,23 +34,23 @@ export default function CrudModal({ context, darkMode }) {
 
   // FIXED: Handle MultiSelect change - properly update parent formData
   const handleMultiSelectChange = (fieldName, value) => {
-    console.log('🔄 MultiSelect onChange triggered:', { fieldName, value, currentFormData: formData });
+
     
     // Get current array from formData
     const currentArray = formData[fieldName] || [];
-    console.log('📋 Current array:', currentArray);
+  
     
     // Toggle the value
     let newArray;
     if (currentArray.includes(value)) {
       newArray = currentArray.filter(v => v !== value);
-      console.log('➖ Removing value:', value);
+  
     } else {
       newArray = [...currentArray, value];
-      console.log('➕ Adding value:', value);
+
     }
     
-    console.log('✅ New array:', newArray);
+  
     
     // Update formData via setFormData from parent
     setFormData({

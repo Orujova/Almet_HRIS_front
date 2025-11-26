@@ -358,7 +358,7 @@ const gradingSlice = createSlice({
     .addCase(compareScenarios.fulfilled, (state, action) => {
       state.loading.comparing = false;
       state.comparisonData = action.payload.comparison;
-      console.log('✅ Comparison data stored in state');
+    
     })
     .addCase(compareScenarios.rejected, (state, action) => {
       state.loading.comparing = false;

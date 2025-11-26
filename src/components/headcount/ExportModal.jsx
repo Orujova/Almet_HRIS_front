@@ -169,7 +169,7 @@ const ExportModal = ({
         };
       }
 
-      console.log('🎯 COMPLETELY FIXED: Final export options:', exportOptions);
+    
 
       // Call the export handler from HeadcountTable
       const result = await onExport(exportOptions);

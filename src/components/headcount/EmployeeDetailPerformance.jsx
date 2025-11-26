@@ -40,7 +40,7 @@ const loadPerformanceData = useCallback(async () => {
 
     // 1) Ən əvvəl employees/{id}/ responsundan gələn performance_records-dan istifadə edək
     if (employeeData?.performance_records?.length) {
-      console.log('📊 Using employeeData.performance_records:', employeeData.performance_records);
+ 
       setPerformanceRecords(employeeData.performance_records);
       return; // Burda dayandırırıq, artıq datamız var
     }
@@ -51,7 +51,7 @@ const loadPerformanceData = useCallback(async () => {
       const response = await performanceApi.performances.list({
         employee_id: id,
       });
-      console.log('📊 Performance API list Response:', response);
+ 
       setPerformanceRecords(response.results || []);
     } else {
       console.warn('⚠️ No employee ID available');
@@ -77,13 +77,13 @@ const loadPerformanceData = useCallback(async () => {
         return;
       }
       
-      console.log('🔄 Refreshing performance data for employee:', id);
+    
       
       const response = await performanceApi.performances.list({ 
         employee_id: id 
       });
       
-      console.log('✅ Refresh successful:', response);
+    
       setPerformanceRecords(response.results || []);
       
       // If detail modal is open, refresh that too
@@ -101,9 +101,9 @@ const loadPerformanceData = useCallback(async () => {
   // View details
   const viewDetails = async (recordId) => {
     try {
-      console.log('👁️ Viewing details for record:', recordId);
+    
       const detail = await performanceApi.performances.get(recordId);
-      console.log('📄 Detail data:', detail);
+ 
       setSelectedRecord(detail);
       setShowDetailModal(true);
     } catch (error) {
@@ -125,7 +125,7 @@ const loadPerformanceData = useCallback(async () => {
 
   // Open action modal
   const openActionModal = (record, action) => {
-    console.log('🎬 Opening action modal:', { record, action });
+
     setSelectedRecord(record);
     setCurrentAction(action);
     setComment('');
@@ -173,7 +173,7 @@ const loadPerformanceData = useCallback(async () => {
       }
 
       const result = await actionMap[currentAction.type]();
-      console.log('✅ Action result:', result);
+    
       
       // Close modal
       setShowActionModal(false);
@@ -279,25 +279,7 @@ const loadPerformanceData = useCallback(async () => {
   const pendingActions = employeeData?.pending_performance_actions;
   const teamOverview = employeeData?.team_performance_overview;
 
-  // ✅ FIX: Debug logs
-  useEffect(() => {
-    console.log('🔍 Component Debug:', {
-      employeeId,
-      employeeDataId: employeeData?.id,
-      employeeDataName: employeeData?.name || employeeData?.employee_name,
-      performanceRecordsCount: performanceRecords.length,
-      currentPerf,
-      pendingActions,
-      performanceRecords: performanceRecords.map(r => ({
-        id: r.id,
-        year: r.year,
-        current_period: r.current_period,
-        approval_status: r.approval_status,
-        actions_count: r.available_actions?.length || 0,
-        actions: r.available_actions
-      }))
-    });
-  }, [employeeId, employeeData, performanceRecords, currentPerf, pendingActions]);
+
 
   // Loading state
   if (loading) {

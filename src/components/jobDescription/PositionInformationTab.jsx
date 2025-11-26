@@ -297,7 +297,7 @@ const getBusinessFunctionId = (name) => {
   if (employee) {
     const id = extractId(employee, 'business_function_id', 'business_function');
     if (id) {
-      console.log(`✅ Business Function "${name}" → ID: ${id}`);
+ 
       return id;
     }
   }
@@ -307,12 +307,12 @@ const getBusinessFunctionId = (name) => {
   if (mapEntry) {
     const id = extractId(mapEntry, 'business_function_id', 'business_function');
     if (id) {
-      console.log(`✅ Business Function "${name}" → ID: ${id} (map)`);
+ 
       return id;
     }
   }
   
-  console.warn(`⚠️ Business Function "${name}" → ID not found`);
+
   return null;
 };
 
@@ -330,7 +330,7 @@ const getDepartmentId = (name) => {
     if (employee) {
       const id = extractId(employee, 'department_id', 'department');
       if (id) {
-        console.log(`✅ Department "${name}" → ID: ${id}`);
+
         return id;
       }
     }
@@ -344,7 +344,7 @@ const getDepartmentId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'department_id', 'department');
     if (id) {
-      console.log(`✅ Department "${name}" → ID: ${id} (any match)`);
+  
       return id;
     }
   }
@@ -354,17 +354,15 @@ const getDepartmentId = (name) => {
   if (mapEntry) {
     const id = extractId(mapEntry, 'department_id', 'department');
     if (id) {
-      console.log(`✅ Department "${name}" → ID: ${id} (map)`);
+  
       return id;
     }
   }
   
   // Debug output - show what's available
   const availableDepts = [...new Set(dropdownData.employees.map(e => e.department_name).filter(Boolean))];
-  console.warn(`⚠️ Department "${name}" → ID not found. Available departments:`, availableDepts);
-  console.warn(`💡 Looking for case-insensitive match for "${name}" in:`, 
-    availableDepts.filter(d => matchesIgnoreCase(d, name))
-  );
+
+
   
   return null;
 };
@@ -384,7 +382,7 @@ const getUnitId = (name) => {
     if (employee) {
       const id = extractId(employee, 'unit_id', 'unit');
       if (id) {
-        console.log(`✅ Unit "${name}" → ID: ${id}`);
+    
         return id;
       }
     }
@@ -398,12 +396,12 @@ const getUnitId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'unit_id', 'unit');
     if (id) {
-      console.log(`✅ Unit "${name}" → ID: ${id} (any match)`);
+  
       return id;
     }
   }
   
-  console.warn(`⚠️ Unit "${name}" → ID not found`);
+
   return null;
 };
 
@@ -422,7 +420,7 @@ const getJobFunctionId = (name) => {
     if (employee) {
       const id = extractId(employee, 'job_function_id', 'job_function');
       if (id) {
-        console.log(`✅ Job Function "${name}" → ID: ${id}`);
+     
         return id;
       }
     }
@@ -436,7 +434,7 @@ const getJobFunctionId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'job_function_id', 'job_function');
     if (id) {
-      console.log(`✅ Job Function "${name}" → ID: ${id} (any match)`);
+  
       return id;
     }
   }
@@ -446,14 +444,14 @@ const getJobFunctionId = (name) => {
   if (mapEntry) {
     const id = extractId(mapEntry, 'job_function_id', 'job_function');
     if (id) {
-      console.log(`✅ Job Function "${name}" → ID: ${id} (map)`);
+
       return id;
     }
   }
   
   // Debug output
   const availableFuncs = [...new Set(dropdownData.employees.map(e => e.job_function_name).filter(Boolean))];
-  console.warn(`⚠️ Job Function "${name}" → ID not found. Available job functions:`, availableFuncs);
+ 
   console.warn(`💡 Looking for case-insensitive match for "${name}" in:`, 
     availableFuncs.filter(f => matchesIgnoreCase(f, name))
   );
@@ -477,7 +475,7 @@ const getPositionGroupId = (name) => {
     if (employee) {
       const id = extractId(employee, 'position_group_id', 'position_group');
       if (id) {
-        console.log(`✅ Position Group "${name}" → ID: ${id}`);
+       
         return id;
       }
     }
@@ -491,7 +489,7 @@ const getPositionGroupId = (name) => {
   if (anyMatch) {
     const id = extractId(anyMatch, 'position_group_id', 'position_group');
     if (id) {
-      console.log(`✅ Position Group "${name}" → ID: ${id} (any match)`);
+     
       return id;
     }
   }
@@ -501,12 +499,12 @@ const getPositionGroupId = (name) => {
   if (mapEntry) {
     const id = extractId(mapEntry, 'position_group_id', 'position_group');
     if (id) {
-      console.log(`✅ Position Group "${name}" → ID: ${id} (map)`);
+    
       return id;
     }
   }
   
-  console.warn(`⚠️ Position Group "${name}" → ID not found`);
+
   return null;
 };
 
@@ -559,13 +557,7 @@ const updateAssignmentPreview = async () => {
     const positionGroupId = getPositionGroupId(formData.position_group);
     const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-    console.log('🔍 ID Mapping Results:', {
-      business_function: { name: formData.business_function, id: businessFunctionId },
-      department: { name: formData.department, id: departmentId },
-      job_function: { name: formData.job_function, id: jobFunctionId },
-      position_group: { name: formData.position_group, id: positionGroupId },
-      unit: { name: formData.unit, id: unitId }
-    });
+ 
 
     // 🔥 Enhanced validation with helpful error messages
     if (!businessFunctionId || !departmentId || !jobFunctionId || !positionGroupId) {
@@ -604,11 +596,10 @@ const updateAssignmentPreview = async () => {
       previewCriteria.grading_levels = [formData.grading_level.trim()];
     }
 
-    console.log('📤 Sending preview request:', previewCriteria);
 
     const response = await jobDescriptionService.previewEligibleEmployees(previewCriteria);
     
-    console.log('📥 Preview response:', response);
+
 
     const employees = Array.isArray(response.employees) ? response.employees : [];
     const vacancies = Array.isArray(response.vacancies) ? response.vacancies : [];
@@ -634,7 +625,7 @@ const updateAssignmentPreview = async () => {
       nextSteps: response.next_steps || {}
     };
 
-    console.log('✅ Processed preview:', newPreview);
+ 
 
     setAssignmentPreview(newPreview);
 
@@ -702,15 +693,7 @@ const areAllRequiredFieldsFilled = () => {
     hasValue(formData.position_group)
   );
 
-  console.log('✅ Validation check:', {
-    job_title: hasValue(formData.job_title),
-    job_purpose: hasValue(formData.job_purpose),
-    business_function: hasValue(formData.business_function),
-    department: hasValue(formData.department),
-    job_function: hasValue(formData.job_function),
-    position_group: hasValue(formData.position_group),
-    result: basicRequirementsMet
-  });
+
 
   return basicRequirementsMet;
 };

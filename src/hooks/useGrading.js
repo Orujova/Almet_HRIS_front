@@ -137,11 +137,11 @@ const useGrading = () => {
   // Comparison function - YENİ
   const handleCompareScenarios = useCallback(async (scenarioIds) => {
     try {
-      console.log('🔄 Starting comparison for:', scenarioIds);
+
       const response = await dispatch(compareScenarios(scenarioIds));
       
       if (response.type.endsWith('/fulfilled')) {
-        console.log('✅ Comparison successful');
+
         return response.payload;
       } else {
         console.error('❌ Comparison failed:', response.payload);
@@ -332,7 +332,7 @@ const useGrading = () => {
 
 const handleSaveDraft = useCallback(async (customName = '') => {
   try {
-    console.log('💾 Saving draft scenario with name:', customName);
+  
     
     if (!validationSummary.canSave) {
       console.error('❌ Cannot save draft - validation failed');
@@ -362,12 +362,11 @@ const handleSaveDraft = useCallback(async (customName = '') => {
       calculatedOutputs: calculatedOutputs
     };
 
-    console.log('📦 Draft data prepared:', draftData);
 
     const response = await dispatch(saveDraftScenario(draftData));
     
     if (response.type.endsWith('/fulfilled')) {
-      console.log('✅ Draft saved successfully');
+  
       dispatch(initializeScenarioInputs(currentData));
       clearCalculatedOutputs();
       return response.payload;
@@ -441,7 +440,7 @@ const handleSaveDraft = useCallback(async (customName = '') => {
 const toggleCompareMode = useCallback(() => {
   setCompareMode(prev => {
     const newMode = !prev;
-    console.log(`🔄 Compare mode: ${newMode ? 'ON' : 'OFF'}`);
+   
 
     if (!newMode) {
       // Exiting compare mode - clear selections

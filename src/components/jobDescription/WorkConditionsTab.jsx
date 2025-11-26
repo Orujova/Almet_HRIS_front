@@ -11,24 +11,11 @@ const WorkConditionsTab = ({
 }) => {
   const textSecondary = darkMode ? "text-gray-400" : "text-gray-600";
 
-  // Debug: Log incoming data
-  useEffect(() => {
-    console.log('📦 WorkConditionsTab - dropdownData:', {
-      businessResources: dropdownData?.businessResources?.length || 0,
-      accessMatrix: dropdownData?.accessMatrix?.length || 0,
-      companyBenefits: dropdownData?.companyBenefits?.length || 0
-    });
 
-    console.log('📋 WorkConditionsTab - formData:', {
-      business_resources_ids: formData?.business_resources_ids || [],
-      access_rights_ids: formData?.access_rights_ids || [],
-      company_benefits_ids: formData?.company_benefits_ids || []
-    });
-  }, [dropdownData, formData]);
 
   // 🔥 Handle selection changes
   const handleResourcesChange = (selectedIds) => {
-    console.log('✅ Resources selected (with prefix):', selectedIds);
+  
     onFormDataChange(prev => ({
       ...prev,
       business_resources_ids: selectedIds
@@ -36,7 +23,7 @@ const WorkConditionsTab = ({
   };
 
   const handleAccessChange = (selectedIds) => {
-    console.log('✅ Access selected (with prefix):', selectedIds);
+
     onFormDataChange(prev => ({
       ...prev,
       access_rights_ids: selectedIds
@@ -44,7 +31,7 @@ const WorkConditionsTab = ({
   };
 
   const handleBenefitsChange = (selectedIds) => {
-    console.log('✅ Benefits selected (with prefix):', selectedIds);
+
     onFormDataChange(prev => ({
       ...prev,
       company_benefits_ids: selectedIds

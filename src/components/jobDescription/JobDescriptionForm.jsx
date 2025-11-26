@@ -98,7 +98,7 @@ const JobDescriptionForm = ({
     
     // Don't reset in edit mode
     if (editingJob) {
-      console.log('✅ Edit mode detected - preserving current selections');
+
       return;
     }
     
@@ -133,7 +133,7 @@ const JobDescriptionForm = ({
       const allRecordIds = records.map(record => record.id);
       setSelectedEmployeeIds(allRecordIds);
       
-      console.log(`✅ Auto-selected ${allRecordIds.length} records for manual selection`);
+
     }
   };
 
@@ -350,8 +350,7 @@ const getBusinessFunctionId = (name) => {
       return id;
     }
   }
-  
-  console.warn(`⚠️ [Submit] Business Function "${name}" → ID not found`);
+
   return null;
 };
 
@@ -388,7 +387,7 @@ const getDepartmentId = (name) => {
     }
   }
   
-  console.warn(`⚠️ [Submit] Department "${name}" → ID not found`);
+
   return null;
 };
 
@@ -497,7 +496,7 @@ const getPositionGroupId = (name) => {
     }
   }
   
-  console.warn(`⚠️ [Submit] Position Group "${name}" → ID not found`);
+
   return null;
 };
 
@@ -524,13 +523,7 @@ const handleSubmit = async (e) => {
   try {
     setIsSubmitting(true);
 
-    console.log('🔍 [Submit] Starting ID lookup for:', {
-      business_function: formData.business_function,
-      department: formData.department,
-      job_function: formData.job_function,
-      position_group: formData.position_group,
-      unit: formData.unit
-    });
+
 
     // 🔥 Get IDs with case-insensitive lookup
     const businessFunctionId = getBusinessFunctionId(formData.business_function);
@@ -539,13 +532,7 @@ const handleSubmit = async (e) => {
     const positionGroupId = getPositionGroupId(formData.position_group);
     const unitId = formData.unit ? getUnitId(formData.unit) : null;
 
-    console.log('🔍 [Submit] ID Lookup Results:', {
-      business_function: { name: formData.business_function, id: businessFunctionId },
-      department: { name: formData.department, id: departmentId },
-      job_function: { name: formData.job_function, id: jobFunctionId },
-      position_group: { name: formData.position_group, id: positionGroupId },
-      unit: { name: formData.unit, id: unitId }
-    });
+  
 
     // 🔥 Validate all IDs
     const missingIds = [];
@@ -692,7 +679,7 @@ const handleSubmit = async (e) => {
       }
     });
 
-    console.log('📤 [Submit] Sending API data:', apiData);
+
 
     // Submit to API
     if (editingJob) {
@@ -898,10 +885,7 @@ const handleSubmit = async (e) => {
       return null;
     }).filter(Boolean);
 
-    console.log(`🔄 [buildResourcesPayload] ${resourceType}:`, {
-      selectedIds: selectedIds,
-      parsed: withItems
-    });
+    
 
     if (resourceType === 'business_resources') {
       return { business_resources_with_items: withItems };

@@ -45,11 +45,11 @@ export default function FixedAnalyticsDashboard({
   const loadEmployeePerformanceData = async (employeeId) => {
     setLoadingEmployeeData(true);
     try {
-      console.log('📊 Loading full performance data for employee:', employeeId);
+ 
       const performanceData = await onLoadEmployeePerformance(employeeId, selectedYear);
       
       if (performanceData && performanceData.competency_ratings) {
-        console.log('✅ Loaded competency ratings:', performanceData.competency_ratings.length);
+    
         setSelectedEmployeeData(performanceData);
       } else {
         console.warn('⚠️ No competency ratings found');
@@ -66,7 +66,7 @@ export default function FixedAnalyticsDashboard({
   const calculateAnalytics = () => {
     setLoading(true);
     try {
-      console.log('📊 Starting analytics calculation for', employees.length, 'employees');
+   
       
       const gradeDistribution = calculateGradeDistribution();
       const departmentStats = calculateDepartmentStats();
@@ -79,7 +79,7 @@ export default function FixedAnalyticsDashboard({
         totalEmployees: employees.length
       });
       
-      console.log('✅ Analytics calculated successfully');
+
     } catch (error) {
       console.error('❌ Analytics error:', error);
     } finally {
@@ -288,7 +288,6 @@ export default function FixedAnalyticsDashboard({
       actual: group.totalActual
     }));
 
-    console.log('📊 Competency radar data:', result);
     return result;
   };
 
@@ -523,7 +522,7 @@ export default function FixedAnalyticsDashboard({
                 options={employeeOptions}
                 value={selectedEmployeeId}
                 onChange={(value) => {
-                  console.log('Selected employee ID:', value);
+            
                   setSelectedEmployeeId(value);
                   if (!value) {
                     setSelectedEmployeeData(null);

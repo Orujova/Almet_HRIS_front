@@ -133,7 +133,7 @@ const AdvancedFilterPanel = ({
     
     try {
       await Promise.allSettled(promises);
-      console.log('✅ ADVANCED FILTER: Reference data initialization completed');
+     
     } catch (error) {
       console.error('❌ ADVANCED FILTER: Reference data initialization failed:', error);
     }
