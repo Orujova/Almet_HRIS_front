@@ -97,7 +97,7 @@ export const referenceDataAPI = {
   getJobFunctions: () => apiService.getJobFunctions(),
   getJobFunction: (id) => apiService.getJobFunction(id),
   getJobFunctionDropdown: () => {
-    return apiService.getJobFunctions().then(response => {
+    return apiService.getJobFunctions({ page_size: 1000 }).then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
@@ -120,22 +120,23 @@ export const referenceDataAPI = {
   getJobTitles: (params = {}) => apiService.getJobTitles(params),
   getJobTitle: (id) => apiService.getJobTitle(id),
   getJobTitleDropdown: () => {
-    return apiService.getJobTitles().then(response => {
-      const data = response.data.results || response.data || [];
-      return {
-        ...response,
-        data: data.map(item => ({
-          value: item.id,
-          label: item.name,
-          description: item.description,
-          employee_count: item.employee_count,
-          is_active: item.is_active,
-          created_at: item.created_at,
-          updated_at: item.updated_at
-        }))
-      };
-    });
-  },
+  // ✅ CRITICAL FIX: page_size ötürülür
+  return apiService.getJobTitles({ page_size: 1000 }).then(response => {
+    const data = response.data.results || response.data || [];
+    return {
+      ...response,
+      data: data.map(item => ({
+        value: item.id,
+        label: item.name,
+        description: item.description,
+        employee_count: item.employee_count,
+        is_active: item.is_active,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }))
+    };
+  });
+},
   createJobTitle: (data) => apiService.createJobTitle(data),
   updateJobTitle: (id, data) => apiService.updateJobTitle(id, data),
   deleteJobTitle: (id) => apiService.deleteJobTitle(id),
@@ -149,7 +150,7 @@ export const referenceDataAPI = {
     return apiService.getPositionGroups({ ordering: 'hierarchy_level' });
   },
   getPositionGroupDropdown: () => {
-    return apiService.getPositionGroups().then(response => {
+    return apiService.getPositionGroups({ page_size: 1000 }).then(response => {
       const data = response.data.results || response.data || [];
       return {
         ...response,
