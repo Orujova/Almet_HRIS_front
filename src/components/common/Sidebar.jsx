@@ -95,7 +95,7 @@ const Sidebar = ({ collapsed = false }) => {
     {
       label: "Onboarding Training",
       icon: <BookOpenCheck className="w-4 h-4" />,
-      path: "/training/training",
+      path: "/training",
       id: "training",
     },
     { 

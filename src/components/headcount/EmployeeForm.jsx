@@ -413,7 +413,7 @@ const EmployeeForm = ({ employee = null, onSuccess = null, onCancel = null }) =>
             id: config.id,
             contract_type: config.contract_type,
             display_name: config.display_name,
-            onboarding_days: config.onboarding_days || 0,
+          
             probation_days: config.probation_days || 0,
             total_days_until_active: config.total_days_until_active || 0,
             enable_auto_transitions: config.enable_auto_transitions,

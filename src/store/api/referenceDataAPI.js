@@ -251,7 +251,7 @@ export const referenceDataAPI = {
           value: item.contract_type,
           label: item.display_name,
           contract_type: item.contract_type,
-          onboarding_days: item.onboarding_days,
+  
           probation_days: item.probation_days,
           total_days_until_active: item.total_days_until_active,
           enable_auto_transitions: item.enable_auto_transitions,

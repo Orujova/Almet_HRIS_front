@@ -56,10 +56,10 @@ const FormStep2JobInfo = ({
       .map(config => ({
         value: config.contract_type,
         label: config.display_name,
-        onboarding_days: config.onboarding_days,
+
         probation_days: config.probation_days,
         total_days_until_active: config.total_days_until_active,
-        description: `Onboarding: ${config.onboarding_days} days, Probation: ${config.probation_days} days`
+        description: ` Probation: ${config.probation_days} days`
       }));
   };
 
@@ -426,9 +426,7 @@ const FormStep2JobInfo = ({
                   <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
                     <div className="font-medium">{selectedConfig.display_name} Details:</div>
                     <div className="grid grid-cols-2 gap-2 text-xs mt-2">
-                      <div>
-                        <span className="font-medium">Onboarding:</span> {selectedConfig.onboarding_days} days
-                      </div>
+                    
                       <div>
                         <span className="font-medium">Probation:</span> {selectedConfig.probation_days} days
                       </div>

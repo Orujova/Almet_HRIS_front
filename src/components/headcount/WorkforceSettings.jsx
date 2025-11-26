@@ -359,18 +359,6 @@ const WorkforceSettings = () => {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-            Onboarding Days
-          </label>
-          <input
-            type="number"
-            value={formData.onboarding_days || ''}
-            onChange={(e) => setFormData(prev => ({ ...prev, onboarding_days: parseInt(e.target.value) || 0 }))}
-            className="w-full px-3 py-2 text-sm border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire bg-white dark:bg-almet-cloud-burst text-almet-cloud-burst dark:text-white"
-            min="0"
-          />
-        </div>
 
         <div>
           <label className="block text-sm font-medium  text-almet-cloud-burst dark:text-white mb-2">
@@ -512,7 +500,7 @@ const WorkforceSettings = () => {
                     </td>
                     <td className="p-3">
                       <span className="text-almet-cloud-burst dark:text-white">
-                        {item.onboarding_days}d / {item.probation_days}d
+                       Probation days : {item.probation_days}
                       </span>
                     </td>
                   </>
