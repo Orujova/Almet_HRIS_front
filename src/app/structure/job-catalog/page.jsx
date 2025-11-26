@@ -15,6 +15,7 @@ import { setPositionGroups } from '@/components/jobCatalog/HierarchyColors';
 import NavigationTabs from '@/components/jobCatalog/NavigationTabs';
 import OverviewView from '@/components/jobCatalog/OverviewView';
 import HierarchicalTableView from '@/components/jobCatalog/HierarchicalTableView';
+import SimpleTableView from '@/components/jobCatalog/SimpleTableView';
 import ReferenceDataView from '@/components/jobCatalog/ReferenceDataView';
 import MatrixView from '@/components/jobCatalog/MatrixView';
 import JobDetailModal from '@/components/jobCatalog/JobDetailModal';
@@ -689,6 +690,7 @@ export default function JobCatalogPage() {
         {/* Content Views */}
         {activeView === 'overview' && <OverviewView context={contextValue} />}
         {activeView === 'hierarchical' && <HierarchicalTableView context={contextValue} />}
+        {activeView === 'simple' && <SimpleTableView context={contextValue} />}
         {activeView === 'structure' && <ReferenceDataView context={contextValue} />}
         {activeView === 'matrix' && <MatrixView context={contextValue} />}
 

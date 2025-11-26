@@ -1,7 +1,7 @@
 // src/components/jobCatalog/NavigationTabs.jsx
 
 import React from 'react';
-import { BarChart3, Layers, Grid, List } from 'lucide-react';
+import { BarChart3, Layers, Grid, List, Table2 } from 'lucide-react';
 
 export default function NavigationTabs({ activeView, setActiveView }) {
   const tabs = [
@@ -16,6 +16,12 @@ export default function NavigationTabs({ activeView, setActiveView }) {
       label: 'Hierarchical', 
       icon: List,
       description: 'Hierarchical table view'
+    },
+    { 
+      id: 'simple', 
+      label: 'Simple Table', 
+      icon: Table2,
+      description: 'Flat table view'
     },
     { 
       id: 'structure', 
