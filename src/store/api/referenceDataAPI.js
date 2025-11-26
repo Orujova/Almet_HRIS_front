@@ -94,7 +94,7 @@ export const referenceDataAPI = {
   // ========================================
   // JOB FUNCTIONS
   // ========================================
-  getJobFunctions: () => apiService.getJobFunctions(),
+    getJobFunctions: () => apiService.getJobFunctions(),
   getJobFunction: (id) => apiService.getJobFunction(id),
   getJobFunctionDropdown: () => {
     return apiService.getJobFunctions({ page_size: 1000 }).then(response => {
@@ -117,26 +117,28 @@ export const referenceDataAPI = {
   // ========================================
   // JOB TITLES (NEW)
   // ========================================
-  getJobTitles: (params = {}) => apiService.getJobTitles(params),
+    getJobTitles: (params = {}) => {
+    const queryParams = { page_size: 1000, ...params }; // ✅ page_size əlavə
+    return apiService.getJobTitles(queryParams);
+  },
   getJobTitle: (id) => apiService.getJobTitle(id),
   getJobTitleDropdown: () => {
-  // ✅ CRITICAL FIX: page_size ötürülür
-  return apiService.getJobTitles({ page_size: 1000 }).then(response => {
-    const data = response.data.results || response.data || [];
-    return {
-      ...response,
-      data: data.map(item => ({
-        value: item.id,
-        label: item.name,
-        description: item.description,
-        employee_count: item.employee_count,
-        is_active: item.is_active,
-        created_at: item.created_at,
-        updated_at: item.updated_at
-      }))
-    };
-  });
-},
+    return apiService.getJobTitles({ page_size: 1000 }).then(response => { // ✅ page_size əlavə
+      const data = response.data.results || response.data || [];
+      return {
+        ...response,
+        data: data.map(item => ({
+          value: item.id,
+          label: item.name,
+          description: item.description,
+          employee_count: item.employee_count,
+          is_active: item.is_active,
+          created_at: item.created_at,
+          updated_at: item.updated_at
+        }))
+      };
+    });
+  },
   createJobTitle: (data) => apiService.createJobTitle(data),
   updateJobTitle: (id, data) => apiService.updateJobTitle(id, data),
   deleteJobTitle: (id) => apiService.deleteJobTitle(id),
