@@ -114,34 +114,59 @@ export const referenceDataAPI = {
   updateJobFunction: (id, data) => apiService.updateJobFunction(id, data),
   deleteJobFunction: (id) => apiService.deleteJobFunction(id),
 
-  // ========================================
-  // JOB TITLES (NEW)
-  // ========================================
-    getJobTitles: (params = {}) => {
-    const queryParams = { page_size: 1000, ...params }; // ✅ page_size əlavə
-    return apiService.getJobTitles(queryParams);
-  },
-  getJobTitle: (id) => apiService.getJobTitle(id),
-  getJobTitleDropdown: () => {
-    return apiService.getJobTitles({ page_size: 1000 }).then(response => { // ✅ page_size əlavə
-      const data = response.data.results || response.data || [];
-      return {
-        ...response,
-        data: data.map(item => ({
-          value: item.id,
-          label: item.name,
-          description: item.description,
-          employee_count: item.employee_count,
-          is_active: item.is_active,
-          created_at: item.created_at,
-          updated_at: item.updated_at
-        }))
-      };
-    });
-  },
-  createJobTitle: (data) => apiService.createJobTitle(data),
-  updateJobTitle: (id, data) => apiService.updateJobTitle(id, data),
-  deleteJobTitle: (id) => apiService.deleteJobTitle(id),
+
+
+// ========================================
+// JOB TITLES - ✅ FINAL FIX
+// ========================================
+getJobTitles: (params = {}) => {
+  const queryParams = { page_size: 1000, ...params };
+  return apiService.getJobTitles(queryParams);
+},
+
+getJobTitle: (id) => apiService.getJobTitle(id),
+
+getJobTitleDropdown: () => {
+  return apiService.getJobTitles({ page_size: 1000 }).then(response => {
+    // ✅ CRITICAL FIX: response.data-nın strukturunu düzgün handle et
+    console.log('🔍 Job Titles Raw Response:', response.data);
+    
+    // Backend-dən gələn data strukturu:
+    // { count: 72, next: null, previous: null, results: [...] }
+    let dataArray;
+    
+    if (response.data.results) {
+      // ✅ Pagination formatında (DRF default)
+      dataArray = response.data.results;
+      console.log('✅ Found results array, length:', dataArray.length);
+    } else if (Array.isArray(response.data)) {
+      // ✅ Direct array formatında
+      dataArray = response.data;
+      console.log('✅ Direct array, length:', dataArray.length);
+    } else {
+      // ❌ Gözlənilməz format
+      console.error('❌ Unexpected response format:', response.data);
+      dataArray = [];
+    }
+    
+    return {
+      ...response,
+      data: dataArray.map(item => ({
+        value: item.id,
+        label: item.name,
+        description: item.description,
+        employee_count: item.employee_count,
+        is_active: item.is_active,
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      }))
+    };
+  });
+},
+
+createJobTitle: (data) => apiService.createJobTitle(data),
+updateJobTitle: (id, data) => apiService.updateJobTitle(id, data),
+deleteJobTitle: (id) => apiService.deleteJobTitle(id),
 
   // ========================================
   // POSITION GROUPS
