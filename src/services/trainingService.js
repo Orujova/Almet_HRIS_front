@@ -22,12 +22,12 @@ const TokenManager = {
 // ✅ Axios Instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 300000,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 600000, // 600000 ms = 600s = 10 dəqiqə
 });
+
 
 // ✅ Request Interceptor
 api.interceptors.request.use(
