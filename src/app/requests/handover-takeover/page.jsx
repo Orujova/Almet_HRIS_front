@@ -584,7 +584,7 @@ const HandoverSystem = () => {
                         });
                       }}
                     >
-                      <option value="me">Me (Thomas Gepsan)</option>
+                      <option value="me">Me </option>
                       {employees.filter(e => e.manager === currentUser && e.name !== currentUser).map(emp => (
                         <option key={emp.name} value={emp.name}>{emp.name}</option>
                       ))}
