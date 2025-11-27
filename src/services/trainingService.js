@@ -22,6 +22,7 @@ const TokenManager = {
 // ✅ Axios Instance
 const api = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 300000,
   headers: {
     'Content-Type': 'application/json',
   },

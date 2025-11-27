@@ -1228,32 +1228,53 @@ const handleSubmitTraining = async (e) => {
         </div>
       )}
 
-      {/* PDF Viewer Modal */}
-      {showPdfViewerModal && pdfUrl && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className={`${bgCard} rounded-xl shadow-xl w-full max-w-6xl h-[90vh] flex flex-col border ${borderColor}`}>
-            <div className={`flex items-center justify-between p-4 border-b ${borderColor}`}>
-              <h3 className={`text-lg font-semibold ${textPrimary}`}>PDF Viewer</h3>
-              <button
-                onClick={() => {
-                  setShowPdfViewerModal(false);
-                  setPdfUrl('');
-                }}
-                className={`${textMuted} hover:${textPrimary} transition-colors p-2 hover:${bgCardHover} rounded-lg`}
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={pdfUrl}
-                className="w-full h-full"
-                title="PDF Viewer"
-              />
-            </div>
+{showPdfViewerModal && pdfUrl && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className={`${bgCard} rounded-xl shadow-xl w-full max-w-6xl h-[90vh] flex flex-col border ${borderColor}`}>
+      <div className={`flex items-center justify-between p-4 border-b ${borderColor}`}>
+        <h3 className={`text-lg font-semibold ${textPrimary}`}>PDF Viewer</h3>
+        <div className="flex items-center gap-3">
+          <a
+            href={pdfUrl}
+            download
+            className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+          >
+            <Download size={16} />
+            Download
+          </a>
+          <button
+            onClick={() => {
+              setShowPdfViewerModal(false);
+              setPdfUrl('');
+            }}
+            className={`${textMuted} hover:${textPrimary} transition-colors p-2 hover:${bgCardHover} rounded-lg`}
+          >
+            <X size={24} />
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-900">
+        {/* Loading indicator */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-almet-sapphire mx-auto mb-4"></div>
+            <p className={textSecondary}>Loading PDF...</p>
           </div>
         </div>
-      )}
+        {/* PDF iframe with better loading */}
+        <iframe
+          src={`${pdfUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+          className="w-full h-full"
+          title="PDF Viewer"
+          onLoad={(e) => {
+            // Hide loading indicator when PDF loads
+            e.target.previousSibling?.remove();
+          }}
+        />
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Delete Confirmation Modal */}
       <ConfirmationModal

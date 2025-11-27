@@ -1293,8 +1293,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         throw new Error('No employee selected for tag operation');
       }
       
-      showInfo(`${operation === 'add' ? 'Adding' : 'Removing'} tag...`);
-      
+
       if (operation === 'add') {
         await bulkAddTags([currentModalEmployee.id], tagId);
       } else if (operation === 'remove') {
@@ -1308,7 +1307,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       
       await refreshAllData();
       
-      showSuccess(`Tag ${operation === 'add' ? 'added' : 'removed'} successfully`);
+    
     
     } catch (error) {
       console.error(`Tag ${operation} failed:`, error);
