@@ -5,8 +5,19 @@ import { Handle, Position } from 'reactflow';
 import { Users, Layers, Plus, Minus, ArrowUp, AlertCircle, XCircle } from 'lucide-react';
 import Avatar from './Avatar';
 
+// components/orgChart/EmployeeNode.jsx - Update cleanEmployeeData
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
+    
+    // ✅ FIXED: More robust vacancy check
+    const isVacancy = Boolean(
+        employee.employee_details?.is_vacancy === true ||
+        employee.is_vacancy === true || 
+        employee.vacant === true || 
+        employee.record_type === 'vacancy' ||
+        (employee.name && employee.name.includes('[VACANT]'))
+    );
+    
     return {
         employee_id: employee.employee_id,
         name: employee.name,
@@ -23,17 +34,25 @@ const cleanEmployeeData = (employee) => {
         profile_image_url: employee.profile_image_url,
         avatar: employee.avatar,
         status_color: employee.status_color,
-        vacant: employee.vacant,
+        vacant: isVacancy,
+        is_vacancy: isVacancy,
         employee_details: employee.employee_details
     };
 };
+
 
 const EmployeeNode = React.memo(({ data, id }) => {
     const employee = data.employee;
     const directReports = employee.direct_reports || 0;
     const hasChildren = directReports > 0;
     const isExpanded = data.isExpanded;
-    const isVacant = employee.vacant;
+    const isVacant = Boolean(
+        employee.employee_details?.is_vacancy === true ||
+        employee.is_vacancy === true || 
+        employee.vacant === true
+    );
+    
+    console.log('🎨 Rendering employee node:', employee.name, 'isVacant:', isVacant);
     
     // IMPROVED: More reliable click handler with stopPropagation at top level
     const handleToggleExpanded = useCallback((e) => {

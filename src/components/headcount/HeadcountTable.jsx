@@ -924,7 +924,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
         default:
           console.warn('Unknown bulk action:', action);
-          showWarning(`"${action}" operation not implemented yet`);
+     
       }
     } catch (error) {
       console.error(`Bulk action ${action} failed:`, error);

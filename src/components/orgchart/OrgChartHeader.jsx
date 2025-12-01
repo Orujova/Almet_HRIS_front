@@ -23,7 +23,7 @@ const OrgChartHeader = ({
     handleExportToPNG,
     exportLoading,
     toggleFullscreen,
-    fetchOrgChart,
+    fetchFullTreeWithVacancies,
     hasActiveFilters,
     darkMode,
     selectedCompany,
@@ -180,7 +180,7 @@ const OrgChartHeader = ({
 
                         {/* Refresh Button */}
                         <button 
-                            onClick={() => fetchOrgChart()}
+                            onClick={() => fetchFullTreeWithVacancies()}
                             disabled={isLoading}
                             title="Refresh"
                             className={`p-2 border ${borderColor} rounded-lg hover:${bgAccent} transition-all duration-200 ${bgCard} ${textMuted} hover:${textPrimary} shadow-sm disabled:opacity-50`}

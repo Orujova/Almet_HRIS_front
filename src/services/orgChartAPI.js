@@ -75,15 +75,7 @@ export const orgChartAPI = {
   // ORG CHART ENDPOINTS
   // ========================================
   
-  /**
-   * Get organizational chart data with comprehensive filtering
-   * @param {Object} params - Filter parameters
-   * @returns {Promise} API response
-   */
-  getOrgChart: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return orgChartApi.get(`/org-chart/${queryString ? `?${queryString}` : ''}`);
-  },
+
 
   /**
    * Get specific employee org chart data
@@ -91,7 +83,7 @@ export const orgChartAPI = {
    * @returns {Promise} API response
    */
   getOrgChartEmployee: (id) => {
-    return orgChartApi.get(`/org-chart/${id}/`);
+    return orgChartApi.get(`/org-chart/detail/${id}/`);
   },
 
   /**
@@ -101,7 +93,7 @@ export const orgChartAPI = {
    */
   getFullTreeWithVacancies: (params = {}) => {
     const queryString = buildQueryParams(params);
-    return orgChartApi.get(`/org-chart/full_tree_with_vacancies/${queryString ? `?${queryString}` : ''}`);
+    return orgChartApi.get(`/org-chart/tree/${queryString ? `?${queryString}` : ''}`);
   },
 
   /**
@@ -157,7 +149,7 @@ export const orgChartAPI = {
       page_size: searchParams.page_size
     };
 
-    return orgChartAPI.getOrgChart(processedParams);
+    return orgChartAPI.getFullTreeWithVacancies(processedParams);
   },
 
   /**
@@ -166,7 +158,7 @@ export const orgChartAPI = {
    * @returns {Promise} API response
    */
   getManagersOnly: (params = {}) => {
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       managers_only: true
     });
@@ -178,7 +170,7 @@ export const orgChartAPI = {
    * @returns {Promise} API response
    */
   getTopLevelOnly: (params = {}) => {
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       show_top_level_only: true
     });
@@ -191,7 +183,7 @@ export const orgChartAPI = {
    * @returns {Promise} API response
    */
   getManagerTeam: (managerId, params = {}) => {
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       manager_team: managerId
     });
@@ -205,7 +197,7 @@ export const orgChartAPI = {
    */
   filterByBusinessFunction: (businessFunctionIds, params = {}) => {
     const ids = Array.isArray(businessFunctionIds) ? businessFunctionIds : [businessFunctionIds];
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       business_function: ids
     });
@@ -219,7 +211,7 @@ export const orgChartAPI = {
    */
   filterByDepartment: (departmentIds, params = {}) => {
     const ids = Array.isArray(departmentIds) ? departmentIds : [departmentIds];
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       department: ids
     });
@@ -233,7 +225,7 @@ export const orgChartAPI = {
    */
   filterByUnit: (unitIds, params = {}) => {
     const ids = Array.isArray(unitIds) ? unitIds : [unitIds];
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       unit: ids
     });
@@ -247,7 +239,7 @@ export const orgChartAPI = {
    */
   filterByPositionGroup: (positionGroupIds, params = {}) => {
     const ids = Array.isArray(positionGroupIds) ? positionGroupIds : [positionGroupIds];
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       position_group: ids
     });
@@ -261,7 +253,7 @@ export const orgChartAPI = {
    */
   filterByStatus: (statuses, params = {}) => {
     const statusArray = Array.isArray(statuses) ? statuses : [statuses];
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       status: statusArray
     });
@@ -275,7 +267,7 @@ export const orgChartAPI = {
    */
   filterByGradingLevel: (gradingLevels, params = {}) => {
     const levels = Array.isArray(gradingLevels) ? gradingLevels : [gradingLevels];
-    return orgChartAPI.getOrgChart({
+    return orgChartAPI.getFullTreeWithVacancies({
       ...params,
       grading_level: levels
     });
@@ -303,7 +295,7 @@ export const orgChartAPI = {
     };
 
     const presetParams = presets[presetName] || {};
-    return orgChartAPI.getOrgChart({ ...presetParams, ...additionalParams });
+    return orgChartAPI.getFullTreeWithVacancies({ ...presetParams, ...additionalParams });
   },
 
   // ========================================

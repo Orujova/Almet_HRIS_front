@@ -76,7 +76,7 @@ export const fetchOrgChart = createAsyncThunk(
   'orgChart/fetchOrgChart',
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await orgChartAPI.getOrgChart(params);
+      const response = await orgChartAPI.getFullTreeWithVacancies(params);
       
       // FIXED: Clean the data before storing in Redux
       let orgChartData = [];

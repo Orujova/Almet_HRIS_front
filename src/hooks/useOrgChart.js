@@ -6,7 +6,7 @@ import {
   fetchOrgChart,
   fetchOrgChartEmployee,
   fetchFullTreeWithVacancies,
-
+  
   searchOrgChart,
   fetchManagerTeam,
   setFilters,
@@ -52,11 +52,7 @@ import {
   selectPagination,
   selectFilteredOrgChart,
   selectOrgChartForReactFlow,
-  selectManagerTeam,
-  selectEmployeeById,
-  selectEmployeeChildren,
-  selectRootEmployees,
-  selectManagersOnly,
+
   selectOrgChartSummary
 } from '../store/slices/orgChartSlice';
 
@@ -94,7 +90,6 @@ export const useOrgChart = () => {
     businessFunctionsDropdown,
     departmentsDropdown,
     unitsDropdown,
-    jobFunctionsDropdown,
     positionGroupsDropdown,
     employeeStatusesDropdown,
     loading: refDataLoading,
@@ -371,12 +366,11 @@ const filterOptions = useMemo(() => {
 
   
   useEffect(() => {
-    if (Array.isArray(orgChart) && orgChart.length === 0 && !loading.orgChart && !errors.orgChart) {
-    
-      actions.fetchOrgChart();
-  
+    if (Array.isArray(fullTree) && fullTree.length === 0 && !loading.fullTree && !errors.fullTree) {
+        console.log('🚀 Auto-loading FULL tree with vacancies...');
+        actions.fetchFullTree();
     }
-  }, [orgChart, loading.orgChart, errors.orgChart, actions]);
+}, [fullTree, loading.fullTree, errors.fullTree, actions]);
 
 
   useEffect(() => {
@@ -460,7 +454,8 @@ const filterOptions = useMemo(() => {
     filteredOrgChart,
     reactFlowData,
     summary,
-    
+    orgChart: fullTree.length > 0 ? fullTree : orgChart, // ← Prefer fullTree
+    fullTree,
     // Filters
     filters,
     activeFilters,

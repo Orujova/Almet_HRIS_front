@@ -15,9 +15,31 @@ import dagre from 'dagre';
 import { ZoomIn, ZoomOut, Maximize2, Target, RefreshCw } from 'lucide-react';
 import EmployeeNode from './EmployeeNode';
 
-// Clean employee data utility
+// components/orgChart/OrgChartTreeView.jsx - At the top
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
+    
+    // ✅ FIXED: Check all possible vacancy indicators
+    const isVacancy = Boolean(
+        employee.employee_details?.is_vacancy === true ||
+        employee.is_vacancy === true || 
+        employee.vacant === true || 
+        employee.record_type === 'vacancy' ||
+        (employee.name && (
+            employee.name.includes('[VACANT]') || 
+            employee.name.toLowerCase().includes('vacant')
+        ))
+    );
+    
+    console.log('🔍 Checking vacancy for:', employee.name, {
+        employee_details_is_vacancy: employee.employee_details?.is_vacancy,
+        is_vacancy: employee.is_vacancy,
+        vacant: employee.vacant,
+        record_type: employee.record_type,
+        name_includes_vacant: employee.name?.includes('[VACANT]'),
+        RESULT: isVacancy
+    });
+    
     return {
         id: employee.id,
         employee_id: employee.employee_id,
@@ -35,7 +57,9 @@ const cleanEmployeeData = (employee) => {
         profile_image_url: employee.profile_image_url,
         avatar: employee.avatar,
         status_color: employee.status_color,
-        vacant: employee.vacant || employee.name?.toLowerCase().includes('vacant'),
+        vacant: isVacancy,
+        is_vacancy: isVacancy,
+        record_type: employee.record_type || (isVacancy ? 'vacancy' : 'employee'),
         employee_details: employee.employee_details
     };
 };

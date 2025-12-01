@@ -6,6 +6,16 @@ import Avatar from './Avatar';
 
 const cleanEmployeeData = (employee) => {
     if (!employee) return null;
+    
+    // ✅ FIXED: Check employee_details.is_vacancy first
+    const isVacancy = Boolean(
+        employee.employee_details?.is_vacancy ||  // ✅ Primary - backend format
+        employee.is_vacancy || 
+        employee.vacant || 
+        employee.record_type === 'vacancy' ||
+        (employee.name && employee.name.includes('[VACANT]'))
+    );
+    
     return {
         id: employee.id,
         employee_id: employee.employee_id,
@@ -23,7 +33,9 @@ const cleanEmployeeData = (employee) => {
         profile_image_url: employee.profile_image_url,
         avatar: employee.avatar,
         status_color: employee.status_color,
-        vacant: employee.vacant || employee.name?.toLowerCase().includes('vacant') || employee.title?.toLowerCase().includes('vacant'),
+        vacant: isVacancy,
+        is_vacancy: isVacancy,  // ✅ Flatten for easier access
+        record_type: employee.record_type || (isVacancy ? 'vacancy' : 'employee'),
         employee_details: employee.employee_details
     };
 };

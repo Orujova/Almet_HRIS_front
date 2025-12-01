@@ -38,7 +38,7 @@ const OrgChart = () => {
     // Get all org chart data and methods from hook
     const {
         orgChart,
-        filteredOrgChart,
+        fullTree,
         summary,
         selectedEmployee,
         filters,
@@ -50,7 +50,7 @@ const OrgChart = () => {
         layoutDirection,
         loading,
         isLoading,
-        fetchOrgChart,
+        fetchFullTreeWithVacancies,
         updateFilter,
         clearFilters,
         setViewMode,
@@ -246,9 +246,23 @@ const OrgChart = () => {
     }, [companyFilteredOrgChart, filters.search]);
 
     // Count vacant positions from search filtered data
-    const vacantCount = searchFilteredOrgChart?.filter(emp => 
-        emp.vacant || emp.name?.toLowerCase().includes('vacant')
-    ).length || 0;
+    // Update vacancy count calculation
+const vacantCount = useMemo(() => {
+    if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
+        return 0;
+    }
+    
+    return searchFilteredOrgChart.filter(emp => {
+        // ✅ FIXED: Check employee_details.is_vacancy first
+        return Boolean(
+            emp.employee_details?.is_vacancy ||  // ✅ Primary - backend format
+            emp.is_vacancy || 
+            emp.vacant || 
+            emp.record_type === 'vacancy' ||
+            (emp.name && emp.name.includes('[VACANT]'))
+        );
+    }).length;
+}, [searchFilteredOrgChart]);
 
     // Calculate summary stats from search filtered data
     const companySummary = useMemo(() => {
@@ -617,7 +631,7 @@ const OrgChart = () => {
                     handleExportToPNG={handleExportToPNG}
                     exportLoading={exportLoading}
                     toggleFullscreen={toggleFullscreen}
-                    fetchOrgChart={fetchOrgChart}
+                    fetchFullTreeWithVacancies={fetchFullTreeWithVacancies}
                     hasActiveFilters={hasActiveFilters}
                     darkMode={darkMode}
                     selectedCompany={selectedCompany}

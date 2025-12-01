@@ -41,6 +41,11 @@ const Sidebar = ({ collapsed = false }) => {
     { 
       type: "section", 
       label: "STRUCTURE" 
+    }, {
+      label: "Org Structure",
+      icon: <Building2 className="w-4 h-4" />,
+      path: "/structure/org-structure",
+      id: "org-structure",
     },
     {
       label: "Headcount table",
@@ -48,12 +53,7 @@ const Sidebar = ({ collapsed = false }) => {
       path: "/structure/headcount-table",
       id: "headcount-table",
     },
-    {
-      label: "Org Structure",
-      icon: <Building2 className="w-4 h-4" />,
-      path: "/structure/org-structure",
-      id: "org-structure",
-    },
+   
     {
       label: "Job Descriptions",
       icon: <FileText className="w-4 h-4" />,

@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus, Edit, Trash2, Save, X, Search, Target, BarChart3,
   RefreshCw, AlertCircle, Building, Users, ListFilter, LayoutGrid, 
-  Table as TableIcon, Crown, ChevronRight, ChevronDown
+  Table as TableIcon, Crown, ChevronRight, ChevronDown, Settings
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -68,9 +68,9 @@ const CompetencyMatrixSystemInner = () => {
 
   const [activeView, setActiveView] = useState(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('competencyActiveView') || 'skills';
+      return sessionStorage.getItem('competencyActiveView') || 'matrix';
     }
-    return 'skills';
+    return 'matrix';
   });
   
   const [viewMode, setViewMode] = useState(() => {
@@ -1421,16 +1421,17 @@ const CompetencyMatrixSystemInner = () => {
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} p-6`}>
         <div className=" mx-auto space-y-4">
+          {/* Header */}
           <header className={`${card} border ${border} rounded-2xl p-5 shadow-sm`}>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div className="space-y-1">
                 <h1 className={`text-xl font-bold ${text} flex items-center gap-2`}>
                   <span className="p-2 rounded-xl bg-almet-mystic">
-                    <Target className="w-5 h-5 text-almet-sapphire" />
+                    <BarChart3 className="w-5 h-5 text-almet-sapphire" />
                   </span>
-                  Competency Matrix
+                  Competency Matrix System
                 </h1>
-                <p className={`${textDim} text-xs`}>Management of skills and behavioral competencies</p>
+                <p className={`${textDim} text-xs`}>Assessment matrix and competency management</p>
               </div>
               {activeView !== 'matrix' && (
                 <div className="flex items-center gap-2">
@@ -1444,27 +1445,27 @@ const CompetencyMatrixSystemInner = () => {
             </div>
           </header>
 
+          {/* Navigation Bar */}
           <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm z-10`}>
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2">
               <div className="flex items-center gap-1">
-                {[
-                  { id: 'skills', name: 'Skills', icon: Target },
-                  { id: 'behavioral', name: 'Behavioral', icon: Users },
-                  { id: 'leadership', name: 'Leadership', icon: Crown },
-                  { id: 'matrix', name: 'Matrix', icon: BarChart3 },
-                ].map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveView(t.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${activeView === t.id ? 'bg-almet-sapphire text-white shadow' : 'text-almet-waterloo hover:bg-almet-mystic hover:text-almet-cloud-burst'}`}
-                  >
-                    <t.icon size={16} />
-                    <span className="hidden sm:inline">{t.name}</span>
-                  </button>
-                ))}
+                <button
+                  onClick={() => setActiveView('matrix')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${activeView === 'matrix' ? 'bg-almet-sapphire text-white shadow' : 'text-almet-waterloo hover:bg-almet-mystic hover:text-almet-cloud-burst'}`}
+                >
+                  <BarChart3 size={16} />
+                  <span className="hidden sm:inline">Assessment Matrix</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('settings')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${activeView === 'settings' ? 'bg-almet-sapphire text-white shadow' : 'text-almet-waterloo hover:bg-almet-mystic hover:text-almet-cloud-burst'}`}
+                >
+                  <Settings size={16} />
+                  <span className="hidden sm:inline">Competency Settings</span>
+                </button>
               </div>
 
-              {activeView !== 'matrix' && (
+              {activeView === 'settings' && (
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100 dark:bg-gray-800">
                     <button
@@ -1512,9 +1513,63 @@ const CompetencyMatrixSystemInner = () => {
             </div>
           </div>
 
+          {/* Settings Sub-Navigation */}
+          {activeView === 'settings' && (
+            <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm`}>
+              <div className="flex items-center gap-1">
+                {[
+                  { id: 'skills', name: 'Skills', icon: Target },
+                  { id: 'behavioral', name: 'Behavioral', icon: Users },
+                  { id: 'leadership', name: 'Leadership', icon: Crown },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      setActiveView(t.id);
+                      setSearch('');
+                      setSelectedGroup('');
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${activeView === t.id ? 'bg-almet-sapphire text-white shadow' : 'text-almet-waterloo hover:bg-almet-mystic hover:text-almet-cloud-burst'}`}
+                  >
+                    <t.icon size={16} />
+                    <span className="hidden sm:inline">{t.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Main Content */}
           {activeView === 'matrix' ? (
             <div className="rounded-2xl overflow-hidden">
               <AssessmentMatrix />
+            </div>
+          ) : activeView === 'settings' ? (
+            <div className={`${card} border ${border} rounded-2xl p-8 text-center`}>
+              <Settings size={48} className="mx-auto mb-4 text-almet-sapphire" />
+              <h2 className={`text-lg font-bold ${text} mb-2`}>Select a Competency Type</h2>
+              <p className={`${textDim} text-sm mb-6`}>Choose from Skills, Behavioral, or Leadership to manage competencies</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {[
+                  { id: 'skills', name: 'Skills', icon: Target, desc: 'Technical and functional skills' },
+                  { id: 'behavioral', name: 'Behavioral', icon: Users, desc: 'Behavioral competencies' },
+                  { id: 'leadership', name: 'Leadership', icon: Crown, desc: 'Leadership capabilities' },
+                ].map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveView(t.id)}
+                    className={`${subtle} border ${border} rounded-xl p-6 hover:shadow-md transition flex flex-col items-center gap-3 min-w-[200px]`}
+                  >
+                    <div className="p-3 rounded-xl bg-almet-sapphire/10">
+                      <t.icon size={32} className="text-almet-sapphire" />
+                    </div>
+                    <div>
+                      <h3 className={`text-sm font-bold ${text}`}>{t.name}</h3>
+                      <p className={`${textDim} text-xs mt-1`}>{t.desc}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : activeView === 'leadership' ? (
             viewMode === 'table' ? <LeadershipTableView /> : <LeadershipCardView />
@@ -1523,6 +1578,7 @@ const CompetencyMatrixSystemInner = () => {
           )}
         </div>
 
+        {/* Add Item Modal */}
         {showAddItem && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
             <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl`}>
@@ -1623,6 +1679,7 @@ const CompetencyMatrixSystemInner = () => {
           </div>
         )}
 
+        {/* Add Group Modal */}
         {showAddGroup && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
             <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl`}>
@@ -1675,20 +1732,8 @@ const CompetencyMatrixSystemInner = () => {
           </div>
         )}
 
-        {activeView === 'leadership' && (
-          <div className="fixed bottom-6 right-6 z-40">
-            <ActionButton
-              icon={Plus}
-              label="Child Group"
-              onClick={() => setShowAddChildGroup(true)}
-              variant="secondary"
-              size="md"
-              className="shadow-lg"
-            />
-          </div>
-        )}
-
-        {showAddChildGroup && (
+        {/* Add Child Group Modal */}
+        {activeView === 'leadership' && showAddChildGroup && (
           <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 backdrop-blur-sm p-4">
             <div className={`${card} border ${border} rounded-2xl w-full max-w-md shadow-2xl`}>
               <div className={`p-5 border-b ${border} flex items-center gap-2`}>
@@ -1750,6 +1795,21 @@ const CompetencyMatrixSystemInner = () => {
           </div>
         )}
 
+        {/* Floating Action Button for Leadership Child Group */}
+        {activeView === 'leadership' && (
+          <div className="fixed bottom-6 right-6 z-40">
+            <ActionButton
+              icon={Plus}
+              label="Child Group"
+              onClick={() => setShowAddChildGroup(true)}
+              variant="secondary"
+              size="md"
+              className="shadow-lg"
+            />
+          </div>
+        )}
+
+        {/* Confirmation Modal */}
         <ConfirmationModal
           isOpen={confirmModal.isOpen}
           onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
