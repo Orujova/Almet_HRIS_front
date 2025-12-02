@@ -664,20 +664,30 @@ const loadEmployees = async (perms = null) => {
   // ==================== OBJECTIVE HANDLERS ====================
   const saveObjectivesTimeoutRef = useRef(null);
 
-  const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
-    if (saveObjectivesTimeoutRef.current) {
-      clearTimeout(saveObjectivesTimeoutRef.current);
+  // page.jsx - debouncedSaveObjectives function
+
+const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
+  if (saveObjectivesTimeoutRef.current) {
+    clearTimeout(saveObjectivesTimeoutRef.current);
+  }
+  
+  saveObjectivesTimeoutRef.current = setTimeout(async () => {
+    try {
+      // ✅ LOG what we're sending
+      console.log('📤 Auto-saving objectives:', objectives.map(obj => ({
+        id: obj.id,
+        title: obj.title?.substring(0, 30),
+        end_year_rating: obj.end_year_rating,  // ✅ Should be ID
+        calculated_score: obj.calculated_score
+      })));
+      
+      await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
+      showInfo('Changes auto-saved');
+    } catch (error) {
+      console.error('❌ Auto-save error:', error);
     }
-    
-    saveObjectivesTimeoutRef.current = setTimeout(async () => {
-      try {
-        await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
-        showInfo('Changes auto-saved');
-      } catch (error) {
-        console.error('❌ Auto-save error:', error);
-      }
-    }, 1000);
-  }, []);
+  }, 1000);
+}, [showInfo]); // ✅ Add showInfo to dependencies
 
   const handleLoadEmployeePerformance = async (employeeId, year) => {
     try {
@@ -703,20 +713,20 @@ const loadEmployees = async (perms = null) => {
     }
   };
 
-  // page.jsx - handleUpdateObjective function
+// page.jsx - handleUpdateObjective COMPLETE FIX
 
 const handleUpdateObjective = (index, field, value) => {
   const key = `${selectedEmployee.id}_${selectedYear}`;
   const data = performanceData[key];
   const newObjectives = [...(data.objectives || [])];
   
-  // ✅ UPDATE: Handle both rating AND score update
+  // ✅ Update field
   newObjectives[index] = {
     ...newObjectives[index],
     [field]: value
   };
   
-  // ✅ If updating end_year_rating, ALSO calculate score
+  // ✅ If rating changed, ALSO update score in SAME object
   if (field === 'end_year_rating') {
     const selectedScaleId = value ? parseInt(value) : null;
     if (selectedScaleId) {
@@ -726,11 +736,12 @@ const handleUpdateObjective = (index, field, value) => {
         const targetScore = settings.evaluationTargets?.objective_score_target || 21;
         const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
         
-        // ✅ CRITICAL: Also update calculated_score
+        // ✅ CRITICAL: Update score in SAME objective object
         newObjectives[index].calculated_score = calculatedScore;
         
         console.log(`✅ Rating updated: ${selectedScale.name} (ID: ${selectedScaleId})`);
         console.log(`✅ Score calculated: ${calculatedScore}`);
+        console.log(`✅ Full objective:`, newObjectives[index]);
       }
     } else {
       newObjectives[index].calculated_score = 0;
@@ -749,8 +760,14 @@ const handleUpdateObjective = (index, field, value) => {
     [key]: recalculatedData
   }));
   
-  // ✅ Auto-save with BOTH rating and score
+  // ✅ CRITICAL: Use newObjectives (not from state!)
   if (selectedPerformanceId) {
+    console.log('🚀 Triggering auto-save with:', newObjectives.map(o => ({
+      id: o.id,
+      end_year_rating: o.end_year_rating,
+      calculated_score: o.calculated_score
+    })));
+    
     debouncedSaveObjectives(selectedPerformanceId, newObjectives);
   }
 };
