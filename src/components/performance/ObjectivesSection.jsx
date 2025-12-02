@@ -405,25 +405,17 @@ Completed                    </div>
                     {canRateEndYear && !isCancelled ? (
                       
 
+
+
 <select
   value={objective.end_year_rating || ''}
   onChange={(e) => {
     const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
-    if (selectedScaleId) {
-      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-      if (selectedScale) {
-        const weight = parseFloat(objective.weight) || 0;
-        const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-        const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-        
-        // ✅ UPDATE: Call onUpdate TWICE - first rating, then score
-        onUpdate(index, 'end_year_rating', selectedScaleId);
-        onUpdate(index, 'calculated_score', calculatedScore);
-      }
-    } else {
-      onUpdate(index, 'end_year_rating', null);
-      onUpdate(index, 'calculated_score', 0);
-    }
+    
+
+    onUpdate(index, 'end_year_rating', selectedScaleId);
+    
+    
   }}
   className={`${inputClass} w-full`}
 >

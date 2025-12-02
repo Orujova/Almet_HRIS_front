@@ -713,20 +713,20 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
     }
   };
 
-// page.jsx - handleUpdateObjective COMPLETE FIX
+// page.jsx - handleUpdateObjective
 
 const handleUpdateObjective = (index, field, value) => {
   const key = `${selectedEmployee.id}_${selectedYear}`;
   const data = performanceData[key];
   const newObjectives = [...(data.objectives || [])];
   
-  // ✅ Update field
+  // ✅ FIX: Update objective with new field value
   newObjectives[index] = {
     ...newObjectives[index],
     [field]: value
   };
   
-  // ✅ If rating changed, ALSO update score in SAME object
+  // ✅ If updating end_year_rating, ALSO calculate and set score in SAME update
   if (field === 'end_year_rating') {
     const selectedScaleId = value ? parseInt(value) : null;
     if (selectedScaleId) {
@@ -736,16 +736,31 @@ const handleUpdateObjective = (index, field, value) => {
         const targetScore = settings.evaluationTargets?.objective_score_target || 21;
         const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
         
-        // ✅ CRITICAL: Update score in SAME objective object
-        newObjectives[index].calculated_score = calculatedScore;
+        // ✅ CRITICAL: Update SAME objective in SAME operation
+        newObjectives[index] = {
+          ...newObjectives[index],
+          end_year_rating: selectedScaleId,  // ✅ Keep the rating ID
+          calculated_score: calculatedScore   // ✅ Add calculated score
+        };
         
-        console.log(`✅ Rating updated: ${selectedScale.name} (ID: ${selectedScaleId})`);
-        console.log(`✅ Score calculated: ${calculatedScore}`);
-        console.log(`✅ Full objective:`, newObjectives[index]);
+        console.log(`✅ Rating updated: ${selectedScale.name} (ID: ${selectedScaleId}), Score: ${calculatedScore}`);
       }
     } else {
-      newObjectives[index].calculated_score = 0;
+      // ✅ If clearing rating, also clear score
+      newObjectives[index] = {
+        ...newObjectives[index],
+        end_year_rating: null,
+        calculated_score: 0
+      };
     }
+  }
+  
+  // ✅ If updating calculated_score directly (shouldn't happen for ratings, but safe)
+  if (field === 'calculated_score') {
+    newObjectives[index] = {
+      ...newObjectives[index],
+      calculated_score: value
+    };
   }
   
   const updatedData = {
@@ -760,14 +775,13 @@ const handleUpdateObjective = (index, field, value) => {
     [key]: recalculatedData
   }));
   
-  // ✅ CRITICAL: Use newObjectives (not from state!)
+  // ✅ Auto-save ONCE with complete data
   if (selectedPerformanceId) {
     console.log('🚀 Triggering auto-save with:', newObjectives.map(o => ({
       id: o.id,
       end_year_rating: o.end_year_rating,
       calculated_score: o.calculated_score
     })));
-    
     debouncedSaveObjectives(selectedPerformanceId, newObjectives);
   }
 };
