@@ -403,34 +403,37 @@ Completed                    </div>
                       End Year Rating
                     </label>
                     {canRateEndYear && !isCancelled ? (
-                      <select
-                        value={objective.end_year_rating || ''}
-                        onChange={(e) => {
-                          const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
-                          if (selectedScaleId) {
-                            const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-                            if (selectedScale) {
-                              const weight = parseFloat(objective.weight) || 0;
-                              const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-                              const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-                              
-                              onUpdate(index, 'end_year_rating', selectedScaleId);
-                              onUpdate(index, 'calculated_score', calculatedScore);
-                            }
-                          } else {
-                            onUpdate(index, 'end_year_rating', null);
-                            onUpdate(index, 'calculated_score', 0);
-                          }
-                        }}
-                        className={`${inputClass} w-full`}
-                      >
-                        <option value="">-- Select Rating --</option>
-                        {settings.evaluationScale?.map(scale => (
-                          <option key={scale.id} value={scale.id}>
-                            {scale.name} • {scale.value}
-                          </option>
-                        ))}
-                      </select>
+                      
+
+<select
+  value={objective.end_year_rating || ''}
+  onChange={(e) => {
+    const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
+    if (selectedScaleId) {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+      if (selectedScale) {
+        const weight = parseFloat(objective.weight) || 0;
+        const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+        const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+        
+        // ✅ UPDATE: Call onUpdate TWICE - first rating, then score
+        onUpdate(index, 'end_year_rating', selectedScaleId);
+        onUpdate(index, 'calculated_score', calculatedScore);
+      }
+    } else {
+      onUpdate(index, 'end_year_rating', null);
+      onUpdate(index, 'calculated_score', 0);
+    }
+  }}
+  className={`${inputClass} w-full`}
+>
+  <option value="">-- Select Rating --</option>
+  {settings.evaluationScale?.map(scale => (
+    <option key={scale.id} value={scale.id}>
+      {scale.name} • {scale.value}
+    </option>
+  ))}
+</select>
                     ) : (
                       <div className={`${inputClass} w-full flex items-center justify-center`}>
                         {selectedRating ? (

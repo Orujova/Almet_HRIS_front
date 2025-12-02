@@ -703,46 +703,57 @@ const loadEmployees = async (perms = null) => {
     }
   };
 
-  const handleUpdateObjective = (index, field, value) => {
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const newObjectives = [...(data.objectives || [])];
-    newObjectives[index] = {
-      ...newObjectives[index],
-      [field]: value
-    };
-    
-    if (field === 'end_year_rating') {
-      const selectedScaleId = value ? parseInt(value) : null;
-      if (selectedScaleId) {
-        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-        if (selectedScale) {
-          const weight = parseFloat(newObjectives[index].weight) || 0;
-          const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-          const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
-          newObjectives[index].calculated_score = calculatedScore;
-        }
-      } else {
-        newObjectives[index].calculated_score = 0;
-      }
-    }
-    
-    const updatedData = {
-      ...data,
-      objectives: newObjectives
-    };
-    
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
-    
-    if (selectedPerformanceId) {
-      debouncedSaveObjectives(selectedPerformanceId, newObjectives);
-    }
+  // page.jsx - handleUpdateObjective function
+
+const handleUpdateObjective = (index, field, value) => {
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+  const newObjectives = [...(data.objectives || [])];
+  
+  // ✅ UPDATE: Handle both rating AND score update
+  newObjectives[index] = {
+    ...newObjectives[index],
+    [field]: value
   };
+  
+  // ✅ If updating end_year_rating, ALSO calculate score
+  if (field === 'end_year_rating') {
+    const selectedScaleId = value ? parseInt(value) : null;
+    if (selectedScaleId) {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+      if (selectedScale) {
+        const weight = parseFloat(newObjectives[index].weight) || 0;
+        const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+        const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+        
+        // ✅ CRITICAL: Also update calculated_score
+        newObjectives[index].calculated_score = calculatedScore;
+        
+        console.log(`✅ Rating updated: ${selectedScale.name} (ID: ${selectedScaleId})`);
+        console.log(`✅ Score calculated: ${calculatedScore}`);
+      }
+    } else {
+      newObjectives[index].calculated_score = 0;
+    }
+  }
+  
+  const updatedData = {
+    ...data,
+    objectives: newObjectives
+  };
+  
+  const recalculatedData = recalculateScores(updatedData);
+  
+  setPerformanceData(prev => ({
+    ...prev,
+    [key]: recalculatedData
+  }));
+  
+  // ✅ Auto-save with BOTH rating and score
+  if (selectedPerformanceId) {
+    debouncedSaveObjectives(selectedPerformanceId, newObjectives);
+  }
+};
 
   const handleAddObjective = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
