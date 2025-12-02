@@ -216,17 +216,17 @@ export default function PerformanceDashboard({
 
     {/* ✅ Show message for regular employees */}
     {!permissions.is_manager && !permissions.can_view_all && (
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-8 text-center`}>
-        <User className="w-16 h-16 mx-auto mb-4 text-almet-sapphire/30" />
-        <h3 className={`text-lg font-bold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-6 text-center`}>
+        <User className="w-12 h-12 mx-auto mb-4 text-almet-sapphire/30" />
+        <h3 className={`text-base font-bold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
           Welcome to Performance Management
         </h3>
-        <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-4`}>
+        <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-4`}>
           View and manage your performance goals, reviews, and development needs
         </p>
         <button
           onClick={() => setActiveTab('team')}
-          className="px-6 py-3 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-sm font-medium transition-all shadow-sm"
+          className="px-6 py-3 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-xs font-medium transition-all shadow-sm"
         >
           View My Performance
         </button>
