@@ -1,28 +1,35 @@
 import { useState } from 'react';
-import { Users, Search, ChevronRight, Lock, X, Building2 } from 'lucide-react';
+import { Users, Search, ChevronRight, Lock, X, Building2, User } from 'lucide-react';
 
 export default function TeamMembersWithSearch({ 
   employees = [], 
   currentUserId,
   canViewEmployee,
   onSelectEmployee,
-  darkMode 
+  darkMode,
+  isPersonalView = false
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
 
-  // ✅ Get unique departments, positions, and companies for filters
-  const departments = [...new Set(employees.map(e => e.employee_department || e.department))].filter(Boolean).sort();
-  const positions = [...new Set(employees.map(e => e.employee_position_group || e.position))].filter(Boolean).sort();
-  const companies = [...new Set(employees.map(e => e.employee_company || e.company))].filter(Boolean).sort();
+ 
+
+  // ✅ Get unique values
+  const getUniqueValues = (field) => {
+    return [...new Set(
+      employees
+        .map(e => e[field] || e[field.replace('employee_', '')])
+    )].filter(Boolean).sort();
+  };
+
+  const departments = getUniqueValues('employee_department');
+  const positions = getUniqueValues('employee_position_group');
+  const companies = getUniqueValues('employee_company');
 
   // ✅ Filter logic
   const filteredEmployees = employees.filter(emp => {
-    // ⛔ Hide current user from seeing themselves
-    if (emp.id === currentUserId) return false;
-    
     // Search filter
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm || 
@@ -44,14 +51,14 @@ export default function TeamMembersWithSearch({
     return matchesSearch && matchesDepartment && matchesPosition && matchesCompany;
   });
 
+
+
   const getStatusBadge = (employee) => {
-    // ✅ Calculate actual status
     const objPct = parseFloat(employee.objectives_percentage);
     const compPct = parseFloat(employee.competencies_percentage);
     
     let status = employee.approval_status || 'NOT_STARTED';
     
-    // ✅ Override to COMPLETED if both percentages exist
     if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
       status = 'COMPLETED';
     }
@@ -78,6 +85,82 @@ export default function TeamMembersWithSearch({
 
   const hasActiveFilters = searchTerm || filterDepartment || filterPosition || filterCompany;
 
+  // ✅ Show different content for personal view (only self)
+  if (isPersonalView && employees.length === 1) {
+    const personalEmployee = employees.find(e => e.id === currentUserId);
+    
+    if (!personalEmployee) {
+      return (
+        <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-8 text-center`}>
+          <User className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+          <p className="text-sm text-gray-500 font-medium">No performance data found</p>
+        </div>
+      );
+    }
+    
+    const badge = getStatusBadge(personalEmployee);
+    
+    return (
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-almet-sapphire/10 dark:bg-almet-sapphire/20">
+            <User className="w-5 h-5 text-almet-sapphire" />
+          </div>
+          <div className="flex-1">
+            <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+              My Performance
+            </h3>
+            <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+              View and manage your performance
+            </p>
+          </div>
+        </div>
+
+        <div
+          onClick={() => onSelectEmployee(personalEmployee)}
+          className={`${
+            darkMode ? 'bg-almet-san-juan hover:bg-almet-comet' : 'bg-almet-mystic hover:bg-gray-100'
+          } rounded-xl p-4 transition-all cursor-pointer`}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-base font-bold flex-shrink-0">
+                {(personalEmployee.employee_name || personalEmployee.name || 'U').charAt(0)}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <h4 className={`text-sm font-semibold mb-1 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  {personalEmployee.employee_name || personalEmployee.name}
+                </h4>
+                <div className="flex items-center gap-2 text-xs text-almet-waterloo dark:text-almet-bali-hai flex-wrap">
+                  <span className="truncate">{personalEmployee.employee_position_group || personalEmployee.position}</span>
+                  <span>•</span>
+                  <span className="truncate">{personalEmployee.employee_department || personalEmployee.department}</span>
+                  {(personalEmployee.employee_company || personalEmployee.company) && (
+                    <>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1 font-medium text-almet-sapphire">
+                        <Building2 className="w-3 h-3" />
+                        {personalEmployee.employee_company || personalEmployee.company}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className={`px-2 py-1 rounded-lg text-xs font-medium ${badge.class}`}>
+                {badge.text}
+              </span>
+              <ChevronRight className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
       {/* Header */}
@@ -90,7 +173,7 @@ export default function TeamMembersWithSearch({
             Team Members
           </h3>
           <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
-            {filteredEmployees.length} of {employees.length - 1} employees
+            {filteredEmployees.length} direct reports
           </p>
         </div>
       </div>
@@ -113,82 +196,86 @@ export default function TeamMembersWithSearch({
           />
         </div>
 
-        {/* Filter Row - Department & Position only */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Department Filter */}
-          <select
-            value={filterDepartment}
-            onChange={(e) => setFilterDepartment(e.target.value)}
-            className={`h-10 px-3 text-sm rounded-xl border ${
-              darkMode 
-                ? 'bg-almet-san-juan border-almet-comet text-white' 
-                : 'bg-white border-gray-300 text-gray-900'
-            } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30`}
-          >
-            <option value="">All Departments</option>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
+        {/* Filter Row */}
+        {(departments.length > 0 || positions.length > 0) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {departments.length > 0 && (
+              <select
+                value={filterDepartment}
+                onChange={(e) => setFilterDepartment(e.target.value)}
+                className={`h-10 px-3 text-sm rounded-xl border ${
+                  darkMode 
+                    ? 'bg-almet-san-juan border-almet-comet text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30`}
+              >
+                <option value="">All Departments</option>
+                {departments.map(dept => (
+                  <option key={dept} value={dept}>{dept}</option>
+                ))}
+              </select>
+            )}
 
-          {/* Position Filter */}
-          <select
-            value={filterPosition}
-            onChange={(e) => setFilterPosition(e.target.value)}
-            className={`h-10 px-3 text-sm rounded-xl border ${
-              darkMode 
-                ? 'bg-almet-san-juan border-almet-comet text-white' 
-                : 'bg-white border-gray-300 text-gray-900'
-            } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30`}
-          >
-            <option value="">All Positions</option>
-            {positions.map(pos => (
-              <option key={pos} value={pos}>{pos}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* ✅ Company Filter - Chip/Button Style */}
-        <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/30'} rounded-xl p-3`}>
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-4 h-4 text-almet-sapphire" />
-            <h4 className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-              Filter by Company
-            </h4>
+            {positions.length > 0 && (
+              <select
+                value={filterPosition}
+                onChange={(e) => setFilterPosition(e.target.value)}
+                className={`h-10 px-3 text-sm rounded-xl border ${
+                  darkMode 
+                    ? 'bg-almet-san-juan border-almet-comet text-white' 
+                    : 'bg-white border-gray-300 text-gray-900'
+                } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30`}
+              >
+                <option value="">All Positions</option>
+                {positions.map(pos => (
+                  <option key={pos} value={pos}>{pos}</option>
+                ))}
+              </select>
+            )}
           </div>
-          <div className="flex flex-wrap gap-2">
-            {/* All Companies Button */}
-            <button
-              onClick={() => setFilterCompany('')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                filterCompany === ''
-                  ? 'bg-almet-sapphire text-white shadow-sm'
-                  : darkMode
-                    ? 'bg-almet-comet/50 text-almet-bali-hai hover:bg-almet-comet'
-                    : 'bg-white text-almet-waterloo hover:bg-gray-100 border border-gray-200'
-              }`}
-            >
-              All Companies
-            </button>
+        )}
 
-            {/* Company Chips */}
-            {companies.map(company => (
+        {/* Company Filter */}
+        {companies.length > 0 && (
+          <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/30'} rounded-xl p-3`}>
+            <div className="flex items-center gap-2 mb-2">
+              <Building2 className="w-4 h-4 text-almet-sapphire" />
+              <h4 className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                Filter by Company
+              </h4>
+            </div>
+            <div className="flex flex-wrap gap-2">
               <button
-                key={company}
-                onClick={() => setFilterCompany(company)}
+                onClick={() => setFilterCompany('')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  filterCompany === company
+                  filterCompany === ''
                     ? 'bg-almet-sapphire text-white shadow-sm'
                     : darkMode
                       ? 'bg-almet-comet/50 text-almet-bali-hai hover:bg-almet-comet'
                       : 'bg-white text-almet-waterloo hover:bg-gray-100 border border-gray-200'
                 }`}
               >
-                {company}
+                All Companies
               </button>
-            ))}
+
+              {companies.map(company => (
+                <button
+                  key={company}
+                  onClick={() => setFilterCompany(company)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    filterCompany === company
+                      ? 'bg-almet-sapphire text-white shadow-sm'
+                      : darkMode
+                        ? 'bg-almet-comet/50 text-almet-bali-hai hover:bg-almet-comet'
+                        : 'bg-white text-almet-waterloo hover:bg-gray-100 border border-gray-200'
+                  }`}
+                >
+                  {company}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Clear Filters */}
         {hasActiveFilters && (
@@ -216,13 +303,13 @@ export default function TeamMembersWithSearch({
         </div>
       ) : (
         <div className="space-y-2">
-          {filteredEmployees.map(employee => {
+          {filteredEmployees.map((employee, index) => {
             const hasAccess = canViewEmployee(employee.id);
             const badge = getStatusBadge(employee);
             
             return (
               <div
-                key={employee.id}
+                key={`employee-${employee.id}-${index}`}
                 onClick={() => hasAccess && onSelectEmployee(employee)}
                 className={`${
                   darkMode ? 'bg-almet-san-juan hover:bg-almet-comet' : 'bg-almet-mystic hover:bg-gray-100'
@@ -245,11 +332,10 @@ export default function TeamMembersWithSearch({
                         <span className="truncate">{employee.employee_position_group || employee.position}</span>
                         <span>•</span>
                         <span className="truncate">{employee.employee_department || employee.department}</span>
-                        {/* ✅ Company Display with Icon */}
                         {(employee.employee_company || employee.company) && (
                           <>
                             <span>•</span>
-                            <span className="inline-flex items-center gap-1 font-medium text-almet-sapphire dark:text-almet-sapphire">
+                            <span className="inline-flex items-center gap-1 font-medium text-almet-sapphire">
                               <Building2 className="w-3 h-3" />
                               {employee.employee_company || employee.company}
                             </span>

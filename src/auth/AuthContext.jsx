@@ -61,7 +61,7 @@ export function AuthProvider({ children }) {
   const validateTokenWithBackend = async (token, retries = 2) => {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        console.log(`🔍 Validating token (attempt ${attempt + 1}/${retries + 1})...`);
+
         
         const response = await fetch(`${BACKEND_URL}/me/`, {
           method: 'GET',
@@ -365,7 +365,7 @@ export function AuthProvider({ children }) {
           const token = getStorageItem("accessToken");
           
           if (token) {
-            console.log("🔍 Validating existing token...");
+   
             try {
               await validateTokenWithBackend(token);
               setAccount(accounts[0]);

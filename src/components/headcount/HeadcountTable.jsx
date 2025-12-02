@@ -692,12 +692,10 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
   const handleSelectAll = useCallback(() => {
     if (selectedEmployees.length === formattedEmployees.length && formattedEmployees.length > 0) {
-      clearSelection();
-      showInfo('All employees deselected');
+      clearSelection();  
     } else {
       const allIds = formattedEmployees.map(emp => emp.id);
-      setSelectedEmployees(allIds);
-      showInfo(`${allIds.length} employees selected`);
+      setSelectedEmployees(allIds);      
     }
   }, [selectedEmployees.length, formattedEmployees, clearSelection, setSelectedEmployees, showInfo]);
 

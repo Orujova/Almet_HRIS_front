@@ -8,7 +8,8 @@ export default function PerformanceHeader({
   loading, 
   onRefresh,
   onSettings,
-  darkMode 
+  darkMode,
+  permissions // ✅ ADD permissions prop
 }) {
   const getPeriodLabel = (period) => {
     const labels = {
@@ -30,6 +31,27 @@ export default function PerformanceHeader({
     return colors[period] || 'bg-gray-500';
   };
 
+  // ✅ Check if user can access settings
+  const canAccessSettings = () => {
+    if (!permissions) return false;
+    
+    // Admin always can
+    if (permissions.is_admin) return true;
+    
+    // Check for settings permissions
+    const settingsPermissions = [
+      'performance.settings.manage_years',
+      'performance.settings.manage_weights',
+      'performance.settings.manage_scales',
+      'performance.settings.manage_targets',
+      'performance.manage_all'
+    ];
+    
+    return permissions.permissions?.some(p => settingsPermissions.includes(p));
+  };
+
+  const hasSettingsAccess = canAccessSettings();
+
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'} rounded-xl shadow-sm border ${darkMode ? 'border-almet-comet' : 'border-gray-200'} p-4 mb-4`}>
       <div className="flex items-center justify-between gap-4">
@@ -50,6 +72,7 @@ export default function PerformanceHeader({
         
         {/* Right - Controls */}
         <div className="flex items-center gap-2">
+          {/* Year Selector */}
           <select
             value={selectedYear || ''}
             onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -66,19 +89,35 @@ export default function PerformanceHeader({
             ))}
           </select>
           
-         
+          {/* ✅ Settings Button - Only show if has access */}
+          {hasSettingsAccess && (
+            <button
+              onClick={onSettings}
+              className={`px-3 h-9 rounded-lg border flex items-center gap-2 text-sm ${
+                darkMode 
+                  ? 'bg-almet-sapphire border-almet-sapphire text-white hover:bg-almet-astral' 
+                  : 'bg-almet-sapphire border-almet-sapphire text-white hover:bg-almet-astral'
+              } transition-colors`}
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </button>
+          )}
           
-          <button
-            onClick={onSettings}
-            className={`px-3 h-9 rounded-lg border flex items-center gap-2 text-sm ${
-              darkMode 
-                ? 'bg-almet-sapphire border-almet-sapphire text-white hover:bg-almet-astral' 
-                : 'bg-almet-sapphire border-almet-sapphire text-white hover:bg-almet-astral'
-            } transition-colors`}
-          >
-            <Settings className="w-4 h-4" />
-            Settings
-          </button>
+          {/* ✅ Show access indicator if no settings permission */}
+          {!hasSettingsAccess && permissions && (
+            <div 
+              className={`px-3 h-9 rounded-lg border flex items-center gap-2 text-xs ${
+                darkMode 
+                  ? 'bg-gray-700/50 border-gray-600 text-gray-400' 
+                  : 'bg-gray-100 border-gray-300 text-gray-500'
+              } cursor-not-allowed`}
+              title="Settings access restricted to admins"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Settings</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -65,15 +65,15 @@ export default function FixedStatCards({ employees, darkMode }) {
     const progress = calcProgress(value, total);
     
     return (
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5 hover:shadow-lg transition-all`}>
-        <div className="flex items-center justify-between mb-4">
-          <div className={`p-3 rounded-xl ${
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-4 hover:shadow-lg transition-all`}>
+        <div className="flex items-center justify-between mb-2">
+          <div className={`p-2 rounded-xl ${
             color === 'blue' ? 'bg-almet-sapphire/10 dark:bg-almet-sapphire/20' : 
             color === 'orange' ? 'bg-orange-100 dark:bg-orange-900/30' : 
             color === 'purple' ? 'bg-purple-100 dark:bg-purple-900/30' :
             'bg-emerald-100 dark:bg-emerald-900/30'
           }`}>
-            <Icon className={`w-6 h-6 ${
+            <Icon className={`w-5 h-5 ${
               color === 'blue' ? 'text-almet-sapphire' : 
               color === 'orange' ? 'text-orange-600 dark:text-orange-400' : 
               color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
@@ -98,7 +98,7 @@ export default function FixedStatCards({ employees, darkMode }) {
           </p>
         )}
         
-        {total && (
+        {/* {total && (
           <div className="space-y-1.5">
             <div className="flex justify-between text-xs text-almet-waterloo dark:text-almet-bali-hai">
               <span>Progress</span>
@@ -116,7 +116,7 @@ export default function FixedStatCards({ employees, darkMode }) {
               />
             </div>
           </div>
-        )}
+        )} */}
       </div>
     );
   };

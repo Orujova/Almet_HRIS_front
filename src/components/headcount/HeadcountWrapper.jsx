@@ -257,9 +257,7 @@ const HeadcountWrapper = () => {
               </div>
             </div>
             
-            <p className="text-xs text-blue-100/80 mt-0.5">
-              {totals.activeEmployees} active
-            </p>
+         
           </div>
           
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/10">
@@ -273,7 +271,7 @@ const HeadcountWrapper = () => {
              
             </div>
             
-            <p className="text-xs text-blue-100/80 mt-0.5">business codes</p>
+       
           </div>
         </div>
       </div>

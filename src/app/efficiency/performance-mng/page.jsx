@@ -14,7 +14,6 @@ import EmployeePerformanceDetail from "@/components/performance/EmployeePerforma
 // Common Components
 import { LoadingSpinner, ErrorDisplay } from "@/components/common/LoadingSpinner";
 import { useToast } from "@/components/common/Toast";
-import SearchableDropdown from "@/components/common/SearchableDropdown";
 
 // Icons
 import { Loader, Users } from 'lucide-react';
@@ -33,6 +32,7 @@ export default function PerformanceManagementPage() {
   const [permissions, setPermissions] = useState({
     is_admin: false,
     can_view_all: false,
+    is_manager: false,
     accessible_employee_count: 0,
     permissions: [],
     employee: null
@@ -78,32 +78,59 @@ export default function PerformanceManagementPage() {
     }
   }, [selectedYear]);
 
-  const initializeApp = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([
-        loadPermissions(),
-        loadActiveYear(),
-        loadSettings(),
-        loadBehavioralCompetencies(),
-        loadLeadershipCompetencies() 
-      ]);
-    } catch (error) {
-      console.error('❌ Initialization error:', error);
-      setError(error.message || 'Failed to load application data');
-      showError('Failed to load application data');
-    } finally {
-      setLoading(false);
-    }
-  };
 
+
+// ✅ CRITICAL: Wait for permissions before loading dashboard
+useEffect(() => {
+  // Only trigger when we have both year and valid permissions
+  if (selectedYear && activeYear && permissions.employee && permissions.employee.id) {
+  
+    loadDashboardData();
+  } else {
+   
+  }
+}, [selectedYear, activeYear, permissions.employee?.id]); // ✅ Watch employee.id specifically
+
+const initializeApp = async () => {
+  setLoading(true);
+  setError(null);
+  try {
+  
+    await loadPermissions();
+    
+
+    await Promise.all([
+      loadActiveYear(),
+      loadSettings(),
+      loadBehavioralCompetencies(),
+      loadLeadershipCompetencies() 
+    ]);
+
+  } catch (error) {
+    console.error('❌ Initialization error:', error);
+    setError(error.message || 'Failed to load application data');
+    showError('Failed to load application data');
+  } finally {
+    setLoading(false);
+  }
+};
+
+  
   // ==================== DATA LOADING ====================
   const loadPermissions = async () => {
     try {
       const permsData = await performanceApi.performances.getMyPermissions();
-      setPermissions(permsData);
-      console.log('✅ Permissions loaded:', permsData);
+      
+      setPermissions({
+        is_admin: permsData.is_admin || false,
+        can_view_all: permsData.can_view_all || false,
+        is_manager: permsData.is_manager || false,
+        permissions: permsData.permissions || [],
+        accessible_employee_count: permsData.accessible_employee_count || 0,
+        employee: permsData.employee || null
+      });
+      
+     
     } catch (error) {
       console.error('❌ Error loading permissions:', error);
       throw error;
@@ -118,7 +145,7 @@ export default function PerformanceManagementPage() {
       
       const allYears = await performanceApi.years.list();
       setPerformanceYears(allYears.results || allYears);
-      console.log('✅ Active year loaded:', yearData.year);
+ 
     } catch (error) {
       console.error('❌ Error loading year:', error);
       throw error;
@@ -151,7 +178,7 @@ export default function PerformanceManagementPage() {
         statusTypes: statusesRes.results || statusesRes
       });
       
-      console.log('✅ Settings loaded');
+     
     } catch (error) {
       console.error('❌ Error loading settings:', error);
       throw error;
@@ -185,7 +212,7 @@ export default function PerformanceManagementPage() {
       }
       
       setBehavioralCompetencies(allCompetencies);
-      console.log('✅ Behavioral competencies loaded:', allCompetencies.length);
+
       return allCompetencies;
     } catch (error) {
       console.error('❌ Error loading behavioral competencies:', error);
@@ -232,7 +259,7 @@ export default function PerformanceManagementPage() {
       
       setLeadershipCompetencies(allLeadershipItems);
       setLeadershipMainGroups(mainGroups);
-      console.log('✅ Leadership competencies loaded:', allLeadershipItems.length);
+
       return allLeadershipItems;
     } catch (error) {
       console.error('❌ Error loading leadership competencies:', error);
@@ -240,82 +267,152 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      const stats = await performanceApi.dashboard.getStatistics(selectedYear);
-      setDashboardStats(stats);
-      await loadEmployees();
-      console.log('✅ Dashboard data loaded');
-    } catch (error) {
-      console.error('❌ Error loading dashboard:', error);
-      showError('Error loading dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
 
-  const loadEmployees = async () => {
+
+// ✅ UPDATED: loadDashboardData - use permissions directly from state
+const loadDashboardData = async () => {
+  // ✅ Double-check permissions before proceeding
+  if (!permissions.employee && !permissions.is_admin) {
+    console.error('❌ Cannot load dashboard - no permissions');
+    return;
+  }
+  
+
+  
+  setLoading(true);
   try {
-    let employeesResponse;
+    const stats = await performanceApi.dashboard.getStatistics(selectedYear);
+    setDashboardStats(stats);
     
-    if (permissions.can_view_all) {
-      employeesResponse = await performanceApi.employees.list({ page_size: 1000 });
-    } else {
-      employeesResponse = await performanceApi.employees.list({ 
-        page_size: 1000,
-        line_manager_id: permissions.employee?.id
-      });
+    // ✅ Pass current permissions to loadEmployees
+    await loadEmployees();
+    
+
+  } catch (error) {
+    console.error('❌ Error loading dashboard:', error);
+    showError('Error loading dashboard data');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+const loadEmployees = async (perms = null) => {
+  try {
+    const currentPermissions = perms || permissions;
+
+    
+    if (!currentPermissions.employee && !currentPermissions.is_admin) {
+      console.error('❌ No employee data in permissions!');
+      setEmployees([]);
+      return;
     }
     
+    // Get ALL employees
+    const employeesResponse = await performanceApi.employees.list({ 
+      page_size: 1000 
+    });
     const allEmployees = employeesResponse.results || employeesResponse;
     
+
+    
+    // Get performances
     const perfsResponse = await performanceApi.performances.list({ 
       year: selectedYear 
     });
-    const perfs = perfsResponse.results || perfsResponse;
+    const allPerfs = perfsResponse.results || perfsResponse;
     
-    let filteredEmployees = allEmployees;
+
     
-    if (!permissions.can_view_all && permissions.employee) {
-      filteredEmployees = allEmployees.filter(emp => 
-        emp.id === permissions.employee.id || 
-        emp.line_manager_email === permissions.employee.email
-      );
+    // ✅ FIX: Define currentUserHC at the TOP (outside if blocks)
+    const currentUserHC = currentPermissions.employee?.employee_id; // HC_NUMBER
+    
+    // Filter based on access
+    let filteredEmployees = [];
+    
+    if (currentPermissions.can_view_all) {
+     
+      filteredEmployees = allEmployees;
+    } else if (currentPermissions.employee) {
+      const hasViewTeam = currentPermissions.permissions?.includes('performance.view_team');
+      
+    
+      if (hasViewTeam || currentPermissions.is_manager) {
+      
+        
+        // Count potential direct reports BEFORE filtering
+        const potentialReports = allEmployees.filter(emp => {
+          return emp.line_manager_hc_number === currentUserHC;
+        });
+        
+        
+   
+        
+        // Filter by HC_NUMBER
+        filteredEmployees = allEmployees.filter(emp => {
+          // Include self - compare HC numbers
+          if (emp.employee_id === currentUserHC) {
+           
+            return true;
+          }
+          
+          // Check 'line_manager' field using HC_NUMBER
+          if (emp.line_manager_hc_number === currentUserHC) {
+           
+            return true;
+          }
+          
+          return false;
+        });
+        
+    
+      } else {
+     
+        filteredEmployees = allEmployees.filter(emp => emp.employee_id === currentUserHC);
+      }
     }
     
-    // ✅ Company field-ini düzgün map et
+    // Map with performance data
     const employeesWithPerformance = filteredEmployees.map(emp => {
-      const perf = perfs.find(p => p.employee === emp.id);
+      const perf = allPerfs.find(p => p.employee === emp.id);
+      
       return {
         id: emp.id,
-        employee_id: emp.employee_id,
+        employee_id: emp.employee_id, // HC_NUMBER
         name: emp.name,
-        company: emp.business_function_name, // ✅ API-dən gələn field
-        employee_company: emp.business_function_name, // ✅ TeamMembers üçün
-        objectives_percentage: perf ? perf.objectives_percentage : 0,
-        competencies_percentage: perf ? perf.competencies_percentage : 0,
+        employee_name: emp.name,
+        company: emp.business_function_name,
+        employee_company: emp.business_function_name,
         position: emp.position_group_name,
-        employee_position_group: emp.position_group_name, // ✅ TeamMembers üçün
+        employee_position_group: emp.position_group_name,
         department: emp.department_name,
-        employee_department: emp.department_name, // ✅ TeamMembers üçün
-        employee_name: emp.name, // ✅ TeamMembers üçün
+        employee_department: emp.department_name,
         line_manager: emp.line_manager_name,
+        line_manager_hc: emp.line_manager_hc_number, // HC_NUMBER of manager
         performanceId: perf?.id || null,
+        objectives_percentage: perf?.objectives_percentage || 0,
+        competencies_percentage: perf?.competencies_percentage || 0,
+        overall_weighted_percentage: perf?.overall_weighted_percentage || 0,
+        final_rating: perf?.final_rating || null,
         objectives_employee_approved: perf?.objectives_employee_approved || false,
         objectives_manager_approved: perf?.objectives_manager_approved || false,
         mid_year_completed: perf?.mid_year_completed || false,
+        end_year_completed: perf?.end_year_completed || false,
         approval_status: perf?.approval_status || 'NOT_STARTED'
       };
     });
     
     setEmployees(employeesWithPerformance);
-    console.log('✅ Employees loaded:', employeesWithPerformance.length);
+    
+ 
+    
   } catch (error) {
-    console.error('⛔ Error loading employees:', error);
+    console.error('❌ Error loading employees:', error);
     showError('Error loading employees');
   }
 };
+
 
   const loadPerformanceData = async (employeeId, year) => {
     const key = `${employeeId}_${year}`;
@@ -477,7 +574,19 @@ export default function PerformanceManagementPage() {
   const canViewEmployee = (employeeId) => {
     if (permissions.can_view_all) return true;
     if (!permissions.employee) return false;
-    return employeeId === permissions.employee.id;
+    
+    // Can view self
+    if (employeeId === permissions.employee.id) return true;
+    
+    // Can view direct reports if manager
+    if (permissions.is_manager) {
+      const employee = employees.find(e => e.id === employeeId);
+      console.log(employee)
+      console.log(permissions)
+      return employee?.line_manager_hc === permissions.employee.employee_id;
+    }
+    
+    return false;
   };
 
   const getCurrentPeriod = () => {
@@ -570,30 +679,30 @@ export default function PerformanceManagementPage() {
     }, 1000);
   }, []);
 
-
   const handleLoadEmployeePerformance = async (employeeId, year) => {
-  try {
-    const response = await performanceApi.performances.list({
-      employee_id: employeeId,
-      year: year
-    });
-    
-    const perfs = response.results || response;
-    
-    if (perfs.length > 0) {
-      const performance = perfs[0];
-      const detailData = await performanceApi.performances.get(performance.id);
+    try {
+      const response = await performanceApi.performances.list({
+        employee_id: employeeId,
+        year: year
+      });
       
-      console.log('✅ Loaded performance detail:', detailData);
-      return detailData;
+      const perfs = response.results || response;
+      
+      if (perfs.length > 0) {
+        const performance = perfs[0];
+        const detailData = await performanceApi.performances.get(performance.id);
+        
+        console.log('✅ Loaded performance detail for analytics:', detailData);
+        return detailData;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('❌ Error loading performance for analytics:', error);
+      throw error;
     }
-    
-    return null;
-  } catch (error) {
-    console.error('❌ Error loading performance for analytics:', error);
-    throw error;
-  }
-};
+  };
+
   const handleUpdateObjective = (index, field, value) => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
     const data = performanceData[key];
@@ -786,6 +895,7 @@ export default function PerformanceManagementPage() {
       const preparedCompetencies = competencies.map(comp => ({
         id: comp.id,
         behavioral_competency: comp.behavioral_competency,
+        leadership_item: comp.leadership_item,
         required_level: comp.required_level,
         end_year_rating: comp.end_year_rating,
         notes: comp.notes || ''
@@ -796,16 +906,12 @@ export default function PerformanceManagementPage() {
         preparedCompetencies
       );
       
-      if (response.synced_to_behavioral_assessment) {
+      if (response.synced_to_assessment) {
         showSuccess(
-          `✓ Competencies saved and synced to behavioral assessment (${response.sync_message})`
+          `✓ Competencies saved and synced to ${response.assessment_type || 'assessment'}`
         );
       } else {
-        if (response.sync_message) {
-          showInfo(`Competencies saved • ${response.sync_message}`);
-        } else {
-          showSuccess('Competencies draft saved successfully');
-        }
+        showSuccess('Competencies draft saved successfully');
       }
       
       await loadPerformanceData(selectedEmployee.id, selectedYear);
@@ -829,6 +935,7 @@ export default function PerformanceManagementPage() {
       const preparedCompetencies = competencies.map(comp => ({
         id: comp.id,
         behavioral_competency: comp.behavioral_competency,
+        leadership_item: comp.leadership_item,
         required_level: comp.required_level,
         end_year_rating: comp.end_year_rating,
         notes: comp.notes || ''
@@ -839,30 +946,12 @@ export default function PerformanceManagementPage() {
         preparedCompetencies
       );
       
-      if (response.synced_to_behavioral_assessment) {
-        const syncResult = response.sync_result;
-        const wasCompleted = syncResult?.was_completed;
-        
-        let message = 'Competencies submitted successfully';
-        
-        if (wasCompleted) {
-          message += ` and synced to COMPLETED behavioral assessment`;
-        } else {
-          message += ` and synced to behavioral assessment`;
-        }
-        
-        showSuccess(message);
-        
-        if (syncResult?.synced_count > 0 || syncResult?.updated_count > 0) {
-          setTimeout(() => {
-            showInfo(
-              `${syncResult.synced_count} created, ${syncResult.updated_count} updated in assessment`
-            );
-          }, 1500);
-        }
+      if (response.synced_to_assessment) {
+        showSuccess(
+          `Competencies submitted and synced to ${response.assessment_type || 'assessment'}`
+        );
       } else {
-        const reason = response.sync_result?.message || 'No behavioral assessment found';
-        showWarning(`Competencies submitted • ${reason}`);
+        showSuccess('Competencies submitted successfully');
       }
       
       await loadPerformanceData(selectedEmployee.id, selectedYear);
@@ -1090,16 +1179,17 @@ export default function PerformanceManagementPage() {
   return (
     <DashboardLayout>
       <div className="min-h-screen p-6 mx-auto">
-        <PerformanceHeader
-          selectedYear={selectedYear}
-          setSelectedYear={setSelectedYear}
-          performanceYears={performanceYears}
-          currentPeriod={getCurrentPeriod()}
-          loading={loading}
-          onRefresh={loadDashboardData}
-          onSettings={() => router.push('/efficiency/settings')}
-          darkMode={darkMode}
-        />
+         <PerformanceHeader
+        selectedYear={selectedYear}
+        setSelectedYear={setSelectedYear}
+        performanceYears={performanceYears}
+        currentPeriod={getCurrentPeriod()}
+        loading={loading}
+        onRefresh={loadDashboardData}
+        onSettings={() => router.push('/efficiency/settings')}
+        darkMode={darkMode}
+        permissions={permissions} // ✅ ADD THIS LINE
+      />
 
         {activeView === 'dashboard' ? (
           <PerformanceDashboard

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar, TrendingUp, BarChart3, Search, X } from 'lucide-react';
-import Pagination from '@/components/common/Pagination';
+import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar, TrendingUp, BarChart3, Search, X, AlertCircle, User } from 'lucide-react';
 
-// ✅ Import New Components
+// Import components
 import TeamMembersWithSearch from './TeamMembersWithSearch';
 import FixedStatCards from './FixedStatCards';
 import FixedAnalyticsDashboard from './PerformanceAnalyticsDashboard';
@@ -20,23 +19,78 @@ export default function PerformanceDashboard({
 }) {
   const [activeTab, setActiveTab] = useState('overview');
 
+  // ✅ Get visible employees (all accessible)
+  const getVisibleEmployees = () => {
+    if (!employees || !permissions.employee) return [];
+    return employees; // Already filtered in page.jsx
+  };
 
-
-
-
-
-
-
-  const totalEmployees = employees?.length || 0;
-
+  const visibleEmployees = getVisibleEmployees();
   
+  // ✅ For team members tab - EXCLUDE self
+  const teamMembers = visibleEmployees.filter(emp => emp.id !== permissions.employee?.id);
+  
+  // ✅ Self only - for "My Performance" tab
+  const selfOnly = visibleEmployees.filter(emp => emp.id === permissions.employee?.id);
+  
+  const totalEmployees = visibleEmployees.length;
 
-  // ✅ Tab configuration
+  // ✅ Access level info
+  const getAccessLevelMessage = () => {
+    if (permissions.can_view_all) {
+      return {
+        type: 'success',
+        icon: Award,
+        title: 'Full Access',
+        message: `Viewing all ${totalEmployees} employees in the system`
+      };
+    }
+    
+    if (permissions.is_manager) {
+      return {
+        type: 'info',
+        icon: Users,
+        title: 'Manager View',
+        message: `Viewing your performance + ${teamMembers.length} direct reports`
+      };
+    }
+    
+    return {
+      type: 'warning',
+      icon: Lock,
+      title: 'Personal View',
+      message: 'Viewing only your own performance'
+    };
+  };
+
+  const accessLevel = getAccessLevelMessage();
+
+  // ✅ Tab configuration - ADD "My Performance" for managers
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target, badge: null },
-    { id: 'employees', label: 'Team Members', icon: Users, badge: totalEmployees },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, badge: null }
-  ];
+    // ✅ Add "My Performance" tab for managers
+    ...(permissions.is_manager ? [
+      { 
+        id: 'my-performance', 
+        label: 'My Performance', 
+        icon: User, 
+        badge: 1
+      }
+    ] : []),
+    { 
+      id: 'team', 
+      label: permissions.is_manager ? 'Team Members' : 'My Performance', 
+      icon: Users, 
+      badge: permissions.is_manager ? teamMembers.length : 1
+    },
+    { 
+      id: 'analytics', 
+      label: 'Team Analytics', 
+      icon: BarChart3, 
+      badge: null,
+      hidden: !permissions.is_manager && !permissions.can_view_all
+    }
+  ].filter(tab => !tab.hidden);
 
   const TimelineItem = ({ label, data, color, isLast }) => (
     <div className="flex gap-3">
@@ -79,22 +133,36 @@ export default function PerformanceDashboard({
 
   return (
     <div className="space-y-4">
-      {/* Access Notice */}
-      {!permissions.can_view_all && permissions.employee && (
-        <div className={`${darkMode ? 'bg-blue-900/20 border-blue-800' : 'bg-blue-50 border-blue-200'} border rounded-xl p-3`}>
-          <div className="flex gap-2">
-            <Lock className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-0.5">
-                Limited Access Mode
-              </h3>
-              <p className="text-xs text-blue-700 dark:text-blue-400">
-                Viewing {totalEmployees} employees (you and direct reports)
-              </p>
-            </div>
+      {/* ✅ Access Level Notice */}
+      <div className={`${
+        accessLevel.type === 'success' ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/30' :
+        accessLevel.type === 'info' ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/30' :
+        'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/30'
+      } border rounded-xl p-3`}>
+        <div className="flex gap-2">
+          <accessLevel.icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+            accessLevel.type === 'success' ? 'text-emerald-600 dark:text-emerald-400' :
+            accessLevel.type === 'info' ? 'text-blue-600 dark:text-blue-400' :
+            'text-amber-600 dark:text-amber-400'
+          }`} />
+          <div>
+            <h3 className={`text-xs font-semibold mb-0.5 ${
+              accessLevel.type === 'success' ? 'text-emerald-900 dark:text-emerald-300' :
+              accessLevel.type === 'info' ? 'text-blue-900 dark:text-blue-300' :
+              'text-amber-900 dark:text-amber-300'
+            }`}>
+              {accessLevel.title}
+            </h3>
+            <p className={`text-xs ${
+              accessLevel.type === 'success' ? 'text-emerald-700 dark:text-emerald-400' :
+              accessLevel.type === 'info' ? 'text-blue-700 dark:text-blue-400' :
+              'text-amber-700 dark:text-amber-400'
+            }`}>
+              {accessLevel.message}
+            </p>
           </div>
         </div>
-      )}
+      </div>
 
       {/* Tab Navigation */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border shadow-sm p-3`}>
@@ -137,13 +205,33 @@ export default function PerformanceDashboard({
 
       {/* Tab Content */}
       <div className="min-h-[600px]">
-        {/* ✅ OVERVIEW TAB */}
+        {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
-            {/* ✅ Stats Grid - Using New Component */}
-            <FixedStatCards employees={employees} darkMode={darkMode} />
+          
+    {/* ✅ Stats Grid - Only show for managers and admins */}
+    {(permissions.is_manager || permissions.can_view_all) && (
+      <FixedStatCards employees={visibleEmployees} darkMode={darkMode} />
+    )}
 
-        
+    {/* ✅ Show message for regular employees */}
+    {!permissions.is_manager && !permissions.can_view_all && (
+      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-8 text-center`}>
+        <User className="w-16 h-16 mx-auto mb-4 text-almet-sapphire/30" />
+        <h3 className={`text-lg font-bold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+          Welcome to Performance Management
+        </h3>
+        <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-4`}>
+          View and manage your performance goals, reviews, and development needs
+        </p>
+        <button
+          onClick={() => setActiveTab('team')}
+          className="px-6 py-3 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-sm font-medium transition-all shadow-sm"
+        >
+          View My Performance
+        </button>
+      </div>
+    )}
 
             {/* Timeline */}
             {dashboardStats?.timeline && (
@@ -187,25 +275,40 @@ export default function PerformanceDashboard({
           </div>
         )}
 
-        {/* ✅ EMPLOYEES TAB - Using New Component */}
-        {activeTab === 'employees' && (
+        {/* ✅ MY PERFORMANCE TAB - Show only self */}
+        {activeTab === 'my-performance' && (
           <TeamMembersWithSearch
-            employees={employees}
+            employees={selfOnly}
             currentUserId={permissions.employee?.id}
             canViewEmployee={canViewEmployee}
             onSelectEmployee={onSelectEmployee}
             darkMode={darkMode}
+            isPersonalView={true}
           />
         )}
 
-        {/* ✅ ANALYTICS TAB - Using New Component */}
+        {/* ✅ TEAM TAB - Show team members (excluding self for managers) */}
+        {activeTab === 'team' && (
+          <TeamMembersWithSearch
+            employees={permissions.is_manager ? teamMembers : selfOnly}
+            currentUserId={permissions.employee?.id}
+            canViewEmployee={canViewEmployee}
+            onSelectEmployee={onSelectEmployee}
+            darkMode={darkMode}
+            isPersonalView={!permissions.is_manager}
+          />
+        )}
+
+        {/* ✅ ANALYTICS TAB - Pass ALL visible employees */}
         {activeTab === 'analytics' && (
           <FixedAnalyticsDashboard
-            employees={employees}
+            employees={visibleEmployees}
             settings={settings}
             darkMode={darkMode}
             onLoadEmployeePerformance={onLoadEmployeePerformance}
             selectedYear={selectedYear}
+            isManager={permissions.is_manager}
+            canViewAll={permissions.can_view_all}
           />
         )}
       </div>

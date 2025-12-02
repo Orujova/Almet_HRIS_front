@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { BarChart, Bar, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Award, Users, Target, BarChart3, Loader, User, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { TrendingUp, Award, Users, Target, BarChart3, Loader, User, AlertCircle, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import SearchableDropdown from '@/components/common/SearchableDropdown';
 
 export default function FixedAnalyticsDashboard({ 
-  employees, 
+  employees = [], 
   settings,
   darkMode,
   selectedYear,
-  onLoadEmployeePerformance
+  onLoadEmployeePerformance,
+  isManager = false,
+  canViewAll = false
 }) {
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,14 @@ export default function FixedAnalyticsDashboard({
     department: false,
     position: false,
     competency: false
+  });
+
+  // ✅ DEBUG LOG
+  console.log('📊 Analytics received:', {
+    total: employees.length,
+    isManager,
+    canViewAll,
+    employees: employees.map(e => ({ id: e.id, name: e.name, hc: e.employee_id }))
   });
 
   useEffect(() => {
@@ -45,11 +56,9 @@ export default function FixedAnalyticsDashboard({
   const loadEmployeePerformanceData = async (employeeId) => {
     setLoadingEmployeeData(true);
     try {
- 
       const performanceData = await onLoadEmployeePerformance(employeeId, selectedYear);
       
       if (performanceData && performanceData.competency_ratings) {
-    
         setSelectedEmployeeData(performanceData);
       } else {
         console.warn('⚠️ No competency ratings found');
@@ -66,8 +75,6 @@ export default function FixedAnalyticsDashboard({
   const calculateAnalytics = () => {
     setLoading(true);
     try {
-   
-      
       const gradeDistribution = calculateGradeDistribution();
       const departmentStats = calculateDepartmentStats();
       const positionStats = calculatePositionStats();
@@ -78,8 +85,12 @@ export default function FixedAnalyticsDashboard({
         positionStats,
         totalEmployees: employees.length
       });
-      
 
+      console.log('✅ Analytics calculated:', {
+        gradeDistribution: gradeDistribution.length,
+        departments: departmentStats.length,
+        positions: positionStats.length
+      });
     } catch (error) {
       console.error('❌ Analytics error:', error);
     } finally {
@@ -253,7 +264,6 @@ export default function FixedAnalyticsDashboard({
 
   const getEmployeeCompetencyData = () => {
     if (!selectedEmployeeData?.competency_ratings) {
-      console.warn('⚠️ No competency ratings in selected employee data');
       return [];
     }
 
@@ -307,6 +317,28 @@ export default function FixedAnalyticsDashboard({
 
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId);
 
+  // ✅ Access level message
+  const getAccessMessage = () => {
+    if (canViewAll) {
+      return {
+        type: 'info',
+        message: 'Analytics for all employees'
+      };
+    }
+    if (isManager) {
+      return {
+        type: 'info',
+        message: 'Analytics for you and your direct reports'
+      };
+    }
+    return {
+      type: 'warning',
+      message: 'Analytics based on your accessible employees'
+    };
+  };
+
+  const accessMessage = getAccessMessage();
+
   if (loading) {
     return (
       <div className={`${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'} rounded-xl p-8 flex items-center justify-center`}>
@@ -334,6 +366,28 @@ export default function FixedAnalyticsDashboard({
 
   return (
     <div className="space-y-4">
+      {/* ✅ Access Level Info */}
+      <div className={`${
+        accessMessage.type === 'info' 
+          ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/30' 
+          : 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/30'
+      } border rounded-xl p-3`}>
+        <div className="flex items-start gap-2">
+          <Info className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+            accessMessage.type === 'info' 
+              ? 'text-blue-600 dark:text-blue-400' 
+              : 'text-amber-600 dark:text-amber-400'
+          }`} />
+          <p className={`text-xs ${
+            accessMessage.type === 'info' 
+              ? 'text-blue-700 dark:text-blue-400' 
+              : 'text-amber-700 dark:text-amber-400'
+          }`}>
+            {accessMessage.message}
+          </p>
+        </div>
+      </div>
+
       {/* Grade Distribution Section */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} rounded-xl border overflow-hidden`}>
         <button
@@ -522,7 +576,6 @@ export default function FixedAnalyticsDashboard({
                 options={employeeOptions}
                 value={selectedEmployeeId}
                 onChange={(value) => {
-            
                   setSelectedEmployeeId(value);
                   if (!value) {
                     setSelectedEmployeeData(null);
@@ -608,127 +661,6 @@ export default function FixedAnalyticsDashboard({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-// Searchable Dropdown Component
-function SearchableDropdown({ 
-  options = [], 
-  value, 
-  onChange, 
-  placeholder, 
-  searchPlaceholder = "Search...",
-  className = "",
-  darkMode = false,
-  icon = null,
-  allowUncheck = true
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const dropdownRef = useRef(null);
-  const buttonRef = useRef(null);
-
-  const bgCard = darkMode ? "bg-gray-800" : "bg-white";
-  const textPrimary = darkMode ? "text-white" : "text-gray-900";
-  const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
-  const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
-
-  const filteredOptions = options.filter(option =>
-    option.label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const selectedOption = options.find(option => option.value === value);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target) &&
-          buttonRef.current && !buttonRef.current.contains(event.target)) {
-        setIsOpen(false);
-        setSearchTerm("");
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
-
-  const handleOptionClick = (optionValue) => {
-    if (allowUncheck && value === optionValue) {
-      onChange(null);
-    } else {
-      onChange(optionValue);
-    }
-    setIsOpen(false);
-    setSearchTerm("");
-  };
-
-  return (
-    <div className={`relative ${className}`}>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs text-left flex items-center justify-between transition-all duration-200 hover:border-almet-sapphire/50`}
-      >
-        <div className="flex items-center">
-          {icon && <span className="mr-2 text-almet-sapphire">{icon}</span>}
-          <span className={selectedOption ? textPrimary : textMuted}>
-            {selectedOption ? selectedOption.label : placeholder}
-          </span>
-        </div>
-        <svg className={`w-4 h-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-
-      {isOpen && (
-        <div 
-          className={`absolute z-50 w-full mt-1 ${bgCard} border ${borderColor} rounded-lg shadow-lg max-h-60 overflow-hidden`}
-          ref={dropdownRef}
-        >
-          <div className={`p-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <div className="relative">
-              <svg className={`absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-4 ${textMuted}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder={searchPlaceholder}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-8 pr-2 py-1.5 outline-0 border ${borderColor} rounded focus:ring-1 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-xs`}
-                autoFocus
-              />
-            </div>
-          </div>
-          <div className="max-h-44 overflow-y-auto">
-            {filteredOptions.length === 0 ? (
-              <div className={`px-3 py-2 ${textMuted} text-xs text-center`}>
-                No options found
-              </div>
-            ) : (
-              filteredOptions.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => handleOptionClick(option.value)}
-                  className={`w-full px-3 py-2 text-left ${hoverBg} ${textPrimary} text-xs transition-colors duration-150 ${
-                    value === option.value ? 'bg-almet-sapphire/10 text-almet-sapphire font-medium' : ''
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
