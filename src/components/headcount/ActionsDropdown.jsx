@@ -185,13 +185,7 @@ const ActionsDropdown = ({
     return tags;
   };
 
-  // ========================================
-  // ✅ NEW: MULTIPLE JOB ASSIGNMENTS FUNCTIONS
-  // ========================================
 
-  // ========================================
-// ✅ UPDATED: MULTIPLE JOB ASSIGNMENTS FUNCTIONS
-// ========================================
 
 const fetchJobAssignments = async () => {
   try {
@@ -604,23 +598,7 @@ const viewAssignmentDetail = async (assignment) => {
           </div>
         </button>
 
-        {/* Team Overview */}
-        {employee?.direct_reports_count > 0 && (
-          <button
-            className={`${styles.textPrimary} ${styles.hoverBg} block px-3 py-2 text-xs w-full text-left transition-colors`}
-            onClick={() => handleAction("viewTeam")}
-          >
-            <div className="flex items-center">
-              <Users size={14} className="mr-2 text-indigo-500" />
-              <div className="flex flex-col items-start">
-                <span>View Team</span>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                  {employee.direct_reports_count} direct report{employee.direct_reports_count !== 1 ? 's' : ''}
-                </span>
-              </div>
-            </div>
-          </button>
-        )}
+   
 
         <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
 

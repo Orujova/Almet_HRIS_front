@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountWrapper.jsx - UPDATED with Access Control
+// src/components/headcount/HeadcountWrapper.jsx - WITH STATE PERSISTENCE
 "use client";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { 
@@ -22,6 +22,14 @@ import { useEmployees } from "../../hooks/useEmployees";
 import { useRouter } from "next/navigation";
 import HeadcountTable from "./HeadcountTable";
 import HeadcountAccessControl from "@/components/headcount/HeadcountAccessControl";
+
+// ✅ Storage Keys for State Persistence
+const STORAGE_KEYS = {
+  SELECTED_VIEW: 'headcount_selected_view',
+  SELECTED_COMPANY: 'headcount_selected_company',
+  VIEW_MODE: 'headcount_view_mode'
+};
+
 const findEmployeeIdByEmail = async (userEmail) => {
   try {
     const { employeeService } = await import('@/services/newsService');
@@ -50,20 +58,87 @@ const findEmployeeIdByEmail = async (userEmail) => {
     return null;
   }
 };
+
 const HeadcountWrapper = () => {
   const { darkMode } = useTheme();
   const router = useRouter();
-  const [selectedView, setSelectedView] = useState('dashboard');
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [viewMode, setViewMode] = useState('grid');
+  
+  // ✅ Initialize state from localStorage
+  const [selectedView, setSelectedView] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEYS.SELECTED_VIEW) || 'dashboard';
+    }
+    return 'dashboard';
+  });
+  
+  const [selectedCompany, setSelectedCompany] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEYS.SELECTED_COMPANY);
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+  
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem(STORAGE_KEYS.VIEW_MODE) || 'grid';
+    }
+    return 'grid';
+  });
+  
   const [accessDenied, setAccessDenied] = useState(false);
-const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
+  const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
+  
   const { businessFunctions, loading: refLoading } = useReferenceData();
   const { statistics, fetchStatistics, loading } = useEmployees();
 
   useEffect(() => {
     fetchStatistics();
   }, [fetchStatistics]);
+
+  // ✅ Persist selectedView to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SELECTED_VIEW, selectedView);
+    }
+  }, [selectedView]);
+
+  // ✅ Persist selectedCompany to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (selectedCompany) {
+        localStorage.setItem(STORAGE_KEYS.SELECTED_COMPANY, JSON.stringify(selectedCompany));
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.SELECTED_COMPANY);
+      }
+    }
+  }, [selectedCompany]);
+
+  // ✅ Persist viewMode to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.VIEW_MODE, viewMode);
+    }
+  }, [viewMode]);
+
+  // ✅ Validate and restore selected company on mount
+  useEffect(() => {
+    if (selectedCompany && businessFunctions && businessFunctions.length > 0) {
+      // Verify the selected company still exists in businessFunctions
+      const companyExists = businessFunctions.find(bf => 
+        bf.id === selectedCompany.id || bf.code === selectedCompany.code
+      );
+      
+      if (!companyExists) {
+        // Company no longer exists, clear selection and go to dashboard
+        console.warn('⚠️ Previously selected company no longer exists');
+        setSelectedCompany(null);
+        setSelectedView('dashboard');
+        localStorage.removeItem(STORAGE_KEYS.SELECTED_COMPANY);
+        localStorage.setItem(STORAGE_KEYS.SELECTED_VIEW, 'dashboard');
+      }
+    }
+  }, [selectedCompany, businessFunctions]);
 
   // Check if loading properly
   const isRefDataLoading = useMemo(() => {
@@ -99,31 +174,73 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
   }, []);
 
   // Transform Companies into company cards with statistics
-  // Transform Companies into company cards with statistics
   const companyCards = useMemo(() => {
     if (!businessFunctions || businessFunctions.length === 0) return [];
     
     return businessFunctions
       .filter(bf => bf.is_active)
       .map((bf, index) => {
-        const bfStats = statistics?.by_business_function?.[bf.name] || {};
         const color = bf.color || generateColorForIndex(index);
-        console.log(statistics)
-        // Get vacant positions for this business function
-        const vacantCount = statistics?.vacant_positions_by_business_function?.[bf.name] || 
-                           bfStats.vacant_positions || 
-                           0;
+        const companyName = bf.label;
+        const companyCode = bf.code;
+        
+        let employeeCount = 0;
+        let activeCount = 0;
+        let vacantCount = 0;
+        let recentHiresCount = 0;
+        
+        if (companyName && statistics?.by_business_function?.[companyName]) {
+          const bfStat = statistics.by_business_function[companyName];
+          
+          if (typeof bfStat === 'number') {
+            employeeCount = bfStat;
+            activeCount = bfStat;
+          } else if (typeof bfStat === 'object' && bfStat !== null) {
+            employeeCount = bfStat.count || 0;
+            activeCount = bfStat.active || 0;
+            recentHiresCount = bfStat.recent_hires || 0;
+          }
+          
+          vacantCount = statistics.vacant_positions_by_business_function?.[companyName] || 0;
+        }
+        else if (companyName && statistics?.by_business_function) {
+          const statsKeys = Object.keys(statistics.by_business_function);
+          const matchedKey = statsKeys.find(key => 
+            key.toLowerCase().includes(companyName.toLowerCase()) ||
+            companyName.toLowerCase().includes(key.toLowerCase())
+          );
+          
+          if (matchedKey) {
+            const bfStat = statistics.by_business_function[matchedKey];
+            
+            if (typeof bfStat === 'number') {
+              employeeCount = bfStat;
+              activeCount = bfStat;
+            } else if (typeof bfStat === 'object' && bfStat !== null) {
+              employeeCount = bfStat.count || 0;
+              activeCount = bfStat.active || 0;
+              recentHiresCount = bfStat.recent_hires || 0;
+            }
+            
+            vacantCount = statistics.vacant_positions_by_business_function?.[matchedKey] || 0;
+          }
+        }
+        
+        if (employeeCount === 0 && bf.employee_count) {
+          employeeCount = bf.employee_count;
+          activeCount = bf.employee_count;
+        }
         
         return {
-          code: bf.code,
-          name: bf.name,
+          code: companyCode,
+          name: companyName,
           id: bf.id,
           color: color,
-          totalEmployees: bfStats.count || bf.employee_count || 0,
-          activeEmployees: bfStats.active || 0,
+          totalEmployees: employeeCount,
+          activeEmployees: activeCount,
           vacantPositions: vacantCount,
           departments: 0,
-          recentHires: bfStats.recent_hires || 0
+          recentHires: recentHiresCount
         };
       })
       .sort((a, b) => b.totalEmployees - a.totalEmployees);
@@ -137,30 +254,27 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
       activeEmployees: statistics?.active_employees || 0,
       inactiveEmployees: statistics?.inactive_employees || 0,
       recentHires: statistics?.recent_hires_30_days || 0,
-      contractEnding: statistics?.upcoming_contract_endings_30_days || 0
+      contractEnding: statistics?.upcoming_contract_endings_30_days || 0,
+      totalVacant: statistics?.total_vacant_positions || 0
     };
   }, [companyCards, statistics]);
 
-   useEffect(() => {
+  useEffect(() => {
     const getUserEmployeeId = async () => {
       try {
-        // Try localStorage first
         let employeeId = localStorage.getItem('employee_id') ||
                         localStorage.getItem('user_employee_id');
         
-        // If not found, try to find by email
         if (!employeeId) {
           const userEmail = localStorage.getItem('user_email') || 
                            localStorage.getItem('email');
           
           if (userEmail) {
-            console.log('ðŸ” Finding employee ID by email:', userEmail);
             employeeId = await findEmployeeIdByEmail(userEmail);
           }
         }
         
         if (employeeId) {
-          console.log('âœ… Current user employee ID:', employeeId);
           setCurrentUserEmployeeId(employeeId);
         }
       } catch (error) {
@@ -173,16 +287,13 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
 
   const handleGoToProfile = useCallback(() => {
     if (currentUserEmployeeId) {
-      console.log('ðŸ”— Redirecting to profile:', `/structure/employee/${currentUserEmployeeId}/`);
       router.push(`/structure/employee/${currentUserEmployeeId}/`);
     } else {
-      console.warn('âš ï¸ No employee ID found, redirecting to generic profile');
       router.push('/structure/profile');
     }
   }, [currentUserEmployeeId, router]);
   
   const handleCompanySelect = useCallback((company) => {
-    // Check if company has employees
     if (company.totalEmployees === 0) {
       setAccessDenied(true);
       setSelectedCompany(company);
@@ -346,12 +457,11 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
     </div>
   );
 
-  // No Access View - Clean design matching HeadcountAccessControl
+  // No Access View
   if (selectedView === 'no-access' && selectedCompany) {
     return (
-      <div className={`min-h-screen  p-6`}>
-        <div className=" mx-auto">
-          {/* Back Button */}
+      <div className={`min-h-screen p-6`}>
+        <div className="mx-auto">
           <div className="mb-6">
             <button
               onClick={handleBackToDashboard}
@@ -362,16 +472,13 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
             </button>
           </div>
 
-          {/* Access Denied Card */}
           <div className={`${bgCard} rounded-lg shadow-lg border ${borderColor} p-8`}>
-            {/* Icon */}
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
                 <ShieldOff className="w-8 h-8 text-orange-500" />
               </div>
             </div>
 
-            {/* Title */}
             <h1 className={`${textPrimary} text-2xl font-bold text-center mb-3`}>
               No Access to Company
             </h1>
@@ -380,7 +487,6 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
               You don't have permission to view employees for this company
             </p>
 
-            {/* Company Info Box */}
             <div 
               className="rounded-lg p-5 mb-6 border"
               style={{ 
@@ -434,26 +540,24 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
               </div>
             </div>
 
-            {/* Actions */}
             <div className="space-y-3">
-            <button
-              onClick={handleBackToDashboard}
-              className="w-full bg-almet-sapphire hover:bg-almet-astral text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 group"
-            >
-              <Building2 className="w-5 h-5" />
-              <span>Back to Companies</span>
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+              <button
+                onClick={handleBackToDashboard}
+                className="w-full bg-almet-sapphire hover:bg-almet-astral text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 group"
+              >
+                <Building2 className="w-5 h-5" />
+                <span>Back to Companies</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
 
-            <button
-              onClick={handleGoToProfile}
-              className={`w-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${textPrimary} px-6 py-3 rounded-lg font-medium transition-colors duration-200`}
-            >
-              Go to My Profile
-            </button>
-          </div>
+              <button
+                onClick={handleGoToProfile}
+                className={`w-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${textPrimary} px-6 py-3 rounded-lg font-medium transition-colors duration-200`}
+              >
+                Go to My Profile
+              </button>
+            </div>
 
-            {/* Help Text */}
             <p className={`text-center ${textSecondary} text-xs mt-6`}>
               If you believe this is an error, please contact your HR administrator
             </p>
@@ -501,7 +605,6 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
     return (
       <div className={`min-h-screen p-5`}>
         <div className="mx-auto">
-          {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div>
@@ -513,7 +616,6 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
                 </p>
               </div>
               
-              {/* View Mode Toggle */}
               <div className={`flex items-center space-x-1 ${bgCard} rounded-lg p-1 border ${borderColor}`}>
                 <button
                   onClick={() => setViewMode('grid')}
@@ -540,7 +642,7 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex gap-4 justify-center items-center">
@@ -569,7 +671,19 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
               </div>
             </div>
             
-          
+            <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex gap-4 justify-center items-center">
+                  <p className="text-2xl font-bold text-orange-600">
+                    {totals.totalVacant}
+                  </p>
+                  <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
+                    Vacant Positions
+                  </p>
+                </div>
+                <Briefcase size={16} className="text-orange-500" />
+              </div>
+            </div>
             
             <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
               <div className="flex items-center justify-between mb-2">
@@ -612,7 +726,6 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
     <HeadcountAccessControl>
       <div className={`min-h-screen`}>
         <div className="mx-auto">
-          {/* Back Button */}
           <div className="mb-2">
             <button
               onClick={handleBackToDashboard}
@@ -623,7 +736,6 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
             </button>
           </div>
 
-          {/* Company Header Banner */}
           {selectedView === 'company' && selectedCompany && (
             <div 
               className="rounded-xl p-3 mb-3 text-white relative overflow-hidden"
@@ -641,7 +753,7 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
                         {selectedCompany.name}
                       </h1>
                       <p className="text-white/80 text-sm">
-                        {selectedCompany.code} {selectedCompany.totalEmployees} employees
+                        {selectedCompany.code} • {selectedCompany.totalEmployees} employees
                       </p>
                     </div>
                   </div>
@@ -650,7 +762,6 @@ const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
             </div>
           )}
 
-          {/* Table Component */}
           <HeadcountTable 
             businessFunctionFilter={selectedView === 'company' ? selectedCompany?.code : null} 
           />

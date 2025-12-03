@@ -423,14 +423,8 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   // ========================================
   extendEmployeeContract: (data) => api.post("/employees/extend-contract/", data),
   bulkExtendContracts: (data) => api.post("/employees/bulk-extend-contracts/", data),
-  getContractExpiryAlerts: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employees/contract-expiry-alerts/?${queryString}`);
-  },
-  getContractsExpiringSoon: (params = {}) => {
-    const queryString = buildQueryParams(params);
-    return api.get(`/employees/contracts_expiring_soon/?${queryString}`);
-  },
+ 
+
 
   // ========================================
   // EXPORT & TEMPLATE
@@ -587,11 +581,7 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
     }
   },
 
-  // ========================================
-  // EMPLOYEE GRADING
-  // ========================================
 
-  bulkUpdateEmployeeGrades: (updates) => api.post("/employee-grading/bulk_update_grades/", { updates }),
 
   // ========================================
   // PROFILE IMAGES
@@ -748,7 +738,7 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
       }),
       'show_in_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, true),
       'hide_from_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, false),
-      'update_grades': (updates) => apiService.bulkUpdateEmployeeGrades(updates)
+     
     };
 
     const operationFn = operations[operation];

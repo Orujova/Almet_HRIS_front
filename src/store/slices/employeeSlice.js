@@ -220,29 +220,7 @@ export const bulkExtendContracts = createAsyncThunk(
   }
 );
 
-export const getContractExpiryAlerts = createAsyncThunk(
-  'employees/getContractExpiryAlerts',
-  async (params, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.getContractExpiryAlerts(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
 
-export const getContractsExpiringSoon = createAsyncThunk(
-  'employees/getContractsExpiringSoon',
-  async (params, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.getContractsExpiringSoon(params);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
 
 
 export const uploadEmployeeProfilePhoto = createAsyncThunk(
@@ -299,29 +277,8 @@ export const fetchEmployeeGrading = createAsyncThunk(
   }
 );
 
-export const bulkUpdateEmployeeGrades = createAsyncThunk(
-  'employees/bulkUpdateEmployeeGrades',
-  async (updates, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.bulkUpdateGrades(updates);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
 
-export const updateSingleEmployeeGrade = createAsyncThunk(
-  'employees/updateSingleEmployeeGrade',
-  async ({ employee_id, grading_level }, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.updateSingleGrade(employee_id, grading_level);
-      return { employee_id, grading_level, result: response.data };
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
+
 
 // ========================================
 // EXPORT & TEMPLATES
@@ -929,27 +886,7 @@ const employeeSlice = createSlice({
     },
 
 
-    // Grading optimistic updates
-    optimisticUpdateEmployeeGrade: (state, action) => {
-      const { employee_id, grading_level } = action.payload;
-      
-      const employee = state.employees.find(emp => emp.id === employee_id);
-      if (employee) {
-        employee.grading_level = grading_level;
-        employee.grading_display = grading_level || 'No Grade';
-        employee._isOptimistic = true;
-      }
-      
-      const gradingEmployee = state.gradingData.employees?.find(emp => 
-        emp.employee_id === employee_id || emp.id === employee_id
-      );
-      if (gradingEmployee) {
-        gradingEmployee.grading_level = grading_level;
-        gradingEmployee.grading_display = grading_level || 'No Grade';
-        gradingEmployee._isOptimistic = true;
-      }
-    },
-    
+  
     // ========================================
     // ORG CHART VISIBILITY - YENİ REDUCER-LƏR
     // ========================================
@@ -1355,24 +1292,9 @@ const employeeSlice = createSlice({
         state.selectedEmployees = [];
       });
 
-    builder
-      .addCase(getContractExpiryAlerts.pending, (state) => {
-        state.loading.contractAlerts = true;
-        state.error.contractAlerts = null;
-      })
-      .addCase(getContractExpiryAlerts.fulfilled, (state, action) => {
-        state.loading.contractAlerts = false;
-        state.contractExpiryAlerts = action.payload;
-      })
-      .addCase(getContractExpiryAlerts.rejected, (state, action) => {
-        state.loading.contractAlerts = false;
-        state.error.contractAlerts = action.payload;
-      });
+  
 
-    builder
-      .addCase(getContractsExpiringSoon.fulfilled, (state, action) => {
-        state.contractsExpiringSoon = action.payload;
-      });
+ 
 
     // Grading operations
     builder
@@ -1400,58 +1322,9 @@ const employeeSlice = createSlice({
         state.error.grading = action.payload;
       });
 
-    builder
-      .addCase(bulkUpdateEmployeeGrades.pending, (state) => {
-        state.loading.grading = true;
-        state.error.grading = null;
-      })
-      .addCase(bulkUpdateEmployeeGrades.fulfilled, (state, action) => {
-        state.loading.grading = false;
-        const result = action.payload;
-        
-        if (result.updated_count && result.updated_count > 0) {
-          state.employees.forEach(emp => {
-            if (emp._isOptimistic) {
-              delete emp._isOptimistic;
-            }
-          });
-          
-          if (state.gradingData.employees) {
-            state.gradingData.employees.forEach(emp => {
-              if (emp._isOptimistic) {
-                delete emp._isOptimistic;
-              }
-            });
-          }
-        }
-        
-        state.selectedEmployees = [];
-      })
-      .addCase(bulkUpdateEmployeeGrades.rejected, (state, action) => {
-        state.loading.grading = false;
-        state.error.grading = action.payload;
-      });
 
-    builder
-      .addCase(updateSingleEmployeeGrade.fulfilled, (state, action) => {
-        const { employee_id, grading_level, result } = action.payload;
-        
-        const employee = state.employees.find(emp => emp.id === employee_id);
-        if (employee) {
-          employee.grading_level = grading_level;
-          employee.grading_display = grading_level || 'No Grade';
-          employee._isOptimistic = false;
-        }
-        
-        const gradingEmployee = state.gradingData.employees?.find(emp => 
-          emp.employee_id === employee_id || emp.id === employee_id
-        );
-        if (gradingEmployee) {
-          gradingEmployee.grading_level = grading_level;
-          gradingEmployee.grading_display = grading_level || 'No Grade';
-          gradingEmployee._isOptimistic = false;
-        }
-      });
+
+  
 
     // Export & template
     builder
@@ -1591,7 +1464,7 @@ export const {
   clearSearchResults,
   optimisticUpdateEmployee,
   optimisticDeleteEmployee,
-  optimisticUpdateEmployeeGrade,
+
   optimisticToggleOrgChartVisibility,
   optimisticBulkToggleOrgChartVisibility,
 

@@ -506,8 +506,8 @@ export const employeeAPI = {
   // ========================================
   extendContract: (data) => apiService.extendEmployeeContract(data),
   bulkExtendContracts: (data) => apiService.bulkExtendContracts(data),
-  getContractExpiryAlerts: (params) => apiService.getContractExpiryAlerts(params),
-  getContractsExpiringSoon: (params) => apiService.getContractsExpiringSoon(params),
+
+ 
   
   // ========================================
   // EXPORT AND TEMPLATES
@@ -519,11 +519,7 @@ export const employeeAPI = {
   // GRADING MANAGEMENT
   // ========================================
   getEmployeeGrading: () => apiService.getEmployeeGrading(),
-  bulkUpdateGrades: (updates) => apiService.bulkUpdateEmployeeGrades(updates),
-  updateSingleGrade: (employeeId, gradingLevel) => {
-    const updates = [{ employee_id: employeeId, grading_level: gradingLevel }];
-    return apiService.bulkUpdateEmployeeGrades(updates);
-  },
+ 
   
   
   
@@ -631,9 +627,7 @@ export const employeeAPI = {
     ));
   },
   
-  batchUpdateGrades: (employeeGradeUpdates) => {
-    return employeeAPI.bulkUpdateGrades(employeeGradeUpdates);
-  },
+
   
   batchAssignManager: (employeeIds, managerId) => {
     return employeeAPI.bulkAssignLineManager({

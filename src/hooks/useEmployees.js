@@ -15,11 +15,8 @@ import {
   bulkAssignLineManager,
   extendEmployeeContract,
   bulkExtendContracts,
-  getContractExpiryAlerts,
-  getContractsExpiringSoon,
   fetchEmployeeGrading,
-  bulkUpdateEmployeeGrades,
-  updateSingleEmployeeGrade,
+ 
   exportEmployees,
   downloadEmployeeTemplate,
   bulkUploadEmployees,
@@ -60,8 +57,6 @@ import {
   clearCurrentEmployee,
   setQuickFilter,
   optimisticUpdateEmployee,
-
-  optimisticUpdateEmployeeGrade,
   selectEmployees,
   selectCurrentEmployee,
   selectEmployeeLoading,
@@ -231,14 +226,13 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   // Contract management
   const extendEmployeeContractAction = useCallback((data) => dispatch(extendEmployeeContract(data)), [dispatch]);
   const bulkExtendContractsAction = useCallback((data) => dispatch(bulkExtendContracts(data)), [dispatch]);
-  const getContractExpiryAlertsAction = useCallback((params) => dispatch(getContractExpiryAlerts(params)), [dispatch]);
-  const getContractsExpiringSoonAction = useCallback((params) => dispatch(getContractsExpiringSoon(params)), [dispatch]);
+  
+
   
   // Grading management
   const fetchEmployeeGradingAction = useCallback(() => dispatch(fetchEmployeeGrading()), [dispatch]);
-  const bulkUpdateEmployeeGradesAction = useCallback((updates) => dispatch(bulkUpdateEmployeeGrades(updates)), [dispatch]);
-  const updateSingleEmployeeGradeAction = useCallback((employee_id, grading_level) => 
-    dispatch(updateSingleEmployeeGrade({ employee_id, grading_level })), [dispatch]);
+  
+  
   
   // Export & template
   const exportEmployeesAction = useCallback((format, params) => dispatch(exportEmployees({ format, params })), [dispatch]);
@@ -315,8 +309,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   const setQuickFilterAction = useCallback((type, value) => dispatch(setQuickFilter({ type, value })), [dispatch]);
   const optimisticUpdateEmployeeAction = useCallback((id, updates) => dispatch(optimisticUpdateEmployee({ id, updates })), [dispatch]);
 
-  const optimisticUpdateEmployeeGradeAction = useCallback((employee_id, grading_level) => 
-    dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level })), [dispatch]);
+
 
   // Filter options loading
   const fetchFilterOptionsAction = useCallback(() => {
@@ -506,13 +499,12 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     // Contract management
     extendEmployeeContract: extendEmployeeContractAction,
     bulkExtendContracts: bulkExtendContractsAction,
-    getContractExpiryAlerts: getContractExpiryAlertsAction,
-    getContractsExpiringSoon: getContractsExpiringSoonAction,
+ 
+ 
     
     // Grading management
     fetchEmployeeGrading: fetchEmployeeGradingAction,
-    bulkUpdateEmployeeGrades: bulkUpdateEmployeeGradesAction,
-    updateSingleEmployeeGrade: updateSingleEmployeeGradeAction,
+   
     
     // Export & template
     exportEmployees: exportEmployeesAction,
@@ -585,7 +577,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     setQuickFilter: setQuickFilterAction,
     optimisticUpdateEmployee: optimisticUpdateEmployeeAction,
  
-    optimisticUpdateEmployeeGrade: optimisticUpdateEmployeeGradeAction,
+
   };
 
   // Computed values - Enhanced
@@ -685,10 +677,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       dispatch(fetchEmployeeGrading());
     }, [dispatch]),
     
-    refreshContractAlerts: useCallback(() => {
-      dispatch(getContractExpiryAlerts());
-      dispatch(getContractsExpiringSoon());
-    }, [dispatch]),
+
     
     refreshAll: useCallback(() => {
       const currentParams = JSON.stringify(apiParams);
@@ -698,7 +687,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
       }
       dispatch(fetchStatistics());
       dispatch(fetchEmployeeGrading());
-      dispatch(getContractExpiryAlerts());
+     
     }, [dispatch, apiParams]),
     
     // Filter helpers - Enhanced
@@ -977,8 +966,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
           return dispatch(bulkAssignLineManager({ employee_ids: employeeIds, line_manager_id: operationData.managerId }));
         case 'extend_contracts':
           return dispatch(bulkExtendContracts({ employee_ids: employeeIds, ...operationData }));
-        case 'update_grades':
-          return dispatch(bulkUpdateEmployeeGrades(operationData.updates));
+       
         case 'show_in_org_chart':
           return dispatch(bulkToggleOrgChartVisibility({ employeeIds, setVisible: true }));
         case 'hide_from_org_chart':
@@ -1280,7 +1268,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     
       dispatch(fetchStatistics());
       dispatch(fetchEmployeeGrading());
-      dispatch(getContractExpiryAlerts());
+     
     }
   }, [isInitialized.current, statistics.total_employees, dispatch]);
 
@@ -1538,10 +1526,7 @@ export const useContractManagement = () => {
   const loading = useSelector(selectEmployeeLoading);
   const error = useSelector(selectEmployeeError);
 
-  const refreshAlerts = useCallback(() => {
-    dispatch(getContractExpiryAlerts());
-    dispatch(getContractsExpiringSoon());
-  }, [dispatch]);
+ 
 
   const extendContract = useCallback((data) => {
     return dispatch(extendEmployeeContract(data));
@@ -1635,21 +1620,7 @@ export const useEmployeeGrading = () => {
     dispatch(fetchEmployeeGrading());
   }, [dispatch]);
 
-  const updateSingleGrade = useCallback((employee_id, grading_level) => {
-    // Optimistic update
-    dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level }));
-    // Actual API call
-    return dispatch(updateSingleEmployeeGrade({ employee_id, grading_level }));
-  }, [dispatch]);
 
-  const bulkUpdateGrades = useCallback((updates) => {
-    // Optimistic updates
-    updates.forEach(({ employee_id, grading_level }) => {
-      dispatch(optimisticUpdateEmployeeGrade({ employee_id, grading_level }));
-    });
-    // Actual API call
-    return dispatch(bulkUpdateEmployeeGrades(updates));
-  }, [dispatch]);
 
   const gradeAllInPositionGroup = useCallback((positionGroupId, gradingLevel) => {
     const employeesInGroup = gradingData.employees?.filter(
