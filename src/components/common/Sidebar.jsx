@@ -1,6 +1,7 @@
 "use client";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   PieChart,
   UsersRound,
@@ -13,181 +14,223 @@ import {
   Newspaper,
   Gift,
   Package,
-RefreshCw,
+  RefreshCw,
   UserCog,
   Building2,
   TicketsPlane,
   ScrollText,
-  BookOpenCheck
+  BookOpenCheck,
+  User,
+  ChevronRight
 } from "lucide-react";
-
+import { employeeService } from '@/services/newsService';
 
 const Sidebar = ({ collapsed = false }) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const [employeeId, setEmployeeId] = useState(null);
+  const [hoveredItem, setHoveredItem] = useState(null);
 
-  // Sidebar menu structure
+  useEffect(() => {
+    const storedEmployeeId = localStorage.getItem('employee_id');
+    if (storedEmployeeId) {
+      setEmployeeId(storedEmployeeId);
+    } else {
+      fetchEmployeeId();
+    }
+  }, []);
+
+  const fetchEmployeeId = async () => {
+    try {
+      const userEmail = localStorage.getItem('user_email');
+      if (!userEmail) return;
+
+      const profileResponse = await employeeService.getMyProfile();
+      
+      if (profileResponse.employee?.id) {
+        const empId = profileResponse.employee.id;
+        setEmployeeId(empId);
+        localStorage.setItem('employee_id', empId);
+      }
+    } catch (error) {
+      console.error('Error fetching employee ID:', error);
+    }
+  };
+
+  const handleProfileClick = (e) => {
+    e.preventDefault();
+    
+    if (employeeId) {
+      router.push(`/structure/employee/${employeeId}/`);
+    } else {
+      const storedId = localStorage.getItem('employee_id');
+      if (storedId) {
+        router.push(`/structure/employee/${storedId}/`);
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  };
+
   const menuItems = [
-    // Reports section added as a top-level item
-    // { 
-    //   type: "section", 
-    //   label: "ANALYTICS" 
-    // },
-    // {
-    //   label: "Reports",
-    //   icon: <PieChart className="w-4 h-4" />,
-    //   path: "/dashboard",
-    //   id: "dashboard",
-    // },
     { 
       type: "section", 
-      label: "STRUCTURE" 
-    }, {
+      label: "PERSONAL"
+    },
+    {
+      label: "My Profile",
+      icon: <User className="w-4 h-4" />,
+      path: "/dashboard",
+      id: "dashboard",
+      isProfile: true
+    },
+    { 
+      type: "section", 
+      label: "STRUCTURE"
+    }, 
+    {
       label: "Org Structure",
       icon: <Building2 className="w-4 h-4" />,
       path: "/structure/org-structure",
-      id: "org-structure",
+      id: "org-structure"
     },
     {
       label: "Headcount table",
       icon: <UsersRound className="w-4 h-4" />,
       path: "/structure/headcount-table",
-      id: "headcount-table",
+      id: "headcount-table"
     },
-   
     {
       label: "Job Descriptions",
       icon: <FileText className="w-4 h-4" />,
       path: "/structure/job-descriptions",
-      id: "job-descriptions",
+      id: "job-descriptions"
     },
     {
       label: "Comp Matrix",
       icon: <BarChart2 className="w-4 h-4" />,
       path: "/structure/comp-matrix",
-      id: "comp-matrix",
+      id: "comp-matrix"
     },
     {
       label: "Job Catalog",
       icon: <FileText className="w-4 h-4" />,
       path: "/structure/job-catalog",
-      id: "job-catalog",
+      id: "job-catalog"
     },
     {
       label: "Grading",
       icon: <GraduationCap className="w-4 h-4" />,
       path: "/structure/grading",
-      id: "grading",
+      id: "grading"
     },
     { 
       type: "section", 
-      label: "EFFICIENCY" 
+      label: "EFFICIENCY"
     },
     {
       label: "Performance mng",
       icon: <Activity className="w-4 h-4" />,
       path: "/efficiency/performance-mng",
-      id: "performance-mng",
+      id: "performance-mng"
     },
     { 
       type: "section", 
-      label: "Training" 
+      label: "Training"
     },
     {
-      label: "Onboarding Training",
+      label: " Training",
       icon: <BookOpenCheck className="w-4 h-4" />,
       path: "/training",
-      id: "training",
+      id: "training"
     },
     { 
       type: "section", 
-      label: "E-REQUESTS" 
+      label: "E-REQUESTS"
     },
     {
       label: "Vacation",
       icon: <CalendarDays className="w-4 h-4" />,
       path: "/requests/vacation",
-      id: "vacation",
+      id: "vacation"
     },
-     {
+    {
       label: "Handover/Takeover",
       icon: <RefreshCw className="w-4 h-4" />,
       path: "/requests/handover-takeover",
-      id: "handover-takeover",
+      id: "handover-takeover"
     },
     {
       label: "Business Trip",
       icon: <Plane className="w-4 h-4" />,
       path: "/requests/business-trip",
-      id: "business-trip",
+      id: "business-trip"
     },
-      {
+    {
       label: "Time Off",
       icon: <TicketsPlane className="w-4 h-4" />,
       path: "/requests/time-off",
-      id: "time-off",
+      id: "time-off"
     },
     { 
       type: "section", 
-      label: "COMMUNICATION" 
+      label: "COMMUNICATION"
     },
     {
       label: "Company News",
       icon: <Newspaper className="w-4 h-4" />,
       path: "/communication/company-news",
-      id: "company-news",
+      id: "company-news"
     },
     {
       label: "Celebrations",
       icon: <Gift className="w-4 h-4" />,
       path: "/communication/celebrations",
-      id: "celebrations",
-    }, { 
-      type: "section", 
-      label: "COMPANY POLICIES" 
-    },
-     {
-      label: "Policies",
-      icon: <ScrollText className="w-4 h-4" />,
-      path: "/company-policies",
-      id: "policies",
+      id: "celebrations"
     }, 
     { 
       type: "section", 
-      label: "SETTINGS" 
+      label: "COMPANY POLICIES"
     },
-   
-
+    {
+      label: "Policies",
+      icon: <ScrollText className="w-4 h-4" />,
+      path: "/company-policies",
+      id: "policies"
+    }, 
+    { 
+      type: "section", 
+      label: "SETTINGS"
+    },
+    {
+      label: "Asset Management",
+      icon: <Package className="w-4 h-4" />,
+      path: "/settings/asset-mng",
+      id: "asset-mng"
+    },
     {
       label: "Role Mng",
       icon: <UserCog className="w-4 h-4" />,
       path: "/settings/role-mng",
-      id: "role-mng",
-    }, {
-      label: "Asset Management",
-      icon: <Package className="w-4 h-4" />,
-      path: "/settings/asset-mng",
-      id: "asset-mng",
+      id: "role-mng"
     }
   ];
 
   return (
     <div className="h-full bg-white dark:bg-almet-cloud-burst border-r border-gray-200 dark:border-almet-comet flex flex-col w-full">
   
+      {/* Logo with subtle hover animation */}
       <Link 
         href="/" 
-        className={`flex items-center justify-center ${collapsed ? 'justify-center' : 'px-3'} py-2 border-b border-gray-200 dark:border-almet-comet`}
+        className={`flex items-center justify-center ${collapsed ? 'justify-center' : 'px-3'} py-2 border-b border-gray-200 dark:border-almet-comet group`}
       >
         {collapsed ? (
-           <div >
-               <img src="/pdfs/logoSmall.png" alt="" className="h-6" /> 
-            </div>
-     
+          <div className="transform transition-transform duration-300 group-hover:scale-110">
+            <img src="/pdfs/logoSmall.png" alt="" className="h-6" /> 
+          </div>
         ) : (
-  
-          <div className="flex items-center justify-center">
-        
-     
-           <img src="/pdfs/logo.png" alt="Almet Logo" className="h-6" />
+          <div className="flex items-center justify-center transform transition-transform duration-300 group-hover:scale-105">
+            <img src="/pdfs/logo.png" alt="Almet Logo" className="h-6" />
           </div>
         )}
       </Link>
@@ -197,7 +240,6 @@ const Sidebar = ({ collapsed = false }) => {
         <nav className="px-2">
           {menuItems.map((item, index) => 
             item.type === "section" ? (
-              // Only show section titles when not collapsed
               !collapsed && (
                 <div key={index} className="pt-3 pb-1">
                   <p className="px-3 text-[10px] font-medium text-gray-500 dark:text-almet-santas-gray uppercase tracking-wider">
@@ -205,27 +247,70 @@ const Sidebar = ({ collapsed = false }) => {
                   </p>
                 </div>
               )
+            ) : item.isProfile ? (
+              <button
+                key={index}
+                onClick={handleProfileClick}
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
+                className={`w-full flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 py-1.5 text-xs font-medium rounded-md my-0.5 transition-all duration-300 group ${
+                  pathname.includes('/structure/employee/') && employeeId && pathname.includes(employeeId)
+                    ? "bg-[#5975af] text-white shadow-md transform scale-[1.02]" 
+                    : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet hover:shadow-sm"
+                }`}
+                title={collapsed ? item.label : ''}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`transition-all duration-300 ${
+                    pathname.includes('/structure/employee/') && employeeId && pathname.includes(employeeId)
+                      ? "text-white" 
+                      : "text-gray-500 dark:text-gray-400"
+                  } ${hoveredItem === item.id ? 'transform scale-110' : ''}`}>
+                    {item.icon}
+                  </span>
+                  {!collapsed && <span>{item.label}</span>}
+                </div>
+                
+                {!collapsed && (
+                  <ChevronRight className={`w-3.5 h-3.5 transition-all duration-300 ${
+                    pathname.includes('/structure/employee/') && employeeId && pathname.includes(employeeId)
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 -translate-x-1 group-hover:opacity-60 group-hover:translate-x-0'
+                  }`} />
+                )}
+              </button>
             ) : (
-             <Link 
-  key={index}
-  href={item.path}
-  className={`flex items-center ${collapsed ? 'justify-center' : 'px-3'} py-1.5 text-xs font-medium rounded-md my-0.5 transition-colors duration-300 ${
-    pathname.startsWith(item.path) 
-      ? "bg-[#5975af] text-white shadow-md" 
-      : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet"
-  }`}
-  title={collapsed ? item.label : ''}
->
-  <span className={`${collapsed ? '' : 'mr-2'} transition-colors duration-300 ${
-    pathname.startsWith(item.path) 
-      ? "text-white" 
-      : "text-gray-500 dark:text-gray-400"
-  }`}>
-    {item.icon}
-  </span>
-  {!collapsed && item.label}
-</Link>
-
+              <Link 
+                key={index}
+                href={item.path}
+                onMouseEnter={() => setHoveredItem(item.id)}
+                onMouseLeave={() => setHoveredItem(null)}
+                className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 py-1.5 text-xs font-medium rounded-md my-0.5 transition-all duration-300 group ${
+                  pathname.startsWith(item.path) 
+                    ? "bg-[#5975af] text-white shadow-md transform scale-[1.02]" 
+                    : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet hover:shadow-sm"
+                }`}
+                title={collapsed ? item.label : ''}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`transition-all duration-300 ${
+                    pathname.startsWith(item.path) 
+                      ? "text-white" 
+                      : "text-gray-500 dark:text-gray-400"
+                  } ${hoveredItem === item.id ? 'transform scale-110' : ''}`}>
+                    {item.icon}
+                  </span>
+                  {!collapsed && <span>{item.label}</span>}
+                </div>
+                
+                {!collapsed && (
+                  <ChevronRight className={`w-3.5 h-3.5 transition-all duration-300 ${
+                    pathname.startsWith(item.path) 
+                      ? 'opacity-100 translate-x-0' 
+                      : 'opacity-0 -translate-x-1 group-hover:opacity-60 group-hover:translate-x-0'
+                  }`} />
+                )}
+              </Link>
             )
           )}
         </nav>

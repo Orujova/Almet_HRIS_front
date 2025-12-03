@@ -31,14 +31,7 @@ const cleanEmployeeData = (employee) => {
         ))
     );
     
-    console.log('🔍 Checking vacancy for:', employee.name, {
-        employee_details_is_vacancy: employee.employee_details?.is_vacancy,
-        is_vacancy: employee.is_vacancy,
-        vacant: employee.vacant,
-        record_type: employee.record_type,
-        name_includes_vacant: employee.name?.includes('[VACANT]'),
-        RESULT: isVacancy
-    });
+
     
     return {
         id: employee.id,

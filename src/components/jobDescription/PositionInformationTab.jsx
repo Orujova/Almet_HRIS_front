@@ -452,10 +452,7 @@ const getJobFunctionId = (name) => {
   // Debug output
   const availableFuncs = [...new Set(dropdownData.employees.map(e => e.job_function_name).filter(Boolean))];
  
-  console.warn(`💡 Looking for case-insensitive match for "${name}" in:`, 
-    availableFuncs.filter(f => matchesIgnoreCase(f, name))
-  );
-  
+
   return null;
 };
 

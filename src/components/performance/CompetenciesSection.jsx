@@ -59,7 +59,17 @@ export default function CompetenciesSection({
     }
   }, [competencies, settings.evaluationScale]);
 
-
+const handleChange = (field, value) => {
+  // ✅ Save scroll position
+  const scrollY = window.scrollY;
+  
+  onUpdate(globalIndex, field, value);
+  
+  // ✅ Restore scroll after update
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollY);
+  });
+};
 
   const calculateAllScores = () => {
     const groupedData = {};
@@ -378,18 +388,18 @@ export default function CompetenciesSection({
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <select
-                                  value={comp.end_year_rating || ""}
-                                  disabled={!canRateEndYear}
-                                  onChange={(e) => handleChange("end_year_rating", e.target.value)}
-                                  className={`${inputClass} w-full`}
-                                >
-                                  <option value="">Select...</option>
-                                  {settings.evaluationScale?.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                      {`${s.name} (${s.value})`}
-                                    </option>
-                                  ))}
-                                </select>
+  value={comp.end_year_rating || ""}
+  disabled={!canRateEndYear}
+  onChange={(e) => handleChange("end_year_rating", e.target.value)}
+  className={`${inputClass} w-full`}
+>
+  <option value="">Select...</option>
+  {settings.evaluationScale?.map((s) => (
+    <option key={s.id} value={s.id}>
+      {`${s.name} (${s.value})`}
+    </option>
+  ))}
+</select>
                                 {!canRateEndYear && comp.end_year_rating && (
                                   <div className={`text-xs mt-1 ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
                                     {settings.evaluationScale?.find(s => s.id === comp.end_year_rating)?.name || 'N/A'}

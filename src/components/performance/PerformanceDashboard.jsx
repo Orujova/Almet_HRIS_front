@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar, TrendingUp, BarChart3, Search, X, AlertCircle, User } from 'lucide-react';
 
 // Import components
@@ -17,25 +17,32 @@ export default function PerformanceDashboard({
   onLoadEmployeePerformance,
   darkMode 
 }) {
-  const [activeTab, setActiveTab] = useState('overview');
+  // ✅ Load saved tab from localStorage on mount
+  const getSavedTab = () => {
+    if (typeof window === 'undefined') return 'overview';
+    const saved = localStorage.getItem('performance_active_tab');
+    return saved || 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState(getSavedTab);
+
+  // ✅ Save tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('performance_active_tab', activeTab);
+  }, [activeTab]);
 
   // ✅ Get visible employees (all accessible)
   const getVisibleEmployees = () => {
     if (!employees || !permissions.employee) return [];
-    return employees; // Already filtered in page.jsx
+    return employees;
   };
 
   const visibleEmployees = getVisibleEmployees();
   
-  // ✅ For team members tab - EXCLUDE self
   const teamMembers = visibleEmployees.filter(emp => emp.id !== permissions.employee?.id);
-  
-  // ✅ Self only - for "My Performance" tab
   const selfOnly = visibleEmployees.filter(emp => emp.id === permissions.employee?.id);
-  
   const totalEmployees = visibleEmployees.length;
 
-  // ✅ Access level info
   const getAccessLevelMessage = () => {
     if (permissions.can_view_all) {
       return {
@@ -65,10 +72,8 @@ export default function PerformanceDashboard({
 
   const accessLevel = getAccessLevelMessage();
 
-  // ✅ Tab configuration - ADD "My Performance" for managers
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Target, badge: null },
-    // ✅ Add "My Performance" tab for managers
     ...(permissions.is_manager ? [
       { 
         id: 'my-performance', 
@@ -133,7 +138,7 @@ export default function PerformanceDashboard({
 
   return (
     <div className="space-y-4">
-      {/* ✅ Access Level Notice */}
+      {/* Access Level Notice */}
       <div className={`${
         accessLevel.type === 'success' ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/30' :
         accessLevel.type === 'info' ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/30' :
@@ -205,35 +210,30 @@ export default function PerformanceDashboard({
 
       {/* Tab Content */}
       <div className="min-h-[600px]">
-        {/* OVERVIEW TAB */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
-          
-    {/* ✅ Stats Grid - Only show for managers and admins */}
-    {(permissions.is_manager || permissions.can_view_all) && (
-      <FixedStatCards employees={visibleEmployees} darkMode={darkMode} />
-    )}
+            {(permissions.is_manager || permissions.can_view_all) && (
+              <FixedStatCards employees={visibleEmployees} darkMode={darkMode} />
+            )}
 
-    {/* ✅ Show message for regular employees */}
-    {!permissions.is_manager && !permissions.can_view_all && (
-      <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-6 text-center`}>
-        <User className="w-12 h-12 mx-auto mb-4 text-almet-sapphire/30" />
-        <h3 className={`text-base font-bold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-          Welcome to Performance Management
-        </h3>
-        <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-4`}>
-          View and manage your performance goals, reviews, and development needs
-        </p>
-        <button
-          onClick={() => setActiveTab('team')}
-          className="px-6 py-3 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-xs font-medium transition-all shadow-sm"
-        >
-          View My Performance
-        </button>
-      </div>
-    )}
+            {!permissions.is_manager && !permissions.can_view_all && (
+              <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-6 text-center`}>
+                <User className="w-12 h-12 mx-auto mb-4 text-almet-sapphire/30" />
+                <h3 className={`text-base font-bold mb-2 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  Welcome to Performance Management
+                </h3>
+                <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-4`}>
+                  View and manage your performance goals, reviews, and development needs
+                </p>
+                <button
+                  onClick={() => setActiveTab('team')}
+                  className="px-6 py-3 bg-almet-sapphire hover:bg-almet-astral text-white rounded-xl text-xs font-medium transition-all shadow-sm"
+                >
+                  View My Performance
+                </button>
+              </div>
+            )}
 
-            {/* Timeline */}
             {dashboardStats?.timeline && (
               <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
                 <div className="flex items-center gap-3 mb-4">
@@ -275,7 +275,6 @@ export default function PerformanceDashboard({
           </div>
         )}
 
-        {/* ✅ MY PERFORMANCE TAB - Show only self */}
         {activeTab === 'my-performance' && (
           <TeamMembersWithSearch
             employees={selfOnly}
@@ -287,7 +286,6 @@ export default function PerformanceDashboard({
           />
         )}
 
-        {/* ✅ TEAM TAB - Show team members (excluding self for managers) */}
         {activeTab === 'team' && (
           <TeamMembersWithSearch
             employees={permissions.is_manager ? teamMembers : selfOnly}
@@ -299,7 +297,6 @@ export default function PerformanceDashboard({
           />
         )}
 
-        {/* ✅ ANALYTICS TAB - Pass ALL visible employees */}
         {activeTab === 'analytics' && (
           <FixedAnalyticsDashboard
             employees={visibleEmployees}

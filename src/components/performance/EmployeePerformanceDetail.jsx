@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Download, Star, TrendingUp, Award, Target, FileText, BookOpen, CheckCircle, Clock } from 'lucide-react';
 import ObjectivesSection from './ObjectivesSection';
 import CompetenciesSection from './CompetenciesSection';
@@ -38,8 +38,19 @@ export default function EmployeePerformanceDetail({
 }) {
   const { showInfo } = useToast();
   
-  // ✅ Tab State
-  const [activeTab, setActiveTab] = useState('objectives');
+  // ✅ Load saved detail tab from localStorage
+  const getSavedDetailTab = () => {
+    if (typeof window === 'undefined') return 'objectives';
+    const saved = localStorage.getItem('performance_detail_tab');
+    return saved || 'objectives';
+  };
+
+  const [activeTab, setActiveTab] = useState(getSavedDetailTab);
+
+  // ✅ Save tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('performance_detail_tab', activeTab);
+  }, [activeTab]);
 
   const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
@@ -85,11 +96,9 @@ export default function EmployeePerformanceDetail({
   const finalRating = performanceData.final_rating || 
                       getLetterGradeFromScale(overallPercentage);
 
-  // ✅ Check if performance is completed - SAME LOGIC AS DASHBOARD
   const isCompleted = !isNaN(objectivesPercentage) && objectivesPercentage > 0 && 
                       !isNaN(competenciesPercentage) && competenciesPercentage > 0;
 
-  // ✅ Tab Configuration
   const tabs = [
     {
       id: 'objectives',
@@ -131,10 +140,7 @@ export default function EmployeePerformanceDetail({
     
     return (
       <button
-        onClick={() => {
-          setActiveTab(tab.id);
-
-        }}
+        onClick={() => setActiveTab(tab.id)}
         className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
           isActive 
             ? darkMode 
@@ -148,7 +154,6 @@ export default function EmployeePerformanceDetail({
         <Icon className={`w-5 h-5 ${isActive ? 'text-white' : ''}`} />
         <span className="font-semibold text-sm">{tab.label}</span>
         
-        {/* Badge */}
         <div className={`ml-auto flex items-center gap-2`}>
           <span className={`px-2 py-0.5 rounded-lg text-xs font-bold ${
             isActive
@@ -160,7 +165,6 @@ export default function EmployeePerformanceDetail({
             {tab.badge}
           </span>
           
-          {/* Status Indicator */}
           {tab.status === 'completed' && (
             <CheckCircle className="w-4 h-4 text-emerald-500" />
           )}
@@ -174,7 +178,7 @@ export default function EmployeePerformanceDetail({
 
   return (
     <div className="space-y-4">
-      {/* Employee Header - Compact */}
+      {/* Employee Header */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl p-4 shadow-sm border`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -204,7 +208,6 @@ export default function EmployeePerformanceDetail({
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Overall Score Badge */}
             <div className={`px-4 py-2 rounded-xl ${darkMode ? 'bg-almet-sapphire/20 border border-almet-sapphire/30' : 'bg-almet-sapphire/10 border border-almet-sapphire/20'}`}>
               <div className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-0.5">Overall</div>
               <div className="flex items-center gap-2">
@@ -213,7 +216,6 @@ export default function EmployeePerformanceDetail({
               </div>
             </div>
 
-            {/* ✅ COMPLETION STATUS BADGE */}
             {isCompleted ? (
               <div className={`px-4 py-2 rounded-xl flex items-center gap-2 ${
                 darkMode 
@@ -248,7 +250,6 @@ export default function EmployeePerformanceDetail({
               </div>
             )}
             
-            {/* ✅ Export button - only if completed */}
             {canEdit && isCompleted && (
               <button
                 onClick={onExport}
@@ -291,7 +292,7 @@ export default function EmployeePerformanceDetail({
         />
       </div>
 
-      {/* Evaluation Scale Reference - Collapsible */}
+      {/* Evaluation Scale Reference */}
       <EvaluationScaleReference scales={settings.evaluationScale} darkMode={darkMode} />
 
       {/* Clarification Comments */}
@@ -302,7 +303,7 @@ export default function EmployeePerformanceDetail({
         />
       )}
 
-      {/* ✅ TAB NAVIGATION */}
+      {/* Tab Navigation */}
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border shadow-sm p-3`}>
         <div className="grid grid-cols-4 gap-2">
           {tabs.map(tab => (
@@ -311,7 +312,7 @@ export default function EmployeePerformanceDetail({
         </div>
       </div>
 
-      {/* ✅ TAB CONTENT - Only show active tab */}
+      {/* Tab Content */}
       <div className="min-h-[600px]">
         {activeTab === 'objectives' && (
           <ObjectivesSection

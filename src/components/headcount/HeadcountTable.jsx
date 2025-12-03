@@ -250,13 +250,37 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   ]);
 
   const handleColorModeChange = useCallback((newMode) => {
-    if (newMode === currentColorMode) return;
-    
-    setCurrentColorMode(newMode);
-    setDefaultSortingApplied(false);
-    clearSorting();
-    setCurrentPage(1);
-  }, [currentColorMode, clearSorting, setCurrentPage]);
+  if (newMode === currentColorMode) return;
+  
+  // ✅ CRITICAL: Save wrapper filter before any state changes
+  const preservedBFFilter = isWrapperFilterApplied ? [...localFilters.business_function] : [];
+  
+
+  
+  setCurrentColorMode(newMode);
+  setDefaultSortingApplied(false);
+  clearSorting();
+  
+  // ✅ Restore wrapper filter immediately if it was active
+  if (isWrapperFilterApplied && preservedBFFilter.length > 0) {
+    // Use a microtask to ensure state consistency
+    queueMicrotask(() => {
+      setLocalFilters(prev => {
+        // Only update if filter was actually cleared
+        if (prev.business_function.length !== preservedBFFilter.length) {
+         
+          return {
+            ...prev,
+            business_function: preservedBFFilter
+          };
+        }
+        return prev;
+      });
+    });
+  }
+  
+  setCurrentPage(1);
+}, [currentColorMode, clearSorting, setCurrentPage, isWrapperFilterApplied, localFilters.business_function]);
 
   useEffect(() => {
     const initializeAllStats = async () => {
@@ -395,9 +419,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         lastFetchTime.current = now;
         lastApiParamsRef.current = params;
         fetchEmployees(params);
-      } else {
-        console.log('⏭️ Skipping - too soon');
-      }
+      } 
     }, delay);
   }, [fetchEmployees]);
 

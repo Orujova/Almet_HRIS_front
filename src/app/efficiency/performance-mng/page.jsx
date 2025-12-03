@@ -662,9 +662,8 @@ const loadEmployees = async (perms = null) => {
   };
 
   // ==================== OBJECTIVE HANDLERS ====================
-  const saveObjectivesTimeoutRef = useRef(null);
-
-  // page.jsx - debouncedSaveObjectives function
+ // ==================== OBJECTIVE HANDLERS ====================
+const saveObjectivesTimeoutRef = useRef(null);
 
 const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
   if (saveObjectivesTimeoutRef.current) {
@@ -673,21 +672,24 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
   
   saveObjectivesTimeoutRef.current = setTimeout(async () => {
     try {
-      // ✅ LOG what we're sending
-      console.log('📤 Auto-saving objectives:', objectives.map(obj => ({
-        id: obj.id,
-        title: obj.title?.substring(0, 30),
-        end_year_rating: obj.end_year_rating,  // ✅ Should be ID
-        calculated_score: obj.calculated_score
-      })));
+      // ✅ Save scroll position BEFORE API call
+      const scrollY = window.scrollY;
       
       await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
-      showInfo('Changes auto-saved');
+      
+      // ✅ DON'T show toast on auto-save (causes scroll)
+      // showInfo('Changes auto-saved');
+      
+      // ✅ Restore scroll position AFTER state update
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollY);
+      });
+      
     } catch (error) {
       console.error('❌ Auto-save error:', error);
     }
   }, 1000);
-}, [showInfo]); // ✅ Add showInfo to dependencies
+}, []); // ✅ Remove showInfo from dependencies
 
   const handleLoadEmployeePerformance = async (employeeId, year) => {
     try {
@@ -702,7 +704,7 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
         const performance = perfs[0];
         const detailData = await performanceApi.performances.get(performance.id);
         
-        console.log('✅ Loaded performance detail for analytics:', detailData);
+
         return detailData;
       }
       
@@ -713,20 +715,21 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
     }
   };
 
-// page.jsx - handleUpdateObjective
+
 
 const handleUpdateObjective = (index, field, value) => {
+  // ✅ Save current scroll position
+  const scrollY = window.scrollY;
+  
   const key = `${selectedEmployee.id}_${selectedYear}`;
   const data = performanceData[key];
   const newObjectives = [...(data.objectives || [])];
   
-  // ✅ FIX: Update objective with new field value
   newObjectives[index] = {
     ...newObjectives[index],
     [field]: value
   };
   
-  // ✅ If updating end_year_rating, ALSO calculate and set score in SAME update
   if (field === 'end_year_rating') {
     const selectedScaleId = value ? parseInt(value) : null;
     if (selectedScaleId) {
@@ -736,17 +739,13 @@ const handleUpdateObjective = (index, field, value) => {
         const targetScore = settings.evaluationTargets?.objective_score_target || 21;
         const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
         
-        // ✅ CRITICAL: Update SAME objective in SAME operation
         newObjectives[index] = {
           ...newObjectives[index],
-          end_year_rating: selectedScaleId,  // ✅ Keep the rating ID
-          calculated_score: calculatedScore   // ✅ Add calculated score
+          end_year_rating: selectedScaleId,
+          calculated_score: calculatedScore
         };
-        
-        console.log(`✅ Rating updated: ${selectedScale.name} (ID: ${selectedScaleId}), Score: ${calculatedScore}`);
       }
     } else {
-      // ✅ If clearing rating, also clear score
       newObjectives[index] = {
         ...newObjectives[index],
         end_year_rating: null,
@@ -755,7 +754,6 @@ const handleUpdateObjective = (index, field, value) => {
     }
   }
   
-  // ✅ If updating calculated_score directly (shouldn't happen for ratings, but safe)
   if (field === 'calculated_score') {
     newObjectives[index] = {
       ...newObjectives[index],
@@ -775,13 +773,12 @@ const handleUpdateObjective = (index, field, value) => {
     [key]: recalculatedData
   }));
   
-  // ✅ Auto-save ONCE with complete data
+  // ✅ Restore scroll position after React re-render
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollY);
+  });
+  
   if (selectedPerformanceId) {
-    console.log('🚀 Triggering auto-save with:', newObjectives.map(o => ({
-      id: o.id,
-      end_year_rating: o.end_year_rating,
-      calculated_score: o.calculated_score
-    })));
     debouncedSaveObjectives(selectedPerformanceId, newObjectives);
   }
 };

@@ -824,7 +824,7 @@ export const selectFilteredOrgChart = createSelector(
     }
     
     if (!activeFilters || Object.keys(activeFilters).length === 0) {
-      console.log('✅ No active filters, returning all employees');
+   
       return orgChart;
     }
     
@@ -1089,7 +1089,7 @@ export const selectFilteredOrgChart = createSelector(
         }
       }
       
-      console.log('✅ Employee passed all filters:', employee.name);
+  
       return true;
     });
 

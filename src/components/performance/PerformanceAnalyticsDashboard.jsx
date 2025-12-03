@@ -26,13 +26,7 @@ export default function FixedAnalyticsDashboard({
     competency: false
   });
 
-  // ✅ DEBUG LOG
-  console.log('📊 Analytics received:', {
-    total: employees.length,
-    isManager,
-    canViewAll,
-    employees: employees.map(e => ({ id: e.id, name: e.name, hc: e.employee_id }))
-  });
+
 
   useEffect(() => {
     if (employees && employees.length > 0 && settings?.evaluationScale) {
@@ -86,11 +80,6 @@ export default function FixedAnalyticsDashboard({
         totalEmployees: employees.length
       });
 
-      console.log('✅ Analytics calculated:', {
-        gradeDistribution: gradeDistribution.length,
-        departments: departmentStats.length,
-        positions: positionStats.length
-      });
     } catch (error) {
       console.error('❌ Analytics error:', error);
     } finally {

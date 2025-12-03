@@ -1,5 +1,5 @@
-// src/components/headcount/HeadcountHeader.jsx - With Settings Button
-import { useState } from "react";
+// src/components/headcount/HeadcountHeader.jsx - UPDATED with Admin-only actions
+import { useState, useEffect } from "react";
 import { 
   Plus, 
   Filter, 
@@ -15,6 +15,7 @@ import {
   Settings
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { employeeService } from '@/services/newsService';
 
 const HeadcountHeader = ({ 
   // Tab props
@@ -58,7 +59,35 @@ const HeadcountHeader = ({
   darkMode = false
 }) => {
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [accessInfo, setAccessInfo] = useState(null);
   const router = useRouter();
+  
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdminAccess = async () => {
+      try {
+        const response = await employeeService.getEmployees({ page_size: 1 });
+        
+        const canViewAll = response.access_info?.can_view_all || false;
+        const isManager = response.access_info?.is_manager || false;
+        
+        setAccessInfo({
+          canViewAll,
+          isManager
+        });
+        
+        // Only users with can_view_all are considered admins
+        setIsAdmin(canViewAll);
+        
+      } catch (error) {
+        console.error('Failed to check admin access:', error);
+        setIsAdmin(false);
+      }
+    };
+    
+    checkAdminAccess();
+  }, []);
   
   // Theme classes
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
@@ -69,42 +98,47 @@ const HeadcountHeader = ({
   const borderColor = darkMode ? "border-gray-600" : "border-gray-300";
   const hoverBg = darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50";
 
-  // Tab configurations
+  // Tab configurations - Archive only for admins
   const tabs = [
     {
       id: 'employees',
       label: 'Employees',
       icon: Users,
-      // count: statistics.total_employees || 0,
       color: 'almet-sapphire',
       bgColor: 'bg-almet-sapphire/10',
       borderColor: 'border-almet-sapphire/30',
-      textColor: 'text-almet-sapphire'
+      textColor: 'text-almet-sapphire',
+      adminOnly: false
     },
     {
       id: 'vacant',
       label: 'Vacant',
       icon: Briefcase,
-      // count: vacantPositionsStats.total_vacant_positions || 0,
       color: 'orange-600',
       bgColor: 'bg-orange-50 dark:bg-orange-900/20',
       borderColor: 'border-orange-200 dark:border-orange-700',
-      textColor: 'text-orange-700 dark:text-orange-300'
+      textColor: 'text-orange-700 dark:text-orange-300',
+      adminOnly: false
     },
     {
       id: 'archive',
       label: 'Archive',
       icon: Archive,
-      // count: archiveStats.total_archived || 0,
       color: 'gray-600',
       bgColor: 'bg-gray-50 dark:bg-gray-700/20',
       borderColor: 'border-gray-200 dark:border-gray-600',
-      textColor: 'text-gray-700 dark:text-gray-300'
+      textColor: 'text-gray-700 dark:text-gray-300',
+      adminOnly: true // âœ… Only admins can see Archive tab
     }
   ];
 
-  // Get primary action based on active tab
+  // Filter tabs based on admin access
+  const visibleTabs = tabs.filter(tab => !tab.adminOnly || isAdmin);
+
+  // Get primary action based on active tab - Only for admins
   const getPrimaryAction = () => {
+    if (!isAdmin) return null; // âœ… Only admins can add employees
+    
     switch (activeTab) {
       case 'employees':
         return {
@@ -155,24 +189,26 @@ const HeadcountHeader = ({
                   Workforce Management
                 </h1>
                 <p className={`text-xs ${textSecondary} mt-0.5`}>
-                  Manage employees, vacant positions, and archived records
+                  Manage employees, vacant positions{isAdmin ? ', and archived records' : ''}
                 </p>
               </div>
             </div>
 
-            {/* Main Actions - Settings + Export/Import */}
+            {/* Main Actions - Settings + Export/Import (Admin only for Settings and Import) */}
             <div className="flex items-center space-x-2">
-              {/* Settings Button */}
-              <button
-                onClick={() => router.push('/structure/settings')}
-                className={`flex items-center px-3 py-2 text-xs border rounded-lg transition-all ${borderColor} ${textSecondary} ${hoverBg} hover:border-almet-sapphire/50 hover:text-almet-sapphire`}
-                title="Configure system settings"
-              >
-                <Settings size={14} className="mr-2" />
-                Settings
-              </button>
+              {/* Settings Button - âœ… Admin only */}
+              {isAdmin && (
+                <button
+                  onClick={() => router.push('/structure/settings')}
+                  className={`flex items-center px-3 py-2 text-xs border rounded-lg transition-all ${borderColor} ${textSecondary} ${hoverBg} hover:border-almet-sapphire/50 hover:text-almet-sapphire`}
+                  title="Configure system settings"
+                >
+                  <Settings size={14} className="mr-2" />
+                  Settings
+                </button>
+              )}
 
-              {/* Export Button - Only for employees tab */}
+              {/* Export Button - Available to all users */}
               {showEmployeeControls && (
                 <div className="relative">
                   <button
@@ -292,8 +328,8 @@ const HeadcountHeader = ({
                 </div>
               )}
 
-              {/* Import Button - Only for employees tab */}
-              {showEmployeeControls && (
+              {/* Import Button - âœ… Admin only */}
+              {showEmployeeControls && isAdmin && (
                 <button
                   onClick={onBulkImport}
                   className={`flex items-center px-3 py-2 text-xs border rounded-lg transition-all ${borderColor} ${textSecondary} ${hoverBg} hover:border-almet-sapphire/50 hover:text-almet-sapphire`}
@@ -304,7 +340,7 @@ const HeadcountHeader = ({
                 </button>
               )}
 
-              {/* Primary Action */}
+              {/* Primary Action - âœ… Admin only */}
               {primaryAction && (
                 <button
                   onClick={primaryAction.onClick}
@@ -320,7 +356,7 @@ const HeadcountHeader = ({
           {/* Tab Navigation */}
           <div className="flex items-center justify-between">
             <div className="flex space-x-1">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const isActive = tab.id === activeTab;
                 const Icon = tab.icon;
                 
@@ -336,13 +372,6 @@ const HeadcountHeader = ({
                   >
                     <Icon size={14} className="mr-2" />
                     <span>{tab.label}</span>
-                    {/* <span className={`ml-2 px-1.5 py-0.5 rounded text-xs font-semibold ${
-                      isActive
-                        ? `bg-white/20 ${tab.textColor}`
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}>
-                      {tab.count.toLocaleString()}
-                    </span> */}
                   </button>
                 );
               })}
@@ -385,21 +414,23 @@ const HeadcountHeader = ({
                   )}
                 </button>
 
-                {/* Actions Menu */}
-                <button
-                  onClick={onToggleActionMenu}
-                  className={`flex items-center px-2.5 py-1.5 text-xs border rounded-lg transition-all ${
-                    isActionMenuOpen ? 'bg-gray-50 dark:bg-gray-700' : ''
-                  } ${borderColor} ${textSecondary} ${hoverBg}`}
-                >
-                  <MoreVertical size={12} className="mr-1.5" />
-                  Actions
-                  {selectedEmployees.length > 0 && (
-                    <span className="ml-1.5 px-1 py-0.5 bg-almet-sapphire text-white text-xs rounded-full font-medium">
-                      {selectedEmployees.length}
-                    </span>
-                  )}
-                </button>
+                {/* Actions Menu - âœ… Admin only */}
+                {isAdmin && (
+                  <button
+                    onClick={onToggleActionMenu}
+                    className={`flex items-center px-2.5 py-1.5 text-xs border rounded-lg transition-all ${
+                      isActionMenuOpen ? 'bg-gray-50 dark:bg-gray-700' : ''
+                    } ${borderColor} ${textSecondary} ${hoverBg}`}
+                  >
+                    <MoreVertical size={12} className="mr-1.5" />
+                    Actions
+                    {selectedEmployees.length > 0 && (
+                      <span className="ml-1.5 px-1 py-0.5 bg-almet-sapphire text-white text-xs rounded-full font-medium">
+                        {selectedEmployees.length}
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>

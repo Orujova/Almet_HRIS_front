@@ -2,12 +2,7 @@ import { useState } from 'react';
 import { MessageSquare, AlertCircle, ChevronDown, ChevronRight, User, Calendar } from 'lucide-react';
 
 export default function ClarificationComments({ comments, darkMode }) {
-  // ✅ Debug logging
-  console.log('🎨 ClarificationComments Component:', {
-    comments,
-    count: comments?.length,
-    isArray: Array.isArray(comments)
-  });
+  
   
   // ✅ Early return with logging
   if (!comments || comments.length === 0) {

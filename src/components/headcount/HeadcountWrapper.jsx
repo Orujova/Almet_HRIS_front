@@ -1,4 +1,4 @@
-// src/components/headcount/HeadcountWrapper.jsx - IMPROVED DESIGN
+// src/components/headcount/HeadcountWrapper.jsx - UPDATED with Access Control
 "use client";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { 
@@ -13,19 +13,51 @@ import {
   RefreshCw,
   AlertCircle,
   UserCheck,
-  Clock
+  Clock,
+  ShieldOff
 } from 'lucide-react';
 import { useTheme } from "../common/ThemeProvider";
 import { useReferenceData } from "../../hooks/useReferenceData";
 import { useEmployees } from "../../hooks/useEmployees";
+import { useRouter } from "next/navigation";
 import HeadcountTable from "./HeadcountTable";
-
+import HeadcountAccessControl from "@/components/headcount/HeadcountAccessControl";
+const findEmployeeIdByEmail = async (userEmail) => {
+  try {
+    const { employeeService } = await import('@/services/newsService');
+    const response = await employeeService.getEmployees({ 
+      search: userEmail,
+      page_size: 10 
+    });
+    
+    const employees = response.results || response.data?.results || response.data || [];
+    
+    const matchedEmployee = employees.find(emp => 
+      emp.email?.toLowerCase() === userEmail.toLowerCase() ||
+      emp.user_email?.toLowerCase() === userEmail.toLowerCase() ||
+      emp.work_email?.toLowerCase() === userEmail.toLowerCase()
+    );
+    
+    if (matchedEmployee) {
+      const employeeId = matchedEmployee.id || matchedEmployee.employee_id;
+      localStorage.setItem('employee_id', employeeId);
+      return employeeId;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding employee by email:', error);
+    return null;
+  }
+};
 const HeadcountWrapper = () => {
   const { darkMode } = useTheme();
+  const router = useRouter();
   const [selectedView, setSelectedView] = useState('dashboard');
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
-
+  const [accessDenied, setAccessDenied] = useState(false);
+const [currentUserEmployeeId, setCurrentUserEmployeeId] = useState(null);
   const { businessFunctions, loading: refLoading } = useReferenceData();
   const { statistics, fetchStatistics, loading } = useEmployees();
 
@@ -33,7 +65,7 @@ const HeadcountWrapper = () => {
     fetchStatistics();
   }, [fetchStatistics]);
 
-  // Check if loading properly - ONLY check critical loaders
+  // Check if loading properly
   const isRefDataLoading = useMemo(() => {
     if (typeof refLoading === 'object') {
       return refLoading.businessFunctions === true;
@@ -57,7 +89,7 @@ const HeadcountWrapper = () => {
            businessFunctions.length > 0;
   }, [businessFunctions]);
 
-  // Helper function to generate colors based on index (fallback)
+  // Helper function to generate colors based on index
   const generateColorForIndex = useCallback((index) => {
     const colors = [
       '#30539b', '#336fa5', '#4e7db5', '#38587d', '#253360',
@@ -66,7 +98,8 @@ const HeadcountWrapper = () => {
     return colors[index % colors.length];
   }, []);
 
-  // Transform Companys into company cards with statistics
+  // Transform Companies into company cards with statistics
+  // Transform Companies into company cards with statistics
   const companyCards = useMemo(() => {
     if (!businessFunctions || businessFunctions.length === 0) return [];
     
@@ -74,9 +107,12 @@ const HeadcountWrapper = () => {
       .filter(bf => bf.is_active)
       .map((bf, index) => {
         const bfStats = statistics?.by_business_function?.[bf.name] || {};
-        
-        // Use color from backend if available, otherwise generate one
         const color = bf.color || generateColorForIndex(index);
+        console.log(statistics)
+        // Get vacant positions for this business function
+        const vacantCount = statistics?.vacant_positions_by_business_function?.[bf.name] || 
+                           bfStats.vacant_positions || 
+                           0;
         
         return {
           code: bf.code,
@@ -85,9 +121,9 @@ const HeadcountWrapper = () => {
           color: color,
           totalEmployees: bfStats.count || bf.employee_count || 0,
           activeEmployees: bfStats.active || 0,
-          vacantPositions: 0,
+          vacantPositions: vacantCount,
           departments: 0,
-          recentHires: 0
+          recentHires: bfStats.recent_hires || 0
         };
       })
       .sort((a, b) => b.totalEmployees - a.totalEmployees);
@@ -105,22 +141,72 @@ const HeadcountWrapper = () => {
     };
   }, [companyCards, statistics]);
 
+   useEffect(() => {
+    const getUserEmployeeId = async () => {
+      try {
+        // Try localStorage first
+        let employeeId = localStorage.getItem('employee_id') ||
+                        localStorage.getItem('user_employee_id');
+        
+        // If not found, try to find by email
+        if (!employeeId) {
+          const userEmail = localStorage.getItem('user_email') || 
+                           localStorage.getItem('email');
+          
+          if (userEmail) {
+            console.log('ðŸ” Finding employee ID by email:', userEmail);
+            employeeId = await findEmployeeIdByEmail(userEmail);
+          }
+        }
+        
+        if (employeeId) {
+          console.log('âœ… Current user employee ID:', employeeId);
+          setCurrentUserEmployeeId(employeeId);
+        }
+      } catch (error) {
+        console.error('Failed to get user employee ID:', error);
+      }
+    };
+    
+    getUserEmployeeId();
+  }, []);
+
+  const handleGoToProfile = useCallback(() => {
+    if (currentUserEmployeeId) {
+      console.log('ðŸ”— Redirecting to profile:', `/structure/employee/${currentUserEmployeeId}/`);
+      router.push(`/structure/employee/${currentUserEmployeeId}/`);
+    } else {
+      console.warn('âš ï¸ No employee ID found, redirecting to generic profile');
+      router.push('/structure/profile');
+    }
+  }, [currentUserEmployeeId, router]);
+  
   const handleCompanySelect = useCallback((company) => {
-    setSelectedCompany(company);
-    setSelectedView('company');
+    // Check if company has employees
+    if (company.totalEmployees === 0) {
+      setAccessDenied(true);
+      setSelectedCompany(company);
+      setSelectedView('no-access');
+    } else {
+      setAccessDenied(false);
+      setSelectedCompany(company);
+      setSelectedView('company');
+    }
   }, []);
 
   const handleBackToDashboard = useCallback(() => {
     setSelectedView('dashboard');
     setSelectedCompany(null);
+    setAccessDenied(false);
   }, []);
 
   const handleViewAll = useCallback(() => {
     setSelectedView('all');
     setSelectedCompany(null);
+    setAccessDenied(false);
   }, []);
 
-  // Improved Theme classes with softer colors
+  // Theme classes
   const bgPrimary = darkMode ? "bg-gray-900" : "bg-gray-50";
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const bgCardHover = darkMode ? "bg-gray-750" : "bg-gray-50";
@@ -130,20 +216,15 @@ const HeadcountWrapper = () => {
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const hoverBorder = darkMode ? "hover:border-gray-600" : "hover:border-gray-300";
 
-  // Company Card Component - Refined Design
+  // Company Card Component
   const CompanyCard = ({ company, onClick }) => (
     <div
       onClick={() => onClick(company)}
       className={`group relative ${bgCard} rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden border ${borderColor} ${hoverBorder}`}
     >
-      {/* Subtle top accent */}
-      <div 
-        className="h-1 w-full" 
-        style={{ backgroundColor: company.color }}
-      />
+      <div className="h-1 w-full" style={{ backgroundColor: company.color }} />
       
       <div className="p-5">
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div 
@@ -167,39 +248,32 @@ const HeadcountWrapper = () => {
           />
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className={`${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-lg p-3`}>
             <div className="flex items-center justify-between mb-1">
               <Users size={14} className={textMuted} />
               <div className="flex justify-center items-center gap-1">
                 <p className={`text-sm font-bold ${textPrimary}`}>
-              {company.totalEmployees}
-            </p>    <span className={`text-xs ${textMuted}`}>Total</span>
+                  {company.totalEmployees}
+                </p>
+                <span className={`text-xs ${textMuted}`}>Total</span>
               </div>
-          
             </div>
-            
-      
           </div>
           
           <div className={`${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'} rounded-lg p-3`}>
             <div className="flex items-center justify-between mb-1">
               <Briefcase size={14} className={textMuted} />
- 
               <div className="flex justify-center items-center gap-1">
-                 <p className={`text-sm font-bold ${textPrimary}`}>
-              {company.vacantPositions}
-            </p><span className={`text-xs ${textMuted}`}>Vacant</span>
+                <p className={`text-sm font-bold ${textPrimary}`}>
+                  {company.vacantPositions}
+                </p>
+                <span className={`text-xs ${textMuted}`}>Vacant</span>
               </div>
-              
             </div>
-           
-      
           </div>
         </div>
 
-        {/* Recent Hires Badge */}
         {company.recentHires > 0 && (
           <div className={`mt-3 pt-3 border-t ${borderColor}`}>
             <div className="flex items-center text-xs">
@@ -214,7 +288,7 @@ const HeadcountWrapper = () => {
     </div>
   );
 
-  // All Companies Card - Refined Design
+  // All Companies Card
   const AllCompaniesCard = ({ onClick }) => (
     <div
       onClick={onClick}
@@ -223,7 +297,6 @@ const HeadcountWrapper = () => {
       <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
       
       <div className="p-5 relative">
-        {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center">
@@ -244,20 +317,17 @@ const HeadcountWrapper = () => {
           />
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/10">
             <div className="flex items-center justify-between mb-1">
               <Users size={14} className="text-blue-100/80" />
               <div className="flex justify-center items-center gap-1">
                 <p className="text-sm font-bold text-white">
-              {totals.totalEmployees}
-            </p>
-              <span className="text-xs text-blue-100/80">Total</span>
+                  {totals.totalEmployees}
+                </p>
+                <span className="text-xs text-blue-100/80">Total</span>
               </div>
             </div>
-            
-         
           </div>
           
           <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/10">
@@ -265,20 +335,135 @@ const HeadcountWrapper = () => {
               <Building2 size={14} className="text-blue-100/80" />
               <div className="flex justify-center items-center gap-1">
                 <p className="text-sm font-bold text-white">
-              {totals.totalCompanies}
-            </p> <span className="text-xs text-blue-100/80">Companies</span>
+                  {totals.totalCompanies}
+                </p>
+                <span className="text-xs text-blue-100/80">Companies</span>
               </div>
-             
             </div>
-            
-       
           </div>
         </div>
       </div>
     </div>
   );
 
-  // Show loading only if we don't have required data AND still loading
+  // No Access View - Clean design matching HeadcountAccessControl
+  if (selectedView === 'no-access' && selectedCompany) {
+    return (
+      <div className={`min-h-screen  p-6`}>
+        <div className=" mx-auto">
+          {/* Back Button */}
+          <div className="mb-6">
+            <button
+              onClick={handleBackToDashboard}
+              className={`flex items-center space-x-2 text-sm ${textSecondary} hover:${textPrimary} transition-colors group`}
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to Dashboard</span>
+            </button>
+          </div>
+
+          {/* Access Denied Card */}
+          <div className={`${bgCard} rounded-lg shadow-lg border ${borderColor} p-8`}>
+            {/* Icon */}
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/20 rounded-full flex items-center justify-center">
+                <ShieldOff className="w-8 h-8 text-orange-500" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <h1 className={`${textPrimary} text-2xl font-bold text-center mb-3`}>
+              No Access to Company
+            </h1>
+            
+            <p className={`${textSecondary} text-center mb-8`}>
+              You don't have permission to view employees for this company
+            </p>
+
+            {/* Company Info Box */}
+            <div 
+              className="rounded-lg p-5 mb-6 border"
+              style={{ 
+                backgroundColor: `${selectedCompany.color}10`,
+                borderColor: selectedCompany.color 
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div 
+                  className="w-12 h-12 rounded-lg flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: selectedCompany.color }}
+                >
+                  {selectedCompany.code}
+                </div>
+                <div>
+                  <p className={`${textPrimary} font-semibold`}>
+                    {selectedCompany.name}
+                  </p>
+                  <p className={`${textSecondary} text-sm`}>
+                    {selectedCompany.code}
+                  </p>
+                </div>
+              </div>
+              
+              <div className={`${darkMode ? 'bg-gray-700/30' : 'bg-white'} rounded-lg p-3`}>
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className={`${textPrimary} font-medium mb-2`}>
+                      Access Restriction
+                    </p>
+                    <p className={`${textSecondary} text-sm mb-3`}>
+                      You can only access companies where you have employees or manage teams.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+                        <span className={`${textSecondary} text-sm`}>
+                          This company has {selectedCompany.totalEmployees} employees, but none are assigned to you
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 bg-orange-500 rounded-full" />
+                        <span className={`${textSecondary} text-sm`}>
+                          Contact your HR administrator if you need access
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-3">
+            <button
+              onClick={handleBackToDashboard}
+              className="w-full bg-almet-sapphire hover:bg-almet-astral text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 group"
+            >
+              <Building2 className="w-5 h-5" />
+              <span>Back to Companies</span>
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            <button
+              onClick={handleGoToProfile}
+              className={`w-full ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} ${textPrimary} px-6 py-3 rounded-lg font-medium transition-colors duration-200`}
+            >
+              Go to My Profile
+            </button>
+          </div>
+
+            {/* Help Text */}
+            <p className={`text-center ${textSecondary} text-xs mt-6`}>
+              If you believe this is an error, please contact your HR administrator
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading
   if (!hasRequiredData && isRefDataLoading) {
     return (
       <div className={`min-h-screen ${bgPrimary} flex items-center justify-center`}>
@@ -290,15 +475,15 @@ const HeadcountWrapper = () => {
     );
   }
 
-  // If no data after loading completes
+  // No data
   if (!hasRequiredData) {
     return (
       <div className={`min-h-screen ${bgPrimary} flex items-center justify-center p-6`}>
-        <div className={`${bgCard} rounded-xl p-8 border ${borderColor} text-center `}>
+        <div className={`${bgCard} rounded-xl p-8 border ${borderColor} text-center`}>
           <AlertCircle className={`w-12 h-12 ${textMuted} mx-auto mb-4`} />
           <h2 className={`text-lg font-semibold ${textPrimary} mb-2`}>No Companies Found</h2>
           <p className={`text-sm ${textSecondary} mb-4`}>
-            No Companys are configured yet.
+            No Companies are configured yet.
           </p>
           <button
             onClick={() => window.location.href = '/structure/settings'}
@@ -314,8 +499,8 @@ const HeadcountWrapper = () => {
   // Dashboard View
   if (selectedView === 'dashboard') {
     return (
-      <div className={`min-h-screen  p-5`}>
-        <div className=" mx-auto">
+      <div className={`min-h-screen p-5`}>
+        <div className="mx-auto">
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between">
@@ -337,7 +522,6 @@ const HeadcountWrapper = () => {
                       ? 'bg-almet-sapphire/10 text-almet-sapphire' 
                       : `${textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
                   }`}
-                  title="Grid view"
                 >
                   <Grid3x3 size={16} />
                 </button>
@@ -348,7 +532,6 @@ const HeadcountWrapper = () => {
                       ? 'bg-almet-sapphire/10 text-almet-sapphire' 
                       : `${textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
                   }`}
-                  title="List view"
                 >
                   <List size={16} />
                 </button>
@@ -357,65 +540,49 @@ const HeadcountWrapper = () => {
           </div>
 
           {/* Summary Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
             <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex gap-4 justify-center items-center">
-                       <p className={`text-2xl font-bold ${textPrimary}`}>
-                {totals.totalCompanies}
-              </p><p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
-                  Companies
-                </p>
+                  <p className={`text-2xl font-bold ${textPrimary}`}>
+                    {totals.totalCompanies}
+                  </p>
+                  <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
+                    Companies
+                  </p>
                 </div>
-                
                 <Building2 size={16} className={textMuted} />
               </div>
-           
             </div>
             
             <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex gap-4 justify-center items-center"><p className={`text-2xl font-bold ${textPrimary}`}>
-                {totals.totalEmployees}
-              </p>
-                    <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
-                  Total Employees
-                </p>
+                <div className="flex gap-4 justify-center items-center">
+                  <p className={`text-2xl font-bold ${textPrimary}`}>
+                    {totals.totalEmployees}
+                  </p>
+                  <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
+                    Total Employees
+                  </p>
                 </div>
-                
                 <Users size={16} className={textMuted} />
               </div>
-              
             </div>
+            
+          
             
             <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex gap-4 justify-center items-center"><p className="text-2xl font-bold text-green-600">
-                {totals.activeEmployees}
-              </p>
-                   <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
-                  Active
-                </p>   
+                <div className="flex gap-4 justify-center items-center">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {totals.recentHires}
+                  </p>
+                  <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
+                    Recent Hires
+                  </p>
                 </div>
-              
-                <UserCheck size={16} className="text-green-500" />
-              </div>
-              
-            </div>
-            
-            <div className={`${bgCard} rounded-lg p-3 border ${borderColor}`}>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex gap-4 justify-center items-center"> <p className="text-2xl font-bold text-blue-600">
-                {totals.recentHires}
-              </p>
-                 <p className={`text-xs font-medium ${textMuted} uppercase tracking-wide`}>
-                  Recent Hires
-                </p>    
-                </div>
-               
                 <Clock size={16} className="text-blue-500" />
               </div>
-             
               <p className={`text-xs ${textMuted} mt-1`}>Last 30 days</p>
             </div>
           </div>
@@ -426,7 +593,7 @@ const HeadcountWrapper = () => {
               ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
               : 'grid-cols-1'
           } gap-4`}>
-            <AllCompaniesCard key="all-companies" onClick={handleViewAll} />
+            <AllCompaniesCard onClick={handleViewAll} />
             {companyCards.map((company) => (
               <CompanyCard
                 key={`company-${company.id}-${company.code}`}
@@ -435,72 +602,61 @@ const HeadcountWrapper = () => {
               />
             ))}
           </div>
-
-          {/* Empty State */}
-          {companyCards.length === 0 && (
-            <div className={`${bgCard} rounded-xl p-8 border ${borderColor} text-center mt-6`}>
-              <AlertCircle className={`w-10 h-10 ${textMuted} mx-auto mb-3`} />
-              <p className={`text-sm ${textSecondary} mb-2`}>No companies found</p>
-              <p className={`text-xs ${textMuted}`}>
-                Add Companys in settings to get started
-              </p>
-            </div>
-          )}
         </div>
       </div>
     );
   }
 
-  // All Companies View or Company-Specific View
+  // Company View or All View
   return (
-    <div className={`min-h-screen  `}>
-      <div className="mx-auto">
-        {/* Back Button */}
-        <div className="mb-2">
-          <button
-            onClick={handleBackToDashboard}
-            className={`flex items-center space-x-2 text-sm ${textSecondary} hover:${textPrimary} transition-colors group`}
-          >
-            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back to Dashboard</span>
-          </button>
-        </div>
+    <HeadcountAccessControl>
+      <div className={`min-h-screen`}>
+        <div className="mx-auto">
+          {/* Back Button */}
+          <div className="mb-2">
+            <button
+              onClick={handleBackToDashboard}
+              className={`flex items-center space-x-2 text-sm ${textSecondary} hover:${textPrimary} transition-colors group`}
+            >
+              <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+              <span>Back to Dashboard</span>
+            </button>
+          </div>
 
-        {/* Company Header Banner */}
-        {selectedView === 'company' && selectedCompany && (
-          <div 
-            className="rounded-xl p-3 mb-3 text-white relative overflow-hidden"
-            style={{ backgroundColor: selectedCompany.color }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
-            <div className="relative">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center font-bold text-lg">
-                    {selectedCompany.code}
-                  </div>
-                  <div>
-                    <h1 className="text-base font-bold mb-0.5">
-                      {selectedCompany.name}
-                    </h1>
-                    <p className="text-white/80 text-sm">
-                      {selectedCompany.code} • {selectedCompany.totalEmployees} employees
-                    </p>
+          {/* Company Header Banner */}
+          {selectedView === 'company' && selectedCompany && (
+            <div 
+              className="rounded-xl p-3 mb-3 text-white relative overflow-hidden"
+              style={{ backgroundColor: selectedCompany.color }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent" />
+              <div className="relative">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-10 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center font-bold text-lg">
+                      {selectedCompany.code}
+                    </div>
+                    <div>
+                      <h1 className="text-base font-bold mb-0.5">
+                        {selectedCompany.name}
+                      </h1>
+                      <p className="text-white/80 text-sm">
+                        {selectedCompany.code} {selectedCompany.totalEmployees} employees
+                      </p>
+                    </div>
                   </div>
                 </div>
-                
-             
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Table Component */}
-        <HeadcountTable 
-          businessFunctionFilter={selectedView === 'company' ? selectedCompany?.code : null} 
-        />
+          {/* Table Component */}
+          <HeadcountTable 
+            businessFunctionFilter={selectedView === 'company' ? selectedCompany?.code : null} 
+          />
+        </div>
       </div>
-    </div>
+    </HeadcountAccessControl>
   );
 };
 

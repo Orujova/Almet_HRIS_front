@@ -484,7 +484,15 @@ export const employeeService = {
       throw error.response?.data || error;
     }
   },
-
+getMyProfile: async () => {
+    try {
+      const response = await api.get('/employees/get_my_profile/');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to get my profile:', error);
+      throw error;
+    }
+  },
   // Get single employee
   getEmployee: async (id) => {
     try {

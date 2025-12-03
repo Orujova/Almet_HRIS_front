@@ -23,16 +23,23 @@ export default function DevelopmentNeeds({
   };
 
   const handleUpdate = (index, field, value) => {
-    onUpdate(index, field, value);
-    
-    const updatedNeeds = [...developmentNeeds];
-    updatedNeeds[index] = {
-      ...updatedNeeds[index],
-      [field]: value
-    };
-    checkForChanges(updatedNeeds);
+  // ✅ Save scroll position
+  const scrollY = window.scrollY;
+  
+  onUpdate(index, field, value);
+  
+  // ✅ Restore scroll after update
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollY);
+  });
+  
+  const updatedNeeds = [...developmentNeeds];
+  updatedNeeds[index] = {
+    ...updatedNeeds[index],
+    [field]: value
   };
-
+  checkForChanges(updatedNeeds);
+};
   const handleAdd = () => {
     onAdd();
     setHasChanges(true);
@@ -299,21 +306,10 @@ export default function DevelopmentNeeds({
             </span>
           </div>
           
-          <button
-            onClick={handleSaveDraft}
-            disabled={loading}
-            className={`h-10 px-4 rounded-xl text-sm font-medium flex items-center gap-2 transition-all ${
-              darkMode 
-                ? 'bg-almet-comet/50 hover:bg-almet-comet text-white' 
-                : 'bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst'
-            } disabled:opacity-40`}
-          >
-            {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save Draft
-          </button>
+         
           
           <button
-            onClick={handleSubmit}
+            oonClick={handleSaveDraft}
             disabled={loading}
             className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-40 transition-all shadow-sm"
           >

@@ -52,7 +52,7 @@ const EmployeeNode = React.memo(({ data, id }) => {
         employee.vacant === true
     );
     
-    console.log('🎨 Rendering employee node:', employee.name, 'isVacant:', isVacant);
+
     
     // IMPROVED: More reliable click handler with stopPropagation at top level
     const handleToggleExpanded = useCallback((e) => {
