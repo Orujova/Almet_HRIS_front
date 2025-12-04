@@ -67,7 +67,25 @@ const JobDescriptionPageContent = () => {
   const [selectedBehavioralGroup, setSelectedBehavioralGroup] = useState('');
   const [availableSkills, setAvailableSkills] = useState([]);
   const [availableCompetencies, setAvailableCompetencies] = useState([]);
-  
+  const [userAccess, setUserAccess] = useState(null);
+const [accessLoading, setAccessLoading] = useState(true);
+
+// Add useEffect to fetch access info
+useEffect(() => {
+  fetchUserAccess();
+}, []);
+
+const fetchUserAccess = async () => {
+  try {
+    setAccessLoading(true);
+    const accessInfo = await jobDescriptionService.getMyAccessInfo();
+    setUserAccess(accessInfo);
+  } catch (error) {
+    console.error('Error fetching user access:', error);
+  } finally {
+    setAccessLoading(false);
+  }
+};
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: 'default',
@@ -402,14 +420,29 @@ const JobDescriptionPageContent = () => {
   };
 
   // 🔥 NEW: Handle business function selection
-  const handleBusinessFunctionClick = (group) => {
-    setSelectedBusinessFunction(group);
-    setViewMode('details');
-    setSearchTerm('');
-    setSelectedDepartment('');
-    setSelectedStatus('');
-    setCurrentPage(1);
-  };
+  const handleBusinessFunctionClick = async (group) => {
+  // Check if user has access to any jobs in this group
+  try {
+    const response = await jobDescriptionService.getJobDescriptions({ 
+      business_function: group.name,
+      page_size: 1 
+    });
+    
+    if (response.results && response.results.length > 0) {
+      setSelectedBusinessFunction(group);
+      setViewMode('details');
+      setSearchTerm('');
+      setSelectedDepartment('');
+      setSelectedStatus('');
+      setCurrentPage(1);
+    } else {
+      // No access
+      showWarning(`You don't have access to job descriptions in ${group.name}`);
+    }
+  } catch (error) {
+    showError('Error checking access');
+  }
+};
 
   // 🔥 NEW: Back to overview
   const handleBackToOverview = () => {
@@ -927,29 +960,31 @@ const JobDescriptionPageContent = () => {
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3 min-w-fit">
-                {viewMode === 'overview' && (
-                  <button
-                    onClick={handleCreateNewJob}
-                    className="flex items-center justify-center gap-2 px-5 py-3 bg-almet-sapphire hover:bg-almet-astral 
-                      text-white rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-                  >
-                    <Plus size={16} />
-                    <span>Create New</span>
-                  </button>
-                )}
-                <button
-                  onClick={() => router.push('/structure/job-descriptions/JobDescriptionSettings/')}
-                  className={`flex items-center justify-center gap-2 px-5 py-3 
-                    ${darkMode 
-                      ? 'bg-almet-comet hover:bg-almet-san-juan border-almet-san-juan/50 text-almet-bali-hai hover:text-white' 
-                      : 'bg-white hover:bg-almet-mystic border-gray-200 text-almet-waterloo hover:text-almet-cloud-burst'
-                    } 
-                    border rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md`}
-                >
-                  <Settings size={16} />
-                  <span className="hidden sm:inline">Settings</span>
-                </button>
-              </div>
+  {viewMode === 'overview' && userAccess?.is_admin && (
+    <button
+      onClick={handleCreateNewJob}
+      className="flex items-center justify-center gap-2 px-5 py-3 bg-almet-sapphire hover:bg-almet-astral 
+        text-white rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+    >
+      <Plus size={16} />
+      <span>Create New</span>
+    </button>
+  )}
+  {userAccess?.is_admin && (
+    <button
+      onClick={() => router.push('/structure/job-descriptions/JobDescriptionSettings/')}
+      className={`flex items-center justify-center gap-2 px-5 py-3 
+        ${darkMode 
+          ? 'bg-almet-comet hover:bg-almet-san-juan border-almet-san-juan/50 text-almet-bali-hai hover:text-white' 
+          : 'bg-white hover:bg-almet-mystic border-gray-200 text-almet-waterloo hover:text-almet-cloud-burst'
+        } 
+        border rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md`}
+    >
+      <Settings size={16} />
+      <span className="hidden sm:inline">Settings</span>
+    </button>
+  )}
+</div>
             </div>
 
             {/* Stats Cards - Only show in overview */}
@@ -1080,7 +1115,29 @@ const JobDescriptionPageContent = () => {
             {/* 🔥 DETAILS MODE - Filtered Job List */}
             {viewMode === 'details' && selectedBusinessFunction && (
               <div className="space-y-6">
-                
+                {userAccess && !userAccess.is_admin && (
+      <div className={`${bgCard} rounded-xl p-4 border ${borderColor} shadow-sm`}>
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0">
+            {userAccess.is_manager ? (
+              <Users className="text-blue-600" size={20} />
+            ) : (
+              <User className="text-gray-600" size={20} />
+            )}
+          </div>
+          <div className="flex-1">
+            <h4 className={`text-sm font-semibold ${textPrimary} mb-1`}>
+              {userAccess.access_level}
+            </h4>
+            <p className={`text-xs ${textMuted}`}>
+              {userAccess.is_manager 
+                ? `You can view ${userAccess.accessible_count} job description(s) for your team members` 
+                : 'You can only view your own job description'}
+            </p>
+          </div>
+        </div>
+      </div>
+    )}
                 {/* Filter Panel */}
                 <div className={`${bgCard} rounded-xl p-6 border ${borderColor} shadow-sm`}>
                   <div className="flex items-center gap-2 mb-4">

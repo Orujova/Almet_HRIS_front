@@ -259,7 +259,15 @@ class JobDescriptionService {
       throw error;
     }
   }
-
+async getMyAccessInfo() {
+  try {
+    const response = await api.get('/job-descriptions/my_access_info/');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching access info:', error);
+    throw error;
+  }
+}
   async previewEligibleEmployees(criteria) {
     try {
       if (!criteria.job_title || !criteria.business_function || !criteria.department || 

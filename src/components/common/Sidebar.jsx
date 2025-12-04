@@ -30,6 +30,7 @@ const Sidebar = ({ collapsed = false }) => {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(null);
   const [hoveredItem, setHoveredItem] = useState(null);
+  const [userRole, setUserRole] = useState(null); // 'admin', 'manager', 'employee'
 
   useEffect(() => {
     const storedEmployeeId = localStorage.getItem('employee_id');
@@ -38,6 +39,9 @@ const Sidebar = ({ collapsed = false }) => {
     } else {
       fetchEmployeeId();
     }
+    
+    // Fetch user role
+    fetchUserRole();
   }, []);
 
   const fetchEmployeeId = async () => {
@@ -57,6 +61,31 @@ const Sidebar = ({ collapsed = false }) => {
     }
   };
 
+  const fetchUserRole = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/job-descriptions/my_access_info/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.is_admin) {
+          setUserRole('admin');
+        } else if (data.is_manager) {
+          setUserRole('manager');
+        } else {
+          setUserRole('employee');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole('employee'); // Default to employee
+    }
+  };
+
   const handleProfileClick = (e) => {
     e.preventDefault();
     
@@ -72,149 +101,166 @@ const Sidebar = ({ collapsed = false }) => {
     }
   };
 
-  const menuItems = [
-    { 
-      type: "section", 
-      label: "PERSONAL"
-    },
-    {
-      label: "My Profile",
-      icon: <User className="w-4 h-4" />,
-      path: "/dashboard",
-      id: "dashboard",
-      isProfile: true
-    },
-    { 
-      type: "section", 
-      label: "STRUCTURE"
-    }, 
-    {
-      label: "Org Structure",
-      icon: <Building2 className="w-4 h-4" />,
-      path: "/structure/org-structure",
-      id: "org-structure"
-    },
-    {
-      label: "Headcount table",
-      icon: <UsersRound className="w-4 h-4" />,
-      path: "/structure/headcount-table",
-      id: "headcount-table"
-    },
-    {
-      label: "Job Descriptions",
-      icon: <FileText className="w-4 h-4" />,
-      path: "/structure/job-descriptions",
-      id: "job-descriptions"
-    },
-    {
-      label: "Comp Matrix",
-      icon: <BarChart2 className="w-4 h-4" />,
-      path: "/structure/comp-matrix",
-      id: "comp-matrix"
-    },
-    {
-      label: "Job Catalog",
-      icon: <FileText className="w-4 h-4" />,
-      path: "/structure/job-catalog",
-      id: "job-catalog"
-    },
-    {
-      label: "Grading",
-      icon: <GraduationCap className="w-4 h-4" />,
-      path: "/structure/grading",
-      id: "grading"
-    },
-    { 
-      type: "section", 
-      label: "EFFICIENCY"
-    },
-    {
-      label: "Performance mng",
-      icon: <Activity className="w-4 h-4" />,
-      path: "/efficiency/performance-mng",
-      id: "performance-mng"
-    },
-    { 
-      type: "section", 
-      label: "Training"
-    },
-    {
-      label: " Training",
-      icon: <BookOpenCheck className="w-4 h-4" />,
-      path: "/training",
-      id: "training"
-    },
-    { 
-      type: "section", 
-      label: "E-REQUESTS"
-    },
-    {
-      label: "Vacation",
-      icon: <CalendarDays className="w-4 h-4" />,
-      path: "/requests/vacation",
-      id: "vacation"
-    },
-    {
-      label: "Handover/Takeover",
-      icon: <RefreshCw className="w-4 h-4" />,
-      path: "/requests/handover-takeover",
-      id: "handover-takeover"
-    },
-    {
-      label: "Business Trip",
-      icon: <Plane className="w-4 h-4" />,
-      path: "/requests/business-trip",
-      id: "business-trip"
-    },
-    {
-      label: "Time Off",
-      icon: <TicketsPlane className="w-4 h-4" />,
-      path: "/requests/time-off",
-      id: "time-off"
-    },
-    { 
-      type: "section", 
-      label: "COMMUNICATION"
-    },
-    {
-      label: "Company News",
-      icon: <Newspaper className="w-4 h-4" />,
-      path: "/communication/company-news",
-      id: "company-news"
-    },
-    {
-      label: "Celebrations",
-      icon: <Gift className="w-4 h-4" />,
-      path: "/communication/celebrations",
-      id: "celebrations"
-    }, 
-    { 
-      type: "section", 
-      label: "COMPANY POLICIES"
-    },
-    {
-      label: "Policies",
-      icon: <ScrollText className="w-4 h-4" />,
-      path: "/company-policies",
-      id: "policies"
-    }, 
-    { 
-      type: "section", 
-      label: "SETTINGS"
-    },
-    {
-      label: "Asset Management",
-      icon: <Package className="w-4 h-4" />,
-      path: "/settings/asset-mng",
-      id: "asset-mng"
-    },
-    {
-      label: "Role Mng",
-      icon: <UserCog className="w-4 h-4" />,
-      path: "/settings/role-mng",
-      id: "role-mng"
-    }
-  ];
+  // 🔥 Filter menu items based on role
+  const getFilteredMenuItems = () => {
+    const allMenuItems = [
+      { 
+        type: "section", 
+        label: "PERSONAL"
+      },
+      {
+        label: "My Profile",
+        icon: <User className="w-4 h-4" />,
+        path: "/dashboard",
+        id: "dashboard",
+        isProfile: true
+      },
+      { 
+        type: "section", 
+        label: "STRUCTURE"
+      }, 
+      {
+        label: "Org Structure",
+        icon: <Building2 className="w-4 h-4" />,
+        path: "/structure/org-structure",
+        id: "org-structure"
+      },
+      {
+        label: "Headcount table",
+        icon: <UsersRound className="w-4 h-4" />,
+        path: "/structure/headcount-table",
+        id: "headcount-table",
+        requiredRole: ['admin', 'manager'] // 🔥 Only admin and manager
+      },
+      {
+        label: "Job Descriptions",
+        icon: <FileText className="w-4 h-4" />,
+        path: "/structure/job-descriptions",
+        id: "job-descriptions"
+        // Available to all
+      },
+      {
+        label: "Comp Matrix",
+        icon: <BarChart2 className="w-4 h-4" />,
+        path: "/structure/comp-matrix",
+        id: "comp-matrix",
+       
+      },
+      {
+        label: "Job Catalog",
+        icon: <FileText className="w-4 h-4" />,
+        path: "/structure/job-catalog",
+        id: "job-catalog",
+        requiredRole: ['admin'] // 🔥 Only admin
+      },
+      {
+        label: "Grading",
+        icon: <GraduationCap className="w-4 h-4" />,
+        path: "/structure/grading",
+        id: "grading",
+        requiredRole: ['admin'] // 🔥 Only admin
+      },
+      { 
+        type: "section", 
+        label: "EFFICIENCY"
+      },
+      {
+        label: "Performance mng",
+        icon: <Activity className="w-4 h-4" />,
+        path: "/efficiency/performance-mng",
+        id: "performance-mng"
+      },
+      { 
+        type: "section", 
+        label: "Training"
+      },
+      {
+        label: " Training",
+        icon: <BookOpenCheck className="w-4 h-4" />,
+        path: "/training",
+        id: "training"
+      },
+      { 
+        type: "section", 
+        label: "E-REQUESTS"
+      },
+      {
+        label: "Vacation",
+        icon: <CalendarDays className="w-4 h-4" />,
+        path: "/requests/vacation",
+        id: "vacation"
+      },
+      {
+        label: "Handover/Takeover",
+        icon: <RefreshCw className="w-4 h-4" />,
+        path: "/requests/handover-takeover",
+        id: "handover-takeover"
+      },
+      {
+        label: "Business Trip",
+        icon: <Plane className="w-4 h-4" />,
+        path: "/requests/business-trip",
+        id: "business-trip"
+      },
+      {
+        label: "Time Off",
+        icon: <TicketsPlane className="w-4 h-4" />,
+        path: "/requests/time-off",
+        id: "time-off"
+      },
+      { 
+        type: "section", 
+        label: "COMMUNICATION"
+      },
+      {
+        label: "Company News",
+        icon: <Newspaper className="w-4 h-4" />,
+        path: "/communication/company-news",
+        id: "company-news"
+      },
+      {
+        label: "Celebrations",
+        icon: <Gift className="w-4 h-4" />,
+        path: "/communication/celebrations",
+        id: "celebrations"
+      }, 
+      { 
+        type: "section", 
+        label: "COMPANY POLICIES"
+      },
+      {
+        label: "Policies",
+        icon: <ScrollText className="w-4 h-4" />,
+        path: "/company-policies",
+        id: "policies"
+      }, 
+      { 
+        type: "section", 
+        label: "SETTINGS"
+      },
+      {
+        label: "Asset Management",
+        icon: <Package className="w-4 h-4" />,
+        path: "/settings/asset-mng",
+        id: "asset-mng"
+      },
+      {
+        label: "Role Mng",
+        icon: <UserCog className="w-4 h-4" />,
+        path: "/settings/role-mng",
+        id: "role-mng"
+      }
+    ];
+
+    // 🔥 Filter based on role
+    return allMenuItems.filter(item => {
+      if (item.type === "section") return true;
+      if (!item.requiredRole) return true;
+      return item.requiredRole.includes(userRole);
+    });
+  };
+
+  const menuItems = getFilteredMenuItems();
 
   return (
     <div className="h-full bg-white dark:bg-almet-cloud-burst border-r border-gray-200 dark:border-almet-comet flex flex-col w-full">
