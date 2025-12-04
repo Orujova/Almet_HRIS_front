@@ -137,13 +137,14 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <FileText className="w-4 h-4" />,
         path: "/structure/job-descriptions",
         id: "job-descriptions"
-        // Available to all
+       
       },
       {
         label: "Comp Matrix",
         icon: <BarChart2 className="w-4 h-4" />,
         path: "/structure/comp-matrix",
         id: "comp-matrix",
+        requiredRole: ['admin']
        
       },
       {
@@ -242,13 +243,15 @@ const Sidebar = ({ collapsed = false }) => {
         label: "Asset Management",
         icon: <Package className="w-4 h-4" />,
         path: "/settings/asset-mng",
-        id: "asset-mng"
+        id: "asset-mng",
+        requiredRole: ['admin']
       },
       {
         label: "Role Mng",
         icon: <UserCog className="w-4 h-4" />,
         path: "/settings/role-mng",
-        id: "role-mng"
+        id: "role-mng",
+        requiredRole: ['admin']
       }
     ];
 
