@@ -136,8 +136,8 @@ const Sidebar = ({ collapsed = false }) => {
         label: "Job Descriptions",
         icon: <FileText className="w-4 h-4" />,
         path: "/structure/job-descriptions",
-        id: "job-descriptions"
-       
+        id: "job-descriptions",
+       requiredRole: ['admin', 'manager']
       },
       {
         label: "Comp Matrix",
@@ -237,7 +237,8 @@ const Sidebar = ({ collapsed = false }) => {
       }, 
       { 
         type: "section", 
-        label: "SETTINGS"
+        label: "SETTINGS",
+        requiredRole: ['admin']
       },
       {
         label: "Asset Management",
