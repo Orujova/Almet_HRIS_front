@@ -144,7 +144,7 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <BarChart2 className="w-4 h-4" />,
         path: "/structure/comp-matrix",
         id: "comp-matrix",
-        requiredRole: ['admin']
+  
        
       },
       {

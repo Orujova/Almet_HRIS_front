@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Target, ArrowRight, Loader2, AlertCircle, Settings,
   RefreshCw, ChevronRight, Home, BarChart3, 
-  TrendingUp, Award, Crown
+  TrendingUp, Crown, ArrowLeft
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import BehavioralAssessmentCalculation from '@/components/assessment/BehavioralAssessmentCalculation';
@@ -14,39 +14,10 @@ import { assessmentApi } from '@/services/assessmentApi';
 import { ToastProvider, useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 
-// Breadcrumb Component
-const Breadcrumb = ({ items }) => (
-  <nav className="flex items-center space-x-2 text-xs text-almet-waterloo mb-4" aria-label="Breadcrumb">
-    {items.map((item, index) => (
-      <React.Fragment key={index}>
-        {index > 0 && <ChevronRight size={12} className="text-almet-bali-hai opacity-60" />}
-        {item.onClick ? (
-          <button
-            onClick={item.onClick}
-            className="hover:text-almet-sapphire transition-colors duration-200 font-medium text-xs px-2 py-1 rounded hover:bg-almet-mystic"
-            aria-label={`Navigate to ${item.label}`}
-          >
-            {item.label}
-          </button>
-        ) : (
-          <span className={`text-xs px-2 py-1 ${
-            index === items.length - 1 
-              ? 'text-almet-cloud-burst font-semibold bg-almet-mystic rounded' 
-              : 'text-almet-waterloo'
-          }`}>
-            {item.label}
-          </span>
-        )}
-      </React.Fragment>
-    ))}
-  </nav>
-);
-
 const AssessmentMatrixInner = () => {
   const { darkMode } = useTheme();
   const { showSuccess, showError } = useToast();
   
-  // TAB STATE with persistence
   const [activeView, setActiveView] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('assessmentMatrixView') || 'dashboard';
@@ -67,7 +38,6 @@ const AssessmentMatrixInner = () => {
     completionRate: 0
   });
 
-  // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     title: '',
@@ -76,21 +46,18 @@ const AssessmentMatrixInner = () => {
     type: 'default'
   });
 
-  // Tab persistence
   useEffect(() => {
     if (typeof window !== 'undefined') {
       sessionStorage.setItem('assessmentMatrixView', activeView);
     }
   }, [activeView]);
 
-  // Theme classes
   const bgApp = darkMode ? 'bg-gray-900' : 'bg-almet-mystic';
   const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
   const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
   const textSecondary = darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo';
   const borderColor = darkMode ? 'border-almet-comet' : 'border-almet-bali-hai/30';
 
-  // Fetch basic dashboard data
   const fetchDashboardData = async () => {
     setLoading(true);
     setError(null);
@@ -133,7 +100,6 @@ const AssessmentMatrixInner = () => {
     }
   }, [activeView]);
 
-  // Shared Components
   const ActionButton = ({ 
     onClick, 
     icon: Icon, 
@@ -147,9 +113,7 @@ const AssessmentMatrixInner = () => {
     const variants = {
       primary: 'bg-almet-sapphire hover:bg-almet-astral text-white shadow-sm hover:shadow-md',
       secondary: 'bg-almet-bali-hai hover:bg-almet-waterloo text-white shadow-sm hover:shadow-md',
-      outline: 'border border-almet-sapphire text-almet-sapphire hover:bg-almet-sapphire/10 bg-transparent',
-      success: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm hover:shadow-md',
-      info: 'bg-sky-500 hover:bg-sky-600 text-white shadow-sm hover:shadow-md',
+      outline: 'border-2 border-almet-sapphire text-almet-sapphire hover:bg-almet-sapphire/10 bg-transparent',
       ghost: 'text-almet-sapphire hover:bg-almet-sapphire/5 hover:text-almet-cloud-burst border border-transparent'
     };
 
@@ -188,8 +152,7 @@ const AssessmentMatrixInner = () => {
     isActive, 
     onClick, 
     color, 
-    count, 
-    stats 
+    count
   }) => (
     <div
       className={`
@@ -285,30 +248,122 @@ const AssessmentMatrixInner = () => {
     );
   };
 
-  // Get breadcrumb items based on current view
-  const getBreadcrumbs = () => {
-    const items = [
-      { label: 'Assessment Matrix', onClick: () => setActiveView('dashboard') }
-    ];
-
-    if (activeView === 'behavioral') {
-      items.push({ label: 'Behavioral Competency Assessment' });
-    } else if (activeView === 'core') {
-      items.push({ label: 'Core Competency Assessment' });
-    } else if (activeView === 'leadership') {
-      items.push({ label: 'Leadership Assessment' });
-    } else if (showSettings) {
-      items.push({ label: 'Settings' });
+  const getViewTitle = () => {
+    switch (activeView) {
+      case 'behavioral': return 'Behavioral Competency Assessment';
+      case 'core': return 'Core Competency Assessment';
+      case 'leadership': return 'Leadership Assessment';
+      case 'dashboard': return 'Assessment Matrix';
+      default: return 'Assessment Matrix';
     }
-
-    return items;
   };
 
-  // Handle settings display
+  // Unified Header Component
+  const PageHeader = () => (
+    <div className={`${bgCard} border ${borderColor} rounded-xl shadow-sm`}>
+      <div className="p-5">
+        <div className="flex items-center justify-between">
+          {/* Left side - Title and breadcrumb */}
+          <div className="flex items-center gap-3">
+            {activeView !== 'dashboard' && !showSettings && (
+              <button
+                onClick={() => {
+                  if (showSettings) {
+                    setShowSettings(false);
+                  } else {
+                    setActiveView('dashboard');
+                  }
+                }}
+                className={`p-2 rounded-lg transition-colors ${
+                  darkMode ? 'hover:bg-almet-comet' : 'hover:bg-almet-mystic'
+                }`}
+                title="Back to Dashboard"
+              >
+                <ArrowLeft size={20} className={textPrimary} />
+              </button>
+            )}
+            
+            <div className={`p-2 rounded-lg ${darkMode ? 'bg-almet-comet' : 'bg-almet-mystic'}`}>
+              <BarChart3 className="w-5 h-5 text-almet-sapphire" />
+            </div>
+            
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className={`text-xl font-bold ${textPrimary}`}>
+                  {showSettings ? 'Assessment Settings' : getViewTitle()}
+                </h1>
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                <button
+                  onClick={() => setActiveView('dashboard')}
+                  className={`text-xs ${textSecondary} hover:text-almet-sapphire transition-colors`}
+                >
+                  Assessment Matrix
+                </button>
+                {activeView !== 'dashboard' && !showSettings && (
+                  <>
+                    <ChevronRight size={12} className={textSecondary} />
+                    <span className={`text-xs font-semibold ${textPrimary}`}>
+                      {getViewTitle()}
+                    </span>
+                  </>
+                )}
+                {showSettings && (
+                  <>
+                    <ChevronRight size={12} className={textSecondary} />
+                    <span className={`text-xs font-semibold ${textPrimary}`}>
+                      Settings
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right side - Actions */}
+          <div className="flex items-center gap-2">
+            {activeView === 'dashboard' && !showSettings && (
+              <>
+               
+                <ActionButton
+                  onClick={() => setShowSettings(true)}
+                  icon={Settings}
+                  label="Settings"
+                  variant="outline"
+                  size="sm"
+                />
+              </>
+            )}
+            
+            {activeView !== 'dashboard' && !showSettings && (
+              <ActionButton
+                onClick={() => setActiveView('dashboard')}
+                icon={Home}
+                label="Dashboard"
+                variant="outline"
+                size="sm"
+              />
+            )}
+
+            {showSettings && (
+              <ActionButton
+                onClick={() => setShowSettings(false)}
+                icon={ArrowLeft}
+                label="Back"
+                variant="outline"
+                size="sm"
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (showSettings) {
     return (
       <div className="space-y-4">
-        <Breadcrumb items={getBreadcrumbs()} />
+        <PageHeader />
         <AssessmentSettings onBack={() => setShowSettings(false)} />
       </div>
     );
@@ -317,20 +372,7 @@ const AssessmentMatrixInner = () => {
   if (loading && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
-        <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Assessment Matrix</h2>
-              <p className={`text-xs ${textSecondary} mt-1`}>Employee competency assessment system</p>
-            </div>
-            <ActionButton
-              onClick={() => setShowSettings(true)}
-              icon={Settings}
-              label="Settings"
-              variant="outline"
-            />
-          </div>
-        </div>
+        <PageHeader />
         
         <div className={`
           min-h-96 flex items-center justify-center ${bgCard} border ${borderColor} 
@@ -349,29 +391,7 @@ const AssessmentMatrixInner = () => {
   if (error && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
-        <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className={`text-lg font-bold ${textPrimary}`}>Assessment Matrix</h2>
-              <p className={`text-xs ${textSecondary} mt-1`}>Employee competency assessment system</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <ActionButton
-                onClick={fetchDashboardData}
-                icon={RefreshCw}
-                label="Refresh"
-                variant="secondary"
-                loading={loading}
-              />
-              <ActionButton
-                onClick={() => setShowSettings(true)}
-                icon={Settings}
-                label="Settings"
-                variant="outline"
-              />
-            </div>
-          </div>
-        </div>
+        <PageHeader />
         
         <div className={`${bgCard} border border-red-200 rounded-xl p-5 shadow-sm`}>
           <div className="flex items-start gap-3">
@@ -397,45 +417,7 @@ const AssessmentMatrixInner = () => {
 
   return (
     <div className="space-y-5">
-      {/* Breadcrumb */}
-      <Breadcrumb items={getBreadcrumbs()} />
-
-      {/* Header */}
-      <div className={`${bgCard} border ${borderColor} rounded-xl p-5 shadow-sm`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-almet-sapphire/10 rounded-lg shadow-sm">
-              <BarChart3 className="w-5 h-5 text-almet-sapphire" />
-            </div>
-            <div>
-              <h1 className={`text-xl font-bold ${textPrimary}`}>Assessment Matrix</h1>
-              <p className={`text-xs ${textSecondary} mt-1`}>
-                Comprehensive employee competency assessment and management system
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {activeView !== 'dashboard' && (
-              <ActionButton
-                onClick={() => setActiveView('dashboard')}
-                icon={Home}
-                label="Dashboard"
-                variant="ghost"
-                size="sm"
-              />
-            )}
-            
-            <ActionButton
-              onClick={() => setShowSettings(true)}
-              icon={Settings}
-              label="Settings"
-              variant="outline"
-              size="sm"
-            />
-          </div>
-        </div>
-      </div>
+      <PageHeader />
 
       {/* Content */}
       {activeView === 'dashboard' && (
@@ -481,8 +463,7 @@ const AssessmentMatrixInner = () => {
 
           {/* Assessment Types Navigation */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-           
-                  <NavigationCard
+            <NavigationCard
               icon={Crown}
               title="Leadership Assessment"
               subtitle="Comprehensive leadership evaluation for senior positions including Manager, Vice Chairman, Director, Vice President, and HOD"
@@ -510,23 +491,21 @@ const AssessmentMatrixInner = () => {
               isActive={false}
               onClick={() => setActiveView('core')}
             />
-            
-     
           </div>
         </div>
       )}
- {activeView === 'leadership' && (
+
+      {activeView === 'leadership' && (
         <div className="space-y-4">
           <LeadershipAssessmentCalculation />
         </div>
       )}
-      {/* Assessment Components */}
+
       {activeView === 'behavioral' && (
         <div className="space-y-4">
           <BehavioralAssessmentCalculation />
         </div>
       )}
-
 
       {activeView === 'core' && (
         <div className="space-y-4">
@@ -534,8 +513,6 @@ const AssessmentMatrixInner = () => {
         </div>
       )}
 
-     
-      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
@@ -551,7 +528,6 @@ const AssessmentMatrixInner = () => {
   );
 };
 
-// Wrap with ToastProvider
 const AssessmentMatrix = () => {
   return (
     <ToastProvider>

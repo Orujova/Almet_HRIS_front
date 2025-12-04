@@ -427,29 +427,7 @@ const AssessmentSettings = ({ onBack }) => {
   return (
     <div className="min-h-screen">
       <div className="mx-auto py-6 space-y-6">
-        {/* Header */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <ActionButton
-                onClick={onBack}
-                icon={ArrowLeft}
-                label="Back"
-                variant="outline"
-                size="md"
-              />
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Settings className="w-6 h-6 text-almet-sapphire" />
-                  Assessment Settings
-                </h1>
-                <p className="text-sm text-gray-600 mt-1">
-                  Configure assessment scales and grading systems
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         {/* Section Navigation */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
