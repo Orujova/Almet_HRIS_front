@@ -78,7 +78,8 @@ const handoverService = {
   getHandoverTypes: async () => {
     try {
       const response = await api.get('/handovers/types/');
-      return response.data;
+ 
+      return response.data.results;
     } catch (error) {
       console.error('Error fetching handover types:', error);
       throw error;
@@ -91,6 +92,7 @@ const handoverService = {
   createHandoverType: async (data) => {
     try {
       const response = await api.post('/handovers/types/', data);
+     
       return response.data;
     } catch (error) {
       console.error('Error creating handover type:', error);
@@ -464,19 +466,22 @@ const handoverService = {
   getEmployees: async () => {
     try {
       const response = await api.get('/employees/');
-      return response.data;
+      
+      return response.data.results;
     } catch (error) {
       console.error('Error fetching employees:', error);
       throw error;
     }
   },
+
+
   
   /**
    * Get current user profile
    */
   getCurrentUser: async () => {
     try {
-      const response = await api.get('/auth/me/');
+      const response = await api.get('/me/');
       return response.data;
     } catch (error) {
       console.error('Error fetching current user:', error);

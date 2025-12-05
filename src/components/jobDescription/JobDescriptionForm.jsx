@@ -284,36 +284,7 @@ const JobDescriptionForm = ({
     return Object.keys(errors).length === 0;
   };
 
-  const findExactConstraintMatch = (requiredCriteria) => {
-    if (!dropdownData.employees || dropdownData.employees.length === 0) return null;
-    
-    const exactMatches = dropdownData.employees.filter(emp => {
-      let matches = true;
-      
-      for (const [field, value] of Object.entries(requiredCriteria)) {
-        if (emp[field] !== value) {
-          matches = false;
-          break;
-        }
-      }
-      
-      return matches;
-    });
-    
-    if (exactMatches.length === 0) return null;
-    
-    const vacantMatches = exactMatches.filter(emp => 
-      emp.is_vacancy || emp.record_type === 'vacancy' || emp.name === 'VACANT'
-    );
-    
-    const chosen = vacantMatches.length > 0 ? vacantMatches[0] : exactMatches[0];
-    
-    return chosen;
-  };
 
-  // JobDescriptionForm.jsx - FIXED handleSubmit with case-insensitive ID lookup
-
-// 🔥 Add these helpers at the top of the component (before handleSubmit)
 
 // Helper for case-insensitive string comparison
 const matchesIgnoreCase = (str1, str2) => {
@@ -500,7 +471,6 @@ const getPositionGroupId = (name) => {
   return null;
 };
 
-// 🔥 UPDATED handleSubmit function
 const handleSubmit = async (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -523,16 +493,12 @@ const handleSubmit = async (e) => {
   try {
     setIsSubmitting(true);
 
-
-
     // 🔥 Get IDs with case-insensitive lookup
     const businessFunctionId = getBusinessFunctionId(formData.business_function);
     const departmentId = getDepartmentId(formData.department);
     const jobFunctionId = getJobFunctionId(formData.job_function);
     const positionGroupId = getPositionGroupId(formData.position_group);
     const unitId = formData.unit ? getUnitId(formData.unit) : null;
-
-  
 
     // 🔥 Validate all IDs
     const missingIds = [];
@@ -551,11 +517,7 @@ const handleSubmit = async (e) => {
 
     if (missingIds.length > 0) {
       const errorMessage = `Cannot find valid IDs for: ${missingIds.join(', ')}.\n\n` +
-        `This usually means no employees exist with these exact organizational values.\n\n` +
-        `Please verify:\n` +
-        `1. At least one employee has this combination of organizational data\n` +
-        `2. The organizational structure hasn't changed\n` +
-        `3. Employee data is properly loaded`;
+        `This usually means no employees exist with these exact organizational values.`;
       
       console.error('❌ [Submit] Missing IDs:', missingIds);
       alert(errorMessage);
@@ -576,34 +538,73 @@ const handleSubmit = async (e) => {
         grading_levels: formData.grading_levels.map(level => level.trim()).filter(Boolean)
       }),
       
-      // Fallback for grading_level
-      ...((!formData.grading_levels || formData.grading_levels.length === 0) && 
-          formData.grading_level && formData.grading_level.trim() && {
-        grading_levels: [formData.grading_level.trim()]
-      }),
-      
       // Unit (optional)
       ...(unitId && !isNaN(unitId) && { unit: parseInt(unitId) }),
       
       sections: [],
       
+      // 🔥 TECHNICAL SKILLS - FIXED
       required_skills_data: (formData.required_skills_data || [])
-        .map(skillId => parseInt(skillId))
-        .filter(skillId => !isNaN(skillId))
-        .map(skillId => ({
-          skill_id: skillId,
-          proficiency_level: "INTERMEDIATE",
-          is_mandatory: true
-        })),
+        .filter(skillId => skillId && String(skillId).trim() !== '')
+        .map(skillId => {
+          // Remove any prefix (like "skill_" or group info)
+          const cleanId = String(skillId).split('_').pop();
+          const numericId = parseInt(cleanId);
+          
+          if (isNaN(numericId)) {
+            console.warn('⚠️ Invalid skill ID:', skillId);
+            return null;
+          }
+          
+          return {
+            skill_id: numericId,
+            proficiency_level: "INTERMEDIATE",
+            is_mandatory: true
+          };
+        })
+        .filter(Boolean), // Remove nulls
       
+      // 🔥 BEHAVIORAL COMPETENCIES - FIXED (for non-leadership)
       behavioral_competencies_data: (formData.behavioral_competencies_data || [])
-        .map(competencyId => parseInt(competencyId))
-        .filter(competencyId => !isNaN(competencyId))
-        .map(competencyId => ({
-          competency_id: competencyId,
-          proficiency_level: "INTERMEDIATE", 
-          is_mandatory: true
-        })),
+        .filter(compId => compId && String(compId).trim() !== '')
+        .map(compId => {
+          // Remove any prefix
+          const cleanId = String(compId).split('_').pop();
+          const numericId = parseInt(cleanId);
+          
+          if (isNaN(numericId)) {
+            console.warn('⚠️ Invalid behavioral competency ID:', compId);
+            return null;
+          }
+          
+          return {
+            competency_id: numericId,
+            proficiency_level: "INTERMEDIATE",
+            is_mandatory: true
+          };
+        })
+        .filter(Boolean),
+      
+      // 🔥 LEADERSHIP COMPETENCIES - NEW (for leadership positions)
+      leadership_competencies_data: (formData.leadership_competencies_data || [])
+        .filter(itemId => itemId && String(itemId).trim() !== '')
+        .map(itemId => {
+          // Remove any prefix
+          const cleanId = String(itemId).split('_').pop();
+          const numericId = parseInt(cleanId);
+          
+          if (isNaN(numericId)) {
+            console.warn('⚠️ Invalid leadership competency ID:', itemId);
+            return null;
+          }
+          
+          return {
+            leadership_item_id: numericId,
+            proficiency_level: "INTERMEDIATE",
+            is_mandatory: true
+          };
+        })
+        .filter(Boolean),
       
       ...(!editingJob && selectedEmployeeIds.length > 0 && { 
         selected_employee_ids: selectedEmployeeIds
@@ -611,6 +612,16 @@ const handleSubmit = async (e) => {
           .filter(id => !isNaN(id))
       })
     };
+
+    // 🔥 DEBUG: Log what we're sending
+    console.log('📤 [Submit] Sending to API:', {
+      skills_count: apiData.required_skills_data.length,
+      skills: apiData.required_skills_data,
+      behavioral_count: apiData.behavioral_competencies_data.length,
+      behavioral: apiData.behavioral_competencies_data,
+      leadership_count: apiData.leadership_competencies_data.length,
+      leadership: apiData.leadership_competencies_data
+    });
 
     // Add resources
     const resourcesPayload = buildResourcesPayload(
@@ -679,8 +690,6 @@ const handleSubmit = async (e) => {
       }
     });
 
-
-
     // Submit to API
     if (editingJob) {
       if (wasInApprovalProcess) {
@@ -698,6 +707,7 @@ const handleSubmit = async (e) => {
       onUpdate();
     } else {
       const createdJob = await jobDescriptionService.createJobDescription(apiData);
+      console.log('✅ [Submit] Job created successfully:', createdJob);
       onSubmit(createdJob);
     }
   } catch (error) {
