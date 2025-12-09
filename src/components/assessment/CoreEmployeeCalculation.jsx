@@ -283,68 +283,90 @@ setUniqueJobTitles(jobTitles.map(title => ({
   };
 
   // Employee selection handler
-  const handleEmployeeChange = async (employeeId) => {
-    setTemplateError(null);
-    const selectedEmployee = employees.find(e => e.id === employeeId);
-    if (!selectedEmployee) return;
+  // ✅ DÜZGÜN VERSİYA
+const handleEmployeeChange = async (employeeId) => {
+  setTemplateError(null);
+  const selectedEmployee = employees.find(e => e.id === employeeId);
+  
+  if (!selectedEmployee) {
+    console.error('Employee not found:', employeeId);
+    return;
+  }
 
-    setSelectedEmployeeInfo(selectedEmployee);
+  console.log('Selected employee:', selectedEmployee); // ✅ Debug log
+  setSelectedEmployeeInfo(selectedEmployee);
+  
+  // ✅ ƏVVƏLCƏ API-dən template yoxla
+  setEmployeeFormData(prev => ({ ...prev, employee: employeeId }));
+  
+  try {
+    console.log('Fetching template for employee:', employeeId); // ✅ Debug log
     
-    const existingAssessment = employeeAssessments.find(assessment => assessment.employee === employeeId);
+    const response = await assessmentApi.positionCore.getForEmployee(employeeId);
     
-    if (existingAssessment) {
-      setTemplateError({
-        type: 'duplicate',
-        message: `${selectedEmployee.name} already has a core assessment. Each employee can only have one assessment.`,
-        employee: selectedEmployee
-      });
-      setEmployeeFormData(prev => ({ ...prev, employee: employeeId, position_assessment: '' }));
-      return;
-    }
-
-    setEmployeeFormData(prev => ({ ...prev, employee: employeeId }));
+    console.log('API Response:', response); // ✅ Debug log
     
-    try {
-      const response = await assessmentApi.positionCore.getForEmployee(employeeId);
+    if (response.assessment_template) {
+      // ✅ SONRA duplicate yoxla
+      const existingAssessment = employeeAssessments.find(
+        assessment => assessment.employee === employeeId
+      );
       
-      if (response.assessment_template) {
-        setEmployeeFormData(prev => ({
+      if (existingAssessment) {
+        setTemplateError({
+          type: 'duplicate',
+          message: `${selectedEmployee.name} already has a core assessment. Each employee can only have one assessment.`,
+          employee: selectedEmployee
+        });
+        setEmployeeFormData(prev => ({ 
           ...prev, 
-          employee: employeeId,
-          position_assessment: response.assessment_template.id,
-          competency_ratings: response.assessment_template.competency_ratings?.map(rating => ({
-            skill_id: rating.skill,
-            actual_level: 0,
-            notes: ''
-          })) || []
+          employee: employeeId, 
+          position_assessment: '',
+          competency_ratings: []
         }));
-        setTemplateError(null);
+        return;
       }
-    } catch (err) {
-      console.error('Error fetching employee position template:', err);
-      
-      if (err.response?.data?.error) {
-        setTemplateError({
-          type: 'no_template',
-          message: err.response.data.error,
-          employee: selectedEmployee
-        });
-      } else {
-        setTemplateError({
-          type: 'api_error',
-          message: 'Failed to load position template for this employee',
-          employee: selectedEmployee
-        });
-      }
-      
+
+      // ✅ Template var və duplicate yoxdur - davam et
       setEmployeeFormData(prev => ({
         ...prev, 
         employee: employeeId,
-        position_assessment: '',
-        competency_ratings: []
+        position_assessment: response.assessment_template.id,
+        competency_ratings: response.assessment_template.competency_ratings?.map(rating => ({
+          skill_id: rating.skill,
+          actual_level: 0,
+          notes: ''
+        })) || []
       }));
+      setTemplateError(null);
     }
-  };
+  } catch (err) {
+    console.error('Error fetching employee position template:', err);
+    console.error('Error response:', err.response?.data); // ✅ Debug log
+    
+    if (err.response?.data?.error) {
+      setTemplateError({
+        type: 'no_template',
+        message: err.response.data.error,
+        employee: selectedEmployee
+      });
+    } else {
+      setTemplateError({
+        type: 'api_error',
+        message: 'Failed to load position template for this employee',
+        employee: selectedEmployee,
+        details: err.message // ✅ Əlavə detail
+      });
+    }
+    
+    setEmployeeFormData(prev => ({
+      ...prev, 
+      employee: employeeId,
+      position_assessment: '',
+      competency_ratings: []
+    }));
+  }
+};
 
   // Show confirmation modal
   const showConfirmation = (title, message, onConfirm, type = 'default') => {

@@ -12,7 +12,7 @@ const poppins = Poppins({
 });
 
 export const metadata = {
-  title: "Almet Holding HRIS",
+  title: "My Almet",
   description: "Human Resource Information System",
 };
 

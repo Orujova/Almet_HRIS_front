@@ -570,7 +570,10 @@ export const employeeCoreApi = {
       throw error;
     }
   },
-
+getUserPermissions: async () => {
+  const response = await api.get('/assessments/employee-core/get_user_assessment_permissions/');
+  return response.data;
+},
   getById: async (id) => {
     try {
       const response = await api.get(`/assessments/employee-core/${id}/`);

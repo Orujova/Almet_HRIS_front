@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Target, ArrowRight, Loader2, AlertCircle, Settings,
   RefreshCw, ChevronRight, Home, BarChart3, 
-  TrendingUp, Crown, ArrowLeft
+  TrendingUp, Crown, ArrowLeft, Wrench, Shield, Lock
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import BehavioralAssessmentCalculation from '@/components/assessment/BehavioralAssessmentCalculation';
@@ -14,7 +14,7 @@ import { assessmentApi } from '@/services/assessmentApi';
 import { ToastProvider, useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 
-const AssessmentMatrixInner = () => {
+const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
   const { darkMode } = useTheme();
   const { showSuccess, showError } = useToast();
   
@@ -26,8 +26,10 @@ const AssessmentMatrixInner = () => {
   });
   
   const [showSettings, setShowSettings] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userPermissions, setUserPermissions] = useState(null);
+  
   const [dashboardData, setDashboardData] = useState({
     behavioralAssessments: 0,
     coreAssessments: 0,
@@ -52,16 +54,33 @@ const AssessmentMatrixInner = () => {
     }
   }, [activeView]);
 
-  const bgApp = darkMode ? 'bg-gray-900' : 'bg-almet-mystic';
-  const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
-  const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
-  const textSecondary = darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo';
-  const borderColor = darkMode ? 'border-almet-comet' : 'border-almet-bali-hai/30';
+  // ✅ Fetch user permissions on mount
+  useEffect(() => {
+    fetchUserPermissions();
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const fetchUserPermissions = async () => {
     setLoading(true);
     setError(null);
     try {
+      // ✅ Real API call
+      const permissionsResponse = await assessmentApi.employeeCore.getUserPermissions();
+      setUserPermissions(permissionsResponse);
+      
+      // Permissions yüklənəndən sonra dashboard data fetch et
+      await fetchDashboardData();
+    } catch (err) {
+      console.error('Error fetching permissions:', err);
+      setError(err);
+      showError('Failed to load user permissions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      // ✅ Real API calls - Backend already filters based on permissions
       const [behavioralRes, coreRes, leadershipRes] = await Promise.all([
         assessmentApi.employeeBehavioral.getAll(),
         assessmentApi.employeeCore.getAll(),
@@ -85,20 +104,62 @@ const AssessmentMatrixInner = () => {
         draftAssessments: draft,
         completionRate: completionRate
       });
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setError(error);
+    } catch (err) {
+      console.error('Error fetching dashboard data:', err);
+      setError(err);
       showError('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
     }
   };
 
+  const bgApp = darkMode ? 'bg-gray-900' : 'bg-almet-mystic';
+  const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
+  const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
+  const textSecondary = darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo';
+  const borderColor = darkMode ? 'border-almet-comet' : 'border-almet-bali-hai/30';
+
+  // ✅ Permission check helper functions
+  const canAccessManagement = () => {
+    return userPermissions?.is_admin === true;
+  };
+
+  const canAccessSettings = () => {
+    return userPermissions?.is_admin === true;
+  };
+
   useEffect(() => {
-    if (activeView === 'dashboard') {
+    if (activeView === 'dashboard' && userPermissions) {
       fetchDashboardData();
     }
   }, [activeView]);
+
+  const getRoleBadge = () => {
+    if (!userPermissions) return null;
+    
+    if (userPermissions.is_admin) {
+      return (
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-purple-500 to-indigo-600 text-white rounded-full text-xs font-semibold shadow-sm">
+          <Shield size={12} />
+          <span>Admin Access</span>
+        </div>
+      );
+    }
+    
+    if (userPermissions.is_manager) {
+      return (
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-full text-xs font-semibold shadow-sm">
+          <Users size={12} />
+          <span>Manager Access</span>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-full text-xs font-semibold shadow-sm">
+        <Lock size={12} />
+        <span>Employee Access</span>
+      </div>
+    );
+  };
 
   const ActionButton = ({ 
     onClick, 
@@ -108,6 +169,7 @@ const AssessmentMatrixInner = () => {
     loading = false, 
     disabled = false, 
     size = 'sm',
+    showPermissionLock = false,
     ...props
   }) => {
     const variants = {
@@ -137,6 +199,8 @@ const AssessmentMatrixInner = () => {
       >
         {loading ? (
           <Loader2 size={size === 'xs' ? 12 : size === 'sm' ? 14 : 16} className="animate-spin" />
+        ) : showPermissionLock ? (
+          <Lock size={size === 'xs' ? 12 : size === 'sm' ? 14 : 16} />
         ) : (
           <Icon size={size === 'xs' ? 12 : size === 'sm' ? 14 : 16} />
         )}
@@ -258,7 +322,7 @@ const AssessmentMatrixInner = () => {
     }
   };
 
-  // Unified Header Component
+  // ✅ Unified Header Component with Permission-based Actions
   const PageHeader = () => (
     <div className={`${bgCard} border ${borderColor} rounded-xl shadow-sm`}>
       <div className="p-5">
@@ -288,10 +352,11 @@ const AssessmentMatrixInner = () => {
             </div>
             
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <h1 className={`text-xl font-bold ${textPrimary}`}>
                   {showSettings ? 'Assessment Settings' : getViewTitle()}
                 </h1>
+                {getRoleBadge()}
               </div>
               <div className="flex items-center gap-1 mt-1">
                 <button
@@ -320,18 +385,51 @@ const AssessmentMatrixInner = () => {
             </div>
           </div>
 
-          {/* Right side - Actions */}
+          {/* Right side - Permission-based Actions */}
           <div className="flex items-center gap-2">
             {activeView === 'dashboard' && !showSettings && (
               <>
-               
-                <ActionButton
-                  onClick={() => setShowSettings(true)}
-                  icon={Settings}
-                  label="Settings"
-                  variant="outline"
-                  size="sm"
-                />
+                {/* ✅ Admin-only buttons */}
+                {canAccessManagement() ? (
+                  <>
+                    <ActionButton
+                      onClick={() => onNavigateToManagement && onNavigateToManagement()}
+                      icon={Wrench}
+                      label="Manage Competencies"
+                      variant="outline"
+                      size="sm"
+                    />
+                    <ActionButton
+                      onClick={() => setShowSettings(true)}
+                      icon={Settings}
+                      label="Matrix Settings"
+                      variant="outline"
+                      size="sm"
+                    />
+                  </>
+                ) : (
+                  /* ✅ Show locked button for non-admins with tooltip */
+                  <div className="relative group">
+                    <ActionButton
+                      onClick={() => {}}
+                      icon={Wrench}
+                      label="Admin Only"
+                      variant="outline"
+                      size="sm"
+                      disabled={true}
+                      showPermissionLock={true}
+                    />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 shadow-lg">
+                      <div className="text-center">
+                        <p className="font-semibold">Admin Access Required</p>
+                        <p className="text-gray-300 mt-0.5">Contact your administrator</p>
+                      </div>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1">
+                        <div className="border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
             
@@ -345,7 +443,7 @@ const AssessmentMatrixInner = () => {
               />
             )}
 
-            {showSettings && (
+            {showSettings && canAccessSettings() && (
               <ActionButton
                 onClick={() => setShowSettings(false)}
                 icon={ArrowLeft}
@@ -360,15 +458,7 @@ const AssessmentMatrixInner = () => {
     </div>
   );
 
-  if (showSettings) {
-    return (
-      <div className="space-y-4">
-        <PageHeader />
-        <AssessmentSettings onBack={() => setShowSettings(false)} />
-      </div>
-    );
-  }
-
+  // ✅ Loading state
   if (loading && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
@@ -388,6 +478,7 @@ const AssessmentMatrixInner = () => {
     );
   }
 
+  // ✅ Error state
   if (error && activeView === 'dashboard') {
     return (
       <div className="space-y-4">
@@ -405,12 +496,38 @@ const AssessmentMatrixInner = () => {
             <ActionButton 
               icon={RefreshCw} 
               label="Try Again" 
-              onClick={fetchDashboardData}
+              onClick={fetchUserPermissions}
               variant="outline"
               size="xs"
             />
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // ✅ Settings view - Admin only
+  if (showSettings) {
+    if (!canAccessSettings()) {
+      return (
+        <div className="space-y-4">
+          <PageHeader />
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 shadow-sm text-center">
+            <Lock className="w-12 h-12 mx-auto mb-3 text-amber-600" />
+            <h3 className="text-amber-900 font-bold text-lg mb-2">Access Restricted</h3>
+            <p className="text-amber-700 text-sm">
+              Settings are only accessible to administrators.
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <div className="space-y-4">
+        <PageHeader />
+        <AssessmentSettings onBack={() => setShowSettings(false)} />
       </div>
     );
   }
@@ -495,6 +612,7 @@ const AssessmentMatrixInner = () => {
         </div>
       )}
 
+      {/* ✅ Assessment views with Real Components */}
       {activeView === 'leadership' && (
         <div className="space-y-4">
           <LeadershipAssessmentCalculation />
@@ -528,10 +646,10 @@ const AssessmentMatrixInner = () => {
   );
 };
 
-const AssessmentMatrix = () => {
+const AssessmentMatrix = ({ onNavigateToManagement }) => {
   return (
     <ToastProvider>
-      <AssessmentMatrixInner />
+      <AssessmentMatrixInner onNavigateToManagement={onNavigateToManagement} />
     </ToastProvider>
   );
 };

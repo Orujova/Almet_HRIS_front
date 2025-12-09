@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus, RefreshCw, AlertCircle, Building, Users, ListFilter, LayoutGrid, 
   Table as TableIcon, Crown, ChevronRight, ArrowLeft, Target,
-  Settings as SettingsIcon, X, BarChart3,Search 
+  Settings as SettingsIcon, X, BarChart3, Search 
 } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useTheme } from '@/components/common/ThemeProvider';
@@ -655,82 +655,6 @@ const CompetencyMatrixSystemInner = () => {
     }
   };
 
-  const getViewTitle = () => {
-    if (mainView === 'matrix') return 'Assessment Matrix';
-    return 'Competency Management';
-  };
-
-  // Unified Header for both views
-  const PageHeader = () => (
-    <div className={`${card} border ${border} rounded-xl shadow-sm`}>
-      <div className="p-5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {mainView === 'management' && (
-              <button
-                onClick={() => setMainView('matrix')}
-                className={`p-2 rounded-lg transition-colors ${
-                  darkMode ? 'hover:bg-almet-comet' : 'hover:bg-almet-mystic'
-                }`}
-                title="Back to Assessment Matrix"
-              >
-                <ArrowLeft size={20} className={text} />
-              </button>
-            )}
-            
-            <div className={`p-2 rounded-lg ${darkMode ? 'bg-almet-comet' : 'bg-almet-mystic'}`}>
-              {mainView === 'matrix' ? (
-                <BarChart3 className="w-5 h-5 text-almet-sapphire" />
-              ) : (
-                <Target className="w-5 h-5 text-almet-sapphire" />
-              )}
-            </div>
-            
-            <div>
-              <h1 className={`text-xl font-bold ${text}`}>{getViewTitle()}</h1>
-              {mainView === 'management' && (
-                <div className="flex items-center gap-1 mt-1">
-                  <button
-                    onClick={() => setMainView('matrix')}
-                    className={`text-xs ${textDim} hover:text-almet-sapphire transition-colors`}
-                  >
-                    Assessment Matrix
-                  </button>
-                  <ChevronRight size={12} className={textDim} />
-                  <span className={`text-xs font-semibold ${text}`}>
-                    Competency Management
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {mainView === 'matrix' && (
-              <ActionButton
-                icon={SettingsIcon}
-                label="Manage Competencies"
-                onClick={() => setMainView('management')}
-                variant="outline"
-                size="sm"
-              />
-            )}
-            
-            {mainView === 'management' && (
-              <>
-                <StatChip label={`${stats.totalGroups} groups`} />
-                {activeView === 'leadership' && stats.totalChildGroups > 0 && (
-                  <StatChip label={`${stats.totalChildGroups} child groups`} />
-                )}
-                <StatChip label={`${stats.totalItems} items`} />
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
   if (loading && mainView === 'management') {
     return (
       <DashboardLayout>
@@ -752,7 +676,6 @@ const CompetencyMatrixSystemInner = () => {
       <DashboardLayout>
         <div className={`min-h-screen ${bgApp} p-6`}>
           <div className="mx-auto space-y-4">
-            <PageHeader />
             <div className={`${card} border border-red-200 rounded-2xl p-8 shadow-md`}>
               <div className="flex items-start gap-3">
                 <AlertCircle className="text-red-600" />
@@ -782,11 +705,7 @@ const CompetencyMatrixSystemInner = () => {
       <DashboardLayout>
         <div className={`min-h-screen ${bgApp} p-6`}>
           <div className="mx-auto space-y-4">
-            <PageHeader />
-            
-            <div className="rounded-2xl overflow-hidden">
-              <AssessmentMatrix />
-            </div>
+            <AssessmentMatrix onNavigateToManagement={() => setMainView('management')} />
           </div>
         </div>
       </DashboardLayout>
@@ -798,7 +717,52 @@ const CompetencyMatrixSystemInner = () => {
     <DashboardLayout>
       <div className={`min-h-screen ${bgApp} p-6`}>
         <div className="mx-auto space-y-4">
-          <PageHeader />
+          {/* Header */}
+          <div className={`${card} border ${border} rounded-xl shadow-sm`}>
+            <div className="p-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setMainView('matrix')}
+                    className={`p-2 rounded-lg transition-colors ${
+                      darkMode ? 'hover:bg-almet-comet' : 'hover:bg-almet-mystic'
+                    }`}
+                    title="Back to Assessment Matrix"
+                  >
+                    <ArrowLeft size={20} className={text} />
+                  </button>
+                  
+                  <div className={`p-2 rounded-lg ${darkMode ? 'bg-almet-comet' : 'bg-almet-mystic'}`}>
+                    <Target className="w-5 h-5 text-almet-sapphire" />
+                  </div>
+                  
+                  <div>
+                    <h1 className={`text-xl font-bold ${text}`}>Competency Management</h1>
+                    <div className="flex items-center gap-1 mt-1">
+                      <button
+                        onClick={() => setMainView('matrix')}
+                        className={`text-xs ${textDim} hover:text-almet-sapphire transition-colors`}
+                      >
+                        Assessment Matrix
+                      </button>
+                      <ChevronRight size={12} className={textDim} />
+                      <span className={`text-xs font-semibold ${text}`}>
+                        Competency Management
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <StatChip label={`${stats.totalGroups} groups`} />
+                  {activeView === 'leadership' && stats.totalChildGroups > 0 && (
+                    <StatChip label={`${stats.totalChildGroups} child groups`} />
+                  )}
+                  <StatChip label={`${stats.totalItems} items`} />
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Filters and Controls Bar */}
           <div className={`${card} border ${border} rounded-2xl p-2 shadow-sm`}>
