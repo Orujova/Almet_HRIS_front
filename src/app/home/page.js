@@ -6,6 +6,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useState, useEffect } from "react";
 import { newsService } from "@/services/newsService";
 import celebrationService from "@/services/celebrationService";
+import trainingService from "@/services/trainingService";
 import { useTheme } from "@/components/common/ThemeProvider";
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
@@ -38,12 +39,7 @@ const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = fal
       </h3>
         </div>
         
-      
       <div className="flex gap-4 items-center mb-3">
-
-     
-
-
       <div className={`text-xl font-bold mb-1 ${
         isHighlight 
           ? 'text-white' 
@@ -598,17 +594,52 @@ export default function Home() {
   const [trainings, setTrainings] = useState([]);
   const [selectedTraining, setSelectedTraining] = useState(null);
   const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [loadingTrainings, setLoadingTrainings] = useState(true);
   
   useEffect(() => {
     loadLatestNews();
     loadUpcomingCelebrations();
     loadCelebratedItems();
-    loadTrainings();
+    loadMyTrainings();
   }, []);
 
-   const loadTrainings = () => {
-    // Version kontrolu üçün
-    const TRAINING_VERSION = '1.0.0'; // Data dəyişdikdə bunu artır
+  const loadMyTrainings = async () => {
+    setLoadingTrainings(true);
+    try {
+      const response = await trainingService.assignments.getMyTrainings();
+      
+      if (response && response.assignments) {
+        // Transform API data to match our training card format
+        const formattedTrainings = response.assignments
+          .filter(assignment => assignment.status !== 'COMPLETED')
+          .slice(0, 2) // Show only first 2 pending trainings
+          .map(assignment => ({
+            id: assignment.id,
+            title: assignment.training_title,
+            description: `Status: ${assignment.status.replace('_', ' ')} • Progress: ${assignment.progress_percentage}%`,
+            pdfUrl: assignment.training_id, // You'll need to get the actual PDF URL from materials
+            duration: assignment.due_date ? `Due: ${new Date(assignment.due_date).toLocaleDateString()}` : 'No deadline',
+            isCompleted: assignment.status === 'COMPLETED',
+            dueDate: assignment.due_date,
+            category: "Assigned Training",
+            assignmentId: assignment.id,
+            trainingId: assignment.training
+          }));
+        
+        setTrainings(formattedTrainings);
+      }
+    } catch (error) {
+      console.error('Failed to load my trainings:', error);
+      // Fallback to local storage if API fails
+      loadTrainings();
+    } finally {
+      setLoadingTrainings(false);
+    }
+  };
+
+  const loadTrainings = () => {
+    // Fallback: Load from localStorage (for demo purposes)
+    const TRAINING_VERSION = '1.0.0';
     const VERSION_KEY = 'onboarding_trainings_version';
     
     const mockTrainings = [
@@ -627,7 +658,6 @@ export default function Home() {
     const storedVersion = localStorage.getItem(VERSION_KEY);
     const stored = localStorage.getItem('onboarding_trainings');
     
-    // Əgər version fərqlidirsə və ya data yoxdursa, yeni data yüklə
     if (storedVersion !== TRAINING_VERSION || !stored) {
       setTrainings(mockTrainings);
       localStorage.setItem('onboarding_trainings', JSON.stringify(mockTrainings));
@@ -642,7 +672,27 @@ export default function Home() {
     setShowTrainingModal(true);
   };
 
-  const handleMarkTrainingComplete = (trainingId) => {
+  const handleMarkTrainingComplete = async (trainingId) => {
+    // Check if this is an API-based training (has assignmentId)
+    const training = trainings.find(t => t.id === trainingId);
+    
+    if (training && training.assignmentId) {
+      try {
+        // Mark as completed via API
+        await trainingService.assignments.patch(training.assignmentId, {
+          status: 'COMPLETED',
+          completed_date: new Date().toISOString()
+        });
+        
+        // Reload trainings from API
+        await loadMyTrainings();
+        return;
+      } catch (error) {
+        console.error('Failed to mark training as complete:', error);
+      }
+    }
+    
+    // Fallback to localStorage for demo trainings
     const updatedTrainings = trainings.map(t => 
       t.id === trainingId 
         ? { ...t, isCompleted: true, completedAt: new Date().toISOString() }
@@ -651,6 +701,7 @@ export default function Home() {
     setTrainings(updatedTrainings);
     localStorage.setItem('onboarding_trainings', JSON.stringify(updatedTrainings));
   };
+
   const loadLatestNews = async () => {
     setLoadingNews(true);
     try {
@@ -761,7 +812,7 @@ export default function Home() {
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue dark:from-almet-steel-blue dark:via-almet-astral dark:to-almet-sapphire bg-clip-text text-transparent mb-2">
                 {isManager ? "Manager Dashboard" : (account ? `Welcome, ${account.name || account.username || "İstifadəçi"}!` : "Welcome, Almet Central!")}
               </h1>
-              <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs  font-medium">
+              <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs font-medium">
                 {isManager ? "Approvals and team overview at a glance." : "Your key stats and quick actions for the day."}
               </p>
             </div>
@@ -881,7 +932,7 @@ export default function Home() {
       </div>
 
       {/* Onboarding Training Section - Only show if user has pending trainings */}
-      {!isManager && trainings.length > 0 && getTrainingStats().pendingTrainings.length > 0 && (
+      {!isManager && !loadingTrainings && trainings.length > 0 && getTrainingStats().pendingTrainings.length > 0 && (
         <div className="mb-6">
           <div className="flex justify-between items-center mb-3">
             <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white flex items-center gap-2">
@@ -889,7 +940,7 @@ export default function Home() {
               My Onboarding Training
             </h2>
             <Link 
-              href="#" 
+              href="/trainings" 
               className="text-almet-sapphire dark:text-almet-steel-blue flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
             >
               View All
@@ -909,13 +960,13 @@ export default function Home() {
                 </p>
               </div>
               <div className="text-xl font-bold text-almet-sapphire dark:text-almet-steel-blue">
-                {Math.round((getTrainingStats().completedCount / getTrainingStats().totalCount) * 100)}%
+                {getTrainingStats().totalCount > 0 ? Math.round((getTrainingStats().completedCount / getTrainingStats().totalCount) * 100) : 0}%
               </div>
             </div>
             <div className="w-full bg-almet-mystic dark:bg-almet-san-juan rounded-full h-2 overflow-hidden">
               <div 
                 className="h-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500 rounded-full"
-                style={{ width: `${(getTrainingStats().completedCount / getTrainingStats().totalCount) * 100}%` }}
+                style={{ width: `${getTrainingStats().totalCount > 0 ? (getTrainingStats().completedCount / getTrainingStats().totalCount) * 100 : 0}%` }}
               ></div>
             </div>
           </div>

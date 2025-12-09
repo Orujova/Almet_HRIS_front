@@ -77,7 +77,25 @@ const LeadershipAssessmentCalculation = () => {
     grade_levels: [],
     competency_ratings: []
   });
-  
+  const [userPermissions, setUserPermissions] = useState(null);
+
+// ✅ Fetch permissions on mount
+useEffect(() => {
+  const fetchPermissions = async () => {
+    try {
+      const perms = await assessmentApi.employeeCore.getUserPermissions();
+      setUserPermissions(perms);
+    } catch (err) {
+      console.error('Failed to load permissions:', err);
+    }
+  };
+  fetchPermissions();
+}, []);
+
+// ✅ Helper function
+const isEmployeeOnlyAccess = () => {
+  return userPermissions && !userPermissions.is_admin && !userPermissions.is_manager;
+};
   const [employeeFormData, setEmployeeFormData] = useState({
     employee: '',
     position_assessment: '',
@@ -756,7 +774,8 @@ const toggleChildGroup = (groupId) => {
 
   return (
     <div className="space-y-4">
-      {/* Tab Navigation */}
+       {/* ✅ Tab Navigation - Hide for employees */}
+    {!isEmployeeOnlyAccess() && (
       <div className="bg-white rounded-lg p-1 shadow-sm border border-gray-200">
         <div className="flex gap-1">
           <button
@@ -784,35 +803,38 @@ const toggleChildGroup = (groupId) => {
           </button>
         </div>
       </div>
+    )}
 
       {/* Filters and Actions */}
-      <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-          <div className="flex flex-col sm:flex-row gap-2 flex-1">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder={`Search ${activeTab === 'position' ? 'positions' : 'employees'}...`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 border outline-0 border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
-              />
-            </div>
-            
-            {activeTab === 'employee' && (
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none min-w-[140px]"
-              >
-                <option value="">All Statuses</option>
-                <option value="DRAFT">Draft</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
-            )}
+       <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-2 flex-1">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder={isEmployeeOnlyAccess() ? "Search my assessments..." : `Search ${activeTab === 'position' ? 'positions' : 'employees'}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 border outline-0 border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
+            />
           </div>
           
+          {!isEmployeeOnlyAccess() && activeTab === 'employee' && (
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none min-w-[140px]"
+            >
+              <option value="">All Statuses</option>
+              <option value="DRAFT">Draft</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          )}
+        </div>
+        
+        {/* ✅ Hide New Assessment button for employees */}
+        {!isEmployeeOnlyAccess() && (
           <ActionButton
             onClick={() => activeTab === 'position' ? setShowCreatePositionModal(true) : setShowCreateEmployeeModal(true)}
             icon={Plus}
@@ -820,119 +842,194 @@ const toggleChildGroup = (groupId) => {
             variant="primary"
             size="md"
           />
-        </div>
-      </div>
-
-    
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {activeTab === 'position' ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Hierarchy</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Grade Levels</th>
-                
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Competencies</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Created</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredPositionAssessments.length > 0 ? (
-                  filteredPositionAssessments.map((assessment) => (
-                    <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{assessment.position_group_name}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
-                        <div className="flex flex-wrap gap-1">
-                          {assessment.grade_levels && assessment.grade_levels.length > 0 ? (
-                            assessment.grade_levels.map((level, idx) => (
-                              <span key={idx} className="inline-flex px-2 py-0.5 bg-sky-100 text-sky-700 rounded-md text-xs font-medium">
-                                {level}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-gray-400">No grades</span>
-                          )}
-                        </div>
-                      </td>
-                      {/* ❌ job_title cell SİLİNDİ */}
-                      <td className="px-4 py-3 text-sm text-gray-500">{assessment.competency_ratings?.length || 0} competencies</td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.created_at).toLocaleDateString()}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
-                          <ActionButton onClick={() => { setSelectedAssessment(assessment); setShowViewModal(true); }} icon={Eye} label="" variant="outline" size="xs" />
-                          <ActionButton onClick={() => handleEditPositionAssessment(assessment)} icon={Edit} label="" variant="info" size="xs" />
-                          <ActionButton onClick={() => handleDelete(assessment.id, 'position')} icon={Trash2} label="" variant="danger" size="xs" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="text-center py-12">
-                      <Crown className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p className="text-gray-600 font-medium text-sm">No position templates found</p>
-                      <p className="text-gray-400 text-xs mt-1">Create your first leadership position template</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Employee</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Overall Grade</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
-                  <th className="text-center px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredEmployeeAssessments.length > 0 ? (
-                  filteredEmployeeAssessments.map((assessment) => (
-                    <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-gray-900">{assessment.employee_name}</div>
-                        <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">       {assessment.position_assessment_info?.position_group || 'N/A'}</td>
-                      <td className="px-4 py-3"><StatusBadge status={assessment.status} /></td>
-                      <td className="px-4 py-3">
-                        <GradeBadge grade={assessment.overall_letter_grade} percentage={parseFloat(assessment.overall_percentage || 0).toFixed(0)} />
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.assessment_date).toLocaleDateString()}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1 flex-wrap">
-                          <ActionButton onClick={() => { setSelectedAssessment(assessment); setShowViewModal(true); }} icon={Eye} label="" variant="outline" size="xs" />
-                          {assessment.status === 'DRAFT' && <ActionButton onClick={() => handleEditAssessment(assessment)} icon={Edit} label="" variant="info" size="xs" />}
-                          <ActionButton onClick={() => handleExport(assessment.id)} icon={Download} label="" variant="secondary" size="xs" />
-                          {assessment.status === 'DRAFT' && <ActionButton onClick={() => handleSubmitAssessment(assessment.id)} icon={CheckCircle} label="" variant="success" size="xs" />}
-                          {assessment.status === 'COMPLETED' && <ActionButton onClick={() => handleReopenAssessment(assessment.id)} icon={RefreshCw} label="" variant="warning" size="xs" />}
-                          <ActionButton onClick={() => handleDelete(assessment.id, 'employee')} icon={Trash2} label="" variant="danger" size="xs" />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="text-center py-12">
-                      <Crown className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p className="text-gray-600 font-medium text-sm">No employee assessments found</p>
-                      <p className="text-gray-400 text-xs mt-1">Create your first leadership assessment</p>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         )}
       </div>
+    </div>
+
+
+    
+     
+<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+  {/* ✅ Position Templates Tab - Only for Admin/Manager */}
+  {!isEmployeeOnlyAccess() && activeTab === 'position' && (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Hierarchy</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Grade Levels</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Competencies</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Created</th>
+            <th className="text-center px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {filteredPositionAssessments.length > 0 ? (
+            filteredPositionAssessments.map((assessment) => (
+              <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
+                <td className="px-4 py-3 text-sm font-medium text-gray-900">{assessment.position_group_name}</td>
+                <td className="px-4 py-3 text-sm text-gray-700">
+                  <div className="flex flex-wrap gap-1">
+                    {assessment.grade_levels && assessment.grade_levels.length > 0 ? (
+                      assessment.grade_levels.map((level, idx) => (
+                        <span key={idx} className="inline-flex px-2 py-0.5 bg-sky-100 text-sky-700 rounded-md text-xs font-medium">
+                          {level}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-gray-400">No grades</span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-sm text-gray-500">{assessment.competency_ratings?.length || 0} competencies</td>
+                <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.created_at).toLocaleDateString()}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1">
+                    <ActionButton onClick={() => { setSelectedAssessment(assessment); setShowViewModal(true); }} icon={Eye} label="" variant="outline" size="xs" />
+                    <ActionButton onClick={() => handleEditPositionAssessment(assessment)} icon={Edit} label="" variant="info" size="xs" />
+                    <ActionButton onClick={() => handleDelete(assessment.id, 'position')} icon={Trash2} label="" variant="danger" size="xs" />
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="5" className="text-center py-12">
+                <Crown className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-600 font-medium text-sm">No position templates found</p>
+                <p className="text-gray-400 text-xs mt-1">Create your first leadership position template</p>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )}
+
+  {/* ✅ Employee Assessments Tab - For Everyone (with different permissions) */}
+  {(isEmployeeOnlyAccess() || activeTab === 'employee') && (
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead className="bg-gray-50 border-b border-gray-200">
+          <tr>
+            {/* ✅ Hide Employee column for employee-only users */}
+            {!isEmployeeOnlyAccess() && (
+              <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Employee</th>
+            )}
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Position</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Status</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Overall Grade</th>
+            <th className="text-left px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
+            <th className="text-center px-4 py-3 text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {filteredEmployeeAssessments.length > 0 ? (
+            filteredEmployeeAssessments.map((assessment) => (
+              <tr key={assessment.id} className="hover:bg-gray-50 transition-colors">
+                {/* ✅ Show employee name only for admin/manager */}
+                {!isEmployeeOnlyAccess() && (
+                  <td className="px-4 py-3">
+                    <div className="text-sm font-medium text-gray-900">{assessment.employee_name}</div>
+                    <div className="text-xs text-gray-500">ID: {assessment.employee_id}</div>
+                  </td>
+                )}
+                <td className="px-4 py-3 text-sm text-gray-700">{assessment.position_assessment_info?.position_group || 'N/A'}</td>
+                <td className="px-4 py-3"><StatusBadge status={assessment.status} /></td>
+                <td className="px-4 py-3">
+                  <GradeBadge grade={assessment.overall_letter_grade} percentage={parseFloat(assessment.overall_percentage || 0).toFixed(0)} />
+                </td>
+                <td className="px-4 py-3 text-xs text-gray-500">{new Date(assessment.assessment_date).toLocaleDateString()}</td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1 flex-wrap">
+                    {/* ✅ VIEW button - Available for everyone */}
+                    <ActionButton 
+                      onClick={() => { setSelectedAssessment(assessment); setShowViewModal(true); }} 
+                      icon={Eye} 
+                      label="" 
+                      variant="outline" 
+                      size="xs" 
+                    />
+                    
+                    {/* ✅ DOWNLOAD button - Available for everyone if completed */}
+                    {assessment.status === 'COMPLETED' && (
+                      <ActionButton 
+                        onClick={() => handleExport(assessment.id)} 
+                        icon={Download} 
+                        label="" 
+                        variant="secondary" 
+                        size="xs" 
+                      />
+                    )}
+                    
+                    {/* ✅ Admin/Manager only actions */}
+                    {!isEmployeeOnlyAccess() && (
+                      <>
+                        {/* EDIT - Only for drafts */}
+                        {assessment.status === 'DRAFT' && (
+                          <ActionButton 
+                            onClick={() => handleEditAssessment(assessment)} 
+                            icon={Edit} 
+                            label="" 
+                            variant="info" 
+                            size="xs" 
+                          />
+                        )}
+                        
+                        {/* SUBMIT - Only for drafts */}
+                        {assessment.status === 'DRAFT' && (
+                          <ActionButton 
+                            onClick={() => handleSubmitAssessment(assessment.id)} 
+                            icon={CheckCircle} 
+                            label="" 
+                            variant="success" 
+                            size="xs" 
+                          />
+                        )}
+                        
+                        {/* REOPEN - Only for completed */}
+                        {assessment.status === 'COMPLETED' && (
+                          <ActionButton 
+                            onClick={() => handleReopenAssessment(assessment.id)} 
+                            icon={RefreshCw} 
+                            label="" 
+                            variant="warning" 
+                            size="xs" 
+                          />
+                        )}
+                        
+                        {/* DELETE - Always available for admin/manager */}
+                        <ActionButton 
+                          onClick={() => handleDelete(assessment.id, 'employee')} 
+                          icon={Trash2} 
+                          label="" 
+                          variant="danger" 
+                          size="xs" 
+                        />
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={isEmployeeOnlyAccess() ? "5" : "6"} className="text-center py-12">
+                <Crown className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                <p className="text-gray-600 font-medium text-sm">
+                  {isEmployeeOnlyAccess() ? "No assessments found" : "No employee assessments found"}
+                </p>
+                {!isEmployeeOnlyAccess() && (
+                  <p className="text-gray-400 text-xs mt-1">Create your first leadership assessment</p>
+                )}
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )}
+</div>
 
       {/* ✅ Create Position Modal - 2 COLUMN GRID */}
       {showCreatePositionModal && (

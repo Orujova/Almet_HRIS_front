@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Users, Target, ArrowRight, Loader2, AlertCircle, Settings,
   RefreshCw, ChevronRight, Home, BarChart3, 
-  TrendingUp, Crown, ArrowLeft, Wrench, Shield, Lock
+  TrendingUp, Crown, ArrowLeft, Wrench, Shield, Lock,User, Info
 } from 'lucide-react';
 import { useTheme } from '@/components/common/ThemeProvider';
 import BehavioralAssessmentCalculation from '@/components/assessment/BehavioralAssessmentCalculation';
@@ -17,7 +17,11 @@ import ConfirmationModal from '@/components/common/ConfirmationModal';
 const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
   const { darkMode } = useTheme();
   const { showSuccess, showError } = useToast();
-  
+  const isEmployeeOnlyAccess = () => {
+  return userPermissions && 
+         !userPermissions.is_admin && 
+         !userPermissions.is_manager;
+};
   const [activeView, setActiveView] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('assessmentMatrixView') || 'dashboard';
@@ -457,7 +461,118 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
       </div>
     </div>
   );
+// ✅ Updated EmployeeDashboardView with correct logic
+const EmployeeDashboardView = () => {
+  const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
+  const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
+  const borderColor = darkMode ? 'border-almet-comet' : 'border-almet-bali-hai/30';
 
+  // ✅ Determine which assessment types the employee has
+  const hasLeadership = dashboardData.leadershipAssessments > 0;
+  const hasBehavioral = dashboardData.behavioralAssessments > 0;
+  const hasCore = dashboardData.coreAssessments > 0;
+
+  return (
+    <div className="space-y-5">
+      {/* Welcome Message */}
+      <div className={`${bgCard} border ${borderColor} rounded-xl p-6 shadow-sm`}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-3 rounded-xl bg-almet-mystic">
+            <User className="w-6 h-6 text-almet-sapphire" />
+          </div>
+          <div>
+            <h2 className={`text-lg font-bold ${textPrimary}`}>My Assessments</h2>
+            <p className={`text-sm ${darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo'}`}>
+              View and track your personal assessments
+            </p>
+          </div>
+        </div>
+        
+        {/* ✅ Summary Cards - Only show available types */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <StatCard
+            icon={hasLeadership ? Crown : hasBehavioral ? Users : Target}
+            title={hasLeadership ? "Leadership" : hasBehavioral ? "Behavioral" : "Core Competency"}
+            value={hasLeadership ? dashboardData.leadershipAssessments : hasBehavioral ? dashboardData.behavioralAssessments : dashboardData.coreAssessments}
+            subtitle={hasLeadership ? "Senior position assessment" : hasBehavioral ? "Soft skills assessment" : "Technical skills assessment"}
+            color={hasLeadership ? "blue" : hasBehavioral ? "purple" : "orange"}
+          />
+          
+          <StatCard
+            icon={Target}
+            title="Core Competency"
+            value={dashboardData.coreAssessments}
+            subtitle="Technical skills assessment"
+            color="orange"
+          />
+          
+          <StatCard
+            icon={TrendingUp}
+            title="Completed"
+            value={dashboardData.completedAssessments}
+            subtitle={`${dashboardData.completionRate.toFixed(1)}% completion rate`}
+            color="green"
+          />
+        </div>
+      </div>
+
+      {/* ✅ My Assessments Cards - Show only what employee has */}
+      <div className={`grid grid-cols-1 ${hasLeadership || hasBehavioral ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-5`}>
+        {/* ✅ Leadership OR Behavioral (never both) */}
+        {hasLeadership && (
+          <NavigationCard
+            icon={Crown}
+            title="My Leadership Assessment"
+            subtitle="View your leadership evaluation and performance results"
+            color="from-amber-100 via-amber-200 to-amber-300"
+            count={dashboardData.leadershipAssessments}
+            isActive={false}
+            onClick={() => setActiveView('leadership')}
+          />
+        )}
+        
+        {hasBehavioral && !hasLeadership && (
+          <NavigationCard
+            icon={Users}
+            title="My Behavioral Assessment"
+            subtitle="Review your soft skills and interpersonal competencies"
+            color="from-violet-100 via-violet-200 to-violet-300"
+            count={dashboardData.behavioralAssessments}
+            isActive={false}
+            onClick={() => setActiveView('behavioral')}
+          />
+        )}
+        
+        {/* ✅ Core - Always available */}
+        {hasCore && (
+          <NavigationCard
+            icon={Target}
+            title="My Core Competency Assessment"
+            subtitle="Check your technical skills and job-specific requirements"
+            color="from-blue-100 via-blue-200 to-blue-300"
+            count={dashboardData.coreAssessments}
+            isActive={false}
+            onClick={() => setActiveView('core')}
+          />
+        )}
+      </div>
+
+      {/* ✅ Info Banner */}
+      <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-sky-900 mb-1">About Your Assessments</h3>
+            <p className="text-xs text-sky-700 leading-relaxed">
+              You can view your personal assessments here. If you need to make changes or have questions 
+              about your assessments, please contact your manager or HR department.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
   // ✅ Loading state
   if (loading && activeView === 'dashboard') {
     return (
@@ -538,6 +653,10 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
 
       {/* Content */}
       {activeView === 'dashboard' && (
+        <>
+        {isEmployeeOnlyAccess() ? (
+          <EmployeeDashboardView />
+        ) : (
         <div className="space-y-5">
           {/* Overview Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -610,7 +729,9 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
             />
           </div>
         </div>
-      )}
+        )}
+      </>
+    )}
 
       {/* ✅ Assessment views with Real Components */}
       {activeView === 'leadership' && (
