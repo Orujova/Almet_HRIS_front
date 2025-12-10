@@ -56,9 +56,7 @@ const OnboardingTrainingCard = ({ assignment, darkMode, onClick }) => {
                   <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                 )}
               </div>
-              <p className={`text-xs font-medium ${getStatusColor(assignment.status)} mb-1`}>
-                {assignment.status.replace('_', ' ')}
-              </p>
+              
               <div className="flex items-center gap-3 text-xs text-almet-waterloo dark:text-almet-bali-hai mb-2">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
@@ -66,21 +64,7 @@ const OnboardingTrainingCard = ({ assignment, darkMode, onClick }) => {
                 </span>
               </div>
               
-              {/* Progress Bar */}
-              <div className="mb-2">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Progress</span>
-                  <span className="text-xs font-bold text-almet-sapphire dark:text-almet-steel-blue">
-                    {assignment.progress_percentage}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                  <div
-                    className="h-1.5 rounded-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all"
-                    style={{ width: `${assignment.progress_percentage}%` }}
-                  ></div>
-                </div>
-              </div>
+          
             </div>
           </div>
         </div>
