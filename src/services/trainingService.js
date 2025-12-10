@@ -25,9 +25,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 600000, // 600000 ms = 600s = 10 dəqiqə
+  timeout: 600000,
 });
-
 
 // ✅ Request Interceptor
 api.interceptors.request.use(
@@ -82,12 +81,11 @@ export const trainingAPI = {
     }
   },
 
-  // ✅ FIXED: Create training - let axios auto-detect FormData
+  // Create training
   create: async (data) => {
     try {
       const config = {};
       
-      // If data is FormData, remove Content-Type to let browser set it with boundary
       if (data instanceof FormData) {
         config.headers = {
           'Content-Type': 'multipart/form-data',
@@ -102,12 +100,11 @@ export const trainingAPI = {
     }
   },
 
-  // ✅ FIXED: Update training - let axios auto-detect FormData
+  // Update training
   update: async (id, data) => {
     try {
       const config = {};
       
-      // If data is FormData, remove Content-Type to let browser set it with boundary
       if (data instanceof FormData) {
         config.headers = {
           'Content-Type': 'multipart/form-data',
@@ -122,16 +119,8 @@ export const trainingAPI = {
     }
   },
 
-  // Partial update
-  patch: async (id, data) => {
-    try {
-      const response = await api.patch(`${TRAINING_BASE}/trainings/${id}/`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error patching training:', error);
-      throw error;
-    }
-  },
+
+
 
   // Delete training
   delete: async (id) => {
@@ -155,42 +144,23 @@ export const trainingAPI = {
     }
   },
 
-  // ✅ Upload training material
-  uploadMaterial: async (trainingId, formData) => {
+  // ✅ Bulk assign trainings to employees
+  bulkAssign: async (data) => {
     try {
       const response = await api.post(
-        `${TRAINING_BASE}/trainings/${trainingId}/upload_material/`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error uploading material:', error);
-      throw error;
-    }
-  },
-
-  // ✅ Assign training to employees
-  assignToEmployees: async (trainingId, data) => {
-    try {
-      const response = await api.post(
-        `${TRAINING_BASE}/trainings/${trainingId}/assign_to_employees/`,
+        `${TRAINING_BASE}/trainings/bulk_assign/`,
         data
       );
       return response.data;
     } catch (error) {
-      console.error('Error assigning training:', error);
+      console.error('Error bulk assigning trainings:', error);
       throw error;
     }
   }
 };
 
 // ============================================
-// 📝 TRAINING ASSIGNMENTS
+// 📋 TRAINING ASSIGNMENTS
 // ============================================
 
 export const trainingAssignmentAPI = {
@@ -238,16 +208,7 @@ export const trainingAssignmentAPI = {
     }
   },
 
-  // Partial update
-  patch: async (id, data) => {
-    try {
-      const response = await api.patch(`${TRAINING_BASE}/assignments/${id}/`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error patching assignment:', error);
-      throw error;
-    }
-  },
+
 
   // Delete assignment
   delete: async (id) => {
@@ -281,20 +242,6 @@ export const trainingAssignmentAPI = {
       return response.data;
     } catch (error) {
       console.error('Error completing material:', error);
-      throw error;
-    }
-  },
-
-  // ✅ Assign trainings to one employee
-  assignToEmployee: async (data) => {
-    try {
-      const response = await api.post(
-        `${TRAINING_BASE}/assignments/assign_to_employee/`,
-        data
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error assigning to employee:', error);
       throw error;
     }
   },
@@ -360,16 +307,7 @@ export const trainingMaterialAPI = {
     }
   },
 
-  // Partial update
-  patch: async (id, data) => {
-    try {
-      const response = await api.patch(`${TRAINING_BASE}/materials/${id}/`, data);
-      return response.data;
-    } catch (error) {
-      console.error('Error patching material:', error);
-      throw error;
-    }
-  },
+
 
   // Delete material
   delete: async (id) => {
@@ -418,58 +356,12 @@ export const trainingHelpers = {
     return colors[status] || 'gray';
   },
 
-  // Get training type label
-  getTypeLabel: (type) => {
-    const labels = {
-      'MANDATORY': 'Mandatory',
-      'OPTIONAL': 'Optional',
-      'ROLE_BASED': 'Role-Based'
-    };
-    return labels[type] || type;
-  },
-
-  // Get difficulty label
-  getDifficultyLabel: (level) => {
-    const labels = {
-      'BEGINNER': 'Beginner',
-      'INTERMEDIATE': 'Intermediate',
-      'ADVANCED': 'Advanced'
-    };
-    return labels[level] || level;
-  },
-
-  // Get material type icon
-  getMaterialTypeIcon: (type) => {
-    const icons = {
-      'PDF': '📄',
-      'VIDEO': '🎥',
-      'PRESENTATION': '📊',
-      'DOCUMENT': '📝',
-      'LINK': '🔗',
-      'OTHER': '📎'
-    };
-    return icons[type] || '📎';
-  },
-
   // Format file size
   formatFileSize: (bytes) => {
     if (!bytes) return 'N/A';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  },
-
-  // Get material type label
-  getMaterialTypeLabel: (type) => {
-    const labels = {
-      'PDF': 'PDF Document',
-      'VIDEO': 'Video',
-      'PRESENTATION': 'Presentation',
-      'DOCUMENT': 'Document',
-      'LINK': 'External Link',
-      'OTHER': 'Other'
-    };
-    return labels[type] || type;
   },
 
   // Get status label
@@ -498,22 +390,6 @@ export const trainingHelpers = {
     return today > due;
   },
 
-  // Get priority label
-  getPriorityLabel: (priority) => {
-    if (priority >= 8) return 'Critical';
-    if (priority >= 5) return 'High';
-    if (priority >= 3) return 'Medium';
-    return 'Low';
-  },
-
-  // Get priority color
-  getPriorityColor: (priority) => {
-    if (priority >= 8) return 'red';
-    if (priority >= 5) return 'orange';
-    if (priority >= 3) return 'yellow';
-    return 'green';
-  },
-
   // Format date
   formatDate: (dateString) => {
     if (!dateString) return 'N/A';
@@ -536,22 +412,6 @@ export const trainingHelpers = {
       hour: '2-digit',
       minute: '2-digit'
     });
-  },
-
-  // Get time ago
-  getTimeAgo: (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMs = now - date;
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
-
-    if (diffInMinutes < 60) return `${diffInMinutes} minutes ago`;
-    if (diffInHours < 24) return `${diffInHours} hours ago`;
-    if (diffInDays < 30) return `${diffInDays} days ago`;
-    return date.toLocaleDateString('en-US');
   }
 };
 

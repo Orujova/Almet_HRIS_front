@@ -52,9 +52,7 @@ export default function FixedStatCards({ employees, darkMode }) {
     return count;
   };
 
-  const calcProgress = (completed, total) => {
-    return total > 0 ? Math.round((completed / total) * 100) : 0;
-  };
+
 
   const totalEmployees = employees?.length || 0;
   const completedCount = getCompletedCount();
@@ -62,7 +60,7 @@ export default function FixedStatCards({ employees, darkMode }) {
   const midYearCount = getMidYearCompletedCount();
 
   const StatCard = ({ icon: Icon, title, value, total, subtitle, color }) => {
-    const progress = calcProgress(value, total);
+
     
     return (
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-4 hover:shadow-lg transition-all`}>
@@ -98,25 +96,7 @@ export default function FixedStatCards({ employees, darkMode }) {
           </p>
         )}
         
-        {/* {total && (
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-almet-waterloo dark:text-almet-bali-hai">
-              <span>Progress</span>
-              <span className="font-bold">{progress}%</span>
-            </div>
-            <div className={`w-full h-2 rounded-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'}`}>
-              <div 
-                className={`h-2 rounded-full transition-all duration-500 ${
-                  color === 'blue' ? 'bg-almet-sapphire' : 
-                  color === 'orange' ? 'bg-orange-500' : 
-                  color === 'purple' ? 'bg-purple-500' :
-                  'bg-emerald-500'
-                }`}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )} */}
+    
       </div>
     );
   };

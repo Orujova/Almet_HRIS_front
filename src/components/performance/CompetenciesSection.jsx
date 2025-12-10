@@ -240,15 +240,7 @@ const handleChange = (field, value) => {
                   </span>
                 )}
                 
-                {/* ✅ Show sync indicator */}
-                {performanceData?.metadata?.had_existing_ratings && (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 font-medium">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/>
-                    </svg>
-                    Synced with {isLeadershipAssessment ? 'Leadership' : 'Behavioral'} Assessment
-                  </span>
-                )}
+             
               </p>
             </div>
           </div>

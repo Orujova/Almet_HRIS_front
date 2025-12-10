@@ -267,15 +267,7 @@ export default function ObjectivesSection({
                   </div>
                 </div>
 
-                {/* Progress */}
-                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
-                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
-                    Progress
-                  </div>
-                  <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                    {objective.progress || 0}%
-                  </div>
-                </div>
+     
 
                 {/* Rating */}
                 <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
@@ -364,20 +356,7 @@ Completed                    </div>
                       />
                     </div>
 
-                    <div>
-                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
-                        Progress %
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={objective.progress || 0}
-                        onChange={(e) => onUpdate(index, 'progress', parseInt(e.target.value) || 0)}
-                        disabled={isCancelled}
-                        className={`${inputClass} w-full text-center font-semibold`}
-                      />
-                    </div>
+              
 
                     <div>
                       <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>

@@ -677,10 +677,7 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
       
       await performanceApi.performances.saveObjectivesDraft(performanceId, objectives);
       
-      // ✅ DON'T show toast on auto-save (causes scroll)
-      // showInfo('Changes auto-saved');
-      
-      // ✅ Restore scroll position AFTER state update
+
       requestAnimationFrame(() => {
         window.scrollTo(0, scrollY);
       });
@@ -795,7 +792,6 @@ const handleUpdateObjective = (index, field, value) => {
       description: '',
       weight: 0,
       linked_department_objective: null,
-      progress: 0,
       status: defaultStatus,
       end_year_rating: null,
       calculated_score: 0,

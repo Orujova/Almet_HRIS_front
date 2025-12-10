@@ -2,12 +2,17 @@
 import { Calendar, Users, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X, Cake, Award, Sparkles, BookOpen, Download, ExternalLink } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
+import { useToast } from "@/components/common/Toast";
 import { useAuth } from "@/auth/AuthContext";
 import { useState, useEffect } from "react";
 import { newsService } from "@/services/newsService";
 import celebrationService from "@/services/celebrationService";
 import trainingService from "@/services/trainingService";
+import OnboardingTrainingCard from "@/components/training/OnboardingTrainingCard";
+import AssignmentDetailModal from "@/components/training/AssignmentDetailModal";
 import { useTheme } from "@/components/common/ThemeProvider";
+import { useRouter } from "next/navigation";
+
 
 const StatsCard = ({ icon, title, value, subtitle, actionText, isHighlight = false }) => {
   return (
@@ -269,168 +274,7 @@ const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isT
   );
 };
 
-const OnboardingTrainingCard = ({ training, darkMode, onClick, onMarkComplete }) => {
-  return (
-    <div className={`bg-white dark:bg-almet-cloud-burst rounded-xl shadow-md hover:shadow-lg transition-all duration-300 border ${
-      training.isCompleted 
-        ? 'border-green-500 dark:border-green-400' 
-        : 'border-almet-mystic dark:border-almet-san-juan'
-    } overflow-hidden group cursor-pointer`}>
-      
-      <div className={`h-1.5 ${
-        training.isCompleted 
-          ? 'bg-gradient-to-r from-green-500 to-green-600' 
-          : 'bg-gradient-to-r from-almet-sapphire to-almet-astral'
-      }`}></div>
 
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-start gap-3 flex-1">
-            <div className={`p-2 rounded-xl ${
-              training.isCompleted
-                ? 'bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400'
-                : 'bg-gradient-to-br from-almet-mystic to-white dark:from-almet-san-juan dark:to-almet-comet text-almet-sapphire dark:text-almet-steel-blue'
-            }`}>
-              <BookOpen className="h-5 w-5" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-sm text-almet-cloud-burst dark:text-white group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors">
-                  {training.title}
-                </h3>
-                {training.isCompleted && (
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                )}
-              </div>
-              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-2 line-clamp-2">
-                {training.description}
-              </p>
-              <div className="flex items-center gap-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {training.duration}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onClick(training);
-            }}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral hover:from-almet-astral hover:to-almet-steel-blue text-white rounded-lg text-xs font-medium transition-all duration-300 shadow-md hover:shadow-lg"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            View Training
-          </button>
-          {!training.isCompleted && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onMarkComplete(training.id);
-              }}
-              className="px-3 py-2 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 rounded-lg text-xs font-medium transition-all duration-300 border border-green-200 dark:border-green-800"
-            >
-              <CheckCircle className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const PDFViewerModal = ({ isOpen, onClose, training, darkMode, onMarkComplete }) => {
-  if (!isOpen || !training) return null;
-
-  return (
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white dark:bg-almet-cloud-burst rounded-2xl max-w-6xl w-full h-[90vh] overflow-hidden shadow-2xl flex flex-col" 
-        onClick={(e) => e.stopPropagation()}
-      >
-        
-        <div className="flex items-center justify-between p-5 border-b border-almet-mystic dark:border-almet-san-juan bg-gradient-to-r from-almet-mystic to-white dark:from-almet-san-juan dark:to-almet-cloud-burst">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-almet-sapphire/10 dark:bg-almet-steel-blue/10">
-              <BookOpen className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-almet-cloud-burst dark:text-white">
-                {training.title}
-              </h2>
-              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                {training.category} • {training.duration}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {!training.isCompleted && (
-              <button
-                onClick={() => {
-                  onMarkComplete(training.id);
-                  setTimeout(() => onClose(), 500);
-                }}
-                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-all shadow-md"
-              >
-                <CheckCircle className="h-4 w-4" />
-                Mark as Complete
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-almet-mystic dark:hover:bg-almet-comet rounded-lg transition-colors text-almet-waterloo dark:text-almet-bali-hai"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-almet-comet">
-          <iframe
-            src={training.pdfUrl}
-            className="w-full h-full"
-            title={training.title}
-          />
-        </div>
-
-        <div className="p-4 border-t border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-cloud-burst">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-              {training.description}
-            </p>
-            <div className="flex gap-2">
-              <a
-                href={training.pdfUrl}
-                download
-                className="flex items-center gap-1.5 px-3 py-2 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-mystic dark:hover:bg-almet-san-juan rounded-lg text-xs font-medium transition-all"
-              >
-                <Download className="h-3.5 w-3.5" />
-                Download
-              </a>
-              <a
-                href={training.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 px-3 py-2 text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-mystic dark:hover:bg-almet-san-juan rounded-lg text-xs font-medium transition-all"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Open in New Tab
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
   if (!isOpen || !news) return null;
@@ -487,11 +331,6 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
             {news.is_pinned && (
               <div className="bg-orange-500 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium shadow-lg">
                 Pinned
-              </div>
-            )}
-            {!news.is_published && (
-              <div className="bg-orange-600 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium shadow-lg">
-                Draft
               </div>
             )}
           </div>
@@ -581,6 +420,7 @@ const NewsDetailModal = ({ isOpen, onClose, news, darkMode }) => {
 export default function Home() {
   const { account } = useAuth();
   const { darkMode } = useTheme();
+  const toast = useToast();
   const [isManager, setIsManager] = useState(false);
   const [latestNews, setLatestNews] = useState([]);
   const [loadingNews, setLoadingNews] = useState(true);
@@ -590,16 +430,21 @@ export default function Home() {
   const [loadingCelebrations, setLoadingCelebrations] = useState(true);
   const [celebratedItems, setCelebratedItems] = useState(new Set());
   
-  // Onboarding Training State
-  const [trainings, setTrainings] = useState([]);
-  const [selectedTraining, setSelectedTraining] = useState(null);
-  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  // Training State
+  const [myTrainings, setMyTrainings] = useState(null);
   const [loadingTrainings, setLoadingTrainings] = useState(true);
-  
+
+  const [showTrainingModal, setShowTrainingModal] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
+
+  // Theme colors
+  const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
+  const textMuted = darkMode ? "text-gray-400" : "text-almet-waterloo";
+  const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
+
   useEffect(() => {
-    loadLatestNews();
-    loadUpcomingCelebrations();
-    loadCelebratedItems();
     loadMyTrainings();
   }, []);
 
@@ -607,100 +452,57 @@ export default function Home() {
     setLoadingTrainings(true);
     try {
       const response = await trainingService.assignments.getMyTrainings();
-      
-      if (response && response.assignments) {
-        // Transform API data to match our training card format
-        const formattedTrainings = response.assignments
-          .filter(assignment => assignment.status !== 'COMPLETED')
-          .slice(0, 2) // Show only first 2 pending trainings
-          .map(assignment => ({
-            id: assignment.id,
-            title: assignment.training_title,
-            description: `Status: ${assignment.status.replace('_', ' ')} • Progress: ${assignment.progress_percentage}%`,
-            pdfUrl: assignment.training_id, // You'll need to get the actual PDF URL from materials
-            duration: assignment.due_date ? `Due: ${new Date(assignment.due_date).toLocaleDateString()}` : 'No deadline',
-            isCompleted: assignment.status === 'COMPLETED',
-            dueDate: assignment.due_date,
-            category: "Assigned Training",
-            assignmentId: assignment.id,
-            trainingId: assignment.training
-          }));
-        
-        setTrainings(formattedTrainings);
-      }
+      setMyTrainings(response);
     } catch (error) {
-      console.error('Failed to load my trainings:', error);
-      // Fallback to local storage if API fails
-      loadTrainings();
+      console.error("Failed to load my trainings:", error);
     } finally {
       setLoadingTrainings(false);
     }
   };
 
-  const loadTrainings = () => {
-    // Fallback: Load from localStorage (for demo purposes)
-    const TRAINING_VERSION = '1.0.0';
-    const VERSION_KEY = 'onboarding_trainings_version';
-    
-    const mockTrainings = [
-      {
-        id: 2,
-        title: "Company Overview",
-        description: "Company Overview training to get you acquainted with our mission, vision, and values.",
-        pdfUrl: "/pdfs/Copy of Almet Academy - Company Overview.pdf",
-        duration: "20 min",
-        isCompleted: false,
-        dueDate: "2025-01-20",
-        category: "HR & Policies"
+  const handleTrainingClick = async (assignment) => {
+    try {
+      // Fetch full assignment details
+      const data = await trainingService.assignments.getById(assignment.id);
+      
+      // Fetch training details to get materials
+      if (data.training) {
+        const trainingDetails = await trainingService.trainings.getById(data.training);
+        data.materials = trainingDetails.materials || [];
       }
-    ];
-
-    const storedVersion = localStorage.getItem(VERSION_KEY);
-    const stored = localStorage.getItem('onboarding_trainings');
-    
-    if (storedVersion !== TRAINING_VERSION || !stored) {
-      setTrainings(mockTrainings);
-      localStorage.setItem('onboarding_trainings', JSON.stringify(mockTrainings));
-      localStorage.setItem(VERSION_KEY, TRAINING_VERSION);
-    } else {
-      setTrainings(JSON.parse(stored));
+      
+      setSelectedAssignment(data);
+      setShowTrainingModal(true);
+    } catch (error) {
+      console.error("Error loading assignment:", error);
+      toast.showError("Failed to load training details");
     }
   };
 
-  const handleViewTraining = (training) => {
-    setSelectedTraining(training);
-    setShowTrainingModal(true);
+  const getPendingTrainings = () => {
+    if (!myTrainings || !myTrainings.assignments) return [];
+    return myTrainings.assignments
+      .filter((a) => a.status !== "COMPLETED")
+      .slice(0, 2);
   };
 
-  const handleMarkTrainingComplete = async (trainingId) => {
-    // Check if this is an API-based training (has assignmentId)
-    const training = trainings.find(t => t.id === trainingId);
-    
-    if (training && training.assignmentId) {
-      try {
-        // Mark as completed via API
-        await trainingService.assignments.patch(training.assignmentId, {
-          status: 'COMPLETED',
-          completed_date: new Date().toISOString()
-        });
-        
-        // Reload trainings from API
-        await loadMyTrainings();
-        return;
-      } catch (error) {
-        console.error('Failed to mark training as complete:', error);
-      }
+  const getTrainingStats = () => {
+    if (!myTrainings || !myTrainings.summary) {
+      return { completedCount: 0, totalCount: 0 };
     }
-    
-    // Fallback to localStorage for demo trainings
-    const updatedTrainings = trainings.map(t => 
-      t.id === trainingId 
-        ? { ...t, isCompleted: true, completedAt: new Date().toISOString() }
-        : t
-    );
-    setTrainings(updatedTrainings);
-    localStorage.setItem('onboarding_trainings', JSON.stringify(updatedTrainings));
+    return {
+      completedCount: myTrainings.summary.completed,
+      totalCount: myTrainings.summary.total,
+    };
   };
+  useEffect(() => {
+    loadLatestNews();
+    loadUpcomingCelebrations();
+    loadCelebratedItems();
+    loadMyTrainings();
+  }, []);
+
+ 
 
   const loadLatestNews = async () => {
     setLoadingNews(true);
@@ -717,13 +519,6 @@ export default function Home() {
     } finally {
       setLoadingNews(false);
     }
-  };
-
-  const getTrainingStats = () => {
-    const completedCount = trainings.filter(t => t.isCompleted).length;
-    const totalCount = trainings.length;
-    const pendingTrainings = trainings.filter(t => !t.isCompleted).slice(0, 2);
-    return { completedCount, totalCount, pendingTrainings };
   };
 
   const loadUpcomingCelebrations = async () => {
@@ -763,9 +558,6 @@ export default function Home() {
   const handleCelebrate = async (celebration) => {
     if (celebratedItems.has(celebration.id)) return;
 
-    const celebrationDate = new Date(celebration.date).toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-    
     try {
       const celebrateMessage = '🎉';
       
@@ -800,6 +592,8 @@ export default function Home() {
       setShowNewsModal(true);
     }
   };
+
+
   
   return (
     <DashboardLayout>
@@ -931,60 +725,79 @@ export default function Home() {
         />
       </div>
 
-      {/* Onboarding Training Section - Only show if user has pending trainings */}
-      {!isManager && !loadingTrainings && trainings.length > 0 && getTrainingStats().pendingTrainings.length > 0 && (
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-base font-medium text-almet-cloud-burst dark:text-white flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
-              My Onboarding Training
-            </h2>
-            <Link 
-              href="/trainings" 
-              className="text-almet-sapphire dark:text-almet-steel-blue flex items-center text-xs md:text-sm hover:underline transition-all duration-300 group"
-            >
-              View All
-              <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-          
-          {/* Progress Bar */}
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 shadow-md border border-almet-mystic dark:border-almet-san-juan mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-1">
-                  Training Progress
-                </h3>
-                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                  {getTrainingStats().completedCount} of {getTrainingStats().totalCount} completed
-                </p>
+     {/* My Trainings Section */}
+        {!loadingTrainings &&
+          myTrainings &&
+          getPendingTrainings().length > 0 && (
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h2
+                  className={`text-base font-medium ${textPrimary} flex items-center gap-2`}
+                >
+                  <BookOpen
+                    className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue"
+                  />
+                  My Training Progress
+                </h2>
               </div>
-              <div className="text-xl font-bold text-almet-sapphire dark:text-almet-steel-blue">
-                {getTrainingStats().totalCount > 0 ? Math.round((getTrainingStats().completedCount / getTrainingStats().totalCount) * 100) : 0}%
-              </div>
-            </div>
-            <div className="w-full bg-almet-mystic dark:bg-almet-san-juan rounded-full h-2 overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500 rounded-full"
-                style={{ width: `${getTrainingStats().totalCount > 0 ? (getTrainingStats().completedCount / getTrainingStats().totalCount) * 100 : 0}%` }}
-              ></div>
-            </div>
-          </div>
 
-          {/* Training Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {getTrainingStats().pendingTrainings.map((training) => (
-              <OnboardingTrainingCard
-                key={training.id}
-                training={training}
-                darkMode={darkMode}
-                onClick={handleViewTraining}
-                onMarkComplete={handleMarkTrainingComplete}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+              {/* Progress Bar */}
+              <div
+                className={`${bgCard} rounded-xl p-4 shadow-md border ${borderColor} mb-4`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <h3 className={`text-sm font-semibold ${textPrimary} mb-1`}>
+                      Overall Training Progress
+                    </h3>
+                    <p className={`text-xs ${textMuted}`}>
+                      {getTrainingStats().completedCount} of{" "}
+                      {getTrainingStats().totalCount} trainings completed
+                    </p>
+                  </div>
+                  <div className="text-xl font-bold text-almet-sapphire dark:text-almet-steel-blue">
+                    {getTrainingStats().totalCount > 0
+                      ? Math.round(
+                          (getTrainingStats().completedCount /
+                            getTrainingStats().totalCount) *
+                            100
+                        )
+                      : 0}
+                    %
+                  </div>
+                </div>
+                <div className="w-full bg-almet-mystic dark:bg-almet-san-juan rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500 rounded-full"
+                    style={{
+                      width: `${
+                        getTrainingStats().totalCount > 0
+                          ? (getTrainingStats().completedCount /
+                              getTrainingStats().totalCount) *
+                            100
+                          : 0
+                      }%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Training Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {getPendingTrainings().map((assignment) => (
+                  <OnboardingTrainingCard
+                    key={assignment.id}
+                    assignment={assignment}
+                    darkMode={darkMode}
+                    onClick={handleTrainingClick}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+
+     
 
       {/* Company Updates - REAL NEWS */}
       <div className="mb-6">
@@ -1120,16 +933,26 @@ export default function Home() {
         darkMode={darkMode}
       />
 
-      {/* Training PDF Viewer Modal */}
-      <PDFViewerModal
-        isOpen={showTrainingModal}
+       {/* Training Detail Modal */}
+      <AssignmentDetailModal
+        show={showTrainingModal}
+        assignment={selectedAssignment}
         onClose={() => {
           setShowTrainingModal(false);
-          setSelectedTraining(null);
+          setSelectedAssignment(null);
         }}
-        training={selectedTraining}
+        trainingService={trainingService}
+        toast={toast}
+        onUpdate={() => {
+          loadMyTrainings();
+        }}
         darkMode={darkMode}
-        onMarkComplete={handleMarkTrainingComplete}
+        bgCard={bgCard}
+        bgCardHover={darkMode ? "bg-almet-san-juan" : "bg-gray-50"}
+        textPrimary={textPrimary}
+        textSecondary={textSecondary}
+        textMuted={textMuted}
+        borderColor={borderColor}
       />
     </DashboardLayout>
   );
