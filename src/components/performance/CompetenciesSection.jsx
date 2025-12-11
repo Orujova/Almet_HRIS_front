@@ -392,11 +392,11 @@ const handleChange = (field, value) => {
     </option>
   ))}
 </select>
-                                {!canRateEndYear && comp.end_year_rating && (
+                                {/* {!canRateEndYear && comp.end_year_rating && (
                                   <div className={`text-xs mt-1 ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
                                     {settings.evaluationScale?.find(s => s.id === comp.end_year_rating)?.name || 'N/A'}
                                   </div>
-                                )}
+                                )} */}
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>

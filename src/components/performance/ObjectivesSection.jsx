@@ -256,7 +256,7 @@ export default function ObjectivesSection({
               </div>
 
               {/* Stats Grid - Always Visible */}
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 {/* Weight */}
                 <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
                   <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
@@ -356,27 +356,7 @@ Completed                    </div>
                       />
                     </div>
 
-              
-
-                    <div>
-                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
-                        Status
-                      </label>
-                      <select
-                        value={objective.status || ''}
-                        onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
-                        disabled={isCancelled}
-                        className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500' : ''}`}
-                      >
-                        <option value="">Select Status</option>
-                        {settings.statusTypes?.map(status => (
-                          <option key={status.id} value={status.id}>{status.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* End Year Rating */}
+                 {/* End Year Rating */}
                   <div>
                     <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
                       End Year Rating
@@ -419,6 +399,26 @@ Completed                    </div>
                       </div>
                     )}
                   </div>
+
+                    <div>
+                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                        Status
+                      </label>
+                      <select
+                        value={objective.status || ''}
+                        onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
+                        disabled={isCancelled}
+                        className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500' : ''}`}
+                      >
+                        <option value="">Select Status</option>
+                        {settings.statusTypes?.map(status => (
+                          <option key={status.id} value={status.id}>{status.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+               
 
                   {/* Actions */}
                   {(canEditGoals || canCancelGoals) && (
@@ -489,8 +489,8 @@ Completed                    </div>
             periodStatus.type === 'success' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-800/30' :
             'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/30'
           }`}>
-            {periodStatus.icon && <periodStatus.icon className="w-5 h-5 flex-shrink-0" />}
-            <span className="text-sm font-medium">{periodStatus.message}</span>
+            {periodStatus.icon && <periodStatus.icon className="w-4 h-5 flex-shrink-0" />}
+            <span className="text-xs font-medium">{periodStatus.message}</span>
           </div>
         )}
 
