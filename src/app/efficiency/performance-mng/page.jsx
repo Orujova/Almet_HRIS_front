@@ -557,7 +557,7 @@ const loadEmployees = async (perms = null) => {
       }));
       
       setSelectedPerformanceId(recalculatedData.id);
-      showSuccess('Performance data loaded successfully');
+   
       
       return recalculatedData;
       

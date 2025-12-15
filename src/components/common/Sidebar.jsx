@@ -185,6 +185,13 @@ const Sidebar = ({ collapsed = false }) => {
         type: "section", 
         label: "E-REQUESTS"
       },
+     
+      // {
+      //   label: "New",
+      //   icon: <CalendarDays className="w-4 h-4" />,
+      //   path: "/requests/new",
+      //   id: "new"
+      // },
       {
         label: "Vacation",
         icon: <CalendarDays className="w-4 h-4" />,

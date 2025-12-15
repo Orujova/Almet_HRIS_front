@@ -154,17 +154,6 @@ const NewsCard = ({ news, darkMode, onClick }) => {
 const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isToday }) => {
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const celebrationDate = new Date(date);
-    celebrationDate.setHours(0, 0, 0, 0);
-    
-    const diffDays = Math.ceil((celebrationDate - today) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays > 1 && diffDays < 7) return `In ${diffDays} days`;
-    
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric'
@@ -268,7 +257,7 @@ const CelebrationCard = ({ celebration, darkMode, onCelebrate, isCelebrated, isT
             ) : (
               <>
                 <span>🎉</span>
-                <span>{celebration.wishes}</span>
+                <span>Celebrate</span>
               </>
             )}
           </button>

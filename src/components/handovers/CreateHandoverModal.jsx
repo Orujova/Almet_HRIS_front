@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, Plus, Trash2, Calendar, Users, FileText, 
   Save, Loader, AlertCircle, Key, Folder, 
-  AlertTriangle, MessageSquare, Clock, Upload
+  AlertTriangle, MessageSquare, Clock, Upload, CheckCircle
 } from 'lucide-react';
 import handoverService from '@/services/handoverService';
 import { useToast } from '@/components/common/Toast';
@@ -76,7 +76,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
         handoverService.getHandoverTypes()
       ]);
       setEmployees(employeesData);
-      console.log(employeesData)
       setHandoverTypes(typesData);
     } catch (error) {
       showError('Error loading form data');
@@ -90,7 +89,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error for this field
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -213,6 +211,18 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
       }
     }
 
+    // Step 4 validation - əlavə məlumatlar
+    if (step === 4) {
+      // Heç olmasa bir sahə doldurulmalıdır
+      const hasAnyField = formData.contacts || formData.access_info || 
+                          formData.documents_info || formData.open_issues || 
+                          formData.notes || attachments.length > 0;
+      
+      if (!hasAnyField) {
+        newErrors.details = 'Please fill at least one field in the Additional Information section';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -235,13 +245,17 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate all steps
+    // Validate all steps including Step 4
     let isValid = true;
-    for (let step = 1; step <= 3; step++) {
+    for (let step = 1; step <= 4; step++) {
       if (!validateStep(step)) {
         isValid = false;
         setActiveStep(step);
-        showError('Please complete all required fields');
+        if (step === 4) {
+          showError('Please fill at least one field in Additional Information section');
+        } else {
+          showError('Please complete all required fields');
+        }
         return;
       }
     }
@@ -331,19 +345,17 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                   isCompleted 
                     ? 'bg-green-500 text-white' 
                     : isActive 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-500'
+                    ? 'bg-almet-sapphire text-white' 
+                    : 'bg-almet-mystic text-almet-waterloo'
                 }`}>
                   {isCompleted ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
+                    <CheckCircle className="w-5 h-5" />
                   ) : (
                     <Icon className="w-5 h-5" />
                   )}
                 </div>
                 <span className={`text-xs mt-2 font-medium ${
-                  isActive ? 'text-blue-600' : 'text-gray-500'
+                  isActive ? 'text-almet-sapphire' : 'text-almet-waterloo'
                 }`}>
                   {step.label}
                 </span>
@@ -351,7 +363,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               
               {index < steps.length - 1 && (
                 <div className={`flex-1 h-0.5 mx-2 -mt-5 transition-all ${
-                  activeStep > step.id ? 'bg-green-500' : 'bg-gray-200'
+                  activeStep > step.id ? 'bg-green-500' : 'bg-almet-mystic'
                 }`} />
               )}
             </React.Fragment>
@@ -364,9 +376,9 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
   if (loadingData) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="text-center mt-4 text-gray-600">Loading...</p>
+        <div className="bg-white dark:bg-gray-900 rounded-xl p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-almet-sapphire mx-auto"></div>
+          <p className="text-center mt-4 text-almet-waterloo">Loading...</p>
         </div>
       </div>
     );
@@ -374,23 +386,23 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-almet-mystic dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FileText className="w-6 h-6 text-blue-600" />
+            <div className="w-10 h-10 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg flex items-center justify-center">
+              <FileText className="w-6 h-6 text-almet-sapphire" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Create New Handover</h2>
-              <p className="text-sm text-gray-500">Step {activeStep} of {steps.length}</p>
+              <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Create New Handover</h2>
+              <p className="text-sm text-almet-waterloo dark:text-gray-400">Step {activeStep} of {steps.length}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6 text-gray-500" />
+            <X className="w-6 h-6 text-almet-waterloo" />
           </button>
         </div>
 
@@ -403,8 +415,8 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           {activeStep === 1 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <Users className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">
+                <Users className="w-5 h-5 text-almet-sapphire" />
+                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
                   Basic Information
                 </h3>
               </div>
@@ -412,7 +424,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Handing Over Employee */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
                     Handing Over Employee *
                   </label>
                   <SearchableDropdown
@@ -439,7 +451,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Taking Over Employee */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
                     Taking Over Employee *
                   </label>
                   <SearchableDropdown
@@ -468,7 +480,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Handover Type */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
                     Handover Type *
                   </label>
                   <SearchableDropdown
@@ -497,18 +509,18 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Start Date */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
                     Start Date *
                   </label>
                   <div className="relative">
-                    <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                    <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <input
                       type="date"
                       name="start_date"
                       value={formData.start_date}
                       onChange={handleInputChange}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.start_date ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                        errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
                     />
@@ -520,19 +532,19 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* End Date */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
                     End Date *
                   </label>
                   <div className="relative">
-                    <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                    <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
                     <input
                       type="date"
                       name="end_date"
                       value={formData.end_date}
                       onChange={handleInputChange}
                       min={formData.start_date}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        errors.end_date ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                        errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
                     />
@@ -545,12 +557,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
               {/* Date Range Info */}
               {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-almet-mystic dark:bg-almet-cloud-burst/10 border border-almet-bali-hai dark:border-almet-cloud-burst/30 rounded-lg p-4">
                   <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <Clock className="w-5 h-5 text-almet-sapphire flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Handover Period</p>
-                      <p className="text-sm text-blue-700 mt-1">
+                      <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">Handover Period</p>
+                      <p className="text-sm text-almet-waterloo dark:text-gray-400 mt-1">
                         Duration: {Math.ceil((new Date(formData.end_date) - new Date(formData.start_date)) / (1000 * 60 * 60 * 24))} days
                       </p>
                     </div>
@@ -565,15 +577,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <FileText className="w-5 h-5 text-almet-sapphire" />
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
                     Tasks & Responsibilities *
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={addTask}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   Add Task
@@ -581,24 +593,24 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               </div>
 
               {errors.tasks && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-red-700 text-sm">{errors.tasks}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <p className="text-red-700 dark:text-red-400 text-sm">{errors.tasks}</p>
                 </div>
               )}
 
               <div className="space-y-3">
                 {tasks.map((task, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div key={index} className="bg-almet-mystic dark:bg-gray-800 p-4 rounded-lg border border-almet-bali-hai dark:border-gray-700">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 space-y-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                             Task Description *
                           </label>
                           <textarea
                             value={task.description}
                             onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             rows="3"
                             placeholder="Enter detailed task description..."
                             required
@@ -607,13 +619,13 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                               Initial Status
                             </label>
                             <select
                               value={task.status}
                               onChange={(e) => handleTaskChange(index, 'status', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             >
                               {taskStatusOptions.map(option => (
                                 <option key={option.value} value={option.value}>
@@ -624,14 +636,14 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                               Comment (Optional)
                             </label>
                             <input
                               type="text"
                               value={task.comment}
                               onChange={(e) => handleTaskChange(index, 'comment', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                               placeholder="Add comment..."
                             />
                           </div>
@@ -642,7 +654,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                         type="button"
                         onClick={() => removeTask(index)}
                         disabled={tasks.length === 1}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title={tasks.length === 1 ? 'At least one task is required' : 'Remove task'}
                       >
                         <Trash2 className="w-5 h-5" />
@@ -652,12 +664,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                 ))}
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-yellow-900">Task Guidelines</p>
-                    <p className="text-sm text-yellow-700 mt-1">
+                    <p className="text-sm font-medium text-yellow-900 dark:text-yellow-300">Task Guidelines</p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
                       • Be specific and detailed in task descriptions<br />
                       • Include any special instructions or considerations<br />
                       • Set appropriate initial status for each task
@@ -673,15 +685,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-blue-600" />
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <Calendar className="w-5 h-5 text-almet-sapphire" />
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
                     Important Dates *
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={addDate}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors"
                 >
                   <Plus className="w-4 h-4" />
                   Add Date
@@ -689,38 +701,38 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               </div>
 
               {errors.dates && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <p className="text-red-700 text-sm">{errors.dates}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <p className="text-red-700 dark:text-red-400 text-sm">{errors.dates}</p>
                 </div>
               )}
 
               <div className="space-y-3">
                 {dates.map((dateItem, index) => (
-                  <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div key={index} className="bg-almet-mystic dark:bg-gray-800 p-4 rounded-lg border border-almet-bali-hai dark:border-gray-700">
                     <div className="flex items-start gap-3">
                       <div className="flex-1 grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                             Date *
                           </label>
                           <input
                             type="date"
                             value={dateItem.date}
                             onChange={(e) => handleDateChange(index, 'date', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                             Description *
                           </label>
                           <input
                             type="text"
                             value={dateItem.description}
                             onChange={(e) => handleDateChange(index, 'description', e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             placeholder="Enter description..."
                             required
                           />
@@ -731,7 +743,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                         type="button"
                         onClick={() => removeDate(index)}
                         disabled={dates.length === 1}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         title={dates.length === 1 ? 'At least one date is required' : 'Remove date'}
                       >
                         <Trash2 className="w-5 h-5" />
@@ -741,18 +753,19 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                 ))}
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-almet-mystic dark:bg-almet-cloud-burst/10 border border-almet-bali-hai dark:border-almet-cloud-burst/30 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-almet-sapphire flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-blue-900">Examples of Important Dates</p>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">Examples of Important Dates</p>
+                    <p className="text-sm text-almet-waterloo dark:text-gray-400 mt-1">
                       • Project deadlines and milestones<br />
                       • Scheduled meetings or reviews<br />
                       • Important deliverable dates<br />
                       • Training or handover sessions
                     </p>
-                  </div></div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -761,24 +774,34 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           {activeStep === 4 && (
             <div className="space-y-6">
               <div className="flex items-center gap-2 mb-4">
-                <Folder className="w-5 h-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-gray-900">
+                <Folder className="w-5 h-5 text-almet-sapphire" />
+                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
                   Additional Information
                 </h3>
               </div>
 
+              {/* Warning if no fields filled */}
+              {errors.details && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-700 dark:text-red-400 text-sm">{errors.details}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-4">
                 {/* Related Contacts */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <Users className="w-4 h-4 text-gray-500" />
+                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                    <Users className="w-4 h-4 text-almet-sapphire" />
                     Related Contacts
                   </label>
                   <textarea
                     name="contacts"
                     value={formData.contacts}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="3"
                     placeholder="List important contacts with their roles and contact information..."
                   />
@@ -786,15 +809,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Access Information */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <Key className="w-4 h-4 text-gray-500" />
+                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                    <Key className="w-4 h-4 text-almet-sapphire" />
                     Access Information / Accounts
                   </label>
                   <textarea
                     name="access_info"
                     value={formData.access_info}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="3"
                     placeholder="System names, usernames, password locations, access levels..."
                   />
@@ -802,15 +825,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Documents & Files */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <Folder className="w-4 h-4 text-gray-500" />
+                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                    <Folder className="w-4 h-4 text-almet-sapphire" />
                     Documents & Files
                   </label>
                   <textarea
                     name="documents_info"
                     value={formData.documents_info}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="3"
                     placeholder="File and folder locations, shared drives, important documents..."
                   />
@@ -818,15 +841,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Open Issues */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-gray-500" />
+                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-almet-sapphire" />
                     Open Issues
                   </label>
                   <textarea
                     name="open_issues"
                     value={formData.open_issues}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="3"
                     placeholder="Unresolved problems, pending actions, known issues..."
                   />
@@ -834,15 +857,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Additional Notes */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <MessageSquare className="w-4 h-4 text-gray-500" />
+                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                    <MessageSquare className="w-4 h-4 text-almet-sapphire" />
                     Additional Notes
                   </label>
                   <textarea
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                     rows="4"
                     placeholder="Additional notes, tips, recommendations, special considerations..."
                   />
@@ -850,12 +873,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* File Attachments */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
-                    <Upload className="w-4 h-4 text-gray-500" />
+                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                    <Upload className="w-4 h-4 text-almet-sapphire" />
                     File Attachments (Optional)
                   </label>
                   
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                  <div className="border-2 border-dashed border-almet-bali-hai dark:border-gray-700 rounded-lg p-6 text-center hover:border-almet-sapphire transition-colors">
                     <input
                       type="file"
                       multiple
@@ -868,11 +891,11 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                       htmlFor="file-upload"
                       className="cursor-pointer flex flex-col items-center"
                     >
-                      <Upload className="w-8 h-8 text-gray-400 mb-2" />
-                      <span className="text-sm text-gray-600">
+                      <Upload className="w-8 h-8 text-almet-waterloo dark:text-gray-400 mb-2" />
+                      <span className="text-sm text-almet-cloud-burst dark:text-white">
                         Click to upload or drag and drop
                       </span>
-                      <span className="text-xs text-gray-500 mt-1">
+                      <span className="text-xs text-almet-waterloo dark:text-gray-400 mt-1">
                         PDF, DOC, XLS, TXT, Images (Max 10MB per file)
                       </span>
                     </label>
@@ -884,15 +907,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                       {attachments.map((attachment, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200"
+                          className="flex items-center justify-between bg-almet-mystic dark:bg-gray-800 p-3 rounded-lg border border-almet-bali-hai dark:border-gray-700"
                         >
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <FileText className="w-5 h-5 text-gray-600 flex-shrink-0" />
+                            <FileText className="w-5 h-5 text-almet-sapphire flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">
                                 {attachment.name}
                               </p>
-                              <p className="text-xs text-gray-500">
+                              <p className="text-xs text-almet-waterloo dark:text-gray-400">
                                 {formatFileSize(attachment.size)}
                               </p>
                             </div>
@@ -900,7 +923,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                           <button
                             type="button"
                             onClick={() => removeAttachment(index)}
-                            className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -912,12 +935,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               </div>
 
               {/* Summary Info */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+              <div className="bg-gradient-to-r from-almet-mystic to-almet-bali-hai/20 dark:from-almet-cloud-burst/10 dark:to-almet-cloud-burst/5 border border-almet-bali-hai dark:border-almet-cloud-burst/30 rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-almet-sapphire flex-shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-medium text-blue-900">Review Your Information</p>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">Review Your Information</p>
+                    <p className="text-sm text-almet-waterloo dark:text-gray-400 mt-1">
                       Please review all the information you've entered before submitting. 
                       You can go back to previous steps to make changes if needed.
                     </p>
@@ -928,13 +951,13 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           )}
 
           {/* Form Navigation */}
-          <div className="flex items-center justify-between gap-4 pt-6 mt-6 border-t border-gray-200">
+          <div className="flex items-center justify-between gap-4 pt-6 mt-6 border-t border-almet-mystic dark:border-gray-700">
             {/* Back Button */}
             <button
               type="button"
               onClick={activeStep === 1 ? onClose : handlePrevStep}
               disabled={loading}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 border border-almet-bali-hai dark:border-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {activeStep === 1 ? 'Cancel' : 'Back'}
             </button>
@@ -947,10 +970,10 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                     key={step.id}
                     className={`h-2 rounded-full transition-all ${
                       step.id === activeStep 
-                        ? 'w-8 bg-blue-600' 
+                        ? 'w-8 bg-almet-sapphire' 
                         : step.id < activeStep 
                         ? 'w-2 bg-green-500' 
-                        : 'w-2 bg-gray-300'
+                        : 'w-2 bg-almet-mystic dark:bg-gray-700'
                     }`}
                   />
                 ))}
@@ -963,7 +986,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                 type="button"
                 onClick={handleNextStep}
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -992,29 +1015,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           </div>
         </form>
 
-        {/* Keyboard Shortcuts Info */}
-        <div className="px-6 pb-4">
-          <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
-            <div className="flex items-center gap-4 justify-center flex-wrap">
-              <span className="flex items-center gap-1">
-                <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">Esc</kbd>
-                <span>Close</span>
-              </span>
-              {activeStep > 1 && (
-                <span className="flex items-center gap-1">
-                  <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">←</kbd>
-                  <span>Back</span>
-                </span>
-              )}
-              {activeStep < steps.length && (
-                <span className="flex items-center gap-1">
-                  <kbd className="px-2 py-1 bg-white border border-gray-300 rounded">→</kbd>
-                  <span>Next</span>
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+     
       </div>
     </div>
   );

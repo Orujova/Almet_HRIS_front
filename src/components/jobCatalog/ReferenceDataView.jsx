@@ -584,71 +584,7 @@ export default function ReferenceDataView({ context }) {
     );
   };
 
-  const renderStatsView = () => {
-    const totalEmployees = Object.values(getEmployeeCountsByType[activeTab] || {}).reduce((a, b) => a + b, 0);
-    const activeItems = processedData.filter(item => item.is_active !== false).length;
-    const inactiveItems = processedData.filter(item => item.is_active === false).length;
 
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet p-3">
-          <div className="flex items-center">
-            <div className="p-2 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg mr-3">
-              <Layers className="h-4 w-4 text-almet-sapphire" />
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-600 dark:text-almet-bali-hai">Total Items</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                {processedData.length}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet p-3">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
-              <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-600 dark:text-almet-bali-hai">Active</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                {activeItems}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet p-3">
-          <div className="flex items-center">
-            <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg mr-3">
-              <X className="h-4 w-4 text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-600 dark:text-almet-bali-hai">Inactive</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                {inactiveItems}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-almet-cloud-burst rounded-lg border border-gray-200 dark:border-almet-comet p-3">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg mr-3">
-              <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-[10px] text-gray-600 dark:text-almet-bali-hai">Total Employees</p>
-              <p className="text-lg font-bold text-gray-900 dark:text-white">
-                {totalEmployees}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   const tabs = [
     { id: 'business_functions', label: 'Companys', data: businessFunctions },
@@ -728,13 +664,7 @@ export default function ReferenceDataView({ context }) {
                 <TrendingUp size={12} />
               </button>
             )}
-            <button
-              onClick={() => setViewMode('stats')}
-              className={`px-2 py-1.5 text-xs ${viewMode === 'stats' ? 'bg-almet-sapphire text-white' : 'bg-white dark:bg-almet-san-juan text-gray-600 dark:text-almet-bali-hai hover:bg-gray-50 dark:hover:bg-almet-comet'}`}
-              title="Statistics"
-            >
-              <Settings size={12} />
-            </button>
+          
           </div>
 
           {/* Show/Hide Inactive */}
@@ -761,8 +691,7 @@ export default function ReferenceDataView({ context }) {
         </div>
       </div>
 
-      {/* Content Area */}
-      {viewMode === 'stats' && renderStatsView()}
+
       {viewMode === 'table' && renderTableView()}
       {viewMode === 'hierarchy' && activeTab === 'position_groups' && renderHierarchyView()}
 

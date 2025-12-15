@@ -1,13 +1,14 @@
-// pages/handovers/index.jsx
+// app/handovers/page.jsx
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, FileText, Users, CheckCircle, AlertCircle, 
-  Clock, TrendingUp, Plus, Search, 
-  Eye,  X, ArrowRight,
-  UserCheck, UserX, ClipboardCheck
+  Clock, TrendingUp, Plus, Search, Eye, X, ArrowRight,
+  UserCheck, UserX, ClipboardCheck, Filter, RefreshCw
 } from 'lucide-react';
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useTheme } from "@/components/common/ThemeProvider";
 import handoverService from '@/services/handoverService';
 import { useToast } from '@/components/common/Toast';
 import Pagination from '@/components/common/Pagination';
@@ -16,6 +17,8 @@ import HandoverDetailModal from '@/components/handovers/HandoverDetailModal';
 import CreateHandoverModal from '@/components/handovers/CreateHandoverModal';
 
 const HandoversDashboard = () => {
+  const { theme } = useTheme();
+  
   // State Management
   const [activeTab, setActiveTab] = useState('submission');
   const [myHandovers, setMyHandovers] = useState([]);
@@ -26,6 +29,7 @@ const HandoversDashboard = () => {
     completed: 0
   });
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedHandover, setSelectedHandover] = useState(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -40,6 +44,7 @@ const HandoversDashboard = () => {
   const [statusFilter, setStatusFilter] = useState(null);
   const [typeFilter, setTypeFilter] = useState(null);
   const [handoverTypes, setHandoverTypes] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   const { showSuccess, showError, showInfo } = useToast();
 
@@ -64,7 +69,6 @@ const HandoversDashboard = () => {
       setMyHandovers(Array.isArray(myHandoversData) ? myHandoversData : []);
       setPendingApprovals(Array.isArray(pendingData) ? pendingData : []);
       
-      // Fix user data structure - API returns {user, employee}
       if (userData && userData.user && userData.employee) {
         const processedUser = {
           ...userData.user,
@@ -86,7 +90,15 @@ const HandoversDashboard = () => {
 
   // Refresh data
   const refreshData = async () => {
-    await fetchInitialData();
+    setRefreshing(true);
+    try {
+      await fetchInitialData();
+
+    } catch (error) {
+      showError('Error refreshing data');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // Get status badge
@@ -94,54 +106,54 @@ const HandoversDashboard = () => {
     const statusConfig = {
       'CREATED': { 
         label: 'Created', 
-        class: 'bg-gray-100 text-gray-700',
+        class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
         icon: <FileText className="w-3 h-3" />
       },
       'SIGNED_BY_HANDING_OVER': { 
         label: 'Signed by HO', 
-        class: 'bg-blue-100 text-blue-700',
+        class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'SIGNED_BY_TAKING_OVER': { 
         label: 'Signed by TO', 
-        class: 'bg-cyan-100 text-cyan-700',
+        class: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'APPROVED_BY_LINE_MANAGER': { 
         label: 'Approved by LM', 
-        class: 'bg-green-100 text-green-700',
+        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'REJECTED': { 
         label: 'Rejected', 
-        class: 'bg-red-100 text-red-700',
+        class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         icon: <X className="w-3 h-3" />
       },
       'NEED_CLARIFICATION': { 
         label: 'Need Clarification', 
-        class: 'bg-yellow-100 text-yellow-700',
+        class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
         icon: <AlertCircle className="w-3 h-3" />
       },
       'RESUBMITTED': { 
         label: 'Resubmitted', 
-        class: 'bg-purple-100 text-purple-700',
+        class: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
         icon: <FileText className="w-3 h-3" />
       },
       'TAKEN_OVER': { 
         label: 'Taken Over', 
-        class: 'bg-green-100 text-green-700',
+        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'TAKEN_BACK': { 
         label: 'Taken Back', 
-        class: 'bg-indigo-100 text-indigo-700',
+        class: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
     };
 
     const config = statusConfig[status] || { 
       label: status, 
-      class: 'bg-gray-100 text-gray-700',
+      class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
       icon: <Clock className="w-3 h-3" />
     };
 
@@ -157,7 +169,6 @@ const HandoversDashboard = () => {
   const filterHandovers = (handoversList) => {
     let filtered = handoversList;
 
-    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(h => 
         h.request_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,12 +178,10 @@ const HandoversDashboard = () => {
       );
     }
 
-    // Status filter
     if (statusFilter) {
       filtered = filtered.filter(h => h.status === statusFilter);
     }
 
-    // Type filter
     if (typeFilter) {
       filtered = filtered.filter(h => h.handover_type === typeFilter);
     }
@@ -207,7 +216,6 @@ const HandoversDashboard = () => {
   const handleCreateSuccess = () => {
     setShowCreateModal(false);
     refreshData();
-    showSuccess('Handover created successfully!');
   };
 
   // Reset filters
@@ -235,7 +243,7 @@ const HandoversDashboard = () => {
   const StatisticsCards = () => (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       {/* Pending Card */}
-      <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 dark:from-yellow-600 dark:to-yellow-700 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-yellow-100 text-sm font-medium mb-1">Pending Approval</p>
@@ -252,24 +260,24 @@ const HandoversDashboard = () => {
       </div>
 
       {/* Active Card */}
-      <div className="bg-gradient-to-br from-cyan-400 to-cyan-500 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral dark:from-almet-san-juan dark:to-almet-sapphire rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-cyan-100 text-sm font-medium mb-1">Active Handovers</p>
+            <p className="text-blue-100 text-sm font-medium mb-1">Active Handovers</p>
             <p className="text-3xl font-bold">{statistics.active}</p>
           </div>
           <div className="bg-white/20 p-3 rounded-lg">
             <Users className="w-8 h-8" />
           </div>
         </div>
-        <div className="flex items-center text-sm text-cyan-100">
+        <div className="flex items-center text-sm text-blue-100">
           <TrendingUp className="w-4 h-4 mr-1" />
           In progress
         </div>
       </div>
 
       {/* Completed Card */}
-      <div className="bg-gradient-to-br from-green-400 to-green-500 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+      <div className="bg-gradient-to-br from-green-400 to-green-500 dark:from-green-600 dark:to-green-700 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-green-100 text-sm font-medium mb-1">Completed</p>
@@ -288,7 +296,7 @@ const HandoversDashboard = () => {
   );
 
   // Render Handover Table
-  const HandoverTable = ({ handovers, showActions = true }) => {
+  const HandoverTable = ({ handovers }) => {
     const filteredHandovers = filterHandovers(handovers);
     const paginatedHandovers = getPaginatedData(filteredHandovers);
     const totalPages = Math.ceil(filteredHandovers.length / itemsPerPage);
@@ -296,12 +304,12 @@ const HandoversDashboard = () => {
     if (filteredHandovers.length === 0) {
       return (
         <div className="text-center py-12">
-          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">No handovers found</p>
+          <FileText className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <p className="text-gray-500 dark:text-gray-400 text-lg">No handovers found</p>
           {(searchTerm || statusFilter || typeFilter) && (
             <button
               onClick={resetFilters}
-              className="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="mt-4 text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-steel-blue text-sm font-medium"
             >
               Clear filters
             </button>
@@ -315,49 +323,49 @@ const HandoversDashboard = () => {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Handing Over
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Taking Over
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Period
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {paginatedHandovers.map((handover) => (
-                <tr key={handover.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                <tr key={handover.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                     #{handover.request_id?.substring(0, 10)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     {handover.handover_type_name}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <UserCheck className="w-4 h-4 text-blue-600" />
+                      <div className="flex-shrink-0 h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
+                        <UserCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {handover.handing_over_employee_name}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {handover.handing_over_position}
                         </p>
                       </div>
@@ -365,17 +373,17 @@ const HandoversDashboard = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                        <UserX className="w-4 h-4 text-green-600" />
+                      <div className="flex-shrink-0 h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                        <UserX className="w-4 h-4 text-green-600 dark:text-green-400" />
                       </div>
                       <div className="ml-3">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {handover.taking_over_employee_name}
                         </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span>
@@ -389,7 +397,7 @@ const HandoversDashboard = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => handleViewDetails(handover.id)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors"
                     >
                       <Eye className="w-4 h-4" />
                       View
@@ -417,7 +425,7 @@ const HandoversDashboard = () => {
 
   // Render Tabs
   const Tabs = () => (
-    <div className="flex space-x-2 bg-white rounded-xl p-2 shadow-sm mb-6">
+    <div className="flex space-x-2 bg-white dark:bg-gray-900 rounded-xl p-2 shadow-sm mb-6">
       <button
         onClick={() => {
           setActiveTab('submission');
@@ -425,8 +433,8 @@ const HandoversDashboard = () => {
         }}
         className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
           activeTab === 'submission'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-gray-600 hover:bg-gray-100'
+            ? 'bg-almet-sapphire text-white shadow-md'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
         }`}
       >
         <div className="flex items-center justify-center gap-2">
@@ -441,8 +449,8 @@ const HandoversDashboard = () => {
         }}
         className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
           activeTab === 'my-requests'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-gray-600 hover:bg-gray-100'
+            ? 'bg-almet-sapphire text-white shadow-md'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
         }`}
       >
         <div className="flex items-center justify-center gap-2">
@@ -457,8 +465,8 @@ const HandoversDashboard = () => {
         }}
         className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
           activeTab === 'approval'
-            ? 'bg-blue-600 text-white shadow-md'
-            : 'text-gray-600 hover:bg-gray-100'
+            ? 'bg-almet-sapphire text-white shadow-md'
+            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
         }`}
       >
         <div className="flex items-center justify-center gap-2">
@@ -472,30 +480,32 @@ const HandoversDashboard = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <DashboardLayout>
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-almet-sapphire mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <DashboardLayout>
+      <div className="p-6 mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 Handover & Takeover System
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-gray-600 dark:text-gray-400 mt-1">
                 Manage work handovers efficiently
               </p>
             </div>
-    
+     
           </div>
         </div>
 
@@ -506,17 +516,17 @@ const HandoversDashboard = () => {
         <Tabs />
 
         {/* Tab Content */}
-        <div className="bg-white rounded-xl shadow-sm">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm">
           {/* Submission Tab */}
           {activeTab === 'submission' && (
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   Create New Handover
                 </h2>
                 <button
                   onClick={handleCreateHandover}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium shadow-sm"
                 >
                   <Plus className="w-5 h-5" />
                   Create Handover
@@ -525,7 +535,7 @@ const HandoversDashboard = () => {
 
               {/* Recent Handovers Preview */}
               <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
                   Recent Handovers
                 </h3>
                 {myHandovers.slice(0, 5).length > 0 ? (
@@ -533,18 +543,18 @@ const HandoversDashboard = () => {
                     {myHandovers.slice(0, 5).map((handover) => (
                       <div
                         key={handover.id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
                         onClick={() => handleViewDetails(handover.id)}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <FileText className="w-6 h-6 text-blue-600" />
+                          <div className="w-12 h-12 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg flex items-center justify-center">
+                            <FileText className="w-6 h-6 text-almet-sapphire dark:text-almet-steel-blue" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-gray-900 dark:text-white">
                               {handover.request_id}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
                               {handover.handing_over_employee_name} → {handover.taking_over_employee_name}
                             </p>
                           </div>
@@ -557,8 +567,8 @@ const HandoversDashboard = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                    <FileText className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
                     <p>No recent handovers</p>
                   </div>
                 )}
@@ -570,7 +580,7 @@ const HandoversDashboard = () => {
           {activeTab === 'my-requests' && (
             <div className="p-6">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   My Handovers
                 </h2>
                 
@@ -587,54 +597,80 @@ const HandoversDashboard = () => {
                         setSearchTerm(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full lg:w-64"
+                      className="pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent w-full lg:w-64 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     />
                   </div>
 
-                  {/* Status Filter */}
-                  <div className="w-full lg:w-48">
-                    <SearchableDropdown
-                      options={statusOptions}
-                      value={statusFilter}
-                      onChange={(value) => {
-                        setStatusFilter(value);
-                        setCurrentPage(1);
-                      }}
-                      placeholder="Filter by status"
-                      searchPlaceholder="Search status..."
-                      allowUncheck={true}
-                    />
-                  </div>
-
-                  {/* Type Filter */}
-                  <div className="w-full lg:w-48">
-                    <SearchableDropdown
-                      options={handoverTypes.map(type => ({
-                        value: type.id,
-                        label: type.name
-                      }))}
-                      value={typeFilter}
-                      onChange={(value) => {
-                        setTypeFilter(value);
-                        setCurrentPage(1);
-                      }}
-                      placeholder="Filter by type"
-                      searchPlaceholder="Search type..."
-                      allowUncheck={true}
-                    />
-                  </div>
+                  <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-gray-700 dark:text-gray-300"
+                  >
+                    <Filter className="w-4 h-4" />
+                    Filters
+                    {(statusFilter || typeFilter) && (
+                      <span className="ml-1 px-2 py-0.5 bg-almet-sapphire text-white rounded-full text-xs">
+                        {[statusFilter, typeFilter].filter(Boolean).length}
+                      </span>
+                    )}
+                  </button>
 
                   {/* Reset Filters */}
                   {(searchTerm || statusFilter || typeFilter) && (
                     <button
                       onClick={resetFilters}
-                      className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     >
                       Reset
                     </button>
                   )}
                 </div>
               </div>
+
+              {/* Filter Panel */}
+              {showFilters && (
+                <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Status Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Filter by Status
+                      </label>
+                      <SearchableDropdown
+                        options={statusOptions}
+                        value={statusFilter}
+                        onChange={(value) => {
+                          setStatusFilter(value);
+                          setCurrentPage(1);
+                        }}
+                        placeholder="Select status..."
+                        searchPlaceholder="Search status..."
+                        allowUncheck={true}
+                      />
+                    </div>
+
+                    {/* Type Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Filter by Type
+                      </label>
+                      <SearchableDropdown
+                        options={handoverTypes.map(type => ({
+                          value: type.id,
+                          label: type.name
+                        }))}
+                        value={typeFilter}
+                        onChange={(value) => {
+                          setTypeFilter(value);
+                          setCurrentPage(1);
+                        }}
+                        placeholder="Select type..."
+                        searchPlaceholder="Search type..."
+                        allowUncheck={true}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <HandoverTable handovers={myHandovers} />
             </div>
@@ -644,10 +680,10 @@ const HandoversDashboard = () => {
           {activeTab === 'approval' && (
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
                   Pending Approvals
                 </h2>
-                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 text-yellow-700 rounded-lg border border-yellow-200">
+                <div className="flex items-center gap-2 px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded-lg border border-yellow-200 dark:border-yellow-800">
                   <Clock className="w-5 h-5" />
                   <span className="font-medium">{pendingApprovals.length} Pending</span>
                 </div>
@@ -679,7 +715,7 @@ const HandoversDashboard = () => {
           currentUser={currentUser}
         />
       )}
-    </div>
+    </DashboardLayout>
   );
 };
 

@@ -6,7 +6,7 @@ import {
   X, CheckCircle, XCircle, AlertCircle, Clock, 
   FileText, Users, Calendar, Key, Folder, 
   AlertTriangle, MessageSquare, History, Download,
-  Edit, Trash2, Plus, Loader, ChevronDown, ChevronUp,
+  Loader, ChevronDown, ChevronUp,
   Send, RefreshCw, Eye, Share2, Printer
 } from 'lucide-react';
 import handoverService from '@/services/handoverService';
@@ -73,54 +73,54 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
     const statusConfig = {
       'CREATED': { 
         label: 'Created', 
-        class: 'bg-gray-100 text-gray-700',
+        class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
         icon: <FileText className="w-4 h-4" />
       },
       'SIGNED_BY_HANDING_OVER': { 
         label: 'Signed by HO', 
-        class: 'bg-blue-100 text-blue-700',
+        class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
         icon: <CheckCircle className="w-4 h-4" />
       },
       'SIGNED_BY_TAKING_OVER': { 
         label: 'Signed by TO', 
-        class: 'bg-cyan-100 text-cyan-700',
+        class: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
         icon: <CheckCircle className="w-4 h-4" />
       },
       'APPROVED_BY_LINE_MANAGER': { 
         label: 'Approved by LM', 
-        class: 'bg-green-100 text-green-700',
+        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
         icon: <CheckCircle className="w-4 h-4" />
       },
       'REJECTED': { 
         label: 'Rejected', 
-        class: 'bg-red-100 text-red-700',
+        class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         icon: <XCircle className="w-4 h-4" />
       },
       'NEED_CLARIFICATION': { 
         label: 'Need Clarification', 
-        class: 'bg-yellow-100 text-yellow-700',
+        class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
         icon: <AlertCircle className="w-4 h-4" />
       },
       'RESUBMITTED': { 
         label: 'Resubmitted', 
-        class: 'bg-purple-100 text-purple-700',
+        class: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
         icon: <FileText className="w-4 h-4" />
       },
       'TAKEN_OVER': { 
         label: 'Taken Over', 
-        class: 'bg-green-100 text-green-700',
+        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
         icon: <CheckCircle className="w-4 h-4" />
       },
       'TAKEN_BACK': { 
         label: 'Taken Back', 
-        class: 'bg-indigo-100 text-indigo-700',
+        class: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
         icon: <CheckCircle className="w-4 h-4" />
       },
     };
 
     const config = statusConfig[status] || { 
       label: status, 
-      class: 'bg-gray-100 text-gray-700',
+      class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
       icon: <Clock className="w-4 h-4" />
     };
 
@@ -135,11 +135,11 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
   // Get task status badge
   const getTaskStatusBadge = (status) => {
     const config = {
-      'NOT_STARTED': { label: 'Not Started', class: 'bg-yellow-100 text-yellow-700' },
-      'IN_PROGRESS': { label: 'In Progress', class: 'bg-blue-100 text-blue-700' },
-      'COMPLETED': { label: 'Completed', class: 'bg-green-100 text-green-700' },
-      'CANCELED': { label: 'Canceled', class: 'bg-gray-100 text-gray-700' },
-      'POSTPONED': { label: 'Postponed', class: 'bg-orange-100 text-orange-700' },
+      'NOT_STARTED': { label: 'Not Started', class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+      'IN_PROGRESS': { label: 'In Progress', class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+      'COMPLETED': { label: 'Completed', class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+      'CANCELED': { label: 'Canceled', class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
+      'POSTPONED': { label: 'Postponed', class: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
     };
 
     const statusInfo = config[status] || config['NOT_STARTED'];
@@ -307,13 +307,12 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
   const renderActionButtons = () => {
     const buttons = [];
 
-    // Handing Over - needs to sign
     if (isHandingOver && handover.status === 'CREATED' && !handover.ho_signed) {
       buttons.push(
         <button
           key="sign_ho"
           onClick={() => handleAction('sign_ho')}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium shadow-sm"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium shadow-sm"
         >
           <CheckCircle className="w-5 h-5" />
           Sign as Handing Over
@@ -321,7 +320,6 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       );
     }
 
-    // Taking Over - needs to sign
     if (isTakingOver && handover.status === 'SIGNED_BY_HANDING_OVER' && !handover.to_signed) {
       buttons.push(
         <button
@@ -335,7 +333,6 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       );
     }
 
-    // Line Manager - needs to approve
     if (isLineManager && handover.status === 'SIGNED_BY_TAKING_OVER' && !handover.lm_approved) {
       buttons.push(
         <button
@@ -365,7 +362,6 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       );
     }
 
-    // Handing Over - needs to resubmit after clarification
     if (isHandingOver && handover.status === 'NEED_CLARIFICATION') {
       buttons.push(
         <button
@@ -379,7 +375,6 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       );
     }
 
-    // Taking Over - needs to takeover
     if (isTakingOver && handover.status === 'APPROVED_BY_LINE_MANAGER' && !handover.taken_over) {
       buttons.push(
         <button
@@ -393,7 +388,6 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       );
     }
 
-    // Handing Over - needs to takeback
     if (isHandingOver && handover.status === 'TAKEN_OVER' && !handover.taken_back) {
       buttons.push(
         <button
@@ -421,26 +415,26 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-        <div className="bg-white rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+          <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-almet-mystic dark:border-gray-700 px-6 py-4 z-10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold text-gray-900">
+                  <h2 className="text-2xl font-bold text-almet-cloud-burst dark:text-white">
                     Handover Details
                   </h2>
-                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
+                  <span className="px-3 py-1 bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire dark:text-almet-steel-blue rounded-lg text-sm font-medium">
                     #{handover.request_id}
                   </span>
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   {getStatusBadge(handover.status)}
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-almet-waterloo dark:text-gray-400">
                     {handover.handover_type_name}
                   </span>
                   <span className="text-sm text-gray-400">•</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-almet-waterloo dark:text-gray-400">
                     Created: {new Date(handover.created_at).toLocaleDateString()}
                   </span>
                 </div>
@@ -450,37 +444,37 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                 <button
                   onClick={refreshHandover}
                   disabled={refreshing}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
                   title="Refresh"
                 >
-                  <RefreshCw className={`w-5 h-5 text-gray-500 ${refreshing ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-5 h-5 text-almet-waterloo dark:text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
                 </button>
                 <button
                   onClick={handleShare}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
                   title="Share"
                 >
-                  <Share2 className="w-5 h-5 text-gray-500" />
+                  <Share2 className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
                   title="Print"
                 >
-                  <Printer className="w-5 h-5 text-gray-500" />
+                  <Printer className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                 </button>
                 <button
                   onClick={handleExport}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
                   title="Export"
                 >
-                  <Download className="w-5 h-5 text-gray-500" />
+                  <Download className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                 </button>
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
                 >
-                  <X className="w-6 h-6 text-gray-500" />
+                  <X className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
                 </button>
               </div>
             </div>
@@ -495,8 +489,8 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     onClick={() => setActiveSection(section.id)}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
                       activeSection === section.id
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-almet-sapphire text-white'
+                        : 'bg-almet-mystic dark:bg-gray-800 text-almet-waterloo dark:text-gray-400 hover:bg-almet-bali-hai/20 dark:hover:bg-gray-700'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -513,29 +507,29 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
             {activeSection === 'overview' && (
               <div className="space-y-6">
                 {/* General Information */}
-                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600" />
+                <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-almet-sapphire" />
                     General Information
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Handing Over */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
                         Handing Over
                       </label>
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="w-6 h-6 text-blue-600" />
+                        <div className="w-12 h-12 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-almet-sapphire" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
                             {handover.handing_over_employee_name}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-almet-waterloo dark:text-gray-400">
                             {handover.handing_over_position}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-almet-waterloo dark:text-gray-500">
                             {handover.handing_over_department}
                           </p>
                         </div>
@@ -543,19 +537,19 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     </div>
 
                     {/* Taking Over */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
                         Taking Over
                       </label>
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                          <Users className="w-6 h-6 text-green-600" />
+                        <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
                         </div>
                         <div>
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
                             {handover.taking_over_employee_name}
                           </p>
-                          <p className="text-sm text-gray-600">
+                          <p className="text-sm text-almet-waterloo dark:text-gray-400">
                             {handover.taking_over_position}
                           </p>
                         </div>
@@ -563,27 +557,27 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     </div>
 
                     {/* Line Manager */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
                         Line Manager
                       </label>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-almet-cloud-burst dark:text-white">
                         {handover.line_manager_name || 'Not assigned'}
                       </p>
                     </div>
 
                     {/* Period */}
-                    <div className="bg-white rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-gray-500 mb-2">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
                         Handover Period
                       </label>
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-blue-600" />
+                        <Calendar className="w-4 h-4 text-almet-sapphire" />
                         <div>
-                          <p className="font-semibold text-gray-900">
+                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
                             {new Date(handover.start_date).toLocaleDateString()} - {new Date(handover.end_date).toLocaleDateString()}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-almet-waterloo dark:text-gray-400">
                             {Math.ceil((new Date(handover.end_date) - new Date(handover.start_date)) / (1000 * 60 * 60 * 24))} days
                           </p>
                         </div>
@@ -593,30 +587,30 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                 </div>
 
                 {/* Signatures Status */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-almet-sapphire" />
                     Signature Status
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* HO Signature */}
                     <div className={`p-5 rounded-xl border-2 transition-all ${
                       handover.ho_signed 
-                        ? 'border-green-300 bg-green-50 shadow-sm' 
-                        : 'border-gray-200 bg-white'
+                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
+                        : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
                     }`}>
                       <div className="flex items-center justify-between mb-3">
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
                           {handover.handing_over_employee_name}
                         </p>
                         {handover.ho_signed ? (
-                          <CheckCircle className="w-6 h-6 text-green-600" />
+                          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
                         ) : (
-                          <Clock className="w-6 h-6 text-gray-400" />
+                          <Clock className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
                         )}
                       </div>
                       <div className={`flex items-center gap-2 text-sm font-medium ${
-                        handover.ho_signed ? 'text-green-600' : 'text-gray-500'
+                        handover.ho_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
                       }`}>
                         {handover.ho_signed ? (
                           <>
@@ -635,21 +629,24 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     {/* TO Signature */}
                     <div className={`p-5 rounded-xl border-2 transition-all ${
                       handover.to_signed 
-                        ? 'border-green-300 bg-green-50 shadow-sm' 
-                        : 'border-gray-200 bg-white'
+                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
+                        : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
                     }`}>
                       <div className="flex items-center justify-between mb-3">
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                          {handover.taking_over_employee_name}
+                        </p>
+                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
                           {handover.taking_over_employee_name}
                         </p>
                         {handover.to_signed ? (
-                          <CheckCircle className="w-6 h-6 text-green-600" />
+                          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
                         ) : (
-                          <Clock className="w-6 h-6 text-gray-400" />
+                          <Clock className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
                         )}
                       </div>
                       <div className={`flex items-center gap-2 text-sm font-medium ${
-                        handover.to_signed ? 'text-green-600' : 'text-gray-500'
+                        handover.to_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
                       }`}>
                         {handover.to_signed ? (
                           <>
@@ -669,19 +666,19 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                 {/* LM Approval Status */}
                 {handover.lm_approved && (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-6 border border-green-200 dark:border-green-800">
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                      <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-1" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-green-900 mb-2">
+                        <h4 className="font-semibold text-green-900 dark:text-green-300 mb-2">
                           Approved by Line Manager
                         </h4>
-                        <p className="text-green-700 text-sm mb-2">
+                        <p className="text-green-700 dark:text-green-400 text-sm mb-2">
                           Approved on: {new Date(handover.lm_approved_date).toLocaleString()}
                         </p>
                         {handover.lm_comment && (
-                          <div className="bg-white/50 rounded-lg p-3 mt-2">
-                            <p className="text-green-800 text-sm">
+                          <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-3 mt-2">
+                            <p className="text-green-800 dark:text-green-300 text-sm">
                               "{handover.lm_comment}"
                             </p>
                           </div>
@@ -693,15 +690,15 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                 {/* LM Clarification Message */}
                 {handover.status === 'NEED_CLARIFICATION' && handover.lm_clarification_comment && (
-                  <div className="bg-gradient-to-br from-yellow-50 to-amber-50 rounded-xl p-6 border border-yellow-200">
+                  <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 rounded-xl p-6 border border-yellow-200 dark:border-yellow-800">
                     <div className="flex items-start gap-3">
-                      <AlertCircle className="w-6 h-6 text-yellow-600 flex-shrink-0 mt-1" />
+                      <AlertCircle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-1" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-yellow-900 mb-2">
+                        <h4 className="font-semibold text-yellow-900 dark:text-yellow-300 mb-2">
                           Clarification Required
                         </h4>
-                        <div className="bg-white/50 rounded-lg p-4">
-                          <p className="text-yellow-800">
+                        <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-4">
+                          <p className="text-yellow-800 dark:text-yellow-300">
                             {handover.lm_clarification_comment}
                           </p>
                         </div>
@@ -712,20 +709,20 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                 {/* Rejection Reason */}
                 {handover.status === 'REJECTED' && handover.rejection_reason && (
-                  <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-xl p-6 border border-red-200">
+                  <div className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/10 dark:to-rose-900/10 rounded-xl p-6 border border-red-200 dark:border-red-800">
                     <div className="flex items-start gap-3">
-                      <XCircle className="w-6 h-6 text-red-600 flex-shrink-0 mt-1" />
+                      <XCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-1" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-red-900 mb-2">
+                        <h4 className="font-semibold text-red-900 dark:text-red-300 mb-2">
                           Rejection Reason
                         </h4>
-                        <div className="bg-white/50 rounded-lg p-4">
-                          <p className="text-red-800">
+                        <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-4">
+                          <p className="text-red-800 dark:text-red-300">
                             {handover.rejection_reason}
                           </p>
                         </div>
                         {handover.rejected_at && (
-                          <p className="text-red-600 text-sm mt-2">
+                          <p className="text-red-600 dark:text-red-400 text-sm mt-2">
                             Rejected on: {new Date(handover.rejected_at).toLocaleString()}
                           </p>
                         )}
@@ -736,14 +733,14 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                 {/* Takeover Status */}
                 {handover.taken_over && (
-                  <div className="bg-gradient-to-br from-green-50 to-teal-50 rounded-xl p-6 border border-green-200">
+                  <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/10 dark:to-teal-900/10 rounded-xl p-6 border border-green-200 dark:border-green-800">
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-1" />
+                      <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-1" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-green-900 mb-2">
+                        <h4 className="font-semibold text-green-900 dark:text-green-300 mb-2">
                           Responsibilities Taken Over
                         </h4>
-                        <p className="text-green-700 text-sm">
+                        <p className="text-green-700 dark:text-green-400 text-sm">
                           Taken over on: {new Date(handover.taken_over_date).toLocaleString()}
                         </p>
                       </div>
@@ -752,14 +749,14 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                 )}
 
                 {handover.taken_back && (
-                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-6 border border-indigo-200">
+                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
                     <div className="flex items-start gap-3">
-                      <CheckCircle className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-1" />
+                      <CheckCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-indigo-900 mb-2">
+                        <h4 className="font-semibold text-indigo-900 dark:text-indigo-300 mb-2">
                           Responsibilities Taken Back
                         </h4>
-                        <p className="text-indigo-700 text-sm">
+                        <p className="text-indigo-700 dark:text-indigo-400 text-sm">
                           Taken back on: {new Date(handover.taken_back_date).toLocaleString()}
                         </p>
                       </div>
@@ -773,8 +770,8 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
             {activeSection === 'tasks' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-almet-sapphire" />
                     Tasks & Responsibilities ({handover.tasks?.length || 0})
                   </h3>
                   
@@ -787,7 +784,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                         return (
                           <div key={status} className="flex items-center gap-1 text-xs">
                             {getTaskStatusBadge(status)}
-                            <span className="text-gray-500">({count})</span>
+                            <span className="text-almet-waterloo dark:text-gray-400">({count})</span>
                           </div>
                         );
                       })}
@@ -798,22 +795,22 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                 {handover.tasks && handover.tasks.length > 0 ? (
                   <div className="space-y-3">
                     {handover.tasks.map((task, index) => (
-                      <div key={task.id} className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                      <div key={task.id} className="bg-almet-mystic dark:bg-gray-800 rounded-xl border border-almet-bali-hai dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow">
                         <div className="p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
                               <div className="flex items-start gap-3 mb-2">
-                                <span className="flex-shrink-0 w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">
+                                <span className="flex-shrink-0 w-6 h-6 bg-almet-sapphire/20 dark:bg-almet-sapphire/30 text-almet-sapphire rounded-full flex items-center justify-center text-xs font-semibold">
                                   {index + 1}
                                 </span>
                                 <div className="flex-1">
-                                  <p className="font-medium text-gray-900 mb-2 leading-relaxed">
+                                  <p className="font-medium text-almet-cloud-burst dark:text-white mb-2 leading-relaxed">
                                     {task.description}
                                   </p>
                                   <div className="flex items-center gap-3 flex-wrap">
                                     {getTaskStatusBadge(task.current_status)}
                                     {task.initial_comment && (
-                                      <span className="text-xs text-gray-500 italic">
+                                      <span className="text-xs text-almet-waterloo dark:text-gray-400 italic">
                                         "{task.initial_comment}"
                                       </span>
                                     )}
@@ -825,12 +822,12 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                             {task.activity_log && task.activity_log.length > 0 && (
                               <button
                                 onClick={() => toggleTask(task.id)}
-                                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+                                className="p-2 hover:bg-almet-bali-hai/20 dark:hover:bg-gray-700 rounded-lg transition-colors"
                               >
                                 {expandedTasks[task.id] ? (
-                                  <ChevronUp className="w-5 h-5 text-gray-600" />
+                                  <ChevronUp className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                                 ) : (
-                                  <ChevronDown className="w-5 h-5 text-gray-600" />
+                                  <ChevronDown className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                                 )}
                               </button>
                             )}
@@ -838,31 +835,31 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                           {/* Task Activity Log */}
                           {expandedTasks[task.id] && task.activity_log && task.activity_log.length > 0 && (
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                            <div className="mt-4 pt-4 border-t border-almet-bali-hai dark:border-gray-700">
+                              <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
                                 <History className="w-4 h-4" />
                                 Activity History
                               </h4>
                               <div className="space-y-3 pl-4">
                                 {task.activity_log.map((log, logIndex) => (
-                                  <div key={logIndex} className="relative pl-6 pb-3 border-l-2 border-blue-200 last:border-transparent last:pb-0">
-                                    <div className="absolute -left-2 top-0 w-4 h-4 bg-blue-500 rounded-full border-2 border-white"></div>
-                                    <div className="bg-white rounded-lg p-3 shadow-sm">
+                                  <div key={logIndex} className="relative pl-6 pb-3 border-l-2 border-almet-sapphire/30 dark:border-almet-sapphire/50 last:border-transparent last:pb-0">
+                                    <div className="absolute -left-2 top-0 w-4 h-4 bg-almet-sapphire rounded-full border-2 border-white dark:border-gray-800"></div>
+                                    <div className="bg-white dark:bg-gray-900 rounded-lg p-3 shadow-sm">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <span className="font-medium text-gray-900 text-sm">
+                                        <span className="font-medium text-almet-cloud-burst dark:text-white text-sm">
                                           {log.actor_name}
                                         </span>
                                         <span className="text-gray-400">•</span>
-                                        <span className="text-xs text-gray-500">
+                                        <span className="text-xs text-almet-waterloo dark:text-gray-400">
                                           {new Date(log.timestamp).toLocaleString()}
                                         </span>
                                       </div>
-                                      <p className="text-sm text-gray-600 mb-1">
+                                      <p className="text-sm text-almet-waterloo dark:text-gray-300 mb-1">
                                         <span className="font-medium">{log.action}:</span>{' '}
-                                        <span className="text-gray-500">{log.old_status}</span> → <span className="text-blue-600 font-medium">{log.new_status}</span>
+                                        <span className="text-almet-waterloo dark:text-gray-400">{log.old_status}</span> → <span className="text-almet-sapphire font-medium">{log.new_status}</span>
                                       </p>
                                       {log.comment && log.comment !== '-' && (
-                                        <p className="text-sm text-gray-600 mt-2 italic bg-gray-50 p-2 rounded">
+                                        <p className="text-sm text-almet-waterloo dark:text-gray-300 mt-2 italic bg-almet-mystic dark:bg-gray-800 p-2 rounded">
                                           "{log.comment}"
                                         </p>
                                       )}
@@ -877,9 +874,9 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl">
-                    <CheckCircle className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No tasks defined</p>
+                  <div className="text-center py-12 bg-almet-mystic dark:bg-gray-800 rounded-xl">
+                    <CheckCircle className="w-16 h-16 text-almet-bali-hai dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-almet-waterloo dark:text-gray-400">No tasks defined</p>
                   </div>
                 )}
               </div>
@@ -890,29 +887,29 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
               <div className="space-y-6">
                 {/* Important Dates */}
                 {handover.important_dates && handover.important_dates.length > 0 && (
-                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-blue-600" />
+                  <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                    <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                      <Calendar className="w-5 h-5 text-almet-sapphire" />
                       Important Dates
                     </h4>
                     <div className="space-y-2">
                       {handover.important_dates.map((dateItem, index) => (
-                        <div key={index} className="flex items-center gap-3 bg-white rounded-lg p-4 shadow-sm">
+                        <div key={index} className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
                           <div className="flex-shrink-0">
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex flex-col items-center justify-center">
-                              <span className="text-xs font-medium text-blue-600">
+                            <div className="w-12 h-12 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-lg flex flex-col items-center justify-center">
+                              <span className="text-xs font-medium text-almet-sapphire">
                                 {new Date(dateItem.date).toLocaleDateString('en-US', { month: 'short' })}
                               </span>
-                              <span className="text-lg font-bold text-blue-700">
+                              <span className="text-lg font-bold text-almet-sapphire">
                                 {new Date(dateItem.date).getDate()}
                               </span>
                             </div>
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-almet-cloud-burst dark:text-white">
                               {dateItem.description}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-almet-waterloo dark:text-gray-400">
                               {new Date(dateItem.date).toLocaleDateString('en-US', { 
                                 weekday: 'long',
                                 year: 'numeric',
@@ -928,65 +925,65 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                 )}
 
                 {/* Related Contacts */}
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600" />
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-almet-sapphire" />
                     Related Contacts
                   </h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
+                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {handover.contacts || 'No contact information provided'}
                     </p>
                   </div>
                 </div>
 
                 {/* Access Information */}
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Key className="w-5 h-5 text-blue-600" />
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                    <Key className="w-5 h-5 text-almet-sapphire" />
                     Access Information / Accounts
                   </h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
+                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {handover.access_info || 'No access information provided'}
                     </p>
                   </div>
                 </div>
 
                 {/* Documents & Files */}
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <Folder className="w-5 h-5 text-blue-600" />
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                    <Folder className="w-5 h-5 text-almet-sapphire" />
                     Documents & Files
                   </h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
+                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {handover.documents_info || 'No document information provided'}
                     </p>
                   </div>
                 </div>
 
                 {/* Open Issues */}
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600" />
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
                     Open Issues
                   </h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
+                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {handover.open_issues || 'No open issues reported'}
                     </p>
                   </div>
                 </div>
 
                 {/* Additional Notes */}
-                <div className="bg-white rounded-xl p-6 border border-gray-200">
-                  <h4 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-almet-sapphire" />
                     Additional Notes
                   </h4>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
+                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
                       {handover.notes || 'No additional notes'}
                     </p>
                   </div>
@@ -994,26 +991,26 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                 {/* Attachments */}
                 {handover.attachments && handover.attachments.length > 0 && (
-                  <div className="bg-white rounded-xl p-6 border border-gray-200">
-                    <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-blue-600" />
+                  <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                    <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-almet-sapphire" />
                       Attachments ({handover.attachments.length})
                     </h4>
                     <div className="space-y-2">
                       {handover.attachments.map((attachment) => (
-                        <div key={attachment.id} className="flex items-center justify-between bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                        <div key={attachment.id} className="flex items-center justify-between bg-almet-mystic dark:bg-gray-800 rounded-lg p-4 hover:bg-almet-bali-hai/20 dark:hover:bg-gray-700 transition-colors">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-blue-600" />
+                            <div className="flex-shrink-0 w-10 h-10 bg-almet-sapphire/20 dark:bg-almet-sapphire/30 rounded-lg flex items-center justify-center">
+                              <FileText className="w-5 h-5 text-almet-sapphire" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 truncate">
+                              <p className="font-medium text-almet-cloud-burst dark:text-white truncate">
                                 {attachment.original_filename}
                               </p>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-almet-waterloo dark:text-gray-400">
                                 {attachment.file_size_display} • Uploaded by {attachment.uploaded_by_name}
                               </p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-almet-waterloo dark:text-gray-500">
                                 {new Date(attachment.uploaded_at).toLocaleString()}
                               </p>
                             </div>
@@ -1022,9 +1019,9 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                             href={attachment.file_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex-shrink-0 p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="flex-shrink-0 p-2 hover:bg-almet-sapphire/20 dark:hover:bg-almet-sapphire/30 rounded-lg transition-colors"
                           >
-                            <Download className="w-5 h-5 text-blue-600" />
+                            <Download className="w-5 h-5 text-almet-sapphire" />
                           </a>
                         </div>
                       ))}
@@ -1037,32 +1034,32 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
             {/* Activity Log Section */}
             {activeSection === 'activity' && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <History className="w-5 h-5 text-blue-600" />
+                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                  <History className="w-5 h-5 text-almet-sapphire" />
                   Activity History
                 </h3>
 
                 {loadingLog ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader className="w-8 h-8 text-blue-600 animate-spin" />
+                    <Loader className="w-8 h-8 text-almet-sapphire animate-spin" />
                   </div>
                 ) : activityLog.length > 0 ? (
                   <div className="space-y-4">
                     {activityLog.map((log, index) => (
                       <div key={log.id || index} className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                            <History className="w-5 h-5 text-blue-600" />
+                          <div className="w-10 h-10 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center flex-shrink-0">
+                            <History className="w-5 h-5 text-almet-sapphire" />
                           </div>
                           {index < activityLog.length - 1 && (
-                            <div className="w-0.5 flex-1 bg-gray-200 mt-2"></div>
+                            <div className="w-0.5 flex-1 bg-almet-bali-hai dark:bg-gray-700 mt-2"></div>
                           )}
                         </div>
                         <div className="flex-1 pb-8">
-                          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                          <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-4 border border-almet-bali-hai dark:border-gray-700 hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-2">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-gray-900">
+                                <span className="font-semibold text-almet-cloud-burst dark:text-white">
                                   {log.actor_name || 'System'}
                                 </span>
                                 {log.status && (
@@ -1072,16 +1069,16 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                                   </>
                                 )}
                               </div>
-                              <span className="text-sm text-gray-500">
+                              <span className="text-sm text-almet-waterloo dark:text-gray-400">
                                 {new Date(log.timestamp).toLocaleString()}
                               </span>
                             </div>
-                            <p className="text-gray-700 font-medium mb-1">
+                            <p className="text-almet-cloud-burst dark:text-gray-300 font-medium mb-1">
                               {log.action}
                             </p>
                             {log.comment && log.comment !== '-' && (
-                              <div className="mt-2 bg-white rounded-lg p-3 border border-gray-200">
-                                <p className="text-gray-600 text-sm italic">
+                              <div className="mt-2 bg-white dark:bg-gray-900 rounded-lg p-3 border border-almet-bali-hai dark:border-gray-700">
+                                <p className="text-almet-waterloo dark:text-gray-300 text-sm italic">
                                   "{log.comment}"
                                 </p>
                               </div>
@@ -1092,9 +1089,9 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12 bg-gray-50 rounded-xl">
-                    <History className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No activity recorded yet</p>
+                  <div className="text-center py-12 bg-almet-mystic dark:bg-gray-800 rounded-xl">
+                    <History className="w-16 h-16 text-almet-bali-hai dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-almet-waterloo dark:text-gray-400">No activity recorded yet</p>
                   </div>
                 )}
               </div>
@@ -1102,11 +1099,11 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
           </div>
 
           {/* Footer with Action Buttons */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+          <div className="sticky bottom-0 bg-white dark:bg-gray-900 border-t border-almet-mystic dark:border-gray-700 px-6 py-4">
             <div className="flex items-center justify-between gap-4">
               <button
                 onClick={onClose}
-                className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                className="px-6 py-2 border border-almet-bali-hai dark:border-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic dark:hover:bg-gray-800 transition-colors font-medium"
               >
                 Close
               </button>
@@ -1121,19 +1118,19 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       {/* Action Comment Modal */}
       {showActionModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-md w-full">
             <div className="p-6">
-              <h3 className="text-xl font-semibold text-gray-900 mb-4">
+              <h3 className="text-xl font-semibold text-almet-cloud-burst dark:text-white mb-4">
                 {confirmationConfig.title}
               </h3>
               
               <div className="mb-4">
-                <p className="text-gray-600 mb-4">
+                <p className="text-almet-waterloo dark:text-gray-300 mb-4">
                   {confirmationConfig.message}
                 </p>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
                     {actionType === 'reject' ? 'Rejection Reason *' : 
                      actionType === 'clarify' ? 'Clarification Request *' : 
                      actionType === 'resubmit' ? 'Response to Clarification *' : 
@@ -1142,7 +1139,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                   <textarea
                     value={actionComment}
                     onChange={(e) => setActionComment(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white"
                     rows="4"
                     placeholder={
                       actionType === 'reject' ? 'Enter rejection reason...' :
@@ -1159,7 +1156,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                 <button
                   onClick={() => setShowActionModal(false)}
                   disabled={actionLoading}
-                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium disabled:opacity-50"
+                  className="px-6 py-2 border border-almet-bali-hai dark:border-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1171,7 +1168,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                       ? 'bg-red-600 hover:bg-red-700 text-white'
                       : actionType === 'clarify'
                       ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-almet-sapphire hover:bg-almet-cloud-burst text-white'
                   }`}
                 >
                   {actionLoading ? (
