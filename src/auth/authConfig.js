@@ -2,13 +2,10 @@
 // src/auth/authConfig.js
 export const msalConfig = {
   auth: {
-    clientId: "230458ff-ed69-4abb-8496-3888067116f6",
-    authority:
-      "https://login.microsoftonline.com/b3222ef7-242d-4724-a665-97b0a764f2d0",
-    redirectUri:
-      process.env.NEXT_PUBLIC_REDIRECT_URI,
-    postLogoutRedirectUri:
-      process.env.NEXT_PUBLIC_REDIRECT_URI,
+    clientId: process.env.NEXT_PUBLIC_AAD_CLIENT_ID,
+    authority: process.env.NEXT_PUBLIC_AAD_AUTHORITY,
+    redirectUri: process.env.NEXT_PUBLIC_REDIRECT_URI,
+    postLogoutRedirectUri: process.env.NEXT_PUBLIC_REDIRECT_URI,
   },
   cache: {
     cacheLocation: "localStorage", // localStorage istifadə edirik
