@@ -1,11 +1,12 @@
-// app/handovers/page.jsx
+// app/handovers/page.jsx - PART 1
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import { 
   Calendar, FileText, Users, CheckCircle, AlertCircle, 
   Clock, TrendingUp, Plus, Search, Eye, X, ArrowRight,
-  UserCheck, UserX, ClipboardCheck, Filter, RefreshCw
+  UserCheck, UserX, ClipboardCheck, Filter, RefreshCw,
+  Shield, UsersIcon, Building
 } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
@@ -22,11 +23,15 @@ const HandoversDashboard = () => {
   // State Management
   const [activeTab, setActiveTab] = useState('submission');
   const [myHandovers, setMyHandovers] = useState([]);
+  const [teamHandovers, setTeamHandovers] = useState([]);
+  const [allHandovers, setAllHandovers] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [statistics, setStatistics] = useState({
     pending: 0,
     active: 0,
-    completed: 0
+    completed: 0,
+    team_active: 0,
+    team_pending: 0
   });
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,6 +53,10 @@ const HandoversDashboard = () => {
 
   const { showSuccess, showError, showInfo } = useToast();
 
+  // Check user role
+  const isAdmin = currentUser?.user?.is_staff || currentUser?.user?.is_superuser;
+  const isManager = teamHandovers.length > 0 || statistics.team_active > 0;
+
   // Fetch data on mount
   useEffect(() => {
     fetchInitialData();
@@ -57,16 +66,20 @@ const HandoversDashboard = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [statsData, myHandoversData, pendingData, userData, typesData] = await Promise.all([
+      const [statsData, myHandoversData, teamHandoversData, pendingData, userData, typesData, allHandoversData] = await Promise.all([
         handoverService.getStatistics(),
         handoverService.getMyHandovers(),
+        handoverService.getTeamHandovers(),
         handoverService.getPendingApprovals(),
         handoverService.getCurrentUser(),
-        handoverService.getHandoverTypes()
+        handoverService.getHandoverTypes(),
+        handoverService.getAllHandovers()
       ]);
       
-      setStatistics(statsData || { pending: 0, active: 0, completed: 0 });
+      setStatistics(statsData || { pending: 0, active: 0, completed: 0, team_active: 0, team_pending: 0 });
       setMyHandovers(Array.isArray(myHandoversData) ? myHandoversData : []);
+      setTeamHandovers(Array.isArray(teamHandoversData) ? teamHandoversData : []);
+      setAllHandovers(Array.isArray(allHandoversData) ? allHandoversData : []);
       setPendingApprovals(Array.isArray(pendingData) ? pendingData : []);
       
       if (userData && userData.user && userData.employee) {
@@ -93,7 +106,7 @@ const HandoversDashboard = () => {
     setRefreshing(true);
     try {
       await fetchInitialData();
-
+ 
     } catch (error) {
       showError('Error refreshing data');
     } finally {
@@ -165,7 +178,7 @@ const HandoversDashboard = () => {
     );
   };
 
-  // Filter handovers based on search and filters
+  // Filter handovers
   const filterHandovers = (handoversList) => {
     let filtered = handoversList;
 
@@ -239,14 +252,16 @@ const HandoversDashboard = () => {
     { value: 'TAKEN_BACK', label: 'Taken Back' },
   ];
 
+  // app/handovers/page.jsx - PART 2 (Add after Part 1)
+
   // Render Statistics Cards
   const StatisticsCards = () => (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
       {/* Pending Card */}
       <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 dark:from-yellow-600 dark:to-yellow-700 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-yellow-100 text-sm font-medium mb-1">Pending Approval</p>
+            <p className="text-yellow-100 text-sm font-medium mb-1">Pending</p>
             <p className="text-3xl font-bold">{statistics.pending}</p>
           </div>
           <div className="bg-white/20 p-3 rounded-lg">
@@ -254,8 +269,8 @@ const HandoversDashboard = () => {
           </div>
         </div>
         <div className="flex items-center text-sm text-yellow-100">
-          <TrendingUp className="w-4 h-4 mr-1" />
-          Awaiting action
+          <AlertCircle className="w-4 h-4 mr-1" />
+          Your action needed
         </div>
       </div>
 
@@ -263,7 +278,7 @@ const HandoversDashboard = () => {
       <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral dark:from-almet-san-juan dark:to-almet-sapphire rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-blue-100 text-sm font-medium mb-1">Active Handovers</p>
+            <p className="text-blue-100 text-sm font-medium mb-1">Active</p>
             <p className="text-3xl font-bold">{statistics.active}</p>
           </div>
           <div className="bg-white/20 p-3 rounded-lg">
@@ -292,8 +307,106 @@ const HandoversDashboard = () => {
           Finished
         </div>
       </div>
+
+      {/* Team Active Card (for managers) */}
+      {(isManager || isAdmin) && (
+        <div className="bg-gradient-to-br from-purple-400 to-purple-500 dark:from-purple-600 dark:to-purple-700 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-purple-100 text-sm font-medium mb-1">Team Active</p>
+              <p className="text-3xl font-bold">{statistics.team_active}</p>
+            </div>
+            <div className="bg-white/20 p-3 rounded-lg">
+              <UsersIcon className="w-8 h-8" />
+            </div>
+          </div>
+          <div className="flex items-center text-sm text-purple-100">
+            <Building className="w-4 h-4 mr-1" />
+            Team handovers
+          </div>
+        </div>
+      )}
+
+      {/* Team Pending Card (for managers) */}
+      {(isManager || isAdmin) && (
+        <div className="bg-gradient-to-br from-orange-400 to-orange-500 dark:from-orange-600 dark:to-orange-700 rounded-xl p-6 text-white shadow-lg hover:shadow-xl transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-orange-100 text-sm font-medium mb-1">Team Pending</p>
+              <p className="text-3xl font-bold">{statistics.team_pending}</p>
+            </div>
+            <div className="bg-white/20 p-3 rounded-lg">
+              <AlertCircle className="w-8 h-8" />
+            </div>
+          </div>
+          <div className="flex items-center text-sm text-orange-100">
+            <Shield className="w-4 h-4 mr-1" />
+            Awaiting approval
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  // Render Tabs
+  const Tabs = () => {
+    const tabs = [
+      { id: 'submission', label: 'New Handover', icon: FileText },
+      { id: 'my-requests', label: 'My Handovers', icon: ClipboardCheck },
+      { id: 'approval', label: 'Approval Center', icon: CheckCircle },
+    ];
+
+    // Add team tab for managers
+    if (isManager || isAdmin) {
+      tabs.splice(2, 0, { 
+        id: 'team', 
+        label: 'Team Handovers', 
+        icon: UsersIcon,
+        badge: statistics.team_pending > 0 ? statistics.team_pending : null
+      });
+    }
+
+    // Add all handovers tab for admins
+    if (isAdmin) {
+      tabs.push({ 
+        id: 'all', 
+        label: 'All Handovers', 
+        icon: Shield 
+      });
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2 bg-white dark:bg-gray-900 rounded-xl p-2 shadow-sm mb-6">
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                resetFilters();
+              }}
+              className={`relative flex-1 min-w-[140px] py-3 px-4 rounded-lg font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-almet-sapphire text-white shadow-md'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Icon className="w-5 h-5" />
+                {tab.label}
+                {tab.badge && (
+                  <span className="ml-1 px-2 py-0.5 bg-red-500 text-white rounded-full text-xs font-bold">
+                    {tab.badge}
+                  </span>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  };// app/handovers/page.jsx - PART 3 (Add after Part 2)
 
   // Render Handover Table
   const HandoverTable = ({ handovers }) => {
@@ -423,60 +536,6 @@ const HandoversDashboard = () => {
     );
   };
 
-  // Render Tabs
-  const Tabs = () => (
-    <div className="flex space-x-2 bg-white dark:bg-gray-900 rounded-xl p-2 shadow-sm mb-6">
-      <button
-        onClick={() => {
-          setActiveTab('submission');
-          resetFilters();
-        }}
-        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-          activeTab === 'submission'
-            ? 'bg-almet-sapphire text-white shadow-md'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-        }`}
-      >
-        <div className="flex items-center justify-center gap-2">
-          <FileText className="w-5 h-5" />
-          New Handover
-        </div>
-      </button>
-      <button
-        onClick={() => {
-          setActiveTab('my-requests');
-          resetFilters();
-        }}
-        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-          activeTab === 'my-requests'
-            ? 'bg-almet-sapphire text-white shadow-md'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-        }`}
-      >
-        <div className="flex items-center justify-center gap-2">
-          <ClipboardCheck className="w-5 h-5" />
-          My Handovers
-        </div>
-      </button>
-      <button
-        onClick={() => {
-          setActiveTab('approval');
-          resetFilters();
-        }}
-        className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
-          activeTab === 'approval'
-            ? 'bg-almet-sapphire text-white shadow-md'
-            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-        }`}
-      >
-        <div className="flex items-center justify-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          Approval Center
-        </div>
-      </button>
-    </div>
-  );
-
   // Loading state
   if (loading) {
     return (
@@ -489,7 +548,7 @@ const HandoversDashboard = () => {
         </div>
       </DashboardLayout>
     );
-  }
+  }// app/handovers/page.jsx - PART 4 (Final - Main Render)
 
   return (
     <DashboardLayout>
@@ -498,14 +557,21 @@ const HandoversDashboard = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Handover & Takeover System
-              </h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                  Handover & Takeover System
+                </h1>
+                {(isAdmin || isManager) && (
+                  <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-sm font-medium">
+                    {isAdmin ? 'Admin' : 'Manager'}
+                  </span>
+                )}
+              </div>
               <p className="text-gray-600 dark:text-gray-400 mt-1">
                 Manage work handovers efficiently
               </p>
             </div>
-     
+            
           </div>
         </div>
 
@@ -676,6 +742,23 @@ const HandoversDashboard = () => {
             </div>
           )}
 
+          {/* Team Tab (for managers) */}
+          {activeTab === 'team' && (isManager || isAdmin) && (
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  Team Handovers
+                </h2>
+                <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded-lg border border-purple-200 dark:border-purple-800">
+                  <UsersIcon className="w-5 h-5" />
+                  <span className="font-medium">{teamHandovers.length} Team Members</span>
+                </div>
+              </div>
+
+              <HandoverTable handovers={teamHandovers} />
+            </div>
+          )}
+
           {/* Approval Tab */}
           {activeTab === 'approval' && (
             <div className="p-6">
@@ -690,6 +773,23 @@ const HandoversDashboard = () => {
               </div>
 
               <HandoverTable handovers={pendingApprovals} />
+            </div>
+          )}
+
+          {/* All Handovers Tab (for admins) */}
+          {activeTab === 'all' && isAdmin && (
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                  All Handovers
+                </h2>
+                <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <Shield className="w-5 h-5" />
+                  <span className="font-medium">{allHandovers.length} Total</span>
+                </div>
+              </div>
+
+              <HandoverTable handovers={allHandovers} />
             </div>
           )}
         </div>

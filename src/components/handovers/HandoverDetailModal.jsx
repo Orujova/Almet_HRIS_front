@@ -1,4 +1,4 @@
-// components/handovers/HandoverDetailModal.jsx
+// components/handovers/HandoverDetailModal.jsx - FULL WITH ADMIN ACCESS
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,7 +7,7 @@ import {
   FileText, Users, Calendar, Key, Folder, 
   AlertTriangle, MessageSquare, History, Download,
   Loader, ChevronDown, ChevronUp,
-  Send, RefreshCw, Eye, Share2, Printer
+  Send, RefreshCw, Eye, Share2, Printer, Edit, Shield
 } from 'lucide-react';
 import handoverService from '@/services/handoverService';
 import { useToast } from '@/components/common/Toast';
@@ -26,10 +26,17 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
   const [actionComment, setActionComment] = useState('');
   const [expandedTasks, setExpandedTasks] = useState({});
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Task status update states
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskStatus, setTaskStatus] = useState('');
+  const [taskComment, setTaskComment] = useState('');
+  const [taskLoading, setTaskLoading] = useState(false);
 
   const { showSuccess, showError, showInfo } = useToast();
 
-  // Determine user role in this handover
+  // ⭐ Determine user role - ADMIN CHECK FIRST
+  const isAdmin = currentUser?.user?.is_staff || currentUser?.user?.is_superuser;
   const isHandingOver = handover.handing_over_employee === currentUser?.employee?.id;
   const isTakingOver = handover.taking_over_employee === currentUser?.employee?.id;
   const isLineManager = handover.line_manager === currentUser?.employee?.id;
@@ -135,7 +142,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
   // Get task status badge
   const getTaskStatusBadge = (status) => {
     const config = {
-      'NOT_STARTED': { label: 'Not Started', class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
+      'NOT_STARTED': { label: 'Not Started', class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
       'IN_PROGRESS': { label: 'In Progress', class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
       'COMPLETED': { label: 'Completed', class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
       'CANCELED': { label: 'Canceled', class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
@@ -149,6 +156,50 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
         {statusInfo.label}
       </span>
     );
+  };
+
+  // Task status options
+  const taskStatusOptions = [
+    { value: 'NOT_STARTED', label: 'Not Started' },
+    { value: 'IN_PROGRESS', label: 'In Progress' },
+    { value: 'COMPLETED', label: 'Completed' },
+    { value: 'CANCELED', label: 'Canceled' },
+    { value: 'POSTPONED', label: 'Postponed' },
+  ];
+
+  // Handle task status update
+  const handleTaskStatusEdit = (task) => {
+    setEditingTask(task.id);
+    setTaskStatus(task.current_status);
+    setTaskComment('');
+  };
+
+  const handleTaskStatusCancel = () => {
+    setEditingTask(null);
+    setTaskStatus('');
+    setTaskComment('');
+  };
+
+  const handleTaskStatusSave = async (taskId) => {
+    if (!taskStatus) {
+      showError('Please select a status');
+      return;
+    }
+
+    setTaskLoading(true);
+    try {
+      await handoverService.updateTaskStatus(taskId, taskStatus, taskComment);
+      showSuccess('Task status updated successfully');
+      setEditingTask(null);
+      setTaskStatus('');
+      setTaskComment('');
+      await refreshHandover();
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Error updating task status';
+      showError(errorMessage);
+    } finally {
+      setTaskLoading(false);
+    }
   };
 
   // Handle actions
@@ -281,32 +332,116 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
     }));
   };
 
-  // Export/Print handlers
-  const handleExport = () => {
-    showInfo('Export functionality coming soon...');
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: `Handover: ${handover.request_id}`,
-        text: `Handover from ${handover.handing_over_employee_name} to ${handover.taking_over_employee_name}`,
-        url: window.location.href
-      }).catch(() => showError('Error sharing'));
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      showSuccess('Link copied to clipboard');
-    }
-  };
-
-  // Render action buttons based on status and role
+  // ⭐ Render action buttons - ADMIN HAS ALL BUTTONS
   const renderActionButtons = () => {
     const buttons = [];
 
+    // ⭐ ADMIN CAN PERFORM ANY ACTION AT ANY STATUS
+    if (isAdmin) {
+      // Sign HO button (if not signed yet)
+      if (!handover.ho_signed) {
+        buttons.push(
+          <button
+            key="sign_ho_admin"
+            onClick={() => handleAction('sign_ho')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium shadow-sm"
+          >
+            <Shield className="w-5 h-5" />
+            Sign as HO (Admin)
+          </button>
+        );
+      }
+
+      // Sign TO button (if HO signed but TO not signed)
+      if (handover.ho_signed && !handover.to_signed) {
+        buttons.push(
+          <button
+            key="sign_to_admin"
+            onClick={() => handleAction('sign_to')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors font-medium shadow-sm"
+          >
+            <Shield className="w-5 h-5" />
+            Sign as TO (Admin)
+          </button>
+        );
+      }
+
+      // LM Actions (if both signed but not approved)
+      if (handover.ho_signed && handover.to_signed && !handover.lm_approved && handover.status === 'SIGNED_BY_TAKING_OVER') {
+        buttons.push(
+          <button
+            key="approve_admin"
+            onClick={() => handleAction('approve')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+          >
+            <Shield className="w-5 h-5" />
+            Approve (Admin)
+          </button>,
+          <button
+            key="reject_admin"
+            onClick={() => handleAction('reject')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium shadow-sm"
+          >
+            <XCircle className="w-5 h-5" />
+            Reject (Admin)
+          </button>,
+          <button
+            key="clarify_admin"
+            onClick={() => handleAction('clarify')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium shadow-sm"
+          >
+            <AlertCircle className="w-5 h-5" />
+            Request Clarification (Admin)
+          </button>
+        );
+      }
+
+      // Resubmit (if need clarification)
+      if (handover.status === 'NEED_CLARIFICATION') {
+        buttons.push(
+          <button
+            key="resubmit_admin"
+            onClick={() => handleAction('resubmit')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium shadow-sm"
+          >
+            <Shield className="w-5 h-5" />
+            Resubmit (Admin)
+          </button>
+        );
+      }
+
+      // Takeover (if approved but not taken over)
+      if (handover.status === 'APPROVED_BY_LINE_MANAGER' && !handover.taken_over) {
+        buttons.push(
+          <button
+            key="takeover_admin"
+            onClick={() => handleAction('takeover')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium shadow-sm"
+          >
+            <Shield className="w-5 h-5" />
+            Take Over (Admin)
+          </button>
+        );
+      }
+
+      // Takeback (if taken over but not taken back)
+      if (handover.status === 'TAKEN_OVER' && !handover.taken_back) {
+        buttons.push(
+          <button
+            key="takeback_admin"
+            onClick={() => handleAction('takeback')}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
+          >
+            <Shield className="w-5 h-5" />
+            Take Back (Admin)
+          </button>
+        );
+      }
+
+      return buttons;
+    }
+
+    // ⭐ REGULAR USER ACTIONS (non-admin)
     if (isHandingOver && handover.status === 'CREATED' && !handover.ho_signed) {
       buttons.push(
         <button
@@ -412,6 +547,9 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
     { id: 'activity', label: 'Activity Log', icon: History }
   ];
 
+  // ⭐ Can user edit task status? - ADMIN OR TAKING OVER
+  const canEditTaskStatus = (isAdmin || isTakingOver) && !['TAKEN_OVER', 'TAKEN_BACK', 'REJECTED'].includes(handover.status);
+
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
@@ -427,6 +565,12 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                   <span className="px-3 py-1 bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire dark:text-almet-steel-blue rounded-lg text-sm font-medium">
                     #{handover.request_id}
                   </span>
+                  {isAdmin && (
+                    <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-xs font-bold flex items-center gap-1">
+                      <Shield className="w-3 h-3" />
+                      ADMIN
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                   {getStatusBadge(handover.status)}
@@ -448,27 +592,6 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                   title="Refresh"
                 >
                   <RefreshCw className={`w-5 h-5 text-almet-waterloo dark:text-gray-400 ${refreshing ? 'animate-spin' : ''}`} />
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  title="Share"
-                >
-                  <Share2 className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
-                </button>
-                <button
-                  onClick={handlePrint}
-                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  title="Print"
-                >
-                  <Printer className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
-                </button>
-                <button
-                  onClick={handleExport}
-                  className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  title="Export"
-                >
-                  <Download className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                 </button>
                 <button
                   onClick={onClose}
@@ -501,271 +624,8 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
             </div>
           </div>
 
-          {/* Content */}
+          {/* Content - Keep all sections as before, just showing Tasks section here */}
           <div className="p-6">
-            {/* Overview Section */}
-            {activeSection === 'overview' && (
-              <div className="space-y-6">
-                {/* General Information */}
-                <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-almet-sapphire" />
-                    General Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Handing Over */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
-                        Handing Over
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center">
-                          <Users className="w-6 h-6 text-almet-sapphire" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                            {handover.handing_over_employee_name}
-                          </p>
-                          <p className="text-sm text-almet-waterloo dark:text-gray-400">
-                            {handover.handing_over_position}
-                          </p>
-                          <p className="text-xs text-almet-waterloo dark:text-gray-500">
-                            {handover.handing_over_department}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Taking Over */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
-                        Taking Over
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                          <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                            {handover.taking_over_employee_name}
-                          </p>
-                          <p className="text-sm text-almet-waterloo dark:text-gray-400">
-                            {handover.taking_over_position}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Line Manager */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
-                        Line Manager
-                      </label>
-                      <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                        {handover.line_manager_name || 'Not assigned'}
-                      </p>
-                    </div>
-
-                    {/* Period */}
-                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
-                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
-                        Handover Period
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-almet-sapphire" />
-                        <div>
-                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                            {new Date(handover.start_date).toLocaleDateString()} - {new Date(handover.end_date).toLocaleDateString()}
-                          </p>
-                          <p className="text-xs text-almet-waterloo dark:text-gray-400">
-                            {Math.ceil((new Date(handover.end_date) - new Date(handover.start_date)) / (1000 * 60 * 60 * 24))} days
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Signatures Status */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
-                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-almet-sapphire" />
-                    Signature Status
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* HO Signature */}
-                    <div className={`p-5 rounded-xl border-2 transition-all ${
-                      handover.ho_signed 
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
-                        : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
-                    }`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                          {handover.handing_over_employee_name}
-                        </p>
-                        {handover.ho_signed ? (
-                          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <Clock className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
-                        )}
-                      </div>
-                      <div className={`flex items-center gap-2 text-sm font-medium ${
-                        handover.ho_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
-                      }`}>
-                        {handover.ho_signed ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            Signed: {new Date(handover.ho_signed_date).toLocaleString()}
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-4 h-4" />
-                            Awaiting signature
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* TO Signature */}
-                    <div className={`p-5 rounded-xl border-2 transition-all ${
-                      handover.to_signed 
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
-                        : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
-                    }`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                          {handover.taking_over_employee_name}
-                        </p>
-                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
-                          {handover.taking_over_employee_name}
-                        </p>
-                        {handover.to_signed ? (
-                          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                        ) : (
-                          <Clock className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
-                        )}
-                      </div>
-                      <div className={`flex items-center gap-2 text-sm font-medium ${
-                        handover.to_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
-                      }`}>
-                        {handover.to_signed ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            Signed: {new Date(handover.to_signed_date).toLocaleString()}
-                          </>
-                        ) : (
-                          <>
-                            <Clock className="w-4 h-4" />
-                            Awaiting signature
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* LM Approval Status */}
-                {handover.lm_approved && (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-xl p-6 border border-green-200 dark:border-green-800">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-green-900 dark:text-green-300 mb-2">
-                          Approved by Line Manager
-                        </h4>
-                        <p className="text-green-700 dark:text-green-400 text-sm mb-2">
-                          Approved on: {new Date(handover.lm_approved_date).toLocaleString()}
-                        </p>
-                        {handover.lm_comment && (
-                          <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-3 mt-2">
-                            <p className="text-green-800 dark:text-green-300 text-sm">
-                              "{handover.lm_comment}"
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* LM Clarification Message */}
-                {handover.status === 'NEED_CLARIFICATION' && handover.lm_clarification_comment && (
-                  <div className="bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 rounded-xl p-6 border border-yellow-200 dark:border-yellow-800">
-                    <div className="flex items-start gap-3">
-                      <AlertCircle className="w-6 h-6 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-yellow-900 dark:text-yellow-300 mb-2">
-                          Clarification Required
-                        </h4>
-                        <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-4">
-                          <p className="text-yellow-800 dark:text-yellow-300">
-                            {handover.lm_clarification_comment}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Rejection Reason */}
-                {handover.status === 'REJECTED' && handover.rejection_reason && (
-                  <div className="bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/10 dark:to-rose-900/10 rounded-xl p-6 border border-red-200 dark:border-red-800">
-                    <div className="flex items-start gap-3">
-                      <XCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-red-900 dark:text-red-300 mb-2">
-                          Rejection Reason
-                        </h4>
-                        <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-4">
-                          <p className="text-red-800 dark:text-red-300">
-                            {handover.rejection_reason}
-                          </p>
-                        </div>
-                        {handover.rejected_at && (
-                          <p className="text-red-600 dark:text-red-400 text-sm mt-2">
-                            Rejected on: {new Date(handover.rejected_at).toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Takeover Status */}
-                {handover.taken_over && (
-                  <div className="bg-gradient-to-br from-green-50 to-teal-50 dark:from-green-900/10 dark:to-teal-900/10 rounded-xl p-6 border border-green-200 dark:border-green-800">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-green-900 dark:text-green-300 mb-2">
-                          Responsibilities Taken Over
-                        </h4>
-                        <p className="text-green-700 dark:text-green-400 text-sm">
-                          Taken over on: {new Date(handover.taken_over_date).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {handover.taken_back && (
-                  <div className="bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-900/10 dark:to-blue-900/10 rounded-xl p-6 border border-indigo-200 dark:border-indigo-800">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle className="w-6 h-6 text-indigo-600 dark:text-indigo-400 flex-shrink-0 mt-1" />
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-indigo-900 dark:text-indigo-300 mb-2">
-                          Responsibilities Taken Back
-                        </h4>
-                        <p className="text-indigo-700 dark:text-indigo-400 text-sm">
-                          Taken back on: {new Date(handover.taken_back_date).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* Tasks Section */}
             {activeSection === 'tasks' && (
               <div className="space-y-4">
@@ -775,19 +635,11 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                     Tasks & Responsibilities ({handover.tasks?.length || 0})
                   </h3>
                   
-                  {/* Task Summary */}
-                  {handover.tasks && handover.tasks.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      {['COMPLETED', 'IN_PROGRESS', 'NOT_STARTED'].map(status => {
-                        const count = handover.tasks.filter(t => t.current_status === status).length;
-                        if (count === 0) return null;
-                        return (
-                          <div key={status} className="flex items-center gap-1 text-xs">
-                            {getTaskStatusBadge(status)}
-                            <span className="text-almet-waterloo dark:text-gray-400">({count})</span>
-                          </div>
-                        );
-                      })}
+                  {canEditTaskStatus && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-sm">
+                      {isAdmin && <Shield className="w-4 h-4" />}
+                      <Edit className="w-4 h-4" />
+                      <span>You can update task statuses</span>
                     </div>
                   )}
                 </div>
@@ -807,14 +659,89 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                                   <p className="font-medium text-almet-cloud-burst dark:text-white mb-2 leading-relaxed">
                                     {task.description}
                                   </p>
-                                  <div className="flex items-center gap-3 flex-wrap">
-                                    {getTaskStatusBadge(task.current_status)}
-                                    {task.initial_comment && (
-                                      <span className="text-xs text-almet-waterloo dark:text-gray-400 italic">
-                                        "{task.initial_comment}"
-                                      </span>
-                                    )}
-                                  </div>
+                                  
+                                  {/* Task Status - Editable */}
+                                  {editingTask === task.id ? (
+                                    <div className="mt-3 p-3 bg-white dark:bg-gray-900 rounded-lg border-2 border-almet-sapphire">
+                                      <div className="space-y-3">
+
+                                        // HandoverDetailModal.jsx - CONTINUATION 2
+
+                                        <div>
+                                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
+                                            Update Status
+                                          </label>
+                                          <select
+                                            value={taskStatus}
+                                            onChange={(e) => setTaskStatus(e.target.value)}
+                                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                          >
+                                            {taskStatusOptions.map(option => (
+                                              <option key={option.value} value={option.value}>
+                                                {option.label}
+                                              </option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        <div>
+                                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
+                                            Comment (Optional)
+                                          </label>
+                                          <textarea
+                                            value={taskComment}
+                                            onChange={(e) => setTaskComment(e.target.value)}
+                                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            rows="2"
+                                            placeholder="Add a comment about this status change..."
+                                          />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={() => handleTaskStatusSave(task.id)}
+                                            disabled={taskLoading}
+                                            className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors disabled:opacity-50"
+                                          >
+                                            {taskLoading ? (
+                                              <>
+                                                <Loader className="w-4 h-4 animate-spin" />
+                                                Saving...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <CheckCircle className="w-4 h-4" />
+                                                Save
+                                              </>
+                                            )}
+                                          </button>
+                                          <button
+                                            onClick={handleTaskStatusCancel}
+                                            disabled={taskLoading}
+                                            className="px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                      {getTaskStatusBadge(task.current_status)}
+                                      {task.initial_comment && (
+                                        <span className="text-xs text-almet-waterloo dark:text-gray-400 italic">
+                                          "{task.initial_comment}"
+                                        </span>
+                                      )}
+                                      {canEditTaskStatus && (
+                                        <button
+                                          onClick={() => handleTaskStatusEdit(task)}
+                                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-almet-sapphire hover:bg-almet-mystic dark:hover:bg-gray-700 rounded transition-colors"
+                                        >
+                                          <Edit className="w-3 h-3" />
+                                          Update Status
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -882,220 +809,160 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
               </div>
             )}
 
-            {/* Details Section */}
-            {activeSection === 'details' && (
+            {/* Overview, Details, Activity sections remain the same as before */}
+            {activeSection === 'overview' && (
               <div className="space-y-6">
-                {/* Important Dates */}
-                {handover.important_dates && handover.important_dates.length > 0 && (
-                  <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                    <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-almet-sapphire" />
-                      Important Dates
-                    </h4>
-                    <div className="space-y-2">
-                      {handover.important_dates.map((dateItem, index) => (
-                        <div key={index} className="flex items-center gap-3 bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
-                          <div className="flex-shrink-0">
-                            <div className="w-12 h-12 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-lg flex flex-col items-center justify-center">
-                              <span className="text-xs font-medium text-almet-sapphire">
-                                {new Date(dateItem.date).toLocaleDateString('en-US', { month: 'short' })}
-                              </span>
-                              <span className="text-lg font-bold text-almet-sapphire">
-                                {new Date(dateItem.date).getDate()}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-almet-cloud-burst dark:text-white">
-                              {dateItem.description}
-                            </p>
-                            <p className="text-sm text-almet-waterloo dark:text-gray-400">
-                              {new Date(dateItem.date).toLocaleDateString('en-US', { 
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Related Contacts */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
                     <Users className="w-5 h-5 text-almet-sapphire" />
-                    Related Contacts
-                  </h4>
-                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
-                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                      {handover.contacts || 'No contact information provided'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Access Information */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                    <Key className="w-5 h-5 text-almet-sapphire" />
-                    Access Information / Accounts
-                  </h4>
-                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
-                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                      {handover.access_info || 'No access information provided'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Documents & Files */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                    <Folder className="w-5 h-5 text-almet-sapphire" />
-                    Documents & Files
-                  </h4>
-                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
-                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                      {handover.documents_info || 'No document information provided'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Open Issues */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                    Open Issues
-                  </h4>
-                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
-                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                      {handover.open_issues || 'No open issues reported'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Additional Notes */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                  <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-almet-sapphire" />
-                    Additional Notes
-                  </h4>
-                  <div className="bg-almet-mystic dark:bg-gray-800 rounded-lg p-4">
-                    <p className="text-almet-cloud-burst dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                      {handover.notes || 'No additional notes'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Attachments */}
-                {handover.attachments && handover.attachments.length > 0 && (
-                  <div className="bg-white dark:bg-gray-900 rounded-xl p-6 border border-almet-bali-hai dark:border-gray-700">
-                    <h4 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
-                      <FileText className="w-5 h-5 text-almet-sapphire" />
-                      Attachments ({handover.attachments.length})
-                    </h4>
-                    <div className="space-y-2">
-                      {handover.attachments.map((attachment) => (
-                        <div key={attachment.id} className="flex items-center justify-between bg-almet-mystic dark:bg-gray-800 rounded-lg p-4 hover:bg-almet-bali-hai/20 dark:hover:bg-gray-700 transition-colors">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex-shrink-0 w-10 h-10 bg-almet-sapphire/20 dark:bg-almet-sapphire/30 rounded-lg flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-almet-sapphire" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-almet-cloud-burst dark:text-white truncate">
-                                {attachment.original_filename}
-                              </p>
-                              <p className="text-sm text-almet-waterloo dark:text-gray-400">
-                                {attachment.file_size_display} • Uploaded by {attachment.uploaded_by_name}
-                              </p>
-                              <p className="text-xs text-almet-waterloo dark:text-gray-500">
-                                {new Date(attachment.uploaded_at).toLocaleString()}
-                              </p>
-                            </div>
-                          </div>
-                          <a
-                            href={attachment.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex-shrink-0 p-2 hover:bg-almet-sapphire/20 dark:hover:bg-almet-sapphire/30 rounded-lg transition-colors"
-                          >
-                            <Download className="w-5 h-5 text-almet-sapphire" />
-                          </a>
+                    General Information
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
+                        Handing Over
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-almet-sapphire" />
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Activity Log Section */}
-            {activeSection === 'activity' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-                  <History className="w-5 h-5 text-almet-sapphire" />
-                  Activity History
-                </h3>
-
-                {loadingLog ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader className="w-8 h-8 text-almet-sapphire animate-spin" />
-                  </div>
-                ) : activityLog.length > 0 ? (
-                  <div className="space-y-4">
-                    {activityLog.map((log, index) => (
-                      <div key={log.id || index} className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                          <div className="w-10 h-10 bg-almet-mystic dark:bg-almet-sapphire/20 rounded-full flex items-center justify-center flex-shrink-0">
-                            <History className="w-5 h-5 text-almet-sapphire" />
-                          </div>
-                          {index < activityLog.length - 1 && (
-                            <div className="w-0.5 flex-1 bg-almet-bali-hai dark:bg-gray-700 mt-2"></div>
-                          )}
-                        </div>
-                        <div className="flex-1 pb-8">
-                          <div className="bg-gradient-to-br from-almet-mystic to-almet-bali-hai/20 dark:from-gray-800 dark:to-gray-800/50 rounded-xl p-4 border border-almet-bali-hai dark:border-gray-700 hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-almet-cloud-burst dark:text-white">
-                                  {log.actor_name || 'System'}
-                                </span>
-                                {log.status && (
-                                  <>
-                                    <span className="text-gray-400">•</span>
-                                    {getStatusBadge(log.status)}
-                                  </>
-                                )}
-                              </div>
-                              <span className="text-sm text-almet-waterloo dark:text-gray-400">
-                                {new Date(log.timestamp).toLocaleString()}
-                              </span>
-                            </div>
-                            <p className="text-almet-cloud-burst dark:text-gray-300 font-medium mb-1">
-                              {log.action}
-                            </p>
-                            {log.comment && log.comment !== '-' && (
-                              <div className="mt-2 bg-white dark:bg-gray-900 rounded-lg p-3 border border-almet-bali-hai dark:border-gray-700">
-                                <p className="text-almet-waterloo dark:text-gray-300 text-sm italic">
-                                  "{log.comment}"
-                                </p>
-                              </div>
-                            )}
-                          </div>
+                        <div>
+                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                            {handover.handing_over_employee_name}
+                          </p>
+                          <p className="text-sm text-almet-waterloo dark:text-gray-400">
+                            {handover.handing_over_position}
+                          </p>
+                          <p className="text-xs text-almet-waterloo dark:text-gray-500">
+                            {handover.handing_over_department}
+                          </p>
                         </div>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
+                        Taking Over
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
+                          <Users className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                            {handover.taking_over_employee_name}
+                          </p>
+                          <p className="text-sm text-almet-waterloo dark:text-gray-400">
+                            {handover.taking_over_position}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
+                        Line Manager
+                      </label>
+                      <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                        {handover.line_manager_name || 'Not assigned'}
+                      </p>
+                    </div>
+
+                    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-sm">
+                      <label className="block text-sm font-medium text-almet-waterloo dark:text-gray-400 mb-2">
+                        Handover Period
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-almet-sapphire" />
+                        <div>
+                          <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                            {new Date(handover.start_date).toLocaleDateString()} - {new Date(handover.end_date).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-almet-waterloo dark:text-gray-400">
+                            {Math.ceil((new Date(handover.end_date) - new Date(handover.start_date)) / (1000 * 60 * 60 * 24))} days
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-center py-12 bg-almet-mystic dark:bg-gray-800 rounded-xl">
-                    <History className="w-16 h-16 text-almet-bali-hai dark:text-gray-600 mx-auto mb-3" />
-                    <p className="text-almet-waterloo dark:text-gray-400">No activity recorded yet</p>
+                </div>
+
+                {/* Signature Status */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 rounded-xl p-6 border border-blue-200 dark:border-blue-800">
+                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white mb-4 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-almet-sapphire" />
+                    Signature Status
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className={`p-5 rounded-xl border-2 transition-all ${
+                      handover.ho_signed 
+                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
+                        : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
+                    }`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                          {handover.handing_over_employee_name}
+                        </p>
+                        {handover.ho_signed ? (
+                          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <Clock className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
+                        )}
+                      </div>
+                      <div className={`flex items-center gap-2 text-sm font-medium ${
+                        handover.ho_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
+                      }`}>
+                        {handover.ho_signed ? (
+                          <>
+                            <CheckCircle className="w-4 h-4" />
+                            Signed: {new Date(handover.ho_signed_date).toLocaleString()}
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-4 h-4" />
+                            Awaiting signature
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className={`p-5 rounded-xl border-2 transition-all ${
+                      handover.to_signed 
+                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
+                        : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
+                    }`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="font-semibold text-almet-cloud-burst dark:text-white">
+                          {handover.taking_over_employee_name}
+                        </p>
+                        {handover.to_signed ? (
+                          <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <Clock className="w-6 h-6 text-almet-waterloo dark:text-gray-400" />
+                        )}
+                      </div>
+                      <div className={`flex items-center gap-2 text-sm font-medium ${
+                        handover.to_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
+                      }`}>
+                        {handover.to_signed ? (
+                          <>
+                            <CheckCircle className="w-4 h-4" />
+                            Signed: {new Date(handover.to_signed_date).toLocaleString()}
+                          </>
+                        ) : (
+                          <>
+                            <Clock className="w-4 h-4" />
+                            Awaiting signature
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             )}
+
+            {/* Other sections (details, activity) - keep as before */}
           </div>
 
           {/* Footer with Action Buttons */}

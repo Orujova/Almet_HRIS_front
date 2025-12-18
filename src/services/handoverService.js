@@ -1,9 +1,8 @@
-// services/handoverService.js
+// services/handoverService.js - COMPLETE
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-// Axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -34,7 +33,7 @@ const TokenManager = {
   }
 };
 
-// Request interceptor - Add auth token
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
     const token = TokenManager.getAccessToken();
@@ -43,12 +42,10 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle errors
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -62,37 +59,22 @@ api.interceptors.response.use(
   }
 );
 
-// ==========================================
-// HANDOVER SERVICE
-// ==========================================
-
 const handoverService = {
   
-  // ==========================================
   // HANDOVER TYPES
-  // ==========================================
-  
-  /**
-   * Get all handover types
-   */
   getHandoverTypes: async () => {
     try {
       const response = await api.get('/handovers/types/');
- 
-      return response.data.results;
+      return response.data.results || response.data;
     } catch (error) {
       console.error('Error fetching handover types:', error);
       throw error;
     }
   },
   
-  /**
-   * Create new handover type
-   */
   createHandoverType: async (data) => {
     try {
       const response = await api.post('/handovers/types/', data);
-     
       return response.data;
     } catch (error) {
       console.error('Error creating handover type:', error);
@@ -100,26 +82,17 @@ const handoverService = {
     }
   },
   
-  // ==========================================
   // HANDOVER REQUESTS
-  // ==========================================
-  
-  /**
-   * Get all handover requests (filtered by user)
-   */
   getAllHandovers: async () => {
     try {
       const response = await api.get('/handovers/requests/');
-      return response.data;
+      return response.data.results || response.data;
     } catch (error) {
-      console.error('Error fetching handovers:', error);
+      console.error('Error fetching all handovers:', error);
       throw error;
     }
   },
   
-  /**
-   * Get my handovers (given & received)
-   */
   getMyHandovers: async () => {
     try {
       const response = await api.get('/handovers/requests/my_handovers/');
@@ -130,9 +103,16 @@ const handoverService = {
     }
   },
   
-  /**
-   * Get pending approval handovers
-   */
+  getTeamHandovers: async () => {
+    try {
+      const response = await api.get('/handovers/requests/team_handovers/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching team handovers:', error);
+      return [];
+    }
+  },
+  
   getPendingApprovals: async () => {
     try {
       const response = await api.get('/handovers/requests/pending_approval/');
@@ -143,9 +123,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Get handover statistics
-   */
   getStatistics: async () => {
     try {
       const response = await api.get('/handovers/requests/statistics/');
@@ -156,9 +133,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Get handover detail by ID
-   */
   getHandoverDetail: async (id) => {
     try {
       const response = await api.get(`/handovers/requests/${id}/`);
@@ -169,9 +143,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Create new handover request
-   */
   createHandover: async (data) => {
     try {
       const response = await api.post('/handovers/requests/', data);
@@ -182,9 +153,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Update handover request
-   */
   updateHandover: async (id, data) => {
     try {
       const response = await api.patch(`/handovers/requests/${id}/`, data);
@@ -195,9 +163,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Delete handover request
-   */
   deleteHandover: async (id) => {
     try {
       const response = await api.delete(`/handovers/requests/${id}/`);
@@ -208,9 +173,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Get activity log for handover
-   */
   getActivityLog: async (id) => {
     try {
       const response = await api.get(`/handovers/requests/${id}/activity_log/`);
@@ -221,13 +183,7 @@ const handoverService = {
     }
   },
   
-  // ==========================================
   // HANDOVER ACTIONS
-  // ==========================================
-  
-  /**
-   * Sign as Handing Over employee
-   */
   signAsHandingOver: async (id, comment = '') => {
     try {
       const response = await api.post(`/handovers/requests/${id}/sign_ho/`, { comment });
@@ -238,9 +194,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Sign as Taking Over employee
-   */
   signAsTakingOver: async (id, comment = '') => {
     try {
       const response = await api.post(`/handovers/requests/${id}/sign_to/`, { comment });
@@ -251,9 +204,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Approve as Line Manager
-   */
   approveAsLineManager: async (id, comment = '') => {
     try {
       const response = await api.post(`/handovers/requests/${id}/approve_lm/`, { comment });
@@ -264,9 +214,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Reject as Line Manager
-   */
   rejectAsLineManager: async (id, reason) => {
     try {
       const response = await api.post(`/handovers/requests/${id}/reject_lm/`, { reason });
@@ -277,9 +224,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Request clarification as Line Manager
-   */
   requestClarification: async (id, clarification_comment) => {
     try {
       const response = await api.post(`/handovers/requests/${id}/request_clarification/`, { 
@@ -292,9 +236,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Resubmit after clarification
-   */
   resubmit: async (id, response_comment) => {
     try {
       const response = await api.post(`/handovers/requests/${id}/resubmit/`, { 
@@ -307,9 +248,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Takeover as Taking Over employee
-   */
   takeover: async (id, comment = '') => {
     try {
       const response = await api.post(`/handovers/requests/${id}/takeover/`, { comment });
@@ -320,9 +258,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Takeback as Handing Over employee
-   */
   takeback: async (id, comment = '') => {
     try {
       const response = await api.post(`/handovers/requests/${id}/takeback/`, { comment });
@@ -333,26 +268,17 @@ const handoverService = {
     }
   },
   
-  // ==========================================
   // HANDOVER TASKS
-  // ==========================================
-  
-  /**
-   * Get all tasks for user's handovers
-   */
   getTasks: async () => {
     try {
       const response = await api.get('/handovers/tasks/');
-      return response.data;
+      return response.data.results || response.data;
     } catch (error) {
       console.error('Error fetching tasks:', error);
       throw error;
     }
   },
   
-  /**
-   * Create new task
-   */
   createTask: async (data) => {
     try {
       const response = await api.post('/handovers/tasks/', data);
@@ -363,9 +289,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Update task
-   */
   updateTask: async (id, data) => {
     try {
       const response = await api.patch(`/handovers/tasks/${id}/`, data);
@@ -376,9 +299,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Update task status
-   */
   updateTaskStatus: async (id, status, comment = '') => {
     try {
       const response = await api.post(`/handovers/tasks/${id}/update_status/`, {
@@ -392,9 +312,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Delete task
-   */
   deleteTask: async (id) => {
     try {
       const response = await api.delete(`/handovers/tasks/${id}/`);
@@ -405,26 +322,17 @@ const handoverService = {
     }
   },
   
-  // ==========================================
   // HANDOVER ATTACHMENTS
-  // ==========================================
-  
-  /**
-   * Get all attachments for user's handovers
-   */
   getAttachments: async () => {
     try {
       const response = await api.get('/handovers/attachments/');
-      return response.data;
+      return response.data.results || response.data;
     } catch (error) {
       console.error('Error fetching attachments:', error);
       throw error;
     }
   },
   
-  /**
-   * Upload attachment
-   */
   uploadAttachment: async (handoverId, file) => {
     try {
       const formData = new FormData();
@@ -443,9 +351,6 @@ const handoverService = {
     }
   },
   
-  /**
-   * Delete attachment
-   */
   deleteAttachment: async (id) => {
     try {
       const response = await api.delete(`/handovers/attachments/${id}/`);
@@ -456,29 +361,17 @@ const handoverService = {
     }
   },
   
-  // ==========================================
-  // EMPLOYEE LOOKUP (for dropdowns)
-  // ==========================================
-  
-  /**
-   * Get all employees for selection
-   */
+  // EMPLOYEE LOOKUP
   getEmployees: async () => {
     try {
       const response = await api.get('/employees/');
-      
-      return response.data.results;
+      return response.data.results || response.data;
     } catch (error) {
       console.error('Error fetching employees:', error);
       throw error;
     }
   },
-
-
   
-  /**
-   * Get current user profile
-   */
   getCurrentUser: async () => {
     try {
       const response = await api.get('/me/');
