@@ -20,18 +20,15 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
           
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << 'ENDSSH'
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << ENDSSH
             set -e
             
             echo "=== Pulling latest code ==="
             cd /var/www/myalmet/frontend
             
-            # Configure git to use PAT
-            git config credential.helper store
-            echo "https://${GH_PAT}@github.com" > ~/.git-credentials
-            
-            git pull origin master
-            
+            # Use PAT in the git pull command directly
+            git pull https://${GH_PAT}@github.com/Orujova/Almet_HRIS_front master
+
             echo "=== Building Docker image ==="
             docker build -t myalmet-frontend:latest .
             
