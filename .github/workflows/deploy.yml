@@ -1,21 +1,26 @@
 name: Deploy Frontend
-"on":
+on:
   push:
     branches:
       - master
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: SSH deploy frontend
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          port: 22
-          command_timeout: 30m
-          script: |
+      - name: Deploy Frontend to Server
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_IP: 161.97.101.41
+          SERVER_USER: root
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
+          
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << 'ENDSSH'
             set -e
             
             echo "=== Pulling latest code ==="
@@ -23,30 +28,29 @@ jobs:
             git pull origin master
             
             echo "=== Building Docker image ==="
-            docker build --no-cache -t myalmet-frontend:latest .
+            docker build -t myalmet-frontend:latest .
             
             echo "=== Stopping old container ==="
             docker stop frontend || true
             docker rm frontend || true
             
             echo "=== Starting new container ==="
-            docker run -d --name frontend \
-              --restart unless-stopped \
+            docker run -d \
+              --name frontend \
+              --restart always \
               -p 3000:3000 \
-              -e NODE_ENV=production \
-              -e PORT=3000 \
-              -e HOSTNAME=0.0.0.0 \
-              -e NEXT_PUBLIC_API_URL=https://www.myalmet.com \
-              myalmet-frontend:latest \
-              sh -lc 'mkdir -p .next/standalone/.next && rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static && node .next/standalone/server.js'
+              --dns 8.8.8.8 \
+              --dns 8.8.4.4 \
+              myalmet-frontend:latest
             
-            echo "=== Waiting for container to start ==="
-            sleep 5
+            echo "=== Waiting for container ==="
+            sleep 10
             
-            echo "=== Health check ==="
-            curl -I --max-time 10 http://127.0.0.1:3000/ | head -n 1 || echo "Health check failed"
+            echo "=== Container status ==="
+            docker ps | grep frontend
             
             echo "=== Cleaning old images ==="
-            docker image prune -f
+            docker image prune -af --filter "dangling=true"
             
-            echo "=== Deployment completed ==="
+            echo "✅ Frontend deployed successfully!"
+          ENDSSH
