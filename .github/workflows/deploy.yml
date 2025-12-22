@@ -18,7 +18,7 @@ jobs:
           script: |
             set -e
 
-            cd /var/www/myalmet/frontend-src
+            cd /var/www/myalmet/frontend
             git pull origin main
 
             docker build --no-cache -t myalmet-frontend:latest .
