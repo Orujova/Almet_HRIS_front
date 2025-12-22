@@ -50,7 +50,7 @@ jobs:
             docker ps | grep frontend
             
             echo "=== Cleaning old images ==="
-            docker image prune -af --filter "dangling=true"
+            docker image prune -f
             
             echo "✅ Frontend deployed successfully!"
           ENDSSH
