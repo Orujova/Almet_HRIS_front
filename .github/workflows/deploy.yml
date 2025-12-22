@@ -35,13 +35,13 @@ jobs:
             docker rm frontend || true
             
             echo "=== Starting new container ==="
-            docker run -d \
-              --name frontend \
-              --restart always \
+            docker run -d --name frontend \
               -p 3000:3000 \
-              --dns 8.8.8.8 \
-              --dns 8.8.4.4 \
-              myalmet-frontend:latest
+              -e NODE_ENV=production \
+              -e PORT=3000 \
+              -e HOSTNAME=0.0.0.0 \
+              myalmet-frontend:latest \
+              sh -lc 'mkdir -p .next/standalone/.next && rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static && node .next/standalone/server.js'
             
             echo "=== Waiting for container ==="
             sleep 10
