@@ -1,10 +1,8 @@
 name: Deploy Frontend
-
 "on":
   push:
     branches:
       - master
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -15,18 +13,25 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          command_timeout: 30m
           script: |
             set -e
-
-            cd /var/www/myalmet/frontend-src
-            git pull origin main
-
+            
+            echo "=== Pulling latest code ==="
+            cd /var/www/myalmet/frontend
+            git pull origin master
+            
+            echo "=== Building Docker image ==="
             docker build --no-cache -t myalmet-frontend:latest .
-
+            
+            echo "=== Stopping old container ==="
             docker stop frontend || true
             docker rm frontend || true
-
+            
+            echo "=== Starting new container ==="
             docker run -d --name frontend \
+              --restart unless-stopped \
               -p 3000:3000 \
               -e NODE_ENV=production \
               -e PORT=3000 \
@@ -34,5 +39,14 @@ jobs:
               -e NEXT_PUBLIC_API_URL=https://www.myalmet.com \
               myalmet-frontend:latest \
               sh -lc 'mkdir -p .next/standalone/.next && rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static && node .next/standalone/server.js'
-
-            curl -I --max-time 10 http://127.0.0.1:3000/ | head -n 1 || true
+            
+            echo "=== Waiting for container to start ==="
+            sleep 5
+            
+            echo "=== Health check ==="
+            curl -I --max-time 10 http://127.0.0.1:3000/ | head -n 1 || echo "Health check failed"
+            
+            echo "=== Cleaning old images ==="
+            docker image prune -f
+            
+            echo "=== Deployment completed ==="
