@@ -3,7 +3,6 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  PieChart,
   UsersRound,
   FileText, 
   BarChart2,
@@ -17,11 +16,12 @@ import {
   RefreshCw,
   UserCog,
   Building2,
-  TicketsPlane,
+  Clock,
   ScrollText,
   BookOpenCheck,
   User,
-  ChevronRight
+  ChevronRight,
+  FileSignature
 } from "lucide-react";
 import { employeeService } from '@/services/newsService';
 
@@ -30,7 +30,7 @@ const Sidebar = ({ collapsed = false }) => {
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(null);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'admin', 'manager', 'employee'
+  const [userRole, setUserRole] = useState(null);
 
   useEffect(() => {
     const storedEmployeeId = localStorage.getItem('employee_id');
@@ -40,7 +40,6 @@ const Sidebar = ({ collapsed = false }) => {
       fetchEmployeeId();
     }
     
-    // Fetch user role
     fetchUserRole();
   }, []);
 
@@ -82,7 +81,7 @@ const Sidebar = ({ collapsed = false }) => {
       }
     } catch (error) {
       console.error('Error fetching user role:', error);
-      setUserRole('employee'); // Default to employee
+      setUserRole('employee');
     }
   };
 
@@ -101,7 +100,6 @@ const Sidebar = ({ collapsed = false }) => {
     }
   };
 
-  // 🔥 Filter menu items based on role
   const getFilteredMenuItems = () => {
     const allMenuItems = [
       { 
@@ -126,74 +124,77 @@ const Sidebar = ({ collapsed = false }) => {
         id: "org-structure"
       },
       {
-        label: "Headcount table",
+        label: "Headcount Table",
         icon: <UsersRound className="w-4 h-4" />,
         path: "/structure/headcount-table",
         id: "headcount-table",
-        requiredRole: ['admin', 'manager'] // 🔥 Only admin and manager
+        requiredRole: ['admin', 'manager']
       },
       {
         label: "Job Descriptions",
         icon: <FileText className="w-4 h-4" />,
         path: "/structure/job-descriptions",
         id: "job-descriptions",
-       requiredRole: ['admin', 'manager']
+        requiredRole: ['admin', 'manager']
       },
       {
-        label: "Comp Matrix",
+        label: "Competency Matrix",
         icon: <BarChart2 className="w-4 h-4" />,
         path: "/structure/comp-matrix",
-        id: "comp-matrix",
-  
-       
+        id: "comp-matrix"
       },
       {
         label: "Job Catalog",
-        icon: <FileText className="w-4 h-4" />,
+        icon: <ScrollText className="w-4 h-4" />,
         path: "/structure/job-catalog",
         id: "job-catalog",
-        requiredRole: ['admin'] // 🔥 Only admin
+        requiredRole: ['admin']
       },
       {
-        label: "Grading",
+        label: "Grading System",
         icon: <GraduationCap className="w-4 h-4" />,
         path: "/structure/grading",
         id: "grading",
-        requiredRole: ['admin'] // 🔥 Only admin
+        requiredRole: ['admin']
       },
       { 
         type: "section", 
-        label: "EFFICIENCY"
+        label: "PERFORMANCE"
       },
       {
-        label: "Performance mng",
+        label: "Performance Mng",
         icon: <Activity className="w-4 h-4" />,
         path: "/efficiency/performance-mng",
         id: "performance-mng"
       },
       { 
         type: "section", 
-        label: "Training"
+        label: "TRAINING"
       },
       {
-        label: " Training",
+        label: "Training",
         icon: <BookOpenCheck className="w-4 h-4" />,
         path: "/training",
         id: "training"
       },
       { 
         type: "section", 
-        label: "E-REQUESTS"
+        label: "REQUESTS"
       },
-     
-      // {
-      //   label: "New",
-      //   icon: <CalendarDays className="w-4 h-4" />,
-      //   path: "/requests/new",
-      //   id: "new"
-      // },
       {
-        label: "Vacation",
+        label: "Formation Contract",
+        icon: <FileSignature className="w-4 h-4" />,
+        path: "/requests/new",
+        id: "new"
+      },
+      {
+        label: "Resignation & Exit",
+        icon: <FileText className="w-4 h-4" />,
+        path: "/requests/resignation",
+        id: "resignation"
+      },
+      {
+        label: "Vacation Request",
         icon: <CalendarDays className="w-4 h-4" />,
         path: "/requests/vacation",
         id: "vacation"
@@ -211,8 +212,8 @@ const Sidebar = ({ collapsed = false }) => {
         id: "business-trip"
       },
       {
-        label: "Time Off",
-        icon: <TicketsPlane className="w-4 h-4" />,
+        label: "Time Off Request",
+        icon: <Clock className="w-4 h-4" />,
         path: "/requests/time-off",
         id: "time-off"
       },
@@ -234,10 +235,10 @@ const Sidebar = ({ collapsed = false }) => {
       }, 
       { 
         type: "section", 
-        label: "COMPANY POLICIES"
+        label: "POLICIES"
       },
       {
-        label: "Policies",
+        label: "Company Policies",
         icon: <ScrollText className="w-4 h-4" />,
         path: "/company-policies",
         id: "policies"
@@ -255,7 +256,7 @@ const Sidebar = ({ collapsed = false }) => {
         requiredRole: ['admin']
       },
       {
-        label: "Role Mng",
+        label: "Role Management",
         icon: <UserCog className="w-4 h-4" />,
         path: "/settings/role-mng",
         id: "role-mng",
@@ -263,7 +264,6 @@ const Sidebar = ({ collapsed = false }) => {
       }
     ];
 
-    // 🔥 Filter based on role
     return allMenuItems.filter(item => {
       if (item.type === "section") return true;
       if (!item.requiredRole) return true;
@@ -276,7 +276,6 @@ const Sidebar = ({ collapsed = false }) => {
   return (
     <div className="h-full bg-white dark:bg-almet-cloud-burst border-r border-gray-200 dark:border-almet-comet flex flex-col w-full">
   
-      {/* Logo with subtle hover animation */}
       <Link 
         href="/" 
         className={`flex items-center justify-center ${collapsed ? 'justify-center' : 'px-3'} py-2 border-b border-gray-200 dark:border-almet-comet group`}
@@ -292,7 +291,6 @@ const Sidebar = ({ collapsed = false }) => {
         )}
       </Link>
       
-      {/* Main Navigation */}
       <div className="overflow-y-auto flex-1 py-0 scrollbar-thin scrollbar-track-transparent">
         <nav className="px-2">
           {menuItems.map((item, index) => 

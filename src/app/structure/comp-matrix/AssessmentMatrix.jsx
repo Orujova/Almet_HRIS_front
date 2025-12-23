@@ -490,30 +490,44 @@ const EmployeeDashboardView = () => {
         
         {/* ✅ Summary Cards - Only show available types */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <StatCard
-            icon={hasLeadership ? Crown : hasBehavioral ? Users : Target}
-            title={hasLeadership ? "Leadership" : hasBehavioral ? "Behavioral" : "Core Competency"}
-            value={hasLeadership ? dashboardData.leadershipAssessments : hasBehavioral ? dashboardData.behavioralAssessments : dashboardData.coreAssessments}
-            subtitle={hasLeadership ? "Senior position assessment" : hasBehavioral ? "Soft skills assessment" : "Technical skills assessment"}
-            color={hasLeadership ? "blue" : hasBehavioral ? "purple" : "orange"}
-          />
-          
-          <StatCard
-            icon={Target}
-            title="Core Competency"
-            value={dashboardData.coreAssessments}
-            subtitle="Technical skills assessment"
-            color="orange"
-          />
-          
-          <StatCard
-            icon={TrendingUp}
-            title="Completed"
-            value={dashboardData.completedAssessments}
-            subtitle={`${dashboardData.completionRate.toFixed(1)}% completion rate`}
-            color="green"
-          />
-        </div>
+  {/* ✅ Leadership or Behavioral */}
+  {hasLeadership && (
+    <StatCard
+      icon={Crown}
+      title="Leadership"
+      value={dashboardData.leadershipAssessments}
+      subtitle="Senior position assessment"
+      color="blue"
+    />
+  )}
+  
+  {hasBehavioral && !hasLeadership && (
+    <StatCard
+      icon={Users}
+      title="Behavioral"
+      value={dashboardData.behavioralAssessments}
+      subtitle="Soft skills assessment"
+      color="purple"
+    />
+  )}
+  
+  {/* ✅ Core - Always shown */}
+  <StatCard
+    icon={Target}
+    title="Core Competency"
+    value={dashboardData.coreAssessments}
+    subtitle="Technical skills assessment"
+    color="orange"
+  />
+  
+  <StatCard
+    icon={TrendingUp}
+    title="Completed"
+    value={dashboardData.completedAssessments}
+    subtitle={`${dashboardData.completionRate.toFixed(1)}% completion rate`}
+    color="green"
+  />
+</div>
       </div>
 
       {/* ✅ My Assessments Cards - Show only what employee has */}
