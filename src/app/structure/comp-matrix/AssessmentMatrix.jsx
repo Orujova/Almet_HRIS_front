@@ -326,8 +326,8 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
     }
   };
 
-  // ✅ Unified Header Component with Permission-based Actions
-  const PageHeader = () => (
+
+const PageHeader = () => (
     <div className={`${bgCard} border ${borderColor} rounded-xl shadow-sm`}>
       <div className="p-5">
         <div className="flex items-center justify-between">
@@ -461,7 +461,9 @@ const AssessmentMatrixInner = ({ onNavigateToManagement }) => {
       </div>
     </div>
   );
-// ✅ Updated EmployeeDashboardView with correct logic
+
+
+
 const EmployeeDashboardView = () => {
   const bgCard = darkMode ? 'bg-almet-cloud-burst' : 'bg-white';
   const textPrimary = darkMode ? 'text-almet-bali-hai' : 'text-almet-cloud-burst';
@@ -471,6 +473,56 @@ const EmployeeDashboardView = () => {
   const hasLeadership = dashboardData.leadershipAssessments > 0;
   const hasBehavioral = dashboardData.behavioralAssessments > 0;
   const hasCore = dashboardData.coreAssessments > 0;
+  const hasAnyAssessment = hasLeadership || hasBehavioral || hasCore;
+
+  // ✅ If no assessments at all, show empty state
+  if (!hasAnyAssessment) {
+    return (
+      <div className="space-y-5">
+        {/* Welcome Message */}
+        <div className={`${bgCard} border ${borderColor} rounded-xl p-6 shadow-sm`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-almet-mystic">
+              <User className="w-6 h-6 text-almet-sapphire" />
+            </div>
+            <div>
+              <h2 className={`text-lg font-bold ${textPrimary}`}>My Assessments</h2>
+              <p className={`text-sm ${darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo'}`}>
+                View and track your personal assessments
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className={`${bgCard} border ${borderColor} rounded-xl p-12 shadow-sm text-center`}>
+          <div className="max-w-md mx-auto">
+            <div className="p-4 rounded-full bg-gray-100 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+              <AlertCircle className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className={`text-lg font-bold ${textPrimary} mb-2`}>No Assessments Yet</h3>
+            <p className={`text-sm ${darkMode ? 'text-almet-santas-gray' : 'text-almet-waterloo'} mb-4`}>
+              You don't have any assessments assigned yet. Your manager or HR department will assign assessments to you when needed.
+            </p>
+          </div>
+        </div>
+
+        {/* Info Banner */}
+        <div className="bg-sky-50 border border-sky-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Info className="w-5 h-5 text-sky-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-sky-900 mb-1">About Assessments</h3>
+              <p className="text-xs text-sky-700 leading-relaxed">
+                Once assessments are assigned to you, they will appear here. If you have questions about your assessments, 
+                please contact your manager or HR department.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -489,49 +541,52 @@ const EmployeeDashboardView = () => {
         </div>
         
         {/* ✅ Summary Cards - Only show available types */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-  {/* ✅ Leadership or Behavioral */}
-  {hasLeadership && (
-    <StatCard
-      icon={Crown}
-      title="Leadership"
-      value={dashboardData.leadershipAssessments}
-      subtitle="Senior position assessment"
-      color="blue"
-    />
-  )}
-  
-  {hasBehavioral && !hasLeadership && (
-    <StatCard
-      icon={Users}
-      title="Behavioral"
-      value={dashboardData.behavioralAssessments}
-      subtitle="Soft skills assessment"
-      color="purple"
-    />
-  )}
-  
-  {/* ✅ Core - Always shown */}
-  <StatCard
-    icon={Target}
-    title="Core Competency"
-    value={dashboardData.coreAssessments}
-    subtitle="Technical skills assessment"
-    color="orange"
-  />
-  
-  <StatCard
-    icon={TrendingUp}
-    title="Completed"
-    value={dashboardData.completedAssessments}
-    subtitle={`${dashboardData.completionRate.toFixed(1)}% completion rate`}
-    color="green"
-  />
-</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Leadership or Behavioral */}
+          {hasLeadership && (
+            <StatCard
+              icon={Crown}
+              title="Leadership"
+              value={dashboardData.leadershipAssessments}
+              subtitle="Senior position assessment"
+              color="blue"
+            />
+          )}
+          
+          {hasBehavioral && !hasLeadership && (
+            <StatCard
+              icon={Users}
+              title="Behavioral"
+              value={dashboardData.behavioralAssessments}
+              subtitle="Soft skills assessment"
+              color="purple"
+            />
+          )}
+          
+          {/* Core - if exists */}
+          {hasCore && (
+            <StatCard
+              icon={Target}
+              title="Core Competency"
+              value={dashboardData.coreAssessments}
+              subtitle="Technical skills assessment"
+              color="orange"
+            />
+          )}
+          
+          {/* Completed */}
+          <StatCard
+            icon={TrendingUp}
+            title="Completed"
+            value={dashboardData.completedAssessments}
+            subtitle={`${dashboardData.completionRate.toFixed(1)}% completion rate`}
+            color="green"
+          />
+        </div>
       </div>
 
       {/* ✅ My Assessments Cards - Show only what employee has */}
-      <div className={`grid grid-cols-1 ${hasLeadership || hasBehavioral ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-5`}>
+      <div className={`grid grid-cols-1 ${(hasLeadership && hasCore) || (hasBehavioral && hasCore) ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-5`}>
         {/* ✅ Leadership OR Behavioral (never both) */}
         {hasLeadership && (
           <NavigationCard
@@ -557,7 +612,7 @@ const EmployeeDashboardView = () => {
           />
         )}
         
-        {/* ✅ Core - Always available */}
+        {/* ✅ Core - if exists */}
         {hasCore && (
           <NavigationCard
             icon={Target}
@@ -587,7 +642,7 @@ const EmployeeDashboardView = () => {
     </div>
   );
 };
-  // ✅ Loading state
+
   if (loading && activeView === 'dashboard') {
     return (
       <div className="space-y-4">

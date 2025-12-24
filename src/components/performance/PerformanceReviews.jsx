@@ -45,10 +45,7 @@ export default function PerformanceReviews({
   const isEndYearCompleted = Boolean(performanceData?.end_year_completed);
 
   const hasEmployeePermission = hasPermission('performance.midyear.submit_employee');
-  const canEditMidYearEmployee = 
-    canActAsEmployee &&
-    isMidYearPeriod && 
-    hasEmployeePermission;
+
 
   const hasManagerPermission = hasPermission('performance.midyear.submit_manager');
   const canEditMidYearManager = 
@@ -56,7 +53,23 @@ export default function PerformanceReviews({
     isMidYearPeriod && 
     hasManagerPermission &&
     isEmployeeSubmitted;
+// PerformanceReviews.jsx - Debug version
 
+const canEditMidYearEmployee = 
+  canActAsEmployee &&
+  isMidYearPeriod && 
+  hasEmployeePermission;
+
+// Console-a yazaq görək nə gəlir:
+console.log('🔍 Employee Permission Debug:', {
+  canActAsEmployee,
+  isMidYearPeriod,
+  hasEmployeePermission,
+  canEditMidYearEmployee,
+  currentPeriod,
+  permissions: permissions?.permissions,
+  isEmployeeSubmitted
+});
   const hasEndYearEmployeePermission = hasPermission('performance.endyear.submit_employee');
   const canEditEndYearEmployee = 
     canActAsEmployee &&
