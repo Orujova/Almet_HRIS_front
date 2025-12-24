@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { FileText, User, UserCheck, Edit2, Save, X, Send, MessageSquare, AlertCircle } from 'lucide-react';
+import { FileText, User, UserCheck, Edit2, Save, X, Send, MessageSquare, AlertCircle, Plus } from 'lucide-react';
 
 export default function PerformanceReviews({
   midYearEmployee,
@@ -9,22 +9,19 @@ export default function PerformanceReviews({
   currentPeriod,
   performanceData,
   permissions,
-  onSaveMidYearDraft,
+
   onSubmitMidYearEmployee,
   onSubmitMidYearManager,
+  onSubmitEndYearEmployee,  
+  onSubmitEndYearManager,  
   darkMode
 }) {
-  // ✅ Use refs for textarea to avoid re-render issues
-  const midYearEmployeeRef = useRef(null);
-  const midYearManagerRef = useRef(null);
-  const endYearEmployeeRef = useRef(null);
-  const endYearManagerRef = useRef(null);
-
-  // ✅ Simple editing state - just track which section is open
   const [editingSection, setEditingSection] = useState(null);
-  
-  // ✅ Local text state - ONLY for the currently editing section
   const [currentText, setCurrentText] = useState('');
+  
+  // ✅ CRITICAL FIX: Refs to preserve cursor position
+  const textareaRef = useRef(null);
+  const cursorPositionRef = useRef(0);
 
   const hasPermission = (permissionCode) => {
     if (permissions?.is_admin) return true;
@@ -51,31 +48,27 @@ export default function PerformanceReviews({
   const canEditMidYearEmployee = 
     canActAsEmployee &&
     isMidYearPeriod && 
-    hasEmployeePermission &&
-    !isEmployeeSubmitted;
+    hasEmployeePermission;
 
   const hasManagerPermission = hasPermission('performance.midyear.submit_manager');
   const canEditMidYearManager = 
     canActAsManager &&
     isMidYearPeriod && 
     hasManagerPermission &&
-    isEmployeeSubmitted &&
-    !isManagerCompleted;
+    isEmployeeSubmitted;
 
   const hasEndYearEmployeePermission = hasPermission('performance.endyear.submit_employee');
   const canEditEndYearEmployee = 
     canActAsEmployee &&
     isEndYearPeriod && 
-    hasEndYearEmployeePermission &&
-    !isEndYearEmployeeSubmitted;
+    hasEndYearEmployeePermission;
 
   const hasEndYearManagerPermission = hasPermission('performance.endyear.submit_manager');
   const canEditEndYearManager = 
     canActAsManager &&
     isEndYearPeriod && 
     hasEndYearManagerPermission &&
-    isEndYearEmployeeSubmitted && 
-    !isEndYearCompleted;
+    isEndYearEmployeeSubmitted;
 
   const handleStartEdit = (section, role, initialText) => {
     const key = `${section}_${role}`;
@@ -88,30 +81,33 @@ export default function PerformanceReviews({
     setCurrentText('');
   };
 
-  // ✅ CRITICAL FIX: Direct input change handler without state batching
   const handleInputChange = (e) => {
     const newValue = e.target.value;
+    const cursorPos = e.target.selectionStart;
+    
+    // ✅ Save cursor position BEFORE state update
+    cursorPositionRef.current = cursorPos;
+    
     setCurrentText(newValue);
   };
+  
+  // ✅ CRITICAL: Restore cursor position after render
+  useEffect(() => {
+    if (textareaRef.current && editingSection) {
+      const textarea = textareaRef.current;
+      const cursorPos = cursorPositionRef.current;
+      
+      // Restore cursor to correct position
+      if (textarea.setSelectionRange) {
+        textarea.setSelectionRange(cursorPos, cursorPos);
+      }
+      
+      // Focus to ensure cursor is visible
+      textarea.focus();
+    }
+  }, [currentText, editingSection]);
 
-  const handleSaveDraft = async (section, role) => {
-    if (!currentText.trim()) {
-      alert('Please enter a comment before saving');
-      return;
-    }
-    
-    const scrollY = window.scrollY;
-    
-    if (section === 'midYear') {
-      await onSaveMidYearDraft(role, currentText);
-    }
-    
-    handleCancelEdit();
-    
-    requestAnimationFrame(() => {
-      window.scrollTo(0, scrollY);
-    });
-  };
+
 
   const handleSubmit = async (section, role) => {
     if (!currentText.trim()) {
@@ -127,6 +123,19 @@ export default function PerformanceReviews({
       } else if (role === 'manager') {
         await onSubmitMidYearManager(currentText);
       }
+    } else if (section === 'endYear') {
+      // ✅ ADD: End-Year submission handlers
+      if (role === 'employee') {
+        // You'll need to add this prop from parent
+        if (typeof onSubmitEndYearEmployee === 'function') {
+          await onSubmitEndYearEmployee(currentText);
+        }
+      } else if (role === 'manager') {
+        // You'll need to add this prop from parent
+        if (typeof onSubmitEndYearManager === 'function') {
+          await onSubmitEndYearManager(currentText);
+        }
+      }
     }
     
     handleCancelEdit();
@@ -141,6 +150,18 @@ export default function PerformanceReviews({
       ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
       : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
   }`;
+  
+  // ✅ CRITICAL: Override ALL RTL styles
+  const textareaStyle = {
+    direction: 'ltr',
+    textAlign: 'left',
+    unicodeBidi: 'bidi-override',
+    writingMode: 'horizontal-tb',
+    MozUserSelect: 'text',
+    WebkitUserSelect: 'text',
+    msUserSelect: 'text',
+    userSelect: 'text'
+  };
 
   const ReviewSection = ({ 
     title, 
@@ -196,42 +217,39 @@ export default function PerformanceReviews({
               
               {canEditEmployee && !isEditingEmployee && (
                 <button
-                  onClick={() => handleStartEdit(section, 'employee', employeeComment)}
+                  onClick={() => handleStartEdit(section, 'employee', '')}
                   className="h-9 px-3 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 flex items-center gap-2 text-xs font-medium transition-all"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  {employeeComment ? 'Edit' : 'Add Review'}
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Comment
                 </button>
               )}
             </div>
 
-            {isEditingEmployee ? (
-              <div className="space-y-3">
+            {/* Display existing comments */}
+            {employeeComment && (
+              <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4 mb-3`}>
+                <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
+                  {employeeComment}
+                </p>
+              </div>
+            )}
+
+            {isEditingEmployee && (
+              <div className="space-y-3" dir="ltr">
                 <textarea
-                  ref={midYearEmployeeRef}
+                  ref={textareaRef}
                   value={currentText}
                   onChange={handleInputChange}
                   placeholder="Share your self-assessment, achievements, challenges, and progress during this period..."
                   className={textareaClass}
                   rows={6}
                   autoFocus
-                  style={{
-                    direction: 'ltr',
-                    unicodeBidi: 'normal'
-                  }}
+                  dir="ltr"
+                  style={textareaStyle}
                 />
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleSaveDraft(section, 'employee')}
-                    className={`flex-1 h-10 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                      darkMode 
-                        ? 'bg-almet-comet/50 hover:bg-almet-comet text-white' 
-                        : 'bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst'
-                    }`}
-                  >
-                    <Save className="w-4 h-4" />
-                    Save Draft
-                  </button>
+                
                   <button
                     onClick={() => handleSubmit(section, 'employee')}
                     className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
@@ -247,20 +265,16 @@ export default function PerformanceReviews({
                   </button>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {!employeeComment && !isEditingEmployee && (
               <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4`}>
-                {employeeComment ? (
-                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
-                    {employeeComment}
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-almet-waterloo/50" />
+                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
+                    No self-review provided yet
                   </p>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-almet-waterloo/50" />
-                    <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
-                      No self-review provided yet
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             )}
           </div>
@@ -282,42 +296,39 @@ export default function PerformanceReviews({
               
               {canEditManager && !isEditingManager && (
                 <button
-                  onClick={() => handleStartEdit(section, 'manager', managerComment)}
+                  onClick={() => handleStartEdit(section, 'manager', '')}
                   className="h-9 px-3 rounded-xl bg-purple-50 text-purple-600 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:hover:bg-purple-900/30 flex items-center gap-2 text-xs font-medium transition-all"
                 >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  {managerComment ? 'Edit' : 'Add Assessment'}
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Assessment
                 </button>
               )}
             </div>
 
-            {isEditingManager ? (
-              <div className="space-y-3">
+            {/* Display existing comments */}
+            {managerComment && (
+              <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4 mb-3`}>
+                <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
+                  {managerComment}
+                </p>
+              </div>
+            )}
+
+            {isEditingManager && (
+              <div className="space-y-3" dir="ltr">
                 <textarea
-                  ref={midYearManagerRef}
+                  ref={textareaRef}
                   value={currentText}
                   onChange={handleInputChange}
                   placeholder="Provide your assessment of employee's performance, strengths, areas for improvement, and feedback on their self-review..."
                   className={textareaClass}
                   rows={6}
                   autoFocus
-                  style={{
-                    direction: 'ltr',
-                    unicodeBidi: 'normal'
-                  }}
+                  dir="ltr"
+                  style={textareaStyle}
                 />
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => handleSaveDraft(section, 'manager')}
-                    className={`flex-1 h-10 px-4 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all ${
-                      darkMode 
-                        ? 'bg-almet-comet/50 hover:bg-almet-comet text-white' 
-                        : 'bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst'
-                    }`}
-                  >
-                    <Save className="w-4 h-4" />
-                    Save Draft
-                  </button>
+      
                   <button
                     onClick={() => handleSubmit(section, 'manager')}
                     className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
@@ -333,20 +344,16 @@ export default function PerformanceReviews({
                   </button>
                 </div>
               </div>
-            ) : (
+            )}
+
+            {!managerComment && !isEditingManager && (
               <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4`}>
-                {managerComment ? (
-                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
-                    {managerComment}
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-almet-waterloo/50" />
+                  <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
+                    {employeeSubmitted ? 'Waiting for manager assessment...' : 'No assessment provided yet'}
                   </p>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 text-almet-waterloo/50" />
-                    <p className={`text-sm ${darkMode ? 'text-almet-bali-hai/50' : 'text-almet-waterloo/50'} italic`}>
-                      {employeeSubmitted ? 'Waiting for manager assessment...' : 'No assessment provided yet'}
-                    </p>
-                  </div>
-                )}
+                </div>
               </div>
             )}
           </div>

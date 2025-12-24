@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Plus, Trash2, Save, Send, Loader, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { BookOpen, Plus, Trash2,  Send,  ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
 
 export default function DevelopmentNeeds({
   developmentNeeds,
@@ -10,8 +10,7 @@ export default function DevelopmentNeeds({
   onUpdate,
   onAdd,
   onDelete,
-  onSaveDraft,
-  onSubmit
+  onSaveDraft
 }) {
   const [hasChanges, setHasChanges] = useState(false);
   const [initialData, setInitialData] = useState(JSON.stringify(developmentNeeds));
@@ -62,11 +61,7 @@ export default function DevelopmentNeeds({
     setHasChanges(false);
   };
 
-  const handleSubmit = async () => {
-    await onSubmit();
-    setInitialData(JSON.stringify(developmentNeeds));
-    setHasChanges(false);
-  };
+ 
 
   const toggleRow = (index) => {
     setExpandedRows(prev => ({
@@ -309,7 +304,7 @@ export default function DevelopmentNeeds({
          
           
           <button
-            oonClick={handleSaveDraft}
+            onClick={handleSaveDraft}
             disabled={loading}
             className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-40 transition-all shadow-sm"
           >

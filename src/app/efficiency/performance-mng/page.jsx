@@ -998,27 +998,7 @@ const handleUpdateObjective = (index, field, value) => {
     }
   };
 
-  // ==================== MID-YEAR HANDLERS ====================
-  const handleSaveMidYearDraft = async (userRole, comment, objectives = null) => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.saveMidYearDraft(
-        selectedPerformanceId,
-        userRole,
-        comment,
-        objectives
-      );
-      showSuccess(`Mid-year ${userRole} draft saved successfully`);
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error saving mid-year draft:', error);
-      showError(error.response?.data?.error || 'Error saving mid-year draft');
-    } finally {
-      setLoading(false);
-    }
-  };
+
 
   const handleSubmitMidYearEmployee = async (comment, objectives = null) => {
     if (!selectedPerformanceId) return;
@@ -1059,6 +1039,46 @@ const handleUpdateObjective = (index, field, value) => {
       setLoading(false);
     }
   };
+
+
+const handleSubmitEndYearEmployee = async (comment) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    await performanceApi.performances.submitEndYearEmployee(
+      selectedPerformanceId,
+      comment
+    );
+    showSuccess('End-year self-review submitted successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error submitting end-year employee review:', error);
+    showError(error.response?.data?.error || 'Error submitting end-year review');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSubmitEndYearManager = async (comment) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    await performanceApi.performances.submitEndYearManager(
+      selectedPerformanceId,
+      comment
+    );
+    showSuccess('End-year assessment submitted successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error submitting end-year manager assessment:', error);
+    showError(error.response?.data?.error || 'Error submitting end-year assessment');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ==================== DEVELOPMENT NEEDS HANDLERS ====================
   const handleUpdateDevelopmentNeed = (index, field, value) => {
@@ -1124,7 +1144,7 @@ const handleUpdateObjective = (index, field, value) => {
         selectedPerformanceId,
         data.development_needs || []
       );
-      showSuccess('Development needs draft saved successfully');
+      showSuccess('Development needs submitted successfully');
       await loadPerformanceData(selectedEmployee.id, selectedYear);
     } catch (error) {
       console.error('❌ Error saving development needs:', error);
@@ -1134,21 +1154,7 @@ const handleUpdateObjective = (index, field, value) => {
     }
   };
 
-  const handleSubmitDevelopmentNeeds = async () => {
-    if (!selectedPerformanceId) return;
-    
-    setLoading(true);
-    try {
-      await performanceApi.performances.submitDevelopmentNeeds(selectedPerformanceId);
-      showSuccess('Development needs submitted successfully');
-      await loadPerformanceData(selectedEmployee.id, selectedYear);
-    } catch (error) {
-      console.error('❌ Error submitting development needs:', error);
-      showError(error.response?.data?.error || 'Error submitting development needs');
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
 
   // ==================== OTHER HANDLERS ====================
   const handleSelectEmployee = async (employee) => {
@@ -1263,15 +1269,17 @@ const handleUpdateObjective = (index, field, value) => {
               onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
               onSubmitCompetencies={handleSubmitCompetencies}
               
-              onSaveMidYearDraft={handleSaveMidYearDraft}
+          
               onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
               onSubmitMidYearManager={handleSubmitMidYearManager}
-              
+      
+  onSubmitEndYearEmployee={handleSubmitEndYearEmployee}
+  onSubmitEndYearManager={handleSubmitEndYearManager}
               onUpdateDevelopmentNeed={handleUpdateDevelopmentNeed}
               onAddDevelopmentNeed={handleAddDevelopmentNeed}
               onDeleteDevelopmentNeed={handleDeleteDevelopmentNeed}
               onSaveDevelopmentNeedsDraft={handleSaveDevelopmentNeedsDraft}
-              onSubmitDevelopmentNeeds={handleSubmitDevelopmentNeeds}
+          
             />
           ) : (
             <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border shadow-sm p-16 text-center`}>

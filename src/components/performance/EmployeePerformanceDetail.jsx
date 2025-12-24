@@ -27,14 +27,17 @@ export default function EmployeePerformanceDetail({
   onUpdateCompetency,
   onSaveCompetenciesDraft,
   onSubmitCompetencies,
-  onSaveMidYearDraft,
+
   onSubmitMidYearEmployee,
   onSubmitMidYearManager,
   onUpdateDevelopmentNeed,
   onAddDevelopmentNeed,
   onDeleteDevelopmentNeed,
   onSaveDevelopmentNeedsDraft,
-  onSubmitDevelopmentNeeds
+
+
+  onSubmitEndYearEmployee,
+  onSubmitEndYearManager,
 }) {
   const { showInfo } = useToast();
   
@@ -367,10 +370,13 @@ export default function EmployeePerformanceDetail({
             currentPeriod={currentPeriod}
             performanceData={performanceData}
             permissions={permissions}
-            onSaveMidYearDraft={onSaveMidYearDraft}
+           
             onSubmitMidYearEmployee={onSubmitMidYearEmployee}
             onSubmitMidYearManager={onSubmitMidYearManager}
             darkMode={darkMode}
+          
+  onSubmitEndYearEmployee={onSubmitEndYearEmployee}
+  onSubmitEndYearManager={onSubmitEndYearManager}
           />
         )}
 
@@ -385,7 +391,7 @@ export default function EmployeePerformanceDetail({
             onAdd={onAddDevelopmentNeed}
             onDelete={onDeleteDevelopmentNeed}
             onSaveDraft={onSaveDevelopmentNeedsDraft}
-            onSubmit={onSubmitDevelopmentNeeds}
+ 
           />
         )}
       </div>
@@ -402,10 +408,14 @@ function MetricCard({ icon: Icon, title, value, subtitle, color, darkMode }) {
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-almet-mystic'} rounded-xl border p-3`}>
-      <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center mb-2`}>
+      <div className='flex items-center gap-4'>
+<div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center mb-2`}>
         <Icon className="w-4 h-4 text-white" />
       </div>
       <h3 className="text-xs font-medium text-almet-waterloo dark:text-almet-bali-hai mb-1">{title}</h3>
+      </div>
+      
+      
       <p className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} mb-0.5`}>{value}</p>
       <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{subtitle}</p>
     </div>

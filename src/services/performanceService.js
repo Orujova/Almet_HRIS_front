@@ -370,17 +370,7 @@ cancelObjective: async (id, objectiveId, reason) => {
     return response.data;
   },
 
-saveMidYearDraft: async (id, userRole, comment, objectives = null) => {
-    const payload = { user_role: userRole, comment };
-    if (objectives) payload.objectives = objectives;
-    
-    const response = await api.post(
-      `/performance/performance/performances/${id}/save_mid_year_draft/`,
-      payload
-    );
-    return response.data;
-  },
-  
+
   submitMidYearEmployee: async (id, comment, objectives = null) => {
     const payload = { comment };
     if (objectives) payload.objectives = objectives;
@@ -405,18 +395,16 @@ saveMidYearDraft: async (id, userRole, comment, objectives = null) => {
   
 
 
-  // End-Year Review Operations
-  saveEndYearDraft: async (id, userRole, comment) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/save_end_year_draft/`,
-      { user_role: userRole, comment }
-    );
-    return response.data;
-  },
-  
   submitEndYearEmployee: async (id, comment) => {
     const response = await api.post(
       `/performance/performance/performances/${id}/submit_end_year_employee/`,
+      { comment }
+    );
+    return response.data;
+  },
+  submitEndYearManager: async (id, comment) => {
+    const response = await api.post(
+      `/performance/performance/performances/${id}/submit_end_year_manager/`,
       { comment }
     );
     return response.data;
@@ -439,13 +427,6 @@ saveMidYearDraft: async (id, userRole, comment, objectives = null) => {
     return response.data;
   },
   
-  submitDevelopmentNeeds: async (id) => {
-    const response = await api.post(
-      `/performance/performance/performances/${id}/submit_development_needs/`,
-      {}
-    );
-    return response.data;
-  },
 
   // Approval Operations
   requestClarification: async (id, comment, commentType) => {
