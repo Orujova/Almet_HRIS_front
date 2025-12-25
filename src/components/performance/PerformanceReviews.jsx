@@ -9,11 +9,10 @@ export default function PerformanceReviews({
   currentPeriod,
   performanceData,
   permissions,
-
   onSubmitMidYearEmployee,
   onSubmitMidYearManager,
-  onSubmitEndYearEmployee,  
-  onSubmitEndYearManager,  
+  onSubmitEndYearEmployee,  // ✅ ADD
+  onSubmitEndYearManager,   // ✅ ADD
   darkMode
 }) {
   const [editingSection, setEditingSection] = useState(null);
@@ -23,20 +22,37 @@ export default function PerformanceReviews({
   const textareaRef = useRef(null);
   const cursorPositionRef = useRef(0);
 
-  const hasPermission = (permissionCode) => {
-    if (permissions?.is_admin) return true;
-    if (!Array.isArray(permissions?.permissions)) return false;
-    return permissions.permissions.includes(permissionCode);
-  };
+
 
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
 
-  const canActAsEmployee = hasPermission('performance.approve_as_employee') || 
-                           hasPermission('performance.edit_own');
+  // ✅ CRITICAL: Check if current user is the actual employee or manager
+  const isCurrentUserEmployee = permissions?.employee?.id === performanceData?.employee;
+  const isOwnPerformance = isCurrentUserEmployee; // ✅ Alias for backward compatibility
   
-  const canActAsManager = hasPermission('performance.approve_as_manager') || 
-                          hasPermission('performance.manage_team');
+  const isCurrentUserManager = (() => {
+    if (!permissions?.employee || !performanceData) return false;
+
+    const lineManagerId = 
+      performanceData.employee_data?.line_manager_hc; 
+      console.log(performanceData.employee_data);
+ console.log(permissions.employee);
+    if (!lineManagerId) return false;
+    return permissions.employee.employee_id === lineManagerId;
+  })();
+  
+
+  // ✅ DEBUG
+  console.log('🔍 Role Check:', {
+    isCurrentUserEmployee,
+    isCurrentUserManager,
+    isOwnPerformance,
+    currentUserId: permissions?.employee?.id,
+    performanceEmployeeId: performanceData?.employee,
+    lineManagerId: performanceData.line_manager_hc ,
+   
+  });
 
   const isEmployeeSubmitted = Boolean(performanceData?.mid_year_employee_submitted);
   const isManagerCompleted = Boolean(performanceData?.mid_year_completed);
@@ -44,44 +60,44 @@ export default function PerformanceReviews({
   const isEndYearEmployeeSubmitted = Boolean(performanceData?.end_year_employee_submitted);
   const isEndYearCompleted = Boolean(performanceData?.end_year_completed);
 
-  const hasEmployeePermission = hasPermission('performance.midyear.submit_employee');
+
+  
+  const canEditMidYearEmployee = 
+    isCurrentUserEmployee &&  // ✅ MUST be the actual employee
+    isMidYearPeriod 
+  
+  // ✅ DEBUG: Log to console
+  if (isMidYearPeriod) {
+    console.log('🔍 Mid-Year Employee Permission Check:', {
+   
+      isMidYearPeriod,
+
+      isOwnPerformance,
+      canEditMidYearEmployee,
+      isEmployeeSubmitted,  // Show status but don't block
+      employeeId: permissions?.employee?.id,
+      performanceEmployeeId: performanceData?.employee,
+      currentPeriod
+    });
+  }
 
 
-  const hasManagerPermission = hasPermission('performance.midyear.submit_manager');
   const canEditMidYearManager = 
-    canActAsManager &&
-    isMidYearPeriod && 
-    hasManagerPermission &&
-    isEmployeeSubmitted;
-// PerformanceReviews.jsx - Debug version
+       
+    isCurrentUserManager &&
+    isMidYearPeriod 
 
-const canEditMidYearEmployee = 
-  canActAsEmployee &&
-  isMidYearPeriod && 
-  hasEmployeePermission;
 
-// Console-a yazaq görək nə gəlir:
-console.log('🔍 Employee Permission Debug:', {
-  canActAsEmployee,
-  isMidYearPeriod,
-  hasEmployeePermission,
-  canEditMidYearEmployee,
-  currentPeriod,
-  permissions: permissions?.permissions,
-  isEmployeeSubmitted
-});
-  const hasEndYearEmployeePermission = hasPermission('performance.endyear.submit_employee');
+  
   const canEditEndYearEmployee = 
-    canActAsEmployee &&
-    isEndYearPeriod && 
-    hasEndYearEmployeePermission;
+    isCurrentUserEmployee &&
+    isEndYearPeriod && isOwnPerformance
 
-  const hasEndYearManagerPermission = hasPermission('performance.endyear.submit_manager');
+
+
   const canEditEndYearManager = 
-    canActAsManager &&
-    isEndYearPeriod && 
-    hasEndYearManagerPermission &&
-    isEndYearEmployeeSubmitted;
+    isCurrentUserManager &&
+    isEndYearPeriod
 
   const handleStartEdit = (section, role, initialText) => {
     const key = `${section}_${role}`;
@@ -119,8 +135,6 @@ console.log('🔍 Employee Permission Debug:', {
       textarea.focus();
     }
   }, [currentText, editingSection]);
-
-
 
   const handleSubmit = async (section, role) => {
     if (!currentText.trim()) {
@@ -262,7 +276,7 @@ console.log('🔍 Employee Permission Debug:', {
                   style={textareaStyle}
                 />
                 <div className="flex gap-2">
-                
+              
                   <button
                     onClick={() => handleSubmit(section, 'employee')}
                     className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"
@@ -318,7 +332,7 @@ console.log('🔍 Employee Permission Debug:', {
               )}
             </div>
 
-            {/* Display existing comments */}
+           
             {managerComment && (
               <div className={`${darkMode ? 'bg-almet-san-juan/30 border-almet-comet/30' : 'bg-almet-mystic/50 border-almet-bali-hai/10'} border rounded-xl p-4 mb-3`}>
                 <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap leading-relaxed`}>
@@ -341,7 +355,7 @@ console.log('🔍 Employee Permission Debug:', {
                   style={textareaStyle}
                 />
                 <div className="flex gap-2">
-      
+                
                   <button
                     onClick={() => handleSubmit(section, 'manager')}
                     className="flex-1 h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all shadow-sm"

@@ -1,5 +1,278 @@
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, XCircle, Clock, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+
+// ✅ CRITICAL: Memoize ObjectiveRow to prevent unnecessary re-renders
+const ObjectiveRow = memo(({ 
+  objective, 
+  index, 
+  isExpanded,
+  canEditGoals,
+  canCancelGoals,
+  canRateEndYear,
+  settings,
+  darkMode,
+  onToggle,
+  onUpdate,
+  onDelete,
+  onCancelObjective 
+}) => {
+  const isCancelled = objective.is_cancelled || false;
+  const isTitleMissing = !objective.title?.trim();
+  const isStatusMissing = !objective.status;
+  const isWeightMissing = !objective.weight || objective.weight <= 0;
+
+  const selectedRating = objective.end_year_rating 
+    ? settings.evaluationScale?.find(s => s.id === objective.end_year_rating)
+    : null;
+
+  const selectedStatus = settings.statusTypes?.find(s => s.id === objective.status);
+
+  const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
+    darkMode 
+      ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
+      : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
+  } disabled:opacity-40`;
+
+  const formatNumber = (value, decimals = 2) => {
+    const num = parseFloat(value);
+    return isNaN(num) ? '0.00' : num.toFixed(decimals);
+  };
+
+  return (
+    <div className={`border-b ${darkMode ? 'border-almet-comet/20' : 'border-almet-mystic'} ${isCancelled ? 'opacity-50' : ''}`}>
+      <div className={`p-4 ${darkMode ? 'hover:bg-almet-san-juan/20' : 'hover:bg-almet-mystic/30'} transition-colors`}>
+        <div className="flex items-start gap-4">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+            isCancelled 
+              ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' 
+              : 'bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-sapphire/20'
+          }`}>
+            {isCancelled ? <XCircle className="w-5 h-5" /> : index + 1}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex-1 min-w-0">
+                {canEditGoals && !isCancelled && isExpanded ? (
+                  <input
+                    type="text"
+                    value={objective.title || ''}
+                    onInput={(e) => {
+                      // ✅ Use onInput instead of onChange
+                      onUpdate(index, 'title', e.target.value);
+                    }}
+                    className={`${inputClass} w-full font-medium ${isTitleMissing ? 'border-red-500' : ''}`}
+                    placeholder="Enter objective title..."
+                  />
+                ) : (
+                  <>
+                    <h4 className={`text-sm font-bold mb-1 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} ${isExpanded ? '' : 'line-clamp-1'}`}>
+                      {objective.title || 'Untitled Objective'}
+                    </h4>
+                    {!isExpanded && (
+                      <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} line-clamp-2`}>
+                        {objective.description || 'No description provided'}
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={() => onToggle(index)}
+                className={`p-2 rounded-lg ${darkMode ? 'hover:bg-almet-comet/30' : 'hover:bg-gray-100'} transition-colors flex-shrink-0`}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                {isExpanded ? (
+                  <ChevronUp className="w-5 h-5 text-almet-sapphire" />
+                ) : (
+                  <ChevronDown className="w-5 h-5 text-almet-waterloo" />
+                )}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-4 gap-3">
+              <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                  Weight
+                </div>
+                <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                  {objective.weight || 0}%
+                </div>
+              </div>
+
+              <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                  Rating
+                </div>
+                {selectedRating ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-sm font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                      {selectedRating.name}
+                    </span>
+                    <span className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                      ({selectedRating.value})
+                    </span>
+                  </div>
+                ) : (
+                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai/70' : 'text-almet-waterloo/70'} italic`}>
+                    Not Rated
+                  </div>
+                )}
+              </div>
+
+              <div className={`${darkMode ? 'bg-almet-sapphire/10' : 'bg-almet-sapphire/5'} rounded-lg p-2.5 border ${darkMode ? 'border-almet-sapphire/20' : 'border-almet-sapphire/10'}`}>
+                <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                  Score
+                </div>
+                <div className="text-base font-bold text-almet-sapphire">
+                  {formatNumber(objective.calculated_score || 0)}
+                </div>
+              </div>
+
+              <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
+                <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                  Status
+                </div>
+                <div className={`text-xs font-semibold ${
+                  !selectedStatus ? (darkMode ? 'text-almet-bali-hai/70 italic' : 'text-almet-waterloo/70 italic') :
+                  selectedStatus.label?.includes('Track') ? 'text-emerald-600 dark:text-emerald-400' :
+                  selectedStatus.label?.includes('Risk') ? 'text-amber-600 dark:text-amber-400' :
+                  selectedStatus.label?.includes('Complete') ? 'text-blue-600 dark:text-blue-400' :
+                  darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
+                }`}>
+                  {selectedStatus?.label || 'Not Set'}
+                </div>
+              </div>
+            </div>
+
+            {isExpanded && (
+              <div className={`mt-4 ${darkMode ? 'bg-almet-san-juan/20 border-almet-comet/30' : 'bg-gray-50 border-gray-200'} border rounded-xl p-4 space-y-4`}>
+                <div>
+                  <h5 className={`text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} uppercase tracking-wide mb-2`}>
+                    Description
+                  </h5>
+                  {canEditGoals && !isCancelled ? (
+                    <textarea
+                      value={objective.description || ''}
+                      onInput={(e) => onUpdate(index, 'description', e.target.value)}
+                      rows={4}
+                      className={`${inputClass} w-full resize-none py-2 leading-relaxed`}
+                      placeholder="Describe the objective in detail..."
+                    />
+                  ) : (
+                    <p className={`text-sm ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} leading-relaxed whitespace-pre-wrap`}>
+                      {objective.description || 'No description provided'}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                      Weight %
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={objective.weight || 0}
+                      onInput={(e) => onUpdate(index, 'weight', parseFloat(e.target.value) || 0)}
+                      disabled={!canEditGoals || isCancelled}
+                      className={`${inputClass} w-full text-center font-semibold ${isWeightMissing && canEditGoals ? 'border-red-500' : ''}`}
+                    />
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                      End Year Rating
+                    </label>
+                    {canRateEndYear && !isCancelled ? (
+                      <select
+                        value={objective.end_year_rating || ''}
+                        onChange={(e) => onUpdate(index, 'end_year_rating', e.target.value ? parseInt(e.target.value) : null)}
+                        className={`${inputClass} w-full`}
+                      >
+                        <option value="">-- Select Rating --</option>
+                        {settings.evaluationScale?.map(scale => (
+                          <option key={scale.id} value={scale.id}>
+                            {scale.name} • {scale.value}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <div className={`${inputClass} w-full flex items-center justify-center`}>
+                        {selectedRating ? (
+                          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                            {selectedRating.name} ({selectedRating.value})
+                          </span>
+                        ) : (
+                          <span className="text-xs italic text-almet-waterloo/70 dark:text-almet-bali-hai/70">
+                            Not Rated
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
+                      Status
+                    </label>
+                    <select
+                      value={objective.status || ''}
+                      onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
+                      disabled={isCancelled}
+                      className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500' : ''}`}
+                    >
+                      <option value="">Select Status</option>
+                      {settings.statusTypes?.map(status => (
+                        <option key={status.id} value={status.id}>{status.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {(canEditGoals || canCancelGoals) && (
+                  <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-almet-comet/30">
+                    {canEditGoals && !isCancelled && (
+                      <button
+                        onClick={() => onDelete(index)}
+                        className="h-9 px-4 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </button>
+                    )}
+                    {canCancelGoals && !isCancelled && objective.id && (
+                      <button
+                        onClick={() => onCancelObjective(objective.id, 'Cancelled during mid-year review')}
+                        className="h-9 px-4 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        Cancel
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // ✅ Custom comparison - only re-render if these change
+  return (
+    prevProps.objective === nextProps.objective &&
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.canEditGoals === nextProps.canEditGoals &&
+    prevProps.darkMode === nextProps.darkMode
+  );
+});
+
+ObjectiveRow.displayName = 'ObjectiveRow';
 
 export default function ObjectivesSection({
   objectives,
@@ -173,284 +446,17 @@ export default function ObjectivesSection({
   
   const periodStatus = getPeriodStatusMessage();
 
-  const toggleRow = (index) => {
+  // ✅ useCallback to prevent function recreation
+  const handleToggle = useCallback((index) => {
     setExpandedRows(prev => ({
       ...prev,
       [index]: !prev[index]
     }));
-  };
+  }, []);
 
-  const ObjectiveRow = ({ objective, index }) => {
-    const isExpanded = expandedRows[index];
-    const isCancelled = objective.is_cancelled || false;
-    const isTitleMissing = !objective.title?.trim();
-    const isStatusMissing = !objective.status;
-    const isWeightMissing = !objective.weight || objective.weight <= 0;
-
-    // ✅ FIXED: Properly get selected rating
-    const selectedRating = objective.end_year_rating 
-      ? settings.evaluationScale?.find(s => s.id === objective.end_year_rating)
-      : null;
-
-    const selectedStatus = settings.statusTypes?.find(s => s.id === objective.status);
-
-    const inputClass = `h-10 px-3 text-xs border rounded-xl focus:outline-none focus:ring-2 focus:ring-almet-sapphire/30 transition-all ${
-      darkMode 
-        ? 'bg-almet-san-juan/30 border-almet-comet/30 text-white placeholder-almet-bali-hai/50' 
-        : 'bg-white border-almet-bali-hai/20 text-almet-cloud-burst placeholder-almet-waterloo/50'
-    } disabled:opacity-40`;
-
-    return (
-      <div className={`border-b ${darkMode ? 'border-almet-comet/20' : 'border-almet-mystic'} ${isCancelled ? 'opacity-50' : ''}`}>
-        {/* Compact Row */}
-        <div className={`p-4 ${darkMode ? 'hover:bg-almet-san-juan/20' : 'hover:bg-almet-mystic/30'} transition-colors`}>
-          <div className="flex items-start gap-4">
-            {/* Index Badge */}
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-              isCancelled 
-                ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' 
-                : 'bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-sapphire/20'
-            }`}>
-              {isCancelled ? <XCircle className="w-5 h-5" /> : index + 1}
-            </div>
-
-            {/* Main Content */}
-            <div className="flex-1 min-w-0">
-              {/* Title Row */}
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex-1 min-w-0">
-                  {canEditGoals && !isCancelled && isExpanded ? (
-                    <input
-                      type="text"
-                      value={objective.title || ''}
-                      onChange={(e) => onUpdate(index, 'title', e.target.value)}
-                      className={`${inputClass} w-full font-medium ${isTitleMissing ? 'border-red-500' : ''}`}
-                      placeholder="Enter objective title..."
-                    />
-                  ) : (
-                    <>
-                      <h4 className={`text-sm font-bold mb-1 ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} ${isExpanded ? '' : 'line-clamp-1'}`}>
-                        {objective.title || 'Untitled Objective'}
-                      </h4>
-                      {!isExpanded && (
-                        <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} line-clamp-2`}>
-                          {objective.description || 'No description provided'}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                {/* Expand/Collapse Button */}
-                <button
-                  onClick={() => toggleRow(index)}
-                  className={`p-2 rounded-lg ${darkMode ? 'hover:bg-almet-comet/30' : 'hover:bg-gray-100'} transition-colors flex-shrink-0`}
-                  title={isExpanded ? 'Collapse' : 'Expand'}
-                >
-                  {isExpanded ? (
-                    <ChevronUp className="w-5 h-5 text-almet-sapphire" />
-                  ) : (
-                    <ChevronDown className="w-5 h-5 text-almet-waterloo" />
-                  )}
-                </button>
-              </div>
-
-              {/* Stats Grid - Always Visible */}
-              <div className="grid grid-cols-4 gap-3">
-                {/* Weight */}
-                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
-                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
-                    Weight
-                  </div>
-                  <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                    {objective.weight || 0}%
-                  </div>
-                </div>
-
-     
-
-                {/* Rating */}
-                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
-                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
-                    Rating
-                  </div>
-                  {selectedRating ? (
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-sm font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                        {selectedRating.name}
-                      </span>
-                      <span className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
-                        ({selectedRating.value})
-                      </span>
-                    </div>
-                  ) : (
-                    <div className={`text-xs ${darkMode ? 'text-almet-bali-hai/70' : 'text-almet-waterloo/70'} italic`}>
-Completed                    </div>
-                  )}
-                </div>
-
-                {/* Score */}
-                <div className={`${darkMode ? 'bg-almet-sapphire/10' : 'bg-almet-sapphire/5'} rounded-lg p-2.5 border ${darkMode ? 'border-almet-sapphire/20' : 'border-almet-sapphire/10'}`}>
-                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
-                    Score
-                  </div>
-                  <div className="text-base font-bold text-almet-sapphire">
-                    {formatNumber(objective.calculated_score || 0)}
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
-                  <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
-                    Status
-                  </div>
-                  <div className={`text-xs font-semibold ${
-                    !selectedStatus ? (darkMode ? 'text-almet-bali-hai/70 italic' : 'text-almet-waterloo/70 italic') :
-                    selectedStatus.label?.includes('Track') ? 'text-emerald-600 dark:text-emerald-400' :
-                    selectedStatus.label?.includes('Risk') ? 'text-amber-600 dark:text-amber-400' :
-                    selectedStatus.label?.includes('Complete') ? 'text-blue-600 dark:text-blue-400' :
-                    darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
-                  }`}>
-                    {selectedStatus?.label || 'Not Set'}
-                  </div>
-                </div>
-              </div>
-
-              {/* Expanded Content */}
-              {isExpanded && (
-                <div className={`mt-4 ${darkMode ? 'bg-almet-san-juan/20 border-almet-comet/30' : 'bg-gray-50 border-gray-200'} border rounded-xl p-4 space-y-4`}>
-                  {/* Full Description */}
-                  <div>
-                    <h5 className={`text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} uppercase tracking-wide mb-2`}>
-                      Description
-                    </h5>
-                    {canEditGoals && !isCancelled ? (
-                      <textarea
-                        value={objective.description || ''}
-                        onChange={(e) => onUpdate(index, 'description', e.target.value)}
-                        rows={4}
-                        className={`${inputClass} w-full resize-none py-2 leading-relaxed`}
-                        placeholder="Describe the objective in detail..."
-                      />
-                    ) : (
-                      <p className={`text-sm ${darkMode ? 'text-white' : 'text-almet-cloud-burst'} leading-relaxed whitespace-pre-wrap`}>
-                        {objective.description || 'No description provided'}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Edit Controls Grid */}
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
-                        Weight %
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={objective.weight || 0}
-                        onChange={(e) => onUpdate(index, 'weight', parseFloat(e.target.value) || 0)}
-                        disabled={!canEditGoals || isCancelled}
-                        className={`${inputClass} w-full text-center font-semibold ${isWeightMissing && canEditGoals ? 'border-red-500' : ''}`}
-                      />
-                    </div>
-
-                 {/* End Year Rating */}
-                  <div>
-                    <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
-                      End Year Rating
-                    </label>
-                    {canRateEndYear && !isCancelled ? (
-                      
-
-
-
-<select
-  value={objective.end_year_rating || ''}
-  onChange={(e) => {
-    const selectedScaleId = e.target.value ? parseInt(e.target.value) : null;
-    
-
-    onUpdate(index, 'end_year_rating', selectedScaleId);
-    
-    
-  }}
-  className={`${inputClass} w-full`}
->
-  <option value="">-- Select Rating --</option>
-  {settings.evaluationScale?.map(scale => (
-    <option key={scale.id} value={scale.id}>
-      {scale.name} • {scale.value}
-    </option>
-  ))}
-</select>
-                    ) : (
-                      <div className={`${inputClass} w-full flex items-center justify-center`}>
-                        {selectedRating ? (
-                          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                            {selectedRating.name} ({selectedRating.value})
-                          </span>
-                        ) : (
-                          <span className="text-xs italic text-almet-waterloo/70 dark:text-almet-bali-hai/70">
-                            Not Rated
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                    <div>
-                      <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
-                        Status
-                      </label>
-                      <select
-                        value={objective.status || ''}
-                        onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
-                        disabled={isCancelled}
-                        className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500' : ''}`}
-                      >
-                        <option value="">Select Status</option>
-                        {settings.statusTypes?.map(status => (
-                          <option key={status.id} value={status.id}>{status.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-               
-
-                  {/* Actions */}
-                  {(canEditGoals || canCancelGoals) && (
-                    <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-almet-comet/30">
-                      {canEditGoals && !isCancelled && (
-                        <button
-                          onClick={() => onDelete(index)}
-                          className="h-9 px-4 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete
-                        </button>
-                      )}
-                      {canCancelGoals && !isCancelled && objective.id && (
-                        <button
-                          onClick={() => onCancelObjective(objective.id, 'Cancelled during mid-year review')}
-                          className="h-9 px-4 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30 transition-colors flex items-center gap-2 text-sm font-medium"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          Cancel
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  const handleUpdate = useCallback((index, field, value) => {
+    onUpdate(index, field, value);
+  }, [onUpdate]);
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60' : 'bg-white'} border ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'} rounded-xl overflow-hidden shadow-sm`}>
@@ -542,7 +548,21 @@ Completed                    </div>
       ) : (
         <div>
           {objectives.map((objective, index) => (
-            <ObjectiveRow key={objective.id || index} objective={objective} index={index} />
+            <ObjectiveRow
+              key={objective.id || `obj-${index}`}
+              objective={objective}
+              index={index}
+              isExpanded={expandedRows[index] || false}
+              canEditGoals={canEditGoals}
+              canCancelGoals={canCancelGoals}
+              canRateEndYear={canRateEndYear}
+              settings={settings}
+              darkMode={darkMode}
+              onToggle={handleToggle}
+              onUpdate={handleUpdate}
+              onDelete={onDelete}
+              onCancelObjective={onCancelObjective}
+            />
           ))}
         </div>
       )}

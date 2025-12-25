@@ -97,7 +97,7 @@ const ConfirmationModal = ({
 
         {/* Content */}
         <div className="px-6 py-6">
-          <p className={`${textSecondary} leading-relaxed`}>
+          <p className={`${textSecondary} text-wrap leading-relaxed`}>
             {message}
           </p>
         </div>

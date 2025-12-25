@@ -268,11 +268,8 @@ const initializeApp = async () => {
   };
 
  
-
-
-// ✅ UPDATED: loadDashboardData - use permissions directly from state
 const loadDashboardData = async () => {
-  // ✅ Double-check permissions before proceeding
+  
   if (!permissions.employee && !permissions.is_admin) {
     console.error('❌ Cannot load dashboard - no permissions');
     return;
@@ -285,7 +282,7 @@ const loadDashboardData = async () => {
     const stats = await performanceApi.dashboard.getStatistics(selectedYear);
     setDashboardStats(stats);
     
-    // ✅ Pass current permissions to loadEmployees
+    
     await loadEmployees();
     
 
@@ -325,7 +322,7 @@ const loadEmployees = async (perms = null) => {
     
 
     
-    // ✅ FIX: Define currentUserHC at the TOP (outside if blocks)
+    
     const currentUserHC = currentPermissions.employee?.employee_id; // HC_NUMBER
     
     // Filter based on access
@@ -341,10 +338,7 @@ const loadEmployees = async (perms = null) => {
       if (hasViewTeam || currentPermissions.is_manager) {
       
         
-        // Count potential direct reports BEFORE filtering
-        const potentialReports = allEmployees.filter(emp => {
-          return emp.line_manager_hc_number === currentUserHC;
-        });
+      
         
         
    
@@ -376,6 +370,7 @@ const loadEmployees = async (perms = null) => {
     // Map with performance data
     const employeesWithPerformance = filteredEmployees.map(emp => {
       const perf = allPerfs.find(p => p.employee === emp.id);
+
       
       return {
         id: emp.id,
@@ -662,7 +657,7 @@ const loadEmployees = async (perms = null) => {
   };
 
   // ==================== OBJECTIVE HANDLERS ====================
- // ==================== OBJECTIVE HANDLERS ====================
+ 
 const saveObjectivesTimeoutRef = useRef(null);
 
 const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
@@ -686,7 +681,7 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
       console.error('❌ Auto-save error:', error);
     }
   }, 1000);
-}, []); // ✅ Remove showInfo from dependencies
+}, []); 
 
   const handleLoadEmployeePerformance = async (employeeId, year) => {
     try {
@@ -715,7 +710,7 @@ const debouncedSaveObjectives = useCallback((performanceId, objectives) => {
 
 
 const handleUpdateObjective = (index, field, value) => {
-  // ✅ Save current scroll position
+  
   const scrollY = window.scrollY;
   
   const key = `${selectedEmployee.id}_${selectedYear}`;
@@ -1229,7 +1224,7 @@ const handleSubmitEndYearManager = async (comment) => {
         onRefresh={loadDashboardData}
         onSettings={() => router.push('/efficiency/settings')}
         darkMode={darkMode}
-        permissions={permissions} // ✅ ADD THIS LINE
+        permissions={permissions} 
       />
 
         {activeView === 'dashboard' ? (

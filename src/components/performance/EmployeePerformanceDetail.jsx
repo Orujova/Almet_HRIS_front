@@ -58,7 +58,6 @@ export default function EmployeePerformanceDetail({
   const canEdit = permissions.is_admin || 
     (permissions.employee && employee.line_manager === permissions.employee.name);
 
-  const isEmployee = performanceData.employee === permissions.employee?.id;
 
   const calculateTotalWeight = (objectives) => {
     return objectives?.reduce((sum, obj) => sum + (parseFloat(obj.weight) || 0), 0) || 0;
@@ -362,23 +361,30 @@ export default function EmployeePerformanceDetail({
         )}
 
         {activeTab === 'reviews' && (
-          <PerformanceReviews
-            midYearEmployee={performanceData.mid_year_employee_comment}
-            midYearManager={performanceData.mid_year_manager_comment}
-            endYearEmployee={performanceData.end_year_employee_comment}
-            endYearManager={performanceData.end_year_manager_comment}
-            currentPeriod={currentPeriod}
-            performanceData={performanceData}
-            permissions={permissions}
-           
-            onSubmitMidYearEmployee={onSubmitMidYearEmployee}
-            onSubmitMidYearManager={onSubmitMidYearManager}
-            darkMode={darkMode}
-          
-  onSubmitEndYearEmployee={onSubmitEndYearEmployee}
-  onSubmitEndYearManager={onSubmitEndYearManager}
-          />
-        )}
+  <PerformanceReviews
+    midYearEmployee={performanceData.mid_year_employee_comment}
+    midYearManager={performanceData.mid_year_manager_comment}
+    endYearEmployee={performanceData.end_year_employee_comment}
+    endYearManager={performanceData.end_year_manager_comment}
+    currentPeriod={currentPeriod}
+    performanceData={{
+      ...performanceData,
+      
+      employee_data: {
+        line_manager_hc: employee.line_manager_hc || null,
+        line_manager_name: employee.line_manager || null
+      }
+    }}
+    permissions={permissions}
+  
+    onSubmitMidYearEmployee={onSubmitMidYearEmployee}
+    onSubmitMidYearManager={onSubmitMidYearManager}
+  
+    onSubmitEndYearEmployee={onSubmitEndYearEmployee}
+    onSubmitEndYearManager={onSubmitEndYearManager}
+    darkMode={darkMode}
+  />
+)}
 
         {activeTab === 'development' && (
           <DevelopmentNeeds

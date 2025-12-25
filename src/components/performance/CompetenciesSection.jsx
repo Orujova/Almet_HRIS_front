@@ -22,10 +22,8 @@ export default function CompetenciesSection({
     grade: "N/A",
   });
 
-  // ✅ Detect competency type from first competency
   const isLeadershipAssessment = competencies.length > 0 && competencies[0].main_group_name;
 
-  // ✅ Initialize all groups as COLLAPSED by default - OPTIMIZED
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       const groupNames = new Set();
@@ -43,7 +41,7 @@ export default function CompetenciesSection({
 
         groupNames.forEach((groupName) => {
           if (next[groupName] === undefined) {
-            next[groupName] = false; // Default collapsed
+            next[groupName] = false;
             hasChanges = true;
           }
         });
@@ -51,25 +49,13 @@ export default function CompetenciesSection({
         return hasChanges ? next : prev;
       });
     }
-  }, [competencies.length, isLeadershipAssessment]); // ✅ Only re-run if length or type changes
+  }, [competencies.length, isLeadershipAssessment]);
 
   useEffect(() => {
     if (competencies && competencies.length > 0) {
       calculateAllScores();
     }
   }, [competencies, settings.evaluationScale]);
-
-const handleChange = (field, value) => {
-  // ✅ Save scroll position
-  const scrollY = window.scrollY;
-  
-  onUpdate(globalIndex, field, value);
-  
-  // ✅ Restore scroll after update
-  requestAnimationFrame(() => {
-    window.scrollTo(0, scrollY);
-  });
-};
 
   const calculateAllScores = () => {
     const groupedData = {};
@@ -203,7 +189,6 @@ const handleChange = (field, value) => {
     );
   }
 
-  // ✅ Check if END_YEAR period is active
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
   const canRateEndYear = canEdit && isEndYearPeriod;
 
@@ -223,7 +208,6 @@ const handleChange = (field, value) => {
             </div>
             <div>
               <h3 className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                {/* ✅ Dynamic title based on actual competency type */}
                 {isLeadershipAssessment
                   ? "Leadership Competencies Assessment"
                   : "Behavioral Competencies Assessment"
@@ -239,8 +223,6 @@ const handleChange = (field, value) => {
                     Evaluate competencies based on required levels • {competencies.length} total
                   </span>
                 )}
-                
-             
               </p>
             </div>
           </div>
@@ -340,10 +322,6 @@ const handleChange = (field, value) => {
                           const GapIcon = getGapIcon(gap);
                           const gapColor = getGapColor(gap);
 
-                          const handleChange = (field, value) => {
-                            onUpdate(globalIndex, field, value);
-                          };
-
                           return (
                             <tr
                               key={comp.id || idx}
@@ -380,23 +358,21 @@ const handleChange = (field, value) => {
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <select
-  value={comp.end_year_rating || ""}
-  disabled={!canRateEndYear}
-  onChange={(e) => handleChange("end_year_rating", e.target.value)}
-  className={`${inputClass} w-full`}
->
-  <option value="">Select...</option>
-  {settings.evaluationScale?.map((s) => (
-    <option key={s.id} value={s.id}>
-      {`${s.name} (${s.value})`}
-    </option>
-  ))}
-</select>
-                                {/* {!canRateEndYear && comp.end_year_rating && (
-                                  <div className={`text-xs mt-1 ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
-                                    {settings.evaluationScale?.find(s => s.id === comp.end_year_rating)?.name || 'N/A'}
-                                  </div>
-                                )} */}
+                                  key={`comp-rating-${comp.id}`}
+                                  value={comp.end_year_rating || ""}
+                                  disabled={!canRateEndYear}
+                                  onChange={(e) => {
+                                    onUpdate(globalIndex, "end_year_rating", e.target.value);
+                                  }}
+                                  className={`${inputClass} w-full`}
+                                >
+                                  <option value="">Select...</option>
+                                  {settings.evaluationScale?.map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                      {`${s.name} (${s.value})`}
+                                    </option>
+                                  ))}
+                                </select>
                               </td>
                               <td className="px-4 py-3 text-center">
                                 <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
@@ -411,10 +387,13 @@ const handleChange = (field, value) => {
                               </td>
                               <td className="px-4 py-3">
                                 <textarea
+                                  key={`comp-notes-${comp.id}`}
                                   rows={2}
                                   value={comp.notes || ""}
                                   disabled={!canEdit}
-                                  onChange={(e) => handleChange("notes", e.target.value)}
+                                  onChange={(e) => {
+                                    onUpdate(globalIndex, "notes", e.target.value);
+                                  }}
                                   className={`${inputClass} w-full resize-none py-2`}
                                   placeholder="Comments, examples..."
                                 />
