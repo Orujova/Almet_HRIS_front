@@ -17,12 +17,12 @@ export default function NavigationTabs({ activeView, setActiveView }) {
       icon: List,
       description: 'Hierarchical table view'
     },
-    { 
-      id: 'simple', 
-      label: 'Simple Table', 
-      icon: Table2,
-      description: 'Flat table view'
-    },
+    // { 
+    //   id: 'simple', 
+    //   label: 'Simple Table', 
+    //   icon: Table2,
+    //   description: 'Flat table view'
+    // },
     { 
       id: 'structure', 
       label: 'Reference Data', 

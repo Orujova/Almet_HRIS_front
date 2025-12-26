@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Plus, FileText, Trash2, Save } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { X, Plus, FileText, Trash2, Save, Download, Eye } from 'lucide-react';
 
 const CreateEditTrainingModal = ({
   show,
@@ -25,7 +25,38 @@ const CreateEditTrainingModal = ({
   textMuted,
   borderColor
 }) => {
-  if (!show) return null;
+  const [existingMaterials, setExistingMaterials] = React.useState([]);
+  const [materialsToDelete, setMaterialsToDelete] = React.useState([]);
+  const [loadingMaterials, setLoadingMaterials] = React.useState(false);
+
+  // Load existing materials when editing
+  useEffect(() => {
+    if (isEdit && selectedTraining && show) {
+      loadExistingMaterials();
+    } else {
+      setExistingMaterials([]);
+      setMaterialsToDelete([]);
+    }
+  }, [isEdit, selectedTraining, show]);
+
+  const loadExistingMaterials = async () => {
+    setLoadingMaterials(true);
+    try {
+      const trainingDetails = await trainingService.trainings.getById(selectedTraining.id);
+      setExistingMaterials(trainingDetails.materials || []);
+    } catch (error) {
+      console.error('Error loading materials:', error);
+      toast.showError('Failed to load existing materials');
+    } finally {
+      setLoadingMaterials(false);
+    }
+  };
+
+  const handleDeleteExistingMaterial = (materialId) => {
+    setMaterialsToDelete(prev => [...prev, materialId]);
+    setExistingMaterials(prev => prev.filter(m => m.id !== materialId));
+    toast.showInfo('Material marked for deletion');
+  };
 
   const handleAddMaterial = () => {
     if (!materialForm.file) {
@@ -84,6 +115,11 @@ const CreateEditTrainingModal = ({
       if (formData.completion_deadline_days) {
         submitData.append('completion_deadline_days', parseInt(formData.completion_deadline_days));
       }
+
+      // Add materials to delete
+      if (isEdit && materialsToDelete.length > 0) {
+        submitData.append('delete_material_ids', JSON.stringify(materialsToDelete));
+      }
       
       const allMaterials = [...formData.materials];
       
@@ -130,6 +166,8 @@ const CreateEditTrainingModal = ({
         materials: []
       });
       setMaterialForm({ file: null });
+      setExistingMaterials([]);
+      setMaterialsToDelete([]);
       onSuccess();
     } catch (error) {
       console.error('Error submitting training:', error);
@@ -138,6 +176,8 @@ const CreateEditTrainingModal = ({
       setSubmitLoading(false);
     }
   };
+
+  if (!show) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 overflow-y-auto">
@@ -222,16 +262,83 @@ const CreateEditTrainingModal = ({
           <div className={`space-y-3.5 border-t ${borderColor} pt-5`}>
             <div className="flex items-center justify-between">
               <h4 className={`text-base font-bold ${textPrimary}`}>Training Materials</h4>
-              {formData.materials.length > 0 && (
-                <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-semibold">
-                  {formData.materials.length} material{formData.materials.length !== 1 ? 's' : ''}
-                </span>
-              )}
+              <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full text-xs font-semibold">
+                {(existingMaterials.length + formData.materials.length)} total
+              </span>
             </div>
+
+            {/* Existing Materials (Edit Mode) */}
+            {isEdit && existingMaterials.length > 0 && (
+              <div className="space-y-2">
+                <h5 className={`text-xs font-semibold ${textSecondary} flex items-center gap-2`}>
+                  <FileText size={14} />
+                  Existing Materials ({existingMaterials.length})
+                </h5>
+                {loadingMaterials ? (
+                  <div className="text-center py-4">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-almet-sapphire border-t-transparent"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {existingMaterials.map((material) => (
+                      <div key={material.id} className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <div className="p-1.5 bg-blue-500 rounded-lg flex-shrink-0">
+                            <FileText size={18} className="text-white" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className={`font-semibold ${textPrimary} text-xs truncate`}>
+                              {material.title || material.file_url?.split('/').pop() || `Material ${material.id}`}
+                            </div>
+                            <div className={`text-xs ${textMuted}`}>
+                              Uploaded: {new Date(material.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0 ml-2">
+                          {material.file_url && (
+                            <>
+                              <a
+                                href={material.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded transition-colors"
+                                title="View"
+                              >
+                                <Eye size={14} />
+                              </a>
+                              <a
+                                href={material.file_url}
+                                download
+                                className="p-1.5 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30 rounded transition-colors"
+                                title="Download"
+                              >
+                                <Download size={14} />
+                              </a>
+                            </>
+                          )}
+                          <button
+                            onClick={() => handleDeleteExistingMaterial(material.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             
-            {/* Materials List */}
+            {/* New Materials List */}
             {formData.materials.length > 0 && (
               <div className="space-y-2">
+                <h5 className={`text-xs font-semibold ${textSecondary} flex items-center gap-2`}>
+                  <Plus size={14} />
+                  New Materials ({formData.materials.length})
+                </h5>
                 {formData.materials.map((material) => (
                   <div key={material.tempId} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-2 border-green-200 dark:border-green-800">
                     <div className="flex items-center gap-2.5">
@@ -286,6 +393,15 @@ const CreateEditTrainingModal = ({
                 </button>
               )}
             </div>
+
+            {/* Materials to delete warning */}
+            {isEdit && materialsToDelete.length > 0 && (
+              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                <p className="text-xs font-semibold text-orange-700 dark:text-orange-300">
+                  ⚠️ {materialsToDelete.length} material(s) will be permanently deleted when you save
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Action Buttons */}
