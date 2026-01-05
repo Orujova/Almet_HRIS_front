@@ -17,6 +17,7 @@ import NewsDetailModal from '@/components/news/NewsDetailModal';
 import { useToast } from '@/components/common/Toast';
 import TargetGroupManagement from '@/components/news/TargetGroupManagement';
 import CategoryManagement from '@/components/news/CategoryManagement';
+import jobDescriptionService from '@/services/jobDescriptionService';
 
 export default function CompanyNewsPage() {
   const { darkMode } = useTheme();
@@ -28,6 +29,7 @@ export default function CompanyNewsPage() {
   const [targetGroups, setTargetGroups] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [permissions, setPermissions] = useState(null);
+  const [userAccess, setUserAccess] = useState(null);
   const [selectedNews, setSelectedNews] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -50,7 +52,7 @@ export default function CompanyNewsPage() {
 
   // Load news when filters change
   useEffect(() => {
-    if (categories.length > 0 && permissions) {
+    if (categories.length > 0 && permissions && userAccess) {
       loadNews();
     }
   }, [currentPage, selectedCategory, searchTerm]);
@@ -63,6 +65,7 @@ export default function CompanyNewsPage() {
     setLoading(true);
     try {
       await Promise.all([
+        loadUserAccess(),
         loadPermissions(),
         loadCategories(),
         loadTargetGroups(),
@@ -73,6 +76,16 @@ export default function CompanyNewsPage() {
       showError('Failed to load data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUserAccess = async () => {
+    try {
+      const accessInfo = await jobDescriptionService.getMyAccessInfo();
+      setUserAccess(accessInfo);
+    } catch (error) {
+      console.error('Failed to load user access:', error);
+      showError('Failed to load access information');
     }
   };
 
@@ -290,8 +303,8 @@ export default function CompanyNewsPage() {
   // RENDER CONDITIONS
   // ============================================
 
-  // Show loading until permissions are loaded
-  if (!permissions) {
+  // Show loading until both permissions and userAccess are loaded
+  if (!permissions || !userAccess) {
     return (
       <DashboardLayout>
         <div className="flex justify-center items-center py-20">
@@ -350,7 +363,7 @@ export default function CompanyNewsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              {permissions.capabilities.can_view_target_groups && (
+              {userAccess.can_manage_settings && (
                 <>
                   <button 
                     onClick={() => setShowCategoryManagement(true)}
@@ -662,7 +675,7 @@ export default function CompanyNewsPage() {
                       onClick={() => handleViewNews(item)}
                     >
                       <img
-                        src={item.image_url }
+                        src={item.image_url}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />

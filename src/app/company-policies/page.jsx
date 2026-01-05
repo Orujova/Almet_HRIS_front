@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from 'next/dynamic';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
@@ -10,8 +11,17 @@ import ConfirmationModal from "@/components/common/ConfirmationModal";
 import CompaniesView from "@/components/policy/CompaniesView";
 import FoldersView from "@/components/policy/FoldersView";
 import PoliciesView from "@/components/policy/PoliciesView";
-import PDFViewer from "@/components/policy/PDFViewer";
 import CreateCompanyModal from "@/components/policy/CreateCompanyModal";
+
+// ✅ Dynamic import for PDFViewer (no SSR)
+const PDFViewer = dynamic(() => import("@/components/policy/PDFViewer"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  ),
+});
 
 // Import services
 import {
