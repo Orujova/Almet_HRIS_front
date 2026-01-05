@@ -11,16 +11,20 @@ import CompaniesView from "@/components/policy/CompaniesView";
 import FoldersView from "@/components/policy/FoldersView";
 import PoliciesView from "@/components/policy/PoliciesView";
 import PDFViewer from "@/components/policy/PDFViewer";
+import CreateCompanyModal from "@/components/policy/CreateCompanyModal";
 
 // Import services
 import {
-  getBusinessFunctionsWithPolicies,
+  getAllCompanies,
   getPolicyStatisticsOverview,
+  createPolicyCompany,
+  updatePolicyCompany,
+  deletePolicyCompany,
 } from "@/services/policyService";
 
 export default function CompanyPoliciesPage() {
   const { darkMode } = useTheme();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   
   // Navigation state
   const [viewMode, setViewMode] = useState("companies");
@@ -34,6 +38,11 @@ export default function CompanyPoliciesPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  // Company modal state
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [editingCompany, setEditingCompany] = useState(null);
+  const [submittingCompany, setSubmittingCompany] = useState(false);
+  
   // Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -43,22 +52,22 @@ export default function CompanyPoliciesPage() {
     onConfirm: () => {},
   });
 
-  // Load business functions on mount
+  // Load companies on mount
   useEffect(() => {
-    loadBusinessFunctions();
+    loadAllCompanies();
     loadOverallStatistics();
   }, []);
 
-  const loadBusinessFunctions = async () => {
+  const loadAllCompanies = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await getBusinessFunctionsWithPolicies();
-      setCompanies(data.results || data || []);
+      const data = await getAllCompanies();
+      setCompanies(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(err.message || "Failed to load business functions");
-      showError("Failed to load business functions");
-      console.error('Error loading business functions:', err);
+      setError(err.message || "Failed to load companies");
+      showError("Failed to load companies");
+      console.error('Error loading companies:', err);
       setCompanies([]);
     } finally {
       setLoading(false);
@@ -74,6 +83,78 @@ export default function CompanyPoliciesPage() {
     }
   };
 
+  // Company CRUD handlers
+  const handleAddCompany = () => {
+    setEditingCompany(null);
+    setShowCompanyModal(true);
+  };
+
+  const handleEditCompany = (company) => {
+    if (company.type !== 'policy_company') {
+      showWarning("Business Functions cannot be edited from here");
+      return;
+    }
+    setEditingCompany(company);
+    setShowCompanyModal(true);
+  };
+
+  const handleSubmitCompany = async (companyData) => {
+    setSubmittingCompany(true);
+    try {
+      if (editingCompany) {
+        await updatePolicyCompany(editingCompany.id, companyData);
+        showSuccess("Company updated successfully!");
+      } else {
+        await createPolicyCompany(companyData);
+        showSuccess("Company created successfully!");
+      }
+      
+      await loadAllCompanies();
+      setShowCompanyModal(false);
+      setEditingCompany(null);
+    } catch (err) {
+      const errorMsg = err.name?.[0] || err.code?.[0] || err.message || "Failed to save company";
+      showError(errorMsg);
+      console.error('Error saving company:', err);
+    } finally {
+      setSubmittingCompany(false);
+    }
+  };
+
+  const handleDeleteCompany = (company) => {
+    if (company.type !== 'policy_company') {
+      showWarning("Business Functions cannot be deleted from here");
+      return;
+    }
+
+    if (company.folder_count > 0) {
+      showWarning(
+        `Cannot delete company "${company.name}" - it has ${company.folder_count} folders. ` +
+        "Please delete all folders first."
+      );
+      return;
+    }
+
+    setConfirmModal({
+      isOpen: true,
+      title: "Delete Company",
+      message: `Are you sure you want to delete "${company.name}"? This action cannot be undone.`,
+      type: "danger",
+      onConfirm: async () => {
+        try {
+          await deletePolicyCompany(company.id);
+          await loadAllCompanies();
+          showSuccess("Company deleted successfully!");
+        } catch (err) {
+          const errorMsg = err.message || "Failed to delete company";
+          showError(errorMsg);
+        }
+        setConfirmModal({ ...confirmModal, isOpen: false });
+      },
+    });
+  };
+
+  // Navigation handlers
   const handleSelectCompany = (company) => {
     setSelectedCompany(company);
     setViewMode("folders");
@@ -117,7 +198,10 @@ export default function CompanyPoliciesPage() {
           error={error}
           darkMode={darkMode}
           onSelectCompany={handleSelectCompany}
-          onReload={loadBusinessFunctions}
+          onReload={loadAllCompanies}
+          onAddCompany={handleAddCompany}
+          onEditCompany={handleEditCompany}
+          onDeleteCompany={handleDeleteCompany}
         />
       )}
 
@@ -154,6 +238,20 @@ export default function CompanyPoliciesPage() {
         />
       )}
 
+      {/* Company Create/Edit Modal */}
+      <CreateCompanyModal
+        isOpen={showCompanyModal}
+        onClose={() => {
+          setShowCompanyModal(false);
+          setEditingCompany(null);
+        }}
+        onSubmit={handleSubmitCompany}
+        darkMode={darkMode}
+        editingCompany={editingCompany}
+        submitting={submittingCompany}
+      />
+
+      {/* Confirmation Modal */}
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}

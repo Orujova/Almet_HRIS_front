@@ -1,4 +1,4 @@
-// app/handovers/page.jsx - IMPROVED DESIGN
+// app/handovers/page.jsx - COMPLETE FULL FILE WITH SEPARATE HO/TO TABS
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,7 +22,8 @@ const HandoversDashboard = () => {
   
   // State Management
   const [activeTab, setActiveTab] = useState('submission');
-  const [myHandovers, setMyHandovers] = useState([]);
+  const [myHandingOverRequests, setMyHandingOverRequests] = useState([]); // ⭐ NEW - Mənim verəcəyim handoverlər
+  const [myTakingOverRequests, setMyTakingOverRequests] = useState([]); // ⭐ NEW - Mənim alacağım handoverlər
   const [teamHandovers, setTeamHandovers] = useState([]);
   const [allHandovers, setAllHandovers] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
@@ -52,11 +53,14 @@ const HandoversDashboard = () => {
   const [handoverTypes, setHandoverTypes] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
 
+  // ⭐ NEW - Sub-tab state for My Handovers
+  const [myHandoverSubTab, setMyHandoverSubTab] = useState('handing-over'); // 'handing-over' or 'taking-over'
+
   const { showSuccess, showError, showInfo } = useToast();
 
   // Check user role
-  const isAdmin = currentUser?.is_admin ;
-  const isManager = currentUser?.is_manager ;
+  const isAdmin = currentUser?.is_admin;
+  const isManager = currentUser?.is_manager;
 
   // Fetch data on mount
   useEffect(() => {
@@ -67,20 +71,44 @@ const HandoversDashboard = () => {
   const fetchInitialData = async () => {
     setLoading(true);
     try {
-      const [statsData, myHandoversData, teamHandoversData, pendingData, userData,employeeData, typesData, allHandoversData] = await Promise.all([
+      const [
+        statsData, 
+        myHandoversData, 
+        teamHandoversData, 
+        pendingData, 
+        userData,
+        employeeData, 
+        typesData, 
+        allHandoversData
+      ] = await Promise.all([
         handoverService.getStatistics(),
         handoverService.getMyHandovers(),
         handoverService.getTeamHandovers(),
         handoverService.getPendingApprovals(),
         handoverService.getCurrentUser(),
         handoverService.getUser(),
-
         handoverService.getHandoverTypes(),
         handoverService.getAllHandovers()
       ]);
       
       setStatistics(statsData || { pending: 0, active: 0, completed: 0, team_active: 0, team_pending: 0 });
-      setMyHandovers(Array.isArray(myHandoversData) ? myHandoversData : []);
+      
+      // ⭐ NEW - Separate Handing Over and Taking Over
+      if (Array.isArray(myHandoversData) && employeeData?.employee?.id) {
+        const employeeId = employeeData.employee.id;
+        
+        // Handing Over (mən verənlərim)
+        const handingOver = myHandoversData.filter(h => h.handing_over_employee === employeeId);
+        setMyHandingOverRequests(handingOver);
+        
+        // Taking Over (mən alanlarım)
+        const takingOver = myHandoversData.filter(h => h.taking_over_employee === employeeId);
+        setMyTakingOverRequests(takingOver);
+      } else {
+        setMyHandingOverRequests([]);
+        setMyTakingOverRequests([]);
+      }
+      
       setTeamHandovers(Array.isArray(teamHandoversData) ? teamHandoversData : []);
       setAllHandovers(Array.isArray(allHandoversData) ? allHandoversData : []);
       setPendingApprovals(Array.isArray(pendingData) ? pendingData : []);
@@ -89,17 +117,16 @@ const HandoversDashboard = () => {
         const processedUser = {
           ...userData
         };
-        
         setCurrentUser(processedUser);
       } else {
         showError('User data structure is invalid');
       }
+      
       if (employeeData) {
-            const processedEmployee = {
+        const processedEmployee = {
           ...employeeData.user,
           employee: employeeData.employee
         };
-        
         setUser(processedEmployee);
       } else {
         showError('User data structure is invalid');
@@ -119,7 +146,6 @@ const HandoversDashboard = () => {
     setRefreshing(true);
     try {
       await fetchInitialData();
-      showSuccess('Data refreshed');
     } catch (error) {
       showError('Error refreshing data');
     } finally {
@@ -147,7 +173,7 @@ const HandoversDashboard = () => {
       },
       'APPROVED_BY_LINE_MANAGER': { 
         label: 'Approved', 
-        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        class: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'REJECTED': { 
@@ -167,7 +193,7 @@ const HandoversDashboard = () => {
       },
       'TAKEN_OVER': { 
         label: 'Taken Over', 
-        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        class: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'TAKEN_BACK': { 
@@ -265,104 +291,107 @@ const HandoversDashboard = () => {
     { value: 'TAKEN_BACK', label: 'Taken Back' },
   ];
 
-
-const StatisticsCards = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-    {/* Pending Card */}
-    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-yellow-500 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-8 h-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
-          <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+  // ⭐ NEW - Statistics Cards with HO/TO separation
+  const StatisticsCards = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      {/* Pending Card */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-yellow-500 shadow-sm hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between mb-3">
+          <div className="w-8 h-8 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
+            <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-500" />
+          </div>
+          <span className="px-2 py-0.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded text-xs font-medium">
+            Action needed
+          </span>
         </div>
-        <span className="px-2 py-0.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 rounded text-xs font-medium">
-          Action needed
-        </span>
-      </div>
-      <div className='flex items-center gap-4'>
-
-      <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Pending</p>
-      <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.pending}</p>
-      </div>
-    </div>
-
-    {/* Active Card */}
-    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-almet-sapphire shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-8 h-8 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg flex items-center justify-center">
-          <Users className="w-4 h-4 text-almet-sapphire" />
+        <div className='flex items-center gap-4'>
+          <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Pending</p>
+          <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.pending}</p>
         </div>
-        <span className="px-2 py-0.5 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 text-almet-sapphire rounded text-xs font-medium">
-          In progress
-        </span>
       </div>
 
-       <div className='flex items-center gap-4'>
-
-      <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Active</p>
-      <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.active}</p>
-       </div>
-    </div>
-
-    {/* Completed Card */}
-    <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-green-500 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between mb-3">
-        <div className="w-8 h-8 bg-green-50 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-          <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-500" />
-        </div>
-        <span className="px-2 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded text-xs font-medium">
-          Finished
-        </span>
-      </div>
-       <div className='flex items-center gap-4'>
-
-      <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Completed</p>
-      <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.completed}</p>
-       </div>
-    </div>
-
-    {/* Team Active Card (for managers) */}
-    {(isManager || isAdmin) && (
+      {/* ⭐ NEW - Handing Over (Verəcəklərim) Card */}
       <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-almet-steel-blue shadow-sm hover:shadow-md transition-shadow">
         <div className="flex items-center justify-between mb-3">
           <div className="w-8 h-8 bg-almet-steel-blue/10 dark:bg-almet-steel-blue/20 rounded-lg flex items-center justify-center">
-            <UsersIcon className="w-4 h-4 text-almet-steel-blue" />
+            <UserCheck className="w-4 h-4 text-almet-steel-blue" />
           </div>
           <span className="px-2 py-0.5 bg-almet-steel-blue/10 dark:bg-almet-steel-blue/20 text-almet-steel-blue rounded text-xs font-medium">
-            Team
+            Giving
           </span>
         </div>
-         <div className='flex items-center gap-4'>
-        <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Team Active</p>
-        <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.team_active}</p>
+        <div className='flex items-center gap-4'>
+          <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Handing Over</p>
+          <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{myHandingOverRequests.length}</p>
         </div>
       </div>
-    )}
 
-    {/* Team Pending Card (for managers) */}
-    {(isManager || isAdmin) && (
-      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-orange-500 shadow-sm hover:shadow-md transition-shadow">
+      {/* ⭐ NEW - Taking Over (Alacaqlarım) Card */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-teal-500 shadow-sm hover:shadow-md transition-shadow">
         <div className="flex items-center justify-between mb-3">
-          <div className="w-8 h-8 bg-orange-50 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
-            <Shield className="w-4 h-4 text-orange-600 dark:text-orange-500" />
+          <div className="w-8 h-8 bg-teal-50 dark:bg-teal-900/20 rounded-lg flex items-center justify-center">
+            <UserX className="w-4 h-4 text-teal-600 dark:text-teal-500" />
           </div>
-          <span className="px-2 py-0.5 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 rounded text-xs font-medium">
-            Awaiting
+          <span className="px-2 py-0.5 bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400 rounded text-xs font-medium">
+            Receiving
           </span>
         </div>
-         <div className='flex items-center gap-4'>
-
-        <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Team Pending</p>
-        <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.team_pending}</p>
+        <div className='flex items-center gap-4'>
+          <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Taking Over</p>
+          <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{myTakingOverRequests.length}</p>
         </div>
       </div>
-    )}
-  </div>
-);
+
+      {/* Team Active Card (for managers) */}
+      {(isManager || isAdmin) && (
+        <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-almet-astral shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 bg-almet-astral/10 dark:bg-almet-astral/20 rounded-lg flex items-center justify-center">
+              <UsersIcon className="w-4 h-4 text-almet-astral" />
+            </div>
+            <span className="px-2 py-0.5 bg-almet-astral/10 dark:bg-almet-astral/20 text-almet-astral rounded text-xs font-medium">
+              Team
+            </span>
+          </div>
+          <div className='flex items-center gap-4'>
+            <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Team Active</p>
+            <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.team_active}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Team Pending Card (for managers) */}
+      {(isManager || isAdmin) && (
+        <div className="bg-white dark:bg-gray-900 rounded-lg p-4 border-l-4 border-orange-500 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="w-8 h-8 bg-orange-50 dark:bg-orange-900/20 rounded-lg flex items-center justify-center">
+              <Shield className="w-4 h-4 text-orange-600 dark:text-orange-500" />
+            </div>
+            <span className="px-2 py-0.5 bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 rounded text-xs font-medium">
+              Awaiting
+            </span>
+          </div>
+          <div className='flex items-center gap-4'>
+            <p className="text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">Team Pending</p>
+            <p className="text-base font-bold text-almet-cloud-burst dark:text-white">{statistics.team_pending}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   // Render Tabs
   const Tabs = () => {
     const tabs = [
       { id: 'submission', label: 'New Handover', icon: FileText },
-      { id: 'my-requests', label: 'My Handovers', icon: ClipboardCheck },
+      { 
+        id: 'my-requests', 
+        label: 'My Handovers', 
+        icon: ClipboardCheck,
+        badge: myHandingOverRequests.length + myTakingOverRequests.length > 0 
+          ? myHandingOverRequests.length + myTakingOverRequests.length 
+          : null
+      },
       { id: 'approval', label: 'Approval Center', icon: CheckCircle },
     ];
 
@@ -418,6 +447,59 @@ const StatisticsCards = () => (
     );
   };
 
+  // ⭐ NEW - Sub-tabs for My Handovers (Handing Over / Taking Over)
+  const MyHandoverSubTabs = () => (
+    <div className="flex gap-2 mb-4">
+      <button
+        onClick={() => {
+          setMyHandoverSubTab('handing-over');
+          setCurrentPage(1);
+        }}
+        className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
+          myHandoverSubTab === 'handing-over'
+            ? 'bg-almet-steel-blue text-white shadow-sm'
+            : 'bg-almet-mystic dark:bg-gray-800 text-almet-waterloo dark:text-gray-400 hover:bg-almet-bali-hai/20 dark:hover:bg-gray-700'
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <UserCheck className="w-4 h-4" />
+          <span>Handing Over</span>
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+            myHandoverSubTab === 'handing-over'
+              ? 'bg-white/20'
+              : 'bg-almet-steel-blue/20 text-almet-steel-blue'
+          }`}>
+            {myHandingOverRequests.length}
+          </span>
+        </div>
+      </button>
+
+      <button
+        onClick={() => {
+          setMyHandoverSubTab('taking-over');
+          setCurrentPage(1);
+        }}
+        className={`flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition-all ${
+          myHandoverSubTab === 'taking-over'
+            ? 'bg-teal-600 text-white shadow-sm'
+            : 'bg-almet-mystic dark:bg-gray-800 text-almet-waterloo dark:text-gray-400 hover:bg-almet-bali-hai/20 dark:hover:bg-gray-700'
+        }`}
+      >
+        <div className="flex items-center justify-center gap-2">
+          <UserX className="w-4 h-4" />
+          <span>Taking Over</span>
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-bold ${
+            myHandoverSubTab === 'taking-over'
+              ? 'bg-white/20'
+              : 'bg-teal-100 dark:bg-teal-900/20 text-teal-700 dark:text-teal-400'
+          }`}>
+            {myTakingOverRequests.length}
+          </span>
+        </div>
+      </button>
+    </div>
+  );
+
   // Render Handover Table
   const HandoverTable = ({ handovers }) => {
     const filteredHandovers = filterHandovers(handovers);
@@ -447,7 +529,6 @@ const StatisticsCards = () => (
           <table className="w-full">
             <thead>
               <tr className="border-b border-almet-mystic dark:border-gray-700 bg-almet-mystic/50 dark:bg-gray-800/50">
-              
                 <th className="px-4 py-3 text-left text-xs font-semibold text-almet-cloud-burst dark:text-gray-300 uppercase tracking-wide">
                   Type
                 </th>
@@ -471,7 +552,6 @@ const StatisticsCards = () => (
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-almet-mystic dark:divide-gray-800">
               {paginatedHandovers.map((handover) => (
                 <tr key={handover.id} className="hover:bg-almet-mystic/30 dark:hover:bg-gray-800/50 transition-colors">
-                
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-almet-waterloo dark:text-gray-400">
                     {handover.handover_type_name}
                   </td>
@@ -492,8 +572,8 @@ const StatisticsCards = () => (
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="flex-shrink-0 h-7 w-7 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                        <UserX className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                      <div className="flex-shrink-0 h-7 w-7 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center">
+                        <UserX className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                       </div>
                       <div className="ml-2.5">
                         <p className="text-sm font-medium text-almet-cloud-burst dark:text-gray-100">
@@ -538,7 +618,7 @@ const StatisticsCards = () => (
             onPageChange={setCurrentPage}
           />
         )}
-      </div>
+        </div>
     );
   };
 
@@ -618,33 +698,42 @@ const StatisticsCards = () => (
                 <h3 className="text-base font-medium text-almet-cloud-burst dark:text-white mb-3">
                   Recent Handovers
                 </h3>
-                {myHandovers.slice(0, 5).length > 0 ? (
+                {[...myHandingOverRequests, ...myTakingOverRequests]
+                  .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                  .slice(0, 5).length > 0 ? (
                   <div className="space-y-2.5">
-                    {myHandovers.slice(0, 5).map((handover) => (
-                      <div
-                        key={handover.id}
-                        className="flex items-center justify-between p-3.5 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg hover:bg-almet-mystic/50 dark:hover:bg-gray-800 transition-colors cursor-pointer border border-transparent hover:border-almet-bali-hai dark:hover:border-gray-700"
-                        onClick={() => handleViewDetails(handover.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-white dark:bg-gray-900 rounded-lg flex items-center justify-center shadow-sm">
-                            <FileText className="w-5 h-5 text-almet-sapphire" />
+                    {[...myHandingOverRequests, ...myTakingOverRequests]
+                      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                      .slice(0, 5)
+                      .map((handover) => (
+                        <div
+                          key={handover.id}
+                          className="flex items-center justify-between p-3.5 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg hover:bg-almet-mystic/50 dark:hover:bg-gray-800 transition-colors cursor-pointer border border-transparent hover:border-almet-bali-hai dark:hover:border-gray-700"
+                          onClick={() => handleViewDetails(handover.id)}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-white dark:bg-gray-900 rounded-lg flex items-center justify-center shadow-sm">
+                              {handover.handing_over_employee === user?.employee?.id ? (
+                                <UserCheck className="w-5 h-5 text-almet-steel-blue" />
+                              ) : (
+                                <UserX className="w-5 h-5 text-teal-600" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm text-almet-cloud-burst dark:text-white">
+                                {handover.request_id}
+                              </p>
+                              <p className="text-xs text-almet-waterloo dark:text-gray-400">
+                                {handover.handing_over_employee_name} → {handover.taking_over_employee_name}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-sm text-almet-cloud-burst dark:text-white">
-                              {handover.request_id}
-                            </p>
-                            <p className="text-xs text-almet-waterloo dark:text-gray-400">
-                              {handover.handing_over_employee_name} → {handover.taking_over_employee_name}
-                            </p>
+                          <div className="flex items-center gap-2.5">
+                            {getStatusBadge(handover.status)}
+                            <ArrowRight className="w-4 h-4 text-almet-bali-hai" />
                           </div>
                         </div>
-                        <div className="flex items-center gap-2.5">
-                          {getStatusBadge(handover.status)}
-                          <ArrowRight className="w-4 h-4 text-almet-bali-hai" />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 ) : (
                   <div className="text-center py-8 text-almet-waterloo dark:text-gray-400">
@@ -656,7 +745,7 @@ const StatisticsCards = () => (
             </div>
           )}
 
-          {/* My Requests Tab */}
+          {/* ⭐ NEW - My Requests Tab with Sub-tabs */}
           {activeTab === 'my-requests' && (
             <div className="p-5">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 mb-5">
@@ -752,7 +841,45 @@ const StatisticsCards = () => (
                 </div>
               )}
 
-              <HandoverTable handovers={myHandovers} />
+              {/* ⭐ NEW - Sub-tabs for Handing Over / Taking Over */}
+              <MyHandoverSubTabs />
+
+              {/* ⭐ NEW - Show appropriate table based on sub-tab */}
+              {myHandoverSubTab === 'handing-over' && (
+                <>
+                  {myHandingOverRequests.length === 0 ? (
+                    <div className="text-center py-12 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg">
+                      <UserCheck className="w-14 h-14 text-almet-steel-blue mx-auto mb-3 opacity-50" />
+                      <p className="text-almet-waterloo dark:text-gray-400 font-medium mb-1">
+                        No Handing Over Requests
+                      </p>
+                      <p className="text-xs text-almet-waterloo dark:text-gray-500">
+                        You are not handing over any responsibilities currently
+                      </p>
+                    </div>
+                  ) : (
+                    <HandoverTable handovers={myHandingOverRequests} />
+                  )}
+                </>
+              )}
+
+              {myHandoverSubTab === 'taking-over' && (
+                <>
+                  {myTakingOverRequests.length === 0 ? (
+                    <div className="text-center py-12 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg">
+                      <UserX className="w-14 h-14 text-teal-600 dark:text-teal-500 mx-auto mb-3 opacity-50" />
+                      <p className="text-almet-waterloo dark:text-gray-400 font-medium mb-1">
+                        No Taking Over Requests
+                      </p>
+                      <p className="text-xs text-almet-waterloo dark:text-gray-500">
+                        You are not taking over any responsibilities currently
+                      </p>
+                    </div>
+                  ) : (
+                    <HandoverTable handovers={myTakingOverRequests} />
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -765,11 +892,23 @@ const StatisticsCards = () => (
                 </h2>
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-400 rounded-lg border border-purple-200 dark:border-purple-800">
                   <UsersIcon className="w-4 h-4" />
-                  <span className="font-medium text-sm">{teamHandovers.length} Team Members</span>
+                  <span className="font-medium text-sm">{teamHandovers.length} Team Handovers</span>
                 </div>
               </div>
 
-              <HandoverTable handovers={teamHandovers} />
+              {teamHandovers.length === 0 ? (
+                <div className="text-center py-12 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg">
+                  <UsersIcon className="w-14 h-14 text-almet-bali-hai dark:text-gray-600 mx-auto mb-3 opacity-50" />
+                  <p className="text-almet-waterloo dark:text-gray-400 font-medium mb-1">
+                    No Team Handovers
+                  </p>
+                  <p className="text-xs text-almet-waterloo dark:text-gray-500">
+                    Your team members have no active handovers
+                  </p>
+                </div>
+              ) : (
+                <HandoverTable handovers={teamHandovers} />
+              )}
             </div>
           )}
 
@@ -786,7 +925,19 @@ const StatisticsCards = () => (
                 </div>
               </div>
 
-              <HandoverTable handovers={pendingApprovals} />
+              {pendingApprovals.length === 0 ? (
+                <div className="text-center py-12 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg">
+                  <CheckCircle className="w-14 h-14 text-teal-600 dark:text-teal-500 mx-auto mb-3 opacity-50" />
+                  <p className="text-almet-waterloo dark:text-gray-400 font-medium mb-1">
+                    No Pending Approvals
+                  </p>
+                  <p className="text-xs text-almet-waterloo dark:text-gray-500">
+                    All handovers requiring your action have been processed
+                  </p>
+                </div>
+              ) : (
+                <HandoverTable handovers={pendingApprovals} />
+              )}
             </div>
           )}
 
@@ -803,7 +954,19 @@ const StatisticsCards = () => (
                 </div>
               </div>
 
-              <HandoverTable handovers={allHandovers} />
+              {allHandovers.length === 0 ? (
+                <div className="text-center py-12 bg-almet-mystic/30 dark:bg-gray-800/50 rounded-lg">
+                  <Shield className="w-14 h-14 text-almet-bali-hai dark:text-gray-600 mx-auto mb-3 opacity-50" />
+                  <p className="text-almet-waterloo dark:text-gray-400 font-medium mb-1">
+                    No Handovers in System
+                  </p>
+                  <p className="text-xs text-almet-waterloo dark:text-gray-500">
+                    No handover requests have been created yet
+                  </p>
+                </div>
+              ) : (
+                <HandoverTable handovers={allHandovers} />
+              )}
             </div>
           )}
         </div>
@@ -827,7 +990,6 @@ const StatisticsCards = () => (
         <CreateHandoverModal
           onClose={() => setShowCreateModal(false)}
           onSuccess={handleCreateSuccess}
-
           user={user}
         />
       )}

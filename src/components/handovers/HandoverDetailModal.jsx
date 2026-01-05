@@ -67,7 +67,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       const updated = await handoverService.getHandoverDetail(handover.id);
       setHandover(updated);
       onUpdate();
-      showSuccess('Data refreshed');
+
     } catch (error) {
       showError('Error refreshing data');
     } finally {
@@ -95,7 +95,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       },
       'APPROVED_BY_LINE_MANAGER': { 
         label: 'Approved', 
-        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        class: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'REJECTED': { 
@@ -115,7 +115,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
       },
       'TAKEN_OVER': { 
         label: 'Taken Over', 
-        class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        class: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
         icon: <CheckCircle className="w-3 h-3" />
       },
       'TAKEN_BACK': { 
@@ -144,7 +144,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
     const config = {
       'NOT_STARTED': { label: 'Not Started', class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
       'IN_PROGRESS': { label: 'In Progress', class: 'bg-almet-steel-blue/10 text-almet-steel-blue dark:bg-almet-steel-blue/20' },
-      'COMPLETED': { label: 'Completed', class: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+      'COMPLETED': { label: 'Completed', class: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' },
       'CANCELED': { label: 'Canceled', class: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
       'POSTPONED': { label: 'Postponed', class: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
     };
@@ -365,7 +365,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
               key: 'approve',
               label: 'Approve',
               icon: CheckCircle,
-              className: 'bg-green-600 hover:bg-green-700',
+              className: 'bg-teal-600 hover:bg-teal-700',
               badge: 'Admin'
             },
             {
@@ -401,7 +401,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
           key: 'takeover',
           label: 'Take Over',
           icon: CheckCircle,
-          className: 'bg-green-600 hover:bg-green-700',
+          className: 'bg-teal-600 hover:bg-teal-700',
           badge: 'Admin'
         });
       }
@@ -444,7 +444,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
           key: 'approve',
           label: 'Approve',
           icon: CheckCircle,
-          className: 'bg-green-600 hover:bg-green-700'
+          className: 'bg-teal-600 hover:bg-teal-700'
         },
         {
           key: 'reject',
@@ -475,7 +475,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
         key: 'takeover',
         label: 'Take Over',
         icon: CheckCircle,
-        className: 'bg-green-600 hover:bg-green-700'
+        className: 'bg-teal-600 hover:bg-teal-700'
       });
     }
 
@@ -642,8 +642,8 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                         Taking Over
                       </label>
                       <div className="flex items-center gap-2.5">
-                        <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center">
-                          <Users className="w-5 h-5 text-green-600 dark:text-green-400" />
+                        <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/20 rounded-full flex items-center justify-center">
+                          <Users className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                         </div>
                         <div>
                           <p className="font-semibold text-sm text-almet-cloud-burst dark:text-white">
@@ -693,7 +693,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                     <div className={`p-4 rounded-lg border-2 transition-all ${
                       handover.ho_signed 
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
+                        ? 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-900/20 shadow-sm' 
                         : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
                     }`}>
                       <div className="flex items-center justify-between mb-2.5">
@@ -701,13 +701,13 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                           {handover.handing_over_employee_name}
                         </p>
                         {handover.ho_signed ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          <CheckCircle className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                         ) : (
                           <Clock className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                         )}
                       </div>
                       <div className={`flex items-center gap-1.5 text-xs font-medium ${
-                        handover.ho_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
+                        handover.ho_signed ? 'text-teal-600 dark:text-teal-400' : 'text-almet-waterloo dark:text-gray-400'
                       }`}>
                         {handover.ho_signed ? (
                           <>
@@ -725,7 +725,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                     <div className={`p-4 rounded-lg border-2 transition-all ${
                       handover.to_signed 
-                        ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 shadow-sm' 
+                        ? 'border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-900/20 shadow-sm' 
                         : 'border-almet-bali-hai dark:border-gray-700 bg-white dark:bg-gray-900'
                     }`}>
                       <div className="flex items-center justify-between mb-2.5">
@@ -733,13 +733,13 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                           {handover.taking_over_employee_name}
                         </p>
                         {handover.to_signed ? (
-                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                          <CheckCircle className="w-5 h-5 text-teal-600 dark:text-teal-400" />
                         ) : (
                           <Clock className="w-5 h-5 text-almet-waterloo dark:text-gray-400" />
                         )}
                       </div>
                       <div className={`flex items-center gap-1.5 text-xs font-medium ${
-                        handover.to_signed ? 'text-green-600 dark:text-green-400' : 'text-almet-waterloo dark:text-gray-400'
+                        handover.to_signed ? 'text-teal-600 dark:text-teal-400' : 'text-almet-waterloo dark:text-gray-400'
                       }`}>
                         {handover.to_signed ? (
                           <>
@@ -759,19 +759,19 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
 
                 {/* LM Approval Status */}
                 {handover.lm_approved && (
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10 rounded-lg p-4 border border-green-200 dark:border-green-800">
+                  <div className="bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/10 dark:to-emerald-900/10 rounded-lg p-4 border border-teal-200 dark:border-teal-800">
                     <div className="flex items-start gap-2.5">
-                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                      <CheckCircle className="w-5 h-5 text-teal-600 dark:text-teal-400 flex-shrink-0 mt-0.5" />
                       <div className="flex-1">
-                        <h4 className="font-semibold text-sm text-green-900 dark:text-green-300 mb-1.5">
+                        <h4 className="font-semibold text-sm text-teal-900 dark:text-teal-300 mb-1.5">
                           Approved by Line Manager
                         </h4>
-                        <p className="text-green-700 dark:text-green-400 text-xs mb-2">
+                        <p className="text-teal-700 dark:text-teal-400 text-xs mb-2">
                           Approved on: {new Date(handover.lm_approved_date).toLocaleString()}
                         </p>
                         {handover.lm_comment && (
                           <div className="bg-white/50 dark:bg-gray-900/50 rounded-lg p-2.5 mt-2">
-                            <p className="text-green-800 dark:text-green-300 text-xs">
+                            <p className="text-teal-800 dark:text-teal-300 text-xs">
                               "{handover.lm_comment}"
                             </p>
                           </div>
@@ -1035,7 +1035,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                                           <textarea
                                             value={taskComment}
                                             onChange={(e) => setTaskComment(e.target.value)}
-                                            className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                                             rows="2"
                                             placeholder="Add a comment..."
                                           />
@@ -1264,7 +1264,7 @@ const HandoverDetailModal = ({ handover: initialHandover, onClose, onUpdate, cur
                   <textarea
                     value={actionComment}
                     onChange={(e) => setActionComment(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white"
+                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white"
                     rows="4"
                     placeholder={
                       actionType === 'reject' ? 'Enter rejection reason...' :

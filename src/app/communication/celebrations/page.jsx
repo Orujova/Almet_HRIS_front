@@ -123,10 +123,11 @@ export default function CelebrationsPage() {
     setImagePreview(prev => prev.filter((_, i) => i !== index));
   };
 
-  const removeExistingImage = (imageUrl) => {
-    setExistingImages(prev => prev.filter(img => img !== imageUrl));
-    setImagesToRemove(prev => [...prev, imageUrl]);
-  };
+  const removeExistingImage = (imageData) => {
+  // ✅ imageData artıq {id, image, image_url} formatındadır
+  setExistingImages(prev => prev.filter(img => img.id !== imageData.id));
+  setImagesToRemove(prev => [...prev, imageData.id]); // Sadəcə ID saxla
+};
 
   const openCreateModal = () => {
     setIsEditMode(false);
@@ -135,23 +136,24 @@ export default function CelebrationsPage() {
   };
 
   const openEditModal = (celebration) => {
-    setIsEditMode(true);
-    setSelectedCelebration(celebration);
-    
-    setFormData({
-      type: celebration.type,
-      title: celebration.title,
-      date: celebration.date,
-      message: celebration.message
-    });
-    
-    setExistingImages(celebration.images || []);
-    setImageFiles([]);
-    setImagePreview([]);
-    setImagesToRemove([]);
-    
-    setShowFormModal(true);
-  };
+  setIsEditMode(true);
+  setSelectedCelebration(celebration);
+  
+  setFormData({
+    type: celebration.type,
+    title: celebration.title,
+    date: celebration.date,
+    message: celebration.message
+  });
+  
+  // ✅ Artıq images array of objects: [{id, image_url}, ...]
+  setExistingImages(celebration.images || []);
+  setImageFiles([]);
+  setImagePreview([]);
+  setImagesToRemove([]);
+  
+  setShowFormModal(true);
+};
 
   const handleSubmit = async () => {
     try {
@@ -195,29 +197,29 @@ export default function CelebrationsPage() {
   };
 
   const handleUpdateCelebration = async () => {
-    if (!selectedCelebration) return;
+  if (!selectedCelebration) return;
 
-    // Remove images that user deleted
-    for (const imageUrl of imagesToRemove) {
-      try {
-        const imageId = imageUrl.split('/').pop().split('.')[0];
-        await celebrationService.removeImage(selectedCelebration.id, imageId);
-      } catch (error) {
-        console.error('Error removing image:', error);
-      }
+  // ✅ Remove images - artıq imagesToRemove array of IDs
+  for (const imageId of imagesToRemove) {
+    try {
+      await celebrationService.removeImage(selectedCelebration.id, imageId);
+    } catch (error) {
+      console.error('Error removing image:', error);
+      // Continue even if one image fails
     }
+  }
 
-    // Update celebration data
-    const updateData = {
-      type: formData.type,
-      title: formData.title,
-      date: formData.date,
-      message: formData.message,
-      images: imageFiles
-    };
-
-    await celebrationService.updateCelebration(selectedCelebration.id, updateData);
+  // Update celebration data
+  const updateData = {
+    type: formData.type,
+    title: formData.title,
+    date: formData.date,
+    message: formData.message,
+    images: imageFiles
   };
+
+  await celebrationService.updateCelebration(selectedCelebration.id, updateData);
+};
 
   const resetForm = () => {
     setFormData({
@@ -550,7 +552,15 @@ export default function CelebrationsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               {paginatedCelebrations.map((item) => {
                 const typeInfo = getTypeInfo(item.type);
-                const TypeIcon = typeInfo.icon;
+  const TypeIcon = typeInfo.icon;
+  
+  // ✅ Auto celebrations üçün images string array-dir
+  // Manual celebrations üçün images object array-dir
+  const firstImage = item.is_auto 
+    ? item.images[0] 
+    : (item.images[0]?.image_url || item.images[0]?.image || item.images[0]);
+  
+
                 return (
                   <div
                     key={item.id}
@@ -568,10 +578,10 @@ export default function CelebrationsPage() {
                       }}
                     >
                       <img
-                        src={item.images[0]}
-                        alt={item.title || item.employee_name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
+          src={firstImage}
+          alt={item.title || item.employee_name}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+        />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
                       {item.images.length > 1 && (
@@ -808,31 +818,32 @@ export default function CelebrationsPage() {
                   </label>
                   
                   {/* Existing Images (Edit Mode) */}
-                  {isEditMode && existingImages.length > 0 && (
-                    <div className="mb-4">
-                      <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Current Images
-                      </p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {existingImages.map((imageUrl, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={imageUrl}
-                              alt={`Existing ${index + 1}`}
-                              className="w-full h-28 object-cover rounded-xl"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeExistingImage(imageUrl)}
-                              className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {/* Existing Images (Edit Mode) */}
+{isEditMode && existingImages.length > 0 && (
+  <div className="mb-4">
+    <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+      Current Images
+    </p>
+    <div className="grid grid-cols-3 gap-3">
+      {existingImages.map((imageData) => (
+        <div key={imageData.id} className="relative group">
+          <img
+            src={imageData.image_url || imageData.image}
+            alt={`Image ${imageData.id}`}
+            className="w-full h-28 object-cover rounded-xl"
+          />
+          <button
+            type="button"
+            onClick={() => removeExistingImage(imageData)}
+            className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
 
                   {/* Upload New Images */}
                   <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
@@ -937,11 +948,17 @@ export default function CelebrationsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative h-80">
-                <img
-                  src={selectedCelebration.images[currentImageIndex]}
-                  alt={selectedCelebration.title || selectedCelebration.employee_name}
-                  className="w-full h-full object-cover"
-                />
+                 <img
+        src={
+          selectedCelebration.is_auto 
+            ? selectedCelebration.images[currentImageIndex]
+            : (selectedCelebration.images[currentImageIndex]?.image_url || 
+               selectedCelebration.images[currentImageIndex]?.image ||
+               selectedCelebration.images[currentImageIndex])
+        }
+        alt={selectedCelebration.title || selectedCelebration.employee_name}
+        className="w-full h-full object-cover"
+      />
                 
                 {/* Navigation Buttons */}
                 {selectedCelebration.images.length > 1 && (

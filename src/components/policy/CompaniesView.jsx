@@ -8,6 +8,9 @@ import {
   Eye,
   Download,
   AlertCircle,
+  Plus,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
@@ -18,6 +21,10 @@ export default function CompaniesView({
   error,
   darkMode,
   onSelectCompany,
+  onReload,
+  onAddCompany,
+  onEditCompany,
+  onDeleteCompany,
 }) {
   const [search, setSearch] = useState("");
 
@@ -37,18 +44,29 @@ export default function CompaniesView({
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`p-2.5 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst`}>
-            <Building2 className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst`}>
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Company Policies
+              </h1>
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                Manage company policies across all Companies
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Company Policies
-            </h1>
-            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Manage company policies across all Companies
-            </p>
-          </div>
+
+          {/* Add Company Button */}
+          <button
+            onClick={onAddCompany}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            Add Company
+          </button>
         </div>
 
         {/* Statistics Cards */}
@@ -151,8 +169,7 @@ export default function CompaniesView({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredCompanies.map((company) => (
           <div
-            key={company.id}
-            onClick={() => onSelectCompany(company)}
+            key={`${company.type}-${company.id}`}
             className={`group relative rounded-lg border p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 ${
               darkMode
                 ? "bg-gray-800/50 border-gray-700 hover:border-almet-sapphire/50 hover:bg-gray-800"
@@ -170,26 +187,71 @@ export default function CompaniesView({
                 <div className="p-2.5 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
-                <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${
-                  darkMode ? "text-gray-600" : "text-gray-400"
-                }`} />
+                <div className="flex items-center gap-1">
+                  {/* Manual company-lər üçün edit/delete buttonları */}
+                  {company.type === 'policy_company' && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditCompany(company);
+                        }}
+                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                          darkMode ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"
+                        }`}
+                        title="Edit Company"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteCompany(company);
+                        }}
+                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                          darkMode ? "hover:bg-red-900/30 text-red-400" : "hover:bg-red-100 text-red-500"
+                        }`}
+                        title="Delete Company"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                  <ChevronRight 
+                    onClick={() => onSelectCompany(company)}
+                    className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${
+                      darkMode ? "text-gray-600" : "text-gray-400"
+                    }`} 
+                  />
+                </div>
               </div>
 
-              <h3 className={`text-base font-semibold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}>
-                {company.name}
-              </h3>
-              <p className={`text-sm mb-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
-                {company.code}
-              </p>
-
-              <div className="flex items-center gap-4 text-xs">
-                <div className={`flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  <span>{company.folder_count || 0} folders</span>
+              <div onClick={() => onSelectCompany(company)}>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className={`text-base font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    {company.name}
+                  </h3>
+                  {company.type === 'policy_company' && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      Manual
+                    </span>
+                  )}
                 </div>
-                <div className={`flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>{company.total_policy_count || 0} policies</span>
+                <p className={`text-sm mb-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                  {company.code}
+                </p>
+
+                <div className="flex items-center gap-4 text-xs">
+                  <div className={`flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    <span>{company.folder_count || 0} folders</span>
+                  </div>
+                  <div className={`flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>{company.total_policy_count || 0} policies</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -200,7 +262,7 @@ export default function CompaniesView({
       {filteredCompanies.length === 0 && (
         <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
           <Building2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">No business functions found</p>
+          <p className="text-sm">No companies found</p>
         </div>
       )}
     </div>

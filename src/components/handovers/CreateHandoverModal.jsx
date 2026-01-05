@@ -328,7 +328,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
               <div className="flex flex-col items-center flex-1">
                 <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                   isCompleted 
-                    ? 'bg-green-500 text-white' 
+                    ? 'bg-teal-500 text-white' 
                     : isActive 
                     ? 'bg-almet-sapphire text-white' 
                     : 'bg-almet-mystic text-almet-waterloo'
@@ -348,7 +348,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
               
               {index < steps.length - 1 && (
                 <div className={`flex-1 h-0.5 mx-2 -mt-5 transition-all ${
-                  activeStep > step.id ? 'bg-green-500' : 'bg-almet-mystic'
+                  activeStep > step.id ? 'bg-teal-500' : 'bg-almet-mystic'
                 }`} />
               )}
             </React.Fragment>
@@ -595,7 +595,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                           <textarea
                             value={task.description}
                             onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
-                            className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             rows="2"
                             placeholder="Enter task description..."
                             required
@@ -911,7 +911,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       step.id === activeStep 
                         ? 'w-6 bg-almet-sapphire' 
                         : step.id < activeStep 
-                        ? 'w-1.5 bg-green-500' 
+                        ? 'w-1.5 bg-teal-500' 
                         : 'w-1.5 bg-almet-mystic dark:bg-gray-700'
                     }`}
                   />
@@ -936,7 +936,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px] justify-center"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px] justify-center"
               >
                 {loading ? (
                   <>

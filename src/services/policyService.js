@@ -496,6 +496,109 @@ export const getAcknowledgmentStatus = async () => {
   }
 };
 
+
+/**
+ * Get all policy companies
+ * @param {Object} params - Query parameters
+ * @returns {Promise}
+ */
+export const getAllPolicyCompanies = async (params = {}) => {
+  try {
+    const response = await api.get('/policies/policy-companies/', { params });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Get policy company detail
+ * @param {number} id - Company ID
+ * @returns {Promise}
+ */
+export const getPolicyCompanyDetail = async (id) => {
+  try {
+    const response = await api.get(`/policies/policy-companies/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Create new policy company
+ * @param {Object} companyData - Company data
+ * @returns {Promise}
+ */
+export const createPolicyCompany = async (companyData) => {
+  try {
+    const response = await api.post('/policies/policy-companies/', companyData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Update policy company
+ * @param {number} id - Company ID
+ * @param {Object} companyData - Updated company data
+ * @returns {Promise}
+ */
+export const updatePolicyCompany = async (id, companyData) => {
+  try {
+    const response = await api.patch(`/policies/policy-companies/${id}/`, companyData);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Delete policy company
+ * @param {number} id - Company ID
+ * @returns {Promise}
+ */
+export const deletePolicyCompany = async (id) => {
+  try {
+    const response = await api.delete(`/policies/policy-companies/${id}/`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+// ==================== ALL COMPANIES (Combined BF + Manual) ====================
+
+/**
+ * Get all companies (Business Functions + Manual Companies)
+ * @returns {Promise}
+ */
+export const getAllCompanies = async () => {
+  try {
+    const response = await api.get('/policies/all-companies/');
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
+
+/**
+ * Get folders by company (supports both types)
+ * @param {string} companyType - 'business_function' or 'policy_company'
+ * @param {number} companyId - Company ID
+ * @returns {Promise}
+ */
+export const getFoldersByCompany = async (companyType, companyId) => {
+  try {
+    const response = await api.get(
+      `/policies/policy-folders/by-company/${companyType}/${companyId}/`
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error.message;
+  }
+};
 // ==================== UTILITY FUNCTIONS ====================
 
 /**
@@ -600,7 +703,15 @@ export default {
   
   // Utilities
   downloadPolicyFile,
-
+getAllPolicyCompanies,
+  getPolicyCompanyDetail,
+  createPolicyCompany,
+  updatePolicyCompany,
+  deletePolicyCompany,
+  
+  // Combined Companies
+  getAllCompanies,
+  getFoldersByCompany,
   formatFileSize,
   validatePDFFile,
 };

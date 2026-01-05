@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/common/Toast";
 import {
-  getFoldersByBusinessFunction,
+  getFoldersByCompany,
   createFolder,
   updateFolder,
   deleteFolder,
@@ -28,32 +28,29 @@ export default function FoldersView({
 }) {
   const { showSuccess, showError, showWarning } = useToast();
   
-  // Data state
   const [folders, setFolders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
-  // Modal states
   const [showCreateFolder, setShowCreateFolder] = useState(false);
   const [showEditFolder, setShowEditFolder] = useState(false);
   const [editingFolder, setEditingFolder] = useState(null);
   
-  // Form state
   const [folderForm, setFolderForm] = useState({
     name: "",
     description: "",
     icon: "📁"
   });
 
-  // Load folders when component mounts or company changes
   useEffect(() => {
-    loadFolders(selectedCompany.id);
-  }, [selectedCompany.id]);
+    loadFolders();
+  }, [selectedCompany]);
 
-  const loadFolders = async (bfId) => {
+  const loadFolders = async () => {
     setLoading(true);
     try {
-      const data = await getFoldersByBusinessFunction(bfId);
+      // Use new unified API that supports both company types
+      const data = await getFoldersByCompany(selectedCompany.type, selectedCompany.id);
       setFolders(Array.isArray(data) ? data : []);
     } catch (err) {
       showError("Failed to load folders");
@@ -73,15 +70,23 @@ export default function FoldersView({
     setSubmitting(true);
     try {
       const folderData = {
-        business_function: selectedCompany.id,
         name: folderForm.name,
         description: folderForm.description,
         icon: folderForm.icon,
         is_active: true,
       };
 
+      // Set the correct parent field based on company type
+      if (selectedCompany.type === 'business_function') {
+        folderData.business_function = selectedCompany.id;
+        folderData.policy_company = null;
+      } else {
+        folderData.policy_company = selectedCompany.id;
+        folderData.business_function = null;
+      }
+
       await createFolder(folderData);
-      await loadFolders(selectedCompany.id);
+      await loadFolders();
 
       setFolderForm({ name: "", description: "", icon: "📁" });
       setShowCreateFolder(false);
@@ -102,15 +107,23 @@ export default function FoldersView({
     setSubmitting(true);
     try {
       const folderData = {
-        business_function: selectedCompany.id,
         name: folderForm.name,
         description: folderForm.description,
         icon: folderForm.icon,
         is_active: true,
       };
 
+      // Preserve the parent field
+      if (selectedCompany.type === 'business_function') {
+        folderData.business_function = selectedCompany.id;
+        folderData.policy_company = null;
+      } else {
+        folderData.policy_company = selectedCompany.id;
+        folderData.business_function = null;
+      }
+
       await updateFolder(editingFolder.id, folderData);
-      await loadFolders(selectedCompany.id);
+      await loadFolders();
 
       resetFolderModal();
       showSuccess("Folder updated successfully!");
@@ -135,7 +148,7 @@ export default function FoldersView({
       onConfirm: async () => {
         try {
           await deleteFolder(folderId);
-          await loadFolders(selectedCompany.id);
+          await loadFolders();
           showSuccess("Folder deleted successfully!");
         } catch (err) {
           showError(err.message || "Failed to delete folder");
@@ -167,7 +180,6 @@ export default function FoldersView({
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        {/* Back Button */}
         <button
           onClick={onBack}
           className={`flex items-center gap-2 mb-4 px-3 py-1.5 text-sm rounded-lg transition-all ${
@@ -178,16 +190,24 @@ export default function FoldersView({
           Back to companies
         </button>
 
-        {/* Title and New Folder Button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-cloud-burst">
               <FolderOpen className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {selectedCompany.name} - Policy Folders
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className={`text-xl font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {selectedCompany.name} - Policy Folders
+                </h1>
+                {selectedCompany.type === 'policy_company' && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    darkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    Manual
+                  </span>
+                )}
+              </div>
               <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 {folders.length} folders available
               </p>
@@ -204,14 +224,12 @@ export default function FoldersView({
         </div>
       </div>
 
-      {/* Loading State */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className={`w-8 h-8 animate-spin ${darkMode ? 'text-almet-astral' : 'text-almet-sapphire'}`} />
         </div>
       ) : (
         <>
-          {/* Folders Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {folders.map((folder) => (
               <div
@@ -223,7 +241,6 @@ export default function FoldersView({
                     : "bg-white border-gray-200 hover:border-almet-sapphire/30 hover:shadow-lg"
                 }`}
               >
-                {/* Hover gradient effect */}
                 <div className={`absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
                   darkMode 
                     ? 'bg-gradient-to-br from-almet-sapphire/5 to-transparent' 
@@ -231,11 +248,9 @@ export default function FoldersView({
                 }`}></div>
 
                 <div className="relative">
-                  {/* Icon and Action Buttons */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="text-3xl">{folder.icon || "📁"}</div>
                     <div className="flex items-center gap-1">
-                      {/* Edit Button */}
                       <button
                         onClick={(e) => startEditFolder(folder, e)}
                         className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
@@ -245,7 +260,6 @@ export default function FoldersView({
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
-                      {/* Delete Button */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -258,14 +272,12 @@ export default function FoldersView({
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      {/* Chevron */}
                       <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${
                         darkMode ? "text-gray-600" : "text-gray-400"
                       }`} />
                     </div>
                   </div>
 
-                  {/* Folder Info */}
                   <h3 className={`text-base font-semibold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}>
                     {folder.name}
                   </h3>
@@ -273,7 +285,6 @@ export default function FoldersView({
                     {folder.description || "No description"}
                   </p>
 
-                  {/* Policy Count */}
                   <div className="flex items-center gap-4 text-xs">
                     <div className={`flex items-center gap-1 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
                       <FileText className="w-3.5 h-3.5" />
@@ -285,11 +296,10 @@ export default function FoldersView({
             ))}
           </div>
 
-          {/* Empty State */}
           {folders.length === 0 && !loading && (
             <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
               <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p className="text-sm mb-2">No folders in this business function</p>
+              <p className="text-sm mb-2">No folders in this company</p>
               <button
                 onClick={() => setShowCreateFolder(true)}
                 className="text-sm text-almet-sapphire hover:text-almet-cloud-burst"
@@ -307,7 +317,6 @@ export default function FoldersView({
           <div className={`w-full max-w-md rounded-lg p-6 ${
             darkMode ? "bg-gray-800 border border-gray-700" : "bg-white"
           }`}>
-            {/* Modal Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
                 {showEditFolder ? "Edit Folder" : "Create New Folder"}
@@ -320,9 +329,7 @@ export default function FoldersView({
               </button>
             </div>
 
-            {/* Modal Form */}
             <div className="space-y-4">
-              {/* Folder Name */}
               <div>
                 <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Folder Name *
@@ -341,7 +348,6 @@ export default function FoldersView({
                 />
               </div>
 
-              {/* Description */}
               <div>
                 <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Description
@@ -359,7 +365,6 @@ export default function FoldersView({
                 />
               </div>
 
-              {/* Icon */}
               <div>
                 <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Icon 
@@ -379,7 +384,6 @@ export default function FoldersView({
               </div>
             </div>
 
-            {/* Modal Actions */}
             <div className="flex gap-2 mt-6">
               <button
                 onClick={resetFolderModal}
