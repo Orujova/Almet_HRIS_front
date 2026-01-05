@@ -7,163 +7,31 @@ import {
   CheckCircle,
   X,
   Loader2,
-  User,
-  Clock,
-  MessageSquare,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { Document, Page, pdfjs } from 'react-pdf';
-import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-import 'react-pdf/dist/esm/Page/TextLayer.css';
+import { useToast } from "@/components/common/Toast";
+import PolicyAcknowledgmentsList from "./PolicyAcknowledgmentsList";
+import {
+  trackPolicyDownload,
+  acknowledgePolicy,
+  getPoliciesByFolder,
+  getPolicyAcknowledgments,
+} from "@/services/policyService";
 
 // PDF.js worker setup
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-// PolicyAcknowledgmentsList Component
-function PolicyAcknowledgmentsList({ policyId, darkMode, getPolicyAcknowledgments }) {
-  const [acknowledgments, setAcknowledgments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    loadAcknowledgments();
-  }, [policyId]);
-
-  const loadAcknowledgments = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getPolicyAcknowledgments(policyId);
-      const results = data?.results || [];
-      setAcknowledgments(Array.isArray(results) ? results : []);
-    } catch (err) {
-      console.error('Error loading acknowledgments:', err);
-      setError(err.message || "Failed to load acknowledgments");
-      setAcknowledgments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className={`w-8 h-8 animate-spin ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className={`p-4 rounded-lg ${
-        darkMode ? 'bg-red-900/20 border border-red-800 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
-      }`}>
-        <p className="text-sm">{error}</p>
-      </div>
-    );
-  }
-
-  if (acknowledgments.length === 0) {
-    return (
-      <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-        <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-        <p className="text-sm">No acknowledgments yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      {acknowledgments.map((ack) => (
-        <div
-          key={ack.id}
-          className={`rounded-lg border p-4 ${
-            darkMode
-              ? "bg-gray-800/50 border-gray-700"
-              : "bg-white border-gray-200"
-          }`}
-        >
-          <div className="flex items-start gap-3">
-            <div className={`p-2 rounded-lg flex-shrink-0 ${
-              darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600'
-            }`}>
-              <User className="w-5 h-5" />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <h4 className={`font-semibold text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
-                    {ack.employee_name || "Unknown User"}
-                  </h4>
-                  <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                    {ack.employee_id || "N/A"} • {ack.employee_email || "No email"}
-                  </p>
-                </div>
-                <div className={`flex items-center gap-1 text-xs ${
-                  darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600'
-                } px-2 py-1 rounded-full`}>
-                  <CheckCircle className="w-3 h-3" />
-                  <span>Acknowledged</span>
-                </div>
-              </div>
-
-              <div className={`flex items-center gap-1 text-xs mb-2 ${
-                darkMode ? "text-gray-500" : "text-gray-500"
-              }`}>
-                <Clock className="w-3 h-3" />
-                <span>{formatDate(ack.acknowledged_at)}</span>
-              </div>
-
-              {ack.notes && (
-                <div className={`mt-3 p-3 rounded-lg ${
-                  darkMode ? 'bg-gray-900/50 border border-gray-700' : 'bg-gray-50 border border-gray-200'
-                }`}>
-                  <div className="flex items-start gap-2">
-                    <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                      darkMode ? 'text-gray-500' : 'text-gray-400'
-                    }`} />
-                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                      {ack.notes}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Main PDFViewer Component
 export default function PDFViewer({
   selectedPolicy,
   selectedFolder,
   selectedCompany,
   darkMode,
   onBack,
-  trackPolicyDownload,
-  acknowledgePolicy,
-  getPoliciesByFolder,
-  getPolicyAcknowledgments,
-  showSuccess,
-  showError,
 }) {
+  const { showSuccess, showError } = useToast();
+  
   // State
   const [activeTab, setActiveTab] = useState("document");
   const [showAcknowledgeModal, setShowAcknowledgeModal] = useState(false);
@@ -180,7 +48,7 @@ export default function PDFViewer({
   const [pdfLoading, setPdfLoading] = useState(true);
   const [pdfError, setPdfError] = useState(null);
 
-  // Refresh policy data when component mounts
+  // Refresh policy data
   useEffect(() => {
     const refreshPolicyData = async () => {
       try {
@@ -197,7 +65,7 @@ export default function PDFViewer({
     refreshPolicyData();
   }, [selectedPolicy.id, selectedFolder.id]);
 
-  // Check if current user has acknowledged this policy
+  // Check if current user has acknowledged
   useEffect(() => {
     const checkUserAcknowledgment = async () => {
       if (!policy.requires_acknowledgment) return;
@@ -231,10 +99,9 @@ export default function PDFViewer({
   // Check if user reached last page
   useEffect(() => {
     if (numPages && pageNumber === numPages && !hasAcknowledged && policy.requires_acknowledgment) {
-      // User reached last page, show prompt after a short delay
       const timer = setTimeout(() => {
         setShowReadCompletePrompt(true);
-      }, 2000); // 2 seconds delay after reaching last page
+      }, 2000);
       
       return () => clearTimeout(timer);
     }
@@ -245,7 +112,7 @@ export default function PDFViewer({
     const url = policy.policy_url || policy.policy_file;
     if (!url) return null;
     
-    // For Google Drive URLs, convert to direct download link
+    // For Google Drive URLs
     if (url.includes('drive.google.com')) {
       const fileId = url.match(/[-\w]{25,}/);
       if (fileId) {
@@ -269,7 +136,7 @@ export default function PDFViewer({
     setPdfLoading(false);
   };
 
-  // Download PDF handler
+  // Download handler
   const handleDownloadPDF = async () => {
     try {
       await trackPolicyDownload(policy.id);
@@ -295,7 +162,7 @@ export default function PDFViewer({
     }
   };
 
-  // Acknowledge policy handler
+  // Acknowledge handler
   const handleAcknowledge = async () => {
     setSubmitting(true);
     try {
@@ -304,6 +171,7 @@ export default function PDFViewer({
       setAcknowledgeNotes("");
       setShowAcknowledgeModal(false);
       setHasAcknowledged(true);
+      setShowReadCompletePrompt(false);
       
       const data = await getPoliciesByFolder(selectedFolder.id);
       const updatedPolicy = data.find(p => p.id === policy.id);
@@ -459,12 +327,17 @@ export default function PDFViewer({
                         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                       </div>
                     }
+                    options={{
+                      cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
+                      cMapPacked: true,
+                    }}
                   >
                     <Page
                       pageNumber={pageNumber}
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                      className={`shadow-lg ${darkMode ? 'bg-white' : ''}`}
+                      renderTextLayer={false}
+                      renderAnnotationLayer={false}
+                      className="shadow-lg"
+                      width={Math.min(window.innerWidth - 100, 800)}
                     />
                   </Document>
                 </div>
@@ -510,8 +383,8 @@ export default function PDFViewer({
 
                 {/* Read Complete Prompt */}
                 {showReadCompletePrompt && !hasAcknowledged && policy.requires_acknowledgment && (
-                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 animate-bounce">
-                    <div className={`rounded-lg shadow-xl p-4 border-2 max-w-md ${
+                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 animate-bounce max-w-md w-full px-4">
+                    <div className={`rounded-lg shadow-2xl p-4 border-2 ${
                       darkMode 
                         ? 'bg-gray-800 border-green-600 text-white' 
                         : 'bg-white border-green-500 text-gray-900'
@@ -597,11 +470,7 @@ export default function PDFViewer({
                   List of employees who have acknowledged this policy
                 </p>
               </div>
-              <PolicyAcknowledgmentsList 
-                policyId={policy.id} 
-                darkMode={darkMode}
-                getPolicyAcknowledgments={getPolicyAcknowledgments}
-              />
+              <PolicyAcknowledgmentsList policyId={policy.id} darkMode={darkMode} />
             </div>
           </div>
         )}
