@@ -172,6 +172,9 @@ export default function PDFViewer({
   const [policy, setPolicy] = useState(selectedPolicy);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [checkingAcknowledgment, setCheckingAcknowledgment] = useState(false);
+  const [pdfScrollProgress, setPdfScrollProgress] = useState(0);
+  const [hasReachedEnd, setHasReachedEnd] = useState(false);
+  const [showReadCompletePrompt, setShowReadCompletePrompt] = useState(false);
 
   // Refresh policy data when component mounts to get updated stats
   useEffect(() => {
@@ -221,6 +224,29 @@ export default function PDFViewer({
 
     checkUserAcknowledgment();
   }, [policy.id, policy.requires_acknowledgment]);
+
+  // Track PDF reading progress
+  useEffect(() => {
+    if (!policy.requires_acknowledgment || hasAcknowledged) return;
+
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+
+    let readingTimer;
+    let readingStartTime = Date.now();
+
+    // Start a timer to track reading time (assume user read the PDF after 30 seconds)
+    readingTimer = setTimeout(() => {
+      if (!hasReachedEnd && !hasAcknowledged) {
+        setHasReachedEnd(true);
+        setShowReadCompletePrompt(true);
+      }
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (readingTimer) clearTimeout(readingTimer);
+    };
+  }, [policy.requires_acknowledgment, hasAcknowledged, hasReachedEnd]);
 
   // Get PDF URL for iframe
   const getPDFUrl = () => {
@@ -420,23 +446,79 @@ export default function PDFViewer({
       <div className={`flex-1 overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
         {activeTab === "document" ? (
           // PDF Document Tab
-          pdfUrl ? (
-            <iframe
-              src={pdfUrl}
-              className="w-full h-full border-0"
-              title={policy.title}
-              style={{ border: 'none' }}
-              loading="lazy"
-            />
-          ) : (
-            // No PDF Available
-            <div className={`flex items-center justify-center h-full ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-              <div className="text-center">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">PDF file not available</p>
+          <div className="relative w-full h-full">
+            {pdfUrl ? (
+              <>
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  title={policy.title}
+                  style={{ border: 'none' }}
+                  loading="lazy"
+                />
+                
+                {/* Read Complete Prompt - Floating notification */}
+                {showReadCompletePrompt && !hasAcknowledged && policy.requires_acknowledgment && (
+                  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 animate-bounce">
+                    <div className={`rounded-lg shadow-xl p-4 border-2 max-w-md ${
+                      darkMode 
+                        ? 'bg-gray-800 border-green-600 text-white' 
+                        : 'bg-white border-green-500 text-gray-900'
+                    }`}>
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 rounded-full bg-green-500 text-white flex-shrink-0">
+                          <CheckCircle className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold mb-1">Ready to Acknowledge?</h4>
+                          <p className={`text-sm mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            You've spent enough time reviewing this policy. Please acknowledge that you've read and understood it.
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setShowReadCompletePrompt(false);
+                                setShowAcknowledgeModal(true);
+                              }}
+                              className="flex-1 px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all"
+                            >
+                              Acknowledge Now
+                            </button>
+                            <button
+                              onClick={() => setShowReadCompletePrompt(false)}
+                              className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
+                                darkMode 
+                                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
+                                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                              }`}
+                            >
+                              Later
+                            </button>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setShowReadCompletePrompt(false)}
+                          className={`p-1 rounded-lg flex-shrink-0 ${
+                            darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                          }`}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              // No PDF Available
+              <div className={`flex items-center justify-center h-full ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <div className="text-center">
+                  <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p className="text-sm">PDF file not available</p>
+                </div>
               </div>
-            </div>
-          )
+            )}
+          </div>
         ) : (
           // Acknowledgments Tab
           <div className="h-full overflow-y-auto p-4 sm:p-6">
