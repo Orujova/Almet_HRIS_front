@@ -20,8 +20,13 @@ import {
   getPolicyAcknowledgments,
 } from "@/services/policyService";
 
-// PDF.js worker setup
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+// ✅ PDF.js worker setup - DÜZGÜN YOLLA
+if (typeof window !== 'undefined') {
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+  ).toString();
+}
 
 export default function PDFViewer({
   selectedPolicy,
@@ -327,17 +332,13 @@ export default function PDFViewer({
                         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
                       </div>
                     }
-                    options={{
-                      cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
-                      cMapPacked: true,
-                    }}
                   >
                     <Page
                       pageNumber={pageNumber}
                       renderTextLayer={false}
                       renderAnnotationLayer={false}
                       className="shadow-lg"
-                      width={Math.min(window.innerWidth - 100, 800)}
+                      width={Math.min(typeof window !== 'undefined' ? window.innerWidth - 100 : 800, 800)}
                     />
                   </Document>
                 </div>
