@@ -7,15 +7,154 @@ import {
   CheckCircle,
   X,
   Loader2,
+  User,
+  Clock,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/components/common/Toast";
-import PolicyAcknowledgmentsList from "./PolicyAcknowledgmentsList";
 import {
   trackPolicyDownload,
   acknowledgePolicy,
   getPoliciesByFolder,
+  getPolicyAcknowledgments,
 } from "@/services/policyService";
 
+// PolicyAcknowledgmentsList Component
+function PolicyAcknowledgmentsList({ policyId, darkMode }) {
+  const [acknowledgments, setAcknowledgments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadAcknowledgments();
+  }, [policyId]);
+
+  const loadAcknowledgments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getPolicyAcknowledgments(policyId);
+      const results = data?.results || [];
+      setAcknowledgments(Array.isArray(results) ? results : []);
+    } catch (err) {
+      console.error('Error loading acknowledgments:', err);
+      setError(err.message || "Failed to load acknowledgments");
+      setAcknowledgments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className={`w-8 h-8 animate-spin ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`p-4 rounded-lg ${
+        darkMode ? 'bg-red-900/20 border border-red-800 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
+      }`}>
+        <p className="text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (acknowledgments.length === 0) {
+    return (
+      <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <p className="text-sm">No acknowledgments yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {acknowledgments.map((ack) => (
+        <div
+          key={ack.id}
+          className={`rounded-lg border p-4 ${
+            darkMode
+              ? "bg-gray-800/50 border-gray-700"
+              : "bg-white border-gray-200"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {/* Avatar/Icon */}
+            <div className={`p-2 rounded-lg flex-shrink-0 ${
+              darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600'
+            }`}>
+              <User className="w-5 h-5" />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              {/* User Info */}
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h4 className={`font-semibold text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    {ack.employee_name || "Unknown User"}
+                  </h4>
+                  <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                    {ack.employee_id || "N/A"} • {ack.employee_email || "No email"}
+                  </p>
+                </div>
+                <div className={`flex items-center gap-1 text-xs ${
+                  darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600'
+                } px-2 py-1 rounded-full`}>
+                  <CheckCircle className="w-3 h-3" />
+                  <span>Acknowledged</span>
+                </div>
+              </div>
+
+              {/* Timestamp */}
+              <div className={`flex items-center gap-1 text-xs mb-2 ${
+                darkMode ? "text-gray-500" : "text-gray-500"
+              }`}>
+                <Clock className="w-3 h-3" />
+                <span>{formatDate(ack.acknowledged_at)}</span>
+              </div>
+
+              {/* Notes */}
+              {ack.notes && (
+                <div className={`mt-3 p-3 rounded-lg ${
+                  darkMode ? 'bg-gray-900/50 border border-gray-700' : 'bg-gray-50 border border-gray-200'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                      darkMode ? 'text-gray-500' : 'text-gray-400'
+                    }`} />
+                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {ack.notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Main PDFViewer Component
 export default function PDFViewer({
   selectedPolicy,
   selectedFolder,
@@ -31,6 +170,8 @@ export default function PDFViewer({
   const [acknowledgeNotes, setAcknowledgeNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [policy, setPolicy] = useState(selectedPolicy);
+  const [hasAcknowledged, setHasAcknowledged] = useState(false);
+  const [checkingAcknowledgment, setCheckingAcknowledgment] = useState(false);
 
   // Refresh policy data when component mounts to get updated stats
   useEffect(() => {
@@ -48,6 +189,38 @@ export default function PDFViewer({
     
     refreshPolicyData();
   }, [selectedPolicy.id, selectedFolder.id]);
+
+  // Check if current user has acknowledged this policy
+  useEffect(() => {
+    const checkUserAcknowledgment = async () => {
+      if (!policy.requires_acknowledgment) return;
+      
+      setCheckingAcknowledgment(true);
+      try {
+        const currentUserEmail = localStorage.getItem('user_email');
+        if (!currentUserEmail) {
+          setCheckingAcknowledgment(false);
+          return;
+        }
+
+        const data = await getPolicyAcknowledgments(policy.id);
+        const acknowledgments = Array.isArray(data?.results) ? data.results : [];
+        
+        // Check if current user has acknowledged
+        const userAcknowledged = acknowledgments.some(
+          ack => ack.employee_email === currentUserEmail
+        );
+        
+        setHasAcknowledged(userAcknowledged);
+      } catch (err) {
+        console.error('Error checking acknowledgment:', err);
+      } finally {
+        setCheckingAcknowledgment(false);
+      }
+    };
+
+    checkUserAcknowledgment();
+  }, [policy.id, policy.requires_acknowledgment]);
 
   // Get PDF URL for iframe
   const getPDFUrl = () => {
@@ -97,6 +270,7 @@ export default function PDFViewer({
       showSuccess("Policy acknowledged successfully!");
       setAcknowledgeNotes("");
       setShowAcknowledgeModal(false);
+      setHasAcknowledged(true); // Update local state
       
       // Refresh policy data after acknowledgment
       const data = await getPoliciesByFolder(selectedFolder.id);
@@ -135,7 +309,7 @@ export default function PDFViewer({
 
           <div className="flex items-center gap-2.5">
             <div className={`p-1.5 rounded-lg ${
-              darkMode ? 'bg-almet-sapphire/10 text-almet-astral' : 'bg-almet-mystic text-almet-sapphire'
+              darkMode ? 'bg-blue-900/20 text-blue-400' : 'bg-blue-50 text-blue-600'
             }`}>
               <FileText className="w-4 h-4" />
             </div>
@@ -161,8 +335,8 @@ export default function PDFViewer({
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "document"
                   ? darkMode
-                    ? 'border-almet-sapphire text-white'
-                    : 'border-almet-sapphire text-almet-sapphire'
+                    ? 'border-blue-500 text-white'
+                    : 'border-blue-600 text-blue-600'
                   : darkMode
                     ? 'border-transparent text-gray-400 hover:text-white'
                     : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -177,8 +351,8 @@ export default function PDFViewer({
                 className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === "acknowledgments"
                     ? darkMode
-                      ? 'border-almet-sapphire text-white'
-                      : 'border-almet-sapphire text-almet-sapphire'
+                      ? 'border-blue-500 text-white'
+                      : 'border-blue-600 text-blue-600'
                     : darkMode
                       ? 'border-transparent text-gray-400 hover:text-white'
                       : 'border-transparent text-gray-600 hover:text-gray-900'
@@ -207,17 +381,34 @@ export default function PDFViewer({
           {policy.requires_acknowledgment && (
             <button
               onClick={() => setShowAcknowledgeModal(true)}
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all"
+              disabled={hasAcknowledged || checkingAcknowledgment}
+              className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                hasAcknowledged
+                  ? darkMode 
+                    ? 'bg-green-900/30 text-green-400 cursor-not-allowed'
+                    : 'bg-green-100 text-green-700 cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+              title={hasAcknowledged ? "You have already acknowledged this policy" : "Acknowledge this policy"}
             >
               <CheckCircle className="w-4 h-4" />
-              Acknowledge
+              {checkingAcknowledgment ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Checking...
+                </span>
+              ) : hasAcknowledged ? (
+                "Already Acknowledged"
+              ) : (
+                "Acknowledge"
+              )}
             </button>
           )}
 
           {/* Download Button */}
           <button
             onClick={handleDownloadPDF}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
           >
             <Download className="w-4 h-4" />
             Download
@@ -247,7 +438,7 @@ export default function PDFViewer({
             </div>
           )
         ) : (
-          // Acknowledgments Tab - BURDA İSTİFADƏ OLUNUR
+          // Acknowledgments Tab
           <div className="h-full overflow-y-auto p-4 sm:p-6">
             <div className="max-w-4xl mx-auto">
               <div className="mb-6">
@@ -258,7 +449,6 @@ export default function PDFViewer({
                   List of employees who have acknowledged this policy
                 </p>
               </div>
-              {/* PolicyAcknowledgmentsList komponenti burda istifadə olunur */}
               <PolicyAcknowledgmentsList policyId={policy.id} darkMode={darkMode} />
             </div>
           </div>
@@ -313,9 +503,9 @@ export default function PDFViewer({
                 rows={3}
                 className={`w-full px-3 py-2 text-sm rounded-lg border ${
                   darkMode
-                    ? "bg-gray-900 border-gray-700 text-white"
-                    : "bg-gray-50 border-gray-300 text-gray-900"
-                } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50`}
+                    ? "bg-gray-900 border-gray-700 text-white placeholder-gray-500"
+                    : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400"
+                } focus:outline-none focus:ring-2 focus:ring-blue-500/50`}
               />
             </div>
 

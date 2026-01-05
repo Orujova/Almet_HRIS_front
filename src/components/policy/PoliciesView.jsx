@@ -55,7 +55,7 @@ export default function PoliciesView({
   const [policyForm, setPolicyForm] = useState({
     title: "",
     description: "",
-    requires_acknowledgment: false,
+    requires_acknowledgment: true,
   });
   const [selectedFile, setSelectedFile] = useState(null);
 
@@ -230,7 +230,7 @@ export default function PoliciesView({
     setPolicyForm({
       title: policy.title,
       description: policy.description || "",
-      requires_acknowledgment: policy.requires_acknowledgment || false,
+      requires_acknowledgment: policy.requires_acknowledgment || true,
     });
     setShowEditPolicy(true);
   };
@@ -239,7 +239,7 @@ export default function PoliciesView({
     setPolicyForm({
       title: "",
       description: "",
-      requires_acknowledgment: false,
+      requires_acknowledgment: true,
     });
     setSelectedFile(null);
     setEditingPolicy(null);
@@ -488,19 +488,7 @@ export default function PoliciesView({
                 />
               </div>
 
-              {/* Requires Acknowledgment */}
-              <div className="flex items-center gap-2">
-                <CustomCheckbox
-                  checked={policyForm.requires_acknowledgment}
-                  onChange={() => setPolicyForm({...policyForm, requires_acknowledgment: !policyForm.requires_acknowledgment})}
-                />
-                <label 
-                  onClick={() => setPolicyForm({...policyForm, requires_acknowledgment: !policyForm.requires_acknowledgment})}
-                  className={`text-sm cursor-pointer ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}
-                >
-                  Requires employee acknowledgment
-                </label>
-              </div>
+           
 
               {/* PDF File Upload */}
               <div>

@@ -65,7 +65,7 @@ export default function CompaniesView({
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
           >
             <Plus className="w-4 h-4" />
-            Add Company
+            Add Folder
           </button>
         </div>
 
