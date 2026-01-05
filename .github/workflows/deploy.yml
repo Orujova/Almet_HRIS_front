@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -11,7 +12,6 @@ jobs:
       - name: Deploy Frontend to Server
         env:
           SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          GH_PAT: ${{ secrets.GH_PAT }}
           SERVER_IP: 161.97.101.41
           SERVER_USER: root
         run: |
@@ -20,41 +20,45 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
           
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << ENDSSH
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << 'ENDSSH'
             set -e
             
             echo "=== Pulling latest code ==="
             cd /var/www/myalmet/frontend
-            git pull https://${GH_PAT}@github.com/Orujova/Almet_HRIS_front master
+            git config --global --add safe.directory /var/www/myalmet/frontend
+            git fetch origin master
+            git reset --hard origin/master
             
             echo "=== Building Docker image ==="
-            docker build -t myalmet-frontend:latest .
+            docker build --no-cache -t myalmet-frontend:latest .
             
-            echo "=== Stopping and removing old container ==="
+            echo "=== Stopping old container ==="
             docker stop frontend 2>/dev/null || true
             docker rm frontend 2>/dev/null || true
             
             echo "=== Starting new container ==="
-            docker run -d --name frontend \
+            docker run -d \
+              --name frontend \
+              --restart always \
               -p 3000:3000 \
               -e NODE_ENV=production \
-              -e PORT=3000 \
-              -e HOSTNAME=0.0.0.0 \
-              --restart unless-stopped \
-              myalmet-frontend:latest \
-              sh -lc 'mkdir -p .next/standalone/.next && rm -rf .next/standalone/.next/static && cp -r .next/static .next/standalone/.next/static && node .next/standalone/server.js'
+              myalmet-frontend:latest
             
-            echo "=== Waiting for container to start ==="
-            sleep 15
+            echo "=== Waiting for startup ==="
+            sleep 10
             
-            echo "=== Checking container status ==="
-            docker ps -a | grep frontend
+            echo "=== Container status ==="
+            docker ps | grep frontend
             
-            echo "=== Checking container logs ==="
-            docker logs frontend --tail 50
-            
-            echo "=== Testing frontend health ==="
-            curl -f http://localhost:3000 || echo "Warning: Frontend not responding yet"
+            echo "=== Health check ==="
+            for i in {1..5}; do
+              if curl -f -s http://localhost:3000 > /dev/null; then
+                echo "✅ Frontend is healthy!"
+                break
+              fi
+              echo "Attempt $i: Waiting..."
+              sleep 5
+            done
             
             echo "=== Cleaning old images ==="
             docker image prune -f
