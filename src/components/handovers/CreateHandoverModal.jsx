@@ -1,4 +1,4 @@
-// components/handovers/CreateHandoverModal.jsx
+// components/handovers/CreateHandoverModal.jsx - IMPROVED DESIGN
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -11,10 +11,10 @@ import handoverService from '@/services/handoverService';
 import { useToast } from '@/components/common/Toast';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 
-const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
+const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   // Form State
   const [formData, setFormData] = useState({
-    handing_over_employee: currentUser?.employee?.id || '',
+    handing_over_employee: user?.employee?.id || '',
     taking_over_employee: '',
     handover_type: '',
     start_date: '',
@@ -58,16 +58,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
-      } else if (e.key === 'ArrowLeft' && activeStep > 1 && !loading) {
-        handlePrevStep();
-      } else if (e.key === 'ArrowRight' && activeStep < 4 && !loading) {
-        handleNextStep();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeStep, loading]);
+  }, []);
 
   const loadInitialData = async () => {
     try {
@@ -211,15 +207,13 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
       }
     }
 
-    // Step 4 validation - əlavə məlumatlar
     if (step === 4) {
-      // Heç olmasa bir sahə doldurulmalıdır
       const hasAnyField = formData.contacts || formData.access_info || 
                           formData.documents_info || formData.open_issues || 
                           formData.notes || attachments.length > 0;
       
       if (!hasAnyField) {
-        newErrors.details = 'Please fill at least one field in the Additional Information section';
+        newErrors.details = 'Please fill at least one field in Additional Information';
       }
     }
 
@@ -245,17 +239,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate all steps including Step 4
     let isValid = true;
     for (let step = 1; step <= 4; step++) {
       if (!validateStep(step)) {
         isValid = false;
         setActiveStep(step);
-        if (step === 4) {
-          showError('Please fill at least one field in Additional Information section');
-        } else {
-          showError('Please complete all required fields');
-        }
+        showError('Please complete all required fields');
         return;
       }
     }
@@ -264,7 +253,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
     setLoading(true);
     try {
-      // Prepare tasks data
       const tasks_data = tasks
         .filter(t => t.description.trim())
         .map(t => ({
@@ -273,7 +261,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           comment: t.comment
         }));
 
-      // Prepare dates data
       const dates_data = dates
         .filter(d => d.date && d.description.trim())
         .map(d => ({
@@ -281,7 +268,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           description: d.description
         }));
 
-      // Submit data
       const handoverData = {
         ...formData,
         tasks_data,
@@ -290,7 +276,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
       const result = await handoverService.createHandover(handoverData);
 
-      // Upload attachments if any
       if (attachments.length > 0 && result.id) {
         await Promise.all(
           attachments.map(attachment => 
@@ -331,7 +316,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
   // Step indicator
   const StepIndicator = () => (
-    <div className="mb-8">
+    <div className="mb-6">
       <div className="flex items-center justify-between">
         {steps.map((step, index) => {
           const Icon = step.icon;
@@ -341,7 +326,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
           return (
             <React.Fragment key={step.id}>
               <div className="flex flex-col items-center flex-1">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
                   isCompleted 
                     ? 'bg-green-500 text-white' 
                     : isActive 
@@ -349,12 +334,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                     : 'bg-almet-mystic text-almet-waterloo'
                 }`}>
                   {isCompleted ? (
-                    <CheckCircle className="w-5 h-5" />
+                    <CheckCircle className="w-4 h-4" />
                   ) : (
-                    <Icon className="w-5 h-5" />
+                    <Icon className="w-4 h-4" />
                   )}
                 </div>
-                <span className={`text-xs mt-2 font-medium ${
+                <span className={`text-xs mt-1.5 font-medium ${
                   isActive ? 'text-almet-sapphire' : 'text-almet-waterloo'
                 }`}>
                   {step.label}
@@ -378,7 +363,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white dark:bg-gray-900 rounded-xl p-8">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-almet-sapphire mx-auto"></div>
-          <p className="text-center mt-4 text-almet-waterloo">Loading...</p>
+          <p className="text-center mt-4 text-almet-waterloo text-sm">Loading...</p>
         </div>
       </div>
     );
@@ -388,35 +373,35 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-almet-mystic dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
+        <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-almet-mystic dark:border-gray-700 px-5 py-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg flex items-center justify-center">
-              <FileText className="w-6 h-6 text-almet-sapphire" />
+            <div className="w-9 h-9 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 rounded-lg flex items-center justify-center">
+              <FileText className="w-5 h-5 text-almet-sapphire" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-almet-cloud-burst dark:text-white">Create New Handover</h2>
-              <p className="text-sm text-almet-waterloo dark:text-gray-400">Step {activeStep} of {steps.length}</p>
+              <h2 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">Create New Handover</h2>
+              <p className="text-xs text-almet-waterloo dark:text-gray-400">Step {activeStep} of {steps.length}</p>
             </div>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-almet-mystic dark:hover:bg-gray-800 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6 text-almet-waterloo" />
+            <X className="w-5 h-5 text-almet-waterloo" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="p-5">
           {/* Step Indicator */}
           <StepIndicator />
 
           {/* Step 1: Basic Information */}
           {activeStep === 1 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Users className="w-5 h-5 text-almet-sapphire" />
-                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-4 h-4 text-almet-sapphire" />
+                <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
                   Basic Information
                 </h3>
               </div>
@@ -424,7 +409,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Handing Over Employee */}
                 <div>
-                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     Handing Over Employee *
                   </label>
                   <SearchableDropdown
@@ -451,7 +436,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Taking Over Employee */}
                 <div>
-                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     Taking Over Employee *
                   </label>
                   <SearchableDropdown
@@ -480,7 +465,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Handover Type */}
                 <div>
-                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     Handover Type *
                   </label>
                   <SearchableDropdown
@@ -509,7 +494,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* Start Date */}
                 <div>
-                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     Start Date *
                   </label>
                   <div className="relative">
@@ -519,7 +504,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                       name="start_date"
                       value={formData.start_date}
                       onChange={handleInputChange}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
@@ -532,7 +517,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
                 {/* End Date */}
                 <div>
-                  <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
+                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     End Date *
                   </label>
                   <div className="relative">
@@ -543,7 +528,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                       value={formData.end_date}
                       onChange={handleInputChange}
                       min={formData.start_date}
-                      className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
@@ -557,12 +542,12 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
               {/* Date Range Info */}
               {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
-                <div className="bg-almet-mystic dark:bg-almet-cloud-burst/10 border border-almet-bali-hai dark:border-almet-cloud-burst/30 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-almet-sapphire flex-shrink-0 mt-0.5" />
+                <div className="bg-almet-mystic/50 dark:bg-almet-cloud-burst/10 border border-almet-bali-hai/50 dark:border-almet-cloud-burst/30 rounded-lg p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <Clock className="w-4 h-4 text-almet-sapphire flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">Handover Period</p>
-                      <p className="text-sm text-almet-waterloo dark:text-gray-400 mt-1">
+                      <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">Handover Period</p>
+                      <p className="text-xs text-almet-waterloo dark:text-gray-400 mt-0.5">
                         Duration: {Math.ceil((new Date(formData.end_date) - new Date(formData.start_date)) / (1000 * 60 * 60 * 24))} days
                       </p>
                     </div>
@@ -574,58 +559,58 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
 
           {/* Step 2: Tasks Section */}
           {activeStep === 2 && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-almet-sapphire" />
-                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                  <FileText className="w-4 h-4 text-almet-sapphire" />
+                  <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
                     Tasks & Responsibilities *
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={addTask}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors font-medium"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                   Add Task
                 </button>
               </div>
 
               {errors.tasks && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-red-700 dark:text-red-400 text-sm">{errors.tasks}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
+                  <p className="text-red-700 dark:text-red-400 text-xs">{errors.tasks}</p>
                 </div>
               )}
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {tasks.map((task, index) => (
-                  <div key={index} className="bg-almet-mystic dark:bg-gray-800 p-4 rounded-lg border border-almet-bali-hai dark:border-gray-700">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 space-y-3">
+                  <div key={index} className="bg-almet-mystic/50 dark:bg-gray-800 p-3.5 rounded-lg border border-almet-bali-hai/50 dark:border-gray-700">
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex-1 space-y-2.5">
                         <div>
-                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                          <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                             Task Description *
                           </label>
                           <textarea
                             value={task.description}
                             onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
-                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                            rows="3"
-                            placeholder="Enter detailed task description..."
+                            className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                            rows="2"
+                            placeholder="Enter task description..."
                             required
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2.5">
                           <div>
-                            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                               Initial Status
                             </label>
                             <select
                               value={task.status}
                               onChange={(e) => handleTaskChange(index, 'status', e.target.value)}
-                              className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              className="w-full px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             >
                               {taskStatusOptions.map(option => (
                                 <option key={option.value} value={option.value}>
@@ -636,14 +621,14 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
-                              Comment (Optional)
+                            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                              Comment
                             </label>
                             <input
                               type="text"
                               value={task.comment}
                               onChange={(e) => handleTaskChange(index, 'comment', e.target.value)}
-                              className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                               placeholder="Add comment..."
                             />
                           </div>
@@ -654,85 +639,70 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                         type="button"
                         onClick={() => removeTask(index)}
                         disabled={tasks.length === 1}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={tasks.length === 1 ? 'At least one task is required' : 'Remove task'}
+                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-900 dark:text-yellow-300">Task Guidelines</p>
-                    <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
-                      • Be specific and detailed in task descriptions<br />
-                      • Include any special instructions or considerations<br />
-                      • Set appropriate initial status for each task
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* Step 3: Important Dates Section */}
+          {/* Step 3: Important Dates */}
           {activeStep === 3 && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-almet-sapphire" />
-                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+                  <Calendar className="w-4 h-4 text-almet-sapphire" />
+                  <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
                     Important Dates *
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={addDate}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg hover:bg-almet-bali-hai/20 transition-colors font-medium"
                 >
-                  <Plus className="w-4 h-4" />
+                  <Plus className="w-3.5 h-3.5" />
                   Add Date
                 </button>
               </div>
 
               {errors.dates && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-red-700 dark:text-red-400 text-sm">{errors.dates}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
+                  <p className="text-red-700 dark:text-red-400 text-xs">{errors.dates}</p>
                 </div>
               )}
 
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {dates.map((dateItem, index) => (
-                  <div key={index} className="bg-almet-mystic dark:bg-gray-800 p-4 rounded-lg border border-almet-bali-hai dark:border-gray-700">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div key={index} className="bg-almet-mystic/50 dark:bg-gray-800 p-3.5 rounded-lg border border-almet-bali-hai/50 dark:border-gray-700">
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex-1 grid grid-cols-2 gap-2.5">
                         <div>
-                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                          <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                             Date *
                           </label>
                           <input
                             type="date"
                             value={dateItem.date}
                             onChange={(e) => handleDateChange(index, 'date', e.target.value)}
-                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
+                          <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1">
                             Description *
                           </label>
                           <input
                             type="text"
                             value={dateItem.description}
                             onChange={(e) => handleDateChange(index, 'description', e.target.value)}
-                            className="w-full px-3 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                            className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                             placeholder="Enter description..."
                             required
                           />
@@ -743,142 +713,125 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                         type="button"
                         onClick={() => removeDate(index)}
                         disabled={dates.length === 1}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title={dates.length === 1 ? 'At least one date is required' : 'Remove date'}
+                        className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                 ))}
-              </div>
-
-              <div className="bg-almet-mystic dark:bg-almet-cloud-burst/10 border border-almet-bali-hai dark:border-almet-cloud-burst/30 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-almet-sapphire flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">Examples of Important Dates</p>
-                    <p className="text-sm text-almet-waterloo dark:text-gray-400 mt-1">
-                      • Project deadlines and milestones<br />
-                      • Scheduled meetings or reviews<br />
-                      • Important deliverable dates<br />
-                      • Training or handover sessions
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           )}
 
           {/* Step 4: Additional Information */}
           {activeStep === 4 && (
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Folder className="w-5 h-5 text-almet-sapphire" />
-                <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-2 mb-2">
+                <Folder className="w-4 h-4 text-almet-sapphire" />
+                <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
                   Additional Information
                 </h3>
               </div>
 
-              {/* Warning if no fields filled */}
               {errors.details && (
-                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-red-700 dark:text-red-400 text-sm">{errors.details}</p>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-2.5">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-red-700 dark:text-red-400 text-xs">{errors.details}</p>
                   </div>
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {/* Related Contacts */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
-                    <Users className="w-4 h-4 text-almet-sapphire" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+                    <Users className="w-3.5 h-3.5 text-almet-sapphire" />
                     Related Contacts
                   </label>
                   <textarea
                     name="contacts"
                     value={formData.contacts}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    rows="3"
-                    placeholder="List important contacts with their roles and contact information..."
+                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    rows="2"
+                    placeholder="List important contacts..."
                   />
                 </div>
 
                 {/* Access Information */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
-                    <Key className="w-4 h-4 text-almet-sapphire" />
-                    Access Information / Accounts
+                  <label className="flex items-center gap-2 text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+                    <Key className="w-3.5 h-3.5 text-almet-sapphire" />
+                    Access Information
                   </label>
                   <textarea
                     name="access_info"
                     value={formData.access_info}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    rows="3"
-                    placeholder="System names, usernames, password locations, access levels..."
+                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    rows="2"
+                    placeholder="System names, accounts..."
                   />
                 </div>
 
                 {/* Documents & Files */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
-                    <Folder className="w-4 h-4 text-almet-sapphire" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+                    <Folder className="w-3.5 h-3.5 text-almet-sapphire" />
                     Documents & Files
                   </label>
                   <textarea
                     name="documents_info"
                     value={formData.documents_info}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    rows="3"
-                    placeholder="File and folder locations, shared drives, important documents..."
+                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    rows="2"
+                    placeholder="File locations, shared drives..."
                   />
                 </div>
 
                 {/* Open Issues */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-almet-sapphire" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-almet-sapphire" />
                     Open Issues
                   </label>
                   <textarea
                     name="open_issues"
                     value={formData.open_issues}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    rows="3"
-                    placeholder="Unresolved problems, pending actions, known issues..."
+                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    rows="2"
+                    placeholder="Unresolved problems, pending actions..."
                   />
                 </div>
 
                 {/* Additional Notes */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
-                    <MessageSquare className="w-4 h-4 text-almet-sapphire" />
+                  <label className="flex items-center gap-2 text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-almet-sapphire" />
                     Additional Notes
                   </label>
                   <textarea
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
-                    rows="4"
-                    placeholder="Additional notes, tips, recommendations, special considerations..."
+                    className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    rows="3"
+                    placeholder="Additional notes, tips, recommendations..."
                   />
                 </div>
 
                 {/* File Attachments */}
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-medium text-almet-cloud-burst dark:text-gray-200 mb-2">
-                    <Upload className="w-4 h-4 text-almet-sapphire" />
-                    File Attachments (Optional)
+                  <label className="flex items-center gap-2 text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+                    <Upload className="w-3.5 h-3.5 text-almet-sapphire" />
+                    File Attachments
                   </label>
                   
-                  <div className="border-2 border-dashed border-almet-bali-hai dark:border-gray-700 rounded-lg p-6 text-center hover:border-almet-sapphire transition-colors">
+                  <div className="border-2 border-dashed border-almet-bali-hai dark:border-gray-700 rounded-lg p-4 text-center hover:border-almet-sapphire transition-colors">
                     <input
                       type="file"
                       multiple
@@ -891,28 +844,28 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                       htmlFor="file-upload"
                       className="cursor-pointer flex flex-col items-center"
                     >
-                      <Upload className="w-8 h-8 text-almet-waterloo dark:text-gray-400 mb-2" />
-                      <span className="text-sm text-almet-cloud-burst dark:text-white">
+                      <Upload className="w-6 h-6 text-almet-waterloo dark:text-gray-400 mb-2" />
+                      <span className="text-xs text-almet-cloud-burst dark:text-white">
                         Click to upload or drag and drop
                       </span>
                       <span className="text-xs text-almet-waterloo dark:text-gray-400 mt-1">
-                        PDF, DOC, XLS, TXT, Images (Max 10MB per file)
+                        PDF, DOC, XLS, TXT, Images (Max 10MB)
                       </span>
                     </label>
                   </div>
 
                   {/* Attachment List */}
                   {attachments.length > 0 && (
-                    <div className="mt-4 space-y-2">
+                    <div className="mt-3 space-y-2">
                       {attachments.map((attachment, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between bg-almet-mystic dark:bg-gray-800 p-3 rounded-lg border border-almet-bali-hai dark:border-gray-700"
+                          className="flex items-center justify-between bg-almet-mystic/50 dark:bg-gray-800 p-2.5 rounded-lg border border-almet-bali-hai/50 dark:border-gray-700"
                         >
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <FileText className="w-5 h-5 text-almet-sapphire flex-shrink-0" />
+                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                            <FileText className="w-4 h-4 text-almet-sapphire flex-shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">
+                              <p className="text-xs font-medium text-almet-cloud-burst dark:text-white truncate">
                                 {attachment.name}
                               </p>
                               <p className="text-xs text-almet-waterloo dark:text-gray-400">
@@ -925,7 +878,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                             onClick={() => removeAttachment(index)}
                             className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
@@ -933,47 +886,33 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                   )}
                 </div>
               </div>
-
-              {/* Summary Info */}
-              <div className="bg-gradient-to-r from-almet-mystic to-almet-bali-hai/20 dark:from-almet-cloud-burst/10 dark:to-almet-cloud-burst/5 border border-almet-bali-hai dark:border-almet-cloud-burst/30 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-almet-sapphire flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">Review Your Information</p>
-                    <p className="text-sm text-almet-waterloo dark:text-gray-400 mt-1">
-                      Please review all the information you've entered before submitting. 
-                      You can go back to previous steps to make changes if needed.
-                    </p>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
           {/* Form Navigation */}
-          <div className="flex items-center justify-between gap-4 pt-6 mt-6 border-t border-almet-mystic dark:border-gray-700">
+          <div className="flex items-center justify-between gap-3 pt-5 mt-5 border-t border-almet-mystic dark:border-gray-700">
             {/* Back Button */}
             <button
               type="button"
               onClick={activeStep === 1 ? onClose : handlePrevStep}
               disabled={loading}
-              className="px-6 py-2 border border-almet-bali-hai dark:border-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic dark:hover:bg-gray-800 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {activeStep === 1 ? 'Cancel' : 'Back'}
             </button>
 
             {/* Progress Info */}
             <div className="flex-1 text-center">
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-1.5">
                 {steps.map((step) => (
                   <div
                     key={step.id}
-                    className={`h-2 rounded-full transition-all ${
+                    className={`h-1.5 rounded-full transition-all ${
                       step.id === activeStep 
-                        ? 'w-8 bg-almet-sapphire' 
+                        ? 'w-6 bg-almet-sapphire' 
                         : step.id < activeStep 
-                        ? 'w-2 bg-green-500' 
-                        : 'w-2 bg-almet-mystic dark:bg-gray-700'
+                        ? 'w-1.5 bg-green-500' 
+                        : 'w-1.5 bg-almet-mystic dark:bg-gray-700'
                     }`}
                   />
                 ))}
@@ -986,10 +925,10 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
                 type="button"
                 onClick={handleNextStep}
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-6 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
@@ -997,16 +936,16 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center gap-2 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-[140px] justify-center"
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px] justify-center"
               >
                 {loading ? (
                   <>
-                    <Loader className="w-5 h-5 animate-spin" />
+                    <Loader className="w-4 h-4 animate-spin" />
                     Creating...
                   </>
                 ) : (
                   <>
-                    <Save className="w-5 h-5" />
+                    <Save className="w-4 h-4" />
                     Create Handover
                   </>
                 )}
@@ -1014,8 +953,6 @@ const CreateHandoverModal = ({ onClose, onSuccess, currentUser }) => {
             )}
           </div>
         </form>
-
-     
       </div>
     </div>
   );

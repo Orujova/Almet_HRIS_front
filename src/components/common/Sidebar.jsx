@@ -181,18 +181,18 @@ const Sidebar = ({ collapsed = false }) => {
         type: "section", 
         label: "REQUESTS"
       },
-      {
-        label: "Formation Contract",
-        icon: <FileSignature className="w-4 h-4" />,
-        path: "/requests/new",
-        id: "new"
-      },
-      {
-        label: "Resignation & Exit",
-        icon: <FileText className="w-4 h-4" />,
-        path: "/requests/resignation",
-        id: "resignation"
-      },
+      // {
+      //   label: "Formation Contract",
+      //   icon: <FileSignature className="w-4 h-4" />,
+      //   path: "/requests/new",
+      //   id: "new"
+      // },
+      // {
+      //   label: "Resignation & Exit",
+      //   icon: <FileText className="w-4 h-4" />,
+      //   path: "/requests/resignation",
+      //   id: "resignation"
+      // },
       {
         label: "Vacation Request",
         icon: <CalendarDays className="w-4 h-4" />,

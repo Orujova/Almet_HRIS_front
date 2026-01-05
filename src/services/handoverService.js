@@ -374,6 +374,15 @@ const handoverService = {
   
   getCurrentUser: async () => {
     try {
+      const response = await api.get('/job-descriptions/my_access_info/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching current user:', error);
+      throw error;
+    }
+  },
+  getUser: async () => {
+    try {
       const response = await api.get('/me/');
       return response.data;
     } catch (error) {
