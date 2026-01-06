@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Filter, RefreshCw, Eye, X, Check, Ban, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, X, Check, Ban, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import timeOffService from '@/services/timeOffService';
@@ -19,7 +19,7 @@ const TimeOffPage = () => {
   const [myRequests, setMyRequests] = useState([]);
   const [allRequests, setAllRequests] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
-  const [permissions, setPermissions] = useState(null);
+  const [accessInfo, setAccessInfo] = useState(null);
   const [error, setError] = useState(null);
   
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
@@ -50,23 +50,26 @@ const TimeOffPage = () => {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && accessInfo) {
       loadTabData();
     }
-  }, [activeTab]);
+  }, [activeTab, accessInfo]);
 
   const loadInitialData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [balanceRes, permissionsRes] = await Promise.all([
+      const [balanceRes, accessInfoRes] = await Promise.all([
         timeOffService.getMyBalance(),
-        timeOffService.getMyPermissions()
+        timeOffService.getMyAccessInfo()
       ]);
 
       setBalance(balanceRes.data);
-      setPermissions(permissionsRes.data);
+      setAccessInfo(accessInfoRes.data);
+      
+      console.log('✅ Access Info:', accessInfoRes.data);
     } catch (err) {
+      console.error('❌ Load error:', err);
       setError(err.response?.data?.error || 'Failed to load data');
       toast.showError('Failed to load time off data');
     } finally {
@@ -79,10 +82,10 @@ const TimeOffPage = () => {
       if (activeTab === 'my-requests') {
         const res = await timeOffService.getMyRequests();
         setMyRequests(res.data.requests || []);
-      } else if (activeTab === 'all-requests' && permissions?.capabilities?.can_view_all_requests) {
+      } else if (activeTab === 'all-requests' && accessInfo?.can_view_all) {
         const res = await timeOffService.getAllRequests();
         setAllRequests(res.data.results || []);
-      } else if (activeTab === 'approvals' && permissions?.capabilities?.can_approve_as_manager) {
+      } else if (activeTab === 'approvals' && accessInfo?.is_manager) {
         const res = await timeOffService.getPendingApprovals();
         setPendingApprovals(res.data.requests || []);
       } else if (activeTab === 'calendar') {
@@ -90,18 +93,15 @@ const TimeOffPage = () => {
         setMyRequests(res.data.requests || []);
       }
     } catch (err) {
+      console.error('❌ Load tab data error:', err);
       toast.showError('Failed to load requests');
     }
   };
 
   const formatTimeInput = (value) => {
-    // Remove non-numeric characters
     const numbers = value.replace(/[^\d]/g, '');
-    
     if (numbers.length === 0) return '';
     if (numbers.length <= 2) return numbers;
-    
-    // Format as HH:MM
     const hours = numbers.slice(0, 2);
     const minutes = numbers.slice(2, 4);
     return `${hours}:${minutes}`;
@@ -177,7 +177,7 @@ const TimeOffPage = () => {
     setSubmitting(true);
     try {
       await timeOffService.createRequest({
-        employee: permissions.employee_info.id,
+        employee: accessInfo.employee_info.id,
         date: formData.date,
         start_time: formData.start_time,
         end_time: formData.end_time,
@@ -191,6 +191,7 @@ const TimeOffPage = () => {
       loadInitialData();
       loadTabData();
     } catch (err) {
+      console.error('❌ Submit error:', err);
       const errorMsg = err.response?.data?.error || err.response?.data?.detail || 'Failed to submit request';
       toast.showError(errorMsg);
       
@@ -210,6 +211,7 @@ const TimeOffPage = () => {
       loadInitialData();
       loadTabData();
     } catch (err) {
+      console.error('❌ Approve error:', err);
       toast.showError(err.response?.data?.error || 'Failed to approve request');
     }
   };
@@ -222,6 +224,7 @@ const TimeOffPage = () => {
       loadInitialData();
       loadTabData();
     } catch (err) {
+      console.error('❌ Reject error:', err);
       toast.showError(err.response?.data?.error || 'Failed to reject request');
     }
   };
@@ -234,6 +237,7 @@ const TimeOffPage = () => {
       loadInitialData();
       loadTabData();
     } catch (err) {
+      console.error('❌ Cancel error:', err);
       toast.showError(err.response?.data?.error || 'Failed to cancel request');
     }
   };
@@ -337,17 +341,20 @@ const TimeOffPage = () => {
                 <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Time Off Management</h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                   Manage your monthly leave hours
+                  {accessInfo && (
+                    <span className="ml-2 text-xs font-medium text-almet-sapphire">
+                      • {accessInfo.access_level}
+                    </span>
+                  )}
                 </p>
               </div>
-              {permissions?.capabilities?.can_create_request && (
-                <button
-                  onClick={() => setShowNewRequestModal(true)}
-                  className="flex items-center justify-center gap-2 px-4 py-2.5 bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  New Request
-                </button>
-              )}
+              <button
+                onClick={() => setShowNewRequestModal(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors text-sm font-medium whitespace-nowrap shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                New Request
+              </button>
             </div>
 
             {/* Balance Cards */}
@@ -426,7 +433,7 @@ const TimeOffPage = () => {
               >
                 My Requests
               </button>
-              {permissions?.capabilities?.can_view_all_requests && (
+              {accessInfo?.can_view_all && (
                 <button
                   onClick={() => {setActiveTab('all-requests'); setCurrentPage(1);}}
                   className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
@@ -439,7 +446,7 @@ const TimeOffPage = () => {
                   All Requests
                 </button>
               )}
-              {permissions?.capabilities?.can_approve_as_manager && (
+              {accessInfo?.is_manager && (
                 <button
                   onClick={() => {setActiveTab('approvals'); setCurrentPage(1);}}
                   className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
@@ -461,6 +468,7 @@ const TimeOffPage = () => {
 
           {/* Tab Content */}
           <div className="mt-6 pb-8">
+            {/* OVERVIEW TAB */}
             {activeTab === 'overview' && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
@@ -474,8 +482,11 @@ const TimeOffPage = () => {
                   ) : (
                     <div className="space-y-3">
                       {myRequests.slice(0, 5).map((req) => (
-                        <div key={req.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                          onClick={() => {setSelectedRequest(req); setShowDetailModal(true);}}>
+                        <div 
+                          key={req.id} 
+                          className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                          onClick={() => {setSelectedRequest(req); setShowDetailModal(true);}}
+                        >
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 dark:text-white">{formatDate(req.date)}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -498,24 +509,30 @@ const TimeOffPage = () => {
                     </div>
                     <div className="flex justify-between items-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Approved</span>
-                      <span className="text-base font-semibold text-green-600 dark:text-green-500">{myRequests.filter(r => r.status === 'APPROVED').length}</span>
+                      <span className="text-base font-semibold text-green-600 dark:text-green-500">
+                        {myRequests.filter(r => r.status === 'APPROVED').length}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-900/20">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Pending</span>
-                      <span className="text-base font-semibold text-yellow-600 dark:text-yellow-500">{myRequests.filter(r => r.status === 'PENDING').length}</span>
+                      <span className="text-base font-semibold text-yellow-600 dark:text-yellow-500">
+                        {myRequests.filter(r => r.status === 'PENDING').length}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                       <span className="text-sm text-gray-600 dark:text-gray-400">Rejected</span>
-                      <span className="text-base font-semibold text-red-600 dark:text-red-500">{myRequests.filter(r => r.status === 'REJECTED').length}</span>
+                      <span className="text-base font-semibold text-red-600 dark:text-red-500">
+                        {myRequests.filter(r => r.status === 'REJECTED').length}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
             )}
 
+            {/* CALENDAR TAB */}
             {activeTab === 'calendar' && (
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-                {/* Calendar Header */}
                 <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                   <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{monthName}</h2>
@@ -542,9 +559,7 @@ const TimeOffPage = () => {
                   </div>
                 </div>
 
-                {/* Calendar Grid */}
                 <div className="p-6">
-                  {/* Days of week header */}
                   <div className="grid grid-cols-7 gap-2 mb-2">
                     {daysOfWeek.map(day => (
                       <div key={day} className="text-center text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide py-2">
@@ -553,14 +568,11 @@ const TimeOffPage = () => {
                     ))}
                   </div>
 
-                  {/* Calendar days */}
                   <div className="grid grid-cols-7 gap-2">
-                    {/* Empty cells for days before month starts */}
                     {Array.from({ length: startingDayOfWeek }).map((_, index) => (
                       <div key={`empty-${index}`} className="aspect-square" />
                     ))}
 
-                    {/* Actual days */}
                     {Array.from({ length: daysInMonth }).map((_, index) => {
                       const day = index + 1;
                       const requests = getRequestsForDay(day);
@@ -585,7 +597,6 @@ const TimeOffPage = () => {
                             {day}
                           </div>
 
-                          {/* Request indicators */}
                           <div className="mt-1 space-y-0.5">
                             {requests.slice(0, 3).map((req) => (
                               <div
@@ -612,7 +623,6 @@ const TimeOffPage = () => {
                             )}
                           </div>
 
-                          {/* Hover tooltip */}
                           {hoveredDay === day && requests.length > 0 && (
                             <div className="absolute z-10 bottom-full mb-2 left-0 bg-gray-900 dark:bg-gray-700 text-white p-3 rounded-lg shadow-lg min-w-[200px]">
                               <div className="text-xs font-semibold mb-2">
@@ -640,7 +650,6 @@ const TimeOffPage = () => {
                     })}
                   </div>
 
-                  {/* Legend */}
                   <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
                     <div className="flex flex-wrap gap-4 text-xs">
                       <div className="flex items-center gap-2">
@@ -665,6 +674,7 @@ const TimeOffPage = () => {
               </div>
             )}
 
+            {/* MY REQUESTS TAB */}
             {activeTab === 'my-requests' && (
               <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
@@ -699,7 +709,7 @@ const TimeOffPage = () => {
                                 >
                                   <Eye size={16} />
                                 </button>
-                                {req.can_cancel && req.status !== 'APPROVED' && (
+                                {req.can_cancel && req.status !== 'CANCELLED' && (
                                   <button
                                     onClick={() => setConfirmModal({ isOpen: true, type: 'cancel', requestId: req.id })}
                                     className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
@@ -730,7 +740,8 @@ const TimeOffPage = () => {
               </div>
             )}
 
-            {activeTab === 'all-requests' && permissions?.capabilities?.can_view_all_requests && (
+            {/* ALL REQUESTS TAB (Admin Only) */}
+            {activeTab === 'all-requests' && accessInfo?.can_view_all && (
               <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
@@ -791,7 +802,8 @@ const TimeOffPage = () => {
               </div>
             )}
 
-            {activeTab === 'approvals' && permissions?.capabilities?.can_approve_as_manager && (
+            {/* PENDING APPROVALS TAB (Manager Only) */}
+            {activeTab === 'approvals' && accessInfo?.is_manager && (
               <div className="space-y-4">
                 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
                   <div className="overflow-x-auto">
@@ -863,7 +875,7 @@ const TimeOffPage = () => {
           </div>
         </div>
 
-        {/* New Request Modal */}
+        {/* NEW REQUEST MODAL */}
         {showNewRequestModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-lg border border-gray-200 dark:border-gray-700 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -871,7 +883,11 @@ const TimeOffPage = () => {
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">New Time Off Request</h3>
                   <button
-                    onClick={() => {setShowNewRequestModal(false); setFormErrors({}); setFormData({ date: '', start_time: '', end_time: '', reason: '' });}}
+                    onClick={() => {
+                      setShowNewRequestModal(false); 
+                      setFormErrors({}); 
+                      setFormData({ date: '', start_time: '', end_time: '', reason: '' });
+                    }}
                     className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                   >
                     <X size={20} />
@@ -980,7 +996,11 @@ const TimeOffPage = () => {
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                   <button
                     type="button"
-                    onClick={() => {setShowNewRequestModal(false); setFormErrors({}); setFormData({ date: '', start_time: '', end_time: '', reason: '' });}}
+                    onClick={() => {
+                      setShowNewRequestModal(false); 
+                      setFormErrors({}); 
+                      setFormData({ date: '', start_time: '', end_time: '', reason: '' });
+                    }}
                     className="px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     Cancel
@@ -1005,7 +1025,7 @@ const TimeOffPage = () => {
           </div>
         )}
 
-        {/* Detail Modal */}
+        {/* DETAIL MODAL */}
         {showDetailModal && selectedRequest && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 shadow-xl max-h-[90vh] overflow-y-auto">
@@ -1043,107 +1063,106 @@ const TimeOffPage = () => {
                       <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Duration</p>
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedRequest.duration_hours} hours</p>
                     </div>
-                  </div>
+                    </div>
 
-                  <div className="mt-6">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Time</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">
-                      {formatTime(selectedRequest.start_time)} - {formatTime(selectedRequest.end_time)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Reason</p>
-                  <p className="text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                    {selectedRequest.reason}
-                  </p>
-                </div>
-
-                {selectedRequest.line_manager_name && (
-                  <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Line Manager</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedRequest.line_manager_name}</p>
-                  </div>
-                )}
-
-                {selectedRequest.status === 'APPROVED' && selectedRequest.approved_by_name && (
-                  <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      <span className="font-medium">Approved by {selectedRequest.approved_by_name}</span>
-                      <br />
-                      <span className="text-xs">on {formatDate(selectedRequest.approved_at)}</span>
-                    </p>
-                  </div>
-                )}
-
-                {selectedRequest.status === 'REJECTED' && (
-                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                    <p className="text-xs text-red-700 dark:text-red-300 font-medium uppercase tracking-wide mb-2">Rejection Reason</p>
-                    <p className="text-sm text-red-700 dark:text-red-300">{selectedRequest.rejection_reason || 'No reason provided'}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Clock size={12} className="mr-1.5" />
-                  Created on {formatDate(selectedRequest.created_at)}
-                </div>
-              </div>
-
-              <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-end">
-                <button
-                  onClick={() => {setShowDetailModal(false); setSelectedRequest(null);}}
-                  className="px-5 py-2.5 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
-                >
-                  Close
-                </button>
+              <div className="mt-6">
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Time</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  {formatTime(selectedRequest.start_time)} - {formatTime(selectedRequest.end_time)}
+                </p>
               </div>
             </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Reason</p>
+              <p className="text-sm text-gray-900 dark:text-white leading-relaxed bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                {selectedRequest.reason}
+              </p>
+            </div>
+
+            {selectedRequest.line_manager_name && (
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide mb-2">Line Manager</p>
+                <p className="text-sm font-medium text-gray-900 dark:text-white">{selectedRequest.line_manager_name}</p>
+              </div>
+            )}
+
+            {selectedRequest.status === 'APPROVED' && selectedRequest.approved_by_name && (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  <span className="font-medium">Approved by {selectedRequest.approved_by_name}</span>
+                  <br />
+                  <span className="text-xs">on {formatDate(selectedRequest.approved_at)}</span>
+                </p>
+              </div>
+            )}
+
+            {selectedRequest.status === 'REJECTED' && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-xs text-red-700 dark:text-red-300 font-medium uppercase tracking-wide mb-2">Rejection Reason</p>
+                <p className="text-sm text-red-700 dark:text-red-300">{selectedRequest.rejection_reason || 'No reason provided'}</p>
+              </div>
+            )}
+
+            <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <Clock size={12} className="mr-1.5" />
+              Created on {formatDate(selectedRequest.created_at)}
+            </div>
           </div>
-        )}
 
-        {/* Confirmation Modals */}
-        <ConfirmationModal
-          isOpen={confirmModal.isOpen && confirmModal.type === 'approve'}
-          onClose={() => setConfirmModal({ isOpen: false, type: '', requestId: null })}
-          onConfirm={() => handleApproveRequest(confirmModal.requestId)}
-          title="Approve Request"
-          message="Are you sure you want to approve this time off request? The hours will be deducted from the employee's balance."
-          confirmText="Approve"
-          cancelText="Cancel"
-          type="success"
-          darkMode={darkMode}
-        />
-
-        <ConfirmationModal
-          isOpen={confirmModal.isOpen && confirmModal.type === 'reject'}
-          onClose={() => setConfirmModal({ isOpen: false, type: '', requestId: null })}
-          onConfirm={() => {
-            const reason = prompt('Please provide a rejection reason:');
-            if (reason) handleRejectRequest(confirmModal.requestId, reason);
-          }}
-          title="Reject Request"
-          message="Are you sure you want to reject this time off request? Please provide a reason when you click confirm."
-          confirmText="Reject"
-          cancelText="Cancel"
-          type="danger"
-          darkMode={darkMode}
-        />
-
-        <ConfirmationModal
-          isOpen={confirmModal.isOpen && confirmModal.type === 'cancel'}
-          onClose={() => setConfirmModal({ isOpen: false, type: '', requestId: null })}
-          onConfirm={() => handleCancelRequest(confirmModal.requestId)}
-          title="Cancel Request"
-          message="Are you sure you want to cancel this request? If it was approved, the hours will be refunded to your balance."
-          confirmText="Yes, Cancel"
-          cancelText="No, Keep"
-          type="danger"
-          darkMode={darkMode}
-        />
+          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-end">
+            <button
+              onClick={() => {setShowDetailModal(false); setSelectedRequest(null);}}
+              className="px-5 py-2.5 text-sm bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
       </div>
-    </DashboardLayout>
-  );
-};
+    )}
 
+    {/* CONFIRMATION MODALS */}
+    <ConfirmationModal
+      isOpen={confirmModal.isOpen && confirmModal.type === 'approve'}
+      onClose={() => setConfirmModal({ isOpen: false, type: '', requestId: null })}
+      onConfirm={() => handleApproveRequest(confirmModal.requestId)}
+      title="Approve Request"
+      message="Are you sure you want to approve this time off request? The hours will be deducted from the employee's balance."
+      confirmText="Approve"
+      cancelText="Cancel"
+      type="success"
+      darkMode={darkMode}
+    />
+
+    <ConfirmationModal
+      isOpen={confirmModal.isOpen && confirmModal.type === 'reject'}
+      onClose={() => setConfirmModal({ isOpen: false, type: '', requestId: null })}
+      onConfirm={() => {
+        const reason = prompt('Please provide a rejection reason:');
+        if (reason) handleRejectRequest(confirmModal.requestId, reason);
+      }}
+      title="Reject Request"
+      message="Are you sure you want to reject this time off request? Please provide a reason when you click confirm."
+      confirmText="Reject"
+      cancelText="Cancel"
+      type="danger"
+      darkMode={darkMode}
+    />
+
+    <ConfirmationModal
+      isOpen={confirmModal.isOpen && confirmModal.type === 'cancel'}
+      onClose={() => setConfirmModal({ isOpen: false, type: '', requestId: null })}
+      onConfirm={() => handleCancelRequest(confirmModal.requestId)}
+      title="Cancel Request"
+      message="Are you sure you want to cancel this request? If it was approved, the hours will be refunded to your balance."
+      confirmText="Yes, Cancel"
+      cancelText="No, Keep"
+      type="danger"
+      darkMode={darkMode}
+    />
+  </div>
+</DashboardLayout>
+);
+};
 export default TimeOffPage;

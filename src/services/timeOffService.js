@@ -69,15 +69,15 @@ const timeOffService = {
   getPendingApprovals: (params) => api.get('/timeoff/requests/pending_approvals/', { params }),
 
   // Activity endpoints
-  getMyActivities: (params) => api.get('/timeoff/activity/my_activities/', { params }),
-  getAllActivities: (params) => api.get('/timeoff/activity/', { params }),
-  getActivityById: (id) => api.get(`/timeoff/activity/${id}/`),
-  getActivitiesByRequest: (requestId) => api.get('/timeoff/activity/by_request/', { params: { request_id: requestId } }),
+  getMyActivities: (params) => api.get('/timeoff/activities/my_activities/', { params }),
+  getAllActivities: (params) => api.get('/timeoff/activities/', { params }),
+  getActivityById: (id) => api.get(`/timeoff/activities/${id}/`),
+  getActivitiesByRequest: (requestId) => api.get('/timeoff/activities/by_request/', { params: { request_id: requestId } }),
 
   // Dashboard endpoints
   getDashboardOverview: () => api.get('/timeoff/dashboard/overview/'),
   getTeamOverview: () => api.get('/timeoff/dashboard/team_overview/'),
-  getMyPermissions: () => api.get('/timeoff/dashboard/my_permissions/'),
+  getMyAccessInfo: () => api.get('/timeoff/dashboard/my_access_info/'), // ✅ NEW
 
   // Settings endpoints
   getCurrentSettings: () => api.get('/timeoff/settings/current/'),
