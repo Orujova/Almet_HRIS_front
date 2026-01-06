@@ -31,26 +31,8 @@ export default function PerformanceHeader({
     return colors[period] || 'bg-gray-500';
   };
 
-  // ✅ Check if user can access settings
-  const canAccessSettings = () => {
-    if (!permissions) return false;
-    
-    // Admin always can
-    if (permissions.is_admin) return true;
-    
-    // Check for settings permissions
-    const settingsPermissions = [
-      'performance.settings.manage_years',
-      'performance.settings.manage_weights',
-      'performance.settings.manage_scales',
-      'performance.settings.manage_targets',
-      'performance.manage_all'
-    ];
-    
-    return permissions.permissions?.some(p => settingsPermissions.includes(p));
-  };
 
-  const hasSettingsAccess = canAccessSettings();
+  const hasSettingsAccess = permissions.is_admin;
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'} rounded-xl shadow-sm border ${darkMode ? 'border-almet-comet' : 'border-gray-200'} p-4 mb-4`}>

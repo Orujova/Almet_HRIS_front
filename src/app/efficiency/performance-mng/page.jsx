@@ -332,7 +332,7 @@ const loadEmployees = async (perms = null) => {
      
       filteredEmployees = allEmployees;
     } else if (currentPermissions.employee) {
-      const hasViewTeam = currentPermissions.permissions?.includes('performance.view_team');
+      const hasViewTeam = currentPermissions.is_manager;
       
     
       if (hasViewTeam || currentPermissions.is_manager) {
