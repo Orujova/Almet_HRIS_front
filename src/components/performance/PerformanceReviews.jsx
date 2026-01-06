@@ -35,7 +35,7 @@ console.log(permissions)
     if (!permissions?.employee || !performanceData) return false;
 
     console.log(performanceData.employee_data);
-console.log(permissions.employee);
+    console.log(permissions.employee);
     const lineManagerId = 
       performanceData.employee_data?.line_manager_hc; 
     if (!lineManagerId) return false;
