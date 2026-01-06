@@ -14,7 +14,6 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useToast } from "@/components/common/Toast";
-import CustomCheckbox from "@/components/common/CustomCheckbox";
 import Pagination from "@/components/common/Pagination";
 import {
   getPoliciesByFolder,
@@ -34,6 +33,7 @@ export default function PoliciesView({
   onViewPolicy,
   confirmModal,
   setConfirmModal,
+  userAccess, // ✅ Add userAccess prop
 }) {
   const { showSuccess, showError, showWarning, showInfo } = useToast();
   
@@ -163,6 +163,12 @@ export default function PoliciesView({
   };
 
   const handleDeletePolicy = (policyId, policyTitle) => {
+    // ✅ Check access
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to delete policies');
+      return;
+    }
+
     setConfirmModal({
       isOpen: true,
       title: "Delete Policy",
@@ -226,6 +232,11 @@ export default function PoliciesView({
   };
 
   const startEditPolicy = (policy) => {
+    // ✅ Check access
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to edit policies');
+      return;
+    }
     setEditingPolicy(policy);
     setPolicyForm({
       title: policy.title,
@@ -245,6 +256,15 @@ export default function PoliciesView({
     setEditingPolicy(null);
     setShowAddPolicy(false);
     setShowEditPolicy(false);
+  };
+
+  const openAddModal = () => {
+    // ✅ Check access before opening
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to add policies');
+      return;
+    }
+    setShowAddPolicy(true);
   };
 
   return (
@@ -287,13 +307,16 @@ export default function PoliciesView({
             </div>
           </div>
 
-          <button
-            onClick={() => setShowAddPolicy(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
-          >
-            <Upload className="w-4 h-4" />
-            Add Policy
-          </button>
+          {/* ✅ Add Policy Button - only show if admin */}
+          {userAccess?.is_admin && (
+            <button
+              onClick={openAddModal}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
+            >
+              <Upload className="w-4 h-4" />
+              Add Policy
+            </button>
+          )}
         </div>
       </div>
 
@@ -307,12 +330,14 @@ export default function PoliciesView({
         <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
           <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p className="text-sm mb-2">No policies in this folder</p>
-          <button
-            onClick={() => setShowAddPolicy(true)}
-            className="text-sm text-almet-sapphire hover:text-almet-cloud-burst"
-          >
-            Add your first policy
-          </button>
+          {userAccess?.is_admin && (
+            <button
+              onClick={openAddModal}
+              className="text-sm text-almet-sapphire hover:text-almet-cloud-burst"
+            >
+              Add your first policy
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -391,24 +416,29 @@ export default function PoliciesView({
                     >
                       <Download className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => startEditPolicy(policy)}
-                      className={`p-2 rounded-lg ${
-                        darkMode ? "bg-gray-700/50 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200"
-                      } transition-all`}
-                      title="Edit"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeletePolicy(policy.id, policy.title)}
-                      className={`p-2 rounded-lg ${
-                        darkMode ? "bg-red-900/20 hover:bg-red-900/30 text-red-400" : "bg-red-50 hover:bg-red-100 text-red-600"
-                      } transition-all`}
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* ✅ Edit/Delete buttons - only if admin */}
+                    {userAccess?.is_admin && (
+                      <>
+                        <button
+                          onClick={() => startEditPolicy(policy)}
+                          className={`p-2 rounded-lg ${
+                            darkMode ? "bg-gray-700/50 hover:bg-gray-700" : "bg-gray-100 hover:bg-gray-200"
+                          } transition-all`}
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePolicy(policy.id, policy.title)}
+                          className={`p-2 rounded-lg ${
+                            darkMode ? "bg-red-900/20 hover:bg-red-900/30 text-red-400" : "bg-red-50 hover:bg-red-100 text-red-600"
+                          } transition-all`}
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -466,94 +496,89 @@ export default function PoliciesView({
                     darkMode
                       ? "bg-gray-900 border-gray-700 text-white"
                       : "bg-gray-50 border-gray-300 text-gray-900"
-                  } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50`}
-                />
+                  } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50`}/>
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              Description
+            </label>
+            <textarea
+              placeholder="Brief description of the policy..."
+              value={policyForm.description}
+              onChange={(e) => setPolicyForm({...policyForm, description: e.target.value})}
+              rows={3}
+              className={`w-full px-3 py-2 text-sm rounded-lg border ${
+                darkMode
+                  ? "bg-gray-900 border-gray-700 text-white"
+                  : "bg-gray-50 border-gray-300 text-gray-900"
+              } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50`}
+            />
+          </div>
+
+          {/* PDF File Upload */}
+          <div>
+            <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              {showEditPolicy ? "Replace Policy File (Optional)" : "Policy File (PDF) *"}
+            </label>
+            <label className={`flex flex-col items-center justify-center gap-2 px-4 py-6 text-sm rounded-lg border-2 border-dashed cursor-pointer ${
+              darkMode
+                ? "border-gray-700 hover:border-almet-sapphire/50 text-gray-400 hover:bg-gray-900/50"
+                : "border-gray-300 hover:border-almet-sapphire/50 text-gray-600 hover:bg-gray-50"
+            } transition-all`}>
+              <File className="w-8 h-8" />
+              <div className="text-center">
+                <p className="font-medium">
+                  {selectedFile 
+                    ? selectedFile.name 
+                    : showEditPolicy 
+                      ? "Choose new PDF file (optional)" 
+                      : "Choose PDF file"
+                  }
+                </p>
+                <p className="text-xs mt-1">
+                  {showEditPolicy ? "Leave empty to keep current file" : "Maximum file size: 10MB"}
+                </p>
               </div>
-
-              {/* Description */}
-              <div>
-                <label className={`block text-sm font-medium mb-1 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Description
-                </label>
-                <textarea
-                  placeholder="Brief description of the policy..."
-                  value={policyForm.description}
-                  onChange={(e) => setPolicyForm({...policyForm, description: e.target.value})}
-                  rows={3}
-                  className={`w-full px-3 py-2 text-sm rounded-lg border ${
-                    darkMode
-                      ? "bg-gray-900 border-gray-700 text-white"
-                      : "bg-gray-50 border-gray-300 text-gray-900"
-                  } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/50`}
-                />
-              </div>
-
-           
-
-              {/* PDF File Upload */}
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  {showEditPolicy ? "Replace Policy File (Optional)" : "Policy File (PDF) *"}
-                </label>
-                <label className={`flex flex-col items-center justify-center gap-2 px-4 py-6 text-sm rounded-lg border-2 border-dashed cursor-pointer ${
-                  darkMode
-                    ? "border-gray-700 hover:border-almet-sapphire/50 text-gray-400 hover:bg-gray-900/50"
-                    : "border-gray-300 hover:border-almet-sapphire/50 text-gray-600 hover:bg-gray-50"
-                } transition-all`}>
-                  <File className="w-8 h-8" />
-                  <div className="text-center">
-                    <p className="font-medium">
-                      {selectedFile 
-                        ? selectedFile.name 
-                        : showEditPolicy 
-                          ? "Choose new PDF file (optional)" 
-                          : "Choose PDF file"
-                      }
-                    </p>
-                    <p className="text-xs mt-1">
-                      {showEditPolicy ? "Leave empty to keep current file" : "Maximum file size: 10MB"}
-                    </p>
-                  </div>
-                  <input
-                    type="file"
-                    accept=".pdf,application/pdf"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
-                {selectedFile && (
-                  <p className={`text-xs mt-2 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
-                    {showEditPolicy ? "New f" : "F"}ile size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className={`flex gap-2 mt-6 pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button
-                onClick={resetPolicyModal}
-                disabled={submitting}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg ${
-                  darkMode
-                    ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                } disabled:opacity-50 transition-all`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={showEditPolicy ? handleUpdatePolicy : handleAddPolicy}
-                disabled={submitting || !policyForm.title.trim() || (!selectedFile && !showEditPolicy)}
-                className="flex-1 px-4 py-2 text-sm font-medium bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
-              >
-                {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                {showEditPolicy ? "Update Policy" : "Add Policy"}
-              </button>
-            </div>
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </label>
+            {selectedFile && (
+              <p className={`text-xs mt-2 ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                {showEditPolicy ? "New f" : "F"}ile size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            )}
           </div>
         </div>
-      )}
+
+        {/* Modal Actions */}
+        <div className={`flex gap-2 mt-6 pt-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+          <button
+            onClick={resetPolicyModal}
+            disabled={submitting}
+            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg ${
+              darkMode
+                ? "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+            } disabled:opacity-50 transition-all`}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={showEditPolicy ? handleUpdatePolicy : handleAddPolicy}
+            disabled={submitting || !policyForm.title.trim() || (!selectedFile && !showEditPolicy)}
+            className="flex-1 px-4 py-2 text-sm font-medium bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+          >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            {showEditPolicy ? "Update Policy" : "Add Policy"}
+          </button>
+        </div>
+      </div>
     </div>
-  );
-}
+  )}
+</div>)}

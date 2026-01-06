@@ -25,6 +25,7 @@ export default function FoldersView({
   onSelectFolder,
   confirmModal,
   setConfirmModal,
+  userAccess, // ✅ Add userAccess prop
 }) {
   const { showSuccess, showError, showWarning } = useToast();
   
@@ -49,7 +50,6 @@ export default function FoldersView({
   const loadFolders = async () => {
     setLoading(true);
     try {
-      // Use new unified API that supports both company types
       const data = await getFoldersByCompany(selectedCompany.type, selectedCompany.id);
       setFolders(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -62,6 +62,12 @@ export default function FoldersView({
   };
 
   const handleCreateFolder = async () => {
+    // ✅ Check access
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to create folders');
+      return;
+    }
+
     if (!folderForm.name.trim()) {
       showWarning("Please enter folder name");
       return;
@@ -76,7 +82,6 @@ export default function FoldersView({
         is_active: true,
       };
 
-      // Set the correct parent field based on company type
       if (selectedCompany.type === 'business_function') {
         folderData.business_function = selectedCompany.id;
         folderData.policy_company = null;
@@ -99,6 +104,12 @@ export default function FoldersView({
   };
 
   const handleUpdateFolder = async () => {
+    // ✅ Check access
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to update folders');
+      return;
+    }
+
     if (!folderForm.name.trim()) {
       showWarning("Please enter folder name");
       return;
@@ -113,7 +124,6 @@ export default function FoldersView({
         is_active: true,
       };
 
-      // Preserve the parent field
       if (selectedCompany.type === 'business_function') {
         folderData.business_function = selectedCompany.id;
         folderData.policy_company = null;
@@ -135,6 +145,12 @@ export default function FoldersView({
   };
 
   const handleDeleteFolder = (folderId, folderName, policyCount) => {
+    // ✅ Check access
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to delete folders');
+      return;
+    }
+
     if (policyCount > 0) {
       showWarning(`Cannot delete folder "${folderName}" - it contains ${policyCount} policies. Please delete all policies first.`);
       return;
@@ -160,6 +176,11 @@ export default function FoldersView({
 
   const startEditFolder = (folder, e) => {
     e.stopPropagation();
+    // ✅ Check access
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to edit folders');
+      return;
+    }
     setEditingFolder(folder);
     setFolderForm({
       name: folder.name,
@@ -174,6 +195,15 @@ export default function FoldersView({
     setEditingFolder(null);
     setShowCreateFolder(false);
     setShowEditFolder(false);
+  };
+
+  const openCreateModal = () => {
+    // ✅ Check access before opening
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to create folders');
+      return;
+    }
+    setShowCreateFolder(true);
   };
 
   return (
@@ -214,13 +244,16 @@ export default function FoldersView({
             </div>
           </div>
 
-          <button
-            onClick={() => setShowCreateFolder(true)}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
-          >
-            <FolderPlus className="w-4 h-4" />
-            New Folder
-          </button>
+          {/* ✅ New Folder Button - only show if admin */}
+          {userAccess?.is_admin && (
+            <button
+              onClick={openCreateModal}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-almet-sapphire text-white hover:bg-almet-cloud-burst transition-all"
+            >
+              <FolderPlus className="w-4 h-4" />
+              New Folder
+            </button>
+          )}
         </div>
       </div>
 
@@ -251,27 +284,32 @@ export default function FoldersView({
                   <div className="flex items-start justify-between mb-3">
                     <div className="text-3xl">{folder.icon || "📁"}</div>
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={(e) => startEditFolder(folder, e)}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
-                          darkMode ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"
-                        }`}
-                        title="Edit"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteFolder(folder.id, folder.name, folder.policy_count || 0);
-                        }}
-                        className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
-                          darkMode ? "hover:bg-red-900/30 text-red-400" : "hover:bg-red-100 text-red-500"
-                        }`}
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {/* ✅ Edit/Delete buttons - only if admin */}
+                      {userAccess?.is_admin && (
+                        <>
+                          <button
+                            onClick={(e) => startEditFolder(folder, e)}
+                            className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                              darkMode ? "hover:bg-gray-700 text-gray-400" : "hover:bg-gray-200 text-gray-500"
+                            }`}
+                            title="Edit"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFolder(folder.id, folder.name, folder.policy_count || 0);
+                            }}
+                            className={`p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${
+                              darkMode ? "hover:bg-red-900/30 text-red-400" : "hover:bg-red-100 text-red-500"
+                            }`}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                       <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${
                         darkMode ? "text-gray-600" : "text-gray-400"
                       }`} />
@@ -300,12 +338,14 @@ export default function FoldersView({
             <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
               <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
               <p className="text-sm mb-2">No folders in this company</p>
-              <button
-                onClick={() => setShowCreateFolder(true)}
-                className="text-sm text-almet-sapphire hover:text-almet-cloud-burst"
-              >
-                Create your first folder
-              </button>
+              {userAccess?.is_admin && (
+                <button
+                  onClick={openCreateModal}
+                  className="text-sm text-almet-sapphire hover:text-almet-cloud-burst"
+                >
+                  Create your first folder
+                </button>
+              )}
             </div>
           )}
         </>

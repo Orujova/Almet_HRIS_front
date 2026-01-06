@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar, CheckCircle, XCircle, AlertCircle, Plus, Eye, X, Check, Ban, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Calendar,FilterIcon ,Search , CheckCircle,TrendingUp ,TrendingDown , XCircle, AlertCircle, Plus, Eye, X, Check, Ban, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import timeOffService from '@/services/timeOffService';
@@ -12,7 +12,8 @@ import Pagination from '@/components/common/Pagination';
 const TimeOffPage = () => {
   const { theme } = useTheme();
   const darkMode = theme === 'dark';
-  
+    const [teamBalances, setTeamBalances] = useState([]);
+  const [balanceStats, setBalanceStats] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [balance, setBalance] = useState(null);
@@ -26,6 +27,16 @@ const TimeOffPage = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: '', requestId: null });
+
+  const [filteredTeamBalances, setFilteredTeamBalances] = useState([]); // ✅ NEW
+
+  
+  // ✅ NEW: Filter state
+  const [balanceFilters, setBalanceFilters] = useState({
+    search: '',
+
+    balanceStatus: 'all' // all, high, medium, low, empty
+  });
 
   const [formData, setFormData] = useState({
     date: '',
@@ -44,6 +55,14 @@ const TimeOffPage = () => {
   const [hoveredDay, setHoveredDay] = useState(null);
 
   const toast = useToast();
+ 
+   const [employeeId, setEmployeeId] = useState(null);
+
+  useEffect(() => {
+    const id = localStorage.getItem('employee_id');
+    setEmployeeId(id);
+  }, []);
+
 
   useEffect(() => {
     loadInitialData();
@@ -66,7 +85,7 @@ const TimeOffPage = () => {
 
       setBalance(balanceRes.data);
       setAccessInfo(accessInfoRes.data);
-      
+     
       console.log('✅ Access Info:', accessInfoRes.data);
     } catch (err) {
       console.error('❌ Load error:', err);
@@ -77,7 +96,8 @@ const TimeOffPage = () => {
     }
   };
 
-  const loadTabData = async () => {
+  
+    const loadTabData = async () => {
     try {
       if (activeTab === 'my-requests') {
         const res = await timeOffService.getMyRequests();
@@ -91,6 +111,11 @@ const TimeOffPage = () => {
       } else if (activeTab === 'calendar') {
         const res = await timeOffService.getMyRequests();
         setMyRequests(res.data.requests || []);
+      } else if (activeTab === 'team-balances' && (accessInfo?.is_manager || accessInfo?.can_view_all)) {
+        const res = await timeOffService.getTeamBalances();
+        setTeamBalances(res.data.balances || []);
+        setFilteredTeamBalances(res.data.balances || []); // ✅ Initialize filtered data
+        setBalanceStats(res.data.statistics || null);
       }
     } catch (err) {
       console.error('❌ Load tab data error:', err);
@@ -177,7 +202,7 @@ const TimeOffPage = () => {
     setSubmitting(true);
     try {
       await timeOffService.createRequest({
-        employee: accessInfo.employee_info.id,
+        employee: employeeId,
         date: formData.date,
         start_time: formData.start_time,
         end_time: formData.end_time,
@@ -322,6 +347,41 @@ const TimeOffPage = () => {
   const goToToday = () => {
     setCurrentMonth(new Date());
   };
+ useEffect(() => {
+    if (activeTab === 'team-balances') {
+      applyBalanceFilters();
+    }
+  }, [balanceFilters, teamBalances]);
+
+  const applyBalanceFilters = () => {
+    let filtered = [...teamBalances];
+
+    // Search filter (name or employee ID)
+    if (balanceFilters.search.trim()) {
+      const searchLower = balanceFilters.search.toLowerCase();
+      filtered = filtered.filter(b => 
+        b.employee_name.toLowerCase().includes(searchLower) ||
+        b.employee_id.toLowerCase().includes(searchLower)
+      );
+    }
+
+
+    // Balance status filter
+    if (balanceFilters.balanceStatus !== 'all') {
+      filtered = filtered.filter(b => {
+        const balance = parseFloat(b.current_balance_hours);
+        switch (balanceFilters.balanceStatus) {
+          case 'high': return balance > 3;
+          case 'medium': return balance > 1 && balance <= 3;
+          case 'low': return balance > 0 && balance <= 1;
+          case 'empty': return balance === 0;
+          default: return true;
+        }
+      });
+    }
+
+    setFilteredTeamBalances(filtered);
+  };
 
   if (loading) return <LoadingSpinner message="Loading time off system..." />;
   if (error) return <ErrorDisplay error={error} onRetry={loadInitialData} />;
@@ -461,6 +521,19 @@ const TimeOffPage = () => {
                       {pendingApprovals.length}
                     </span>
                   )}
+                </button>
+              )}
+              {(accessInfo?.is_manager || accessInfo?.can_view_all) && (
+                <button
+                  onClick={() => {setActiveTab('team-balances'); setCurrentPage(1);}}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                    activeTab === 'team-balances'
+                      ? 'border-almet-sapphire text-almet-sapphire'
+                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Clock size={16} />
+                  Team Balances
                 </button>
               )}
             </div>
@@ -872,6 +945,223 @@ const TimeOffPage = () => {
                 )}
               </div>
             )}
+
+             {activeTab === 'team-balances' && (accessInfo?.is_manager || accessInfo?.can_view_all) && (
+            <div className="space-y-6">
+              {/* Statistics Cards - remains same */}
+              {balanceStats && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Total Employees</p>
+                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
+                          {balanceStats.employee_count}
+                        </p>
+                      </div>
+                      <Users className="w-8 h-8 text-almet-sapphire" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Total Balance</p>
+                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
+                          {balanceStats.total_balance_hours}h
+                        </p>
+                      </div>
+                      <TrendingUp className="w-8 h-8 text-green-500" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Total Used</p>
+                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
+                          {balanceStats.total_used_hours}h
+                        </p>
+                      </div>
+                      <TrendingDown className="w-8 h-8 text-red-500" />
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">Average Balance</p>
+                        <p className="text-xl font-semibold text-gray-900 dark:text-white mt-2">
+                          {balanceStats.average_balance_hours}h
+                        </p>
+                      </div>
+                      <Clock className="w-8 h-8 text-almet-sapphire" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ NEW: Filters Section */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <FilterIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Filters</h3>
+                  {(balanceFilters.search || balanceFilters.balanceStatus !== 'all') && (
+                    <button
+                      onClick={resetBalanceFilters}
+                      className="ml-auto text-xs text-almet-sapphire hover:text-almet-astral font-medium"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Search Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Search Employee
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={balanceFilters.search}
+                        onChange={(e) => setBalanceFilters({...balanceFilters, search: e.target.value})}
+                        placeholder="Name or Employee ID..."
+                        className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-almet-sapphire focus:border-transparent outline-0"
+                      />
+                    </div>
+                  </div>
+
+              
+
+                  {/* Balance Status Filter */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Balance Status
+                    </label>
+                    <select
+                      value={balanceFilters.balanceStatus}
+                      onChange={(e) => setBalanceFilters({...balanceFilters, balanceStatus: e.target.value})}
+                      className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent outline-0"
+                    >
+                      <option value="all">All Balances</option>
+                      <option value="high">High (&gt; 3h)</option>
+                      <option value="medium">Medium (1-3h)</option>
+                      <option value="low">Low (0-1h)</option>
+                      <option value="empty">Empty (0h)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Results Count */}
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Showing <span className="font-semibold text-gray-900 dark:text-white">{filteredTeamBalances.length}</span> of {teamBalances.length} employees
+                    {balanceFilters.search && (
+                      <span className="ml-2">
+                        • Searching for "<span className="font-medium text-almet-sapphire">{balanceFilters.search}</span>"
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {/* Balances Table */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                {filteredTeamBalances.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">No employees found</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 dark:bg-gray-700">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Employee</th>
+
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Current Balance</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Monthly Allowance</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Used This Month</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Reset</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                        {getCurrentPageData(filteredTeamBalances).map((balance) => (
+                          <tr key={balance.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                              <div>
+                                <p className="font-medium">{balance.employee_name}</p>
+                                <p className="text-gray-500 dark:text-gray-400 text-xs">{balance.employee_id}</p>
+                              </div>
+                            </td>
+                         
+                            <td className="px-6 py-4 text-sm whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className={`font-semibold ${
+                                  parseFloat(balance.current_balance_hours) > 3 
+                                    ? 'text-green-600 dark:text-green-500' 
+                                    : parseFloat(balance.current_balance_hours) > 1
+                                    ? 'text-yellow-600 dark:text-yellow-500'
+                                    : parseFloat(balance.current_balance_hours) > 0
+                                    ? 'text-orange-600 dark:text-orange-500'
+                                    : 'text-red-600 dark:text-red-500'
+                                }`}>
+                                  {balance.current_balance_hours}h
+                                </span>
+                                {parseFloat(balance.current_balance_hours) === 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                                    Empty
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                              {balance.monthly_allowance_hours}h
+                            </td>
+                            <td className="px-6 py-4 text-sm whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-900 dark:text-white font-medium">
+                                  {balance.used_hours_this_month}h
+                                </span>
+                                {parseFloat(balance.used_hours_this_month) > 0 && (
+                                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 max-w-[60px]">
+                                    <div 
+                                      className="bg-almet-sapphire h-1.5 rounded-full"
+                                      style={{
+                                        width: `${Math.min((parseFloat(balance.used_hours_this_month) / parseFloat(balance.monthly_allowance_hours)) * 100, 100)}%`
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                              {formatDate(balance.last_reset_date)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {filteredTeamBalances.length > itemsPerPage && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(filteredTeamBalances.length / itemsPerPage)}
+                  totalItems={filteredTeamBalances.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  darkMode={darkMode}
+                />
+              )}
+            </div>
+          )}
           </div>
         </div>
 

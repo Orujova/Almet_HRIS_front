@@ -53,6 +53,17 @@ const timeOffService = {
   getMyBalance: () => api.get('/timeoff/balances/my_balance/'),
   getAllBalances: (params) => api.get('/timeoff/balances/', { params }),
   getBalanceById: (id) => api.get(`/timeoff/balances/${id}/`),
+  getTeamBalances: () => api.get('/timeoff/balances/team_balances/'), 
+  bulkUploadBalances: (file) => { // ✅ NEW
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/timeoff/balances/bulk_upload_balances/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  downloadBalanceTemplate: () => api.get('/timeoff/balances/download_template/', { // ✅ NEW
+    responseType: 'blob'
+  }),
   updateBalance: (id, data) => api.post(`/timeoff/balances/${id}/update_balance/`, data),
   resetMonthlyBalances: () => api.post('/timeoff/balances/reset_monthly_balances/'),
 

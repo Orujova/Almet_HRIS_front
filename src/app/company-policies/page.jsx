@@ -31,6 +31,7 @@ import {
   updatePolicyCompany,
   deletePolicyCompany,
 } from "@/services/policyService";
+import jobDescriptionService from "@/services/jobDescriptionService";
 
 export default function CompanyPoliciesPage() {
   const { darkMode } = useTheme();
@@ -53,6 +54,10 @@ export default function CompanyPoliciesPage() {
   const [editingCompany, setEditingCompany] = useState(null);
   const [submittingCompany, setSubmittingCompany] = useState(false);
   
+  // ✅ Access control state
+  const [userAccess, setUserAccess] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(true);
+  
   // Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -62,11 +67,26 @@ export default function CompanyPoliciesPage() {
     onConfirm: () => {},
   });
 
-  // Load companies on mount
+  // Load data on mount
   useEffect(() => {
+    loadUserAccess();
     loadAllCompanies();
     loadOverallStatistics();
   }, []);
+
+  // ✅ Load user access
+  const loadUserAccess = async () => {
+    try {
+      setAccessLoading(true);
+      const accessInfo = await jobDescriptionService.getMyAccessInfo();
+      setUserAccess(accessInfo);
+    } catch (error) {
+      console.error('Error fetching user access:', error);
+      setUserAccess({ is_admin: false });
+    } finally {
+      setAccessLoading(false);
+    }
+  };
 
   const loadAllCompanies = async () => {
     setLoading(true);
@@ -95,11 +115,21 @@ export default function CompanyPoliciesPage() {
 
   // Company CRUD handlers
   const handleAddCompany = () => {
+    // ✅ Check access before opening
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to add folders');
+      return;
+    }
     setEditingCompany(null);
     setShowCompanyModal(true);
   };
 
   const handleEditCompany = (company) => {
+    // ✅ Check access before editing
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to edit folders');
+      return;
+    }
     if (company.type !== 'policy_company') {
       showWarning("Business Functions cannot be edited from here");
       return;
@@ -132,6 +162,11 @@ export default function CompanyPoliciesPage() {
   };
 
   const handleDeleteCompany = (company) => {
+    // ✅ Check access before deleting
+    if (!userAccess?.is_admin) {
+      showWarning('You do not have permission to delete folders');
+      return;
+    }
     if (company.type !== 'policy_company') {
       showWarning("Business Functions cannot be deleted from here");
       return;
@@ -212,6 +247,7 @@ export default function CompanyPoliciesPage() {
           onAddCompany={handleAddCompany}
           onEditCompany={handleEditCompany}
           onDeleteCompany={handleDeleteCompany}
+          userAccess={userAccess}
         />
       )}
 
@@ -223,6 +259,7 @@ export default function CompanyPoliciesPage() {
           onSelectFolder={handleSelectFolder}
           confirmModal={confirmModal}
           setConfirmModal={setConfirmModal}
+          userAccess={userAccess}
         />
       )}
 
@@ -235,6 +272,7 @@ export default function CompanyPoliciesPage() {
           onViewPolicy={handleViewPolicy}
           confirmModal={confirmModal}
           setConfirmModal={setConfirmModal}
+          userAccess={userAccess}
         />
       )}
 
