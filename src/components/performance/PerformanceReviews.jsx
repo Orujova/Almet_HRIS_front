@@ -23,7 +23,7 @@ export default function PerformanceReviews({
   const cursorPositionRef = useRef(0);
 
 
-
+console.log(permissions)
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
 
@@ -34,10 +34,10 @@ export default function PerformanceReviews({
   const isCurrentUserManager = (() => {
     if (!permissions?.employee || !performanceData) return false;
 
+    console.log(performanceData.employee_data);
+console.log(permissions.employee);
     const lineManagerId = 
       performanceData.employee_data?.line_manager_hc; 
-      console.log(performanceData.employee_data);
- console.log(permissions.employee);
     if (!lineManagerId) return false;
     return permissions.employee.employee_id === lineManagerId;
   })();

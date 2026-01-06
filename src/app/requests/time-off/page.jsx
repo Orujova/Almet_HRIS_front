@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Clock, Calendar,FilterIcon ,Search , CheckCircle,TrendingUp ,TrendingDown , XCircle, AlertCircle, Plus, Eye, X, Check, Ban, Users, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Clock, Calendar,Download , Upload , Edit,FilterIcon ,Search , CheckCircle,TrendingUp ,TrendingDown , XCircle, AlertCircle, Plus, Eye, X, Check, Ban, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import timeOffService from '@/services/timeOffService';
@@ -8,7 +8,7 @@ import { useToast } from '@/components/common/Toast';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
 import Pagination from '@/components/common/Pagination';
-
+import { useRef } from 'react';
 const TimeOffPage = () => {
   const { theme } = useTheme();
   const darkMode = theme === 'dark';
@@ -30,7 +30,19 @@ const TimeOffPage = () => {
 
   const [filteredTeamBalances, setFilteredTeamBalances] = useState([]); // ✅ NEW
 
+  const [showUpdateBalanceModal, setShowUpdateBalanceModal] = useState(false);
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  const [selectedBalance, setSelectedBalance] = useState(null);
+  const [updateBalanceForm, setUpdateBalanceForm] = useState({
+    new_balance: ''
+  });
+  const [updateBalanceErrors, setUpdateBalanceErrors] = useState({});
+  const [updatingBalance, setUpdatingBalance] = useState(false);
   
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState(null);
+  const fileInputRef = useRef(null);
   // ✅ NEW: Filter state
   const [balanceFilters, setBalanceFilters] = useState({
     search: '',
@@ -227,7 +239,121 @@ const TimeOffPage = () => {
       setSubmitting(false);
     }
   };
+const handleUpdateBalance = async (e) => {
+    e.preventDefault();
+    
+    const errors = {};
+    if (!updateBalanceForm.new_balance) {
+      errors.new_balance = 'New balance is required';
+    } else if (parseFloat(updateBalanceForm.new_balance) < 0) {
+      errors.new_balance = 'Balance cannot be negative';
+    }
+    
 
+    
+    setUpdateBalanceErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      toast.showWarning('Please fix form errors');
+      return;
+    }
+    
+    setUpdatingBalance(true);
+    try {
+      const res = await timeOffService.updateBalance(selectedBalance.id, {
+        new_balance: updateBalanceForm.new_balance,
+    
+      });
+      
+      toast.showSuccess(`Balance updated: ${res.data.old_balance}h → ${res.data.new_balance}h`);
+      setShowUpdateBalanceModal(false);
+      setSelectedBalance(null);
+      setUpdateBalanceForm({ new_balance: '' });
+      setUpdateBalanceErrors({});
+      loadTabData(); // Refresh data
+    } catch (err) {
+      console.error('❌ Update balance error:', err);
+      toast.showError(err.response?.data?.error || 'Failed to update balance');
+    } finally {
+      setUpdatingBalance(false);
+    }
+  };
+
+  // ✅ Handle Bulk Upload
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type
+      const validTypes = [
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/csv'
+      ];
+      
+      if (!validTypes.includes(file.type) && !file.name.match(/\.(xlsx|xls|csv)$/)) {
+        toast.showError('Invalid file type. Please upload Excel or CSV file');
+        return;
+      }
+      
+      setUploadFile(file);
+      setUploadResults(null);
+    }
+  };
+
+  const handleBulkUpload = async () => {
+    if (!uploadFile) {
+      toast.showWarning('Please select a file');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      const res = await timeOffService.bulkUploadBalances(uploadFile);
+      
+      setUploadResults(res.data);
+      
+      if (res.data.failed_count === 0) {
+        toast.showSuccess(`✅ All ${res.data.success_count} balances updated successfully!`);
+      } else {
+        toast.showWarning(`⚠️ ${res.data.success_count} succeeded, ${res.data.failed_count} failed`);
+      }
+      
+      loadTabData(); // Refresh data
+    } catch (err) {
+      console.error('❌ Bulk upload error:', err);
+      toast.showError(err.response?.data?.error || 'Failed to upload file');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await timeOffService.downloadBalanceTemplate();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'timeoff_balances_template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      
+      toast.showSuccess('Template downloaded successfully');
+    } catch (err) {
+      console.error('❌ Download template error:', err);
+      toast.showError('Failed to download template');
+    }
+  };
+
+  const resetUploadModal = () => {
+    setShowBulkUploadModal(false);
+    setUploadFile(null);
+    setUploadResults(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
   const handleApproveRequest = async (requestId) => {
     setConfirmModal({ isOpen: false, type: '', requestId: null });
     try {
@@ -1000,7 +1126,24 @@ const TimeOffPage = () => {
                   </div>
                 </div>
               )}
-
+ {accessInfo?.is_admin && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Template
+                </button>
+                <button
+                  onClick={() => setShowBulkUploadModal(true)}
+                  className="flex items-center gap-2 px-4 py-2.5 bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors text-sm font-medium shadow-sm"
+                >
+                  <Upload className="w-4 h-4" />
+                  Bulk Upload
+                </button>
+              </div>
+            )}
               {/* ✅ NEW: Filters Section */}
               <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
@@ -1016,7 +1159,7 @@ const TimeOffPage = () => {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Search Filter */}
                   <div>
                     <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -1068,87 +1211,110 @@ const TimeOffPage = () => {
                 </div>
               </div>
 
-              {/* Balances Table */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
-                {filteredTeamBalances.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">No employees found</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-700">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Employee</th>
-
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Current Balance</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Monthly Allowance</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Used This Month</th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Reset</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                        {getCurrentPageData(filteredTeamBalances).map((balance) => (
-                          <tr key={balance.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
-                              <div>
-                                <p className="font-medium">{balance.employee_name}</p>
-                                <p className="text-gray-500 dark:text-gray-400 text-xs">{balance.employee_id}</p>
-                              </div>
-                            </td>
+             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+              {filteredTeamBalances.length === 0 ? (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">No employees found</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Try adjusting your filters</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Employee</th>
+                       
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Current Balance</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Monthly Allowance</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Used This Month</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Last Reset</th>
+                        {/* ✅ NEW: Actions Column */}
+                        {accessInfo?.is_admin && (
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                      {getCurrentPageData(filteredTeamBalances).map((balance) => (
+                        <tr key={balance.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          {/* ... existing columns ... */}
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                            <div>
+                              <p className="font-medium">{balance.employee_name}</p>
+                              <p className="text-gray-500 dark:text-gray-400 text-xs">{balance.employee_id}</p>
+                            </div>
+                          </td>
                          
-                            <td className="px-6 py-4 text-sm whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <span className={`font-semibold ${
-                                  parseFloat(balance.current_balance_hours) > 3 
-                                    ? 'text-green-600 dark:text-green-500' 
-                                    : parseFloat(balance.current_balance_hours) > 1
-                                    ? 'text-yellow-600 dark:text-yellow-500'
-                                    : parseFloat(balance.current_balance_hours) > 0
-                                    ? 'text-orange-600 dark:text-orange-500'
-                                    : 'text-red-600 dark:text-red-500'
-                                }`}>
-                                  {balance.current_balance_hours}h
+                          <td className="px-6 py-4 text-sm whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className={`font-semibold ${
+                                parseFloat(balance.current_balance_hours) > 3 
+                                  ? 'text-green-600 dark:text-green-500' 
+                                  : parseFloat(balance.current_balance_hours) > 1
+                                  ? 'text-yellow-600 dark:text-yellow-500'
+                                  : parseFloat(balance.current_balance_hours) > 0
+                                  ? 'text-orange-600 dark:text-orange-500'
+                                  : 'text-red-600 dark:text-red-500'
+                              }`}>
+                                {balance.current_balance_hours}h
+                              </span>
+                              {parseFloat(balance.current_balance_hours) === 0 && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
+                                  Empty
                                 </span>
-                                {parseFloat(balance.current_balance_hours) === 0 && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">
-                                    Empty
-                                  </span>
-                                )}
-                              </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
+                            {balance.monthly_allowance_hours}h
+                          </td>
+                          <td className="px-6 py-4 text-sm whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-900 dark:text-white font-medium">
+                                {balance.used_hours_this_month}h
+                              </span>
+                              {parseFloat(balance.used_hours_this_month) > 0 && (
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 max-w-[60px]">
+                                  <div 
+                                    className="bg-almet-sapphire h-1.5 rounded-full"
+                                    style={{
+                                      width: `${Math.min((parseFloat(balance.used_hours_this_month) / parseFloat(balance.monthly_allowance_hours)) * 100, 100)}%`
+                                    }}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                            {formatDate(balance.last_reset_date)}
+                          </td>
+                          {/* ✅ NEW: Update Button (Admin Only) */}
+                          {accessInfo?.is_admin && (
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <button
+                                onClick={() => {
+                                  setSelectedBalance(balance);
+                                  setUpdateBalanceForm({
+                                    new_balance: balance.current_balance_hours,
+                            
+                                  });
+                                  setShowUpdateBalanceModal(true);
+                                }}
+                                className="p-1.5 text-almet-sapphire hover:bg-almet-mystic dark:hover:bg-gray-600 rounded transition-colors"
+                                title="Update Balance"
+                              >
+                                <Edit size={16} />
+                              </button>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
-                              {balance.monthly_allowance_hours}h
-                            </td>
-                            <td className="px-6 py-4 text-sm whitespace-nowrap">
-                              <div className="flex items-center gap-2">
-                                <span className="text-gray-900 dark:text-white font-medium">
-                                  {balance.used_hours_this_month}h
-                                </span>
-                                {parseFloat(balance.used_hours_this_month) > 0 && (
-                                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 max-w-[60px]">
-                                    <div 
-                                      className="bg-almet-sapphire h-1.5 rounded-full"
-                                      style={{
-                                        width: `${Math.min((parseFloat(balance.used_hours_this_month) / parseFloat(balance.monthly_allowance_hours)) * 100, 100)}%`
-                                      }}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-                              {formatDate(balance.last_reset_date)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
               {filteredTeamBalances.length > itemsPerPage && (
                 <Pagination
@@ -1164,6 +1330,246 @@ const TimeOffPage = () => {
           )}
           </div>
         </div>
+ {showUpdateBalanceModal && selectedBalance && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-md border border-gray-200 dark:border-gray-700 shadow-xl">
+              <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Update Balance</h3>
+                  <button
+                    onClick={() => {
+                      setShowUpdateBalanceModal(false);
+                      setSelectedBalance(null);
+                      setUpdateBalanceForm({ new_balance: '', reason: '' });
+                      setUpdateBalanceErrors({});
+                    }}
+                    className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateBalance} className="px-6 py-5 space-y-4">
+                <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Employee</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-white mt-1">
+                    {selectedBalance.employee_name}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {selectedBalance.employee_id}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Current Balance: <span className="text-almet-sapphire font-semibold">{selectedBalance.current_balance_hours}h</span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    New Balance (hours) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    value={updateBalanceForm.new_balance}
+                    onChange={(e) => setUpdateBalanceForm({...updateBalanceForm, new_balance: e.target.value})}
+                    className={`w-full px-4 py-2.5 text-sm border rounded-lg outline-0 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent ${
+                      updateBalanceErrors.new_balance ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                    placeholder="Enter new balance..."
+                  />
+                  {updateBalanceErrors.new_balance && (
+                    <p className="mt-1.5 text-xs text-red-500">{updateBalanceErrors.new_balance}</p>
+                  )}
+                </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUpdateBalanceModal(false);
+                  setSelectedBalance(null);
+                  setUpdateBalanceForm({ new_balance: '', reason: '' });
+                  setUpdateBalanceErrors({});
+                }}
+                className="px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updatingBalance}
+                className="px-6 py-2.5 text-sm bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+              >
+                {updatingBalance ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  'Update Balance'
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+     {/* ✅ NEW: BULK UPLOAD MODAL */}
+    {showBulkUploadModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl w-full max-w-2xl border border-gray-200 dark:border-gray-700 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="sticky top-0 px-6 py-5 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 z-10">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bulk Upload Balances</h3>
+              <button
+                onClick={resetUploadModal}
+                className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="px-6 py-5 space-y-5">
+            {/* Instructions */}
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2">Instructions</h4>
+              <ol className="text-sm text-blue-800 dark:text-blue-400 space-y-1 list-decimal list-inside">
+                <li>Download the Excel template</li>
+                <li>Fill in employee_id, new_balance, and reason (optional)</li>
+                <li>Upload the completed file</li>
+                <li>Review the results</li>
+              </ol>
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Select File <span className="text-red-500">*</span>
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFileSelect}
+                className="w-full px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-almet-sapphire file:text-white hover:file:bg-almet-astral cursor-pointer"
+              />
+              {uploadFile && (
+                <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  Selected: <span className="font-medium text-gray-900 dark:text-white">{uploadFile.name}</span>
+                </p>
+              )}
+            </div>
+
+            {/* Upload Results */}
+            {uploadResults && (
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="bg-gray-50 dark:bg-gray-700/50 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Upload Results</h4>
+                </div>
+                <div className="p-4 space-y-3">
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-500">{uploadResults.success_count}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Success</p>
+                    </div>
+                    <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-red-600 dark:text-red-500">{uploadResults.failed_count}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Failed</p>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">{uploadResults.total_rows}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">Total</p>
+                    </div>
+                  </div>
+
+                  {/* Detailed Results */}
+                  {uploadResults.results && uploadResults.results.length > 0 && (
+                    <div className="max-h-60 overflow-y-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50 dark:bg-gray-700/50 sticky top-0">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Row</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Employee</th>
+                            <th className="px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                          {uploadResults.results.map((result, index) => (
+                            <tr key={index} className={result.status === 'success' ? 'bg-white dark:bg-gray-800' : 'bg-red-50 dark:bg-red-900/10'}>
+                              <td className="px-3 py-2 text-gray-900 dark:text-white">{result.row}</td>
+                              <td className="px-3 py-2">
+                                <div>
+                                  <p className="text-gray-900 dark:text-white font-medium">{result.employee_name || result.employee_id}</p>
+                                  {result.status === 'success' && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {result.old_balance}h → {result.new_balance}h
+                                    </p>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2">
+                                {result.status === 'success' ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
+                                    <CheckCircle size={12} />
+                                    Success
+                                  </span>
+                                ) : (
+                                  <div>
+                                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400">
+                                      <XCircle size={12} />
+                                      Failed
+                                    </span>
+                                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">{result.error}</p>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={resetUploadModal}
+                className="px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkUpload}
+                disabled={!uploadFile || uploading}
+                className="px-6 py-2.5 text-sm bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
+              >
+                {uploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload File
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
 
         {/* NEW REQUEST MODAL */}
         {showNewRequestModal && (
