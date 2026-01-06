@@ -7,12 +7,11 @@ import {
   CheckCircle,
   X,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
+  User,
+  Clock,
+  MessageSquare,
 } from "lucide-react";
-import { Document, Page, pdfjs } from 'react-pdf';
 import { useToast } from "@/components/common/Toast";
-import PolicyAcknowledgmentsList from "./PolicyAcknowledgmentsList";
 import {
   trackPolicyDownload,
   acknowledgePolicy,
@@ -20,14 +19,142 @@ import {
   getPolicyAcknowledgments,
 } from "@/services/policyService";
 
-// ✅ PDF.js worker setup - DÜZGÜN YOLLA
-if (typeof window !== 'undefined') {
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.min.mjs',
-    import.meta.url,
-  ).toString();
+// PolicyAcknowledgmentsList Component
+function PolicyAcknowledgmentsList({ policyId, darkMode }) {
+  const [acknowledgments, setAcknowledgments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadAcknowledgments();
+  }, [policyId]);
+
+  const loadAcknowledgments = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getPolicyAcknowledgments(policyId);
+      const results = data?.results || [];
+      setAcknowledgments(Array.isArray(results) ? results : []);
+    } catch (err) {
+      console.error('Error loading acknowledgments:', err);
+      setError(err.message || "Failed to load acknowledgments");
+      setAcknowledgments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className={`w-8 h-8 animate-spin ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className={`p-4 rounded-lg ${
+        darkMode ? 'bg-red-900/20 border border-red-800 text-red-400' : 'bg-red-50 border border-red-200 text-red-700'
+      }`}>
+        <p className="text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (acknowledgments.length === 0) {
+    return (
+      <div className={`text-center py-12 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
+        <p className="text-sm">No acknowledgments yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {acknowledgments.map((ack) => (
+        <div
+          key={ack.id}
+          className={`rounded-lg border p-4 ${
+            darkMode
+              ? "bg-gray-800/50 border-gray-700"
+              : "bg-white border-gray-200"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {/* Avatar/Icon */}
+            <div className={`p-2 rounded-lg flex-shrink-0 ${
+              darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600'
+            }`}>
+              <User className="w-5 h-5" />
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              {/* User Info */}
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <h4 className={`font-semibold text-sm ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    {ack.employee_name || "Unknown User"}
+                  </h4>
+                  <p className={`text-xs ${darkMode ? "text-gray-500" : "text-gray-500"}`}>
+                    {ack.employee_id || "N/A"} • {ack.employee_email || "No email"}
+                  </p>
+                </div>
+                <div className={`flex items-center gap-1 text-xs ${
+                  darkMode ? 'bg-green-900/20 text-green-400' : 'bg-green-50 text-green-600'
+                } px-2 py-1 rounded-full`}>
+                  <CheckCircle className="w-3 h-3" />
+                  <span>Acknowledged</span>
+                </div>
+              </div>
+
+              {/* Timestamp */}
+              <div className={`flex items-center gap-1 text-xs mb-2 ${
+                darkMode ? "text-gray-500" : "text-gray-500"
+              }`}>
+                <Clock className="w-3 h-3" />
+                <span>{formatDate(ack.acknowledged_at)}</span>
+              </div>
+
+              {/* Notes */}
+              {ack.notes && (
+                <div className={`mt-3 p-3 rounded-lg ${
+                  darkMode ? 'bg-gray-900/50 border border-gray-700' : 'bg-gray-50 border border-gray-200'
+                }`}>
+                  <div className="flex items-start gap-2">
+                    <MessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                      darkMode ? 'text-gray-500' : 'text-gray-400'
+                    }`} />
+                    <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                      {ack.notes}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
+// Main PDFViewer Component
 export default function PDFViewer({
   selectedPolicy,
   selectedFolder,
@@ -45,15 +172,11 @@ export default function PDFViewer({
   const [policy, setPolicy] = useState(selectedPolicy);
   const [hasAcknowledged, setHasAcknowledged] = useState(false);
   const [checkingAcknowledgment, setCheckingAcknowledgment] = useState(false);
+  const [pdfScrollProgress, setPdfScrollProgress] = useState(0);
+  const [hasReachedEnd, setHasReachedEnd] = useState(false);
   const [showReadCompletePrompt, setShowReadCompletePrompt] = useState(false);
 
-  // PDF.js states
-  const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [pdfLoading, setPdfLoading] = useState(true);
-  const [pdfError, setPdfError] = useState(null);
-
-  // Refresh policy data
+  // Refresh policy data when component mounts to get updated stats
   useEffect(() => {
     const refreshPolicyData = async () => {
       try {
@@ -70,7 +193,7 @@ export default function PDFViewer({
     refreshPolicyData();
   }, [selectedPolicy.id, selectedFolder.id]);
 
-  // Check if current user has acknowledged
+  // Check if current user has acknowledged this policy
   useEffect(() => {
     const checkUserAcknowledgment = async () => {
       if (!policy.requires_acknowledgment) return;
@@ -86,6 +209,7 @@ export default function PDFViewer({
         const data = await getPolicyAcknowledgments(policy.id);
         const acknowledgments = Array.isArray(data?.results) ? data.results : [];
         
+        // Check if current user has acknowledged
         const userAcknowledged = acknowledgments.some(
           ack => ack.employee_email === currentUserEmail
         );
@@ -101,47 +225,43 @@ export default function PDFViewer({
     checkUserAcknowledgment();
   }, [policy.id, policy.requires_acknowledgment]);
 
-  // Check if user reached last page
+  // Track PDF reading progress
   useEffect(() => {
-    if (numPages && pageNumber === numPages && !hasAcknowledged && policy.requires_acknowledgment) {
-      const timer = setTimeout(() => {
-        setShowReadCompletePrompt(true);
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [pageNumber, numPages, hasAcknowledged, policy.requires_acknowledgment]);
+    if (!policy.requires_acknowledgment || hasAcknowledged) return;
 
-  // Get PDF URL
+    const iframe = document.querySelector('iframe');
+    if (!iframe) return;
+
+    let readingTimer;
+    let readingStartTime = Date.now();
+
+    // Start a timer to track reading time (assume user read the PDF after 30 seconds)
+    readingTimer = setTimeout(() => {
+      if (!hasReachedEnd && !hasAcknowledged) {
+        setHasReachedEnd(true);
+        setShowReadCompletePrompt(true);
+      }
+    }, 30000); // 30 seconds
+
+    return () => {
+      if (readingTimer) clearTimeout(readingTimer);
+    };
+  }, [policy.requires_acknowledgment, hasAcknowledged, hasReachedEnd]);
+
+  // Get PDF URL for iframe
   const getPDFUrl = () => {
     const url = policy.policy_url || policy.policy_file;
     if (!url) return null;
     
-    // For Google Drive URLs
-    if (url.includes('drive.google.com')) {
-      const fileId = url.match(/[-\w]{25,}/);
-      if (fileId) {
-        return `https://drive.google.com/uc?export=download&id=${fileId[0]}`;
-      }
+    // Handle Google Drive URLs
+    if (url.includes('drive.google.com') || url.includes('docs.google.com')) {
+      return url.includes('?') ? `${url}&output=embed` : `${url}?output=embed`;
     }
     
     return url;
   };
 
-  // PDF Document handlers
-  const onDocumentLoadSuccess = ({ numPages }) => {
-    setNumPages(numPages);
-    setPdfLoading(false);
-    setPdfError(null);
-  };
-
-  const onDocumentLoadError = (error) => {
-    console.error('Error loading PDF:', error);
-    setPdfError('Failed to load PDF document');
-    setPdfLoading(false);
-  };
-
-  // Download handler
+  // Download PDF handler
   const handleDownloadPDF = async () => {
     try {
       await trackPolicyDownload(policy.id);
@@ -156,6 +276,7 @@ export default function PDFViewer({
       
       showSuccess("Download started!");
       
+      // Refresh policy data after download
       const data = await getPoliciesByFolder(selectedFolder.id);
       const updatedPolicy = data.find(p => p.id === policy.id);
       if (updatedPolicy) {
@@ -167,7 +288,7 @@ export default function PDFViewer({
     }
   };
 
-  // Acknowledge handler
+  // Acknowledge policy handler
   const handleAcknowledge = async () => {
     setSubmitting(true);
     try {
@@ -175,9 +296,9 @@ export default function PDFViewer({
       showSuccess("Policy acknowledged successfully!");
       setAcknowledgeNotes("");
       setShowAcknowledgeModal(false);
-      setHasAcknowledged(true);
-      setShowReadCompletePrompt(false);
+      setHasAcknowledged(true); // Update local state
       
+      // Refresh policy data after acknowledgment
       const data = await getPoliciesByFolder(selectedFolder.id);
       const updatedPolicy = data.find(p => p.id === policy.id);
       if (updatedPolicy) {
@@ -198,6 +319,7 @@ export default function PDFViewer({
       <div className={`flex items-center justify-between px-4 py-3 border-b ${
         darkMode ? "bg-gray-900 border-gray-800" : "bg-white border-gray-200"
       }`}>
+        {/* Left Section - Back Button and Title */}
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -228,7 +350,9 @@ export default function PDFViewer({
           </div>
         </div>
 
+        {/* Right Section - Tabs and Actions */}
         <div className="flex items-center gap-2">
+          {/* Tabs */}
           <div className={`flex border-b ${
             darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
           }`}>
@@ -265,6 +389,7 @@ export default function PDFViewer({
             )}
           </div>
           
+          {/* Stats Badge */}
           <div className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs ${
             darkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-50 text-gray-600'
           }`}>
@@ -278,6 +403,7 @@ export default function PDFViewer({
             </div>
           </div>
 
+          {/* Acknowledge Button */}
           {policy.requires_acknowledgment && (
             <button
               onClick={() => setShowAcknowledgeModal(true)}
@@ -305,6 +431,7 @@ export default function PDFViewer({
             </button>
           )}
 
+          {/* Download Button */}
           <button
             onClick={handleDownloadPDF}
             className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
@@ -315,77 +442,25 @@ export default function PDFViewer({
         </div>
       </div>
 
-      {/* Content Area */}
+      {/* Content Area - PDF Viewer OR Acknowledgments List */}
       <div className={`flex-1 overflow-hidden ${darkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
         {activeTab === "document" ? (
-          <div className="relative w-full h-full flex flex-col">
+          // PDF Document Tab
+          <div className="relative w-full h-full">
             {pdfUrl ? (
               <>
-                {/* PDF Viewer */}
-                <div className="flex-1 overflow-auto flex items-start justify-center p-4">
-                  <Document
-                    file={pdfUrl}
-                    onLoadSuccess={onDocumentLoadSuccess}
-                    onLoadError={onDocumentLoadError}
-                    loading={
-                      <div className="flex items-center justify-center py-12">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-                      </div>
-                    }
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      renderTextLayer={false}
-                      renderAnnotationLayer={false}
-                      className="shadow-lg"
-                      width={Math.min(typeof window !== 'undefined' ? window.innerWidth - 100 : 800, 800)}
-                    />
-                  </Document>
-                </div>
-
-                {/* Page Navigation */}
-                {numPages && (
-                  <div className={`border-t py-3 px-4 flex items-center justify-center gap-4 ${
-                    darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                  }`}>
-                    <button
-                      onClick={() => setPageNumber(pageNumber - 1)}
-                      disabled={pageNumber <= 1}
-                      className={`p-2 rounded-lg transition-all ${
-                        pageNumber <= 1
-                          ? 'opacity-50 cursor-not-allowed'
-                          : darkMode
-                            ? 'bg-gray-700 hover:bg-gray-600'
-                            : 'bg-gray-100 hover:bg-gray-200'
-                      }`}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    
-                    <span className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Page {pageNumber} of {numPages}
-                    </span>
-                    
-                    <button
-                      onClick={() => setPageNumber(pageNumber + 1)}
-                      disabled={pageNumber >= numPages}
-                      className={`p-2 rounded-lg transition-all ${
-                        pageNumber >= numPages
-                          ? 'opacity-50 cursor-not-allowed'
-                          : darkMode
-                            ? 'bg-gray-700 hover:bg-gray-600'
-                            : 'bg-gray-100 hover:bg-gray-200'
-                      }`}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-
-                {/* Read Complete Prompt */}
+                <iframe
+                  src={pdfUrl}
+                  className="w-full h-full border-0"
+                  title={policy.title}
+                  style={{ border: 'none' }}
+                  loading="lazy"
+                />
+                
+                {/* Read Complete Prompt - Floating notification */}
                 {showReadCompletePrompt && !hasAcknowledged && policy.requires_acknowledgment && (
-                  <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 animate-bounce max-w-md w-full px-4">
-                    <div className={`rounded-lg shadow-2xl p-4 border-2 ${
+                  <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 animate-bounce">
+                    <div className={`rounded-lg shadow-xl p-4 border-2 max-w-md ${
                       darkMode 
                         ? 'bg-gray-800 border-green-600 text-white' 
                         : 'bg-white border-green-500 text-gray-900'
@@ -395,9 +470,9 @@ export default function PDFViewer({
                           <CheckCircle className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-semibold mb-1">You've reached the end!</h4>
+                          <h4 className="font-semibold mb-1">Ready to Acknowledge?</h4>
                           <p className={`text-sm mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            You've read through the entire policy. Please acknowledge that you've understood it.
+                            You've spent enough time reviewing this policy. Please acknowledge that you've read and understood it.
                           </p>
                           <div className="flex gap-2">
                             <button
@@ -433,26 +508,10 @@ export default function PDFViewer({
                     </div>
                   </div>
                 )}
-
-                {pdfError && (
-                  <div className={`absolute inset-0 flex items-center justify-center ${
-                    darkMode ? 'bg-gray-900' : 'bg-gray-100'
-                  }`}>
-                    <div className="text-center">
-                      <FileText className={`w-12 h-12 mx-auto mb-3 opacity-50 ${
-                        darkMode ? 'text-gray-500' : 'text-gray-400'
-                      }`} />
-                      <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {pdfError}
-                      </p>
-                    </div>
-                  </div>
-                )}
               </>
             ) : (
-              <div className={`flex items-center justify-center h-full ${
-                darkMode ? 'text-gray-500' : 'text-gray-400'
-              }`}>
+              // No PDF Available
+              <div className={`flex items-center justify-center h-full ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
                 <div className="text-center">
                   <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p className="text-sm">PDF file not available</p>
@@ -461,6 +520,7 @@ export default function PDFViewer({
             )}
           </div>
         ) : (
+          // Acknowledgments Tab
           <div className="h-full overflow-y-auto p-4 sm:p-6">
             <div className="max-w-4xl mx-auto">
               <div className="mb-6">
@@ -483,6 +543,7 @@ export default function PDFViewer({
           <div className={`w-full max-w-md rounded-lg p-6 ${
             darkMode ? "bg-gray-800 border border-gray-700" : "bg-white"
           }`}>
+            {/* Modal Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 className={`text-lg font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
                 Acknowledge Policy
@@ -498,11 +559,13 @@ export default function PDFViewer({
               </button>
             </div>
 
+            {/* Modal Content */}
             <div className="mb-4">
               <p className={`text-sm mb-3 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 By acknowledging this policy, you confirm that you have read and understood its contents.
               </p>
 
+              {/* Policy Title Badge */}
               <div className={`p-3 rounded-lg mb-4 ${
                 darkMode ? 'bg-blue-900/20 border border-blue-800' : 'bg-blue-50 border border-blue-200'
               }`}>
@@ -511,6 +574,7 @@ export default function PDFViewer({
                 </p>
               </div>
 
+              {/* Notes Textarea */}
               <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Notes (Optional)
               </label>
@@ -527,6 +591,7 @@ export default function PDFViewer({
               />
             </div>
 
+            {/* Modal Actions */}
             <div className="flex gap-2">
               <button
                 onClick={() => {

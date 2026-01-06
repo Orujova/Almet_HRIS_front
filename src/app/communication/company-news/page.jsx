@@ -630,15 +630,7 @@ export default function CompanyNewsPage() {
                 ? 'Try adjusting your search or filters' 
                 : 'Get started by creating your first news'}
             </p>
-            {!searchTerm && selectedCategory === 'all' && permissions.capabilities.can_create_news && (
-              <button
-                onClick={handleCreateNews}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all text-xs font-medium shadow-lg shadow-almet-sapphire/20"
-              >
-                <Plus size={14} />
-                Create News
-              </button>
-            )}
+         
           </div>
         ) : (
           <>

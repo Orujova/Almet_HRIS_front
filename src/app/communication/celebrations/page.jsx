@@ -12,6 +12,7 @@ import {
   Edit, Trash2, X, Loader2, TrendingUp, ChevronLeft, ChevronRight,
   Building2, Briefcase, Image as ImageIcon, Heart, Users
 } from 'lucide-react';
+import jobDescriptionService from '@/services/jobDescriptionService';
 
 export default function CelebrationsPage() {
   const { darkMode } = useTheme();
@@ -48,6 +49,10 @@ export default function CelebrationsPage() {
   const [celebratedItems, setCelebratedItems] = useState(new Set());
   const [celebrationWishes, setCelebrationWishes] = useState([]);
   const [formLoading, setFormLoading] = useState(false);
+  
+  // ✅ Access control state
+  const [userAccess, setUserAccess] = useState(null);
+  const [accessLoading, setAccessLoading] = useState(true);
 
   const celebrationTypes = [
     { id: 'all', name: 'All Celebrations', icon: PartyPopper, color: 'bg-almet-sapphire' },
@@ -68,10 +73,25 @@ export default function CelebrationsPage() {
   ];
 
   useEffect(() => { 
+    loadUserAccess();
     loadCelebrations(); 
     loadStatistics();
     loadCelebratedItems();
   }, []);
+
+  // ✅ Load user access
+  const loadUserAccess = async () => {
+    try {
+      setAccessLoading(true);
+      const accessInfo = await jobDescriptionService.getMyAccessInfo();
+      setUserAccess(accessInfo);
+    } catch (error) {
+      console.error('Error fetching user access:', error);
+      showError('Failed to load access information');
+    } finally {
+      setAccessLoading(false);
+    }
+  };
 
   const loadCelebratedItems = () => {
     const today = new Date().toISOString().split('T')[0];
@@ -124,36 +144,44 @@ export default function CelebrationsPage() {
   };
 
   const removeExistingImage = (imageData) => {
-  // ✅ imageData artıq {id, image, image_url} formatındadır
-  setExistingImages(prev => prev.filter(img => img.id !== imageData.id));
-  setImagesToRemove(prev => [...prev, imageData.id]); // Sadəcə ID saxla
-};
+    setExistingImages(prev => prev.filter(img => img.id !== imageData.id));
+    setImagesToRemove(prev => [...prev, imageData.id]);
+  };
 
   const openCreateModal = () => {
+    // ✅ Check access before opening
+    if (!userAccess?.can_create) {
+      showWarning('You do not have permission to create celebrations');
+      return;
+    }
     setIsEditMode(false);
     resetForm();
     setShowFormModal(true);
   };
 
   const openEditModal = (celebration) => {
-  setIsEditMode(true);
-  setSelectedCelebration(celebration);
-  
-  setFormData({
-    type: celebration.type,
-    title: celebration.title,
-    date: celebration.date,
-    message: celebration.message
-  });
-  
-  // ✅ Artıq images array of objects: [{id, image_url}, ...]
-  setExistingImages(celebration.images || []);
-  setImageFiles([]);
-  setImagePreview([]);
-  setImagesToRemove([]);
-  
-  setShowFormModal(true);
-};
+    // ✅ Check access before editing
+    if (!userAccess?.can_create) {
+      showWarning('You do not have permission to edit celebrations');
+      return;
+    }
+    setIsEditMode(true);
+    setSelectedCelebration(celebration);
+    
+    setFormData({
+      type: celebration.type,
+      title: celebration.title,
+      date: celebration.date,
+      message: celebration.message
+    });
+    
+    setExistingImages(celebration.images || []);
+    setImageFiles([]);
+    setImagePreview([]);
+    setImagesToRemove([]);
+    
+    setShowFormModal(true);
+  };
 
   const handleSubmit = async () => {
     try {
@@ -197,29 +225,26 @@ export default function CelebrationsPage() {
   };
 
   const handleUpdateCelebration = async () => {
-  if (!selectedCelebration) return;
+    if (!selectedCelebration) return;
 
-  // ✅ Remove images - artıq imagesToRemove array of IDs
-  for (const imageId of imagesToRemove) {
-    try {
-      await celebrationService.removeImage(selectedCelebration.id, imageId);
-    } catch (error) {
-      console.error('Error removing image:', error);
-      // Continue even if one image fails
+    for (const imageId of imagesToRemove) {
+      try {
+        await celebrationService.removeImage(selectedCelebration.id, imageId);
+      } catch (error) {
+        console.error('Error removing image:', error);
+      }
     }
-  }
 
-  // Update celebration data
-  const updateData = {
-    type: formData.type,
-    title: formData.title,
-    date: formData.date,
-    message: formData.message,
-    images: imageFiles
+    const updateData = {
+      type: formData.type,
+      title: formData.title,
+      date: formData.date,
+      message: formData.message,
+      images: imageFiles
+    };
+
+    await celebrationService.updateCelebration(selectedCelebration.id, updateData);
   };
-
-  await celebrationService.updateCelebration(selectedCelebration.id, updateData);
-};
 
   const resetForm = () => {
     setFormData({
@@ -243,16 +268,9 @@ export default function CelebrationsPage() {
       return;
     }
 
-    // ✅ Auto celebrations (birthday və work anniversary) üçün tarix yoxlaması YOX
-    // ✅ Manual celebrations üçün həmin gün olmalıdır
     if (!item.is_auto) {
       const celebrationDate = new Date(item.date).toISOString().split('T')[0];
       const today = new Date().toISOString().split('T')[0];
-      
-      // if (celebrationDate !== today) {
-      //   showWarning('You can only celebrate manual events on the celebration day!');
-      //   return;
-      // }
     }
 
     try {
@@ -318,8 +336,6 @@ export default function CelebrationsPage() {
     return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
   };
 
-
-
   const filteredCelebrations = celebrations.filter(item => {
     const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          item.employee_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -358,6 +374,11 @@ export default function CelebrationsPage() {
     e.stopPropagation();
     if (item.is_auto) {
       showWarning('Cannot delete auto-generated celebrations (birthdays and work anniversaries)');
+      return;
+    }
+    // ✅ Check access before deleting
+    if (!userAccess?.can_create) {
+      showWarning('You do not have permission to delete celebrations');
       return;
     }
     setConfirmModal({ isOpen: true, item, loading: false }); 
@@ -406,13 +427,16 @@ export default function CelebrationsPage() {
                 Celebrate milestones and achievements together
               </p>
             </div>
-            <button
-              onClick={openCreateModal}
-              className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
-            >
-              <Plus size={18} />
-              Create Celebration
-            </button>
+            {/* ✅ Only show Create button if user has permission */}
+            {userAccess?.can_create && (
+              <button
+                onClick={openCreateModal}
+                className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-blue-700 transition-all text-sm font-medium shadow-lg hover:shadow-xl"
+              >
+                <Plus size={18} />
+                Create Celebration
+              </button>
+            )}
           </div>
         </div>
 
@@ -552,14 +576,11 @@ export default function CelebrationsPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
               {paginatedCelebrations.map((item) => {
                 const typeInfo = getTypeInfo(item.type);
-  const TypeIcon = typeInfo.icon;
-  
-  // ✅ Auto celebrations üçün images string array-dir
-  // Manual celebrations üçün images object array-dir
-  const firstImage = item.is_auto 
-    ? item.images[0] 
-    : (item.images[0]?.image_url || item.images[0]?.image || item.images[0]);
-  
+                const TypeIcon = typeInfo.icon;
+                
+                const firstImage = item.is_auto 
+                  ? item.images[0] 
+                  : (item.images[0]?.image_url || item.images[0]?.image || item.images[0]);
 
                 return (
                   <div
@@ -578,10 +599,10 @@ export default function CelebrationsPage() {
                       }}
                     >
                       <img
-          src={firstImage}
-          alt={item.title || item.employee_name}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-        />
+                        src={firstImage}
+                        alt={item.title || item.employee_name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
                       {item.images.length > 1 && (
@@ -596,7 +617,8 @@ export default function CelebrationsPage() {
                       </div>
                     </div>
 
-                    {!item.is_auto && (
+                    {/* ✅ Only show edit/delete if user has permission AND celebration is not auto */}
+                    {!item.is_auto && userAccess?.can_create && (
                       <div className="absolute top-56 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => handleEditCelebration(item, e)}
@@ -656,19 +678,17 @@ export default function CelebrationsPage() {
                           </div>
                           <button
                             onClick={(e) => handleCelebrate(item, e)}
-                            disabled={celebratedItems.has(item.id) }
+                            disabled={celebratedItems.has(item.id)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
                               celebratedItems.has(item.id)
                                 ? darkMode 
                                   ? 'bg-green-900/30 text-green-400 cursor-default'
                                   : 'bg-green-100 text-green-700 cursor-default'
-                           
                                 : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-md'
                             }`}
                             title={
                               celebratedItems.has(item.id) 
                                 ? 'Already celebrated' 
-                             
                                 : 'Celebrate'
                             }
                           >
@@ -818,32 +838,31 @@ export default function CelebrationsPage() {
                   </label>
                   
                   {/* Existing Images (Edit Mode) */}
-                  {/* Existing Images (Edit Mode) */}
-{isEditMode && existingImages.length > 0 && (
-  <div className="mb-4">
-    <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-      Current Images
-    </p>
-    <div className="grid grid-cols-3 gap-3">
-      {existingImages.map((imageData) => (
-        <div key={imageData.id} className="relative group">
-          <img
-            src={imageData.image_url || imageData.image}
-            alt={`Image ${imageData.id}`}
-            className="w-full h-28 object-cover rounded-xl"
-          />
-          <button
-            type="button"
-            onClick={() => removeExistingImage(imageData)}
-            className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-          >
-            <X size={14} />
-          </button>
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+                  {isEditMode && existingImages.length > 0 && (
+                    <div className="mb-4">
+                      <p className={`text-xs mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Current Images
+                      </p>
+                      <div className="grid grid-cols-3 gap-3">
+                        {existingImages.map((imageData) => (
+                          <div key={imageData.id} className="relative group">
+                            <img
+                              src={imageData.image_url || imageData.image}
+                              alt={`Image ${imageData.id}`}
+                              className="w-full h-28 object-cover rounded-xl"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeExistingImage(imageData)}
+                              className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Upload New Images */}
                   <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors ${
@@ -948,17 +967,17 @@ export default function CelebrationsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative h-80">
-                 <img
-        src={
-          selectedCelebration.is_auto 
-            ? selectedCelebration.images[currentImageIndex]
-            : (selectedCelebration.images[currentImageIndex]?.image_url || 
-               selectedCelebration.images[currentImageIndex]?.image ||
-               selectedCelebration.images[currentImageIndex])
-        }
-        alt={selectedCelebration.title || selectedCelebration.employee_name}
-        className="w-full h-full object-cover"
-      />
+                <img
+                  src={
+                    selectedCelebration.is_auto 
+                      ? selectedCelebration.images[currentImageIndex]
+                      : (selectedCelebration.images[currentImageIndex]?.image_url || 
+                         selectedCelebration.images[currentImageIndex]?.image ||
+                         selectedCelebration.images[currentImageIndex])
+                  }
+                  alt={selectedCelebration.title || selectedCelebration.employee_name}
+                  className="w-full h-full object-cover"
+                />
                 
                 {/* Navigation Buttons */}
                 {selectedCelebration.images.length > 1 && (
@@ -1000,8 +1019,8 @@ export default function CelebrationsPage() {
                   <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-600'} />
                 </button>
 
-                {/* Edit and Delete Buttons */}
-                {!selectedCelebration.is_auto && (
+                {/* ✅ Edit and Delete Buttons - only if user has permission */}
+                {!selectedCelebration.is_auto && userAccess?.can_create && (
                   <div className="absolute top-4 left-4 flex gap-2">
                     <button
                       onClick={(e) => {
@@ -1074,19 +1093,17 @@ export default function CelebrationsPage() {
                         e.stopPropagation();
                         handleCelebrate(selectedCelebration, e);
                       }}
-                      disabled={celebratedItems.has(selectedCelebration.id) }
+                      disabled={celebratedItems.has(selectedCelebration.id)}
                       className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all shadow-lg ${
                         celebratedItems.has(selectedCelebration.id)
                           ? darkMode 
                             ? 'bg-green-900/30 text-green-400 cursor-default'
                             : 'bg-green-100 text-green-700 cursor-default'
-                       
                           : 'bg-almet-sapphire text-white hover:bg-blue-700 hover:shadow-xl'
                       }`}
                       title={
                         celebratedItems.has(selectedCelebration.id) 
                           ? 'Already celebrated' 
-                       
                           : 'Celebrate'
                       }
                     >
