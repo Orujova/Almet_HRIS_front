@@ -15,54 +15,56 @@ jobs:
           SERVER_IP: 161.97.101.41
           SERVER_USER: root
         run: |
+          # Setup SSH
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
 
+          # Connect to server
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << 'ENDSSH'
-            set -e
+set -e
 
-            echo "=== Pulling latest code ==="
-            cd /var/www/myalmet/frontend
-            git config --global --add safe.directory /var/www/myalmet/frontend
-            git fetch origin master
-            git reset --hard origin/master
+echo "=== Pulling latest code ==="
+cd /var/www/myalmet/frontend
+git config --global --add safe.directory /var/www/myalmet/frontend
+git fetch origin master
+git reset --hard origin/master
 
-            echo "=== Cleaning old build (optional) ==="
-            rm -rf .next node_modules package-lock.json
+echo "=== Building Docker image ==="
+docker build --no-cache -t myalmet-frontend:latest .
 
-            echo "=== Installing dependencies ==="
-            npm install
+echo "=== Stopping old container ==="
+docker stop frontend 2>/dev/null || true
+docker rm frontend 2>/dev/null || true
 
-            echo "=== Building Docker image ==="
-            docker build -t myalmet-frontend:latest .
+echo "=== Starting new container ==="
+docker run -d \
+  --name frontend \
+  --restart always \
+  -p 3000:3000 \
+  --env-file /var/www/myalmet/frontend/.env \
+  myalmet-frontend:latest \
+  node .next/standalone/server.js
 
-            echo "=== Stopping old container ==="
-            docker stop frontend 2>/dev/null || true
-            docker rm frontend 2>/dev/null || true
+echo "=== Waiting for startup ==="
+sleep 10
 
-            echo "=== Starting new container ==="
-            docker run -d \
-              --name frontend \
-              --restart always \
-              -p 3000:3000 \
-              --env-file /var/www/myalmet/frontend/.env \
-              myalmet-frontend:latest \
-              node .next/standalone/server.js
+echo "=== Container status ==="
+docker ps | grep frontend
 
-            echo "=== Health check ==="
-            for i in {1..5}; do
-              if curl -f -s http://localhost:3000 > /dev/null; then
-                echo "✅ Frontend is healthy!"
-                break
-              fi
-              echo "Attempt $i: Waiting..."
-              sleep 5
-            done
+echo "=== Health check ==="
+for i in {1..5}; do
+  if curl -f -s http://localhost:3000 > /dev/null; then
+    echo "✅ Frontend is healthy!"
+    break
+  fi
+  echo "Attempt $i: Waiting..."
+  sleep 5
+done
 
-            echo "=== Optional: prune old images >24h ==="
-            docker image prune -f --filter "until=24h"
+echo "=== Cleaning old images ==="
+docker system prune -f --filter "until=24h"
 
-            echo "✅ Frontend deployed successfully!"
+echo "✅ Frontend deployed successfully!"
 ENDSSH
