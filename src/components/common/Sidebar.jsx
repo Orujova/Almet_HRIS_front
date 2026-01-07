@@ -21,7 +21,8 @@ import {
   BookOpenCheck,
   User,
   ChevronRight,
-  FileSignature
+  FileSignature,
+  Target
 } from "lucide-react";
 import { employeeService } from '@/services/newsService';
 
@@ -166,6 +167,12 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <Activity className="w-4 h-4" />,
         path: "/efficiency/performance-mng",
         id: "performance-mng"
+      },
+      {
+        label: "Self Assessment",
+        icon: <Target className="w-4 h-4" />,
+        path: "/efficiency/self-assessment",
+        id: "self-assessment"
       },
       { 
         type: "section", 

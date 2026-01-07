@@ -341,7 +341,7 @@ const FormStep2JobInfo = ({
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <FormField
-            label="Start Date"
+            label="Joining Date"
             name="start_date"
             value={formData.start_date || ""}
             onChange={handleInputChange}
