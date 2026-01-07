@@ -3,11 +3,9 @@ on:
   push:
     branches:
       - master
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Deploy Frontend to Server
         env:
@@ -19,50 +17,49 @@ jobs:
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
-
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP bash -c "'
             set -e
-
             echo \"=== Pulling latest code ===\"
             cd /var/www/myalmet/frontend
             git config --global --add safe.directory /var/www/myalmet/frontend
-            git fetch origin master
+            git fetch origin
             git reset --hard origin/master
-
+            
             echo \"=== Building Docker image ===\"
-            docker build --no-cache -t myalmet-frontend:latest .
-
+            docker build -t myalmet-frontend .
+            
             echo \"=== Stopping old container ===\"
             docker stop frontend 2>/dev/null || true
             docker rm frontend 2>/dev/null || true
-
+            
             echo \"=== Starting new container ===\"
             docker run -d \
               --name frontend \
               --restart always \
               -p 3000:3000 \
-              --env-file /var/www/myalmet/frontend/.env \
-              myalmet-frontend:latest \
-              node .next/standalone/server.js
-
+              --env-file .env \
+              myalmet-frontend
+            
             echo \"=== Waiting for startup ===\"
-            sleep 10
-
+            sleep 15
+            
             echo \"=== Container status ===\"
-            docker ps | grep frontend
-
+            docker ps -a | grep frontend
+            
+            echo \"=== Container logs ===\"
+            docker logs --tail 50 frontend
+            
             echo \"=== Health check ===\"
-            for i in {1..5}; do
+            for i in {1..10}; do
               if curl -f -s http://localhost:3000 > /dev/null; then
                 echo \"✅ Frontend is healthy!\"
-                break
+                exit 0
               fi
               echo \"Attempt \$i: Waiting...\"
-              sleep 5
+              sleep 3
             done
-
-            echo \"=== Cleaning old images ===\"
-            docker system prune -f --filter \"until=24h\"
-
-            echo \"✅ Frontend deployed successfully!\"
+            
+            echo \"❌ Frontend failed to start!\"
+            docker logs frontend
+            exit 1
           '"
