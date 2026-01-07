@@ -160,7 +160,7 @@ const Sidebar = ({ collapsed = false }) => {
       },
       { 
         type: "section", 
-        label: "PERFORMANCE"
+        label: "EFFICIENCY"
       },
       {
         label: "Performance Mng",

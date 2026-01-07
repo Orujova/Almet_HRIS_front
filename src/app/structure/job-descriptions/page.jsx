@@ -1248,6 +1248,7 @@ const fetchUserAccess = async () => {
                   onSearchChange={setSearchTerm}
                   onDepartmentChange={setSelectedDepartment}
                   onJobSelect={handleViewJob}
+                  userAccess={userAccess}
                   onJobEdit={handleEdit}
                   onJobDelete={handleDelete}
                   onViewAssignments={handleViewAssignments}
@@ -1338,6 +1339,7 @@ const fetchUserAccess = async () => {
               onReassignEmployee={handleReassignEmployee}
               onRefresh={handleRefreshAssignments}
               currentUser={{ id: 1 }}
+              userAccess={userAccess}
               actionLoading={actionLoading}
             />
           )}

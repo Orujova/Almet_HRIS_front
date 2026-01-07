@@ -307,8 +307,8 @@ cancelObjective: async (id, objectiveId, reason) => {
   },
 
   // 🆕 MY PERMISSIONS
-  getMyPermissions: async () => {
-    const response = await api.get('/performance/performance/performances/my_permissions/');
+  getMyAccessInfo: async () => {
+    const response = await api.get('/performance/performance/performances/my_access_info/');
     return response.data;
   },
 

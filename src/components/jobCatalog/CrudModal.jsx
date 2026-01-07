@@ -13,6 +13,15 @@ export default function CrudModal({ context, darkMode }) {
     businessFunctions, departments
   } = context;
 
+  // DEBUG: formData dəyişəndə log et
+  React.useEffect(() => {
+    if (showCrudModal) {
+      console.log('CrudModal - formData updated:', formData);
+      console.log('CrudModal - crudModalType:', crudModalType);
+      console.log('CrudModal - crudModalMode:', crudModalMode);
+    }
+  }, [formData, showCrudModal, crudModalType, crudModalMode]);
+
   if (!showCrudModal) return null;
 
   const getModalTitle = () => {
@@ -32,31 +41,29 @@ export default function CrudModal({ context, darkMode }) {
   const labelClass = "block text-xs font-medium text-gray-700 dark:text-almet-bali-hai mb-1.5";
   const textareaClass = "w-full px-2.5 py-2 text-xs border outline-0 border-gray-300 dark:border-almet-comet rounded-lg bg-white dark:bg-almet-san-juan text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none";
 
-  // FIXED: Handle MultiSelect change - properly update parent formData
+  // Handle MultiSelect change - properly update parent formData
   const handleMultiSelectChange = (fieldName, value) => {
-
-    
     // Get current array from formData
     const currentArray = formData[fieldName] || [];
-  
     
     // Toggle the value
     let newArray;
     if (currentArray.includes(value)) {
       newArray = currentArray.filter(v => v !== value);
-  
     } else {
       newArray = [...currentArray, value];
-
     }
-    
-  
     
     // Update formData via setFormData from parent
     setFormData({
       ...formData,
       [fieldName]: newArray
     });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    handleCrudSubmit(e);
   };
 
   const renderFormFields = () => {
@@ -150,7 +157,7 @@ export default function CrudModal({ context, darkMode }) {
                     onChange={(value) => setFormData({...formData, business_function: value})}
                     placeholder="Select Company"
                     searchPlaceholder="Search Companys..."
-                    allowUncheck={true}
+                    allowUncheck={false}
                     darkMode={darkMode}
                     portal={true}
                   />
@@ -188,7 +195,7 @@ export default function CrudModal({ context, darkMode }) {
                   <MultiSelect
                     options={departments.map(dept => ({
                       id: dept.value || dept.id,
-                      name: dept.label || dept.name,
+                      name: `${dept.label || dept.name} (${dept.business_function_name || 'N/A'})`,
                       value: dept.value || dept.id
                     }))}
                     selected={formData.department_ids || []}
@@ -217,12 +224,15 @@ export default function CrudModal({ context, darkMode }) {
                 <div className="mb-3">
                   <label className={labelClass}>Department *</label>
                   <SearchableDropdown
-                    options={departments}
+                    options={departments.map(dept => ({
+                      ...dept,
+                      label: `${dept.label || dept.name} (${dept.business_function_name || 'N/A'})`
+                    }))}
                     value={formData.department || ''}
                     onChange={(value) => setFormData({...formData, department: value})}
                     placeholder="Select Department"
                     searchPlaceholder="Search departments..."
-                    allowUncheck={true}
+                    allowUncheck={false}
                     darkMode={darkMode}
                     portal={true}
                   />
@@ -311,7 +321,7 @@ export default function CrudModal({ context, darkMode }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg max-w-lg w-full  shadow-xl border border-gray-200 dark:border-almet-comet">
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-lg max-w-lg w-full shadow-xl border border-gray-200 dark:border-almet-comet">
         
         {/* Header */}
         <div className="px-4 py-3 border-b border-gray-200 dark:border-almet-comet">
@@ -328,8 +338,8 @@ export default function CrudModal({ context, darkMode }) {
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleCrudSubmit} className="p-4">
+        {/* Form Body */}
+        <div className="p-4">
           {renderFormFields()}
           
           <div className="mb-4">
@@ -355,7 +365,6 @@ export default function CrudModal({ context, darkMode }) {
 
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-200 dark:border-almet-comet">
             <button
-              type="button"
               onClick={closeCrudModal}
               disabled={loading.crud}
               className="px-3 py-2 text-xs border border-gray-300 dark:border-almet-comet text-gray-700 dark:text-almet-bali-hai rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet transition-colors disabled:opacity-50"
@@ -363,7 +372,7 @@ export default function CrudModal({ context, darkMode }) {
               Cancel
             </button>
             <button
-              type="submit"
+              onClick={handleSubmit}
               disabled={loading.crud}
               className="flex items-center gap-1.5 px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
@@ -380,7 +389,7 @@ export default function CrudModal({ context, darkMode }) {
               )}
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

@@ -9,7 +9,7 @@ export default function PerformanceHeader({
   onRefresh,
   onSettings,
   darkMode,
-  permissions // ✅ ADD permissions prop
+  permissions
 }) {
   const getPeriodLabel = (period) => {
     const labels = {
@@ -31,8 +31,8 @@ export default function PerformanceHeader({
     return colors[period] || 'bg-gray-500';
   };
 
-
-  const hasSettingsAccess = permissions.is_admin;
+  // ✅ SIMPLIFIED: Just check is_admin
+  const hasSettingsAccess = permissions?.is_admin || false;
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst' : 'bg-white'} rounded-xl shadow-sm border ${darkMode ? 'border-almet-comet' : 'border-gray-200'} p-4 mb-4`}>
@@ -71,8 +71,8 @@ export default function PerformanceHeader({
             ))}
           </select>
           
-          {/* ✅ Settings Button - Only show if has access */}
-          {hasSettingsAccess && (
+          {/* Settings Button - Admin Only */}
+          {hasSettingsAccess ? (
             <button
               onClick={onSettings}
               className={`px-3 h-9 rounded-lg border flex items-center gap-2 text-sm ${
@@ -84,10 +84,7 @@ export default function PerformanceHeader({
               <Settings className="w-4 h-4" />
               Settings
             </button>
-          )}
-          
-          {/* ✅ Show access indicator if no settings permission */}
-          {!hasSettingsAccess && permissions && (
+          ) : (
             <div 
               className={`px-3 h-9 rounded-lg border flex items-center gap-2 text-xs ${
                 darkMode 

@@ -17,7 +17,6 @@ export default function PerformanceDashboard({
   onLoadEmployeePerformance,
   darkMode 
 }) {
-  // ✅ Load saved tab from localStorage on mount
   const getSavedTab = () => {
     if (typeof window === 'undefined') return 'overview';
     const saved = localStorage.getItem('performance_active_tab');
@@ -26,23 +25,18 @@ export default function PerformanceDashboard({
 
   const [activeTab, setActiveTab] = useState(getSavedTab);
 
-  // ✅ Save tab to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('performance_active_tab', activeTab);
   }, [activeTab]);
 
-  // ✅ Get visible employees (all accessible)
-  const getVisibleEmployees = () => {
-    if (!employees || !permissions.employee) return [];
-    return employees;
-  };
-
-  const visibleEmployees = getVisibleEmployees();
+  // ✅ SIMPLIFIED: Backend already filtered employees
+  const visibleEmployees = employees || [];
   
   const teamMembers = visibleEmployees.filter(emp => emp.id !== permissions.employee?.id);
   const selfOnly = visibleEmployees.filter(emp => emp.id === permissions.employee?.id);
   const totalEmployees = visibleEmployees.length;
 
+  // ✅ SIMPLIFIED: Access level message
   const getAccessLevelMessage = () => {
     if (permissions.can_view_all) {
       return {

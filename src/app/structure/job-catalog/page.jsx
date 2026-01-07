@@ -214,6 +214,8 @@ export default function JobCatalogPage() {
   // ==================== CRUD OPERATIONS ====================
   
   const openCrudModal = (type, mode = 'create', item = null) => {
+    console.log('openCrudModal called:', { type, mode, item }); // DEBUG
+    
     setCrudModalType(type);
     setCrudModalMode(mode);
     setSelectedItem(item);
@@ -227,26 +229,32 @@ export default function JobCatalogPage() {
       if (item.is_active !== undefined) formDataInit.is_active = item.is_active;
       
       if (type === 'departments') {
+        // Edit mode üçün business_function ID-ni düzgün şəkildə təyin et
         const bfId = item.business_function_id || 
                      item.business_function?.id || 
                      item.business_function?.value ||
-                     item.business_function;
+                     item.business_function ||
+                     item.value; // Bu əlavə et
+        
+        console.log('Department edit - bfId:', bfId, 'item:', item); // DEBUG
         
         if (bfId) {
           formDataInit.business_function = bfId;
-          formDataInit.business_function_ids = [bfId];
         }
       }
       
       if (type === 'units') {
+        // Edit mode üçün department ID-ni düzgün şəkildə təyin et
         const deptId = item.department_id || 
                        item.department?.id || 
                        item.department?.value ||
-                       item.department;
+                       item.department ||
+                       item.value; // Bu əlavə et
+        
+        console.log('Unit edit - deptId:', deptId, 'item:', item); // DEBUG
         
         if (deptId) {
           formDataInit.department = deptId;
-          formDataInit.department_ids = [deptId];
         }
       }
       
@@ -254,6 +262,7 @@ export default function JobCatalogPage() {
         formDataInit.hierarchy_level = item.hierarchy_level;
       }
       
+      console.log('formDataInit:', formDataInit); // DEBUG
       setFormData(formDataInit);
     } else {
       const cleanFormData = { name: '', is_active: true };
@@ -689,10 +698,10 @@ export default function JobCatalogPage() {
 
         {/* Content Views */}
         {activeView === 'overview' && <OverviewView context={contextValue} />}
-        {activeView === 'hierarchical' && <HierarchicalTableView  context={{ 
-    ...contextValue, 
-    employees: employees  // ✅ Employees əlavə et
-  }} />}
+        {activeView === 'hierarchical' && <HierarchicalTableView context={{ 
+          ...contextValue, 
+          employees: employees
+        }} />}
         {activeView === 'simple' && <SimpleTableView context={contextValue} />}
         {activeView === 'structure' && <ReferenceDataView context={contextValue} />}
         {activeView === 'matrix' && <MatrixView context={contextValue} />}

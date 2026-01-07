@@ -499,7 +499,7 @@ const ConvertToEmployeeModal = ({
                 {/* Start Date */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Start Date <span className="text-red-500">*</span>
+                    Joining Date <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="date"
@@ -548,7 +548,7 @@ const ConvertToEmployeeModal = ({
                 {/* Contract Start Date */}
                 <div>
                   <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                    Contract Start Date
+                    Contract Renewal Date
                   </label>
                   <input
                     type="date"

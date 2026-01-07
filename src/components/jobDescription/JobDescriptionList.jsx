@@ -30,6 +30,7 @@ const JobDescriptionList = ({
   onDirectSubmission,
   onDownloadPDF,
   actionLoading,
+  userAccess,
   darkMode
 }) => {
   const [expandedAssignments, setExpandedAssignments] = useState({});
@@ -271,7 +272,8 @@ const JobDescriptionList = ({
                           >
                             <Download size={14} />
                           </button>
-                          <button
+                          {
+                            userAccess.is_admin && (  <button
                             onClick={(e) => handleEditClick(job, e)}
                             disabled={actionLoading}
                             className="p-2 text-orange-600 hover:bg-orange-100 dark:hover:bg-orange-900/30 rounded-lg 
@@ -279,7 +281,10 @@ const JobDescriptionList = ({
                             title="Edit Job Description"
                           >
                             <Edit size={14} />
-                          </button>
+                          </button>)
+                          }
+                        {
+                            userAccess.is_admin && ( 
                           <button
                             onClick={(e) => handleDeleteClick(job.id, e)}
                             disabled={actionLoading}
@@ -288,7 +293,7 @@ const JobDescriptionList = ({
                             title="Delete"
                           >
                             <Trash2 size={14} />
-                          </button>
+                          </button>)}
                         </div>
                       </div>
                     </div>

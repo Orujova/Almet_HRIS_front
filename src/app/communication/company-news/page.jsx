@@ -138,8 +138,8 @@ export default function CompanyNewsPage() {
   const handleTogglePublish = async (item, e) => {
     e.stopPropagation();
     
-    if (!permissions?.capabilities?.can_publish_news) {
-      showError('You do not have permission to publish news');
+    if (!permissions?.is_admin) {
+      showError('Only Admin can publish news');
       return;
     }
     
@@ -156,8 +156,8 @@ export default function CompanyNewsPage() {
   const handleTogglePin = async (item, e) => {
     e.stopPropagation();
     
-    if (!permissions?.capabilities?.can_pin_news) {
-      showError('You do not have permission to pin news');
+    if (!permissions?.is_admin) {
+      showError('Only Admin can pin news');
       return;
     }
     
@@ -171,8 +171,8 @@ export default function CompanyNewsPage() {
   };
 
   const handleCreateNews = () => {
-    if (!permissions?.capabilities?.can_create_news) {
-      showError('You do not have permission to create news');
+    if (!permissions?.is_admin) {
+      showError('Only Admin can create news');
       return;
     }
     setEditingNews(null);
@@ -182,8 +182,8 @@ export default function CompanyNewsPage() {
   const handleEditNews = (item, e) => {
     e.stopPropagation();
     
-    if (!permissions?.capabilities?.can_update_news) {
-      showError('You do not have permission to edit news');
+    if (!permissions?.is_admin) {
+      showError('Only Admin can edit news');
       return;
     }
     
@@ -202,8 +202,8 @@ export default function CompanyNewsPage() {
   const handleDeleteNews = (item, e) => {
     e.stopPropagation();
     
-    if (!permissions?.capabilities?.can_delete_news) {
-      showError('You do not have permission to delete news');
+    if (!permissions?.is_admin) {
+      showError('Only Admin can delete news');
       return;
     }
     
@@ -350,7 +350,8 @@ export default function CompanyNewsPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              {permissions.capabilities.can_view_target_groups && (
+              {/* ✅ Only Admin can see these buttons */}
+              {permissions.is_admin && (
                 <>
                   <button 
                     onClick={() => setShowCategoryManagement(true)}
@@ -374,25 +375,23 @@ export default function CompanyNewsPage() {
                     <Users size={15} />
                     Target Groups
                   </button>
+                  <button 
+                    onClick={handleCreateNews}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all font-medium text-xs shadow-lg shadow-almet-sapphire/20 hover:shadow-xl hover:shadow-almet-sapphire/30 hover:-translate-y-0.5"
+                  >
+                    <Plus size={16} />
+                    Create News
+                  </button>
                 </>
-              )}
-              {permissions.capabilities.can_create_news && (
-                <button 
-                  onClick={handleCreateNews}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-almet-sapphire text-white rounded-xl hover:bg-almet-astral transition-all font-medium text-xs shadow-lg shadow-almet-sapphire/20 hover:shadow-xl hover:shadow-almet-sapphire/30 hover:-translate-y-0.5"
-                >
-                  <Plus size={16} />
-                  Create News
-                </button>
               )}
             </div>
           </div>
         </div>
 
         {/* ============================================ */}
-        {/* STATISTICS CARDS */}
+        {/* STATISTICS CARDS - Admin Only */}
         {/* ============================================ */}
-        {statistics && permissions.capabilities.can_view_statistics && (
+        {statistics && permissions.is_admin && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
             {/* Total News Card */}
             <div className={`rounded-2xl p-4 border transition-all hover:shadow-lg ${
@@ -628,9 +627,8 @@ export default function CompanyNewsPage() {
             }`}>
               {searchTerm || selectedCategory !== 'all' 
                 ? 'Try adjusting your search or filters' 
-                : 'Get started by creating your first news'}
+                : 'No news available at the moment'}
             </p>
-         
           </div>
         ) : (
           <>
@@ -654,7 +652,7 @@ export default function CompanyNewsPage() {
                       onClick={() => handleViewNews(item)}
                     >
                       <img
-                        src={item.image_url }
+                        src={item.image_url}
                         alt={item.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       />
@@ -667,7 +665,7 @@ export default function CompanyNewsPage() {
                             Pinned
                           </div>
                         )}
-                        {!item.is_published && (
+                        {!item.is_published && permissions.is_admin && (
                           <div className="bg-orange-600 text-white px-2.5 py-1 rounded-xl text-[10px] font-medium flex items-center gap-1 shadow-lg">
                             <FileText size={10} />
                             Draft
@@ -682,54 +680,50 @@ export default function CompanyNewsPage() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Action Buttons - Admin Only */}
                     <div className="absolute top-48 right-2.5 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {permissions.capabilities.can_pin_news && (
-                        <button
-                          onClick={(e) => handleTogglePin(item, e)}
-                          className={`p-1.5 rounded-xl transition-all shadow-lg ${
-                            item.is_pinned 
-                              ? 'bg-orange-600 hover:bg-orange-700' 
-                              : 'bg-green-600 hover:bg-green-700'
-                          } text-white`}
-                          title={item.is_pinned ? 'Unpin' : 'Pin'}
-                        >
-                          {item.is_pinned ? <PinOff size={12} /> : <Pin size={12} />}
-                        </button>
-                      )}
-                      
-                      {permissions.capabilities.can_publish_news && (
-                        <button
-                          onClick={(e) => handleTogglePublish(item, e)}
-                          className={`p-1.5 rounded-xl transition-all shadow-lg ${
-                            item.is_published 
-                              ? 'bg-purple-600 hover:bg-purple-700' 
-                              : 'bg-sky-600 hover:bg-sky-700'
-                          } text-white`}
-                          title={item.is_published ? 'Unpublish' : 'Publish'}
-                        >
-                          {item.is_published ? <Eye size={12} /> : <Send size={12} />}
-                        </button>
-                      )}
-                      
-                      {permissions.capabilities.can_update_news && (
-                        <button
-                          onClick={(e) => handleEditNews(item, e)}
-                          className="p-1.5 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
-                          title="Edit"
-                        >
-                          <Edit size={12} />
-                        </button>
-                      )}
-                      
-                      {permissions.capabilities.can_delete_news && (
-                        <button
-                          onClick={(e) => handleDeleteNews(item, e)}
-                          className="p-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
-                          title="Delete"
-                        >
-                          <Trash2 size={12} />
-                        </button>
+                      {permissions.is_admin && (
+                        <>
+                          <button
+                            onClick={(e) => handleTogglePin(item, e)}
+                            className={`p-1.5 rounded-xl transition-all shadow-lg ${
+                              item.is_pinned 
+                                ? 'bg-orange-600 hover:bg-orange-700' 
+                                : 'bg-green-600 hover:bg-green-700'
+                            } text-white`}
+                            title={item.is_pinned ? 'Unpin' : 'Pin'}
+                          >
+                            {item.is_pinned ? <PinOff size={12} /> : <Pin size={12} />}
+                          </button>
+                          
+                          <button
+                            onClick={(e) => handleTogglePublish(item, e)}
+                            className={`p-1.5 rounded-xl transition-all shadow-lg ${
+                              item.is_published 
+                                ? 'bg-purple-600 hover:bg-purple-700' 
+                                : 'bg-sky-600 hover:bg-sky-700'
+                            } text-white`}
+                            title={item.is_published ? 'Unpublish' : 'Publish'}
+                          >
+                            {item.is_published ? <Eye size={12} /> : <Send size={12} />}
+                          </button>
+                          
+                          <button
+                            onClick={(e) => handleEditNews(item, e)}
+                            className="p-1.5 bg-sky-600 text-white rounded-xl hover:bg-sky-700 transition-all shadow-lg"
+                            title="Edit"
+                          >
+                            <Edit size={12} />
+                          </button>
+                          
+                          <button
+                            onClick={(e) => handleDeleteNews(item, e)}
+                            className="p-1.5 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all shadow-lg"
+                            title="Delete"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </>
                       )}
                     </div>
 

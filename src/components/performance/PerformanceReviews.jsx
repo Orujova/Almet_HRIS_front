@@ -27,15 +27,13 @@ console.log(permissions)
   const isMidYearPeriod = currentPeriod === 'MID_YEAR_REVIEW';
   const isEndYearPeriod = currentPeriod === 'END_YEAR_REVIEW';
 
-  // ✅ CRITICAL: Check if current user is the actual employee or manager
   const isCurrentUserEmployee = permissions?.employee?.id === performanceData?.employee;
   const isOwnPerformance = isCurrentUserEmployee; // ✅ Alias for backward compatibility
   
   const isCurrentUserManager = (() => {
     if (!permissions?.employee || !performanceData) return false;
 
-    console.log(performanceData.employee_data);
-    console.log(permissions.employee);
+    
     const lineManagerId = 
       performanceData.employee_data?.line_manager_hc; 
     if (!lineManagerId) return false;
@@ -43,16 +41,7 @@ console.log(permissions)
   })();
   
 
-  // ✅ DEBUG
-  console.log('🔍 Role Check:', {
-    isCurrentUserEmployee,
-    isCurrentUserManager,
-    isOwnPerformance,
-    currentUserId: permissions?.employee?.id,
-    performanceEmployeeId: performanceData?.employee,
-    lineManagerId: performanceData.line_manager_hc ,
-   
-  });
+
 
   const isEmployeeSubmitted = Boolean(performanceData?.mid_year_employee_submitted);
   const isManagerCompleted = Boolean(performanceData?.mid_year_completed);
@@ -65,21 +54,6 @@ console.log(permissions)
   const canEditMidYearEmployee = 
     isCurrentUserEmployee &&  // ✅ MUST be the actual employee
     isMidYearPeriod 
-  
-  // ✅ DEBUG: Log to console
-  if (isMidYearPeriod) {
-    console.log('🔍 Mid-Year Employee Permission Check:', {
-   
-      isMidYearPeriod,
-
-      isOwnPerformance,
-      canEditMidYearEmployee,
-      isEmployeeSubmitted,  // Show status but don't block
-      employeeId: permissions?.employee?.id,
-      performanceEmployeeId: performanceData?.employee,
-      currentPeriod
-    });
-  }
 
 
   const canEditMidYearManager = 
