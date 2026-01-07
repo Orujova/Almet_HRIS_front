@@ -15,13 +15,11 @@ jobs:
           SERVER_IP: 161.97.101.41
           SERVER_USER: root
         run: |
-          # Setup SSH
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H $SERVER_IP >> ~/.ssh/known_hosts
 
-          # Connect to server
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_IP << 'ENDSSH'
             set -e
 
@@ -31,8 +29,14 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
 
+            echo "=== Cleaning old build (optional) ==="
+            rm -rf .next node_modules package-lock.json
+
+            echo "=== Installing dependencies ==="
+            npm install
+
             echo "=== Building Docker image ==="
-            docker build --no-cache -t myalmet-frontend:latest .
+            docker build -t myalmet-frontend:latest .
 
             echo "=== Stopping old container ==="
             docker stop frontend 2>/dev/null || true
@@ -47,12 +51,6 @@ jobs:
               myalmet-frontend:latest \
               node .next/standalone/server.js
 
-            echo "=== Waiting for startup ==="
-            sleep 10
-
-            echo "=== Container status ==="
-            docker ps | grep frontend
-
             echo "=== Health check ==="
             for i in {1..5}; do
               if curl -f -s http://localhost:3000 > /dev/null; then
@@ -63,8 +61,8 @@ jobs:
               sleep 5
             done
 
-            echo "=== Cleaning old images ==="
-            docker system prune -f --filter "until=24h"
+            echo "=== Optional: prune old images >24h ==="
+            docker image prune -f --filter "until=24h"
 
             echo "✅ Frontend deployed successfully!"
-          ENDSSH
+ENDSSH
