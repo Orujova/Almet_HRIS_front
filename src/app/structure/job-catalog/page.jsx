@@ -301,18 +301,18 @@ export default function JobCatalogPage() {
       if (crudModalType === 'departments') {
         if (crudModalMode === 'create') {
           const bfIds = formData.business_function_ids || formData.business_function_id || [];
-          submitData.business_function_id = Array.isArray(bfIds) ? bfIds : [bfIds];
+          submitData.business_function_ids = Array.isArray(bfIds) ? bfIds : [bfIds]; // ✅ Changed to business_function_ids (plural)
         } else {
-          submitData.business_function_id = [formData.business_function];
+          submitData.business_function_ids = [formData.business_function]; // ✅ Changed to plural
         }
       }
       
       if (crudModalType === 'units') {
         if (crudModalMode === 'create') {
           const deptIds = formData.department_ids || formData.department_id || [];
-          submitData.department_id = Array.isArray(deptIds) ? deptIds : [deptIds];
+          submitData.department_ids = Array.isArray(deptIds) ? deptIds : [deptIds]; // ✅ Changed to department_ids (plural)
         } else {
-          submitData.department_id = [formData.department];
+          submitData.department_ids = [formData.department]; // ✅ Changed to plural
         }
       }
       
@@ -324,6 +324,9 @@ export default function JobCatalogPage() {
       delete submitData.value;
       delete submitData.pk;
       delete submitData.uuid;
+      
+      // 🐛 DEBUG: Log what we're sending
+      console.log('Submitting data:', submitData);
       
       let response;
       const itemId = selectedItem?.value || selectedItem?.id;

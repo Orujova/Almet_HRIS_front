@@ -159,6 +159,7 @@ export default function ReferenceDataView({ context }) {
         columns: [
           { key: 'name', label: 'Unit', sortable: true },
           { key: 'department_name', label: 'Department', sortable: true },
+          { key: 'business_function_name', label: 'Company', sortable: true },
           { key: 'employee_count', label: 'Employees', sortable: true, align: 'center' },
           { key: 'is_active', label: 'Status', sortable: true, align: 'center' }
         ]
