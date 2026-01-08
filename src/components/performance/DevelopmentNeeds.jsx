@@ -1,5 +1,5 @@
 import { useState, memo, useCallback } from 'react';
-import { BookOpen, Plus, Trash2, Send, ChevronDown, ChevronUp, TrendingUp } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Send, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ✅ MEMOIZED Development Need Row
 const DevelopmentNeedRow = memo(({ 
@@ -112,20 +112,23 @@ const DevelopmentNeedRow = memo(({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {/* <div>
+                  <div>
                     <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
-                      Progress %
+                      Status
                     </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={need.progress || 0}
-                      onInput={(e) => onUpdate(index, 'progress', parseInt(e.target.value) || 0)}
+                    <select
+                      value={need.status || ''}
+                      onChange={(e) => onUpdate(index, 'status', e.target.value)}
                       disabled={!canEdit}
-                      className={`${inputClass} w-full text-center font-semibold`}
-                    />
-                  </div> */}
+                      className={`${inputClass} w-full`}
+                    >
+                      <option value="">Select Status</option>
+                      <option value="On Track">On Track</option>
+                      <option value="At Risk">At Risk</option>
+                      <option value="Completed">Completed</option>
+                      <option value="Not Started">Not Started</option>
+                    </select>
+                  </div>
 
                   <div>
                     <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
