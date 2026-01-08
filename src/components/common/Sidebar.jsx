@@ -169,7 +169,7 @@ const Sidebar = ({ collapsed = false }) => {
         id: "performance-mng"
       },
       {
-        label: "Self Assessment",
+        label: "Skills Matrix",
         icon: <Target className="w-4 h-4" />,
         path: "/efficiency/self-assessment",
         id: "self-assessment"
@@ -188,18 +188,18 @@ const Sidebar = ({ collapsed = false }) => {
         type: "section", 
         label: "REQUESTS"
       },
-      // {
-      //   label: "Formation Contract",
-      //   icon: <FileSignature className="w-4 h-4" />,
-      //   path: "/requests/new",
-      //   id: "new"
-      // },
-      // {
-      //   label: "Resignation & Exit",
-      //   icon: <FileText className="w-4 h-4" />,
-      //   path: "/requests/resignation",
-      //   id: "resignation"
-      // },
+      {
+        label: "Formation Contract",
+        icon: <FileSignature className="w-4 h-4" />,
+        path: "/requests/new",
+        id: "new"
+      },
+      {
+        label: "Resignation & Exit",
+        icon: <FileText className="w-4 h-4" />,
+        path: "/requests/resignation",
+        id: "resignation"
+      },
       {
         label: "Vacation Request",
         icon: <CalendarDays className="w-4 h-4" />,
@@ -242,13 +242,19 @@ const Sidebar = ({ collapsed = false }) => {
       }, 
       { 
         type: "section", 
-        label: "POLICIES"
+        label: "DOCUMENTS"
       },
       {
         label: "Company Policies",
         icon: <ScrollText className="w-4 h-4" />,
         path: "/company-policies",
         id: "policies"
+      }, 
+      {
+        label: " Procedures",
+        icon: <FileText className="w-4 h-4" />,
+        path: "/company-procedures",
+        id: "procedures"
       }, 
       { 
         type: "section", 

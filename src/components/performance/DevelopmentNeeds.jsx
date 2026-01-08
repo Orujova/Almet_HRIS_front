@@ -66,20 +66,17 @@ const DevelopmentNeedRow = memo(({
 
             <div className="grid grid-cols-2 gap-3">
               <div className={`${darkMode ? 'bg-almet-san-juan/30' : 'bg-almet-mystic/50'} rounded-lg p-2.5`}>
-                <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1 flex items-center gap-1.5`}>
-                  <TrendingUp className="w-3.5 h-3.5" />
-                  Progress
+                <div className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1`}>
+                  Status
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className={`text-base font-bold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
-                    {need.progress || 0}%
-                  </div>
-                  <div className={`flex-1 h-2 rounded-full ${darkMode ? 'bg-almet-comet' : 'bg-gray-200'}`}>
-                    <div 
-                      className="h-2 rounded-full bg-indigo-500 transition-all duration-300"
-                      style={{ width: `${need.progress || 0}%` }}
-                    />
-                  </div>
+                <div className={`text-xs font-semibold ${
+                  !need.status ? (darkMode ? 'text-almet-bali-hai/70 italic' : 'text-almet-waterloo/70 italic') :
+                  need.status?.includes('Track') ? 'text-emerald-600 dark:text-emerald-400' :
+                  need.status?.includes('Risk') ? 'text-amber-600 dark:text-amber-400' :
+                  need.status?.includes('Complete') ? 'text-blue-600 dark:text-blue-400' :
+                  darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'
+                }`}>
+                  {need.status || 'Not Set'}
                 </div>
               </div>
 
@@ -115,7 +112,7 @@ const DevelopmentNeedRow = memo(({
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
+                  {/* <div>
                     <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
                       Progress %
                     </label>
@@ -128,7 +125,7 @@ const DevelopmentNeedRow = memo(({
                       disabled={!canEdit}
                       className={`${inputClass} w-full text-center font-semibold`}
                     />
-                  </div>
+                  </div> */}
 
                   <div>
                     <label className={`block text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} mb-1.5`}>
