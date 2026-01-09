@@ -1,299 +1,343 @@
 'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-import { Save, TrendingUp, Award, Code, Database, Wrench, Users, BarChart3, History, ChevronDown, ChevronUp, PieChart, Eye, Filter } from 'lucide-react';
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LineChart, Line, PieChart as RePieChart, Pie, Cell } from 'recharts';
+import selfAssessmentService from '@/services/selfAssessmentService';
+import competencyApi from '@/services/competencyApi';
+import { 
+  Save, TrendingUp, Award, Code, Users, History, ChevronDown, ChevronUp, 
+  Eye, CheckCircle, Clock, AlertCircle, Send, Plus, Calendar, MessageSquare, 
+  Star, BarChart3, Settings, Shield, Edit3, FileText
+} from 'lucide-react';
+import { 
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, 
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, LineChart, Line 
+} from 'recharts';
 
 const SelfAssessment = () => {
   const { theme } = useTheme();
-  const [activeTab, setActiveTab] = useState('assessment');
-  const [showResults, setShowResults] = useState(false);
-  const [expandedCategories, setExpandedCategories] = useState({});
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [selectedAssessment, setSelectedAssessment] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showCreatePeriod, setShowCreatePeriod] = useState(false);
+  const [newPeriod, setNewPeriod] = useState({
+    name: '',
+    start_date: '',
+    end_date: '',
+    submission_deadline: '',
+    status: 'UPCOMING'
+  });
   
-  // Mock data - işçilərin assessmentləri
-  const employeesAssessments = [
-    {
-      id: 1,
-      name: 'Narmin Mammadova',
-      position: 'Full Stack Developer',
-      department: 'IT',
-      date: '2024-12-15',
-      overallScore: 4.2,
-      categories: [
-        { name: 'Programming', score: 4.5 },
-        { name: 'Frameworks', score: 4.3 },
-        { name: 'Databases', score: 4.0 },
-        { name: 'Tools', score: 4.2 },
-        { name: 'Soft Skills', score: 3.8 }
-      ]
-    },
-    {
-      id: 2,
-      name: 'Elvin Hasanov',
-      position: 'Backend Developer',
-      department: 'IT',
-      date: '2024-12-14',
-      overallScore: 3.8,
-      categories: [
-        { name: 'Programming', score: 4.2 },
-        { name: 'Frameworks', score: 3.8 },
-        { name: 'Databases', score: 4.5 },
-        { name: 'Tools', score: 3.5 },
-        { name: 'Soft Skills', score: 3.2 }
-      ]
-    },
-    {
-      id: 3,
-      name: 'Leyla Aliyeva',
-      position: 'Frontend Developer',
-      department: 'IT',
-      date: '2024-12-13',
-      overallScore: 4.0,
-      categories: [
-        { name: 'Programming', score: 4.3 },
-        { name: 'Frameworks', score: 4.5 },
-        { name: 'Databases', score: 3.2 },
-        { name: 'Tools', score: 3.8 },
-        { name: 'Soft Skills', score: 4.2 }
-      ]
-    },
-    {
-      id: 4,
-      name: 'Farid Ismayilov',
-      position: 'DevOps Engineer',
-      department: 'IT',
-      date: '2024-12-12',
-      overallScore: 4.1,
-      categories: [
-        { name: 'Programming', score: 3.8 },
-        { name: 'Frameworks', score: 3.5 },
-        { name: 'Databases', score: 4.0 },
-        { name: 'Tools', score: 4.8 },
-        { name: 'Soft Skills', score: 3.7 }
-      ]
-    },
-    {
-      id: 5,
-      name: 'Aysel Quliyeva',
-      position: 'UI/UX Designer',
-      department: 'Design',
-      date: '2024-12-11',
-      overallScore: 3.6,
-      categories: [
-        { name: 'Programming', score: 2.8 },
-        { name: 'Frameworks', score: 3.2 },
-        { name: 'Databases', score: 2.5 },
-        { name: 'Tools', score: 4.0 },
-        { name: 'Soft Skills', score: 4.5 }
-      ]
+  // State for data
+  const [stats, setStats] = useState(null);
+  const [myAssessments, setMyAssessments] = useState([]);
+  const [teamAssessments, setTeamAssessments] = useState([]);
+  const [currentAssessment, setCurrentAssessment] = useState(null);
+  const [skillGroups, setSkillGroups] = useState([]);
+  const [activePeriod, setActivePeriod] = useState(null);
+  const [userAccess, setUserAccess] = useState(null);
+  const [allPeriods, setAllPeriods] = useState([]);
+  
+  // Ratings state: { skillId: { rating: 1-5, comment: '' } }
+  const [ratings, setRatings] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetchInitialData();
+    checkForDraftAssessment(); // Check for existing draft
+  }, []);
+
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true);
+      const [statsData, activePeriodData, accessData] = await Promise.all([
+        selfAssessmentService.getAssessmentStats(),
+        selfAssessmentService.getActivePeriod().catch(() => null),
+        selfAssessmentService.getMyAccessInfo()
+      ]);
+      
+      console.log('Stats Data:', statsData);
+      console.log('Access Data:', accessData);
+      
+      setStats(statsData);
+      setActivePeriod(activePeriodData);
+      setUserAccess(accessData);
+    } catch (error) {
+      console.error('Error fetching initial data:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
-
-  const skillCategories = [
-    {
-      id: 'programming',
-      name: 'Programming Languages',
-      icon: Code,
-      color: '#7D1315',
-      skills: [
-        { id: 'python', name: 'Python', rating: 0 },
-        { id: 'javascript', name: 'JavaScript', rating: 0 },
-        { id: 'typescript', name: 'TypeScript', rating: 0 },
-        { id: 'java', name: 'Java', rating: 0 },
-        { id: 'csharp', name: 'C#', rating: 0 },
-        { id: 'php', name: 'PHP', rating: 0 },
-        { id: 'go', name: 'Go', rating: 0 },
-        { id: 'rust', name: 'Rust', rating: 0 }
-      ]
-    },
-    {
-      id: 'frameworks',
-      name: 'Frameworks & Libraries',
-      icon: Wrench,
-      color: '#A91D1F',
-      skills: [
-        { id: 'react', name: 'React', rating: 0 },
-        { id: 'nextjs', name: 'Next.js', rating: 0 },
-        { id: 'django', name: 'Django', rating: 0 },
-        { id: 'nodejs', name: 'Node.js', rating: 0 },
-        { id: 'vue', name: 'Vue.js', rating: 0 },
-        { id: 'angular', name: 'Angular', rating: 0 },
-        { id: 'flask', name: 'Flask', rating: 0 },
-        { id: 'fastapi', name: 'FastAPI', rating: 0 }
-      ]
-    },
-    {
-      id: 'databases',
-      name: 'Databases',
-      icon: Database,
-      color: '#C42426',
-      skills: [
-        { id: 'postgresql', name: 'PostgreSQL', rating: 0 },
-        { id: 'mongodb', name: 'MongoDB', rating: 0 },
-        { id: 'mysql', name: 'MySQL', rating: 0 },
-        { id: 'redis', name: 'Redis', rating: 0 },
-        { id: 'elasticsearch', name: 'Elasticsearch', rating: 0 },
-        { id: 'oracle', name: 'Oracle', rating: 0 }
-      ]
-    },
-    {
-      id: 'tools',
-      name: 'Tools & Technologies',
-      icon: Wrench,
-      color: '#D32F2F',
-      skills: [
-        { id: 'git', name: 'Git', rating: 0 },
-        { id: 'docker', name: 'Docker', rating: 0 },
-        { id: 'aws', name: 'AWS', rating: 0 },
-        { id: 'ci-cd', name: 'CI/CD', rating: 0 },
-        { id: 'kubernetes', name: 'Kubernetes', rating: 0 },
-        { id: 'jenkins', name: 'Jenkins', rating: 0 },
-        { id: 'terraform', name: 'Terraform', rating: 0 }
-      ]
-    },
-    {
-      id: 'soft-skills',
-      name: 'Soft Skills',
-      icon: Users,
-      color: '#E53935',
-      skills: [
-        { id: 'communication', name: 'Communication', rating: 0 },
-        { id: 'teamwork', name: 'Teamwork', rating: 0 },
-        { id: 'problem-solving', name: 'Problem Solving', rating: 0 },
-        { id: 'leadership', name: 'Leadership', rating: 0 },
-        { id: 'time-management', name: 'Time Management', rating: 0 },
-        { id: 'critical-thinking', name: 'Critical Thinking', rating: 0 }
-      ]
-    }
-  ];
-
-  const [categories, setCategories] = useState(skillCategories);
-  const [previousAssessments] = useState([
-    { date: '2024-12-15', averageScore: 3.5 },
-    { date: '2024-10-15', averageScore: 3.2 },
-    { date: '2024-07-20', averageScore: 2.8 },
-    { date: '2024-04-10', averageScore: 2.5 }
-  ]);
-
-  const toggleCategory = (categoryId) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [categoryId]: !prev[categoryId]
-    }));
   };
 
-  const handleRatingChange = (categoryId, skillId, rating) => {
-    setCategories(prev => prev.map(cat => {
-      if (cat.id === categoryId) {
-        return {
-          ...cat,
-          skills: cat.skills.map(skill => 
-            skill.id === skillId ? { ...skill, rating } : skill
-          )
-        };
+  const fetchAllPeriods = async () => {
+    try {
+      const data = await selfAssessmentService.getAssessmentPeriods();
+      setAllPeriods(data);
+    } catch (error) {
+      console.error('Error fetching periods:', error);
+    }
+  };
+
+  const fetchMyAssessments = async () => {
+    try {
+      const data = await selfAssessmentService.getMyAssessments();
+      setMyAssessments(data);
+    } catch (error) {
+      console.error('Error fetching my assessments:', error);
+    }
+  };
+
+  const fetchTeamAssessments = async () => {
+    try {
+      const data = await selfAssessmentService.getTeamAssessments();
+      setTeamAssessments(data);
+    } catch (error) {
+      console.error('Error fetching team assessments:', error);
+    }
+  };
+
+  const fetchSkillGroups = async () => {
+    try {
+      const data = await competencyApi.skillGroups.getAll();
+      const groupsData = data.results || [];
+      
+      const groupsWithSkills = await Promise.all(
+        groupsData.map(async (group) => {
+          try {
+            const skills = await competencyApi.skillGroups.getSkills(group.id);
+            return {
+              ...group,
+              skills: Array.isArray(skills) ? skills : []
+            };
+          } catch (error) {
+            return { ...group, skills: [] };
+          }
+        })
+      );
+      
+      setSkillGroups(groupsWithSkills);
+    } catch (error) {
+      console.error('Error fetching skill groups:', error);
+      setSkillGroups([]);
+    }
+  };
+
+  const handleStartAssessment = async () => {
+    try {
+      setSaving(true);
+      const newAssessment = await selfAssessmentService.startAssessment();
+      console.log('Started assessment:', newAssessment);
+      setCurrentAssessment(newAssessment);
+      
+      await fetchSkillGroups();
+      
+      if (newAssessment.skill_ratings && newAssessment.skill_ratings.length > 0) {
+        const existingRatings = {};
+        newAssessment.skill_ratings.forEach(rating => {
+          existingRatings[rating.skill] = {
+            rating: rating.rating,
+            comment: rating.self_comment || ''
+          };
+        });
+        setRatings(existingRatings);
       }
-      return cat;
+      
+      setActiveTab('assessment');
+    } catch (error) {
+      console.error('Error starting assessment:', error);
+      alert('Failed to start assessment. ' + (error.response?.data?.detail || 'Please try again.'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Check if we have a draft assessment on load
+  const checkForDraftAssessment = async () => {
+    try {
+      const assessments = await selfAssessmentService.getMyAssessments();
+      
+      // Check for active period first
+      const activePeriodData = activePeriod || await selfAssessmentService.getActivePeriod().catch(() => null);
+      
+      if (!activePeriodData) {
+        console.log('No active period found');
+        return;
+      }
+      
+      // Find assessment for active period
+      const activeAssessment = assessments.find(a => a.period === activePeriodData.id);
+      
+      if (activeAssessment) {
+        console.log('Found assessment for active period:', activeAssessment);
+        
+        // Load full assessment details for any status
+        const fullAssessment = await selfAssessmentService.getAssessment(activeAssessment.id);
+        setCurrentAssessment(fullAssessment);
+        
+        // If DRAFT, load existing ratings for editing
+        if (fullAssessment.status === 'DRAFT') {
+          if (fullAssessment.skill_ratings && fullAssessment.skill_ratings.length > 0) {
+            const existingRatings = {};
+            fullAssessment.skill_ratings.forEach(rating => {
+              existingRatings[rating.skill] = {
+                rating: rating.rating,
+                comment: rating.self_comment || ''
+              };
+            });
+            setRatings(existingRatings);
+          }
+          
+          await fetchSkillGroups();
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for draft:', error);
+    }
+  };
+
+  const handleRatingChange = (skillId, rating) => {
+    setRatings(prev => ({
+      ...prev,
+      [skillId]: {
+        rating: rating,
+        comment: prev[skillId]?.comment || ''
+      }
     }));
   };
 
-  const handleSubmit = () => {
-    const assessmentData = {
-      date: new Date().toISOString(),
-      categories: categories.map(cat => ({
-        category: cat.name,
-        skills: cat.skills.map(skill => ({
-          skill: skill.name,
-          rating: skill.rating
-        }))
-      }))
-    };
+  const handleCommentChange = (skillId, comment) => {
+    setRatings(prev => ({
+      ...prev,
+      [skillId]: {
+        rating: prev[skillId]?.rating || 0,
+        comment: comment
+      }
+    }));
+  };
+
+  const handleSaveAssessment = async () => {
+    if (!currentAssessment) return;
     
-    console.log('Submitting assessment:', assessmentData);
-    setShowResults(true);
-    setActiveTab('analytics');
+    try {
+      setSaving(true);
+      const ratingsData = selfAssessmentService.formatRatingsForSubmit(ratings);
+      await selfAssessmentService.bulkAddRatings(currentAssessment.id, ratingsData);
+      
+      const updated = await selfAssessmentService.getAssessment(currentAssessment.id);
+      setCurrentAssessment(updated);
+      
+      showToast('Assessment saved successfully!', 'success');
+    } catch (error) {
+      console.error('Error saving assessment:', error);
+      showToast('Failed to save assessment', 'error');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const calculateCategoryAverage = (category) => {
-    const total = category.skills.reduce((sum, skill) => sum + skill.rating, 0);
-    return (total / category.skills.length).toFixed(1);
-  };
-
-  const calculateOverallAverage = () => {
-    let totalRatings = 0;
-    let totalSkills = 0;
-    categories.forEach(cat => {
-      cat.skills.forEach(skill => {
-        totalRatings += skill.rating;
-        totalSkills++;
-      });
-    });
-    return totalSkills > 0 ? (totalRatings / totalSkills).toFixed(1) : 0;
-  };
-
-  const getRadarData = () => {
-    return categories.map(cat => ({
-      category: cat.name.split(' ')[0],
-      score: parseFloat(calculateCategoryAverage(cat)),
-      fullMark: 5
-    }));
-  };
-
-  const getEmployeeRadarData = (employee) => {
-    return employee.categories.map(cat => ({
-      category: cat.name,
-      score: cat.score,
-      fullMark: 5
-    }));
-  };
-
-  const getProgressData = () => {
-    return previousAssessments.map(assessment => ({
-      date: new Date(assessment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      score: assessment.averageScore
-    })).reverse();
-  };
-
-  const getSkillDistribution = () => {
-    const distribution = { '1-2': 0, '2-3': 0, '3-4': 0, '4-5': 0, '5': 0 };
-    categories.forEach(cat => {
-      cat.skills.forEach(skill => {
-        if (skill.rating >= 5) distribution['5']++;
-        else if (skill.rating >= 4) distribution['4-5']++;
-        else if (skill.rating >= 3) distribution['3-4']++;
-        else if (skill.rating >= 2) distribution['2-3']++;
-        else if (skill.rating >= 1) distribution['1-2']++;
-      });
-    });
+  const handleSubmitAssessment = async () => {
+    if (!currentAssessment) return;
     
-    return Object.entries(distribution).map(([range, count]) => ({
-      range,
-      count
+    const totalSkills = skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 0);
+    const ratedSkills = Object.keys(ratings).length;
+    
+    if (totalSkills > 0 && ratedSkills < totalSkills) {
+      const proceed = window.confirm(
+        `You have rated ${ratedSkills} out of ${totalSkills} skills. Submit anyway?`
+      );
+      if (!proceed) return;
+    }
+    
+    try {
+      setSaving(true);
+      await handleSaveAssessment();
+      await selfAssessmentService.submitAssessment(currentAssessment.id);
+      
+      showToast('Assessment submitted successfully!', 'success');
+      setActiveTab('overview');
+      setCurrentAssessment(null);
+      setRatings({});
+      fetchInitialData();
+      fetchMyAssessments();
+    } catch (error) {
+      console.error('Error submitting assessment:', error);
+      showToast('Failed to submit assessment', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleViewAssessment = async (assessmentId) => {
+    try {
+      const assessment = await selfAssessmentService.getAssessment(assessmentId);
+      setSelectedAssessment(assessment);
+    } catch (error) {
+      console.error('Error fetching assessment:', error);
+      showToast('Failed to load assessment', 'error');
+    }
+  };
+
+  const toggleGroup = (groupId) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
     }));
   };
 
-  const getTeamComparisonData = () => {
-    return employeesAssessments.map(emp => ({
-      name: emp.name.split(' ')[0],
-      score: emp.overallScore
-    }));
+  const showToast = (message, type = 'info') => {
+    // Simple toast notification
+    alert(message);
   };
 
-  const COLORS = ['#7D1315', '#A91D1F', '#C42426', '#D32F2F', '#E53935'];
+  const handleCreatePeriod = async () => {
+    try {
+      if (!newPeriod.name || !newPeriod.start_date || !newPeriod.end_date || !newPeriod.submission_deadline) {
+        showToast('Please fill all fields', 'error');
+        return;
+      }
 
-  const RatingStars = ({ currentRating, onChange }) => {
+      setSaving(true);
+      await selfAssessmentService.createAssessmentPeriod(newPeriod);
+      showToast('Period created successfully!', 'success');
+      
+      // Reset form
+      setNewPeriod({
+        name: '',
+        start_date: '',
+        end_date: '',
+        submission_deadline: '',
+        status: 'UPCOMING'
+      });
+      setShowCreatePeriod(false);
+      
+      // Refresh periods
+      await fetchAllPeriods();
+      await fetchInitialData();
+    } catch (error) {
+      console.error('Error creating period:', error);
+      showToast('Failed to create period: ' + (error.response?.data?.detail || 'Please try again'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const RatingStars = ({ currentRating, onChange, disabled = false }) => {
     return (
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         {[1, 2, 3, 4, 5].map(star => (
           <button
             key={star}
-            onClick={() => onChange(star)}
-            className={`w-7 h-7 rounded text-xs font-medium transition-all ${
+            onClick={() => !disabled && onChange(star)}
+            disabled={disabled}
+            className={`w-8 h-8 rounded-lg text-sm font-semibold transition-all transform hover:scale-110 ${
               star <= currentRating
-                ? 'bg-[#7D1315] text-white'
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                ? 'bg-gradient-to-br from-almet-sapphire to-almet-astral text-white shadow-md'
+                : disabled 
+                  ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                  : 'bg-almet-mystic text-almet-waterloo hover:bg-almet-bali-hai hover:text-white'
             }`}
           >
             {star}
@@ -303,378 +347,1017 @@ const SelfAssessment = () => {
     );
   };
 
+  const getStatusBadge = (status) => {
+    const styles = {
+      DRAFT: 'bg-gray-100 text-gray-700 border border-gray-300',
+      SUBMITTED: 'bg-blue-50 text-almet-sapphire border border-almet-astral',
+      REVIEWED: 'bg-green-50 text-green-700 border border-green-300'
+    };
+    const icons = {
+      DRAFT: <Edit3 className="w-3 h-3" />,
+      SUBMITTED: <Send className="w-3 h-3" />,
+      REVIEWED: <CheckCircle className="w-3 h-3" />
+    };
+    return (
+      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${styles[status] || styles.DRAFT}`}>
+        {icons[status]}
+        {status}
+      </span>
+    );
+  };
+
+  const getRadarData = (assessment) => {
+    const groupedRatings = {};
+    
+    assessment.skill_ratings?.forEach(rating => {
+      const groupName = rating.skill_group_name || 'Other';
+      if (!groupedRatings[groupName]) {
+        groupedRatings[groupName] = { total: 0, count: 0 };
+      }
+      groupedRatings[groupName].total += rating.rating;
+      groupedRatings[groupName].count += 1;
+    });
+    
+    return Object.entries(groupedRatings).map(([name, data]) => ({
+      category: name,
+      score: (data.total / data.count).toFixed(2),
+      fullMark: 5
+    }));
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-almet-mystic border-t-almet-sapphire mx-auto mb-4"></div>
+            <p className="text-almet-waterloo font-medium">Loading Assessment System...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
-      <div className="p-3">
+      <div className="p-4 bg-gradient-to-br from-almet-mystic/30 to-white min-h-screen">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="bg-white rounded-lg shadow-sm p-3 mb-3">
+          <div className="bg-white rounded-xl shadow-lg p-4 mb-4 border border-almet-mystic">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">Self Assessment</h1>
-                <p className="text-xs text-gray-600 mt-0.5">Evaluate your technical skills and track progress</p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center shadow-lg">
+                  <Award className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-almet-cloud-burst">Core Skills Assessment</h1>
+                  <p className="text-xs text-almet-waterloo mt-0.5">
+                    Evaluate your technical skills and track progress over time
+                  </p>
+                </div>
               </div>
-              <Award className="w-8 h-8 text-[#7D1315]" />
+              <div className="flex items-center gap-2">
+                {userAccess && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-almet-mystic rounded-lg">
+                    <Shield className="w-3.5 h-3.5 text-almet-sapphire" />
+                    <span className="text-xs font-medium text-almet-cloud-burst">
+                      {userAccess.access_level}
+                    </span>
+                  </div>
+                )}
+                {userAccess?.is_admin && (
+                  <button
+                    onClick={() => {
+                      setShowSettings(true);
+                      fetchAllPeriods();
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all text-sm"
+                  >
+                    <Settings className="w-3.5 h-3.5" />
+                    <span className="font-medium">Settings</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="bg-white rounded-lg shadow-sm mb-3">
-            <div className="flex border-b text-xs">
-              <button
-                onClick={() => setActiveTab('assessment')}
-                className={`flex-1 px-3 py-2 font-medium transition-colors ${
-                  activeTab === 'assessment'
-                    ? 'border-b-2 border-[#7D1315] text-[#7D1315]'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  <Code className="w-3.5 h-3.5" />
-                  Assessment
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('analytics')}
-                disabled={!showResults}
-                className={`flex-1 px-3 py-2 font-medium transition-colors ${
-                  activeTab === 'analytics'
-                    ? 'border-b-2 border-[#7D1315] text-[#7D1315]'
-                    : showResults ? 'text-gray-600 hover:text-gray-900' : 'text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  <PieChart className="w-3.5 h-3.5" />
-                  My Results
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('team')}
-                className={`flex-1 px-3 py-2 font-medium transition-colors ${
-                  activeTab === 'team'
-                    ? 'border-b-2 border-[#7D1315] text-[#7D1315]'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" />
-                  Team Results
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`flex-1 px-3 py-2 font-medium transition-colors ${
-                  activeTab === 'history'
-                    ? 'border-b-2 border-[#7D1315] text-[#7D1315]'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-1.5">
-                  <History className="w-3.5 h-3.5" />
-                  History
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Assessment Tab */}
-          {activeTab === 'assessment' && (
-            <div className="space-y-2">
-              {categories.map((category) => {
-                const Icon = category.icon;
-                const isExpanded = expandedCategories[category.id];
-                
-                return (
-                  <div key={category.id} className="bg-white rounded-lg shadow-sm">
-                    <button
-                      onClick={() => toggleCategory(category.id)}
-                      className="w-full p-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Icon className="w-4 h-4" style={{ color: category.color }} />
-                        <h2 className="text-sm font-bold text-gray-900">{category.name}</h2>
-                        <span className="text-xs text-gray-500">({category.skills.length} skills)</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-gray-600">
-                          Avg: {calculateCategoryAverage(category)}
-                        </span>
-                        {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-gray-400" />
-                        )}
-                      </div>
-                    </button>
-                    
-                    {isExpanded && (
-                      <div className="px-3 pb-3 pt-1 space-y-2 border-t">
-                        {category.skills.map(skill => (
-                          <div key={skill.id} className="flex items-center justify-between py-1">
-                            <span className="text-xs font-medium text-gray-700 w-32">{skill.name}</span>
-                            <RatingStars
-                              currentRating={skill.rating}
-                              onChange={(rating) => handleRatingChange(category.id, skill.id, rating)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              <div className="flex justify-end gap-2 sticky bottom-3 pt-2">
-                <button
-                  onClick={handleSubmit}
-                  className="flex items-center gap-2 px-5 py-2 bg-[#7D1315] text-white rounded-lg hover:bg-[#6B1113] transition-colors shadow-lg text-xs font-medium"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  Submit Assessment
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* My Analytics Tab */}
-          {activeTab === 'analytics' && showResults && (
-            <div className="space-y-3">
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <div className="text-center">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#7D1315]/10 mb-2">
-                    <span className="text-3xl font-bold text-[#7D1315]">{calculateOverallAverage()}</span>
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900">Overall Score</h3>
-                  <p className="text-xs text-gray-600">Out of 5.0</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-white rounded-lg shadow-sm p-3">
-                  <h3 className="text-sm font-bold text-gray-900 mb-2">Skills Overview</h3>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <RadarChart data={getRadarData()}>
-                      <PolarGrid stroke="#e5e7eb" />
-                      <PolarAngleAxis dataKey="category" tick={{ fontSize: 10 }} />
-                      <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9 }} />
-                      <Radar
-                        name="Score"
-                        dataKey="score"
-                        stroke="#7D1315"
-                        fill="#7D1315"
-                        fillOpacity={0.6}
-                      />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="bg-white rounded-lg shadow-sm p-3">
-                  <h3 className="text-sm font-bold text-gray-900 mb-2">Progress Over Time</h3>
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={getProgressData()}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                      <YAxis domain={[0, 5]} tick={{ fontSize: 10 }} />
-                      <Tooltip />
-                      <Line
-                        type="monotone"
-                        dataKey="score"
-                        stroke="#7D1315"
-                        strokeWidth={2}
-                        dot={{ fill: '#7D1315', r: 4 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg shadow-sm p-3">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">Category Breakdown</h3>
-                <div className="space-y-3">
-                  {categories.map(category => (
-                    <div key={category.id}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-700">{category.name}</span>
-                        <span className="text-xs font-bold text-[#7D1315]">
-                          {calculateCategoryAverage(category)} / 5.0
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="h-1.5 rounded-full transition-all"
-                          style={{
-                            width: `${(parseFloat(calculateCategoryAverage(category)) / 5) * 100}%`,
-                            backgroundColor: category.color
-                          }}
-                        />
-                      </div>
+          {/* Active Period Banner */}
+          {activePeriod && (
+            <div className="bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-xl shadow-lg p-4 mb-4 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
+              <div className="relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5" />
+                    <div>
+                      <h3 className="font-bold text-base">{activePeriod.name}</h3>
+                      <p className="text-xs opacity-90 mt-0.5">
+                        Deadline: {new Date(activePeriod.submission_deadline).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold">{activePeriod.days_remaining}</div>
+                    <div className="text-xs opacity-90">days remaining</div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Team Results Tab */}
-          {activeTab === 'team' && (
-            <div className="space-y-3">
-              {!selectedEmployee ? (
+          {/* Stats Cards */}
+          {stats && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+              <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-almet-sapphire hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-10 h-10 rounded-lg bg-almet-mystic flex items-center justify-center">
+                    <Award className="w-5 h-5 text-almet-sapphire" />
+                  </div>
+                  <span className="text-xs font-semibold text-almet-waterloo uppercase">My Assessments</span>
+                </div>
+                <div className="text-2xl font-bold text-almet-cloud-burst">{stats.my_assessments_count}</div>
+                <p className="text-xs text-almet-waterloo mt-0.5">Total completed</p>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-almet-astral hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-almet-astral" />
+                  </div>
+                  <span className="text-xs font-semibold text-almet-waterloo uppercase">My Avg Score</span>
+                </div>
+                <div className="text-2xl font-bold text-almet-astral">{stats.my_average_score.toFixed(1)}</div>
+                <p className="text-xs text-almet-waterloo mt-0.5">Out of 5.0</p>
+              </div>
+
+              {(userAccess?.is_manager || userAccess?.is_admin) && (
                 <>
-                  {/* Team Overview */}
-                  <div className="bg-white rounded-lg shadow-sm p-3">
-                    <h3 className="text-sm font-bold text-gray-900 mb-3">Team Comparison</h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={getTeamComparisonData()}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                        <YAxis domain={[0, 5]} tick={{ fontSize: 10 }} />
-                        <Tooltip />
-                        <Bar dataKey="score" fill="#7D1315" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                        <Users className="w-5 h-5 text-green-600" />
+                      </div>
+                      <span className="text-xs font-semibold text-almet-waterloo uppercase">Team</span>
+                    </div>
+                    <div className="text-2xl font-bold text-green-600">{stats.team_assessments_count || 0}</div>
+                    <p className="text-xs text-almet-waterloo mt-0.5">Team assessments</p>
                   </div>
 
-                  {/* Employees List */}
-                  <div className="bg-white rounded-lg shadow-sm p-3">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-sm font-bold text-gray-900">Team Members ({employeesAssessments.length})</h3>
-                      <button className="text-xs text-[#7D1315] flex items-center gap-1">
-                        <Filter className="w-3.5 h-3.5" />
-                        Filter
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {employeesAssessments.map((employee) => (
-                        <div
-                          key={employee.id}
-                          className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5 flex-1">
-                            <div className="w-10 h-10 rounded-full bg-[#7D1315]/10 flex items-center justify-center">
-                              <span className="text-sm font-bold text-[#7D1315]">
-                                {employee.name.split(' ').map(n => n[0]).join('')}
-                              </span>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-900">{employee.name}</p>
-                              <p className="text-xs text-gray-600">{employee.position}</p>
-                            </div>
-                            <div className="text-right mr-3">
-                              <p className="text-sm font-bold text-[#7D1315]">{employee.overallScore}</p>
-                              <p className="text-xs text-gray-500">Score</p>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setSelectedEmployee(employee)}
-                            className="flex items-center gap-1 text-xs text-[#7D1315] hover:underline font-medium"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            View
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* Employee Detail View */}
-                  <div className="bg-white rounded-lg shadow-sm p-3">
-                    <button
-                      onClick={() => setSelectedEmployee(null)}
-                      className="text-xs text-[#7D1315] hover:underline mb-3"
-                    >
-                      ← Back to Team
-                    </button>
-                    <div className="flex items-center gap-3 mb-4 pb-3 border-b">
-                      <div className="w-12 h-12 rounded-full bg-[#7D1315]/10 flex items-center justify-center">
-                        <span className="text-lg font-bold text-[#7D1315]">
-                          {selectedEmployee.name.split(' ').map(n => n[0]).join('')}
-                        </span>
+                  <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-orange-500 hover:shadow-lg transition-shadow">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-orange-600" />
                       </div>
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900">{selectedEmployee.name}</h3>
-                        <p className="text-xs text-gray-600">{selectedEmployee.position} • {selectedEmployee.department}</p>
-                        <p className="text-xs text-gray-500">Assessed: {new Date(selectedEmployee.date).toLocaleDateString()}</p>
-                      </div>
-                      <div className="ml-auto text-center">
-                        <div className="w-16 h-16 rounded-full bg-[#7D1315]/10 flex items-center justify-center mb-1">
-                          <span className="text-2xl font-bold text-[#7D1315]">{selectedEmployee.overallScore}</span>
-                        </div>
-                        <p className="text-xs text-gray-600">Overall</p>
-                      </div>
+                      <span className="text-xs font-semibold text-almet-waterloo uppercase">Pending</span>
                     </div>
-
-                    {/* Employee Radar Chart */}
-                    <ResponsiveContainer width="100%" height={250}>
-                      <RadarChart data={getEmployeeRadarData(selectedEmployee)}>
-                        <PolarGrid stroke="#e5e7eb" />
-                        <PolarAngleAxis dataKey="category" tick={{ fontSize: 10 }} />
-                        <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 9 }} />
-                        <Radar
-                          name="Score"
-                          dataKey="score"
-                          stroke="#7D1315"
-                          fill="#7D1315"
-                          fillOpacity={0.6}
-                        />
-                      </RadarChart>
-                    </ResponsiveContainer>
-
-                    {/* Category Details */}
-                    <div className="mt-4 space-y-2">
-                      <h4 className="text-xs font-bold text-gray-900">Category Scores</h4>
-                      {selectedEmployee.categories.map((cat, idx) => (
-                        <div key={idx}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-medium text-gray-700">{cat.name}</span>
-                            <span className="text-xs font-bold text-[#7D1315]">{cat.score} / 5.0</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-1.5">
-                            <div
-                              className="h-1.5 rounded-full bg-[#7D1315]"
-                              style={{ width: `${(cat.score / 5) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <div className="text-2xl font-bold text-orange-600">{stats.pending_reviews || 0}</div>
+                    <p className="text-xs text-almet-waterloo mt-0.5">Awaiting review</p>
                   </div>
                 </>
               )}
             </div>
           )}
 
-          {/* History Tab */}
-          {activeTab === 'history' && (
-            <div className="bg-white rounded-lg shadow-sm p-3">
-              <h3 className="text-sm font-bold text-gray-900 mb-3">Assessment History</h3>
-              <div className="space-y-2">
-                {previousAssessments.map((assessment, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-9 h-9 rounded-full bg-[#7D1315]/10 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-[#7D1315]" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-gray-900">
-                          {new Date(assessment.date).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                        <p className="text-xs text-gray-600">Average Score: {assessment.averageScore}</p>
-                      </div>
+          {/* Tabs */}
+          <div className="bg-white rounded-xl shadow-md mb-4 overflow-hidden">
+            <div className="flex border-b border-almet-mystic">
+              <button
+                onClick={() => setActiveTab('overview')}
+                className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                  activeTab === 'overview'
+                    ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
+                    : 'text-almet-waterloo hover:bg-almet-mystic/50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Overview
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('assessment')}
+                className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                  activeTab === 'assessment'
+                    ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
+                    : 'text-almet-waterloo hover:bg-almet-mystic/50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <Code className="w-4 h-4" />
+                  Assessment
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab('history');
+                  fetchMyAssessments();
+                }}
+                className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                  activeTab === 'history'
+                    ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
+                    : 'text-almet-waterloo hover:bg-almet-mystic/50'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <History className="w-4 h-4" />
+                  My History
+                </div>
+              </button>
+              {(userAccess?.is_manager || userAccess?.is_admin) && (
+                <button
+                  onClick={() => {
+                    setActiveTab('team');
+                    fetchTeamAssessments();
+                  }}
+                  className={`flex-1 px-4 py-3 font-semibold transition-all text-sm ${
+                    activeTab === 'team'
+                      ? 'bg-gradient-to-b from-almet-sapphire/10 to-transparent border-b-3 border-almet-sapphire text-almet-sapphire'
+                      : 'text-almet-waterloo hover:bg-almet-mystic/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Team
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Tab Content - Overview */}
+          {activeTab === 'overview' && (
+            <div className="space-y-4">
+              {/* Quick Actions */}
+              <div className="bg-white rounded-xl shadow-md p-4">
+                <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-2">
+                  <Star className="w-4 h-4 text-almet-sapphire" />
+                  Quick Actions
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {currentAssessment && currentAssessment.status === 'DRAFT' ? (
+                    <button
+                      onClick={async () => {
+                        await fetchSkillGroups();
+                        setActiveTab('assessment');
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                      Continue Draft Assessment
+                    </button>
+                  ) : currentAssessment && (currentAssessment.status === 'SUBMITTED' || currentAssessment.status === 'REVIEWED') ? (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium cursor-not-allowed">
+                      <CheckCircle className="w-4 h-4" />
+                      Assessment Already Submitted for Active Period
                     </div>
-                    <button className="text-xs text-[#7D1315] hover:underline font-medium">
-                      View
+                  ) : (
+                    <button
+                      onClick={handleStartAssessment}
+                      disabled={!activePeriod || saving}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {saving ? 'Loading...' : 'Start New Assessment'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setActiveTab('history');
+                      fetchMyAssessments();
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all text-sm font-medium"
+                  >
+                    <History className="w-4 h-4" />
+                    View History
+                  </button>
+                </div>
+                {!activePeriod && (
+                  <div className="flex items-center gap-2 mt-3 p-2.5 bg-orange-50 border border-orange-200 rounded-lg">
+                    <AlertCircle className="w-4 h-4 text-orange-600" />
+                    <p className="text-xs text-orange-700 font-medium">
+                      No active assessment period available
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Current Period Assessment Status */}
+              {activePeriod && currentAssessment && (
+                <div className="bg-white rounded-xl shadow-md p-4">
+                  <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-almet-sapphire" />
+                    Current Period Assessment
+                  </h3>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-almet-mystic/50 to-transparent rounded-lg">
+                    <div>
+                      <p className="font-semibold text-almet-cloud-burst text-sm">
+                        {activePeriod.name}
+                      </p>
+                      <p className="text-xs text-almet-waterloo mt-1">
+                        {currentAssessment.submitted_at 
+                          ? `Submitted: ${new Date(currentAssessment.submitted_at).toLocaleDateString()}`
+                          : 'Draft - In Progress'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-almet-sapphire">
+                          {currentAssessment.overall_score || 'N/A'}
+                        </div>
+                        <p className="text-xs text-almet-waterloo">Score</p>
+                      </div>
+                      {getStatusBadge(currentAssessment.status)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Last Assessment Summary */}
+              {stats?.my_last_assessment && (!currentAssessment || currentAssessment.period !== stats.my_last_assessment.period) && (
+                <div className="bg-white rounded-xl shadow-md p-4">
+                  <h3 className="text-base font-bold text-almet-cloud-burst mb-3 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-almet-sapphire" />
+                    Last Assessment
+                  </h3>
+                  <div className="flex items-center justify-between p-3 bg-gradient-to-r from-almet-mystic/50 to-transparent rounded-lg">
+                    <div>
+                      <p className="font-semibold text-almet-cloud-burst text-sm">
+                        {stats.my_last_assessment.period_name}
+                      </p>
+                      <p className="text-xs text-almet-waterloo mt-1">
+                        {stats.my_last_assessment.submitted_at 
+                          ? `Submitted: ${new Date(stats.my_last_assessment.submitted_at).toLocaleDateString()}`
+                          : 'Draft'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-almet-sapphire">
+                          {stats.my_last_assessment.overall_score || 'N/A'}
+                        </div>
+                        <p className="text-xs text-almet-waterloo">Score</p>
+                      </div>
+                      {getStatusBadge(stats.my_last_assessment.status)}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Content - Assessment */}
+          {activeTab === 'assessment' && (
+            <div className="space-y-4">
+              {!currentAssessment ? (
+                <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                  <div className="w-20 h-20 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-6">
+                    <Code className="w-10 h-10 text-almet-sapphire" />
+                  </div>
+                  <h3 className="text-xl font-bold text-almet-cloud-burst mb-3">No Active Assessment</h3>
+                  <p className="text-almet-waterloo mb-6">
+                    Start a new assessment to rate your skills for the current period
+                  </p>
+                  <button
+                    onClick={handleStartAssessment}
+                    disabled={!activePeriod || saving}
+                    className="px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
+                  >
+                    <Plus className="w-5 h-5 inline mr-2" />
+                    Start Assessment
+                  </button>
+                </div>
+              ) : currentAssessment.status === 'SUBMITTED' || currentAssessment.status === 'REVIEWED' ? (
+                // Show submitted assessment details
+                <div className="bg-white rounded-xl shadow-md p-6">
+                  <div className="flex items-center justify-between mb-6 pb-4 border-b border-almet-mystic">
+                    <div>
+                      <h3 className="text-xl font-bold text-almet-cloud-burst">Assessment Submitted</h3>
+                      <p className="text-sm text-almet-waterloo mt-1">
+                        Submitted: {currentAssessment.submitted_at 
+                          ? new Date(currentAssessment.submitted_at).toLocaleDateString()
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-almet-sapphire">
+                          {currentAssessment.overall_score || 'N/A'}
+                        </div>
+                        <p className="text-xs text-almet-waterloo">Overall Score</p>
+                      </div>
+                      {getStatusBadge(currentAssessment.status)}
+                    </div>
+                  </div>
+
+                  {/* Skill Ratings Display */}
+                  <div className="space-y-4">
+                    <h4 className="font-bold text-almet-cloud-burst flex items-center gap-2">
+                      <Award className="w-5 h-5 text-almet-sapphire" />
+                      Your Skill Ratings
+                    </h4>
+                    
+                    {currentAssessment.skill_ratings && currentAssessment.skill_ratings.length > 0 ? (
+                      <div className="space-y-3">
+                        {currentAssessment.skill_ratings.map(rating => (
+                          <div key={rating.id} className="border border-almet-mystic rounded-lg p-4 bg-gradient-to-r from-almet-mystic/10 to-transparent">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-semibold text-almet-cloud-burst text-sm">
+                                {rating.skill_info?.name || 'Skill'}
+                              </span>
+                              <div className="flex items-center gap-3">
+                                <RatingStars currentRating={rating.rating} disabled={true} />
+                                <span className="text-xs font-medium text-almet-waterloo">({rating.rating_level})</span>
+                              </div>
+                            </div>
+                            {rating.self_comment && (
+                              <div className="mt-2 text-xs text-almet-cloud-burst bg-blue-50 p-2.5 rounded-lg border border-blue-200">
+                                <span className="font-semibold">Your Comment:</span>
+                                <p className="mt-1">{rating.self_comment}</p>
+                              </div>
+                            )}
+                            {rating.manager_comment && (
+                              <div className="mt-2 text-xs text-almet-cloud-burst bg-green-50 p-2.5 rounded-lg border border-green-200">
+                                <span className="font-semibold">Manager Feedback:</span>
+                                <p className="mt-1">{rating.manager_comment}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-almet-waterloo">No skill ratings found</p>
+                    )}
+                  </div>
+
+                  {/* Manager Comments */}
+                  {currentAssessment.manager_comments && (
+                    <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-transparent rounded-xl border border-green-200">
+                      <h4 className="font-bold text-almet-cloud-burst mb-2 flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-green-600" />
+                        Manager Overall Comments
+                      </h4>
+                      <p className="text-sm text-almet-cloud-burst">{currentAssessment.manager_comments}</p>
+                      {currentAssessment.manager_reviewed_at && (
+                        <p className="text-xs text-almet-waterloo mt-2">
+                          Reviewed on {new Date(currentAssessment.manager_reviewed_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {/* Assessment Progress */}
+                  <div className="bg-white rounded-xl shadow-md p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-semibold text-almet-cloud-burst">Assessment Progress</span>
+                      <span className="text-sm text-almet-waterloo">
+                        {Object.keys(ratings).length} / {
+                          skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 0)
+                        } skills rated
+                      </span>
+                    </div>
+                    <div className="w-full bg-almet-mystic rounded-full h-3 overflow-hidden">
+                      <div
+                        className="h-3 rounded-full bg-gradient-to-r from-almet-sapphire to-almet-astral transition-all duration-500"
+                        style={{
+                          width: `${
+                            skillGroups.length > 0
+                              ? (Object.keys(ratings).length / skillGroups.reduce((sum, g) => sum + (g.skills?.length || 0), 1)) * 100
+                              : 0
+                          }%`
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Skill Groups */}
+                  {skillGroups.length > 0 ? (
+                    skillGroups.map((group) => {
+                      const isExpanded = expandedGroups[group.id];
+                      return (
+                        <div key={group.id} className="bg-white rounded-xl shadow-md overflow-hidden">
+                          <button
+                            onClick={() => toggleGroup(group.id)}
+                            className="w-full p-5 flex items-center justify-between hover:bg-almet-mystic/30 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center">
+                                <Code className="w-5 h-5 text-white" />
+                              </div>
+                              <div className="text-left">
+                                <h2 className="font-bold text-almet-cloud-burst">{group.name}</h2>
+                                <span className="text-xs text-almet-waterloo">{group.skills?.length || 0} skills</span>
+                              </div>
+                            </div>
+                            {isExpanded ? 
+                              <ChevronUp className="w-5 h-5 text-almet-waterloo" /> : 
+                              <ChevronDown className="w-5 h-5 text-almet-waterloo" />
+                            }
+                          </button>
+                          
+                          {isExpanded && (
+                            <div className="px-5 pb-5 space-y-4 bg-gradient-to-b from-almet-mystic/20 to-transparent">
+                              {group.skills?.map(skill => (
+                                <div key={skill.id} className="p-4 bg-white rounded-lg border border-almet-mystic shadow-sm hover:shadow-md transition-shadow">
+                                  <div className="flex items-center justify-between mb-3">
+                                    <span className="font-semibold text-almet-cloud-burst">{skill.name}</span>
+                                    <RatingStars
+                                      currentRating={ratings[skill.id]?.rating || 0}
+                                      onChange={(rating) => handleRatingChange(skill.id, rating)}
+                                    />
+                                  </div>
+                                  <textarea
+                                    value={ratings[skill.id]?.comment || ''}
+                                    onChange={(e) => handleCommentChange(skill.id, e.target.value)}
+                                    placeholder="Add your reflection on this skill (optional)"
+                                    className="w-full text-sm p-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
+                                    rows={2}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="bg-white rounded-xl shadow-md p-12 text-center">
+                      <p className="text-almet-waterloo">No skill groups available</p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="sticky bottom-4 flex justify-end gap-3 p-4 bg-white rounded-xl shadow-lg border border-almet-mystic">
+                    <button
+                      onClick={handleSaveAssessment}
+                      disabled={saving}
+                      className="flex items-center gap-2 px-6 py-3 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium disabled:opacity-50"
+                    >
+                      <Save className="w-4 h-4" />
+                      {saving ? 'Saving...' : 'Save Draft'}
+                    </button>
+                    <button
+                      onClick={handleSubmitAssessment}
+                      disabled={saving || Object.keys(ratings).length === 0}
+                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
+                    >
+                      <Send className="w-4 h-4" />
+                      {saving ? 'Submitting...' : 'Submit Assessment'}
                     </button>
                   </div>
-                ))}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Tab Content - History */}
+          {activeTab === 'history' && (
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
+                <History className="w-5 h-5 text-almet-sapphire" />
+                Assessment History
+              </h3>
+              {myAssessments.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-4">
+                    <History className="w-8 h-8 text-almet-waterloo" />
+                  </div>
+                  <p className="text-almet-waterloo">No assessments found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {myAssessments.map((assessment) => (
+                    <div
+                      key={assessment.id}
+                      className="flex items-center justify-between p-4 bg-gradient-to-r from-almet-mystic/30 to-transparent rounded-lg hover:shadow-md transition-all border border-almet-mystic"
+                    >
+                      <div>
+                        <p className="font-semibold text-almet-cloud-burst">{assessment.period_name}</p>
+                        <p className="text-sm text-almet-waterloo mt-1">
+                          {assessment.submitted_at 
+                            ? `Submitted: ${new Date(assessment.submitted_at).toLocaleDateString()}`
+                            : 'Draft'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-almet-sapphire">
+                            {assessment.overall_score || 'N/A'}
+                          </p>
+                          <p className="text-xs text-almet-waterloo">Score</p>
+                        </div>
+                        {getStatusBadge(assessment.status)}
+                        <button
+                          onClick={() => handleViewAssessment(assessment.id)}
+                          className="p-2 text-almet-sapphire hover:bg-almet-sapphire hover:text-white rounded-lg transition-all"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Tab Content - Team */}
+          {activeTab === 'team' && (
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="text-lg font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
+                <Users className="w-5 h-5 text-almet-sapphire" />
+                Team Assessments
+              </h3>
+              {teamAssessments.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-almet-mystic flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-8 h-8 text-almet-waterloo" />
+                  </div>
+                  <p className="text-almet-waterloo">No team assessments found</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {teamAssessments.map((assessment) => (
+                    <div
+                      key={assessment.id}
+                      className="flex items-center justify-between p-4 bg-gradient-to-r from-almet-mystic/30 to-transparent rounded-lg hover:shadow-md transition-all border border-almet-mystic"
+                    >
+                      <div>
+                        <p className="font-semibold text-almet-cloud-burst">{assessment.employee_name}</p>
+                        <p className="text-sm text-almet-waterloo">{assessment.period_name}</p>
+                        <p className="text-xs text-almet-waterloo mt-1">
+                          {assessment.submitted_at 
+                            ? `Submitted: ${new Date(assessment.submitted_at).toLocaleDateString()}`
+                            : 'Draft'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-center">
+                          <p className="text-2xl font-bold text-almet-sapphire">
+                            {assessment.overall_score || 'N/A'}
+                          </p>
+                          <p className="text-xs text-almet-waterloo">Score</p>
+                        </div>
+                        {getStatusBadge(assessment.status)}
+                        <button
+                          onClick={() => handleViewAssessment(assessment.id)}
+                          className="p-2 text-almet-sapphire hover:bg-almet-sapphire hover:text-white rounded-lg transition-all"
+                        >
+                          <Eye className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Assessment Detail Modal */}
+          {selectedAssessment && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <div className="p-6 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r from-almet-mystic/50 to-transparent sticky top-0 bg-white z-10">
+                  <div>
+                    <h3 className="text-xl font-bold text-almet-cloud-burst">
+                      {selectedAssessment.employee_name}
+                    </h3>
+                    <p className="text-sm text-almet-waterloo">{selectedAssessment.employee_position}</p>
+                    <p className="text-sm font-medium text-almet-sapphire mt-1">
+                      {selectedAssessment.period_info?.name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedAssessment(null)}
+                    className="text-almet-waterloo hover:text-almet-cloud-burst hover:bg-almet-mystic rounded-lg p-2 transition-all"
+                  >
+                    <span className="text-2xl">×</span>
+                  </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                  {/* Overall Score */}
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 border-4 border-almet-sapphire/30 mb-4">
+                      <span className="text-5xl font-bold text-almet-sapphire">
+                        {selectedAssessment.overall_score || 'N/A'}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-bold text-almet-cloud-burst">Overall Score</h3>
+                    <p className="text-sm text-almet-waterloo">Out of 5.0</p>
+                    <div className="mt-3">
+                      {getStatusBadge(selectedAssessment.status)}
+                    </div>
+                  </div>
+
+                  {/* Radar Chart */}
+                  {selectedAssessment.skill_ratings?.length > 0 && (
+                    <div className="mb-8 p-6 bg-gradient-to-br from-almet-mystic/30 to-transparent rounded-xl">
+                      <h4 className="font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-almet-sapphire" />
+                        Skills Overview
+                      </h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RadarChart data={getRadarData(selectedAssessment)}>
+                          <PolarGrid stroke="#e7ebf1" />
+                          <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fill: '#7a829a' }} />
+                          <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fontSize: 10, fill: '#7a829a' }} />
+                          <Radar
+                            name="Score"
+                            dataKey="score"
+                            stroke="#30539b"
+                            fill="#30539b"
+                            fillOpacity={0.6}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Skill Ratings */}
+                  <div>
+                    <h4 className="font-bold text-almet-cloud-burst mb-4 flex items-center gap-2">
+                      <Award className="w-5 h-5 text-almet-sapphire" />
+                      Skill Ratings
+                    </h4>
+                    <div className="space-y-4">
+                      {selectedAssessment.skill_ratings?.map(rating => (
+                        <div key={rating.id} className="border border-almet-mystic rounded-xl p-4 bg-gradient-to-r from-almet-mystic/10 to-transparent">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="font-semibold text-almet-cloud-burst">
+                              {rating.skill_info?.name}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <RatingStars currentRating={rating.rating} disabled={true} />
+                              <span className="text-sm font-medium text-almet-waterloo">({rating.rating_level})</span>
+                            </div>
+                          </div>
+                          {rating.self_comment && (
+                            <div className="mt-3 text-sm text-almet-cloud-burst bg-blue-50 p-3 rounded-lg border border-blue-200">
+                              <span className="font-semibold flex items-center gap-2">
+                                <MessageSquare className="w-4 h-4" />
+                                Self Comment:
+                              </span>
+                              <p className="mt-1">{rating.self_comment}</p>
+                            </div>
+                          )}
+                          {rating.manager_comment && (
+                            <div className="mt-3 text-sm text-almet-cloud-burst bg-green-50 p-3 rounded-lg border border-green-200">
+                              <span className="font-semibold flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4" />
+                                Manager Feedback:
+                              </span>
+                              <p className="mt-1">{rating.manager_comment}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Manager Comments */}
+                  {selectedAssessment.manager_comments && (
+                    <div className="mt-6 p-5 bg-gradient-to-r from-green-50 to-transparent rounded-xl border border-green-200">
+                      <h4 className="font-bold text-almet-cloud-burst mb-2 flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-green-600" />
+                        Manager Overall Comments
+                      </h4>
+                      <p className="text-sm text-almet-cloud-burst">{selectedAssessment.manager_comments}</p>
+                      <p className="text-xs text-almet-waterloo mt-2">
+                        - {selectedAssessment.manager_name} on {new Date(selectedAssessment.manager_reviewed_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6 border-t border-almet-mystic bg-gradient-to-b from-transparent to-almet-mystic/20">
+                  <button
+                    onClick={() => setSelectedAssessment(null)}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Settings Modal - Admin Only */}
+          {showSettings && userAccess?.is_admin && (
+            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+                <div className="p-6 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r from-almet-sapphire to-almet-astral text-white">
+                  <div className="flex items-center gap-3">
+                    <Settings className="w-6 h-6" />
+                    <h3 className="text-xl font-bold">Assessment Period Settings</h3>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowSettings(false);
+                      setShowCreatePeriod(false);
+                    }}
+                    className="hover:bg-white/20 rounded-lg p-2 transition-all"
+                  >
+                    <span className="text-2xl">×</span>
+                  </button>
+                </div>
+                
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
+                  {!showCreatePeriod ? (
+                    <>
+                      <div className="flex justify-between items-center mb-6">
+                        <h4 className="font-bold text-almet-cloud-burst text-lg">Assessment Periods</h4>
+                        <button
+                          onClick={() => setShowCreatePeriod(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Create New Period
+                        </button>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {allPeriods.length === 0 ? (
+                          <div className="text-center py-12">
+                            <Calendar className="w-16 h-16 text-almet-waterloo mx-auto mb-4" />
+                            <p className="text-almet-waterloo">No periods found. Create your first period!</p>
+                          </div>
+                        ) : (
+                          allPeriods.map(period => (
+                            <div key={period.id} className="p-4 border border-almet-mystic rounded-xl flex items-center justify-between hover:shadow-md transition-all bg-gradient-to-r from-almet-mystic/20 to-transparent">
+                              <div className="flex-1">
+                                <p className="font-semibold text-almet-cloud-burst text-lg">{period.name}</p>
+                                <p className="text-sm text-almet-waterloo mt-1">
+                                  {new Date(period.start_date).toLocaleDateString()} - {new Date(period.end_date).toLocaleDateString()}
+                                </p>
+                                <p className="text-xs text-almet-waterloo mt-1">
+                                  Deadline: {new Date(period.submission_deadline).toLocaleDateString()}
+                                </p>
+                                <div className="flex gap-2 mt-2">
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                    period.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                                    period.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
+                                    period.status === 'CLOSED' ? 'bg-gray-100 text-gray-700' :
+                                    'bg-orange-100 text-orange-700'
+                                  }`}>
+                                    {period.status}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {period.is_active ? (
+                                  <span className="px-4 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4" />
+                                    Active
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      try {
+                                        await selfAssessmentService.activatePeriod(period.id);
+                                        fetchAllPeriods();
+                                        fetchInitialData();
+                                        showToast('Period activated successfully', 'success');
+                                      } catch (error) {
+                                        showToast('Failed to activate period', 'error');
+                                      }
+                                    }}
+                                    className="px-4 py-2 bg-almet-sapphire text-white rounded-lg text-sm font-medium hover:bg-almet-astral transition-all"
+                                  >
+                                    Activate
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-3 mb-6">
+                        <button
+                          onClick={() => setShowCreatePeriod(false)}
+                          className="p-2 hover:bg-almet-mystic rounded-lg transition-all"
+                        >
+                          <ChevronDown className="w-5 h-5 rotate-90 text-almet-sapphire" />
+                        </button>
+                        <h4 className="font-bold text-almet-cloud-burst text-lg">Create New Assessment Period</h4>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
+                            Period Name *
+                          </label>
+                          <input
+                            type="text"
+                            value={newPeriod.name}
+                            onChange={(e) => setNewPeriod({...newPeriod, name: e.target.value})}
+                            placeholder="e.g., H1 2025, Q1 2025"
+                            className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
+                              Start Date *
+                            </label>
+                            <input
+                              type="date"
+                              value={newPeriod.start_date}
+                              onChange={(e) => setNewPeriod({...newPeriod, start_date: e.target.value})}
+                              className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
+                              End Date *
+                            </label>
+                            <input
+                              type="date"
+                              value={newPeriod.end_date}
+                              onChange={(e) => setNewPeriod({...newPeriod, end_date: e.target.value})}
+                              className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
+                              Submission Deadline *
+                            </label>
+                            <input
+                              type="date"
+                              value={newPeriod.submission_deadline}
+                              onChange={(e) => setNewPeriod({...newPeriod, submission_deadline: e.target.value})}
+                              className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
+                            Status
+                          </label>
+                          <select
+                            value={newPeriod.status}
+                            onChange={(e) => setNewPeriod({...newPeriod, status: e.target.value})}
+                            className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                          >
+                            <option value="UPCOMING">Upcoming</option>
+                            <option value="ACTIVE">Active</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="CLOSED">Closed</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3 pt-4">
+                        <button
+                          onClick={() => {
+                            setShowCreatePeriod(false);
+                            setNewPeriod({
+                              name: '',
+                              start_date: '',
+                              end_date: '',
+                              submission_deadline: '',
+                              status: 'UPCOMING'
+                            });
+                          }}
+                          className="flex-1 px-6 py-3 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleCreatePeriod}
+                          disabled={saving}
+                          className="flex-1 px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
+                        >
+                          {saving ? 'Creating...' : 'Create Period'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-6 border-t border-almet-mystic">
+                  <button
+                    onClick={() => {
+                      setShowSettings(false);
+                      setShowCreatePeriod(false);
+                    }}
+                    className="w-full px-6 py-3 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           )}

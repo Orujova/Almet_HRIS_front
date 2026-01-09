@@ -252,35 +252,33 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const handleColorModeChange = useCallback((newMode) => {
   if (newMode === currentColorMode) return;
   
-  // ✅ CRITICAL: Save wrapper filter before any state changes
-  const preservedBFFilter = isWrapperFilterApplied ? [...localFilters.business_function] : [];
+  // ✅ CRITICAL: Save wrapper filter BEFORE clearing anything
+  const preservedBFFilter = isWrapperFilterApplied 
+    ? [...localFilters.business_function] 
+    : [];
   
-
+  console.log('🎨 Color mode changing, preserving filter:', preservedBFFilter);
   
   setCurrentColorMode(newMode);
   setDefaultSortingApplied(false);
   clearSorting();
   
-  // ✅ Restore wrapper filter immediately if it was active
-  if (isWrapperFilterApplied && preservedBFFilter.length > 0) {
-    // Use a microtask to ensure state consistency
-    queueMicrotask(() => {
-      setLocalFilters(prev => {
-        // Only update if filter was actually cleared
-        if (prev.business_function.length !== preservedBFFilter.length) {
-         
-          return {
-            ...prev,
-            business_function: preservedBFFilter
-          };
-        }
-        return prev;
-      });
-    });
+  // ✅ IMMEDIATELY restore the filter
+  if (preservedBFFilter.length > 0) {
+    setLocalFilters(prev => ({
+      ...prev,
+      business_function: preservedBFFilter
+    }));
   }
   
   setCurrentPage(1);
-}, [currentColorMode, clearSorting, setCurrentPage, isWrapperFilterApplied, localFilters.business_function]);
+}, [
+  currentColorMode, 
+  clearSorting, 
+  setCurrentPage, 
+  isWrapperFilterApplied, 
+  localFilters.business_function
+]);
 
   useEffect(() => {
     const initializeAllStats = async () => {
@@ -321,7 +319,10 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       );
       params.ordering = orderingFields.join(',');
     }
-
+if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
+    params.business_function = localFilters.business_function.join(',');
+    console.log('🔒 Wrapper filter enforced in buildApiParams:', params.business_function);
+  }
     const multiSelectFilters = [
       'business_function', 'department', 'unit', 'job_function', 'position_group',
       'status', 'grading_level', 'contract_duration', 'line_manager', 'tags', 'gender', 'employee_search'
@@ -531,20 +532,27 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   ]);
 
   // ✅ DATA FETCHING EFFECT - Only after initialization
-  useEffect(() => {
-    if (!initialized.current) {
-      return;
-    }
+  // ✅ DATA FETCHING EFFECT - Only after initialization
+useEffect(() => {
+  if (!initialized.current) {
+    return;
+  }
 
-    if (!apiParamsChanged) {
-      return;
-    }
+  if (!apiParamsChanged) {
+    return;
+  }
 
-    const params = buildApiParams();
+  const params = buildApiParams();
+  
+  // ✅ CRITICAL: Preserve wrapper filter during pagination
+  if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
+    // Ensure business_function is always included in params
+    params.business_function = localFilters.business_function.join(',');
+    console.log('🔒 Preserving wrapper filter in API call:', params.business_function);
+  }
 
-    
-    debouncedFetchEmployees(params);
-  }, [apiParamsChanged, buildApiParams, debouncedFetchEmployees]);
+  debouncedFetchEmployees(params);
+}, [apiParamsChanged, buildApiParams, debouncedFetchEmployees, isWrapperFilterApplied, localFilters.business_function]);
 
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     try {
@@ -606,15 +614,27 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   // 🎯 FILTER HANDLERS
   // ========================================
   const handleSearchChange = useCallback((value) => {
-    setLocalFilters(prev => ({ ...prev, search: value }));
-    setCurrentPage(1);
-  }, [setCurrentPage]);
+  setLocalFilters(prev => {
+    // ✅ Preserve business_function filter
+    return {
+      ...prev,
+      search: value,
+      business_function: isWrapperFilterApplied ? prev.business_function : []
+    };
+  });
+  setCurrentPage(1);
+}, [setCurrentPage, isWrapperFilterApplied]);
 
-  const handleStatusChange = useCallback((selectedStatuses) => {
-    setLocalFilters(prev => ({ ...prev, status: Array.isArray(selectedStatuses) ? selectedStatuses : [] }));
-    setCurrentPage(1);
-  }, [setCurrentPage]);
+const handleStatusChange = useCallback((selectedStatuses) => {
+  setLocalFilters(prev => ({
+    ...prev,
+    status: Array.isArray(selectedStatuses) ? selectedStatuses : [],
+    business_function: isWrapperFilterApplied ? prev.business_function : [] // ✅ Preserve
+  }));
+  setCurrentPage(1);
+}, [setCurrentPage, isWrapperFilterApplied]);
 
+// Apply same pattern to all filter handlers...
   const handleDepartmentChange = useCallback((selectedDepartments) => {
     setLocalFilters(prev => ({ ...prev, department: Array.isArray(selectedDepartments) ? selectedDepartments : [] }));
     setCurrentPage(1);

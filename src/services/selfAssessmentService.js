@@ -1,4 +1,4 @@
-// services/selfAssessmentService.js - Core Skills Assessment Service
+// services/selfAssessmentService.js - Updated with Access Info
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -92,6 +92,26 @@ const selfAssessmentService = {
       return response.data;
     } catch (error) {
       console.error('Error activating period:', error);
+      throw error;
+    }
+  },
+
+  updateAssessmentPeriod: async (periodId, periodData) => {
+    try {
+      const response = await api.patch(`/assessment-periods/${periodId}/`, periodData);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating assessment period:', error);
+      throw error;
+    }
+  },
+
+  deleteAssessmentPeriod: async (periodId) => {
+    try {
+      const response = await api.delete(`/assessment-periods/${periodId}/`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting assessment period:', error);
       throw error;
     }
   },
@@ -204,6 +224,18 @@ const selfAssessmentService = {
       return response.data;
     } catch (error) {
       console.error('Error fetching assessment stats:', error);
+      throw error;
+    }
+  },
+
+  // ==================== Access Information ====================
+  
+  getMyAccessInfo: async () => {
+    try {
+      const response = await api.get('/assessment-access-info/');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching access info:', error);
       throw error;
     }
   },
