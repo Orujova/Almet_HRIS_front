@@ -400,7 +400,7 @@ const SelfAssessment = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-4 bg-gradient-to-br from-almet-mystic/30 to-white min-h-screen">
+      <div className="p-4  min-h-screen">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="bg-white rounded-xl shadow-lg p-4 mb-4 border border-almet-mystic">
@@ -443,14 +443,14 @@ const SelfAssessment = () => {
 
           {/* Active Period Banner */}
           {activePeriod && (
-            <div className="bg-gradient-to-r from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-xl shadow-lg p-4 mb-4 text-white relative overflow-hidden">
+            <div className="bg-almet-steel-blue rounded-xl shadow-lg p-3 mb-4 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-24 -mt-24"></div>
               <div className="relative z-10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Calendar className="w-5 h-5" />
                     <div>
-                      <h3 className="font-bold text-base">{activePeriod.name}</h3>
+                      <h3 className="font-bold text-sm">{activePeriod.name}</h3>
                       <p className="text-xs opacity-90 mt-0.5">
                         Deadline: {new Date(activePeriod.submission_deadline).toLocaleDateString('en-US', {
                           year: 'numeric',
@@ -461,7 +461,7 @@ const SelfAssessment = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-3xl font-bold">{activePeriod.days_remaining}</div>
+                    <div className="text-xl font-bold">{activePeriod.days_remaining}</div>
                     <div className="text-xs opacity-90">days remaining</div>
                   </div>
                 </div>
@@ -474,48 +474,60 @@ const SelfAssessment = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
               <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-almet-sapphire hover:shadow-lg transition-shadow">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded-lg bg-almet-mystic flex items-center justify-center">
-                    <Award className="w-5 h-5 text-almet-sapphire" />
+                  <div className="w-8 h-8 rounded-lg bg-almet-mystic flex items-center justify-center">
+                    <Award className="w-4 h-4 text-almet-sapphire" />
                   </div>
                   <span className="text-xs font-semibold text-almet-waterloo uppercase">My Assessments</span>
                 </div>
+                <div className='flex gap-4 items-center'>
+
                 <div className="text-2xl font-bold text-almet-cloud-burst">{stats.my_assessments_count}</div>
                 <p className="text-xs text-almet-waterloo mt-0.5">Total completed</p>
+                </div>
               </div>
 
               <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-almet-astral hover:shadow-lg transition-shadow">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-almet-astral" />
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-almet-astral" />
                   </div>
                   <span className="text-xs font-semibold text-almet-waterloo uppercase">My Avg Score</span>
                 </div>
+                <div className='flex gap-4 items-center'>
+
                 <div className="text-2xl font-bold text-almet-astral">{stats.my_average_score.toFixed(1)}</div>
                 <p className="text-xs text-almet-waterloo mt-0.5">Out of 5.0</p>
+                </div>
               </div>
 
               {(userAccess?.is_manager || userAccess?.is_admin) && (
                 <>
                   <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500 hover:shadow-lg transition-shadow">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-green-600" />
+                      <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-green-600" />
                       </div>
                       <span className="text-xs font-semibold text-almet-waterloo uppercase">Team</span>
                     </div>
+                    <div className='flex gap-4 items-center'>
+
                     <div className="text-2xl font-bold text-green-600">{stats.team_assessments_count || 0}</div>
                     <p className="text-xs text-almet-waterloo mt-0.5">Team assessments</p>
+                    </div>
                   </div>
 
                   <div className="bg-white rounded-xl shadow-md p-4 border-l-4 border-orange-500 hover:shadow-lg transition-shadow">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-orange-600" />
+                      <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+                        <Clock className="w-4 h-4 text-orange-600" />
                       </div>
                       <span className="text-xs font-semibold text-almet-waterloo uppercase">Pending</span>
                     </div>
+                    <div className='flex gap-4 items-center'>
+
                     <div className="text-2xl font-bold text-orange-600">{stats.pending_reviews || 0}</div>
                     <p className="text-xs text-almet-waterloo mt-0.5">Awaiting review</p>
+                    </div>
                   </div>
                 </>
               )}
@@ -1138,7 +1150,7 @@ const SelfAssessment = () => {
                 <div className="p-6 border-t border-almet-mystic bg-gradient-to-b from-transparent to-almet-mystic/20">
                   <button
                     onClick={() => setSelectedAssessment(null)}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                    className="w-full px-6 py-3 bg-gradient-to-r text-xs from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
                   >
                     Close
                   </button>
@@ -1151,10 +1163,10 @@ const SelfAssessment = () => {
           {showSettings && userAccess?.is_admin && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
-                <div className="p-6 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r from-almet-sapphire to-almet-astral text-white">
+                <div className="px-4 py-2 border-b border-almet-mystic flex items-center justify-between bg-gradient-to-r text-almet-sapphire ">
                   <div className="flex items-center gap-3">
                     <Settings className="w-6 h-6" />
-                    <h3 className="text-xl font-bold">Assessment Period Settings</h3>
+                    <h3 className="text-xl font-bold ">Assessment Period Settings</h3>
                   </div>
                   <button
                     onClick={() => {
@@ -1174,7 +1186,7 @@ const SelfAssessment = () => {
                         <h4 className="font-bold text-almet-cloud-burst text-lg">Assessment Periods</h4>
                         <button
                           onClick={() => setShowCreatePeriod(true)}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
+                          className="flex text-xs items-center gap-2 px-4 py-2 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium"
                         >
                           <Plus className="w-4 h-4" />
                           Create New Period
@@ -1198,16 +1210,7 @@ const SelfAssessment = () => {
                                 <p className="text-xs text-almet-waterloo mt-1">
                                   Deadline: {new Date(period.submission_deadline).toLocaleDateString()}
                                 </p>
-                                <div className="flex gap-2 mt-2">
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                    period.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
-                                    period.status === 'COMPLETED' ? 'bg-blue-100 text-blue-700' :
-                                    period.status === 'CLOSED' ? 'bg-gray-100 text-gray-700' :
-                                    'bg-orange-100 text-orange-700'
-                                  }`}>
-                                    {period.status}
-                                  </span>
-                                </div>
+                          
                               </div>
                               <div className="flex items-center gap-2">
                                 {period.is_active ? (
@@ -1260,7 +1263,7 @@ const SelfAssessment = () => {
                             value={newPeriod.name}
                             onChange={(e) => setNewPeriod({...newPeriod, name: e.target.value})}
                             placeholder="e.g., H1 2025, Q1 2025"
-                            className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                            className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
                           />
                         </div>
 
@@ -1273,7 +1276,7 @@ const SelfAssessment = () => {
                               type="date"
                               value={newPeriod.start_date}
                               onChange={(e) => setNewPeriod({...newPeriod, start_date: e.target.value})}
-                              className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                              className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
                             />
                           </div>
 
@@ -1285,7 +1288,7 @@ const SelfAssessment = () => {
                               type="date"
                               value={newPeriod.end_date}
                               onChange={(e) => setNewPeriod({...newPeriod, end_date: e.target.value})}
-                              className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                              className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
                             />
                           </div>
 
@@ -1297,26 +1300,12 @@ const SelfAssessment = () => {
                               type="date"
                               value={newPeriod.submission_deadline}
                               onChange={(e) => setNewPeriod({...newPeriod, submission_deadline: e.target.value})}
-                              className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                              className="w-full px-4 py-2 text-xs border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
                             />
                           </div>
                         </div>
 
-                        <div>
-                          <label className="block text-sm font-medium text-almet-cloud-burst mb-2">
-                            Status
-                          </label>
-                          <select
-                            value={newPeriod.status}
-                            onChange={(e) => setNewPeriod({...newPeriod, status: e.target.value})}
-                            className="w-full px-4 py-3 border border-almet-mystic rounded-lg focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
-                          >
-                            <option value="UPCOMING">Upcoming</option>
-                            <option value="ACTIVE">Active</option>
-                            <option value="COMPLETED">Completed</option>
-                            <option value="CLOSED">Closed</option>
-                          </select>
-                        </div>
+              
                       </div>
 
                       <div className="flex gap-3 pt-4">
@@ -1331,14 +1320,14 @@ const SelfAssessment = () => {
                               status: 'UPCOMING'
                             });
                           }}
-                          className="flex-1 px-6 py-3 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
+                          className="flex-1 px-6 py-1.5 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={handleCreatePeriod}
                           disabled={saving}
-                          className="flex-1 px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
+                          className="flex-1 px-6 py-1.5 text-xs bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-lg transition-all font-medium disabled:opacity-50"
                         >
                           {saving ? 'Creating...' : 'Create Period'}
                         </button>
@@ -1353,7 +1342,7 @@ const SelfAssessment = () => {
                       setShowSettings(false);
                       setShowCreatePeriod(false);
                     }}
-                    className="w-full px-6 py-3 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
+                    className="w-full px-6 py-3 text-xs bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium"
                   >
                     Close
                   </button>
