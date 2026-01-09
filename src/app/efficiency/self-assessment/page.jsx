@@ -904,11 +904,11 @@ const SelfAssessment = () => {
                   )}
 
                   {/* Action Buttons */}
-                  <div className="sticky bottom-4 flex justify-end gap-3 p-4 bg-white rounded-xl shadow-lg border border-almet-mystic">
+                  <div className="sticky bottom-4 flex justify-end gap-3 p-3 bg-white rounded-xl shadow-lg border border-almet-mystic">
                     <button
                       onClick={handleSaveAssessment}
                       disabled={saving}
-                      className="flex items-center gap-2 px-6 py-3 bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium disabled:opacity-50"
+                      className="flex items-center gap-2 px-6 py-2 text-sm bg-almet-mystic text-almet-cloud-burst rounded-lg hover:bg-almet-bali-hai hover:text-white transition-all font-medium disabled:opacity-50"
                     >
                       <Save className="w-4 h-4" />
                       {saving ? 'Saving...' : 'Save Draft'}
@@ -916,7 +916,7 @@ const SelfAssessment = () => {
                     <button
                       onClick={handleSubmitAssessment}
                       disabled={saving || Object.keys(ratings).length === 0}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
+                      className="flex items-center gap-2 px-6 py-2 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral text-white rounded-lg hover:shadow-xl transition-all font-medium disabled:opacity-50"
                     >
                       <Send className="w-4 h-4" />
                       {saving ? 'Submitting...' : 'Submit Assessment'}
@@ -1195,8 +1195,8 @@ const SelfAssessment = () => {
                       
                       <div className="space-y-3">
                         {allPeriods.length === 0 ? (
-                          <div className="text-center py-12">
-                            <Calendar className="w-16 h-16 text-almet-waterloo mx-auto mb-4" />
+                          <div className="text-center py-8">
+                            <Calendar className="w-8 h-8 text-almet-waterloo mx-auto mb-4" />
                             <p className="text-almet-waterloo">No periods found. Create your first period!</p>
                           </div>
                         ) : (
