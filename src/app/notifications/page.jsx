@@ -206,11 +206,11 @@ const NotificationsPage = () => {
   const handleNavigateToModule = (module, e) => {
     if (e) e.stopPropagation();
     const moduleRoutes = {
-      'vacation': '/requests/vacation',
-      'business_trip': '/requests/business-trips',
-      'timeoff': '/requests/timeoff',
-      'handover': '/requests/handover',
-      'company_news': '/company-news'
+      'vacation': '/requests/vacation/',
+      'business_trip': '/requests/requests/business-trip/',
+      'timeoff': '/requests/time-off/',
+      'handover': '/requests/handover-takeover/',
+      'company_news': '/communication/company-news/'
     };
     const route = moduleRoutes[module];
     if (route) {

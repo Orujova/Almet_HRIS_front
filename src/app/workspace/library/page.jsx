@@ -8,14 +8,14 @@ import Link from "next/link";
 const FolderCard = ({ title, fileCount, icon: Icon, darkMode, href }) => {
   return (
     <Link href={href || "#"}>
-      <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl p-8 shadow-lg border border-almet-mystic dark:border-almet-san-juan transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 cursor-pointer group text-center">
-        <div className="mb-6">
-          <Icon className="h-16 w-16 mx-auto text-yellow-500 group-hover:scale-110 transition-transform duration-300" />
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl p-6 shadow-lg border border-almet-mystic dark:border-almet-san-juan transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 cursor-pointer group text-center">
+        <div className="mb-4">
+          <Icon className="h-12 w-12 mx-auto text-yellow-500 group-hover:scale-110 transition-transform duration-300" />
         </div>
-        <h3 className="font-bold text-lg text-almet-cloud-burst dark:text-white mb-2 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors">
+        <h3 className="font-bold text-sm text-almet-cloud-burst dark:text-white mb-1 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors">
           {title}
         </h3>
-        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
+        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
           {fileCount} {fileCount === 1 ? 'File' : 'Files'}
         </p>
       </div>
@@ -25,24 +25,24 @@ const FolderCard = ({ title, fileCount, icon: Icon, darkMode, href }) => {
 
 const DocumentCard = ({ title, type, size, darkMode }) => {
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-5 shadow-md border border-almet-mystic dark:border-almet-san-juan transition-all duration-300 hover:shadow-xl cursor-pointer group">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-          <FileText className="h-6 w-6 text-red-600 dark:text-red-400" />
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-4 shadow-md border border-almet-mystic dark:border-almet-san-juan transition-all duration-300 hover:shadow-xl cursor-pointer group">
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+          <FileText className="h-5 w-5 text-red-600 dark:text-red-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-semibold text-sm text-almet-cloud-burst dark:text-white mb-1 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors truncate">
+          <h4 className="font-semibold text-xs text-almet-cloud-burst dark:text-white mb-0.5 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors truncate">
             {title}
           </h4>
-          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-2">
+          <p className="text-[10px] text-almet-waterloo dark:text-almet-bali-hai mb-2">
             {type} • {size}
           </p>
           <div className="flex gap-2">
-            <button className="flex items-center gap-1 text-xs text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 dark:hover:bg-almet-steel-blue/10 px-2 py-1 rounded-lg transition-all">
+            <button className="flex items-center gap-1 text-[10px] text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 dark:hover:bg-almet-steel-blue/10 px-2 py-1 rounded-lg transition-all">
               <Eye className="h-3 w-3" />
               View
             </button>
-            <button className="flex items-center gap-1 text-xs text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 dark:hover:bg-almet-steel-blue/10 px-2 py-1 rounded-lg transition-all">
+            <button className="flex items-center gap-1 text-[10px] text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 dark:hover:bg-almet-steel-blue/10 px-2 py-1 rounded-lg transition-all">
               <Download className="h-3 w-3" />
               Download
             </button>
@@ -81,36 +81,36 @@ export default function DocumentationLibrary() {
   return (
     <DashboardLayout>
       {/* Header Section */}
-      <div className="mb-8">
-        <h1 className={`text-3xl font-extrabold ${textPrimary} mb-2`}>
+      <div className="mb-6">
+        <h1 className={`text-2xl font-extrabold ${textPrimary} mb-1`}>
           Knowledge Repository
         </h1>
-        <p className={`${textSecondary} text-base`}>
+        <p className={`${textSecondary} text-sm`}>
           Access company documents, policies, and resources
         </p>
       </div>
 
       {/* Search and Filter Bar */}
-      <div className={`${bgCard} rounded-2xl p-6 shadow-lg border ${borderColor} mb-8`}>
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div className={`${bgCard} rounded-2xl p-5 shadow-lg border ${borderColor} mb-6`}>
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-almet-waterloo dark:text-almet-bali-hai" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-almet-waterloo dark:text-almet-bali-hai" />
             <input
               type="text"
               placeholder="Search for documents, policies, guidelines..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-full pl-12 pr-4 py-3 rounded-xl border ${borderColor} bg-almet-mystic/20 dark:bg-almet-san-juan/20 ${textPrimary} placeholder-almet-waterloo dark:placeholder-almet-bali-hai focus:outline-none focus:ring-2 focus:ring-almet-sapphire dark:focus:ring-almet-steel-blue transition-all`}
+              className={`w-full pl-10 pr-4 py-2.5 text-sm rounded-xl border ${borderColor} bg-almet-mystic/20 dark:bg-almet-san-juan/20 ${textPrimary} placeholder-almet-waterloo dark:placeholder-almet-bali-hai focus:outline-none focus:ring-2 focus:ring-almet-sapphire dark:focus:ring-almet-steel-blue transition-all`}
             />
           </div>
           
-          <div className="flex gap-3">
-            <button className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${borderColor} ${textPrimary} hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-all`}>
-              <Filter className="h-5 w-5" />
-              <span className="font-semibold text-sm">Filter</span>
+          <div className="flex gap-2">
+            <button className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border ${borderColor} ${textPrimary} hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-all`}>
+              <Filter className="h-4 w-4" />
+              <span className="font-semibold text-xs">Filter</span>
             </button>
             
-            <div className="flex gap-2 bg-almet-mystic/30 dark:bg-almet-san-juan/30 rounded-xl p-1">
+            <div className="flex gap-1 bg-almet-mystic/30 dark:bg-almet-san-juan/30 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-2 rounded-lg transition-all ${
@@ -119,7 +119,7 @@ export default function DocumentationLibrary() {
                     : 'text-almet-waterloo dark:text-almet-bali-hai hover:bg-almet-mystic dark:hover:bg-almet-san-juan'
                 }`}
               >
-                <Grid className="h-5 w-5" />
+                <Grid className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setViewMode('list')}
@@ -129,7 +129,7 @@ export default function DocumentationLibrary() {
                     : 'text-almet-waterloo dark:text-almet-bali-hai hover:bg-almet-mystic dark:hover:bg-almet-san-juan'
                 }`}
               >
-                <List className="h-5 w-5" />
+                <List className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -137,9 +137,9 @@ export default function DocumentationLibrary() {
       </div>
 
       {/* Folder Grid */}
-      <div className="mb-10">
-        <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Document Categories</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="mb-8">
+        <h2 className={`text-lg font-bold ${textPrimary} mb-4`}>Document Categories</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           {folders.map((folder, index) => (
             <FolderCard
               key={index}
@@ -155,9 +155,9 @@ export default function DocumentationLibrary() {
 
       {/* Recent Documents */}
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className={`text-2xl font-bold ${textPrimary}`}>Recent Documents</h2>
-          <Link href="/communication/policy-documents" className="text-almet-sapphire dark:text-almet-steel-blue text-sm font-semibold hover:underline">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className={`text-lg font-bold ${textPrimary}`}>Recent Documents</h2>
+          <Link href="/communication/policy-documents" className="text-almet-sapphire dark:text-almet-steel-blue text-xs font-semibold hover:underline">
             View All Documents
           </Link>
         </div>
@@ -176,27 +176,27 @@ export default function DocumentationLibrary() {
       </div>
 
       {/* Quick Access Links */}
-      <div className={`${bgCard} rounded-2xl p-8 shadow-lg border ${borderColor} mt-10`}>
-        <h3 className={`text-xl font-bold ${textPrimary} mb-6`}>Quick Access</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`${bgCard} rounded-2xl p-6 shadow-lg border ${borderColor} mt-8`}>
+        <h3 className={`text-base font-bold ${textPrimary} mb-4`}>Quick Access</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <Link href="/communication/policy-documents">
-            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-5 rounded-xl transition-all">
-              <h4 className={`font-bold text-base ${textPrimary} mb-1`}>Company Policies</h4>
-              <p className={`text-sm ${textSecondary}`}>Browse all company policies and procedures</p>
+            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-4 rounded-xl transition-all">
+              <h4 className={`font-bold text-sm ${textPrimary} mb-0.5`}>Company Policies</h4>
+              <p className={`text-xs ${textSecondary}`}>Browse all company policies and procedures</p>
             </button>
           </Link>
           
           <Link href="/training/my-trainings">
-            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-5 rounded-xl transition-all">
-              <h4 className={`font-bold text-base ${textPrimary} mb-1`}>Training Materials</h4>
-              <p className={`text-sm ${textSecondary}`}>Access learning resources and guides</p>
+            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-4 rounded-xl transition-all">
+              <h4 className={`font-bold text-sm ${textPrimary} mb-0.5`}>Training Materials</h4>
+              <p className={`text-xs ${textSecondary}`}>Access learning resources and guides</p>
             </button>
           </Link>
           
           <Link href="/structure/org-chart">
-            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-5 rounded-xl transition-all">
-              <h4 className={`font-bold text-base ${textPrimary} mb-1`}>Organization Info</h4>
-              <p className={`text-sm ${textSecondary}`}>Company structure and contacts</p>
+            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-4 rounded-xl transition-all">
+              <h4 className={`font-bold text-sm ${textPrimary} mb-0.5`}>Organization Info</h4>
+              <p className={`text-xs ${textSecondary}`}>Company structure and contacts</p>
             </button>
           </Link>
         </div>
