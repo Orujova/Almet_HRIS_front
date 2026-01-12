@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { 
-  FileText, Calendar, AlertCircle, Send, Upload, X, User, Briefcase,
-  LogOut, MessageSquare, Award, Building, TrendingUp, Save, CheckCircle
+  FileText, AlertCircle, Send, Upload, X, User, Briefcase,
+  LogOut, MessageSquare, Award, Building, TrendingUp, Save
 } from 'lucide-react';
 
 export default function EmployeeResignationExit() {
@@ -27,15 +27,9 @@ export default function EmployeeResignationExit() {
   const [resignationForm, setResignationForm] = useState({
     submissionDate: new Date().toISOString().split('T')[0],
     lastWorkingDay: '',
-    noticePeriod: 30,
-    reason: '',
+ 
     reasonDetails: '',
-    willingToStay: '',
-    retentionOffer: '',
-    projectsStatus: '',
-    acknowledgeResponsibilities: false,
-    acknowledgeAssets: false,
-    acknowledgeConfidentiality: false
+   
   });
 
   const [exitForm, setExitForm] = useState({
@@ -64,14 +58,6 @@ export default function EmployeeResignationExit() {
     return lastDay.toISOString().split('T')[0];
   };
 
-  const handleNoticePeriodChange = (period) => {
-    const lastDay = calculateLastWorkingDay(period);
-    setResignationForm({
-      ...resignationForm,
-      noticePeriod: period,
-      lastWorkingDay: lastDay
-    });
-  };
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -204,26 +190,7 @@ export default function EmployeeResignationExit() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Notice Period (days) <span className="text-red-500">*</span>
-                  </label>
-                  <select 
-                    value={resignationForm.noticePeriod}
-                    onChange={(e) => handleNoticePeriodChange(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 text-sm"
-                  >
-                    <option value="14">14 days (2 weeks)</option>
-                    <option value="30">30 days (1 month)</option>
-                    <option value="45">45 days (1.5 months)</option>
-                    <option value="60">60 days (2 months)</option>
-                    <option value="90">90 days (3 months)</option>
-                  </select>
-                </div>
-              </div>
+           
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

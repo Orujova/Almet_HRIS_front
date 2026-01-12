@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Inbox, 
   Send, 
@@ -8,7 +9,8 @@ import {
   Search,
   RefreshCw,
   Paperclip,
-  X
+  X,
+  ExternalLink
 } from "lucide-react";
 import NotificationService from "@/services/notificationService";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -16,8 +18,11 @@ import { useTheme } from "@/components/common/ThemeProvider";
 import CustomCheckbox from "@/components/common/CustomCheckbox";
 import Pagination from "@/components/common/Pagination";
 import { useToast } from '@/components/common/Toast';
+
 const NotificationsPage = () => {
   const { darkMode } = useTheme();
+  const { showSuccess, showError } = useToast();
+  const router = useRouter();
   const [receivedEmails, setReceivedEmails] = useState([]);
   const [sentEmails, setSentEmails] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +33,7 @@ const NotificationsPage = () => {
   const [selectedEmails, setSelectedEmails] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(15);
-  const { showSuccess, showError } = useToast();
+
   const [stats, setStats] = useState({
     received: 0,
     sent: 0,
@@ -38,8 +43,6 @@ const NotificationsPage = () => {
   useEffect(() => {
     fetchEmails();
   }, [activeModule]);
-
-
 
   const fetchEmails = async (showRefresh = false) => {
     try {
@@ -68,7 +71,7 @@ const NotificationsPage = () => {
       }
     } catch (error) {
       console.error('Error fetching emails:', error);
-      showError('Failed to load emails', 'error');
+      showError('Failed to load emails');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -86,7 +89,7 @@ const NotificationsPage = () => {
       showSuccess('Marked as read');
     } catch (error) {
       console.error('Error marking as read:', error);
-      showError('Failed to mark as read', 'error');
+      showError('Failed to mark as read');
     }
   };
 
@@ -101,7 +104,7 @@ const NotificationsPage = () => {
       showSuccess('Marked as unread');
     } catch (error) {
       console.error('Error marking as unread:', error);
-      showError('Failed to mark as unread', 'error');
+      showError('Failed to mark as unread');
     }
   };
 
@@ -109,7 +112,7 @@ const NotificationsPage = () => {
     try {
       const unreadEmails = receivedEmails.filter(e => !e.is_read);
       if (unreadEmails.length === 0) {
-        showError('No unread messages', 'info');
+        showError('No unread messages');
         return;
       }
       
@@ -120,7 +123,7 @@ const NotificationsPage = () => {
       showSuccess(`${unreadEmails.length} messages marked as read`);
     } catch (error) {
       console.error('Error marking all as read:', error);
-      showError('Failed to mark all as read', 'error');
+      showError('Failed to mark all as read');
     }
   };
 
@@ -132,7 +135,7 @@ const NotificationsPage = () => {
       });
 
       if (unreadSelected.length === 0) {
-        showError('Selected messages are already read', 'info');
+        showError('Selected messages are already read');
         setSelectedEmails([]);
         return;
       }
@@ -150,7 +153,7 @@ const NotificationsPage = () => {
       showSuccess(`${unreadSelected.length} messages marked as read`);
     } catch (error) {
       console.error('Error marking selected as read:', error);
-      showError('Failed to mark selected as read', 'error');
+      showError('Failed to mark selected as read');
     }
   };
 
@@ -162,7 +165,7 @@ const NotificationsPage = () => {
       });
 
       if (readSelected.length === 0) {
-        showError('Selected messages are already unread', 'info');
+        showError('Selected messages are already unread');
         setSelectedEmails([]);
         return;
       }
@@ -180,7 +183,7 @@ const NotificationsPage = () => {
       showSuccess(`${readSelected.length} messages marked as unread`);
     } catch (error) {
       console.error('Error marking selected as unread:', error);
-      showError('Failed to mark selected as unread', 'error');
+      showError('Failed to mark selected as unread');
     }
   };
 
@@ -200,53 +203,88 @@ const NotificationsPage = () => {
     }
   };
 
-  const getModuleColor = (module) => {
-  switch (module) {
-    case 'vacation':
-      return 'text-emerald-600 dark:text-emerald-400';
-    case 'business_trip':
-      return 'text-blue-600 dark:text-blue-400';
-    case 'timeoff':
-      return 'text-amber-600 dark:text-amber-400';
-    case 'company_news':
-      return 'text-purple-600 dark:text-purple-400';
-    default:
-      return 'text-gray-600 dark:text-gray-400';
-  }
-};
+  const handleNavigateToModule = (module, e) => {
+    if (e) e.stopPropagation();
+    const moduleRoutes = {
+      'vacation': '/requests/vacation',
+      'business_trip': '/requests/business-trips',
+      'timeoff': '/requests/timeoff',
+      'handover': '/requests/handover',
+      'company_news': '/company-news'
+    };
+    const route = moduleRoutes[module];
+    if (route) {
+      router.push(route);
+    }
+  };
 
+  const getModuleColor = (module) => {
+    switch (module) {
+      case 'vacation':
+        return 'text-emerald-600 dark:text-emerald-400';
+      case 'business_trip':
+        return 'text-blue-600 dark:text-blue-400';
+      case 'timeoff':
+        return 'text-amber-600 dark:text-amber-400';
+      case 'handover':
+        return 'text-purple-600 dark:text-purple-400';
+      case 'company_news':
+        return 'text-pink-600 dark:text-pink-400';
+      default:
+        return 'text-gray-600 dark:text-gray-400';
+    }
+  };
 
   const getModuleBadgeColor = (module) => {
-  switch (module) {
-    case 'vacation':
-      return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400';
-    case 'business_trip':
-      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400';
-    case 'timeoff':
-      return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400';
-    case 'company_news':
-      return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400';
-    default:
-      return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400';
-  }
-};
-
+    switch (module) {
+      case 'vacation':
+        return 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-200 dark:hover:bg-emerald-900/40';
+      case 'business_trip':
+        return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/40';
+      case 'timeoff':
+        return 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/40';
+      case 'handover':
+        return 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-900/40';
+      case 'company_news':
+        return 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 hover:bg-pink-200 dark:hover:bg-pink-900/40';
+      default:
+        return 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700';
+    }
+  };
 
   const getModuleIcon = (module) => {
-  switch (module) {
-    case 'vacation':
-      return '🏖️';
-    case 'business_trip':
-      return '✈️';
-    case 'timeoff':
-      return '🕒';
-    case 'company_news':
-      return '📰';
-    default:
-      return '📧';
-  }
-};
+    switch (module) {
+      case 'vacation':
+        return '🏖️';
+      case 'business_trip':
+        return '✈️';
+      case 'timeoff':
+        return '🕐';
+      case 'handover':
+        return '🔄';
+      case 'company_news':
+        return '📰';
+      default:
+        return '📧';
+    }
+  };
 
+  const getModuleLabel = (module) => {
+    switch (module) {
+      case 'business_trip':
+        return 'Business Trip';
+      case 'vacation':
+        return 'Vacation';
+      case 'timeoff':
+        return 'Time Off';
+      case 'handover':
+        return 'Handover';
+      case 'company_news':
+        return 'Company News';
+      default:
+        return 'General';
+    }
+  };
 
   const getTimeAgo = (dateString) => {
     const date = new Date(dateString);
@@ -301,8 +339,6 @@ const NotificationsPage = () => {
 
   return (
     <DashboardLayout>
-  
-
       <div className="container mx-auto p-6 max-w-full">
         
         {/* Header */}
@@ -388,15 +424,15 @@ const NotificationsPage = () => {
             </div>
 
             {/* Module Tabs */}
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
               {[
-  { key: 'all',           label: 'All Mail',      icon: '📬' },
-  { key: 'business_trip', label: 'Business Trips', icon: '✈️' },
-  { key: 'vacation',      label: 'Vacation',      icon: '🏖️' },
-  { key: 'timeoff',       label: 'Time Off',      icon: '🕒' },
-  { key: 'company_news',  label: 'Company News',  icon: '📰' },
-].map(module => (
-
+                { key: 'all',           label: 'All Mail',      icon: '📬' },
+                { key: 'business_trip', label: 'Business Trips', icon: '✈️' },
+                { key: 'vacation',      label: 'Vacation',      icon: '🏖️' },
+                { key: 'timeoff',       label: 'Time Off',      icon: '🕐' },
+                { key: 'handover',      label: 'Handover',      icon: '🔄' },
+                { key: 'company_news',  label: 'Company News',  icon: '📰' },
+              ].map(module => (
                 <button
                   key={module.key}
                   onClick={() => {
@@ -626,7 +662,10 @@ const NotificationsPage = () => {
                           
                           {/* Checkbox */}
                           {activeView === 'received' && (
-                            <div className="flex-shrink-0 pt-0.5">
+                            <div 
+                              className="flex-shrink-0 pt-0.5"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <CustomCheckbox
                                 checked={selectedEmails.includes(email.id)}
                                 onChange={() => handleSelectEmail(email.id)}
@@ -634,15 +673,22 @@ const NotificationsPage = () => {
                             </div>
                           )}
 
-                          {/* Icon */}
-                          <div className="flex-shrink-0 pt-0.5">
-                            <div className={`text-2xl ${getModuleColor(email.module)}`}>
+                          {/* Icon - Click for module page */}
+                          <div 
+                            className="flex-shrink-0 pt-0.5 group/icon"
+                            onClick={(e) => handleNavigateToModule(email.module, e)}
+                            title={`Go to ${getModuleLabel(email.module)}`}
+                          >
+                            <div className={`text-2xl transition-transform group-hover/icon:scale-110 cursor-pointer ${getModuleColor(email.module)}`}>
                               {getModuleIcon(email.module)}
                             </div>
                           </div>
 
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
+                          {/* Content - Click for detail page */}
+                          <div 
+                            className="flex-1 min-w-0"
+                            onClick={() => router.push(`/notifications/${email.id}`)}
+                          >
                             <div className="flex items-start justify-between gap-3 mb-1.5">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 mb-0.5">
@@ -676,7 +722,7 @@ const NotificationsPage = () => {
                                   </span>
                                   
                                   {/* Action Buttons */}
-                                  <div className="flex items-center gap-0.5">
+                                  <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                                     {!email.is_read && activeView === 'received' ? (
                                       <button
                                         onClick={(e) => handleMarkAsRead(email.id, e)}
@@ -701,24 +747,27 @@ const NotificationsPage = () => {
 
                             {/* Meta Info */}
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium ${getModuleBadgeColor(email.module)}`}>
-  {email.module === 'business_trip'
-    ? 'Business Trip'
-    : email.module === 'vacation'
-    ? 'Vacation'
-    : email.module === 'timeoff'
-    ? 'Time Off'
-    : email.module === 'company_news'
-    ? 'Company News'
-    : 'General'}
-</span>
-
+                              <button
+                                onClick={(e) => handleNavigateToModule(email.module, e)}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all hover:shadow-md ${getModuleBadgeColor(email.module)} hover:scale-105`}
+                                title={`Go to ${getModuleLabel(email.module)} page`}
+                              >
+                                <span>{getModuleIcon(email.module)}</span>
+                                <span>{getModuleLabel(email.module)}</span>
+                                <ExternalLink size={10} className="opacity-60" />
+                              </button>
+                              
                               {email.has_attachments && (
                                 <span className={`inline-flex items-center gap-1 text-[10px] ${darkMode ? 'text-almet-bali-hai' : 'text-gray-500'}`}>
                                   <Paperclip size={12} />
                                   Attachment
                                 </span>
                               )}
+                              
+                              {/* View Details hint */}
+                              <span className={`opacity-0 group-hover:opacity-100 text-[10px] italic transition-opacity ${darkMode ? 'text-almet-bali-hai' : 'text-gray-400'}`}>
+                                Click to view details
+                              </span>
                             </div>
                           </div>
                         </div>

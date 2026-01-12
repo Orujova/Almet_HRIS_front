@@ -1,4 +1,4 @@
-// src/services/notificationService.js - UPDATED WITH SENT/RECEIVED
+// src/services/notificationService.js - COMPLETE VERSION
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -63,7 +63,7 @@ const NotificationService = {
   /**
    * 📬 Get Outlook emails with sent/received separation
    * @param {Object} params - Filter parameters
-   * @param {string} params.module - 'business_trip', 'vacation', or 'all'
+   * @param {string} params.module - 'business_trip', 'vacation', 'timeoff', 'handover', 'company_news', or 'all'
    * @param {string} params.email_type - 'received', 'sent', or 'all'
    * @param {number} params.top - Number of emails (max 50)
    * @returns {Promise} Email data with received_emails, sent_emails, all_emails
@@ -86,10 +86,44 @@ const NotificationService = {
     }
   },
 
+  /**
+   * ✅ Get full email details by ID
+   * @param {string} messageId - Email message ID
+   * @returns {Promise} Email details with full body
+   */
+  getEmailDetail: async (messageId) => {
+    try {
+      const response = await notificationApi.get(
+        `/notifications/outlook/email/${messageId}/`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching email detail:', error);
+      throw error;
+    }
+  },
 
+  /**
+   * ✅ Delete email
+   * @param {string} messageId - Email message ID
+   * @returns {Promise} Deletion result
+   */
+  deleteEmail: async (messageId) => {
+    try {
+      const response = await notificationApi.delete(
+        `/notifications/outlook/email/${messageId}/`
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting email:', error);
+      throw error;
+    }
+  },
 
   /**
    * Mark email as read
+   * @param {string} messageId - Email message ID
+   * @returns {Promise} Success response
    */
   markEmailAsRead: async (messageId) => {
     try {
@@ -106,6 +140,8 @@ const NotificationService = {
 
   /**
    * Mark email as unread
+   * @param {string} messageId - Email message ID
+   * @returns {Promise} Success response
    */
   markEmailAsUnread: async (messageId) => {
     try {
@@ -122,8 +158,9 @@ const NotificationService = {
 
   /**
    * Mark all emails as read by module and email type
-   * @param {string} module - 'business_trip', 'vacation', or 'all'
+   * @param {string} module - 'business_trip', 'vacation', 'timeoff', 'handover', 'company_news', or 'all'
    * @param {string} email_type - 'received', 'sent', or 'all'
+   * @returns {Promise} Batch operation result
    */
   markAllEmailsAsRead: async (module = 'all', email_type = 'all') => {
     try {
@@ -139,19 +176,22 @@ const NotificationService = {
   },
 
   /**
-   * Get unread count by email type
+   * Get unread count by module and email type
    * @param {string} module - Module filter
    * @param {string} email_type - 'received', 'sent', or 'all'
+   * @returns {Promise<number>} Unread count
    */
-  getUnreadCount: async (module = 'all', email_type = 'all') => {
+  getUnreadCount: async (module = 'all', email_type = 'received') => {
     try {
       const response = await notificationApi.get(
         `/notifications/outlook/emails/?module=${module}&email_type=${email_type}&top=50`
       );
       
       if (response.data.success) {
-        // Count unread from the appropriate email list
-        const emails = response.data.all_emails || [];
+        // Count unread from received emails only
+        const emails = email_type === 'received' 
+          ? response.data.received_emails || []
+          : response.data.all_emails || [];
         return emails.filter(email => !email.is_read).length;
       }
       return 0;
@@ -163,6 +203,7 @@ const NotificationService = {
 
   /**
    * Get notification statistics
+   * @returns {Promise} Statistics object
    */
   getNotificationStats: async () => {
     try {
@@ -172,7 +213,7 @@ const NotificationService = {
         top: 50 
       });
 
-      const unreadCount = emails.all_emails?.filter(e => !e.is_read).length || 0;
+      const unreadCount = emails.received_emails?.filter(e => !e.is_read).length || 0;
 
       return {
         totalEmails: emails.counts?.total || 0,

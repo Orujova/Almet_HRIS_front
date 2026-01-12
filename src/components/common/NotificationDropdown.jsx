@@ -3,16 +3,15 @@ import { useState, useEffect, useRef } from "react";
 import NotificationService from "@/services/notificationService";
 import { useRouter } from "next/navigation";
 import { useToast } from '@/components/common/Toast';
+
 const NotificationDropdown = () => {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [emails, setEmails] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-   const { showSuccess, showError } = useToast();
+  const { showSuccess, showError } = useToast();
   const dropdownRef = useRef(null);
-
-
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -117,14 +116,28 @@ const NotificationDropdown = () => {
       handleMarkAsRead(email.id, { stopPropagation: () => {} });
     }
     setIsOpen(false);
-    router.push('/notifications');
+    router.push(`/notifications/${email.id}`);
   };
 
   const getModuleIcon = (module) => {
     switch (module) {
       case 'vacation': return '🏖️';
       case 'business_trip': return '✈️';
+      case 'timeoff': return '🕐';
+      case 'handover': return '🔄';
+      case 'company_news': return '📰';
       default: return '📧';
+    }
+  };
+
+  const getModuleColor = (module) => {
+    switch (module) {
+      case 'vacation': return 'text-emerald-600';
+      case 'business_trip': return 'text-blue-600';
+      case 'timeoff': return 'text-amber-600';
+      case 'handover': return 'text-purple-600';
+      case 'company_news': return 'text-pink-600';
+      default: return 'text-gray-600';
     }
   };
 
@@ -146,8 +159,6 @@ const NotificationDropdown = () => {
 
   return (
     <div className="relative" ref={dropdownRef}>
-   
-
       {/* Bell Icon Button */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
@@ -230,7 +241,7 @@ const NotificationDropdown = () => {
                       
                       {/* Module Icon */}
                       <div className="flex-shrink-0">
-                        <div className="text-base">
+                        <div className={`text-base ${getModuleColor(email.module)}`}>
                           {getModuleIcon(email.module)}
                         </div>
                       </div>

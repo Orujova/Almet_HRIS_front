@@ -10,19 +10,62 @@ import {
   User,
   Settings,
   HelpCircle,
-  ChevronDown
+  ChevronDown,
+  Home,
+  Briefcase,
+  BookOpen,
+
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useAuth } from "@/auth/AuthContext";
+import { useRouter, usePathname } from "next/navigation";
 import NotificationDropdown from "./NotificationDropdown";
 
 const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   const { darkMode, toggleTheme } = useTheme();
   const { account, logout } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
   const [currentTime, setCurrentTime] = useState("");
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+
+  // Tab definitions
+  const tabs = [
+    { 
+      id: 'personal', 
+      label: 'Personal Area', 
+      icon: Home, 
+      path: '/'
+    },
+    { 
+      id: 'general', 
+      label: 'General Workspace', 
+      icon: Briefcase, 
+      path: '/workspace/general'
+    },
+    { 
+      id: 'library', 
+      label: 'Documentation Library', 
+      icon: BookOpen, 
+      path: '/workspace/library'
+    }
+  ];
+
+  // Determine active tab based on current path
+  const getActiveTab = () => {
+    if (pathname === '/') return 'personal';
+    if (pathname.startsWith('/workspace/general')) return 'general';
+    if (pathname.startsWith('/workspace/library')) return 'library';
+    return 'personal';
+  };
+
+  const [activeTab, setActiveTab] = useState(getActiveTab());
+
+  useEffect(() => {
+    setActiveTab(getActiveTab());
+  }, [pathname]);
 
   // Function to update time
   const updateTime = () => {
@@ -90,11 +133,18 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     return 'User';
   };
 
+  const handleTabClick = (tab) => {
+    setActiveTab(tab.id);
+    router.push(tab.path);
+  };
+
   return (
-    <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet h-11 px-3 flex items-center justify-between shadow-sm">
-      {/* Left side with menu button */}
-      <div className="flex items-center space-x-3">
-        <button
+    <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet shadow-sm">
+      {/* Single Row - Combined Header with Tabs */}
+      <div className="h-11 px-4 flex items-center justify-between">
+        {/* Left side - Menu button + Tabs */}
+        <div className="flex items-center space-x-3">
+          <button
           onClick={toggleSidebar}
           className="p-1.5 rounded-lg text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
           aria-label="Toggle sidebar"
@@ -105,20 +155,51 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
             isSidebarCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />
           )}
         </button>
-      </div>
 
-      {/* Right Side Elements */}
-      <div className="flex items-center space-x-2.5">
-        {/* Current Time */}
-        <div className="hidden md:block text-sm font-medium text-gray-700 dark:text-white bg-gray-100 dark:bg-almet-comet px-2.5 py-1 rounded-lg">
-          {currentTime}
+          {/* Tab Navigation */}
+          <nav className="flex items-center space-x-1">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab)}
+                  className={`
+                    relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300
+                    flex items-center gap-2
+                    ${isActive 
+                      ? 'text-almet-sapphire dark:text-almet-steel-blue bg-almet-sapphire/10 dark:bg-almet-steel-blue/10' 
+                      : 'text-gray-600 dark:text-almet-bali-hai hover:text-almet-sapphire dark:hover:text-almet-steel-blue hover:bg-gray-100 dark:hover:bg-almet-comet'
+                    }
+                  `}
+                >
+                  <Icon size={18} />
+                  <span className="hidden lg:inline">{tab.label}</span>
+                  
+                  {/* Active indicator - bottom border */}
+                  {isActive && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-almet-sapphire to-almet-astral dark:from-almet-steel-blue dark:to-almet-astral"></div>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        {/* Notifications Dropdown */}
-        <NotificationDropdown />
+        {/* Right Side Elements */}
+        <div className="flex items-center space-x-3">
+          {/* Current Time */}
+          <div className="hidden md:block text-sm font-semibold text-gray-700 dark:text-white">
+            {currentTime}
+          </div>
 
-        {/* Theme Toggle */}
-        <button 
+          {/* Notifications Dropdown */}
+          <NotificationDropdown />
+
+          {/* Theme Toggle */}
+          <button 
           onClick={toggleTheme}
           className="p-1.5 rounded-lg text-gray-600 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors"
           aria-label="Toggle dark mode"
@@ -126,8 +207,8 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
           {darkMode ? <Sun size={16} /> : <Moon size={16} />}
         </button>
 
-        {/* User Profile Dropdown */}
-        <div className="relative" ref={userMenuRef}>
+          {/* User Profile Dropdown */}
+          <div className="relative" ref={userMenuRef}>
           <button
             onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
             className="flex items-center space-x-2 p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors max-w-48"
@@ -167,12 +248,12 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
                     <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai truncate" title={account?.username || 'user@company.com'}>
                       {account?.username || 'user@company.com'}
                     </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Menu Items */}
-              <div className="py-1">
+                {/* Menu Items */}
+                 <div className="py-1">
                 <button className="flex items-center w-full px-3 py-1.5 text-xs text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors">
                   <User size={12} className="mr-2 text-gray-500 dark:text-almet-bali-hai flex-shrink-0" />
                   <span className="truncate">Profile Settings</span>
@@ -189,9 +270,9 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
                 </button>
               </div>
 
-              {/* Logout */}
-              <div className="border-t border-gray-100 dark:border-almet-comet pt-1">
-                <button 
+                {/* Logout */}
+                <div className="border-t border-gray-100 dark:border-almet-comet pt-1">
+                  <button 
                   onClick={() => {
                     setIsUserMenuOpen(false);
                     logout();
@@ -201,9 +282,10 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
                   <LogOut size={12} className="mr-2 flex-shrink-0" />
                   <span className="truncate">Sign Out</span>
                 </button>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </header>

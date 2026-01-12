@@ -1,0 +1,206 @@
+"use client";
+import { Folder, FileText, Download, Eye, Search, Filter, Grid, List } from "lucide-react";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useState } from "react";
+import { useTheme } from "@/components/common/ThemeProvider";
+import Link from "next/link";
+
+const FolderCard = ({ title, fileCount, icon: Icon, darkMode, href }) => {
+  return (
+    <Link href={href || "#"}>
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl p-8 shadow-lg border border-almet-mystic dark:border-almet-san-juan transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 cursor-pointer group text-center">
+        <div className="mb-6">
+          <Icon className="h-16 w-16 mx-auto text-yellow-500 group-hover:scale-110 transition-transform duration-300" />
+        </div>
+        <h3 className="font-bold text-lg text-almet-cloud-burst dark:text-white mb-2 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors">
+          {title}
+        </h3>
+        <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
+          {fileCount} {fileCount === 1 ? 'File' : 'Files'}
+        </p>
+      </div>
+    </Link>
+  );
+};
+
+const DocumentCard = ({ title, type, size, darkMode }) => {
+  return (
+    <div className="bg-white dark:bg-almet-cloud-burst rounded-xl p-5 shadow-md border border-almet-mystic dark:border-almet-san-juan transition-all duration-300 hover:shadow-xl cursor-pointer group">
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+          <FileText className="h-6 w-6 text-red-600 dark:text-red-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-semibold text-sm text-almet-cloud-burst dark:text-white mb-1 group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors truncate">
+            {title}
+          </h4>
+          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-2">
+            {type} • {size}
+          </p>
+          <div className="flex gap-2">
+            <button className="flex items-center gap-1 text-xs text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 dark:hover:bg-almet-steel-blue/10 px-2 py-1 rounded-lg transition-all">
+              <Eye className="h-3 w-3" />
+              View
+            </button>
+            <button className="flex items-center gap-1 text-xs text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 dark:hover:bg-almet-steel-blue/10 px-2 py-1 rounded-lg transition-all">
+              <Download className="h-3 w-3" />
+              Download
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default function DocumentationLibrary() {
+  const { darkMode } = useTheme();
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
+  const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
+  const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
+  const borderColor = darkMode ? "border-almet-comet" : "border-gray-200";
+
+  const folders = [
+    { title: 'HR Frameworks', fileCount: 18, icon: Folder, href: '/communication/policy-documents?category=hr' },
+    { title: 'Legal Compliance', fileCount: 9, icon: Folder, href: '/communication/policy-documents?category=legal' },
+    { title: 'Brand Guidelines', fileCount: 12, icon: Folder, href: '/communication/policy-documents?category=brand' },
+    { title: 'Security Manuals', fileCount: 15, icon: Folder, href: '/communication/policy-documents?category=security' },
+    { title: 'IT Documentation', fileCount: 24, icon: Folder, href: '/communication/policy-documents?category=it' },
+  ];
+
+  const recentDocuments = [
+    { title: 'Annual Report 2025', type: 'PDF', size: '4.5 MB' },
+    { title: 'Employee Handbook 2025', type: 'PDF', size: '2.1 MB' },
+    { title: 'Data Protection Policy', type: 'PDF', size: '1.8 MB' },
+    { title: 'Code of Conduct', type: 'PDF', size: '950 KB' },
+  ];
+
+  return (
+    <DashboardLayout>
+      {/* Header Section */}
+      <div className="mb-8">
+        <h1 className={`text-3xl font-extrabold ${textPrimary} mb-2`}>
+          Knowledge Repository
+        </h1>
+        <p className={`${textSecondary} text-base`}>
+          Access company documents, policies, and resources
+        </p>
+      </div>
+
+      {/* Search and Filter Bar */}
+      <div className={`${bgCard} rounded-2xl p-6 shadow-lg border ${borderColor} mb-8`}>
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-almet-waterloo dark:text-almet-bali-hai" />
+            <input
+              type="text"
+              placeholder="Search for documents, policies, guidelines..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={`w-full pl-12 pr-4 py-3 rounded-xl border ${borderColor} bg-almet-mystic/20 dark:bg-almet-san-juan/20 ${textPrimary} placeholder-almet-waterloo dark:placeholder-almet-bali-hai focus:outline-none focus:ring-2 focus:ring-almet-sapphire dark:focus:ring-almet-steel-blue transition-all`}
+            />
+          </div>
+          
+          <div className="flex gap-3">
+            <button className={`flex items-center gap-2 px-4 py-3 rounded-xl border ${borderColor} ${textPrimary} hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-all`}>
+              <Filter className="h-5 w-5" />
+              <span className="font-semibold text-sm">Filter</span>
+            </button>
+            
+            <div className="flex gap-2 bg-almet-mystic/30 dark:bg-almet-san-juan/30 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition-all ${
+                  viewMode === 'grid'
+                    ? 'bg-almet-sapphire text-white'
+                    : 'text-almet-waterloo dark:text-almet-bali-hai hover:bg-almet-mystic dark:hover:bg-almet-san-juan'
+                }`}
+              >
+                <Grid className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-all ${
+                  viewMode === 'list'
+                    ? 'bg-almet-sapphire text-white'
+                    : 'text-almet-waterloo dark:text-almet-bali-hai hover:bg-almet-mystic dark:hover:bg-almet-san-juan'
+                }`}
+              >
+                <List className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Folder Grid */}
+      <div className="mb-10">
+        <h2 className={`text-2xl font-bold ${textPrimary} mb-6`}>Document Categories</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          {folders.map((folder, index) => (
+            <FolderCard
+              key={index}
+              title={folder.title}
+              fileCount={folder.fileCount}
+              icon={folder.icon}
+              darkMode={darkMode}
+              href={folder.href}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Documents */}
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className={`text-2xl font-bold ${textPrimary}`}>Recent Documents</h2>
+          <Link href="/communication/policy-documents" className="text-almet-sapphire dark:text-almet-steel-blue text-sm font-semibold hover:underline">
+            View All Documents
+          </Link>
+        </div>
+        
+        <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4' : 'space-y-3'}>
+          {recentDocuments.map((doc, index) => (
+            <DocumentCard
+              key={index}
+              title={doc.title}
+              type={doc.type}
+              size={doc.size}
+              darkMode={darkMode}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Access Links */}
+      <div className={`${bgCard} rounded-2xl p-8 shadow-lg border ${borderColor} mt-10`}>
+        <h3 className={`text-xl font-bold ${textPrimary} mb-6`}>Quick Access</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link href="/communication/policy-documents">
+            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-5 rounded-xl transition-all">
+              <h4 className={`font-bold text-base ${textPrimary} mb-1`}>Company Policies</h4>
+              <p className={`text-sm ${textSecondary}`}>Browse all company policies and procedures</p>
+            </button>
+          </Link>
+          
+          <Link href="/training/my-trainings">
+            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-5 rounded-xl transition-all">
+              <h4 className={`font-bold text-base ${textPrimary} mb-1`}>Training Materials</h4>
+              <p className={`text-sm ${textSecondary}`}>Access learning resources and guides</p>
+            </button>
+          </Link>
+          
+          <Link href="/structure/org-chart">
+            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 p-5 rounded-xl transition-all">
+              <h4 className={`font-bold text-base ${textPrimary} mb-1`}>Organization Info</h4>
+              <p className={`text-sm ${textSecondary}`}>Company structure and contacts</p>
+            </button>
+          </Link>
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+}
