@@ -1,5 +1,5 @@
 "use client";
-import { Calendar, User, LineChart, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X, Cake, Award, Sparkles, BookOpen, Download, ExternalLink, Briefcase, Shield, Laptop, FileCheck, Zap, BarChart3, Umbrella, Mail } from "lucide-react";
+import { Calendar, User, Target, Plane, Clock, CheckCircle, TrendingUp, Bell, UserCheck, MapPin, FileText, Eye, ChevronRight, X, Cake, Award, Sparkles, BookOpen, Download, ExternalLink, Briefcase, Shield, Laptop, FileCheck, Zap, BarChart3, Umbrella, Mail } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 import { useToast } from "@/components/common/Toast";
@@ -8,13 +8,29 @@ import { useState, useEffect } from "react";
 import { newsService } from "@/services/newsService";
 import celebrationService from "@/services/celebrationService";
 import trainingService from "@/services/trainingService";
+import handoverService from "@/services/handoverService"; // ƏLAVƏ EDİLDİ
 import OnboardingTrainingCard from "@/components/training/OnboardingTrainingCard";
 import AssignmentDetailModal from "@/components/training/AssignmentDetailModal";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useRouter } from "next/navigation";
-
+import { usePathname } from "next/navigation"; // Əlavə edin
 // Profile Card Component
-const ProfileCard = ({ account, darkMode }) => {
+const ProfileCard = ({ account, userDetails, darkMode }) => {
+  const router = useRouter();
+  const pathname = usePathname(); // Əlavə edin
+  const [employeeId, setEmployeeId] = useState(null);
+
+  useEffect(() => {
+    // Employee ID-ni localStorage-dən və ya account-dan götür
+    const storedEmployeeId = localStorage.getItem('employee_id');
+    if (storedEmployeeId) {
+      setEmployeeId(storedEmployeeId);
+    } else if (account?.employee?.id) {
+      setEmployeeId(account.employee.id);
+      localStorage.setItem('employee_id', account.employee.id);
+    }
+  }, [account]);
+
   const getUserInitials = () => {
     if (account?.first_name && account?.last_name) {
       return `${account.first_name.charAt(0)}${account.last_name.charAt(0)}`.toUpperCase();
@@ -36,6 +52,51 @@ const ProfileCard = ({ account, darkMode }) => {
     return 'User';
   };
 
+  const handleZhooshClick = () => {
+    window.open('https://portal.zhooshbenefits.co.uk/login', '_blank');
+  };
+
+  const handleViewProfile = (e) => {
+    e.preventDefault();
+    
+    if (employeeId) {
+      router.push(`/structure/employee/${employeeId}/`);
+    } else {
+      const storedId = localStorage.getItem('employee_id');
+      if (storedId) {
+        router.push(`/structure/employee/${storedId}/`);
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  };
+
+  // Check if user's business function is UK
+  const getBusinessFunction = () => {
+    if (!userDetails) return null;
+    
+
+    // Object with name property
+    if (userDetails.employee.business_function_detail?.name) {
+      return userDetails.employee.business_function_detail.name;
+    }
+    
+    // Object with code property
+    if (userDetails.employee.business_function_detail?.code) {
+      return userDetails.employee.business_function_detail.code;
+    }
+    
+    return null;
+  };
+
+  const businessFunction = getBusinessFunction();
+  const isUKBusinessFunction = businessFunction?.toUpperCase() === 'UK';
+
+  // Check if current path is the employee profile
+  const isProfileActive = pathname.includes('/structure/employee/') && 
+                          employeeId && 
+                          pathname.includes(employeeId);
+
   return (
     <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl overflow-hidden shadow-lg border border-almet-mystic dark:border-almet-san-juan">
       {/* Banner */}
@@ -50,12 +111,32 @@ const ProfileCard = ({ account, darkMode }) => {
         <h3 className="text-sm font-bold text-almet-cloud-burst dark:text-white mt-3 mb-1">
           {getUserName()}
         </h3>
-    
         
-        <button className="w-full bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 text-almet-cloud-burst dark:text-white font-semibold py-2 rounded-lg text-[10px] transition-all flex items-center justify-center gap-2">
-          <User className="h-3 w-3" />
-          Profile Details
+        {/* View Full Profile Button - Sidebar kimi davranış */}
+        <button 
+          onClick={handleViewProfile}
+          className={`w-full mb-2 font-semibold py-2.5 rounded-xl text-[10px] transition-all flex items-center justify-center gap-2 group ${
+            isProfileActive
+              ? "bg-[#5975af] text-white shadow-md"
+              : "bg-gradient-to-r from-almet-sapphire/10 to-almet-astral/10 dark:from-almet-steel-blue/10 dark:to-almet-san-juan/20 hover:from-almet-sapphire hover:to-almet-astral dark:hover:from-almet-steel-blue dark:hover:to-almet-astral text-almet-cloud-burst dark:text-white hover:text-white"
+          }`}
+        >
+          <User className={`h-3 w-3 transition-transform ${
+            isProfileActive ? "" : "group-hover:scale-110"
+          }`} />
+          View Full Profile
         </button>
+
+        {/* Zhoosh Up Profile Button - Only visible for UK business function */}
+        {isUKBusinessFunction && (
+          <button 
+            onClick={handleZhooshClick}
+            className="w-full bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 text-almet-cloud-burst dark:text-white font-semibold py-2 rounded-lg text-[10px] transition-all flex items-center justify-center gap-2"
+          >
+            <Sparkles className="h-3 w-3" />
+            Zhoosh Up Profile
+          </button>
+        )}
       </div>
     </div>
   );
@@ -98,31 +179,102 @@ const VacationTrackerCard = ({ darkMode }) => {
   );
 };
 
-// Quick Operations Card
+// Quick Operations Card - Redesigned
+
 const QuickOperationsCard = ({ darkMode }) => {
-  const operations = [
-    { label: 'Business Trip Form', href: '/requests/business-trip' },
-    { label: 'Performance Review', href: '/efficiency/performance-mng' },
-    { label: 'Training Catalog', href: '/training/my-trainings' },
+
+  const actions = [
+
+    {
+
+      icon: Plane,
+
+      label: 'Business Trip',
+
+      href: '/requests/business-trip',
+
+      color: 'from-blue-500 to-blue-600',
+
+      bgColor: 'bg-blue-100 dark:bg-blue-900/20'
+
+    },
+
+    {
+
+      icon: Target,
+
+      label: 'Performance',
+
+      href: '/efficiency/performance-mng',
+
+      color: 'from-purple-500 to-purple-600',
+
+      bgColor: 'bg-purple-100 dark:bg-purple-900/20'
+
+    },
+
+    {
+
+      icon: BookOpen,
+
+      label: 'Trainings',
+
+      href: '/training',
+
+      color: 'from-green-500 to-green-600',
+
+      bgColor: 'bg-green-100 dark:bg-green-900/20'
+
+    },
+
   ];
 
+
+
   return (
-    <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl p-5 shadow-lg border border-almet-mystic dark:border-almet-san-juan">
+
+   
+
+         <div className="bg-white dark:bg-almet-cloud-burst rounded-2xl p-5 shadow-lg border border-almet-mystic dark:border-almet-san-juan">
       <h3 className="font-bold text-xs text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
         <Zap className="h-3 w-3 text-almet-sapphire dark:text-almet-steel-blue" />
         Quick Operations
       </h3>
+
+   
+
+     
+
       <div className="space-y-2">
-        {operations.map((op, index) => (
-          <Link key={index} href={op.href}>
-            <button className="w-full text-left bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 text-almet-cloud-burst dark:text-white font-medium py-2.5 px-3 rounded-lg text-[10px] transition-all">
-              {op.label}
+
+        {actions.map((action, index) => (
+
+          <Link key={index} href={action.href}>
+
+            <button className="w-full mb-2 group bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-gradient-to-r hover:from-almet-sapphire/10 hover:to-almet-astral/10 dark:hover:from-almet-steel-blue/10 dark:hover:to-almet-san-juan/20 border border-transparent hover:border-almet-sapphire/20 dark:hover:border-almet-steel-blue/20 text-almet-cloud-burst dark:text-white font-medium py-3 px-4 rounded-xl text-[10px] transition-all flex items-center gap-3">
+
+              <div className={`w-8 h-8 rounded-lg ${action.bgColor} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+
+                <action.icon className="h-3 w-3 text-current" />
+
+              </div>
+
+              <span className="flex-1 text-left">{action.label}</span>
+
+              <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transform group-hover:translate-x-1 transition-all" />
+
             </button>
+
           </Link>
+
         ))}
+
       </div>
+
     </div>
+
   );
+
 };
 
 // Stats Card Component  
@@ -143,35 +295,46 @@ const StatsCard = ({ icon: Icon, title, value, subtitle, color, darkMode }) => {
   );
 };
 
-// Featured News Carousel
+// Featured News - Enhanced
 const FeaturedNewsCarousel = ({ news, darkMode, onClick }) => {
   return (
     <div 
       onClick={onClick}
-      className="bg-white dark:bg-almet-cloud-burst rounded-2xl overflow-hidden shadow-lg border border-almet-mystic dark:border-almet-san-juan cursor-pointer group h-72"
+      className="bg-white dark:bg-almet-cloud-burst rounded-2xl overflow-hidden shadow-lg border border-almet-mystic/50 dark:border-almet-san-juan/50 cursor-pointer group hover:shadow-2xl transition-all duration-300 h-80"
     >
-      <div className="relative h-full flex items-center">
-        <div className="flex-1 p-6">
-          <span className="text-almet-sapphire dark:text-almet-steel-blue text-[10px] font-bold uppercase tracking-wider mb-2 inline-block">
-            New Opportunity
-          </span>
-          <h2 className="text-2xl font-bold text-almet-cloud-burst dark:text-white mb-3 leading-tight">
+      <div className="relative h-full">
+        <img 
+          src={news?.image_url || 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=800'} 
+          alt="News"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        />
+        
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent"></div>
+        
+        <div className="absolute inset-0 p-6 flex flex-col justify-end">
+          <div className="bg-almet-sapphire/90 dark:bg-almet-steel-blue/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider mb-3 inline-flex items-center gap-2 w-fit">
+            <Sparkles className="h-3 w-3" />
+            Featured
+          </div>
+          
+          <h2 className="text-xl font-bold text-white mb-2 leading-tight group-hover:text-almet-steel-blue transition-colors">
             {news?.title || 'Innovation Lab Grant for 2026'}
           </h2>
-          <p className="text-almet-waterloo dark:text-almet-bali-hai text-sm mb-4">
+          
+          <p className="text-white/90 text-xs mb-3 line-clamp-2">
             {news?.excerpt || 'Propose your breakthrough ideas and win funding for internal implementation.'}
           </p>
-          <span className="text-[10px] text-almet-waterloo dark:text-almet-bali-hai">
-            Posted {news ? new Date(news.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Dec 26, 2025'}
-          </span>
-        </div>
-        
-        <div className="flex-none w-80 h-full">
-          <img 
-            src={news?.image_url || 'https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&w=500'} 
-            alt="News"
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-white/80 flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
+              {news ? new Date(news.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Dec 26, 2025'}
+            </span>
+            <div className="flex items-center gap-2 text-white/80 text-[10px]">
+              <Eye className="h-3 w-3" />
+              <span>{news?.view_count || 0}</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -356,6 +519,10 @@ export default function PersonalArea() {
   const [showTrainingModal, setShowTrainingModal] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState(null);
 
+  // YENİ: User details state
+  const [userDetails, setUserDetails] = useState(null);
+  const [loadingUserDetails, setLoadingUserDetails] = useState(false);
+
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
@@ -367,7 +534,27 @@ export default function PersonalArea() {
     loadUpcomingCelebrations();
     loadCelebratedItems();
     loadMyTrainings();
+
+      loadUserDetails();
+  
   }, []);
+
+  // YENİ: Load user details function
+  const loadUserDetails = async () => {
+   
+    
+    
+    try {
+      const userData = await handoverService.getUser();
+   
+      setUserDetails(userData);
+      console.log('User details loaded:', userData); // Debug üçün
+    } catch (error) {
+      console.error('Failed to load user details:', error);
+    } 
+  };
+
+
 
   const loadLatestNews = async () => {
     setLoadingNews(true);
@@ -500,7 +687,11 @@ export default function PersonalArea() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Sidebar - Profile & Tools */}
         <div className="lg:col-span-3 space-y-5">
-          <ProfileCard account={account} darkMode={darkMode} />
+           <ProfileCard 
+            account={account} 
+            userDetails={userDetails} 
+            darkMode={darkMode} 
+          />
           <VacationTrackerCard darkMode={darkMode} />
           <QuickOperationsCard darkMode={darkMode} />
         </div>

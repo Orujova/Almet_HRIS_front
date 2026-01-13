@@ -103,17 +103,17 @@ const Sidebar = ({ collapsed = false }) => {
 
   const getFilteredMenuItems = () => {
     const allMenuItems = [
-      { 
-        type: "section", 
-        label: "PERSONAL"
-      },
-      {
-        label: "My Profile",
-        icon: <User className="w-4 h-4" />,
-        path: "/dashboard",
-        id: "dashboard",
-        isProfile: true
-      },
+      // { 
+      //   type: "section", 
+      //   label: "PERSONAL"
+      // },
+      // {
+      //   label: "My Profile",
+      //   icon: <User className="w-4 h-4" />,
+      //   path: "/dashboard",
+      //   id: "dashboard",
+      //   isProfile: true
+      // },
       { 
         type: "section", 
         label: "STRUCTURE"
