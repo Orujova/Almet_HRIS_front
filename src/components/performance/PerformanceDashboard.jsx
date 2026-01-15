@@ -15,6 +15,11 @@ export default function PerformanceDashboard({
   onSelectEmployee,
   canViewEmployee,
   onLoadEmployeePerformance,
+  // ✅ NEW PROPS:
+  onInitializeEmployee,
+
+  performanceYearId,
+  canInitialize,
   darkMode 
 }) {
   const getSavedTab = () => {
@@ -269,27 +274,38 @@ export default function PerformanceDashboard({
           </div>
         )}
 
-        {activeTab === 'my-performance' && (
-          <TeamMembersWithSearch
-            employees={selfOnly}
-            currentUserId={permissions.employee?.id}
-            canViewEmployee={canViewEmployee}
-            onSelectEmployee={onSelectEmployee}
-            darkMode={darkMode}
-            isPersonalView={true}
-          />
-        )}
+        
+  {activeTab === 'my-performance' && (
+    <TeamMembersWithSearch
+      employees={selfOnly}
+      currentUserId={permissions.employee?.id}
+      canViewEmployee={canViewEmployee}
+      onSelectEmployee={onSelectEmployee}
+      // ✅ NEW:
+      onInitializeEmployee={onInitializeEmployee}
+   
+      performanceYearId={performanceYearId}
+      canInitialize={canInitialize}
+      darkMode={darkMode}
+      isPersonalView={true}
+    />
+  )}
 
-        {activeTab === 'team' && (
-          <TeamMembersWithSearch
-            employees={permissions.is_manager ? teamMembers : selfOnly}
-            currentUserId={permissions.employee?.id}
-            canViewEmployee={canViewEmployee}
-            onSelectEmployee={onSelectEmployee}
-            darkMode={darkMode}
-            isPersonalView={!permissions.is_manager}
-          />
-        )}
+  {activeTab === 'team' && (
+    <TeamMembersWithSearch
+      employees={permissions.is_manager ? teamMembers : selfOnly}
+      currentUserId={permissions.employee?.id}
+      canViewEmployee={canViewEmployee}
+      onSelectEmployee={onSelectEmployee}
+      // ✅ NEW:
+      onInitializeEmployee={onInitializeEmployee}
+  
+      performanceYearId={performanceYearId}
+      canInitialize={canInitialize}
+      darkMode={darkMode}
+      isPersonalView={!permissions.is_manager}
+    />
+  )}
 
         {activeTab === 'analytics' && (
           <FixedAnalyticsDashboard

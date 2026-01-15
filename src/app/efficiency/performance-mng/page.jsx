@@ -170,6 +170,35 @@ export default function PerformanceManagementPage() {
       throw error;
     }
   };
+const handleInitializeEmployee = async (employee) => {
+  if (!activeYear) {
+    showError('No active performance year');
+    return;
+  }
+
+  try {
+    setLoading(true);
+    
+    const result = await performanceApi.performances.initialize({
+      employee: employee.id,
+      performance_year: activeYear.id
+    });
+    
+    showSuccess(`✅ Performance initialized for ${employee.name || employee.employee_name}`);
+    
+    // Reload employees to reflect new performance
+    await loadEmployees();
+    
+  } catch (error) {
+    console.error('❌ Error initializing employee:', error);
+    const errorMsg = error.response?.data?.error || 
+                     error.response?.data?.message || 
+                     'Failed to initialize performance';
+    showError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const loadBehavioralCompetencies = async () => {
     try {
@@ -272,72 +301,64 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  const loadEmployees = async () => {
-    try {
-      if (!userAccess.employee_id) {
-        console.error('❌ No employee_id in userAccess!');
-        setEmployees([]);
-        return;
-      }
-      
-      // Get ALL employees
-      const employeesResponse = await performanceApi.employees.list({ 
-        page_size: 1000 
-      });
-      const allEmployees = employeesResponse.results || employeesResponse;
-      
-      // Get performances (already filtered by backend)
-      const perfsResponse = await performanceApi.performances.list({ 
-        year: selectedYear 
-      });
-      const allPerfs = perfsResponse.results || perfsResponse;
-      
-      // ✅ Backend already filters based on access, so we just use what we get
-      const performanceEmployeeIds = new Set(allPerfs.map(p => p.employee));
-      
-      // Filter employees to only those with performances (accessible)
-      const accessibleEmployees = allEmployees.filter(emp => 
-        performanceEmployeeIds.has(emp.id)
-      );
+  // ✅ UPDATE: loadEmployees function in page.jsx
 
-      
-      // Map with performance data
-      const employeesWithPerformance = accessibleEmployees.map(emp => {
-        const perf = allPerfs.find(p => p.employee === emp.id);
-        
-        return {
-          id: emp.id,
-          employee_id: emp.employee_id,
-          name: emp.name,
-          employee_name: emp.name,
-          company: emp.business_function_name,
-          employee_company: emp.business_function_name,
-          position: emp.position_group_name,
-          employee_position_group: emp.position_group_name,
-          department: emp.department_name,
-          employee_department: emp.department_name,
-          line_manager: emp.line_manager_name,
-          line_manager_hc: emp.line_manager_hc_number,
-          performanceId: perf?.id || null,
-          objectives_percentage: perf?.objectives_percentage || 0,
-          competencies_percentage: perf?.competencies_percentage || 0,
-          overall_weighted_percentage: perf?.overall_weighted_percentage || 0,
-          final_rating: perf?.final_rating || null,
-          objectives_employee_approved: perf?.objectives_employee_approved || false,
-          objectives_manager_approved: perf?.objectives_manager_approved || false,
-          mid_year_completed: perf?.mid_year_completed || false,
-          end_year_completed: perf?.end_year_completed || false,
-          approval_status: perf?.approval_status || 'NOT_STARTED'
-        };
-      });
-      
-      setEmployees(employeesWithPerformance);
-      
-    } catch (error) {
-      console.error('❌ Error loading employees:', error);
-      showError('Error loading employees');
+const loadEmployees = async () => {
+  try {
+    if (!userAccess.employee_id) {
+      console.error('❌ No employee_id in userAccess!');
+      setEmployees([]);
+      return;
     }
-  };
+    
+    // ✅ NEW: Use team_members_with_status API
+    const teamResponse = await performanceApi.performances.getTeamMembersWithStatus(selectedYear);
+    
+    console.log('✅ Team members response:', teamResponse);
+    
+    // Extract team members with performance data
+    const employeesWithPerformance = teamResponse.team_members.map(member => {
+      const emp = member.employee;
+      const perf = member.performance;
+      
+      return {
+        id: emp.id,
+        employee_id: emp.employee_id,
+        name: emp.full_name,
+        employee_name: emp.full_name,
+        company: emp.company,
+        employee_company: emp.company,
+        position: emp.position_group,
+        employee_position_group: emp.position_group,
+        department: emp.department,
+        employee_department: emp.department,
+        line_manager: emp.line_manager_name,
+        line_manager_hc: emp.line_manager_hc,
+        
+        // Performance data
+        has_performance: member.has_performance,
+        can_initialize: member.can_initialize,
+        performanceId: perf?.id || null,
+        objectives_percentage: perf?.objectives_percentage || 0,
+        competencies_percentage: perf?.competencies_percentage || 0,
+        overall_weighted_percentage: perf?.overall_weighted_percentage || 0,
+        final_rating: perf?.final_rating || null,
+        objectives_employee_approved: perf?.objectives_employee_approved || false,
+        objectives_manager_approved: perf?.objectives_manager_approved || false,
+        mid_year_completed: perf?.mid_year_completed || false,
+        end_year_completed: perf?.end_year_completed || false,
+        approval_status: perf?.approval_status || 'NOT_STARTED'
+      };
+    });
+    
+    console.log(`✅ Loaded ${employeesWithPerformance.length} team members`);
+    setEmployees(employeesWithPerformance);
+    
+  } catch (error) {
+    console.error('❌ Error loading team members:', error);
+    showError('Error loading team members');
+  }
+};
 
   const loadPerformanceData = async (employeeId, year) => {
     const key = `${employeeId}_${year}`;
@@ -1143,17 +1164,23 @@ export default function PerformanceManagementPage() {
         />
 
         {activeView === 'dashboard' ? (
-          <PerformanceDashboard
-            dashboardStats={dashboardStats}
-            employees={employees}
-            settings={settings}
-            selectedYear={selectedYear}
-            permissions={compatiblePermissions}
-            onSelectEmployee={handleSelectEmployee}
-            canViewEmployee={canViewEmployee}
-            onLoadEmployeePerformance={handleLoadEmployeePerformance}
-            darkMode={darkMode}
-          />
+          
+<PerformanceDashboard
+  dashboardStats={dashboardStats}
+  employees={employees}
+  settings={settings}
+  selectedYear={selectedYear}
+  permissions={compatiblePermissions}
+  onSelectEmployee={handleSelectEmployee}
+  canViewEmployee={canViewEmployee}
+  onLoadEmployeePerformance={handleLoadEmployeePerformance}
+  // ✅ NEW PROPS:
+  onInitializeEmployee={handleInitializeEmployee}
+
+  performanceYearId={activeYear?.id}
+  canInitialize={userAccess.is_admin || userAccess.is_manager}
+  darkMode={darkMode}
+/> 
         ) : (
           selectedEmployee && currentPerformanceData ? (
             <EmployeePerformanceDetail

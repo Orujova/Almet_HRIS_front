@@ -285,7 +285,34 @@ cancelObjective: async (id, objectiveId, reason) => {
   );
   return response.data;
 },
-  
+  getTeamMembersWithStatus: async (year) => {
+    const params = year ? { year } : {};
+    const queryString = buildQueryParams(params);
+    const response = await api.get(
+      `/performance/performance/performances/team_members_with_status/?${queryString}`
+    );
+    return response.data;
+  },
+
+  // ✅ NEW: Initialize multiple employees at once
+  initializeBulk: async (employeeIds, performanceYearId) => {
+    const response = await api.post(
+      '/performance/performance/performances/initialize_bulk/',
+      {
+        employee_ids: employeeIds,
+        performance_year: performanceYearId
+      }
+    );
+    return response.data;
+  },
+
+  // ✅ NEW: Get available years
+  getAvailableYears: async () => {
+    const response = await api.get(
+      '/performance/performance/performances/available_years/'
+    );
+    return response.data;
+  },
   create: async (data) => {
     const response = await api.post('/performance/performance/performances/', data);
     return response.data;

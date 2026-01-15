@@ -58,7 +58,7 @@ const selfAssessmentService = {
   
   getAssessmentPeriods: async () => {
     try {
-      const response = await api.get('/assessment-periods/');
+      const response = await api.get('/self-assessments-periods/');
       return response.data;
     } catch (error) {
       console.error('Error fetching assessment periods:', error);
@@ -68,7 +68,7 @@ const selfAssessmentService = {
 
   getActivePeriod: async () => {
     try {
-      const response = await api.get('/assessment-periods/active/');
+      const response = await api.get('/self-assessments-periods/active/');
       return response.data;
     } catch (error) {
       console.error('Error fetching active period:', error);
@@ -78,7 +78,7 @@ const selfAssessmentService = {
 
   createAssessmentPeriod: async (periodData) => {
     try {
-      const response = await api.post('/assessment-periods/', periodData);
+      const response = await api.post('/self-assessments-periods/', periodData);
       return response.data;
     } catch (error) {
       console.error('Error creating assessment period:', error);
@@ -88,7 +88,7 @@ const selfAssessmentService = {
 
   activatePeriod: async (periodId) => {
     try {
-      const response = await api.post(`/assessment-periods/${periodId}/activate/`);
+      const response = await api.post(`/self-assessments-periods/${periodId}/activate/`);
       return response.data;
     } catch (error) {
       console.error('Error activating period:', error);
@@ -98,7 +98,7 @@ const selfAssessmentService = {
 
   updateAssessmentPeriod: async (periodId, periodData) => {
     try {
-      const response = await api.patch(`/assessment-periods/${periodId}/`, periodData);
+      const response = await api.patch(`/self-assessments-periods/${periodId}/`, periodData);
       return response.data;
     } catch (error) {
       console.error('Error updating assessment period:', error);
@@ -108,7 +108,7 @@ const selfAssessmentService = {
 
   deleteAssessmentPeriod: async (periodId) => {
     try {
-      const response = await api.delete(`/assessment-periods/${periodId}/`);
+      const response = await api.delete(`/self-assessments-periods/${periodId}/`);
       return response.data;
     } catch (error) {
       console.error('Error deleting assessment period:', error);
@@ -220,7 +220,7 @@ const selfAssessmentService = {
   
   getAssessmentStats: async () => {
     try {
-      const response = await api.get('/assessment-stats/');
+      const response = await api.get('/self-assessments-stats/');
       return response.data;
     } catch (error) {
       console.error('Error fetching assessment stats:', error);
@@ -228,17 +228,6 @@ const selfAssessmentService = {
     }
   },
 
-  // ==================== Access Information ====================
-  
-  getMyAccessInfo: async () => {
-    try {
-      const response = await api.get('/assessment-access-info/');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching access info:', error);
-      throw error;
-    }
-  },
 
   // ==================== Helper Functions ====================
   

@@ -14,6 +14,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, LineChart, Line 
 } from 'recharts';
+import jobDescriptionService from '@/services/jobDescriptionService';
 
 const SelfAssessment = () => {
   const { theme } = useTheme();
@@ -56,7 +57,7 @@ const SelfAssessment = () => {
       const [statsData, activePeriodData, accessData] = await Promise.all([
         selfAssessmentService.getAssessmentStats(),
         selfAssessmentService.getActivePeriod().catch(() => null),
-        selfAssessmentService.getMyAccessInfo()
+        jobDescriptionService.getMyAccessInfo()
       ]);
       
       console.log('Stats Data:', statsData);

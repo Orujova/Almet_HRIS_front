@@ -1,20 +1,22 @@
 import { useState } from 'react';
-import { Users, Search, ChevronRight, Lock, X, Building2, User } from 'lucide-react';
+import { Users, Search, ChevronRight, Lock, X, Building2, User, Plus, Loader } from 'lucide-react';
 
 export default function TeamMembersWithSearch({ 
   employees = [], 
   currentUserId,
   canViewEmployee,
   onSelectEmployee,
+  onInitializeEmployee,  // ✅ NEW
   darkMode,
-  isPersonalView = false
+  isPersonalView = false,
+  canInitialize = false  // ✅ NEW
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterPosition, setFilterPosition] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
+  const [initializing, setInitializing] = useState({});
 
- 
 
   // ✅ Get unique values
   const getUniqueValues = (field) => {
@@ -30,34 +32,40 @@ export default function TeamMembersWithSearch({
 
   // ✅ Filter logic
   const filteredEmployees = employees.filter(emp => {
-    // Search filter
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch = !searchTerm || 
       (emp.employee_name || emp.name || '').toLowerCase().includes(searchLower) ||
       (emp.employee_id || '').toLowerCase().includes(searchLower);
     
-    // Department filter
     const matchesDepartment = !filterDepartment || 
       (emp.employee_department || emp.department) === filterDepartment;
     
-    // Position filter
     const matchesPosition = !filterPosition || 
       (emp.employee_position_group || emp.position) === filterPosition;
     
-    // Company filter
     const matchesCompany = !filterCompany || 
       (emp.employee_company || emp.company) === filterCompany;
     
     return matchesSearch && matchesDepartment && matchesPosition && matchesCompany;
   });
 
-
+  // ✅ Get employees without performance
+  const employeesWithoutPerformance = filteredEmployees.filter(emp => 
+    !emp.has_performance && emp.can_initialize
+  );
 
   const getStatusBadge = (employee) => {
+    if (!employee.has_performance) {
+      return {
+        text: 'Not Started',
+        class: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+      };
+    }
+
     const objPct = parseFloat(employee.objectives_percentage);
     const compPct = parseFloat(employee.competencies_percentage);
     
-    let status = employee.approval_status || 'NOT_STARTED';
+    let status = employee.approval_status || 'DRAFT';
     
     if (!isNaN(objPct) && objPct > 0 && !isNaN(compPct) && compPct > 0) {
       status = 'COMPLETED';
@@ -65,7 +73,6 @@ export default function TeamMembersWithSearch({
     
     const badges = {
       'DRAFT': { text: 'Draft', class: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300' },
-      'NOT_STARTED': { text: 'Not Started', class: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400' },
       'PENDING_EMPLOYEE_APPROVAL': { text: 'Pending', class: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' },
       'PENDING_MANAGER_APPROVAL': { text: 'Review', class: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
       'APPROVED': { text: 'Approved', class: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -73,7 +80,7 @@ export default function TeamMembersWithSearch({
       'NEED_CLARIFICATION': { text: 'Clarification', class: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }
     };
     
-    return badges[status] || badges['NOT_STARTED'];
+    return badges[status] || badges['DRAFT'];
   };
 
   const clearFilters = () => {
@@ -85,7 +92,20 @@ export default function TeamMembersWithSearch({
 
   const hasActiveFilters = searchTerm || filterDepartment || filterPosition || filterCompany;
 
-  // ✅ Show different content for personal view (only self)
+  // ✅ Handle single employee initialize
+  const handleInitializeSingle = async (employee) => {
+    if (!onInitializeEmployee) return;
+    
+    setInitializing(prev => ({ ...prev, [employee.id]: true }));
+    try {
+      await onInitializeEmployee(employee);
+    } finally {
+      setInitializing(prev => ({ ...prev, [employee.id]: false }));
+    }
+  };
+
+ 
+  // ✅ Personal view (employee only sees themselves)
   if (isPersonalView && employees.length === 1) {
     const personalEmployee = employees.find(e => e.id === currentUserId);
     
@@ -99,6 +119,7 @@ export default function TeamMembersWithSearch({
     }
     
     const badge = getStatusBadge(personalEmployee);
+    const canInit = !personalEmployee.has_performance && personalEmployee.can_initialize && canInitialize;
     
     return (
       <div className={`${darkMode ? 'bg-almet-cloud-burst border-almet-comet' : 'bg-white border-gray-200'} border rounded-xl p-5`}>
@@ -116,12 +137,9 @@ export default function TeamMembersWithSearch({
           </div>
         </div>
 
-        <div
-          onClick={() => onSelectEmployee(personalEmployee)}
-          className={`${
-            darkMode ? 'bg-almet-san-juan hover:bg-almet-comet' : 'bg-almet-mystic hover:bg-gray-100'
-          } rounded-xl p-4 transition-all cursor-pointer`}
-        >
+        <div className={`${
+          darkMode ? 'bg-almet-san-juan hover:bg-almet-comet' : 'bg-almet-mystic hover:bg-gray-100'
+        } rounded-xl p-4 transition-all`}>
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-almet-sapphire to-almet-astral text-white flex items-center justify-center text-base font-bold flex-shrink-0">
@@ -136,15 +154,6 @@ export default function TeamMembersWithSearch({
                   <span className="truncate">{personalEmployee.employee_position_group || personalEmployee.position}</span>
                   <span>•</span>
                   <span className="truncate">{personalEmployee.employee_department || personalEmployee.department}</span>
-                  {(personalEmployee.employee_company || personalEmployee.company) && (
-                    <>
-                      <span>•</span>
-                      <span className="inline-flex items-center gap-1 font-medium text-almet-sapphire">
-                        <Building2 className="w-3 h-3" />
-                        {personalEmployee.employee_company || personalEmployee.company}
-                      </span>
-                    </>
-                  )}
                 </div>
               </div>
             </div>
@@ -153,7 +162,33 @@ export default function TeamMembersWithSearch({
               <span className={`px-2 py-1 rounded-lg text-xs font-medium ${badge.class}`}>
                 {badge.text}
               </span>
-              <ChevronRight className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
+              
+              {canInit ? (
+                <button
+                  onClick={() => handleInitializeSingle(personalEmployee)}
+                  disabled={initializing[personalEmployee.id]}
+                 className="px-3 py-2 bg-[#D1FAE5] hover:bg-[#A7F3D0] text-green-800 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50"
+
+                >
+                  {initializing[personalEmployee.id] ? (
+                    <Loader className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <>
+                      <Plus className="w-3 h-3" />
+                      Initialize
+                    </>
+                  )}
+                </button>
+              ) : (
+                personalEmployee.has_performance && (
+                  <button
+                    onClick={() => onSelectEmployee(personalEmployee)}
+                    className="px-3 py-2 bg-[#5975af] hover:bg-almet-astral text-white rounded-lg text-xs font-medium"
+                  >
+                    View Details
+                  </button>
+                )
+              )}
             </div>
           </div>
         </div>
@@ -174,8 +209,15 @@ export default function TeamMembersWithSearch({
           </h3>
           <p className={`text-xs ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
             {filteredEmployees.length} direct reports
+            {employeesWithoutPerformance.length > 0 && (
+              <span className="text-amber-600 dark:text-amber-400">
+                {' '}• {employeesWithoutPerformance.length} not started
+              </span>
+            )}
           </p>
         </div>
+        
+       
       </div>
 
       {/* Search and Filters */}
@@ -196,7 +238,7 @@ export default function TeamMembersWithSearch({
           />
         </div>
 
-        {/* Filter Row */}
+        {/* Filters */}
         {(departments.length > 0 || positions.length > 0) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {departments.length > 0 && (
@@ -306,14 +348,15 @@ export default function TeamMembersWithSearch({
           {filteredEmployees.map((employee, index) => {
             const hasAccess = canViewEmployee(employee.id);
             const badge = getStatusBadge(employee);
+            const canInit = !employee.has_performance && employee.can_initialize && canInitialize;
+            const isInit = initializing[employee.id];
             
             return (
               <div
                 key={`employee-${employee.id}-${index}`}
-                onClick={() => hasAccess && onSelectEmployee(employee)}
                 className={`${
                   darkMode ? 'bg-almet-san-juan hover:bg-almet-comet' : 'bg-almet-mystic hover:bg-gray-100'
-                } rounded-xl p-4 transition-all ${hasAccess ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                } rounded-xl p-4 transition-all`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -349,9 +392,31 @@ export default function TeamMembersWithSearch({
                     <span className={`px-2 py-1 rounded-lg text-xs font-medium ${badge.class}`}>
                       {badge.text}
                     </span>
-                    {hasAccess && (
-                      <ChevronRight className="w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
-                    )}
+                    
+                    {canInit ? (
+                      <button
+                        onClick={() => handleInitializeSingle(employee)}
+                        disabled={isInit}
+                        className="px-3 py-2 bg-[#D1FAE5] hover:bg-[#A7F3D0] text-green-700 rounded-lg text-xs font-medium flex items-center gap-1 disabled:opacity-50"
+                      >
+                        {isInit ? (
+                          <Loader className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <Plus className="w-3 h-3" />
+                            Initialize
+                          </>
+                        )}
+                      </button>
+                    ) : hasAccess && employee.has_performance ? (
+                      <button
+                        onClick={() => onSelectEmployee(employee)}
+                        className="px-3 py-2 bg-[#5975af] hover:bg-almet-astral text-white rounded-lg text-xs font-medium flex items-center gap-1"
+                      >
+                        View
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               </div>
