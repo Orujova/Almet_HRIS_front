@@ -25,6 +25,7 @@ export default function TeamMembersWithSearch({
         .map(e => e[field] || e[field.replace('employee_', '')])
     )].filter(Boolean).sort();
   };
+ 
 
   const departments = getUniqueValues('employee_department');
   const positions = getUniqueValues('employee_position_group');

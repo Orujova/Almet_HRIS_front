@@ -314,10 +314,11 @@ const loadEmployees = async () => {
     // ✅ NEW: Use team_members_with_status API
     const teamResponse = await performanceApi.performances.getTeamMembersWithStatus(selectedYear);
     
-    console.log('✅ Team members response:', teamResponse);
+
     
     // Extract team members with performance data
     const employeesWithPerformance = teamResponse.team_members.map(member => {
+    
       const emp = member.employee;
       const perf = member.performance;
       
@@ -326,8 +327,8 @@ const loadEmployees = async () => {
         employee_id: emp.employee_id,
         name: emp.full_name,
         employee_name: emp.full_name,
-        company: emp.company,
-        employee_company: emp.company,
+        company: emp.company_name,
+        employee_company: emp.company_name,
         position: emp.position_group,
         employee_position_group: emp.position_group,
         department: emp.department,
@@ -351,7 +352,7 @@ const loadEmployees = async () => {
       };
     });
     
-    console.log(`✅ Loaded ${employeesWithPerformance.length} team members`);
+   
     setEmployees(employeesWithPerformance);
     
   } catch (error) {

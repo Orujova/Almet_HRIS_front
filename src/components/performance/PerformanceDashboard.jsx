@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar, TrendingUp, BarChart3, Search, X, AlertCircle, User } from 'lucide-react';
+import { Users, Target, FileText, Award, Lock, ChevronRight, Calendar,  BarChart3, Search, X, AlertCircle, User } from 'lucide-react';
 
 // Import components
 import TeamMembersWithSearch from './TeamMembersWithSearch';
@@ -15,9 +15,7 @@ export default function PerformanceDashboard({
   onSelectEmployee,
   canViewEmployee,
   onLoadEmployeePerformance,
-  // ✅ NEW PROPS:
   onInitializeEmployee,
-
   performanceYearId,
   canInitialize,
   darkMode 
