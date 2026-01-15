@@ -1,11 +1,10 @@
-// components/vacation/VacationCalendar.jsx
 import React, { useState, useEffect } from 'react';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Users, Filter, X, Star, Briefcase } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Users, Filter, X, Star, Shield } from 'lucide-react';
 import { VacationService } from '@/services/vacationService';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 import { DayDetailModal } from './DayDetailModal';
 
-const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
+const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [holidays, setHolidays] = useState([]);
   const [vacations, setVacations] = useState([]);
@@ -39,7 +38,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
     fetchCalendarData();
   }, [currentDate, filters]);
 
-  // ✅ Fetch filter options once on mount
   useEffect(() => {
     fetchFilterOptions();
   }, []);
@@ -67,14 +65,11 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
     }
   };
 
-  // ✅ NEW: Fetch all filter options from ALL vacation records
   const fetchFilterOptions = async () => {
     try {
-      // Get ALL vacation records without any filters to extract unique values
       const allRecords = await VacationService.getAllVacationRecords({});
       
       if (allRecords && allRecords.records) {
-        // Extract unique employees
         const uniqueEmployees = new Map();
         allRecords.records.forEach(record => {
           if (record.employee_id && !uniqueEmployees.has(record.employee_id)) {
@@ -87,24 +82,22 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
         });
         setEmployees(Array.from(uniqueEmployees.values()));
 
-        // Extract unique business functions (companies)
         const uniqueBusinessFunctions = new Map();
         allRecords.records.forEach(record => {
           if (record.business_function && !uniqueBusinessFunctions.has(record.business_function)) {
             uniqueBusinessFunctions.set(record.business_function, {
-              id: record.business_function, // Using name as ID since we don't have ID in response
+              id: record.business_function,
               name: record.business_function
             });
           }
         });
         setBusinessFunctions(Array.from(uniqueBusinessFunctions.values()));
 
-        // Extract unique departments
         const uniqueDepartments = new Map();
         allRecords.records.forEach(record => {
           if (record.department && !uniqueDepartments.has(record.department)) {
             uniqueDepartments.set(record.department, {
-              id: record.department, // Using name as ID since we don't have ID in response
+              id: record.department,
               name: record.department
             });
           }
@@ -164,16 +157,23 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
     });
   };
 
+  const getAccessLevelText = () => {
+    if (userAccess.is_admin) {
+      return 'Viewing all employees';
+    } else if (userAccess.is_manager) {
+      return 'Viewing your team';
+    }
+    return 'Viewing your calendar';
+  };
+
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
     const days = [];
 
-    // Empty cells for days before month starts
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(<div key={`empty-${i}`} className="min-h-[120px] border border-almet-mystic/10 dark:border-almet-comet/10 bg-gray-50 dark:bg-gray-900/50" />);
     }
 
-    // Days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
       const { holidays: dayHolidays, vacations: dayVacations } = getEventsForDate(date);
@@ -189,7 +189,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
               : 'bg-white dark:bg-gray-800 hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30'
           }`}
         >
-          {/* Day number */}
           <div className="flex items-center justify-between mb-2">
             <span className={`text-sm font-semibold ${
               today ? 'text-almet-sapphire dark:text-almet-astral' : 'text-almet-cloud-burst dark:text-white'
@@ -203,7 +202,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
             )}
           </div>
 
-          {/* Holidays */}
           {dayHolidays.map((holiday, idx) => (
             <div
               key={`holiday-${idx}`}
@@ -215,7 +213,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
             </div>
           ))}
 
-          {/* Vacations */}
           {dayVacations.slice(0, 3).map((vacation, idx) => (
             <div
               key={`vacation-${idx}`}
@@ -233,7 +230,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
             </div>
           ))}
 
-          {/* More indicator */}
           {dayVacations.length > 3 && (
             <div className="text-[10px] text-almet-waterloo dark:text-gray-400 text-center mt-1">
               +{dayVacations.length - 3} more
@@ -255,11 +251,23 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-bold text-almet-cloud-burst dark:text-white">
-            <CalendarIcon className="w-6 h-6 inline mr-2" />
+        <div>
+          <h2 className="text-2xl font-bold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+            <Calendar className="w-6 h-6" />
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h2>
+          <div className="flex items-center gap-2 mt-1">
+            <Shield className={`w-3.5 h-3.5 ${
+              userAccess.is_admin 
+                ? 'text-purple-600 dark:text-purple-400'
+                : userAccess.is_manager
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-green-600 dark:text-green-400'
+            }`} />
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+              {getAccessLevelText()}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -284,13 +292,15 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
             <ChevronRight className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
-          >
-            <Filter className="w-3.5 h-3.5" />
-            Filters
-          </button>
+          {(userAccess.is_admin || userAccess.is_manager) && (
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
+            >
+              <Filter className="w-3.5 h-3.5" />
+              Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -312,8 +322,8 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
         </div>
       )}
 
-      {/* Filters */}
-      {showFilters && (
+      {/* Filters - Only for Manager and Admin */}
+      {showFilters && (userAccess.is_admin || userAccess.is_manager) && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30 p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-almet-cloud-burst dark:text-white">
@@ -399,7 +409,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
           </div>
         ) : (
           <>
-            {/* Weekday headers */}
             <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-900/50">
               {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                 <div
@@ -411,7 +420,6 @@ const VacationCalendar = ({ darkMode, showSuccess, showError }) => {
               ))}
             </div>
 
-            {/* Calendar days */}
             <div className="grid grid-cols-7">
               {renderCalendar()}
             </div>

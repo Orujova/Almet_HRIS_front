@@ -812,7 +812,7 @@ export default function PersonalArea() {
             <div className="w-10 h-10 bg-almet-sapphire/10 dark:bg-almet-steel-blue/10 rounded-full flex items-center justify-center mx-auto mb-2">
               <Bell className="h-5 w-5 text-almet-sapphire dark:text-almet-steel-blue" />
             </div>
-            <h4 className={`font-bold text-sm ${textPrimary} mb-1`}>Feedback Echo</h4>
+            <h4 className={`font-bold text-sm ${textPrimary} mb-1`}>My Voice</h4>
             <p className={`text-[10px] ${textSecondary} mb-3`}>
               Your innovative ideas and feedback help us improve our global culture.
             </p>
