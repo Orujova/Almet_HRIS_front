@@ -1,5 +1,7 @@
+// components/vacation/VacationCalendar.jsx - FIXED VERSION
+
 import React, { useState, useEffect } from 'react';
-import { Calendar, ChevronLeft, ChevronRight, Users, Filter, X, Star, Shield } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, Users, Filter, X, Star, Shield, Globe } from 'lucide-react';
 import { VacationService } from '@/services/vacationService';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 import { DayDetailModal } from './DayDetailModal';
@@ -10,6 +12,9 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
   const [vacations, setVacations] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
+  
+  // ✅ NEW: Country selection state
+  const [selectedCountry, setSelectedCountry] = useState('auto'); // 'auto', 'az', 'uk'
   
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -36,7 +41,7 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
 
   useEffect(() => {
     fetchCalendarData();
-  }, [currentDate, filters]);
+  }, [currentDate, filters, selectedCountry]); // ✅ Add selectedCountry
 
   useEffect(() => {
     fetchFilterOptions();
@@ -48,11 +53,19 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
       const month = currentDate.getMonth() + 1;
       const year = currentDate.getFullYear();
       
-      const data = await VacationService.getCalendarEvents({
+      // ✅ Build params with country
+      const params = {
         month,
         year,
         ...filters
-      });
+      };
+      
+      // ✅ Add country param if not auto
+      if (selectedCountry !== 'auto') {
+        params.country = selectedCountry;
+      }
+      
+      const data = await VacationService.getCalendarEvents(params);
       
       setHolidays(data.holidays || []);
       setVacations(data.vacations || []);
@@ -166,6 +179,16 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
     return 'Viewing your calendar';
   };
 
+  // ✅ Get calendar type display
+  const getCalendarTypeDisplay = () => {
+    if (selectedCountry === 'auto') {
+      return summary?.calendar_auto_detected 
+        ? `Auto (${summary?.country || 'AZ'})` 
+        : 'Auto';
+    }
+    return selectedCountry.toUpperCase();
+  };
+
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentDate);
     const days = [];
@@ -267,10 +290,21 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
             <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
               {getAccessLevelText()}
             </p>
+            {/* ✅ Calendar Type Display */}
+            {summary && (
+              <>
+                <span className="text-almet-waterloo dark:text-almet-bali-hai">•</span>
+                <Globe className="w-3.5 h-3.5 text-almet-waterloo dark:text-almet-bali-hai" />
+                <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                  Calendar: {getCalendarTypeDisplay()}
+                </span>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+
           <button
             onClick={previousMonth}
             className="p-2 rounded-lg bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
@@ -306,7 +340,7 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
 
       {/* Summary */}
       {summary && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800">
             <div className="text-sm text-red-600 dark:text-red-400 mb-1">Holidays</div>
             <div className="text-2xl font-bold text-red-700 dark:text-red-300">{summary.total_holidays}</div>
@@ -318,6 +352,32 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
             <div className="text-sm text-blue-600 dark:text-blue-400 mb-1">Employees</div>
             <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{summary.employees_on_vacation}</div>
+          </div>
+          {/* ✅ Calendar Info Card */}
+          <div className={`rounded-lg p-4 border ${
+            summary.country === 'UK' 
+              ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+              : 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'
+          }`}>
+            <div className={`text-sm mb-1 ${
+              summary.country === 'UK'
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-blue-600 dark:text-blue-400'
+            }`}>
+              Calendar Type
+            </div>
+            <div className={`text-2xl font-bold ${
+              summary.country === 'UK'
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-blue-700 dark:text-blue-300'
+            }`}>
+              {summary.country}
+            </div>
+            {summary.calendar_auto_detected && (
+              <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                Auto-detected
+              </div>
+            )}
           </div>
         </div>
       )}

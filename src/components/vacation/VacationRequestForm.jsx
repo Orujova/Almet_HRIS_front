@@ -297,14 +297,7 @@ export default function VacationRequestForm({
                   </h4>
                 </div>
 
-                <div className="bg-orange-100 dark:bg-orange-900/30 rounded p-3 text-xs text-orange-800 dark:text-orange-300">
-                  ✓ Half day requests use only one date (start date)
-                  <br />
-                  ✓ Select your working hours for this half day
-                  <br />
-                  ✓ Counted as 0.5 days
-                </div>
-
+          
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
@@ -339,11 +332,7 @@ export default function VacationRequestForm({
                   </div>
                 </div>
 
-                {formData.half_day_start_time && formData.half_day_end_time && (
-                  <div className="text-xs text-orange-700 dark:text-orange-300 font-medium">
-                    Working hours: {formData.half_day_start_time} - {formData.half_day_end_time}
-                  </div>
-                )}
+              
               </div>
             )}
 
@@ -549,7 +538,7 @@ export default function VacationRequestForm({
           <button 
             type="button"
             onClick={handleSubmit}
-            disabled={loading || !formData.start_date || !formData.end_date || !formData.vacation_type_id} 
+            disabled={loading || !formData.start_date  || !formData.vacation_type_id} 
             className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg"
           >
             {loading ? (

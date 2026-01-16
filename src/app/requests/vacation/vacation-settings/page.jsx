@@ -1,12 +1,15 @@
-// app/requests/vacation/vacation-settings/page.jsx - COMPLETE VERSION
+// app/requests/vacation/vacation-settings/page.jsx - COMPLETE WITH ALL TABS
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Users, Settings, Save, Plus, Trash2, AlertCircle, CheckCircle, Shield, ArrowLeft } from 'lucide-react';
+import { 
+  Calendar, Users, Settings, Save, Plus, Trash2, AlertCircle, CheckCircle, Shield, ArrowLeft,
+  Edit, FileText, TrendingUp, Upload, Download, X, Clock
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
-import { VacationService } from '@/services/vacationService';
+import { VacationService, VacationHelpers } from '@/services/vacationService';
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 
 export default function VacationSettingsPage() {
@@ -28,6 +31,22 @@ export default function VacationSettingsPage() {
   const [selectedApprover, setSelectedApprover] = useState(null);
   const [employees, setEmployees] = useState([]);
   
+  // ✅ Vacation Types State
+  const [vacationTypes, setVacationTypes] = useState([]);
+  const [showTypeModal, setShowTypeModal] = useState(false);
+  const [editingType, setEditingType] = useState(null);
+  const [typeForm, setTypeForm] = useState({
+    name: '',
+    description: '',
+    is_uk_only: false,
+    requires_time_selection: false
+  });
+  
+  // ✅ Balances State
+  const [balanceFile, setBalanceFile] = useState(null);
+  const [balanceUploadLoading, setBalanceUploadLoading] = useState(false);
+  const [resetYear, setResetYear] = useState(new Date().getFullYear());
+  
   // General Settings
   const [generalSettings, setGeneralSettings] = useState({
     allow_negative_balance: false,
@@ -44,6 +63,7 @@ export default function VacationSettingsPage() {
   useEffect(() => {
     fetchAllSettings();
     fetchEmployees();
+    fetchVacationTypes();
   }, []);
 
   const fetchAllSettings = async () => {
@@ -56,18 +76,14 @@ export default function VacationSettingsPage() {
         VacationService.getUKAdditionalApprover()
       ]);
       
-      // ✅ Set dual calendars
       setAzHolidays(calendarData.azerbaijan || []);
       setUkHolidays(calendarData.uk || []);
-      
       setGeneralSettings(generalData);
       setHrRepresentatives(hrData.hr_representatives || []);
       setDefaultHR(hrData.current_default);
       if (hrData.current_default) {
         setSelectedHR(hrData.current_default.id);
       }
-      
-      // ✅ Set UK Approver
       setUkApprover(ukApproverData.uk_additional_approver);
       if (ukApproverData.uk_additional_approver) {
         setSelectedApprover(ukApproverData.uk_additional_approver.id);
@@ -89,18 +105,154 @@ export default function VacationSettingsPage() {
     }
   };
 
-  // ✅ Azerbaijan Holiday Handlers
+  // ✅ Vacation Types Handlers
+  const fetchVacationTypes = async () => {
+    try {
+      const data = await VacationService.getVacationTypes();
+      setVacationTypes(data.results || []);
+    } catch (error) {
+      console.error('Vacation types fetch error:', error);
+    }
+  };
+
+  const handleOpenTypeModal = (type = null) => {
+    if (type) {
+      setEditingType(type);
+      setTypeForm({
+        name: type.name,
+        description: type.description || '',
+        is_uk_only: type.is_uk_only || false,
+        requires_time_selection: type.requires_time_selection || false
+      });
+    } else {
+      setEditingType(null);
+      setTypeForm({
+        name: '',
+        description: '',
+        is_uk_only: false,
+        requires_time_selection: false
+      });
+    }
+    setShowTypeModal(true);
+  };
+
+  const handleSaveType = async () => {
+    if (!typeForm.name.trim()) {
+      showError('Name is required');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (editingType) {
+        await VacationService.updateVacationType(editingType.id, typeForm);
+        showSuccess('Vacation type updated successfully');
+      } else {
+        await VacationService.createVacationType(typeForm);
+        showSuccess('Vacation type created successfully');
+      }
+      setShowTypeModal(false);
+      setEditingType(null);
+      setTypeForm({ name: '', description: '', is_uk_only: false, requires_time_selection: false });
+      fetchVacationTypes();
+    } catch (error) {
+      console.error('Save type error:', error);
+      showError(error.response?.data?.error || 'Failed to save vacation type');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteType = async (typeId) => {
+    if (!confirm('Are you sure you want to delete this vacation type? This action cannot be undone.')) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await VacationService.deleteVacationType(typeId);
+      showSuccess('Vacation type deleted successfully');
+      fetchVacationTypes();
+    } catch (error) {
+      console.error('Delete type error:', error);
+      showError(error.response?.data?.error || 'Failed to delete vacation type');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Balances Handlers
+  const handleDownloadTemplate = async () => {
+    try {
+      const blob = await VacationService.downloadBalanceTemplate();
+      VacationHelpers.downloadBlobFile(blob, 'vacation_balances_template.xlsx');
+      showSuccess('Template downloaded successfully');
+    } catch (error) {
+      console.error('Download template error:', error);
+      showError('Failed to download template');
+    }
+  };
+
+  const handleBalanceFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
+        showError('Please select an Excel file (.xlsx or .xls)');
+        return;
+      }
+      setBalanceFile(file);
+    }
+  };
+
+  const handleUploadBalances = async () => {
+    if (!balanceFile) {
+      showError('Please select a file first');
+      return;
+    }
+
+    setBalanceUploadLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', balanceFile);
+      
+      const result = await VacationService.bulkUploadBalances(formData);
+      showSuccess(`Successfully uploaded ${result.created_count} balances`);
+      setBalanceFile(null);
+    } catch (error) {
+      console.error('Upload error:', error);
+      showError(error.response?.data?.error || 'Failed to upload balances');
+    } finally {
+      setBalanceUploadLoading(false);
+    }
+  };
+
+  const handleResetBalances = async () => {
+    if (!confirm(`Are you sure you want to reset all balances for year ${resetYear}? This will set all used/scheduled days to 0.`)) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await VacationService.resetBalances({ year: resetYear });
+      showSuccess(`Balances reset successfully for year ${resetYear}`);
+    } catch (error) {
+      console.error('Reset error:', error);
+      showError(error.response?.data?.error || 'Failed to reset balances');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Azerbaijan/UK Holiday Handlers
   const handleAddAzHoliday = () => {
     if (!newAzHoliday.date || !newAzHoliday.name) {
       showError('Date and name are required');
       return;
     }
-    
     if (azHolidays.some(h => h.date === newAzHoliday.date)) {
       showError('Holiday already exists for this date');
       return;
     }
-    
     setAzHolidays([...azHolidays, newAzHoliday].sort((a, b) => a.date.localeCompare(b.date)));
     setNewAzHoliday({ date: '', name: '' });
   };
@@ -111,18 +263,15 @@ export default function VacationSettingsPage() {
     }
   };
 
-  // ✅ UK Holiday Handlers
   const handleAddUkHoliday = () => {
     if (!newUkHoliday.date || !newUkHoliday.name) {
       showError('Date and name are required');
       return;
     }
-    
     if (ukHolidays.some(h => h.date === newUkHoliday.date)) {
       showError('Holiday already exists for this date');
       return;
     }
-    
     setUkHolidays([...ukHolidays, newUkHoliday].sort((a, b) => a.date.localeCompare(b.date)));
     setNewUkHoliday({ date: '', name: '' });
   };
@@ -133,7 +282,6 @@ export default function VacationSettingsPage() {
     }
   };
 
-  // ✅ Save Production Calendars
   const handleSaveCalendars = async () => {
     setLoading(true);
     try {
@@ -150,13 +298,11 @@ export default function VacationSettingsPage() {
     }
   };
 
-  // ✅ Save UK Additional Approver
   const handleSaveUKApprover = async () => {
     if (!selectedApprover) {
       showError('Please select an approver');
       return;
     }
-    
     setLoading(true);
     try {
       await VacationService.setUKAdditionalApprover({
@@ -172,7 +318,6 @@ export default function VacationSettingsPage() {
     }
   };
 
-  // Save General Settings
   const handleSaveGeneralSettings = async () => {
     setLoading(true);
     try {
@@ -186,13 +331,11 @@ export default function VacationSettingsPage() {
     }
   };
 
-  // Save HR Representative
   const handleSaveHR = async () => {
     if (!selectedHR) {
       showError('Please select an HR representative');
       return;
     }
-    
     setLoading(true);
     try {
       await VacationService.updateDefaultHRRepresentative({
@@ -211,11 +354,12 @@ export default function VacationSettingsPage() {
   const tabs = [
     { key: 'calendar', label: 'Production Calendar', icon: Calendar },
     { key: 'uk-approver', label: 'UK Approver', icon: Shield },
+    { key: 'types', label: 'Leave Types', icon: FileText },
+    { key: 'balances', label: 'Balances', icon: TrendingUp },
     { key: 'general', label: 'General Settings', icon: Settings },
     { key: 'hr', label: 'HR Representative', icon: Users }
   ];
 
-  // ✅ Filter UK employees for approver selection
   const ukEmployees = employees.filter(emp => 
     emp.business_function_name?.toUpperCase().includes('UK')
   );
@@ -239,13 +383,13 @@ export default function VacationSettingsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-6 border-b border-almet-mystic dark:border-almet-comet">
-          <div className="flex space-x-8">
+        <div className="mb-6 border-b border-almet-mystic dark:border-almet-comet overflow-x-auto">
+          <div className="flex space-x-8 min-w-max">
             {tabs.map(tab => (
               <button 
                 key={tab.key} 
                 onClick={() => setActiveTab(tab.key)} 
-                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${
                   activeTab === tab.key 
                     ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' 
                     : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-white'
@@ -258,7 +402,7 @@ export default function VacationSettingsPage() {
           </div>
         </div>
 
-        {/* ✅ PRODUCTION CALENDAR TAB */}
+        {/* PRODUCTION CALENDAR TAB */}
         {activeTab === 'calendar' && (
           <div className="space-y-6">
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -267,15 +411,15 @@ export default function VacationSettingsPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Dual Calendar System</h3>
                   <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                    <strong>Azerbaijan:</strong> Weekends (Saturday/Sunday) are working days, only holidays listed below are excluded from working days calculation.<br/>
-                    <strong>UK:</strong> Both weekends (Saturday/Sunday) AND holidays listed below are excluded from working days calculation.
+                    <strong>Azerbaijan:</strong> Weekends (Sat/Sun) are working days, only holidays below are excluded.<br/>
+                    <strong>UK:</strong> Both weekends (Sat/Sun) AND holidays below are excluded from working days.
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="grid lg:grid-cols-2 gap-6">
-              {/* ✅ Azerbaijan Calendar */}
+              {/* Azerbaijan Calendar */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -288,29 +432,19 @@ export default function VacationSettingsPage() {
                 </div>
 
                 <div className="space-y-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={newAzHoliday.date}
-                      onChange={(e) => setNewAzHoliday({...newAzHoliday, date: e.target.value})}
-                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                      Holiday Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newAzHoliday.name}
-                      onChange={(e) => setNewAzHoliday({...newAzHoliday, name: e.target.value})}
-                      placeholder="e.g., Novruz Bayramı"
-                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={newAzHoliday.date}
+                    onChange={(e) => setNewAzHoliday({...newAzHoliday, date: e.target.value})}
+                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                  <input
+                    type="text"
+                    value={newAzHoliday.name}
+                    onChange={(e) => setNewAzHoliday({...newAzHoliday, name: e.target.value})}
+                    placeholder="e.g., Novruz Bayramı"
+                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
                   <button
                     onClick={handleAddAzHoliday}
                     className="w-full px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
@@ -330,7 +464,6 @@ export default function VacationSettingsPage() {
                       <button
                         onClick={() => handleRemoveAzHoliday(index)}
                         className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
-                        title="Remove holiday"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -344,7 +477,7 @@ export default function VacationSettingsPage() {
                 </div>
               </div>
 
-              {/* ✅ UK Calendar */}
+              {/* UK Calendar */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
@@ -357,29 +490,19 @@ export default function VacationSettingsPage() {
                 </div>
 
                 <div className="space-y-3 mb-4">
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={newUkHoliday.date}
-                      onChange={(e) => setNewUkHoliday({...newUkHoliday, date: e.target.value})}
-                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-                      Holiday Name
-                    </label>
-                    <input
-                      type="text"
-                      value={newUkHoliday.name}
-                      onChange={(e) => setNewUkHoliday({...newUkHoliday, name: e.target.value})}
-                      placeholder="e.g., Christmas Day"
-                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
+                  <input
+                    type="date"
+                    value={newUkHoliday.date}
+                    onChange={(e) => setNewUkHoliday({...newUkHoliday, date: e.target.value})}
+                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                  <input
+                    type="text"
+                    value={newUkHoliday.name}
+                    onChange={(e) => setNewUkHoliday({...newUkHoliday, name: e.target.value})}
+                    placeholder="e.g., Christmas Day"
+                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
                   <button
                     onClick={handleAddUkHoliday}
                     className="w-full px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2"
@@ -399,7 +522,6 @@ export default function VacationSettingsPage() {
                       <button
                         onClick={() => handleRemoveUkHoliday(index)}
                         className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
-                        title="Remove holiday"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -433,7 +555,7 @@ export default function VacationSettingsPage() {
           </div>
         )}
 
-        {/* ✅ UK APPROVER TAB */}
+        {/* UK APPROVER TAB */}
         {activeTab === 'uk-approver' && (
           <div className="space-y-6">
             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
@@ -442,11 +564,8 @@ export default function VacationSettingsPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-orange-900 dark:text-orange-200">UK Additional Approver</h3>
                   <p className="text-xs text-orange-800 dark:text-orange-300 mt-1">
-                    For UK employees requesting 5+ days vacation, an additional approval step is required after Line Manager approval.
-                    <br/>
-                    This approver should typically be from the <strong>Vice Chairman</strong> or senior management position group.
-                    <br/>
-                    <strong>Important:</strong> This applies only to UK employees. Azerbaijan employees follow the standard 2-step approval (Line Manager → HR).
+                    For UK employees requesting 5+ days vacation, an additional approval step is required after Line Manager.
+                    <br/>Recommended: Vice Chairman position group.
                   </p>
                 </div>
               </div>
@@ -482,7 +601,7 @@ export default function VacationSettingsPage() {
                     <div>
                       <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">No UK Additional Approver Set</p>
                       <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
-                        UK employees requesting 5+ days vacation will not be able to proceed past Line Manager approval until an additional approver is configured.
+                        UK employees requesting 5+ days cannot proceed past Line Manager approval.
                       </p>
                     </div>
                   </div>
@@ -507,79 +626,287 @@ export default function VacationSettingsPage() {
                     searchPlaceholder="Search UK employees..."
                     allowUncheck={true}
                   />
-                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1.5">
-                    Only UK employees are shown in the list. Employees with "Vice Chairman" in their position group are recommended.
-                  </p>
                 </div>
 
                 <button
                   onClick={handleSaveUKApprover}
                   disabled={loading || !selectedApprover}
-                  className="w-full px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4" />
-                      Save UK Additional Approver
-                    </>
-                  )}
-                </button>
+                  className="w-full px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+>
+{loading ? (
+<div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+) : (
+<>
+<Save className="w-4 h-4" />
+Save UK Additional Approver
+</>
+)}
+</button>
+</div>
+</div>
+</div>
+)}
+
+{/* ✅ VACATION TYPES TAB */}
+    {activeTab === 'types' && (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex-1 mr-4">
+            <div className="flex items-start gap-3">
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Leave Types</h3>
+                <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
+                  Configure different types of leave (Annual, Sick, Unpaid, etc.). Mark UK-only types or half-day types.
+                </p>
               </div>
             </div>
           </div>
-        )}
+          <button
+            onClick={() => handleOpenTypeModal()}
+            className="px-4 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
+          >
+            <Plus className="w-4 h-4" />
+            Add Leave Type
+          </button>
+        </div>
 
-        {/* ✅ GENERAL SETTINGS TAB */}
-        {activeTab === 'general' && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
+              <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
+                <tr>
+                  {['Name', 'Description', 'UK Only', 'Half Day', 'Actions'].map(h => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+                {vacationTypes.map(type => (
+                  <tr key={type.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
+                    <td className="px-4 py-3 text-sm font-medium text-almet-cloud-burst dark:text-white">
+                      {type.name}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                      {type.description || '-'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {type.is_uk_only ? (
+                        <span className="px-2 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium rounded">
+                          UK Only
+                        </span>
+                      ) : (
+                        <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">All</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {type.requires_time_selection ? (
+                        <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-medium rounded flex items-center gap-1 w-fit">
+                          <Clock className="w-3 h-3" />
+                          Half Day
+                        </span>
+                      ) : (
+                        <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Full Day</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleOpenTypeModal(type)}
+                          className="p-1.5 text-almet-sapphire hover:bg-almet-sapphire/10 rounded transition-colors"
+                          title="Edit"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteType(type.id)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {vacationTypes.length === 0 && (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-12 text-center text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                      No vacation types configured yet
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ✅ BALANCES TAB */}
+    {activeTab === 'balances' && (
+      <div className="space-y-6">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Bulk Balance Management</h3>
+              <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
+                Download the template, fill in employee balances, and upload to set/update balances in bulk.
+                <br/>You can also reset all balances for a specific year.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Upload Balances */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
-            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-6">General Settings</h3>
+            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-4">Upload Balances</h3>
             
-            <div className="space-y-6">
-              {/* Allow Negative Balance */}
-              <div className="flex items-start justify-between p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-                <div className="flex-1">
-                  <h4 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Allow Negative Balance</h4>
-                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                    If enabled, employees can submit requests even if they don't have enough remaining balance.
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer ml-4">
-                  <input
-                    type="checkbox"
-                    checked={generalSettings.allow_negative_balance}
-                    onChange={(e) => setGeneralSettings(prev => ({...prev, allow_negative_balance: e.target.checked}))}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-almet-sapphire/30 dark:peer-focus:ring-almet-sapphire/50 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-almet-sapphire"></div>
+            <div className="space-y-4">
+              <button
+                onClick={handleDownloadTemplate}
+                className="w-full px-4 py-2.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download Excel Template
+              </button>
+
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                  Select Excel File
                 </label>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleBalanceFileSelect}
+                  className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+                {balanceFile && (
+                  <div className="mt-2 flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                    <span className="text-xs text-blue-800 dark:text-blue-300 truncate">{balanceFile.name}</span>
+                    <button
+                      onClick={() => setBalanceFile(null)}
+                      className="ml-2 p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Max Schedule Edits */}
-              <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-                <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                  Maximum Schedule Edits
+              <button
+                onClick={handleUploadBalances}
+                disabled={balanceUploadLoading || !balanceFile}
+                className="w-full px-4 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {balanceUploadLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    Upload Balances
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Reset Balances */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
+            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-4">Reset Balances</h3>
+            
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+              <p className="text-xs text-amber-800 dark:text-amber-300">
+                <strong>Warning:</strong> This will reset all used and scheduled days to 0 for the selected year.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                  Select Year
                 </label>
-                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
-                  Number of times a scheduled vacation can be edited before it needs to be deleted and recreated.
-                </p>
                 <input
                   type="number"
-                  min="1"
-                  max="10"
-                  value={generalSettings.max_schedule_edits}
-                  onChange={(e) => setGeneralSettings(prev => ({...prev, max_schedule_edits: parseInt(e.target.value)}))}
+                  value={resetYear}
+                  onChange={(e) => setResetYear(parseInt(e.target.value))}
+                  min="2020"
+                  max="2030"
                   className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-/>
-</div>
-{/* Notification Settings */}
+                />
+              </div>
+
+              <button
+                onClick={handleResetBalances}
+                disabled={loading}
+                className="w-full px-4 py-2.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" />
+                    Reset Balances for {resetYear}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* GENERAL SETTINGS TAB - Keep existing code */}
+    {activeTab === 'general' && (
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
+        <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-6">General Settings</h3>
+        
+        <div className="space-y-6">
+          <div className="flex items-start justify-between p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Allow Negative Balance</h4>
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                If enabled, employees can submit requests even without sufficient remaining balance.
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer ml-4">
+              <input
+                type="checkbox"
+                checked={generalSettings.allow_negative_balance}
+                onChange={(e) => setGeneralSettings(prev => ({...prev, allow_negative_balance: e.target.checked}))}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-almet-sapphire/30 dark:peer-focus:ring-almet-sapphire/50 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-almet-sapphire"></div>
+            </label>
+          </div>
+
+          <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
+              Maximum Schedule Edits
+            </label>
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
+              Number of times a schedule can be edited before requiring recreation.
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={generalSettings.max_schedule_edits}
+              onChange={(e) => setGeneralSettings(prev => ({...prev, max_schedule_edits: parseInt(e.target.value)}))}
+              className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
           <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
             <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
               Notification Days Before
             </label>
             <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
-              Number of days before vacation starts to send reminder notifications.
+              Days before vacation starts to send reminder notifications.
             </p>
             <input
               type="number"
@@ -596,7 +923,7 @@ export default function VacationSettingsPage() {
               Notification Frequency (days)
             </label>
             <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
-              How often to send repeat notifications until vacation starts.
+              How often to send repeat notifications.
             </p>
             <input
               type="number"
@@ -628,7 +955,7 @@ export default function VacationSettingsPage() {
       </div>
     )}
 
-    {/* ✅ HR REPRESENTATIVE TAB */}
+    {/* HR REPRESENTATIVE TAB - Keep existing code */}
     {activeTab === 'hr' && (
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
         <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-4">Default HR Representative</h3>
@@ -639,9 +966,7 @@ export default function VacationSettingsPage() {
             <div>
               <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">About HR Representative</h4>
               <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                The HR Representative is responsible for the final approval of vacation requests after Line Manager (and UK Additional Approver for UK 5+ days) approval.
-                <br/>
-                This setting determines the default HR person who will be pre-selected when employees submit requests.
+                Final approver after Line Manager (and UK Additional Approver for UK 5+ days).
               </p>
             </div>
           </div>
@@ -677,15 +1002,12 @@ export default function VacationSettingsPage() {
               darkMode={darkMode}
               searchPlaceholder="Search HR representatives..."
             />
-            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1.5">
-              This HR representative will be automatically selected when employees submit vacation requests.
-            </p>
           </div>
 
           <button
             onClick={handleSaveHR}
             disabled={loading || !selectedHR}
-            className="w-full px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+            className="w-full px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
           >
             {loading ? (
               <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
@@ -700,4 +1022,118 @@ export default function VacationSettingsPage() {
       </div>
     )}
   </div>
+
+  {/* ✅ Vacation Type Modal */}
+  {showTypeModal && (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full border border-almet-mystic/50 dark:border-almet-comet">
+        <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
+            {editingType ? 'Edit Leave Type' : 'Add Leave Type'}
+          </h2>
+          <button
+            onClick={() => {
+              setShowTypeModal(false);
+              setEditingType(null);
+              setTypeForm({ name: '', description: '', is_uk_only: false, requires_time_selection: false });
+            }}
+            className="text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+              Name *
+            </label>
+            <input
+              type="text"
+              value={typeForm.name}
+              onChange={(e) => setTypeForm({...typeForm, name: e.target.value})}
+              placeholder="e.g., Annual Leave"
+              className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+              Description
+            </label>
+            <textarea
+              value={typeForm.description}
+              onChange={(e) => setTypeForm({...typeForm, description: e.target.value})}
+              rows={3}
+              placeholder="Optional description..."
+              className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
+            />
+          </div>
+
+          <div className="flex items-start p-3 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">UK Only</h4>
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                Only UK employees can select this type
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer ml-4">
+              <input
+                type="checkbox"
+                checked={typeForm.is_uk_only}
+                onChange={(e) => setTypeForm({...typeForm, is_uk_only: e.target.checked})}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-almet-sapphire/30 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-red-600"></div>
+            </label>
+          </div>
+
+          <div className="flex items-start p-3 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Half Day Type</h4>
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                Requires start/end time selection (0.5 days)
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer ml-4">
+              <input
+                type="checkbox"
+                checked={typeForm.requires_time_selection}
+                onChange={(e) => setTypeForm({...typeForm, requires_time_selection: e.target.checked})}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-almet-sapphire/30 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-600"></div>
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex justify-end gap-3">
+          <button
+            onClick={() => {
+              setShowTypeModal(false);
+              setEditingType(null);
+              setTypeForm({ name: '', description: '', is_uk_only: false, requires_time_selection: false });
+            }}
+            className="px-5 py-2.5 text-sm border border-almet-mystic dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveType}
+            disabled={loading || !typeForm.name.trim()}
+            className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
+          >
+            {loading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                {editingType ? 'Update' : 'Create'}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )}
 </DashboardLayout>)}
