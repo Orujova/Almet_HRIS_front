@@ -1,1017 +1,703 @@
+// app/requests/vacation/vacation-settings/page.jsx - COMPLETE VERSION
 "use client";
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, Edit2, Trash2, Download, Upload, Users, Settings, Save, X, AlertCircle, Check, Clock, FileSpreadsheet, ArrowLeft } from 'lucide-react';
+import { Calendar, Users, Settings, Save, Plus, Trash2, AlertCircle, CheckCircle, Shield, ArrowLeft } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-import { VacationService, VacationHelpers } from '@/services/vacationService';
-import ConfirmationModal from '@/components/common/ConfirmationModal';
-import { LoadingSpinner, ErrorDisplay } from '@/components/common/LoadingSpinner';
-import { useToast } from '@/components/common/Toast';
-import CustomCheckbox from '@/components/common/CustomCheckbox';
+import { useToast } from "@/components/common/Toast";
+import { VacationService } from '@/services/vacationService';
+import SearchableDropdown from "@/components/common/SearchableDropdown";
 
 export default function VacationSettingsPage() {
   const { darkMode } = useTheme();
-  const { showSuccess, showError, showWarning } = useToast();
-  const [activeTab, setActiveTab] = useState('calendar');
+  const { showSuccess, showError } = useToast();
+  const router = useRouter();
+  
   const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const [nonWorkingDays, setNonWorkingDays] = useState([]);
-  const [leaveTypes, setLeaveTypes] = useState([]);
-  const [hrReps, setHRReps] = useState([]);
-  const [settings, setSettings] = useState({
+  const [activeTab, setActiveTab] = useState('calendar');
+  
+  // ✅ Dual Production Calendar States
+  const [azHolidays, setAzHolidays] = useState([]);
+  const [ukHolidays, setUkHolidays] = useState([]);
+  const [newAzHoliday, setNewAzHoliday] = useState({ date: '', name: '' });
+  const [newUkHoliday, setNewUkHoliday] = useState({ date: '', name: '' });
+  
+  // ✅ UK Additional Approver State
+  const [ukApprover, setUkApprover] = useState(null);
+  const [selectedApprover, setSelectedApprover] = useState(null);
+  const [employees, setEmployees] = useState([]);
+  
+  // General Settings
+  const [generalSettings, setGeneralSettings] = useState({
     allow_negative_balance: false,
     max_schedule_edits: 3,
     notification_days_before: 7,
     notification_frequency: 2
   });
-
-  const [showNonWorkingDayModal, setShowNonWorkingDayModal] = useState(false);
-  const [showLeaveTypeModal, setShowLeaveTypeModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
-  const [editingItem, setEditingItem] = useState(null);
-
-  const [nonWorkingDayForm, setNonWorkingDayForm] = useState({ 
-    date: '', 
-    name: '', 
-    type: 'Holiday' 
-  });
-
-  const [leaveTypeForm, setLeaveTypeForm] = useState({ 
-    name: '', 
-    description: '', 
-    is_active: true 
-  });
+  
+  // HR Representative
+  const [hrRepresentatives, setHrRepresentatives] = useState([]);
+  const [defaultHR, setDefaultHR] = useState(null);
+  const [selectedHR, setSelectedHR] = useState(null);
 
   useEffect(() => {
-    loadInitialData();
+    fetchAllSettings();
+    fetchEmployees();
   }, []);
 
-  const loadInitialData = async () => {
+  const fetchAllSettings = async () => {
+    setLoading(true);
     try {
-      setInitialLoading(true);
-      setError(null);
-
-      const [
-        calendarData,
-        typesData,
-        hrData,
-        settingsData
-      ] = await Promise.allSettled([
+      const [calendarData, generalData, hrData, ukApproverData] = await Promise.all([
         VacationService.getProductionCalendar(),
-        VacationService.getVacationTypes(),
+        VacationService.getGeneralSettings(),
         VacationService.getHRRepresentatives(),
-        VacationService.getGeneralSettings()
+        VacationService.getUKAdditionalApprover()
       ]);
-
-      if (calendarData.status === 'fulfilled') {
-        const formattedDays = calendarData.value.non_working_days?.map((dayData, index) => ({
-          id: index + 1,
-          date: typeof dayData === 'string' ? dayData : dayData.date,
-          name: typeof dayData === 'string' ? 'Holiday' : (dayData.name || 'Holiday'),
-          type: typeof dayData === 'string' ? 'Holiday' : (dayData.type || 'Holiday')
-        })) || [];
-        setNonWorkingDays(formattedDays);
-      }
-
-      if (typesData.status === 'fulfilled') {
-        setLeaveTypes(typesData.value.results || []);
-      }
-
-      if (hrData.status === 'fulfilled') {
-        const hrList = hrData.value.hr_representatives || [];
-        setHRReps(hrList);
-      }
-
-      if (settingsData.status === 'fulfilled') {
-        setSettings({
-          allow_negative_balance: settingsData.value.allow_negative_balance || false,
-          max_schedule_edits: settingsData.value.max_schedule_edits || 3,
-          notification_days_before: settingsData.value.notification_days_before || 7,
-          notification_frequency: settingsData.value.notification_frequency || 2
-        });
-      }
-
-    } catch (err) {
-      setError(err.message || 'Failed to load settings data');
-      showError('Failed to load settings data');
-    } finally {
-      setInitialLoading(false);
-    }
-  };
-
-  const handleAddNonWorkingDay = async () => {
-    if (!nonWorkingDayForm.date || !nonWorkingDayForm.name) {
-      showWarning('Please fill all required fields');
-      return;
-    }
-
-    try {
-      setLoading(true);
       
-      let updatedDays;
-      if (editingItem) {
-        updatedDays = nonWorkingDays.map(day => 
-          day.id === editingItem.id ? { ...nonWorkingDayForm, id: editingItem.id } : day
-        );
-      } else {
-        updatedDays = [...nonWorkingDays, { ...nonWorkingDayForm, id: Date.now() }];
+      // ✅ Set dual calendars
+      setAzHolidays(calendarData.azerbaijan || []);
+      setUkHolidays(calendarData.uk || []);
+      
+      setGeneralSettings(generalData);
+      setHrRepresentatives(hrData.hr_representatives || []);
+      setDefaultHR(hrData.current_default);
+      if (hrData.current_default) {
+        setSelectedHR(hrData.current_default.id);
       }
-
-      const apiData = {
-        non_working_days: updatedDays.map(day => ({
-          date: day.date,
-          name: day.name
-        }))
-      };
-
-      await VacationService.updateNonWorkingDays(apiData);
-      setNonWorkingDays(updatedDays);
-      setShowNonWorkingDayModal(false);
-      setNonWorkingDayForm({ date: '', name: '', type: 'Holiday' });
-      setEditingItem(null);
-      showSuccess(editingItem ? 'Non-working day updated' : 'Non-working day added');
-    } catch (err) {
-      showError(err.message || 'Failed to save non-working day');
+      
+      // ✅ Set UK Approver
+      setUkApprover(ukApproverData.uk_additional_approver);
+      if (ukApproverData.uk_additional_approver) {
+        setSelectedApprover(ukApproverData.uk_additional_approver.id);
+      }
+    } catch (error) {
+      console.error('Settings fetch error:', error);
+      showError('Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleEditNonWorkingDay = (day) => {
-    setEditingItem(day);
-    setNonWorkingDayForm(day);
-    setShowNonWorkingDayModal(true);
+  const fetchEmployees = async () => {
+    try {
+      const data = await VacationService.searchEmployees();
+      setEmployees(data.results || []);
+    } catch (error) {
+      console.error('Employees fetch error:', error);
+    }
   };
 
-  const handleDeleteNonWorkingDay = (day) => {
-    setDeleteTarget({ type: 'nonWorkingDay', item: day });
-    setShowDeleteConfirm(true);
-  };
-
-  const handleAddLeaveType = async () => {
-    if (!leaveTypeForm.name) {
-      showWarning('Please enter leave type name');
+  // ✅ Azerbaijan Holiday Handlers
+  const handleAddAzHoliday = () => {
+    if (!newAzHoliday.date || !newAzHoliday.name) {
+      showError('Date and name are required');
       return;
     }
+    
+    if (azHolidays.some(h => h.date === newAzHoliday.date)) {
+      showError('Holiday already exists for this date');
+      return;
+    }
+    
+    setAzHolidays([...azHolidays, newAzHoliday].sort((a, b) => a.date.localeCompare(b.date)));
+    setNewAzHoliday({ date: '', name: '' });
+  };
 
-    try {
-      setLoading(true);
-      
-      if (editingItem) {
-        const updatedType = await VacationService.updateVacationType(editingItem.id, leaveTypeForm);
-        setLeaveTypes(leaveTypes.map(type => 
-          type.id === editingItem.id ? updatedType : type
-        ));
-        showSuccess('Leave type updated');
-      } else {
-        const newType = await VacationService.createVacationType(leaveTypeForm);
-        setLeaveTypes([...leaveTypes, newType]);
-        showSuccess('Leave type created');
-      }
-
-      setShowLeaveTypeModal(false);
-      setLeaveTypeForm({ name: '', description: '', is_active: true });
-      setEditingItem(null);
-    } catch (err) {
-      showError(err.message || 'Failed to save leave type');
-    } finally {
-      setLoading(false);
+  const handleRemoveAzHoliday = (index) => {
+    if (confirm('Are you sure you want to remove this holiday?')) {
+      setAzHolidays(azHolidays.filter((_, i) => i !== index));
     }
   };
 
-  const handleEditLeaveType = (type) => {
-    setEditingItem(type);
-    setLeaveTypeForm(type);
-    setShowLeaveTypeModal(true);
+  // ✅ UK Holiday Handlers
+  const handleAddUkHoliday = () => {
+    if (!newUkHoliday.date || !newUkHoliday.name) {
+      showError('Date and name are required');
+      return;
+    }
+    
+    if (ukHolidays.some(h => h.date === newUkHoliday.date)) {
+      showError('Holiday already exists for this date');
+      return;
+    }
+    
+    setUkHolidays([...ukHolidays, newUkHoliday].sort((a, b) => a.date.localeCompare(b.date)));
+    setNewUkHoliday({ date: '', name: '' });
   };
 
-  const handleDeleteLeaveType = (type) => {
-    setDeleteTarget({ type: 'leaveType', item: type });
-    setShowDeleteConfirm(true);
+  const handleRemoveUkHoliday = (index) => {
+    if (confirm('Are you sure you want to remove this holiday?')) {
+      setUkHolidays(ukHolidays.filter((_, i) => i !== index));
+    }
   };
 
-  const handleSetDefaultHR = async (rep) => {
+  // ✅ Save Production Calendars
+  const handleSaveCalendars = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      await VacationService.setDefaultHRRepresentative({
-        default_hr_representative_id: rep.id
+      await VacationService.updateNonWorkingDays({
+        non_working_days_az: azHolidays,
+        non_working_days_uk: ukHolidays
       });
-      
-      setHRReps(hrReps.map(r => ({ ...r, is_default: r.id === rep.id })));
-      showSuccess(`${rep.name} set as default HR representative`);
-    } catch (err) {
-      showError(err.message || 'Failed to set default HR representative');
+      showSuccess('Production calendars updated successfully');
+    } catch (error) {
+      console.error('Calendar save error:', error);
+      showError(error.response?.data?.error || 'Failed to save calendars');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSaveSettings = async () => {
+  // ✅ Save UK Additional Approver
+  const handleSaveUKApprover = async () => {
+    if (!selectedApprover) {
+      showError('Please select an approver');
+      return;
+    }
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      await VacationService.updateGeneralSettings(settings);
-      showSuccess('Settings saved successfully');
-    } catch (err) {
-      showError(err.message || 'Failed to save settings');
+      await VacationService.setUKAdditionalApprover({
+        uk_additional_approver_id: selectedApprover
+      });
+      showSuccess('UK Additional Approver updated successfully');
+      await fetchAllSettings();
+    } catch (error) {
+      console.error('UK Approver save error:', error);
+      showError(error.response?.data?.error || 'Failed to save UK approver');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleExportTemplate = async () => {
+  // Save General Settings
+  const handleSaveGeneralSettings = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const blob = await VacationService.downloadBalanceTemplate();
-      VacationHelpers.downloadBlobFile(blob, 'vacation_balance_template.xlsx');
-      showSuccess('Template downloaded');
-    } catch (err) {
-      showError(err.message || 'Failed to download template');
+      await VacationService.updateGeneralSettings(generalSettings);
+      showSuccess('General settings updated successfully');
+    } catch (error) {
+      console.error('General settings save error:', error);
+      showError(error.response?.data?.error || 'Failed to save general settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleImportBalances = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
+  // Save HR Representative
+  const handleSaveHR = async () => {
+    if (!selectedHR) {
+      showError('Please select an HR representative');
+      return;
+    }
+    
+    setLoading(true);
     try {
-      setLoading(true);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('year', new Date().getFullYear());
-
-      const result = await VacationService.bulkUploadBalances(formData);
-      showSuccess(`Balances uploaded: ${result.success_count || 0} successful`);
-      
-      if (result.errors && result.errors.length > 0) {
-        showWarning(`${result.errors.length} records had errors`);
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to upload balances');
+      await VacationService.updateDefaultHRRepresentative({
+        default_hr_representative_id: selectedHR
+      });
+      showSuccess('HR representative updated successfully');
+      await fetchAllSettings();
+    } catch (error) {
+      console.error('HR save error:', error);
+      showError(error.response?.data?.error || 'Failed to save HR representative');
     } finally {
       setLoading(false);
-      e.target.value = '';
     }
   };
 
-  const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
+  const tabs = [
+    { key: 'calendar', label: 'Production Calendar', icon: Calendar },
+    { key: 'uk-approver', label: 'UK Approver', icon: Shield },
+    { key: 'general', label: 'General Settings', icon: Settings },
+    { key: 'hr', label: 'HR Representative', icon: Users }
+  ];
 
-    try {
-      setLoading(true);
-      
-      switch (deleteTarget.type) {
-        case 'nonWorkingDay':
-          const updatedDays = nonWorkingDays.filter(day => day.id !== deleteTarget.item.id);
-          const apiData = {
-            non_working_days: updatedDays.map(day => ({
-              date: day.date,
-              name: day.name
-            }))
-          };
-          await VacationService.updateNonWorkingDays(apiData);
-          setNonWorkingDays(updatedDays);
-          showSuccess('Non-working day deleted');
-          break;
-          
-        case 'leaveType':
-          await VacationService.deleteVacationType(deleteTarget.item.id);
-          setLeaveTypes(leaveTypes.filter(type => type.id !== deleteTarget.item.id));
-          showSuccess('Leave type deleted');
-          break;
-      }
-    } catch (err) {
-      showError(err.message || 'Failed to delete item');
-    } finally {
-      setLoading(false);
-      setShowDeleteConfirm(false);
-      setDeleteTarget(null);
-    }
-  };
-
-  if (initialLoading) {
-    return <LoadingSpinner message="Loading vacation settings..." />;
-  }
-
-  if (error && !nonWorkingDays.length && !leaveTypes.length) {
-    return <ErrorDisplay error={error} onRetry={loadInitialData} />;
-  }
+  // ✅ Filter UK employees for approver selection
+  const ukEmployees = employees.filter(emp => 
+    emp.business_function_name?.toUpperCase().includes('UK')
+  );
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen p-6">
-        <div className="bg-white rounded-lg dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet">
-          <div className="px-6 py-6">
-            <div className=" mx-auto">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={() => window.location.href = '/requests/vacation'}
-                    className="p-2 text-almet-waterloo dark:text-almet-bali-hai hover:text-almet-cloud-burst dark:hover:text-white hover:bg-gray-100 dark:hover:bg-almet-comet rounded-lg transition-colors"
-                    title="Back to Vacation"
-                  >
-                    <ArrowLeft className="w-5 h-5" />
-                  </button>
-                  <div>
-                    <h1 className="text-2xl font-bold text-almet-cloud-burst dark:text-white">
-                      Vacation Settings
-                    </h1>
-                    <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      Configure vacation policies and system parameters
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                      Last Updated
-                    </p>
-                    <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">
-                      {new Date().toLocaleDateString()}
-                    </p>
-                  </div>
+      <div className="p-4 lg:p-6 max-w-[1400px] mx-auto">
+        {/* Header */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">Vacation Settings</h1>
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">Configure vacation system parameters</p>
+          </div>
+          <button
+            onClick={() => router.push('/requests/vacation')}
+            className="flex items-center gap-2 px-4 py-2 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to Vacation
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="mb-6 border-b border-almet-mystic dark:border-almet-comet">
+          <div className="flex space-x-8">
+            {tabs.map(tab => (
+              <button 
+                key={tab.key} 
+                onClick={() => setActiveTab(tab.key)} 
+                className={`pb-3 px-1 border-b-2 font-medium text-sm transition-all duration-200 flex items-center gap-2 ${
+                  activeTab === tab.key 
+                    ? 'border-almet-sapphire text-almet-sapphire dark:text-almet-astral' 
+                    : 'border-transparent text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai dark:hover:text-white'
+                }`}
+              >
+                <tab.icon className="w-4 h-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ✅ PRODUCTION CALENDAR TAB */}
+        {activeTab === 'calendar' && (
+          <div className="space-y-6">
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Dual Calendar System</h3>
+                  <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
+                    <strong>Azerbaijan:</strong> Weekends (Saturday/Sunday) are working days, only holidays listed below are excluded from working days calculation.<br/>
+                    <strong>UK:</strong> Both weekends (Saturday/Sunday) AND holidays listed below are excluded from working days calculation.
+                  </p>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div className=" mx-auto py-6">
-          <div className="mb-8">
-            <nav className="flex space-x-1 bg-white dark:bg-almet-cloud-burst p-1 rounded-xl shadow-sm border border-gray-200 dark:border-almet-comet">
-              {[
-                { id: 'calendar', icon: Calendar, label: 'Calendar', count: nonWorkingDays.length },
-                { id: 'leave-types', icon: Clock, label: 'Leave Types', count: leaveTypes.length },
-                { id: 'hr-reps', icon: Users, label: 'HR Team', count: hrReps.length },
-                { id: 'balances', icon: FileSpreadsheet, label: 'Balances' },
-                { id: 'settings', icon: Settings, label: 'Settings' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-medium transition-all relative ${
-                    activeTab === tab.id
-                      ? 'bg-almet-sapphire text-white shadow-sm'
-                      : 'text-almet-waterloo hover:text-almet-cloud-burst dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet/50'
-                  }`}
-                >
-                  <tab.icon className="w-4 h-4" />
-                  <span className="hidden sm:block">{tab.label}</span>
-                  {tab.count !== undefined && (
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      activeTab === tab.id 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-gray-100 dark:bg-almet-comet text-almet-waterloo dark:text-almet-bali-hai'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-sm border border-gray-200 dark:border-almet-comet overflow-hidden">
-            
-            {activeTab === 'calendar' && (
-              <div>
-                <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                        Production Calendar
-                      </h2>
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                        Manage public holidays and non-working days
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setEditingItem(null);
-                        setNonWorkingDayForm({ date: '', name: '', type: 'Holiday' });
-                        setShowNonWorkingDayModal(true);
-                      }}
-                      className="inline-flex items-center gap-2 text-xs px-4 py-2 bg-almet-sapphire text-white font-medium rounded-lg hover:bg-almet-astral transition-colors shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Holiday
-                    </button>
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* ✅ Azerbaijan Calendar */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-green-600" />
+                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Azerbaijan Holidays</h3>
                   </div>
+                  <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded text-xs font-medium">
+                    {azHolidays.length} holidays
+                  </span>
                 </div>
 
-                <div className="p-6">
-                  {nonWorkingDays.length === 0 ? (
-                    <div className="text-center py-4">
-                      <div className="w-12 h-12 bg-gray-100 dark:bg-almet-comet rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Calendar className="w-6 h-6 text-almet-waterloo" />
-                      </div>
-                      <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                        No holidays configured
-                      </h3>
-                      <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs">
-                        Add your first holiday to get started with the production calendar
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {nonWorkingDays.map(day => (
-                        <div key={day.id} className="bg-gray-50 dark:bg-almet-comet/30 rounded-lg p-4 border border-gray-200 dark:border-almet-comet">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-full font-medium">
-                                  {day.type}
-                                </span>
-                              </div>
-                              <h3 className="font-medium text-almet-cloud-burst dark:text-white text-sm mb-1">
-                                {day.name}
-                              </h3>
-                              <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
-                                {VacationHelpers.formatDate(day.date)}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleEditNonWorkingDay(day)}
-                                className="p-1.5 text-almet-sapphire hover:text-almet-astral hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                                title="Edit"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteNonWorkingDay(day)}
-                                className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'leave-types' && (
-              <div>
-                <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                        Leave Types
-                      </h2>
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                        Manage different types of vacation and leave categories
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setEditingItem(null);
-                        setLeaveTypeForm({ name: '', description: '', is_active: true });
-                        setShowLeaveTypeModal(true);
-                      }}
-                      className="inline-flex items-center text-xs gap-2 px-4 py-2 bg-almet-sapphire text-white font-medium rounded-lg hover:bg-almet-astral transition-colors shadow-sm"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Leave Type
-                    </button>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  {leaveTypes.length === 0 ? (
-                    <div className="text-center py-6">
-                      <div className="w-12 h-12 bg-gray-100 dark:bg-almet-comet rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Clock className="w-6 h-6 text-almet-waterloo" />
-                      </div>
-                      <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                        No leave types configured
-                      </h3>
-                      <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs">
-                        Create your first leave type to organize vacation requests
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {leaveTypes.map(type => (
-                        <div key={type.id} className="bg-gray-50 dark:bg-almet-comet/30 rounded-lg p-4 border border-gray-200 dark:border-almet-comet">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                  type.is_active 
-                                    ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200'
-                                    : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200'
-                                }`}>
-                                  {type.is_active ? 'Active' : 'Inactive'}
-                                </span>
-                              </div>
-                              <h3 className="font-medium text-almet-cloud-burst dark:text-white text-sm mb-1">
-                                {type.name}
-                              </h3>
-                              {type.description && (
-                                <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai line-clamp-2">
-                                  {type.description}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => handleEditLeaveType(type)}
-                                className="p-1.5 text-almet-sapphire hover:text-almet-astral hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
-                                title="Edit"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLeaveType(type)}
-                                className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'hr-reps' && (
-              <div>
-                <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
+                <div className="space-y-3 mb-4">
                   <div>
-                    <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                      HR Representatives
-                    </h2>
-                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      Manage HR team members responsible for vacation approvals
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  {hrReps.length === 0 ? (
-                    <div className="text-center py-6">
-                      <div className="w-12 h-12 bg-gray-100 dark:bg-almet-comet rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Users className="w-6 h-6 text-almet-waterloo" />
-                      </div>
-                      <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                        No HR representatives configured
-                      </h3>
-                      <p className="text-almet-waterloo dark:text-almet-bali-hai text-xs">
-                        HR representatives will be automatically managed by the system
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      {hrReps.map(rep => (
-                        <div key={rep.id} className="bg-gray-50 dark:bg-almet-comet/30 rounded-lg p-4 border border-gray-200 dark:border-almet-comet">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-2">
-                                {rep.is_default && (
-                                  <span className="flex items-center gap-1 text-xs px-2 py-1 bg-almet-sapphire text-white rounded-full font-medium">
-                                    <Check className="w-3 h-3" />
-                                    Default
-                                  </span>
-                                )}
-                              </div>
-                              <h3 className="font-medium text-almet-cloud-burst dark:text-white text-sm mb-1">
-                                {rep.name}
-                              </h3>
-                              <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai mb-1">
-                                {rep.email}
-                              </p>
-                              {rep.department && (
-                                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                                  {rep.department}
-                                </p>
-                              )}
-                            </div>
-                            {!rep.is_default && (
-                              <button
-                                onClick={() => handleSetDefaultHR(rep)}
-                                disabled={loading}
-                                className="text-xs px-3 py-1 bg-white dark:bg-almet-cloud-burst border border-gray-200 dark:border-almet-comet rounded-lg text-almet-waterloo hover:text-almet-sapphire hover:border-almet-sapphire transition-colors disabled:opacity-50"
-                              >
-                                Set Default
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'balances' && (
-              <div>
-                <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
-                  <div>
-                    <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                      Vacation Balances
-                    </h2>
-                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      Bulk manage employee vacation balance data
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <div>
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FileSpreadsheet className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-medium text-almet-cloud-burst dark:text-white text-sm mb-2">
-                            Bulk Balance Management
-                          </h3>
-                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-4">
-                            Download the Excel template, fill in employee vacation balances, and upload the file to update all balances at once.
-                          </p>
-                          
-                          <div className="flex flex-col sm:flex-row gap-3">
-                            <button
-                              onClick={handleExportTemplate}
-                              disabled={loading}
-                              className="inline-flex text-xs items-center gap-2 px-4 py-2 bg-white dark:bg-almet-comet text-almet-cloud-burst dark:text-white border border-gray-300 dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-almet-san-juan/50 transition-colors font-medium disabled:opacity-50"
-                            >
-                              <Download className="w-4 h-4" />
-                              Download Template
-                            </button>
-                            
-                            <label className="inline-flex text-xs items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors cursor-pointer font-medium disabled:opacity-50">
-                              <Upload className="w-4 h-4" />
-                              Upload Balances
-                              <input
-                                type="file"
-                                accept=".xlsx,.xls"
-                                onChange={handleImportBalances}
-                                className="hidden"
-                                disabled={loading}
-                              />
-                            </label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border border-amber-200 dark:border-amber-700">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <h4 className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-2">
-                            Important Guidelines
-                          </h4>
-                          <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
-                            <div>• <strong>Start Balance:</strong> Remaining days from previous year</div>
-                            <div>• <strong>Yearly Balance:</strong> New allocation for current year</div>
-                            <div>• <strong>Employee IDs:</strong> Must match existing system records</div>
-                            <div>• <strong>Data Overwrite:</strong> Upload will replace existing balance data</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'settings' && (
-              <div>
-                <div className="p-4 border-b border-gray-200 dark:border-almet-comet">
-                  <div>
-                    <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-                      General Settings
-                    </h2>
-                    <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
-                      Configure global vacation system parameters
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="p-6">
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-almet-comet/30 rounded-lg border border-gray-200 dark:border-almet-comet">
-                      <div className="flex-1 pr-4">
-                        <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">
-                          Allow Zero Balance Requests
-                        </h3>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          Enable employees to request vacation when their balance is zero
-                        </p>
-                      </div>
-                      <CustomCheckbox
-                        checked={settings.allow_negative_balance}
-                        onChange={() => setSettings({
-                          ...settings, 
-                          allow_negative_balance: !settings.allow_negative_balance
-                        })}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-almet-comet/30 rounded-lg border border-gray-200 dark:border-almet-comet">
-                      <div className="flex-1 pr-4">
-                        <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">
-                          Maximum Schedule Edits
-                        </h3>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          Number of times employees can modify scheduled vacation
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={settings.max_schedule_edits}
-                          onChange={(e) => setSettings({
-                            ...settings, 
-                            max_schedule_edits: parseInt(e.target.value) || 0
-                          })}
-                          className="w-16 px-2 py-1 outline-0 text-sm border border-gray-300 dark:border-almet-comet rounded focus:ring-2 focus:ring-almet-sapphire dark:bg-almet-comet dark:text-white text-center"
-                          min="0"
-                          max="10"
-                        />
-                        <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">times</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-almet-comet/30 rounded-lg border border-gray-200 dark:border-almet-comet">
-                      <div className="flex-1 pr-4">
-                        <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">
-                          Notification Lead Time
-                        </h3>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          Send reminders this many days before vacation starts
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={settings.notification_days_before}
-                          onChange={(e) => setSettings({
-                            ...settings, 
-                            notification_days_before: parseInt(e.target.value) || 1
-                          })}
-                          className="w-16 px-2 py-1 outline-0 text-sm border border-gray-300 dark:border-almet-comet rounded focus:ring-2 focus:ring-almet-sapphire dark:bg-almet-comet dark:text-white text-center"
-                          min="1"
-                          max="30"
-                        />
-                        <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">days</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-almet-comet/30 rounded-lg border border-gray-200 dark:border-almet-comet">
-                      <div className="flex-1 pr-4">
-                        <h3 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">
-                          Notification Frequency
-                        </h3>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          Maximum number of reminder notifications to send
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={settings.notification_frequency}
-                          onChange={(e) => setSettings({
-                            ...settings, 
-                            notification_frequency: parseInt(e.target.value) || 1
-                          })}
-                          className="w-16 px-2 py-1 outline-0 text-sm border border-gray-300 dark:border-almet-comet rounded focus:ring-2 focus:ring-almet-sapphire dark:bg-almet-comet dark:text-white text-center"
-                          min="1"
-                          max="5"
-                        />
-                        <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">times</span>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end pt-6 border-t border-gray-200 dark:border-almet-comet">
-                      <button
-                        onClick={handleSaveSettings}
-                        disabled={loading}
-                        className="inline-flex items-center gap-2 px-6 py-2 bg-almet-sapphire text-white text-sm font-medium rounded-lg hover:bg-almet-astral transition-colors disabled:opacity-50"
-                      >
-                        {loading ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Save className="w-4 h-4" />
-                        )}
-                        Save Settings
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {showNonWorkingDayModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-almet-cloud-burst rounded-xl w-full max-w-md shadow-2xl">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-                    {editingItem ? 'Edit Holiday' : 'Add Holiday'}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowNonWorkingDayModal(false);
-                      setEditingItem(null);
-                    }}
-                    className="p-1 text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white hover:bg-gray-100 dark:hover:bg-almet-comet rounded transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                      Date <span className="text-red-500">*</span>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                      Date
                     </label>
                     <input
                       type="date"
-                      value={nonWorkingDayForm.date}
-                      onChange={(e) => setNonWorkingDayForm({...nonWorkingDayForm, date: e.target.value})}
-                      className="w-full px-3 py-2 text-sm outline-0 border border-gray-300 dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent dark:bg-almet-comet dark:text-white"
-                      required
+                      value={newAzHoliday.date}
+                      onChange={(e) => setNewAzHoliday({...newAzHoliday, date: e.target.value})}
+                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                     />
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                      Holiday Name <span className="text-red-500">*</span>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                      Holiday Name
                     </label>
                     <input
                       type="text"
-                      value={nonWorkingDayForm.name}
-                      onChange={(e) => setNonWorkingDayForm({...nonWorkingDayForm, name: e.target.value})}
-                      placeholder="e.g., New Year's Day"
-                      className="w-full px-3 py-2 text-sm border outline-0 border-gray-300 dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent dark:bg-almet-comet dark:text-white"
-                      required
+                      value={newAzHoliday.name}
+                      onChange={(e) => setNewAzHoliday({...newAzHoliday, name: e.target.value})}
+                      placeholder="e.g., Novruz Bayramı"
+                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                     />
                   </div>
+                  <button
+                    onClick={handleAddAzHoliday}
+                    className="w-full px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Azerbaijan Holiday
+                  </button>
+                </div>
 
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {azHolidays.map((holiday, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">{holiday.name}</p>
+                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{new Date(holiday.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveAzHoliday(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
+                        title="Remove holiday"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {azHolidays.length === 0 && (
+                    <div className="text-center py-8 text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                      No Azerbaijan holidays added yet
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ✅ UK Calendar */}
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-red-600" />
+                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">UK Holidays</h3>
+                  </div>
+                  <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded text-xs font-medium">
+                    {ukHolidays.length} holidays
+                  </span>
+                </div>
+
+                <div className="space-y-3 mb-4">
                   <div>
-                    <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                      Type
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                      Date
                     </label>
-                    <select
-                      value={nonWorkingDayForm.type}
-                      onChange={(e) => setNonWorkingDayForm({...nonWorkingDayForm, type: e.target.value})}
-                      className="w-full px-3 py-2 outline-0 inset-0 text-sm border border-gray-300 dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent dark:bg-almet-comet dark:text-white"
-                    >
-                      <option value="Holiday">Holiday</option>
-                      <option value="National Day">National Day</option>
-                      <option value="Religious">Religious</option>
-                    </select>
+                    <input
+                      type="date"
+                      value={newUkHoliday.date}
+                      onChange={(e) => setNewUkHoliday({...newUkHoliday, date: e.target.value})}
+                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                      Holiday Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newUkHoliday.name}
+                      onChange={(e) => setNewUkHoliday({...newUkHoliday, name: e.target.value})}
+                      placeholder="e.g., Christmas Day"
+                      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddUkHoliday}
+                    className="w-full px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add UK Holiday
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {ukHolidays.map((holiday, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">{holiday.name}</p>
+                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{new Date(holiday.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveUkHoliday(index)}
+                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
+                        title="Remove holiday"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {ukHolidays.length === 0 && (
+                    <div className="text-center py-8 text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                      No UK holidays added yet
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={handleSaveCalendars}
+                disabled={loading}
+                className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
+              >
+                {loading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Save Production Calendars
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ✅ UK APPROVER TAB */}
+        {activeTab === 'uk-approver' && (
+          <div className="space-y-6">
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Shield className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" />
+                <div>
+                  <h3 className="text-sm font-semibold text-orange-900 dark:text-orange-200">UK Additional Approver</h3>
+                  <p className="text-xs text-orange-800 dark:text-orange-300 mt-1">
+                    For UK employees requesting 5+ days vacation, an additional approval step is required after Line Manager approval.
+                    <br/>
+                    This approver should typically be from the <strong>Vice Chairman</strong> or senior management position group.
+                    <br/>
+                    <strong>Important:</strong> This applies only to UK employees. Azerbaijan employees follow the standard 2-step approval (Line Manager → HR).
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
+              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-4">Current UK Additional Approver</h3>
+              
+              {ukApprover ? (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-green-900 dark:text-green-200">{ukApprover.name}</p>
+                      <div className="flex flex-wrap gap-2 mt-2 text-xs text-green-800 dark:text-green-300">
+                        <span className="bg-green-100 dark:bg-green-800/50 px-2 py-0.5 rounded">
+                          {ukApprover.employee_id}
+                        </span>
+                        <span className="bg-green-100 dark:bg-green-800/50 px-2 py-0.5 rounded">
+                          {ukApprover.position_group}
+                        </span>
+                        <span className="bg-green-100 dark:bg-green-800/50 px-2 py-0.5 rounded">
+                          {ukApprover.business_function}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-200 dark:border-almet-comet">
-                  <button
-                    onClick={() => {
-                      setShowNonWorkingDayModal(false);
-                      setEditingItem(null);
-                    }}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-almet-cloud-burst dark:text-almet-bali-hai border border-gray-300 dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet/50 transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddNonWorkingDay}
-                    disabled={loading || !nonWorkingDayForm.date || !nonWorkingDayForm.name}
-                    className="px-4 py-2 text-sm font-medium bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    {editingItem ? 'Update' : 'Add'}
-                  </button>
+              ) : (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">No UK Additional Approver Set</p>
+                      <p className="text-xs text-amber-800 dark:text-amber-300 mt-1">
+                        UK employees requesting 5+ days vacation will not be able to proceed past Line Manager approval until an additional approver is configured.
+                      </p>
+                    </div>
+                  </div>
                 </div>
+              )}
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+                    Select UK Additional Approver
+                  </label>
+                  <SearchableDropdown
+                    options={ukEmployees.map(emp => ({
+                      value: emp.id,
+                      label: `${emp.name} (${emp.employee_id}) - ${emp.position_group_name || 'N/A'}`,
+                      badge: emp.position_group_name?.includes('Vice') ? 'Recommended' : null
+                    }))}
+                    value={selectedApprover}
+                    onChange={setSelectedApprover}
+                    placeholder="Select UK employee..."
+                    darkMode={darkMode}
+                    searchPlaceholder="Search UK employees..."
+                    allowUncheck={true}
+                  />
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1.5">
+                    Only UK employees are shown in the list. Employees with "Vice Chairman" in their position group are recommended.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleSaveUKApprover}
+                  disabled={loading || !selectedApprover}
+                  className="w-full px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Save UK Additional Approver
+                    </>
+                  )}
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {showLeaveTypeModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white dark:bg-almet-cloud-burst rounded-xl w-full max-w-md shadow-2xl">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-almet-cloud-burst dark:text-white">
-                    {editingItem ? 'Edit Leave Type' : 'Add Leave Type'}
-                  </h3>
-                  <button
-                    onClick={() => {
-                      setShowLeaveTypeModal(false);
-                      setEditingItem(null);
-                    }}
-                    className="p-1 text-almet-waterloo hover:text-almet-cloud-burst dark:hover:text-white hover:bg-gray-100 dark:hover:bg-almet-comet rounded transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+        {/* ✅ GENERAL SETTINGS TAB */}
+        {activeTab === 'general' && (
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
+            <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-6">General Settings</h3>
+            
+            <div className="space-y-6">
+              {/* Allow Negative Balance */}
+              <div className="flex items-start justify-between p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium text-almet-cloud-burst dark:text-white mb-1">Allow Negative Balance</h4>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                    If enabled, employees can submit requests even if they don't have enough remaining balance.
+                  </p>
                 </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                      Name <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={leaveTypeForm.name}
-                      onChange={(e) => setLeaveTypeForm({...leaveTypeForm, name: e.target.value})}
-                      placeholder="e.g., Annual Leave"
-                      className="w-full px-3 py-2 text-sm border outline-0 border-gray-300 dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent dark:bg-almet-comet dark:text-white"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
-                      Description
-                    </label>
-                    <textarea
-                      value={leaveTypeForm.description}
-                      onChange={(e) => setLeaveTypeForm({...leaveTypeForm, description: e.target.value})}
-                      placeholder="Brief description of this leave type"
-                      rows={3}
-                      className="w-full px-3 py-2 text-sm border outline-0 border-gray-300 dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent dark:bg-almet-comet dark:text-white resize-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <CustomCheckbox
-                      checked={leaveTypeForm.is_active}
-                      onChange={() => setLeaveTypeForm({
-                        ...leaveTypeForm, 
-                        is_active: !leaveTypeForm.is_active
-                      })}
-                    />
-                    <label className="text-sm font-medium text-almet-cloud-burst dark:text-white">
-                      Active
-                    </label>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 mt-8 pt-4 border-t border-gray-200 dark:border-almet-comet">
-                  <button
-                    onClick={() => {
-                      setShowLeaveTypeModal(false);
-                      setEditingItem(null);
-                    }}
-                    disabled={loading}
-                    className="px-4 py-2 text-sm font-medium text-almet-cloud-burst dark:text-almet-bali-hai border border-gray-300 dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-almet-comet/50 transition-colors disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleAddLeaveType}
-                    disabled={loading || !leaveTypeForm.name}
-                    className="px-4 py-2 text-sm font-medium bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {loading && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                    {editingItem ? 'Update' : 'Add'}
-                  </button>
-                </div>
+                <label className="relative inline-flex items-center cursor-pointer ml-4">
+                  <input
+                    type="checkbox"
+                    checked={generalSettings.allow_negative_balance}
+                    onChange={(e) => setGeneralSettings(prev => ({...prev, allow_negative_balance: e.target.checked}))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-almet-sapphire/30 dark:peer-focus:ring-almet-sapphire/50 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-almet-sapphire"></div>
+                </label>
               </div>
-            </div>
-          </div>
-        )}
 
-        <ConfirmationModal
-          isOpen={showDeleteConfirm}
-          onClose={() => {
-            setShowDeleteConfirm(false);
-            setDeleteTarget(null);
-          }}
-          onConfirm={handleConfirmDelete}
-          title="Confirm Deletion"
-          message={`Are you sure you want to delete this ${
-            deleteTarget?.type === 'nonWorkingDay' ? 'holiday' : 'leave type'
-          }? This action cannot be undone.`}
-          confirmText="Delete"
-          type="danger"
-          loading={loading}
-          darkMode={darkMode}
-        />
+              {/* Max Schedule Edits */}
+              <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+                <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
+                  Maximum Schedule Edits
+                </label>
+                <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
+                  Number of times a scheduled vacation can be edited before it needs to be deleted and recreated.
+                </p>
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={generalSettings.max_schedule_edits}
+                  onChange={(e) => setGeneralSettings(prev => ({...prev, max_schedule_edits: parseInt(e.target.value)}))}
+                  className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+/>
+</div>
+{/* Notification Settings */}
+          <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
+              Notification Days Before
+            </label>
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
+              Number of days before vacation starts to send reminder notifications.
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={generalSettings.notification_days_before}
+              onChange={(e) => setGeneralSettings(prev => ({...prev, notification_days_before: parseInt(e.target.value)}))}
+              className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+
+          <div className="p-4 bg-almet-mystic/10 dark:bg-gray-900/20 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <label className="block text-sm font-medium text-almet-cloud-burst dark:text-white mb-2">
+              Notification Frequency (days)
+            </label>
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-3">
+              How often to send repeat notifications until vacation starts.
+            </p>
+            <input
+              type="number"
+              min="1"
+              max="7"
+              value={generalSettings.notification_frequency}
+              onChange={(e) => setGeneralSettings(prev => ({...prev, notification_frequency: parseInt(e.target.value)}))}
+              className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end mt-6">
+          <button
+            onClick={handleSaveGeneralSettings}
+            disabled={loading}
+            className="px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
+          >
+            {loading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save General Settings
+              </>
+            )}
+          </button>
+        </div>
       </div>
-    </DashboardLayout>
-  );
-}
+    )}
+
+    {/* ✅ HR REPRESENTATIVE TAB */}
+    {activeTab === 'hr' && (
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
+        <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-4">Default HR Representative</h3>
+        
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+            <div>
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">About HR Representative</h4>
+              <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
+                The HR Representative is responsible for the final approval of vacation requests after Line Manager (and UK Additional Approver for UK 5+ days) approval.
+                <br/>
+                This setting determines the default HR person who will be pre-selected when employees submit requests.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {defaultHR && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-green-900 dark:text-green-200">Current Default HR</p>
+                <p className="text-xs text-green-800 dark:text-green-300 mt-1">
+                  {defaultHR.name} ({defaultHR.employee_id}) - {defaultHR.department}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
+              Select Default HR Representative
+            </label>
+            <SearchableDropdown
+              options={hrRepresentatives.map(hr => ({
+                value: hr.id,
+                label: `${hr.name} (${hr.employee_id}) - ${hr.department}`
+              }))}
+              value={selectedHR}
+              onChange={setSelectedHR}
+              placeholder="Select HR representative..."
+              darkMode={darkMode}
+              searchPlaceholder="Search HR representatives..."
+            />
+            <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1.5">
+              This HR representative will be automatically selected when employees submit vacation requests.
+            </p>
+          </div>
+
+          <button
+            onClick={handleSaveHR}
+            disabled={loading || !selectedHR}
+            className="w-full px-6 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+          >
+            {loading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save HR Representative
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+</DashboardLayout>)}

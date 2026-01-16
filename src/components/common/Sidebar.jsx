@@ -103,17 +103,7 @@ const Sidebar = ({ collapsed = false }) => {
 
   const getFilteredMenuItems = () => {
     const allMenuItems = [
-      // { 
-      //   type: "section", 
-      //   label: "PERSONAL"
-      // },
-      // {
-      //   label: "My Profile",
-      //   icon: <User className="w-4 h-4" />,
-      //   path: "/dashboard",
-      //   id: "dashboard",
-      //   isProfile: true
-      // },
+     
       { 
         type: "section", 
         label: "STRUCTURE"
@@ -172,7 +162,8 @@ const Sidebar = ({ collapsed = false }) => {
         label: "Skills Matrix",
         icon: <Target className="w-4 h-4" />,
         path: "/efficiency/self-assessment",
-        id: "self-assessment"
+        id: "self-assessment",
+        requiredRole: ['admin']
       },
       { 
         type: "section", 
@@ -188,17 +179,13 @@ const Sidebar = ({ collapsed = false }) => {
         type: "section", 
         label: "REQUESTS"
       },
-      {
-        label: "Formation Contract",
-        icon: <FileSignature className="w-4 h-4" />,
-        path: "/requests/new",
-        id: "new"
-      },
+      
       {
         label: "Resignation & Exit",
         icon: <FileText className="w-4 h-4" />,
         path: "/requests/resignation",
-        id: "resignation"
+        id: "resignation",
+         requiredRole: ['admin']
       },
       {
         label: "Vacation Request",

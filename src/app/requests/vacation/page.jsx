@@ -93,7 +93,7 @@ export default function VacationRequestsPage() {
   const [rejectionReason, setRejectionReason] = useState('');
   const [conflictData, setConflictData] = useState([]);
   const [editingSchedule, setEditingSchedule] = useState(null);
-  
+  const [isUKEmployee, setIsUKEmployee] = useState(false);
   // File upload states
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [fileErrors, setFileErrors] = useState('');
@@ -134,7 +134,11 @@ export default function VacationRequestsPage() {
     employee_id: null,
     employee_manual: null,
     hr_representative_id: null,
-    line_manager: ''
+    line_manager: '',
+    // ✅ Half day fields
+    is_half_day: false,
+    half_day_start_time: '',
+    half_day_end_time: ''
   });
 
   // Fetch User Access Info - Similar to Job Description
@@ -203,10 +207,12 @@ export default function VacationRequestsPage() {
 
   const fetchVacationTypes = async () => {
     try {
-      const data = await VacationService.getVacationTypes();
-      setVacationTypes(data.results || []);
-      if (data.results?.length > 0) {
-        setFormData(prev => ({ ...prev, vacation_type_id: data.results[0].id }));
+      const data = await VacationService.getVacationTypesFiltered();
+      setVacationTypes(data.types || []);
+      setIsUKEmployee(data.is_uk_employee || false);
+      
+      if (data.types?.length > 0) {
+        setFormData(prev => ({ ...prev, vacation_type_id: data.types[0].id }));
       }
     } catch (error) {
       console.error('Vacation types fetch error:', error);
@@ -325,10 +331,15 @@ export default function VacationRequestsPage() {
     setFormData(prev => ({ ...prev, end_date: selectedDate }));
   };
 
-  const calculateWorkingDays = async (startDate, endDate) => {
+  const calculateWorkingDays = async (startDate, endDate, businessFunctionCode = null) => {
     if (!startDate || !endDate) return 0;
+    
     try {
-      const data = await VacationService.calculateWorkingDays({ start_date: startDate, end_date: endDate });
+      const data = await VacationService.calculateWorkingDays({ 
+        start_date: startDate, 
+        end_date: endDate,
+        business_function_code: businessFunctionCode // ✅ NEW
+      });
       return data.working_days || 0;
     } catch (error) {
       console.error('Working days calculation error:', error);
@@ -345,12 +356,27 @@ export default function VacationRequestsPage() {
       return;
     }
 
+    // ✅ Half day validation
+    if (formData.is_half_day) {
+      if (!formData.half_day_start_time || !formData.half_day_end_time) {
+        showError('Half day requests require start and end time');
+        return;
+      }
+      if (formData.half_day_start_time >= formData.half_day_end_time) {
+        showError('Start time must be before end time');
+        return;
+      }
+    }
+
+    // ✅ Balance check with half day support
     if (!vacationSettings.allow_negative_balance && balances) {
-      if (formData.numberOfDays > balances.remaining_balance) {
+      const requestDays = formData.is_half_day ? 0.5 : formData.numberOfDays;
+      if (requestDays > balances.remaining_balance) {
         showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
         return;
       }
     }
+
 
     setLoading(true);
     try {
@@ -359,7 +385,11 @@ export default function VacationRequestsPage() {
         vacation_type_id: parseInt(formData.vacation_type_id),
         start_date: formData.start_date,
         end_date: formData.end_date,
-        comment: formData.comment
+        comment: formData.comment,
+        // ✅ Half day fields
+        is_half_day: formData.is_half_day || false,
+        half_day_start_time: formData.is_half_day ? formData.half_day_start_time : null,
+        half_day_end_time: formData.is_half_day ? formData.half_day_end_time : null
       };
 
       if (formData.requester_type === 'for_my_employee') {
@@ -398,13 +428,17 @@ export default function VacationRequestsPage() {
         await fetchDashboard();
       }
 
+      // ✅ Reset form including half day fields
       setFormData(prev => ({ 
         ...prev, 
         start_date: '', 
         end_date: '', 
         dateOfReturn: '', 
         numberOfDays: 0, 
-        comment: '' 
+        comment: '',
+        is_half_day: false,
+        half_day_start_time: '',
+        half_day_end_time: ''
       }));
       setFileErrors('');
     } catch (error) {
@@ -421,7 +455,6 @@ export default function VacationRequestsPage() {
       setLoading(false);
     }
   };
-
   // Schedule handlers - Only admin can register and delete after registration
   const handleSaveEdit = async () => {
     if (!editingSchedule) return;
@@ -660,18 +693,41 @@ export default function VacationRequestsPage() {
   useEffect(() => {
     const updateWorkingDays = async () => {
       if (formData.start_date && formData.end_date) {
-        const days = await calculateWorkingDays(formData.start_date, formData.end_date);
-        const endDate = new Date(formData.end_date);
-        endDate.setDate(endDate.getDate() + 1);
-        setFormData(prev => ({ 
-          ...prev, 
-          numberOfDays: days, 
-          dateOfReturn: endDate.toISOString().split('T')[0] 
-        }));
+        // ✅ For half day, set to 0.5 directly
+        if (formData.is_half_day) {
+          const endDate = new Date(formData.start_date);
+          endDate.setDate(endDate.getDate() + 1);
+          setFormData(prev => ({ 
+            ...prev, 
+            numberOfDays: 0.5, 
+            dateOfReturn: endDate.toISOString().split('T')[0] 
+          }));
+        } else {
+          // ✅ Calculate with business function code
+          let businessFunctionCode = null;
+          if (formData.businessFunction) {
+            businessFunctionCode = formData.businessFunction.toUpperCase().includes('UK') ? 'UK' : null;
+          }
+          
+          const days = await calculateWorkingDays(
+            formData.start_date, 
+            formData.end_date,
+            businessFunctionCode
+          );
+          
+          const endDate = new Date(formData.end_date);
+          endDate.setDate(endDate.getDate() + 1);
+          
+          setFormData(prev => ({ 
+            ...prev, 
+            numberOfDays: days, 
+            dateOfReturn: endDate.toISOString().split('T')[0] 
+          }));
+        }
       }
     };
     updateWorkingDays();
-  }, [formData.start_date, formData.end_date]);
+  }, [formData.start_date, formData.end_date, formData.is_half_day, formData.businessFunction]);
 
   useEffect(() => {
     const loadCurrentUserData = async () => {

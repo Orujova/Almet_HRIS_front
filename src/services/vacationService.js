@@ -75,10 +75,29 @@ export const VacationService = {
     }
   },
 
-  // === USER PERMISSIONS ===
-  getMyPermissions: async () => {
+getVacationTypesFiltered: async () => {
     try {
-      const response = await vacationApi.get('/vacation/my-permissions/');
+      const response = await vacationApi.get('/vacation/types/filtered/');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Get UK Additional Approver
+  getUKAdditionalApprover: async () => {
+    try {
+      const response = await vacationApi.get('/vacation/uk-additional-approver/');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // ✅ NEW: Set UK Additional Approver (Admin only)
+  setUKAdditionalApprover: async (data) => {
+    try {
+      const response = await vacationApi.put('/vacation/uk-additional-approver/set/', data);
       return response.data;
     } catch (error) {
       throw error;
@@ -275,51 +294,62 @@ export const VacationService = {
   
   // Create Immediate Request
   createImmediateRequest: async (data, files = []) => {
-    try {
-      const formData = new FormData();
-      
-      formData.append('requester_type', data.requester_type);
-      formData.append('vacation_type_id', data.vacation_type_id);
-      formData.append('start_date', data.start_date);
-      formData.append('end_date', data.end_date);
-      
-      if (data.comment) {
-        formData.append('comment', data.comment);
-      }
-      
-      if (data.requester_type === 'for_my_employee') {
-        if (data.employee_id) {
-          formData.append('employee_id', data.employee_id);
-        } else if (data.employee_manual) {
-          formData.append('employee_manual', JSON.stringify(data.employee_manual));
-        }
-      }
-      
-      if (data.hr_representative_id) {
-        formData.append('hr_representative_id', data.hr_representative_id);
-      }
-      
-      if (files && files.length > 0) {
-        files.forEach((file) => {
-          formData.append('files', file);
-        });
-      }
-      
-      const response = await vacationApi.post('/vacation/requests/immediate/', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      
-      return response.data;
-    } catch (error) {
-      throw error;
+  try {
+    const formData = new FormData();
+    
+    formData.append('requester_type', data.requester_type);
+    formData.append('vacation_type_id', data.vacation_type_id);
+    formData.append('start_date', data.start_date);
+    formData.append('end_date', data.end_date);
+    
+    if (data.comment) {
+      formData.append('comment', data.comment);
     }
-  },
+    
+    // âœ… Add half day fields
+    if (data.is_half_day) {
+      formData.append('is_half_day', 'true');
+      if (data.half_day_start_time) {
+        formData.append('half_day_start_time', data.half_day_start_time);
+      }
+      if (data.half_day_end_time) {
+        formData.append('half_day_end_time', data.half_day_end_time);
+      }
+    }
+    
+    if (data.requester_type === 'for_my_employee') {
+      if (data.employee_id) {
+        formData.append('employee_id', data.employee_id);
+      } else if (data.employee_manual) {
+        formData.append('employee_manual', JSON.stringify(data.employee_manual));
+      }
+    }
+    
+    if (data.hr_representative_id) {
+      formData.append('hr_representative_id', data.hr_representative_id);
+    }
+    
+    if (files && files.length > 0) {
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+    }
+    
+    const response = await vacationApi.post('/vacation/requests/immediate/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 
   // === ATTACHMENTS ===
 
-  // Get Request Details (includes attachments)
+  
   getRequestDetail: async (id) => {
     try {
       const response = await vacationApi.get(`/vacation/requests/${id}/`);

@@ -494,9 +494,9 @@ export default function RoleAccessManagementPage() {
   };
 
   const tabs = [
+    { id: "assignments", label: "Employee Assignments", icon: Users },
     { id: "roles", label: "Roles", icon: Shield },
     { id: "permissions", label: "Permissions", icon: Key },
-    { id: "assignments", label: "Employee Assignments", icon: Users },
   ];
 
   const filteredRoles = roles.filter((role) =>

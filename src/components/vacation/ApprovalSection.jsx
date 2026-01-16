@@ -1,4 +1,4 @@
-import { Users, Settings, Eye, CheckCircle, XCircle, Lock, Shield } from 'lucide-react';
+import { Users, Settings, Eye, CheckCircle, XCircle, Lock, Shield, AlertTriangle } from 'lucide-react';
 
 export default function ApprovalSection({
   userAccess,
@@ -37,7 +37,7 @@ export default function ApprovalSection({
                 : 'text-blue-800 dark:text-blue-300'
             }`}>
               {userAccess.is_admin 
-                ? 'You can approve/reject requests as both Line Manager and HR representative.'
+                ? 'You can approve/reject requests at all stages: Line Manager, UK Additional, and HR.'
                 : 'You can approve/reject requests as Line Manager for your team members only.'}
             </p>
           </div>
@@ -49,7 +49,9 @@ export default function ApprovalSection({
         <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">Pending Approvals</h2>
           <span className="bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 px-3 py-1 rounded-full text-xs font-semibold">
-            {(pendingRequests.line_manager_requests?.length || 0) + (pendingRequests.hr_requests?.length || 0)} Pending
+            {(pendingRequests.line_manager_requests?.length || 0) + 
+             (pendingRequests.uk_additional_requests?.length || 0) + 
+             (pendingRequests.hr_requests?.length || 0)} Pending
           </span>
         </div>
         
@@ -68,6 +70,69 @@ export default function ApprovalSection({
                       <div className="flex-1">
                         <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
                         <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                          {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
+                        </p>
+                        {/* ✅ Show if UK request with 5+ days */}
+                        {request.is_uk && request.requires_uk_approval && (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-orange-700 dark:text-orange-400">
+                            <AlertTriangle className="w-3 h-3" />
+                            UK request (5+ days) - Additional approver required
+                          </div>
+                        )}
+                        {request.comment && (
+                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mt-2 italic">"{request.comment}"</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleViewDetails(request.id)}
+                          className="px-3 py-2 text-xs bg-almet-sapphire/10 text-almet-sapphire rounded-lg hover:bg-almet-sapphire/20 transition-all flex items-center gap-1.5 font-medium"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Details
+                        </button>
+                        <button 
+                          onClick={() => handleOpenApprovalModal(request)} 
+                          className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => handleOpenRejectionModal(request)} 
+                          className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center gap-1.5 font-medium shadow-sm"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ✅ UK ADDITIONAL APPROVALS */}
+          {pendingRequests.uk_additional_requests?.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-3 flex items-center gap-2">
+                <Shield className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                UK Additional Approvals ({pendingRequests.uk_additional_requests.length})
+                <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-medium">
+                  UK 5+ Days
+                </span>
+              </h3>
+              <div className="space-y-3">
+                {pendingRequests.uk_additional_requests?.map(request => (
+                  <div key={request.id} className="border border-orange-200/60 dark:border-orange-800/40 rounded-lg p-4 bg-orange-50/30 dark:bg-orange-900/10 hover:border-orange-300 dark:hover:border-orange-700 transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">{request.employee_name}</h4>
+                          <span className="text-xs bg-orange-100 dark:bg-orange-800/50 px-2 py-0.5 rounded font-medium text-orange-700 dark:text-orange-300">UK Additional</span>
+                        </div>
+                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
                           {request.vacation_type_name} • {request.start_date} to {request.end_date} • <strong>{request.number_of_days} days</strong>
                         </p>
                         {request.comment && (
@@ -160,21 +225,9 @@ export default function ApprovalSection({
             </div>
           )}
 
-          {/* Manager Notice - Cannot see HR requests */}
-          {!userAccess.is_admin && userAccess.is_manager && pendingRequests.line_manager_requests?.length === 0 && (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4">
-                <Users className="w-8 h-8 text-blue-600 dark:text-blue-400" />
-              </div>
-              <p className="text-sm font-medium text-almet-waterloo dark:text-almet-bali-hai">No pending Line Manager approvals</p>
-              <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">
-                You can only approve requests for your team members
-              </p>
-            </div>
-          )}
-
           {/* No Pending Requests */}
           {(pendingRequests.line_manager_requests?.length === 0 && 
+            pendingRequests.uk_additional_requests?.length === 0 &&
             (userAccess.is_admin ? pendingRequests.hr_requests?.length === 0 : true)) && (
             <div className="text-center py-12">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-50 dark:bg-green-900/20 mb-4">

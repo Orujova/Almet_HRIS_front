@@ -1,5 +1,7 @@
-import { Calendar, CheckCircle, Clock, Users, Upload, FileText, X } from 'lucide-react';
+// components/vacation/VacationRequestForm.jsx - FULL ENHANCED VERSION
+import { Calendar, CheckCircle, Clock, Users, Upload, FileText, X, AlertCircle } from 'lucide-react';
 import SearchableDropdown from "@/components/common/SearchableDropdown";
+import { useState, useEffect } from 'react';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ALLOWED_FILE_TYPES = [
@@ -32,7 +34,50 @@ export default function VacationRequestForm({
   loading,
   activeSection
 }) {
+  const [filteredVacationTypes, setFilteredVacationTypes] = useState([]);
+  const [selectedType, setSelectedType] = useState(null);
 
+  // ✅ Filter vacation types based on business function
+  useEffect(() => {
+    const filterVacationTypes = () => {
+      if (!vacationTypes || vacationTypes.length === 0) {
+        setFilteredVacationTypes([]);
+        return;
+      }
+
+      const businessFunctionCode = formData.businessFunction;
+      const isUK = businessFunctionCode && businessFunctionCode.toUpperCase().includes('UK');
+
+      const filtered = vacationTypes.filter(type => {
+        // UK-only types only for UK employees
+        if (type.is_uk_only && !isUK) {
+          return false;
+        }
+        return true;
+      });
+
+      setFilteredVacationTypes(filtered);
+    };
+
+    filterVacationTypes();
+  }, [vacationTypes, formData.businessFunction]);
+
+  // ✅ Handle vacation type change
+  const handleTypeChange = (typeId) => {
+    const type = filteredVacationTypes.find(t => t.id === typeId);
+    setSelectedType(type);
+    
+    setFormData(prev => ({
+      ...prev,
+      vacation_type_id: typeId,
+      is_half_day: type?.requires_time_selection ? true : false,
+      half_day_start_time: type?.requires_time_selection ? '09:00' : '',
+      half_day_end_time: type?.requires_time_selection ? '13:00' : '',
+      end_date: type?.requires_time_selection ? prev.start_date : prev.end_date
+    }));
+  };
+
+  // File validation
   const validateFile = (file) => {
     if (file.size > MAX_FILE_SIZE) {
       return `File "${file.name}" exceeds 10MB limit`;
@@ -70,13 +115,26 @@ export default function VacationRequestForm({
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // ✅ Check if UK employee
+  const isUKEmployee = formData.businessFunction && 
+    formData.businessFunction.toUpperCase().includes('UK');
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
       <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-            {activeSection === 'immediate' ? 'Submit Request' : 'Create Schedule'}
-          </h2>
+          <div>
+            <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
+              {activeSection === 'immediate' ? 'Submit Request' : 'Create Schedule'}
+            </h2>
+            {/* ✅ UK Employee Badge */}
+            {isUKEmployee && (
+              <span className="mt-2 inline-flex items-center gap-1 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded text-xs font-medium">
+                <AlertCircle className="w-3 h-3" />
+                UK Employee - Special rules apply
+              </span>
+            )}
+          </div>
           {activeSection === 'scheduling' && (
             <span className="bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1">
               <CheckCircle className="w-3 h-3" />
@@ -206,17 +264,89 @@ export default function VacationRequestForm({
               <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Leave Information</h3>
             </div>
 
+            {/* ✅ Vacation Type with UK badge */}
             <div>
-              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Leave Type</label>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                Leave Type
+              </label>
               <SearchableDropdown 
-                options={vacationTypes.map(type => ({ value: type.id, label: type.name }))} 
+                options={filteredVacationTypes.map(type => ({ 
+                  value: type.id, 
+                  label: type.name,
+                  badge: type.is_uk_only ? 'UK Only' : type.requires_time_selection ? 'Half Day' : null
+                }))} 
                 value={formData.vacation_type_id} 
-                onChange={(value) => setFormData(prev => ({...prev, vacation_type_id: value}))} 
+                onChange={handleTypeChange} 
                 placeholder="Select type" 
                 darkMode={darkMode} 
               />
+              {filteredVacationTypes.length === 0 && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  No vacation types available for {isUKEmployee ? 'UK' : 'AZ'} employees
+                </p>
+              )}
             </div>
-            
+
+            {/* ✅ Half Day Section - Only if type requires time selection */}
+            {selectedType?.requires_time_selection && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                  <h4 className="text-sm font-semibold text-orange-900 dark:text-orange-200">
+                    Half Day Request
+                  </h4>
+                </div>
+
+                <div className="bg-orange-100 dark:bg-orange-900/30 rounded p-3 text-xs text-orange-800 dark:text-orange-300">
+                  ✓ Half day requests use only one date (start date)
+                  <br />
+                  ✓ Select your working hours for this half day
+                  <br />
+                  ✓ Counted as 0.5 days
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
+                      Start Time *
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.half_day_start_time}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        half_day_start_time: e.target.value
+                      }))}
+                      required
+                      className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
+                      End Time *
+                    </label>
+                    <input
+                      type="time"
+                      value={formData.half_day_end_time}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        half_day_end_time: e.target.value
+                      }))}
+                      required
+                      className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
+                    />
+                  </div>
+                </div>
+
+                {formData.half_day_start_time && formData.half_day_end_time && (
+                  <div className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                    Working hours: {formData.half_day_start_time} - {formData.half_day_end_time}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Start Date</label>
               <input 
@@ -234,16 +364,25 @@ export default function VacationRequestForm({
               )}
             </div>
 
+            {/* ✅ End Date - Disabled for half day */}
             <div>
-              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">End Date</label>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                End Date
+                {selectedType?.requires_time_selection && (
+                  <span className="ml-2 text-xs text-orange-600 dark:text-orange-400">
+                    (Auto-set for half day)
+                  </span>
+                )}
+              </label>
               <input 
                 type="date" 
                 value={formData.end_date} 
                 onChange={handleEndDateChange}
                 min={formData.start_date || new Date().toISOString().split('T')[0]}
+                disabled={selectedType?.requires_time_selection}
                 className={`w-full px-3 py-2.5 text-sm outline-0 border rounded-lg dark:bg-gray-700 dark:text-white ${
-                  formErrors.end_date ? 'border-red-500' : 'border-almet-bali-hai/40 dark:border-almet-comet'
-                }`}
+                  selectedType?.requires_time_selection ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed' : ''
+                } ${formErrors.end_date ? 'border-red-500' : 'border-almet-bali-hai/40 dark:border-almet-comet'}`}
                 required 
               />
               {formErrors.end_date && (
@@ -263,12 +402,18 @@ export default function VacationRequestForm({
               </div>
               
               <div>
-                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Number of days</label>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  Number of days
+                  {selectedType?.requires_time_selection && (
+                    <span className="ml-1 text-xs text-orange-600 dark:text-orange-400">(0.5)</span>
+                  )}
+                </label>
                 <div className="relative">
                   <input 
                     type="number" 
                     value={formData.numberOfDays} 
                     disabled 
+                    step="0.5"
                     className="w-full px-3 py-2.5 text-sm outline-0 border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg bg-almet-mystic/30 dark:bg-gray-600 dark:text-white font-semibold" 
                   />
                   <Clock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-almet-waterloo" />
@@ -276,6 +421,7 @@ export default function VacationRequestForm({
               </div>
             </div>
 
+            {/* File attachments - Only for immediate requests */}
             {activeSection === 'immediate' && (
               <>
                 <div>
@@ -383,7 +529,17 @@ export default function VacationRequestForm({
           <button 
             type="button" 
             onClick={() => {
-              setFormData(prev => ({ ...prev, start_date: '', end_date: '', dateOfReturn: '', numberOfDays: 0, comment: '' }));
+              setFormData(prev => ({ 
+                ...prev, 
+                start_date: '', 
+                end_date: '', 
+                dateOfReturn: '', 
+                numberOfDays: 0, 
+                comment: '',
+                is_half_day: false,
+                half_day_start_time: '',
+                half_day_end_time: ''
+              }));
               setSelectedFiles([]);
             }} 
             className="px-5 py-2.5 text-sm border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
