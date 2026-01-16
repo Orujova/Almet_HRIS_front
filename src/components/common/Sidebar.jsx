@@ -185,7 +185,7 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <FileText className="w-4 h-4" />,
         path: "/requests/resignation",
         id: "resignation",
-         requiredRole: ['admin']
+      
       },
       {
         label: "Vacation Request",
