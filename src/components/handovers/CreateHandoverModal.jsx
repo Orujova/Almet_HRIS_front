@@ -50,45 +50,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   const [selectedHandoverType, setSelectedHandoverType] = useState(null);
   const isResignation = selectedHandoverType?.name?.toLowerCase() === 'resignation';
 
-  // Validate form
-  const validateStep = (step) => {
-    const newErrors = {};
 
-    if (step === 1) {
-      if (!formData.handing_over_employee) {
-        newErrors.handing_over_employee = 'Handing over employee is required';
-      }
-      if (!formData.taking_over_employee) {
-        newErrors.taking_over_employee = 'Taking over employee is required';
-      }
-      if (formData.handing_over_employee === formData.taking_over_employee) {
-        newErrors.taking_over_employee = 'Cannot be the same as handing over employee';
-      }
-      if (!formData.handover_type) {
-        newErrors.handover_type = 'Handover type is required';
-      }
-      if (!formData.start_date) {
-        newErrors.start_date = 'Start date is required';
-      }
-      
-      // ✅ Resignation deyilsə end_date məcburi
-      if (!isResignation) {
-        if (!formData.end_date) {
-          newErrors.end_date = 'End date is required';
-        }
-        if (formData.start_date && formData.end_date && 
-            new Date(formData.start_date) >= new Date(formData.end_date)) {
-          newErrors.end_date = 'End date must be after start date';
-        }
-      } else {
-        // ✅ Resignation-da end_date varsa validate et
-        if (formData.end_date && formData.start_date && 
-            new Date(formData.start_date) >= new Date(formData.end_date)) {
-          newErrors.end_date = 'End date must be after start date';
-        }
-      }
-    }
-  }
   // Load initial data
   useEffect(() => {
     loadInitialData();
@@ -219,6 +181,78 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   const handlePrevStep = () => {
     setActiveStep(prev => Math.max(prev - 1, 1));
   };
+// ✅ Handover type adını almaq üçün helper
+  const getHandoverTypeName = (typeId) => {
+    const type = handoverTypes.find(t => t.id === typeId);
+    return type?.name?.toLowerCase() || '';
+  };
+
+  // Validate form
+  const validateStep = (step) => {
+    const newErrors = {};
+
+    if (step === 1) {
+      if (!formData.handing_over_employee) {
+        newErrors.handing_over_employee = 'Handing over employee is required';
+      }
+      if (!formData.taking_over_employee) {
+        newErrors.taking_over_employee = 'Taking over employee is required';
+      }
+      if (formData.handing_over_employee === formData.taking_over_employee) {
+        newErrors.taking_over_employee = 'Cannot be the same as handing over employee';
+      }
+      if (!formData.handover_type) {
+        newErrors.handover_type = 'Handover type is required';
+      }
+      if (!formData.start_date) {
+        newErrors.start_date = 'Start date is required';
+      }
+      
+      // ✅ Check if resignation
+      const typeName = getHandoverTypeName(formData.handover_type);
+      const isResignation = typeName.includes('resignation');
+      
+      // ✅ End date validation - yalnız resignation deyilsə və ya doldurulubsa
+      if (!isResignation && !formData.end_date) {
+        newErrors.end_date = 'End date is required';
+      }
+      
+      // ✅ Əgər end_date doldurulubsa, validate et
+      if (formData.end_date) {
+        if (formData.start_date && new Date(formData.start_date) >= new Date(formData.end_date)) {
+          newErrors.end_date = 'End date must be after start date';
+        }
+      }
+    }
+
+    if (step === 2) {
+      const validTasks = tasks.filter(t => t.description.trim());
+      if (validTasks.length === 0) {
+        newErrors.tasks = 'At least one task with description is required';
+      }
+    }
+
+    if (step === 3) {
+      const validDates = dates.filter(d => d.date && d.description.trim());
+      if (validDates.length === 0) {
+        newErrors.dates = 'At least one important date is required';
+      }
+    }
+
+    if (step === 4) {
+      const hasAnyField = formData.contacts || formData.access_info || 
+                          formData.documents_info || formData.open_issues || 
+                          formData.notes || attachments.length > 0;
+      
+      if (!hasAnyField) {
+        newErrors.details = 'Please fill at least one field in Additional Information';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
 
   // Handle form submit
   const handleSubmit = async (e) => {
@@ -391,173 +425,174 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 </h3>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Handing Over Employee */}
-                <div>
-                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
-                    Handing Over Employee *
-                  </label>
-                  <SearchableDropdown
-                    options={employees.map(emp => ({
-                      value: emp.id,
-                      label: `${emp.name} - ${emp.job_title}`
-                    }))}
-                    value={formData.handing_over_employee}
-                    onChange={(value) => {
-                      setFormData(prev => ({ ...prev, handing_over_employee: value }));
-                      if (errors.handing_over_employee) {
-                        setErrors(prev => ({ ...prev, handing_over_employee: '' }));
-                      }
-                    }}
-                    placeholder="Select handing over employee..."
-                    searchPlaceholder="Search employees..."
-                    icon={<Users className="w-4 h-4" />}
-                    allowUncheck={false}
-                  />
-                  {errors.handing_over_employee && (
-                    <p className="text-red-500 text-xs mt-1">{errors.handing_over_employee}</p>
-                  )}
-                </div>
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Handing Over Employee */}
+          <div>
+            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+              Handing Over Employee *
+            </label>
+            <SearchableDropdown
+              options={employees.map(emp => ({
+                value: emp.id,
+                label: `${emp.name} - ${emp.job_title}`
+              }))}
+              value={formData.handing_over_employee}
+              onChange={(value) => {
+                setFormData(prev => ({ ...prev, handing_over_employee: value }));
+                if (errors.handing_over_employee) {
+                  setErrors(prev => ({ ...prev, handing_over_employee: '' }));
+                }
+              }}
+              placeholder="Select handing over employee..."
+              searchPlaceholder="Search employees..."
+              icon={<Users className="w-4 h-4" />}
+              allowUncheck={false}
+            />
+            {errors.handing_over_employee && (
+              <p className="text-red-500 text-xs mt-1">{errors.handing_over_employee}</p>
+            )}
+          </div>
 
-                {/* Taking Over Employee */}
-                <div>
-                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
-                    Taking Over Employee *
-                  </label>
-                  <SearchableDropdown
-                    options={employees
-                      .filter(emp => emp.id !== formData.handing_over_employee)
-                      .map(emp => ({
-                        value: emp.id,
-                        label: `${emp.name} - ${emp.job_title}`
-                      }))}
-                    value={formData.taking_over_employee}
-                    onChange={(value) => {
-                      setFormData(prev => ({ ...prev, taking_over_employee: value }));
-                      if (errors.taking_over_employee) {
-                        setErrors(prev => ({ ...prev, taking_over_employee: '' }));
-                      }
-                    }}
-                    placeholder="Select taking over employee..."
-                    searchPlaceholder="Search employees..."
-                    icon={<Users className="w-4 h-4" />}
-                    allowUncheck={false}
-                  />
-                  {errors.taking_over_employee && (
-                    <p className="text-red-500 text-xs mt-1">{errors.taking_over_employee}</p>
-                  )}
-                </div>
+          {/* Taking Over Employee */}
+          <div>
+            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+              Taking Over Employee *
+            </label>
+            <SearchableDropdown
+              options={employees
+                .filter(emp => emp.id !== formData.handing_over_employee)
+                .map(emp => ({
+                  value: emp.id,
+                  label: `${emp.name} - ${emp.job_title}`
+                }))}
+              value={formData.taking_over_employee}
+              onChange={(value) => {
+                setFormData(prev => ({ ...prev, taking_over_employee: value }));
+                if (errors.taking_over_employee) {
+                  setErrors(prev => ({ ...prev, taking_over_employee: '' }));
+                }
+              }}
+              placeholder="Select taking over employee..."
+              searchPlaceholder="Search employees..."
+              icon={<Users className="w-4 h-4" />}
+              allowUncheck={false}
+            />
+            {errors.taking_over_employee && (
+              <p className="text-red-500 text-xs mt-1">{errors.taking_over_employee}</p>
+            )}
+          </div>
 
-                 <div>
-                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
-                    Handover Type *
-                  </label>
-                  <SearchableDropdown
-                    options={handoverTypes.map(type => ({
-                      value: type.id,
-                      label: type.name
-                    }))}
-                    value={formData.handover_type}
-                    onChange={(value) => {
-                      const selectedType = handoverTypes.find(t => t.id === value);
-                      setSelectedHandoverType(selectedType);
-                      setFormData(prev => ({ ...prev, handover_type: value }));
-                      if (errors.handover_type) {
-                        setErrors(prev => ({ ...prev, handover_type: '' }));
-                      }
-                    }}
-                    placeholder="Select handover type..."
-                    searchPlaceholder="Search types..."
-                    icon={<FileText className="w-4 h-4" />}
-                    allowUncheck={false}
-                  />
-                  {errors.handover_type && (
-                    <p className="text-red-500 text-xs mt-1">{errors.handover_type}</p>
-                  )}
-                </div>
+          {/* Handover Type */}
+          <div>
+            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+              Handover Type *
+            </label>
+            <SearchableDropdown
+              options={handoverTypes.map(type => ({
+                value: type.id,
+                label: type.name
+              }))}
+              value={formData.handover_type}
+              onChange={(value) => {
+                setFormData(prev => ({ ...prev, handover_type: value }));
+                if (errors.handover_type) {
+                  setErrors(prev => ({ ...prev, handover_type: '' }));
+                }
+              }}
+              placeholder="Select handover type..."
+              searchPlaceholder="Search types..."
+              icon={<FileText className="w-4 h-4" />}
+              allowUncheck={false}
+            />
+            {errors.handover_type && (
+              <p className="text-red-500 text-xs mt-1">{errors.handover_type}</p>
+            )}
+          </div>
 
-                <div></div>
+          <div></div>
 
-                 <div>
-                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
-                    Start Date *
-                  </label>
-                  <div className="relative">
-                    <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      type="date"
-                      name="start_date"
-                      value={formData.start_date}
-                      onChange={handleInputChange}
-                      className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-                        errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
-                      }`}
-                      required
-                    />
-                  </div>
-                  {errors.start_date && (
-                    <p className="text-red-500 text-xs mt-1">{errors.start_date}</p>
-                  )}
-                </div>
+          {/* Start Date */}
+          <div>
+            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+              Start Date *
+            </label>
+            <div className="relative">
+              <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <input
+                type="date"
+                name="start_date"
+                value={formData.start_date}
+                onChange={handleInputChange}
+                className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                  errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
+                }`}
+                required
+              />
+            </div>
+            {errors.start_date && (
+              <p className="text-red-500 text-xs mt-1">{errors.start_date}</p>
+            )}
+          </div>
 
-                {/* End Date - ✅ Resignation-da optional */}
-                <div>
-                  <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
-                    End Date {!isResignation && '*'}
-                    {isResignation && (
-                      <span className="ml-1 text-xs font-normal text-almet-waterloo dark:text-gray-400">
-                        (Optional for Resignation)
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
-                    <input
-                      type="date"
-                      name="end_date"
-                      value={formData.end_date}
-                      onChange={handleInputChange}
-                      min={formData.start_date}
-                      className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
-                        errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
-                      }`}
-                      required={!isResignation}
-                    />
-                  </div>
-                  {errors.end_date && (
-                    <p className="text-red-500 text-xs mt-1">{errors.end_date}</p>
-                  )}
-                </div>
+          {/* End Date */}
+          <div>
+            <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
+              End Date {!isResignation && '*'}
+              {isResignation && (
+                <span className="ml-1 text-xs font-normal text-almet-waterloo dark:text-gray-400">
+                  (Optional for Resignation)
+                </span>
+              )}
+            </label>
+            <div className="relative">
+              <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <input
+                type="date"
+                name="end_date"
+                value={formData.end_date}
+                onChange={handleInputChange}
+                min={formData.start_date}
+                className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                  errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
+                }`}
+                required={!isResignation}
+              />
+            </div>
+            {errors.end_date && (
+              <p className="text-red-500 text-xs mt-1">{errors.end_date}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Date Range Info */}
+        {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
+          <div className="bg-almet-mystic/50 dark:bg-almet-cloud-burst/10 border border-almet-bali-hai/50 dark:border-almet-cloud-burst/30 rounded-lg p-3.5">
+            <div className="flex items-start gap-2.5">
+              <Clock className="w-4 h-4 text-almet-sapphire flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">Handover Period</p>
+                <p className="text-xs text-almet-waterloo dark:text-gray-400 mt-0.5">
+                  Duration: {Math.ceil((new Date(formData.end_date) - new Date(formData.start_date)) / (1000 * 60 * 60 * 24))} days
+                </p>
               </div>
+            </div>
+          </div>
+        )}
 
-                  {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
-                <div className="bg-almet-mystic/50 dark:bg-almet-cloud-burst/10 border border-almet-bali-hai/50 dark:border-almet-cloud-burst/30 rounded-lg p-3.5">
-                  <div className="flex items-start gap-2.5">
-                    <Clock className="w-4 h-4 text-almet-sapphire flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">Handover Period</p>
-                      <p className="text-xs text-almet-waterloo dark:text-gray-400 mt-0.5">
-                        Duration: {Math.ceil((new Date(formData.end_date) - new Date(formData.start_date)) / (1000 * 60 * 60 * 24))} days
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* ✅ Resignation info - end_date yoxdursa */}
-              {isResignation && !formData.end_date && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3.5">
-                  <div className="flex items-start gap-2.5">
-                    <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-medium text-yellow-900 dark:text-yellow-300">Open-ended Resignation</p>
-                      <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">
-                        No end date specified. This handover will remain active until taken back.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
+        {/* Open-ended Resignation Warning */}
+        {isResignation && !formData.end_date && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3.5">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-yellow-900 dark:text-yellow-300">Open-ended Resignation</p>
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">
+                  No end date specified. This handover will remain active until taken back.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
             </div>
           )}
 
