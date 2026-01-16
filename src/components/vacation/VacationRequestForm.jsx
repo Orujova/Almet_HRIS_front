@@ -287,54 +287,76 @@ export default function VacationRequestForm({
               )}
             </div>
 
-            {/* ✅ Half Day Section - Only if type requires time selection */}
-            {selectedType?.requires_time_selection && (
-              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 space-y-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
-                  <h4 className="text-sm font-semibold text-orange-900 dark:text-orange-200">
-                    Half Day Request
-                  </h4>
-                </div>
+            
 
-          
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
-                      Start Time *
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.half_day_start_time}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        half_day_start_time: e.target.value
-                      }))}
-                      required
-                      className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
-                    />
-                  </div>
+{/* ✅ Half Day Section - Manual time input */}
+{selectedType?.requires_time_selection && (
+  <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 space-y-4">
+    <div className="flex items-center gap-2">
+      <Clock className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+      <h4 className="text-sm font-semibold text-orange-900 dark:text-orange-200">
+        Half Day Request
+      </h4>
+    </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
-                      End Time *
-                    </label>
-                    <input
-                      type="time"
-                      value={formData.half_day_end_time}
-                      onChange={(e) => setFormData(prev => ({
-                        ...prev,
-                        half_day_end_time: e.target.value
-                      }))}
-                      required
-                      className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
-                    />
-                  </div>
-                </div>
+    <p className="text-xs text-orange-700 dark:text-orange-300">
+      Select your working hours for the half day (e.g., 09:00 - 13:00)
+    </p>
 
-              
-              </div>
-            )}
+    <div className="grid grid-cols-2 gap-3">
+      <div>
+        <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
+          Start Time *
+        </label>
+        <input
+          type="time"
+          value={formData.half_day_start_time}
+          onChange={(e) => {
+            setFormData(prev => ({
+              ...prev,
+              half_day_start_time: e.target.value,
+              // ✅ Auto-set end_date same as start_date for half day
+              end_date: prev.start_date
+            }))
+          }}
+          required
+          className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
+          End Time *
+        </label>
+        <input
+          type="time"
+          value={formData.half_day_end_time}
+          onChange={(e) => {
+            setFormData(prev => ({
+              ...prev,
+              half_day_end_time: e.target.value,
+              // ✅ Auto-set end_date same as start_date for half day
+              end_date: prev.start_date
+            }))
+          }}
+          required
+          className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
+        />
+      </div>
+    </div>
+
+    <div className="bg-orange-100 dark:bg-orange-800/30 rounded-lg p-3">
+      <p className="text-xs text-orange-800 dark:text-orange-200">
+        <strong>Note:</strong> Half day requests count as 0.5 days and will be deducted from your vacation balance.
+        {formData.half_day_start_time && formData.half_day_end_time && (
+          <span className="block mt-1">
+            Selected: {formData.half_day_start_time} - {formData.half_day_end_time}
+          </span>
+        )}
+      </p>
+    </div>
+  </div>
+)}
 
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">Start Date</label>

@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { 
   FileText, LogOut, RefreshCw, UserCheck, Settings, Plus,
-  Search, Calendar, TrendingUp, Clock, Eye, Trash2, AlertTriangle,
-  CheckCircle2, XCircle, Building
+  Search, TrendingUp, Clock, Eye, Trash2,  Building
 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -17,6 +16,7 @@ import ExitInterviewModal from '@/components/resignation/ExitInterviewModal';
 import ContractRenewalModal from '@/components/resignation/ContractRenewalModal';
 import ProbationReviewModal from '@/components/resignation/ProbationReviewModal';
 import CreateExitInterviewModal from '@/components/resignation/CreateExitInterviewModal';
+import ViewExitInterviewModal from '@/components/resignation/ViewExitInterviewModal';
 
 export default function ResignationExitManagement() {
   const [loading, setLoading] = useState(true);
@@ -421,27 +421,31 @@ export default function ResignationExitManagement() {
 
         {/* Modals */}
         {showModal && (
-          <>
-            {modalType === 'submit_resignation' && (
-              <ResignationSubmissionModal onClose={handleModalClose} onSuccess={handleModalSuccess} currentEmployee={currentUser} />
-            )}
-            {modalType === 'resignation_detail' && selectedItem && (
-              <ResignationDetailModal resignation={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} userRole={userRole} />
-            )}
-            {modalType === 'exit_interview' && selectedItem && (
-              <ExitInterviewModal interview={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} />
-            )}
-            {modalType === 'create_exit_interview' && (
-              <CreateExitInterviewModal onClose={handleModalClose} onSuccess={handleModalSuccess} />
-            )}
-            {modalType === 'contract_renewal' && selectedItem && (
-              <ContractRenewalModal contract={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} userRole={userRole} />
-            )}
-            {modalType === 'probation_review' && selectedItem && (
-              <ProbationReviewModal review={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} respondentType={respondentType} />
-            )}
-          </>
-        )}
+  <>
+    {modalType === 'submit_resignation' && (
+      <ResignationSubmissionModal onClose={handleModalClose} onSuccess={handleModalSuccess} currentEmployee={currentUser} />
+    )}
+    {modalType === 'resignation_detail' && selectedItem && (
+      <ResignationDetailModal resignation={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} userRole={userRole} />
+    )}
+    {modalType === 'exit_interview' && selectedItem && (
+      selectedItem.status === 'COMPLETED' ? (
+        <ViewExitInterviewModal interview={selectedItem} onClose={handleModalClose} />
+      ) : (
+        <ExitInterviewModal interview={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} />
+      )
+    )}
+    {modalType === 'create_exit_interview' && (
+      <CreateExitInterviewModal onClose={handleModalClose} onSuccess={handleModalSuccess} />
+    )}
+    {modalType === 'contract_renewal' && selectedItem && (
+      <ContractRenewalModal contract={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} userRole={userRole} />
+    )}
+    {modalType === 'probation_review' && selectedItem && (
+      <ProbationReviewModal review={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} respondentType={respondentType} />
+    )}
+  </>
+)}
 
         {/* Delete Confirmation */}
         <ConfirmationModal

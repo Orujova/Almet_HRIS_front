@@ -47,7 +47,48 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
   const [activeStep, setActiveStep] = useState(1);
 
   const { showSuccess, showError, showWarning } = useToast();
+  const [selectedHandoverType, setSelectedHandoverType] = useState(null);
+  const isResignation = selectedHandoverType?.name?.toLowerCase() === 'resignation';
 
+  // Validate form
+  const validateStep = (step) => {
+    const newErrors = {};
+
+    if (step === 1) {
+      if (!formData.handing_over_employee) {
+        newErrors.handing_over_employee = 'Handing over employee is required';
+      }
+      if (!formData.taking_over_employee) {
+        newErrors.taking_over_employee = 'Taking over employee is required';
+      }
+      if (formData.handing_over_employee === formData.taking_over_employee) {
+        newErrors.taking_over_employee = 'Cannot be the same as handing over employee';
+      }
+      if (!formData.handover_type) {
+        newErrors.handover_type = 'Handover type is required';
+      }
+      if (!formData.start_date) {
+        newErrors.start_date = 'Start date is required';
+      }
+      
+      // ✅ Resignation deyilsə end_date məcburi
+      if (!isResignation) {
+        if (!formData.end_date) {
+          newErrors.end_date = 'End date is required';
+        }
+        if (formData.start_date && formData.end_date && 
+            new Date(formData.start_date) >= new Date(formData.end_date)) {
+          newErrors.end_date = 'End date must be after start date';
+        }
+      } else {
+        // ✅ Resignation-da end_date varsa validate et
+        if (formData.end_date && formData.start_date && 
+            new Date(formData.start_date) >= new Date(formData.end_date)) {
+          newErrors.end_date = 'End date must be after start date';
+        }
+      }
+    }
+  }
   // Load initial data
   useEffect(() => {
     loadInitialData();
@@ -164,63 +205,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
-  // Validate form
-  const validateStep = (step) => {
-    const newErrors = {};
-
-    if (step === 1) {
-      if (!formData.handing_over_employee) {
-        newErrors.handing_over_employee = 'Handing over employee is required';
-      }
-      if (!formData.taking_over_employee) {
-        newErrors.taking_over_employee = 'Taking over employee is required';
-      }
-      if (formData.handing_over_employee === formData.taking_over_employee) {
-        newErrors.taking_over_employee = 'Cannot be the same as handing over employee';
-      }
-      if (!formData.handover_type) {
-        newErrors.handover_type = 'Handover type is required';
-      }
-      if (!formData.start_date) {
-        newErrors.start_date = 'Start date is required';
-      }
-      if (!formData.end_date) {
-        newErrors.end_date = 'End date is required';
-      }
-      if (formData.start_date && formData.end_date && 
-          new Date(formData.start_date) >= new Date(formData.end_date)) {
-        newErrors.end_date = 'End date must be after start date';
-      }
-    }
-
-    if (step === 2) {
-      const validTasks = tasks.filter(t => t.description.trim());
-      if (validTasks.length === 0) {
-        newErrors.tasks = 'At least one task with description is required';
-      }
-    }
-
-    if (step === 3) {
-      const validDates = dates.filter(d => d.date && d.description.trim());
-      if (validDates.length === 0) {
-        newErrors.dates = 'At least one important date is required';
-      }
-    }
-
-    if (step === 4) {
-      const hasAnyField = formData.contacts || formData.access_info || 
-                          formData.documents_info || formData.open_issues || 
-                          formData.notes || attachments.length > 0;
-      
-      if (!hasAnyField) {
-        newErrors.details = 'Please fill at least one field in Additional Information';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
+ 
   // Handle next step
   const handleNextStep = () => {
     if (validateStep(activeStep)) {
@@ -463,8 +448,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                   )}
                 </div>
 
-                {/* Handover Type */}
-                <div>
+                 <div>
                   <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     Handover Type *
                   </label>
@@ -475,6 +459,8 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                     }))}
                     value={formData.handover_type}
                     onChange={(value) => {
+                      const selectedType = handoverTypes.find(t => t.id === value);
+                      setSelectedHandoverType(selectedType);
                       setFormData(prev => ({ ...prev, handover_type: value }));
                       if (errors.handover_type) {
                         setErrors(prev => ({ ...prev, handover_type: '' }));
@@ -492,8 +478,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
 
                 <div></div>
 
-                {/* Start Date */}
-                <div>
+                 <div>
                   <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
                     Start Date *
                   </label>
@@ -515,10 +500,15 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                   )}
                 </div>
 
-                {/* End Date */}
+                {/* End Date - ✅ Resignation-da optional */}
                 <div>
                   <label className="block text-xs font-medium text-almet-cloud-burst dark:text-gray-200 mb-1.5">
-                    End Date *
+                    End Date {!isResignation && '*'}
+                    {isResignation && (
+                      <span className="ml-1 text-xs font-normal text-almet-waterloo dark:text-gray-400">
+                        (Optional for Resignation)
+                      </span>
+                    )}
                   </label>
                   <div className="relative">
                     <Calendar className="w-4 h-4 text-almet-waterloo absolute left-3 top-1/2 transform -translate-y-1/2" />
@@ -531,7 +521,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       className={`w-full outline-0 pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.end_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
-                      required
+                      required={!isResignation}
                     />
                   </div>
                   {errors.end_date && (
@@ -540,8 +530,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                 </div>
               </div>
 
-              {/* Date Range Info */}
-              {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
+                  {formData.start_date && formData.end_date && new Date(formData.start_date) < new Date(formData.end_date) && (
                 <div className="bg-almet-mystic/50 dark:bg-almet-cloud-burst/10 border border-almet-bali-hai/50 dark:border-almet-cloud-burst/30 rounded-lg p-3.5">
                   <div className="flex items-start gap-2.5">
                     <Clock className="w-4 h-4 text-almet-sapphire flex-shrink-0 mt-0.5" />
@@ -549,6 +538,21 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       <p className="text-xs font-medium text-almet-cloud-burst dark:text-white">Handover Period</p>
                       <p className="text-xs text-almet-waterloo dark:text-gray-400 mt-0.5">
                         Duration: {Math.ceil((new Date(formData.end_date) - new Date(formData.start_date)) / (1000 * 60 * 60 * 24))} days
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ✅ Resignation info - end_date yoxdursa */}
+              {isResignation && !formData.end_date && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium text-yellow-900 dark:text-yellow-300">Open-ended Resignation</p>
+                      <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">
+                        No end date specified. This handover will remain active until taken back.
                       </p>
                     </div>
                   </div>

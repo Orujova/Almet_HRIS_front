@@ -123,6 +123,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
       let questionsArray = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [data];
       setQuestions(questionsArray);
       
+      // ✅ FIX: Initialize responses with proper structure
       const initialResponses = {};
       questionsArray.forEach(q => {
         initialResponses[q.id] = {
@@ -133,8 +134,12 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
         };
       });
       setResponses(initialResponses);
+      
+      console.log('✅ Loaded questions:', questionsArray.length);
+      console.log('✅ Initialized responses:', Object.keys(initialResponses).length);
+      
     } catch (err) {
-      console.error('Error loading questions:', err);
+      console.error('❌ Error loading questions:', err);
       setQuestions([]);
     } finally {
       setLoading(false);
@@ -175,31 +180,77 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
     try {
       setSubmitting(true);
       
+      // ✅ Validate required questions
       const requiredQuestions = questions.filter(q => q.is_required);
       for (const q of requiredQuestions) {
         const response = responses[q.id];
-        if (q.question_type === 'RATING' && !response.rating_value) {
+        
+        if (!response) {
           alert(`Please answer: ${q.question_text_en}`);
           return;
         }
-        if (q.question_type === 'TEXT' && !response.text_value.trim()) {
+        
+        if (q.question_type === 'RATING' && !response.rating_value) {
+          alert(`Please provide a rating for: ${q.question_text_en}`);
+          return;
+        }
+        
+        if (q.question_type === 'TEXT' && !response.text_value?.trim()) {
           alert(`Please answer: ${q.question_text_en}`);
+          return;
+        }
+        
+        if (q.question_type === 'TEXTAREA' && !response.text_value?.trim()) {
+          alert(`Please answer: ${q.question_text_en}`);
+          return;
+        }
+        
+        if (q.question_type === 'CHOICE' && !response.choice_value) {
+          alert(`Please select an option for: ${q.question_text_en}`);
           return;
         }
       }
 
-      await resignationExitService.exitInterview.submitResponses(
+      // ✅ Prepare payload - ensure all fields are present
+      const responsesArray = Object.values(responses).map(r => ({
+        question: r.question,
+        rating_value: r.rating_value || null,
+        text_value: r.text_value || '',
+        choice_value: r.choice_value || ''
+      }));
+
+      console.log('✅ Submitting responses:', {
+        interview_id: interview.id,
+        responses_count: responsesArray.length,
+        payload: { responses: responsesArray }
+      });
+
+      // ✅ Submit to backend
+      const result = await resignationExitService.exitInterview.submitResponses(
         interview.id,
-        Object.values(responses)
+        responsesArray
       );
+
+      console.log('✅ Submit result:', result);
 
       alert('Exit interview completed successfully!');
       onSuccess && onSuccess();
       onClose();
 
     } catch (err) {
-      console.error('Error submitting:', err);
-      alert('Failed to submit. Please try again.');
+      console.error('❌ Error submitting:', err);
+      console.error('❌ Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      
+      const errorMessage = err.response?.data?.detail 
+        || err.response?.data?.message 
+        || err.message 
+        || 'Failed to submit. Please try again.';
+      
+      alert(`Submission failed: ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -267,7 +318,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
           <div className="w-10 h-10 border-3 border-almet-sapphire border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
-          <p className="text-xs text-gray-600 dark:text-gray-400 text-center">Loading...</p>
+          <p className="text-xs text-gray-600 dark:text-gray-400 text-center">Loading questions...</p>
         </div>
       </div>
     );
@@ -332,9 +383,16 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
           <h3 className="text-xs font-bold text-gray-900 dark:text-gray-100 mb-3">
             {sections[currentStep].label}
           </h3>
-          <div className="space-y-3">
-            {sectionQuestions.map(question => renderQuestion(question))}
-          </div>
+          
+          {sectionQuestions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 text-xs">
+              No questions in this section
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sectionQuestions.map(question => renderQuestion(question))}
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -371,7 +429,7 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
               ) : (
                 <>
                   <Save size={14} />
-                  Submit
+                  Submit Interview
                 </>
               )}
             </button>
