@@ -1,7 +1,99 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { X, Save, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
+
+// Separate question components
+const TextQuestion = ({ question, value, onChange, disabled }) => {
+  return (
+    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {question.question_text_en}
+        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+      </label>
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none"
+        placeholder="Your answer..."
+      />
+    </div>
+  );
+};
+
+const TextAreaQuestion = ({ question, value, onChange, disabled }) => {
+  return (
+    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {question.question_text_en}
+        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+      </label>
+      <textarea
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        rows={3}
+        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none resize-none"
+        placeholder="Your answer..."
+      />
+    </div>
+  );
+};
+
+const RatingQuestion = ({ question, value, onChange, disabled }) => {
+  const labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+  
+  return (
+    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {question.question_text_en}
+        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+      </label>
+      <div className="flex items-center gap-2">
+        {[1, 2, 3, 4, 5].map((rating) => (
+          <button
+            key={rating}
+            type="button"
+            onClick={() => onChange(rating)}
+            disabled={disabled}
+            className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+              value >= rating
+                ? 'bg-almet-sapphire text-white shadow-sm scale-105'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            {rating}
+          </button>
+        ))}
+        <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-2">
+          {labels[value - 1]}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+const ChoiceQuestion = ({ question, value, onChange, disabled }) => (
+  <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+      {question.question_text_en}
+      {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+    </label>
+    <select
+      value={value}
+      onChange={onChange}
+      disabled={disabled}
+      className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
+    >
+      <option value="">Select...</option>
+      {question.choices && question.choices.map((choice, idx) => (
+        <option key={idx} value={choice}>{choice}</option>
+      ))}
+    </select>
+  </div>
+);
 
 export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
   const [loading, setLoading] = useState(true);
@@ -10,14 +102,14 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
-  const sections = [
+  const sections = useMemo(() => [
     { id: 'ROLE', label: 'Role', shortLabel: 'Role' },
     { id: 'MANAGEMENT', label: 'Management', shortLabel: 'Mgmt' },
     { id: 'COMPENSATION', label: 'Compensation', shortLabel: 'Comp' },
     { id: 'CONDITIONS', label: 'Work Conditions', shortLabel: 'Work' },
     { id: 'CULTURE', label: 'Culture & Values', shortLabel: 'Culture' },
     { id: 'FINAL', label: 'Final Comments', shortLabel: 'Final' },
-  ];
+  ], []);
 
   useEffect(() => {
     loadQuestions();
@@ -49,24 +141,35 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
     }
   };
 
-  const handleResponseChange = (questionId, field, value) => {
-    setResponses(prev => {
-      const currentResponse = prev[questionId] || {
-        question: questionId,
-        rating_value: null,
-        text_value: '',
-        choice_value: ''
-      };
-      
-      return {
-        ...prev,
-        [questionId]: { 
-          ...currentResponse,
-          [field]: value 
-        }
-      };
-    });
-  };
+  const handleTextChange = useCallback((questionId, value) => {
+    setResponses(prev => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        text_value: value
+      }
+    }));
+  }, []);
+
+  const handleRatingChange = useCallback((questionId, value) => {
+    setResponses(prev => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        rating_value: value
+      }
+    }));
+  }, []);
+
+  const handleChoiceChange = useCallback((questionId, value) => {
+    setResponses(prev => ({
+      ...prev,
+      [questionId]: {
+        ...prev[questionId],
+        choice_value: value
+      }
+    }));
+  }, []);
 
   const handleSubmit = async () => {
     try {
@@ -102,101 +205,60 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
     }
   };
 
-  const RatingQuestion = ({ question }) => {
-    const labels = ['Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
-    const currentValue = responses[question.id]?.rating_value || 3;
-
-    return (
-      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {question.question_text_en}
-          {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-        </label>
-        <div className="flex items-center gap-2">
-          {[1, 2, 3, 4, 5].map((rating) => (
-            <button
-              key={rating}
-              type="button"
-              onClick={() => handleResponseChange(question.id, 'rating_value', rating)}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
-                currentValue >= rating
-                  ? 'bg-almet-sapphire text-white shadow-sm scale-105'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
-              }`}
-            >
-              {rating}
-            </button>
-          ))}
-          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-2">
-            {labels[currentValue - 1]}
-          </span>
-        </div>
-      </div>
-    );
-  };
-
-  const TextQuestion = ({ question }) => (
-    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {question.question_text_en}
-        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-      </label>
-      <input
-        type="text"
-        value={responses[question.id]?.text_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
-        placeholder="Your answer..."
-      />
-    </div>
-  );
-
-  const TextAreaQuestion = ({ question }) => (
-    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {question.question_text_en}
-        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-      </label>
-      <textarea
-        value={responses[question.id]?.text_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-        rows={3}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire resize-none"
-        placeholder="Your answer..."
-      />
-    </div>
-  );
-
-  const ChoiceQuestion = ({ question }) => (
-    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {question.question_text_en}
-        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-      </label>
-      <select
-        value={responses[question.id]?.choice_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'choice_value', e.target.value)}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
-      >
-        <option value="">Select...</option>
-        {question.choices && question.choices.map((choice, idx) => (
-          <option key={idx} value={choice}>{choice}</option>
-        ))}
-      </select>
-    </div>
-  );
-
-  const renderQuestion = (question) => {
+  const renderQuestion = useCallback((question) => {
+    const response = responses[question.id] || {};
+    
     switch (question.question_type) {
-      case 'RATING': return <RatingQuestion key={question.id} question={question} />;
-      case 'TEXT': return <TextQuestion key={question.id} question={question} />;
-      case 'TEXTAREA': return <TextAreaQuestion key={question.id} question={question} />;
-      case 'CHOICE': return <ChoiceQuestion key={question.id} question={question} />;
-      default: return null;
+      case 'RATING':
+        return (
+          <RatingQuestion
+            key={question.id}
+            question={question}
+            value={response.rating_value || 3}
+            onChange={(value) => handleRatingChange(question.id, value)}
+            disabled={submitting}
+          />
+        );
+      case 'TEXT':
+        return (
+          <TextQuestion
+            key={question.id}
+            question={question}
+            value={response.text_value || ''}
+            onChange={(e) => handleTextChange(question.id, e.target.value)}
+            disabled={submitting}
+          />
+        );
+      case 'TEXTAREA':
+        return (
+          <TextAreaQuestion
+            key={question.id}
+            question={question}
+            value={response.text_value || ''}
+            onChange={(e) => handleTextChange(question.id, e.target.value)}
+            disabled={submitting}
+          />
+        );
+      case 'CHOICE':
+        return (
+          <ChoiceQuestion
+            key={question.id}
+            question={question}
+            value={response.choice_value || ''}
+            onChange={(e) => handleChoiceChange(question.id, e.target.value)}
+            disabled={submitting}
+          />
+        );
+      default:
+        return null;
     }
-  };
+  }, [responses, submitting, handleTextChange, handleRatingChange, handleChoiceChange]);
 
-  const sectionQuestions = questions.filter(q => q.section === sections[currentStep].id);
+  const sectionQuestions = useMemo(() => 
+    questions.filter(q => q.section === sections[currentStep]?.id),
+    [questions, sections, currentStep]
+  );
+
   const isLastStep = currentStep === sections.length - 1;
   const isFirstStep = currentStep === 0;
 

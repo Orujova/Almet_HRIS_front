@@ -143,38 +143,7 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
             </div>
           )}
 
-          {/* Employee Information */}
-          <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-            <h3 className="text-xs font-semibold text-gray-800 dark:text-gray-200 mb-2">
-              Your Information
-            </h3>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Name</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">
-                  {currentEmployee?.full_name}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Position</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">
-                  {currentEmployee?.job_title}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Department</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">
-                  {currentEmployee?.department_name}
-                </p>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Manager</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">
-                  {currentEmployee?.line_manager_name}
-                </p>
-              </div>
-            </div>
-          </div>
+      
 
           {/* Last Working Day */}
           <div>
@@ -253,18 +222,7 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
             </div>
           </div>
 
-          {/* Important Reminders */}
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-            <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-              Before Submitting:
-            </p>
-            <ul className="list-disc list-inside space-y-0.5 text-xs text-yellow-700 dark:text-yellow-300">
-              <li>Ensure you have discussed this decision thoroughly</li>
-              <li>Check your employment contract for notice period requirements</li>
-              <li>Consider any ongoing projects and responsibilities</li>
-              <li>This action cannot be undone once submitted</li>
-            </ul>
-          </div>
+          
         </div>
 
         {/* Footer */}
