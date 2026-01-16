@@ -74,7 +74,15 @@ export const VacationService = {
       throw error;
     }
   },
-
+// Bulk Create Schedules
+bulkCreateSchedules: async (data) => {
+  try {
+    const response = await vacationApi.post('/vacation/schedules/bulk-create/', data);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+},
 getVacationTypesFiltered: async () => {
     try {
       const response = await vacationApi.get('/vacation/types/filtered/');

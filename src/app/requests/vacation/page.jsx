@@ -349,48 +349,84 @@ export default function VacationRequestsPage() {
 
   // Submit handler
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (formErrors.start_date || formErrors.end_date) {
-      showError('Please fix the date errors before submitting');
+  if (formErrors.start_date || formErrors.end_date) {
+    showError('Please fix the date errors before submitting');
+    return;
+  }
+
+  // ✅ Half day validation with time format check
+  if (formData.is_half_day) {
+    // Check if times are provided
+    if (!formData.half_day_start_time || !formData.half_day_end_time) {
+      showError('Half day requests require start and end time');
       return;
     }
-
-    // ✅ Half day validation
-    if (formData.is_half_day) {
-      if (!formData.half_day_start_time || !formData.half_day_end_time) {
-        showError('Half day requests require start and end time');
-        return;
-      }
-      if (formData.half_day_start_time >= formData.half_day_end_time) {
-        showError('Start time must be before end time');
-        return;
-      }
+    
+    // ✅ Validate time format (HH:MM)
+    const timeRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9])$/;
+    
+    if (!timeRegex.test(formData.half_day_start_time)) {
+      showError('Invalid start time format. Use HH:MM (e.g., 09:00)');
+      return;
     }
-
-    // ✅ Balance check with half day support
-    if (!vacationSettings.allow_negative_balance && balances) {
-      const requestDays = formData.is_half_day ? 0.5 : formData.numberOfDays;
-      if (requestDays > balances.remaining_balance) {
-        showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
-        return;
-      }
+    
+    if (!timeRegex.test(formData.half_day_end_time)) {
+      showError('Invalid end time format. Use HH:MM (e.g., 13:00)');
+      return;
     }
+    
+    // ✅ Check if start time < end time
+    const [startHour, startMin] = formData.half_day_start_time.split(':').map(Number);
+    const [endHour, endMin] = formData.half_day_end_time.split(':').map(Number);
+    
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
+    
+    if (startMinutes >= endMinutes) {
+      showError('Start time must be before end time');
+      return;
+    }
+    
+    // ✅ Check minimum duration (optional - at least 2 hours)
+    const durationMinutes = endMinutes - startMinutes;
+    if (durationMinutes < 120) {
+      showError('Half day must be at least 2 hours duration');
+      return;
+    }
+    
+    // ✅ CRITICAL: Set end_date same as start_date for half day
+    if (formData.start_date !== formData.end_date) {
+      setFormData(prev => ({
+        ...prev,
+        end_date: prev.start_date
+      }));
+    }
+  }
 
+  // ✅ Balance check with half day support
+  if (!vacationSettings.allow_negative_balance && balances) {
+    const requestDays = formData.is_half_day ? 0.5 : formData.numberOfDays;
+    if (requestDays > balances.remaining_balance) {
+      showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
+      return;
+    }
+  }
 
-    setLoading(true);
-    try {
-      let requestData = {
-        requester_type: formData.requester_type,
-        vacation_type_id: parseInt(formData.vacation_type_id),
-        start_date: formData.start_date,
-        end_date: formData.end_date,
-        comment: formData.comment,
-        // ✅ Half day fields
-        is_half_day: formData.is_half_day || false,
-        half_day_start_time: formData.is_half_day ? formData.half_day_start_time : null,
-        half_day_end_time: formData.is_half_day ? formData.half_day_end_time : null
-      };
+  setLoading(true);
+  try {
+    let requestData = {
+      requester_type: formData.requester_type,
+      vacation_type_id: parseInt(formData.vacation_type_id),
+      start_date: formData.start_date,
+      end_date: formData.is_half_day ? formData.start_date : formData.end_date,
+      comment: formData.comment,
+      // ✅ Half day fields - send as HH:MM format
+      is_half_day: formData.is_half_day || false,
+      half_day_start_time: formData.is_half_day ? formData.half_day_start_time : null,
+      half_day_end_time: formData.is_half_day ? formData.half_day_end_time : null
+    };
 
       if (formData.requester_type === 'for_my_employee') {
         if (formData.employee_id) {

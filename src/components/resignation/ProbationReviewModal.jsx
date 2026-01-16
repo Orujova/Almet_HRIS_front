@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { X, Save, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Save, ChevronLeft, ChevronRight, Check, User, Briefcase, Calendar } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 
 export default function ProbationReviewModal({ review, onClose, onSuccess, respondentType }) {
@@ -8,8 +8,8 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
   const [questions, setQuestions] = useState([]);
   const [responses, setResponses] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
 
-  // respondentType: 'EMPLOYEE' or 'MANAGER'
   const isEmployee = respondentType === 'EMPLOYEE';
 
   useEffect(() => {
@@ -20,15 +20,13 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     try {
       setLoading(true);
       
-      // Determine which questions to load based on review period and respondent
       const reviewTypePrefix = isEmployee ? 'EMPLOYEE' : 'MANAGER';
-      const reviewTypeSuffix = review.review_period.split('_')[0]; // '30', '60', or '90'
+      const reviewTypeSuffix = review.review_period.split('_')[0];
       const reviewType = `${reviewTypePrefix}_${reviewTypeSuffix}`;
       
       const data = await resignationExitService.probationReview.getQuestions(reviewType);
       setQuestions(data);
       
-      // Initialize responses
       const initialResponses = {};
       data.forEach(q => {
         initialResponses[q.id] = {
@@ -50,10 +48,7 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
   const handleResponseChange = (questionId, field, value) => {
     setResponses(prev => ({
       ...prev,
-      [questionId]: {
-        ...prev[questionId],
-        [field]: value
-      }
+      [questionId]: { ...prev[questionId], [field]: value }
     }));
   };
 
@@ -61,7 +56,6 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     try {
       setSubmitting(true);
       
-      // Validate required questions
       const requiredQuestions = questions.filter(q => q.is_required);
       for (const q of requiredQuestions) {
         const response = responses[q.id];
@@ -79,13 +73,10 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
         }
       }
 
-      // Prepare responses array
-      const responsesArray = Object.values(responses);
-      
       await resignationExitService.probationReview.submitResponses(
         review.id,
         respondentType,
-        responsesArray
+        Object.values(responses)
       );
 
       alert('Probation review submitted successfully!');
@@ -93,8 +84,8 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
       onClose();
 
     } catch (err) {
-      console.error('Error submitting probation review:', err);
-      alert('Failed to submit probation review. Please try again.');
+      console.error('Error submitting:', err);
+      alert('Failed to submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -105,33 +96,29 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     const currentValue = responses[question.id]?.rating_value || 3;
 
     return (
-      <div className="border-b border-gray-100 dark:border-gray-700 pb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
           {question.question_text_en}
-          {question.is_required && <span className="text-red-500 ml-1">*</span>}
+          {question.is_required && <span className="text-rose-500 ml-1">*</span>}
         </label>
-        <div className="flex items-center gap-3">
-          <div className="flex gap-2">
-            {[1, 2, 3, 4, 5].map((rating) => (
-              <button
-                key={rating}
-                type="button"
-                onClick={() => handleResponseChange(question.id, 'rating_value', rating)}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${
-                  currentValue >= rating
-                    ? 'bg-almet-sapphire text-white shadow-md scale-105'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                {rating}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              {labels[currentValue - 1]}
-            </span>
-          </div>
+        <div className="flex items-center gap-2">
+          {[1, 2, 3, 4, 5].map((rating) => (
+            <button
+              key={rating}
+              type="button"
+              onClick={() => handleResponseChange(question.id, 'rating_value', rating)}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+                currentValue >= rating
+                  ? 'bg-almet-sapphire text-white shadow-sm scale-105'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
+              }`}
+            >
+              {rating}
+            </button>
+          ))}
+          <span className="text-xs font-medium text-gray-700 dark:text-gray-300 ml-2">
+            {labels[currentValue - 1]}
+          </span>
         </div>
       </div>
     );
@@ -141,19 +128,19 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     const currentValue = responses[question.id]?.yes_no_value;
 
     return (
-      <div className="border-b border-gray-100 dark:border-gray-700 pb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
           {question.question_text_en}
-          {question.is_required && <span className="text-red-500 ml-1">*</span>}
+          {question.is_required && <span className="text-rose-500 ml-1">*</span>}
         </label>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={() => handleResponseChange(question.id, 'yes_no_value', true)}
-            className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
               currentValue === true
-                ? 'bg-green-600 text-white shadow-md'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
             }`}
           >
             ✓ Yes
@@ -161,10 +148,10 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
           <button
             type="button"
             onClick={() => handleResponseChange(question.id, 'yes_no_value', false)}
-            className={`flex-1 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
               currentValue === false
-                ? 'bg-red-600 text-white shadow-md'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
+                ? 'bg-rose-600 text-white shadow-sm'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200'
             }`}
           >
             ✗ No
@@ -174,65 +161,66 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     );
   };
 
-  const TextQuestion = ({ question }) => {
-    return (
-      <div className="border-b border-gray-100 dark:border-gray-700 pb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {question.question_text_en}
-          {question.is_required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <input
-          type="text"
-          value={responses[question.id]?.text_value || ''}
-          onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-          placeholder="Your answer..."
-        />
-      </div>
-    );
-  };
+  const TextQuestion = ({ question }) => (
+    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {question.question_text_en}
+        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+      </label>
+      <input
+        type="text"
+        value={responses[question.id]?.text_value || ''}
+        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
+        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
+        placeholder="Your answer..."
+      />
+    </div>
+  );
 
-  const TextAreaQuestion = ({ question }) => {
-    return (
-      <div className="border-b border-gray-100 dark:border-gray-700 pb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          {question.question_text_en}
-          {question.is_required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <textarea
-          value={responses[question.id]?.text_value || ''}
-          onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-          rows={4}
-          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
-          placeholder="Your answer..."
-        />
-      </div>
-    );
-  };
+  const TextAreaQuestion = ({ question }) => (
+    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+        {question.question_text_en}
+        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+      </label>
+      <textarea
+        value={responses[question.id]?.text_value || ''}
+        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
+        rows={3}
+        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire resize-none"
+        placeholder="Your answer..."
+      />
+    </div>
+  );
 
   const renderQuestion = (question) => {
     switch (question.question_type) {
-      case 'RATING':
-        return <RatingQuestion key={question.id} question={question} />;
-      case 'YES_NO':
-        return <YesNoQuestion key={question.id} question={question} />;
-      case 'TEXT':
-        return <TextQuestion key={question.id} question={question} />;
-      case 'TEXTAREA':
-        return <TextAreaQuestion key={question.id} question={question} />;
-      default:
-        return null;
+      case 'RATING': return <RatingQuestion key={question.id} question={question} />;
+      case 'YES_NO': return <YesNoQuestion key={question.id} question={question} />;
+      case 'TEXT': return <TextQuestion key={question.id} question={question} />;
+      case 'TEXTAREA': return <TextAreaQuestion key={question.id} question={question} />;
+      default: return null;
     }
   };
+
+  // Group questions by sections (every 5 questions)
+  const questionsPerSection = 5;
+  const totalSections = Math.ceil(questions.length / questionsPerSection);
+  const sections = Array.from({ length: totalSections }, (_, i) => ({
+    index: i,
+    label: `Section ${i + 1}`,
+    questions: questions.slice(i * questionsPerSection, (i + 1) * questionsPerSection)
+  }));
+
+  const currentSectionData = sections[currentStep] || { questions: [] };
+  const isLastStep = currentStep === sections.length - 1;
 
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-almet-sapphire mx-auto"></div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-4 text-center">
-            Loading probation review...
-          </p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6">
+          <div className="w-10 h-10 border-3 border-almet-sapphire border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <p className="text-xs text-gray-600 dark:text-gray-400 text-center">Loading...</p>
         </div>
       </div>
     );
@@ -240,117 +228,119 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-almet-sapphire to-almet-astral p-4 text-white flex items-center justify-between z-10">
+        <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral p-3 text-white flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold">
+            <h2 className="text-sm font-bold">
               {review.review_period.replace('_', '-')} Probation Review
             </h2>
-            <p className="text-blue-100 mt-0.5 text-xs">
+            <p className="text-blue-100 text-[10px]">
               {review.employee_name} - {isEmployee ? 'Self Assessment' : 'Manager Evaluation'}
             </p>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-colors"
-          >
-            <X size={20} />
+          <button onClick={onClose} className="p-1.5 hover:bg-white/20 rounded-lg transition-colors">
+            <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          {/* Info Notice */}
-          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
-            <div className="flex gap-2">
-              <AlertCircle className="text-blue-600 dark:text-blue-400 flex-shrink-0" size={16} />
-              <div className="text-xs text-blue-800 dark:text-blue-200">
-                <p className="font-medium mb-1">
-                  {isEmployee ? 'Self Assessment' : 'Manager Evaluation'}
-                </p>
-                <p>
-                  {isEmployee 
-                    ? 'Please honestly assess your performance during the probation period.'
-                    : 'Please evaluate the employee\'s performance during the probation period.'}
-                </p>
-              </div>
+        {/* Stepper */}
+        {sections.length > 1 && (
+          <div className="px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              {sections.map((section, idx) => (
+                <div key={idx} className="flex items-center flex-1">
+                  <button
+                    onClick={() => setCurrentStep(idx)}
+                    disabled={submitting}
+                    className={`flex items-center justify-center w-6 h-6 rounded-full text-[9px] font-bold transition-all ${
+                      idx < currentStep
+                        ? 'bg-emerald-500 text-white'
+                        : idx === currentStep
+                        ? 'bg-almet-sapphire text-white scale-110'
+                        : 'bg-gray-200 dark:bg-gray-700 text-gray-500'
+                    }`}
+                  >
+                    {idx < currentStep ? <Check size={12} /> : idx + 1}
+                  </button>
+                  {idx < sections.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-1 ${
+                      idx < currentStep ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-700'
+                    }`} />
+                  )}
+                </div>
+              ))}
             </div>
           </div>
+        )}
 
-          {/* Employee Info */}
-          <div className="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-3">
-              Employee Information
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Name</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">{review.employee_name}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Position</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">{review.position}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Department</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">{review.department}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 dark:text-gray-400">Review Period</p>
-                <p className="font-medium text-gray-800 dark:text-gray-200">
-                  {review.review_period.replace('_', ' ')}
-                </p>
-              </div>
+        {/* Employee Info */}
+        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-700">
+          <div className="flex items-center gap-3 text-[10px]">
+            <div className="flex items-center gap-1">
+              <User size={10} className="text-blue-600" />
+              <span className="text-gray-600 dark:text-gray-400">{review.employee_name}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Briefcase size={10} className="text-blue-600" />
+              <span className="text-gray-600 dark:text-gray-400">{review.position}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Calendar size={10} className="text-blue-600" />
+              <span className="text-gray-600 dark:text-gray-400">{review.review_period.replace('_', ' ')}</span>
             </div>
           </div>
+        </div>
 
-          {/* Questions */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-              Review Questions
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold text-gray-900 dark:text-gray-100">
+              {currentSectionData.label}
+              <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">
+                ({currentSectionData.questions.length} questions)
+              </span>
             </h3>
-            {questions.map(question => renderQuestion(question))}
-          </div>
-
-          {/* Important Notice */}
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
-            <p className="text-xs font-medium text-yellow-800 dark:text-yellow-200 mb-1">
-              Before Submitting:
-            </p>
-            <ul className="list-disc list-inside space-y-0.5 text-xs text-yellow-700 dark:text-yellow-300">
-              <li>Please review all your responses carefully</li>
-              <li>This review will be shared with HR and management</li>
-              <li>You cannot edit responses after submission</li>
-            </ul>
+            {currentSectionData.questions.map(question => renderQuestion(question))}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-700 px-5 py-3 flex gap-3 justify-end border-t border-gray-200 dark:border-gray-600">
-          <button 
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 text-xs bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors font-medium disabled:opacity-50"
+        <div className="bg-gray-50 dark:bg-gray-900 px-4 py-2 flex justify-between border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+            disabled={currentStep === 0 || submitting}
+            className="flex items-center gap-1 px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-300 text-xs font-medium disabled:opacity-50"
           >
-            Cancel
+            <ChevronLeft size={12} /> Back
           </button>
-          <button 
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <>
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                Submitting...
-              </>
-            ) : (
-              <>
-                <Save size={14} />
-                Submit Review
-              </>
-            )}
-          </button>
+          
+          {!isLastStep ? (
+            <button
+              onClick={() => setCurrentStep(Math.min(sections.length - 1, currentStep + 1))}
+              className="flex items-center gap-1 px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral text-xs font-medium"
+            >
+              Next <ChevronRight size={12} />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-xs font-medium disabled:opacity-50"
+            >
+              {submitting ? (
+                <>
+                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Save size={12} />
+                  Submit Review
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>

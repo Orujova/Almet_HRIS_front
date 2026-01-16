@@ -156,12 +156,7 @@ export const RequestDetailModal = ({
                     <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai mb-1">Company</p>
                     <p className="text-xs font-medium text-almet-cloud-burst dark:text-white flex items-center gap-1">
                       {request.employee_info?.business_function}
-                      {/* ✅ UK Badge */}
-                      {request.employee_info?.business_function_code === 'UK' && (
-                        <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded text-xs font-medium">
-                          UK
-                        </span>
-                      )}
+                  
                     </p>
                   </div>
                 </div>

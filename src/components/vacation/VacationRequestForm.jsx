@@ -287,9 +287,9 @@ export default function VacationRequestForm({
               )}
             </div>
 
-            
 
-{/* ✅ Half Day Section - Manual time input */}
+
+{/* ✅ Half Day Section - Manual time input WITHOUT picker */}
 {selectedType?.requires_time_selection && (
   <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 space-y-4">
     <div className="flex items-center gap-2">
@@ -299,61 +299,137 @@ export default function VacationRequestForm({
       </h4>
     </div>
 
-    <p className="text-xs text-orange-700 dark:text-orange-300">
-      Select your working hours for the half day (e.g., 09:00 - 13:00)
-    </p>
+ 
 
     <div className="grid grid-cols-2 gap-3">
+      {/* ✅ START TIME - Manual Text Input */}
       <div>
         <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
           Start Time *
         </label>
         <input
-          type="time"
+          type="text"
           value={formData.half_day_start_time}
           onChange={(e) => {
+            let value = e.target.value;
+            
+            // ✅ Auto-format: Add colon after 2 digits
+            if (value.length === 2 && !value.includes(':')) {
+              value = value + ':';
+            }
+            
+            // ✅ Only allow numbers and colon
+            value = value.replace(/[^0-9:]/g, '');
+            
+            // ✅ Limit to HH:MM format (5 chars max)
+            if (value.length > 5) {
+              value = value.substring(0, 5);
+            }
+            
             setFormData(prev => ({
               ...prev,
-              half_day_start_time: e.target.value,
-              // ✅ Auto-set end_date same as start_date for half day
-              end_date: prev.start_date
-            }))
+              half_day_start_time: value,
+              end_date: prev.start_date // Auto-set end_date same as start_date
+            }));
           }}
+         
+          placeholder="09:00"
+          maxLength={5}
           required
-          className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
+          className={`w-full px-3 py-2.5 text-sm border rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500 ${
+            formErrors.half_day_start_time 
+              ? 'border-red-500 dark:border-red-500' 
+              : 'border-orange-300 dark:border-orange-700'
+          }`}
         />
+        {formErrors.half_day_start_time && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+            {formErrors.half_day_start_time}
+          </p>
+        )}
       </div>
 
+      {/* ✅ END TIME - Manual Text Input */}
       <div>
         <label className="block text-xs font-medium text-orange-900 dark:text-orange-200 mb-1.5">
           End Time *
         </label>
         <input
-          type="time"
+          type="text"
           value={formData.half_day_end_time}
           onChange={(e) => {
+            let value = e.target.value;
+            
+            // ✅ Auto-format: Add colon after 2 digits
+            if (value.length === 2 && !value.includes(':')) {
+              value = value + ':';
+            }
+            
+            // ✅ Only allow numbers and colon
+            value = value.replace(/[^0-9:]/g, '');
+            
+            // ✅ Limit to HH:MM format
+            if (value.length > 5) {
+              value = value.substring(0, 5);
+            }
+            
             setFormData(prev => ({
               ...prev,
-              half_day_end_time: e.target.value,
-              // ✅ Auto-set end_date same as start_date for half day
-              end_date: prev.start_date
-            }))
+              half_day_end_time: value,
+              end_date: prev.start_date // Auto-set end_date same as start_date
+            }));
           }}
+       
+          placeholder="13:00"
+          maxLength={5}
           required
-          className="w-full px-3 py-2.5 text-sm border border-orange-300 dark:border-orange-700 rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500"
+          className={`w-full px-3 py-2.5 text-sm border rounded-lg dark:bg-gray-700 dark:text-white focus:ring-1 focus:ring-orange-500 ${
+            formErrors.half_day_end_time 
+              ? 'border-red-500 dark:border-red-500' 
+              : 'border-orange-300 dark:border-orange-700'
+          }`}
         />
+        {formErrors.half_day_end_time && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+            {formErrors.half_day_end_time}
+          </p>
+        )}
       </div>
     </div>
 
-    <div className="bg-orange-100 dark:bg-orange-800/30 rounded-lg p-3">
-      <p className="text-xs text-orange-800 dark:text-orange-200">
-        <strong>Note:</strong> Half day requests count as 0.5 days and will be deducted from your vacation balance.
-        {formData.half_day_start_time && formData.half_day_end_time && (
-          <span className="block mt-1">
-            Selected: {formData.half_day_start_time} - {formData.half_day_end_time}
-          </span>
-        )}
+
+    {/* ✅ Common Time Examples */}
+    <div className="bg-orange-50 dark:bg-orange-900/10 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+      <p className="text-xs text-orange-800 dark:text-orange-200 font-medium mb-2">
+        📋 Common Half Day Times:
       </p>
+      <div className="flex flex-wrap gap-2">
+        {[
+          { label: 'Morning', start: '09:00', end: '13:00' },
+          { label: 'Afternoon', start: '14:00', end: '18:00' },
+     
+        ].map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => {
+              setFormData(prev => ({
+                ...prev,
+                half_day_start_time: preset.start,
+                half_day_end_time: preset.end,
+                end_date: prev.start_date
+              }));
+             
+            }}
+            className="px-3 py-1.5 text-xs bg-white dark:bg-gray-700 border border-orange-300 dark:border-orange-700 rounded-md hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+          >
+            <span className="font-medium">{preset.label}</span>
+            <span className="ml-1 text-orange-600 dark:text-orange-400">
+              ({preset.start} - {preset.end})
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   </div>
 )}

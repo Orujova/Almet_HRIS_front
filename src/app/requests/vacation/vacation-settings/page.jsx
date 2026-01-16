@@ -405,18 +405,7 @@ export default function VacationSettingsPage() {
         {/* PRODUCTION CALENDAR TAB */}
         {activeTab === 'calendar' && (
           <div className="space-y-6">
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                <div>
-                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Dual Calendar System</h3>
-                  <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                    <strong>Azerbaijan:</strong> Weekends (Sat/Sun) are working days, only holidays below are excluded.<br/>
-                    <strong>UK:</strong> Both weekends (Sat/Sun) AND holidays below are excluded from working days.
-                  </p>
-                </div>
-              </div>
-            </div>
+        
 
             <div className="grid lg:grid-cols-2 gap-6">
               {/* Azerbaijan Calendar */}
@@ -651,17 +640,7 @@ Save UK Additional Approver
     {activeTab === 'types' && (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex-1 mr-4">
-            <div className="flex items-start gap-3">
-              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Leave Types</h3>
-                <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                  Configure different types of leave (Annual, Sick, Unpaid, etc.). Mark UK-only types or half-day types.
-                </p>
-              </div>
-            </div>
-          </div>
+         
           <button
             onClick={() => handleOpenTypeModal()}
             className="px-4 py-2.5 text-sm bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-2 shadow-md whitespace-nowrap"
@@ -748,18 +727,7 @@ Save UK Additional Approver
     {/* ✅ BALANCES TAB */}
     {activeTab === 'balances' && (
       <div className="space-y-6">
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">Bulk Balance Management</h3>
-              <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                Download the template, fill in employee balances, and upload to set/update balances in bulk.
-                <br/>You can also reset all balances for a specific year.
-              </p>
-            </div>
-          </div>
-        </div>
+       
 
         <div className="grid md:grid-cols-2 gap-6">
           {/* Upload Balances */}
@@ -960,17 +928,7 @@ Save UK Additional Approver
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-6">
         <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white mb-4">Default HR Representative</h3>
         
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-            <div>
-              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200">About HR Representative</h4>
-              <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-                Final approver after Line Manager (and UK Additional Approver for UK 5+ days).
-              </p>
-            </div>
-          </div>
-        </div>
+    
 
         {defaultHR && (
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-4">
