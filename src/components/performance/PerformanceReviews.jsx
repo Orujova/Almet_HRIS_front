@@ -31,27 +31,15 @@ export default function PerformanceReviews({
     const userEmployeeId = String(permissions.employee.id);
     const performanceEmployeeId = String(performanceData.employee);
     
-    console.log('🔍 Employee Check:', {
-      userEmployeeId,
-      performanceEmployeeId,
-      match: userEmployeeId === performanceEmployeeId
-    });
-    
+
     return userEmployeeId === performanceEmployeeId;
   })();
   
   const isCurrentUserManager = (() => {
     if (!permissions?.employee || !performanceData) return false;
-    const lineManagerId = performanceData.employee_data?.line_manager_hc;
-    if (!lineManagerId) return false;
     
-    console.log('🔍 Manager Check:', {
-      currentUserHC: permissions.employee.employee_id,
-      lineManagerHC: lineManagerId,
-      match: permissions.employee.employee_id === lineManagerId
-    });
     
-    return permissions.employee.employee_id === lineManagerId;
+    return permissions.is_manager;
   })();
 
   const isEmployeeSubmitted = Boolean(performanceData?.mid_year_employee_submitted);
@@ -65,30 +53,7 @@ export default function PerformanceReviews({
   const canEditEndYearEmployee = isCurrentUserEmployee && isEndYearPeriod;
   const canEditEndYearManager = isCurrentUserManager && isEndYearPeriod;
 
-  // ✅ DEBUG: Log all permissions
-  console.log('📊 PERMISSIONS DEBUG:', {
-    currentPeriod,
-    isMidYearPeriod,
-    isEndYearPeriod,
-    isCurrentUserEmployee,
-    isCurrentUserManager,
-    canEditMidYearEmployee,
-    canEditMidYearManager,
-    canEditEndYearEmployee,
-    canEditEndYearManager,
-    permissions: {
-      employee_id: permissions?.employee?.id,
-      employee_hc: permissions?.employee?.employee_id,
-      is_admin: permissions?.is_admin,
-      is_manager: permissions?.is_manager
-    },
-    performanceData: {
-      employee: performanceData?.employee,
-      employee_data: performanceData?.employee_data,
-      mid_year_employee_submitted: performanceData?.mid_year_employee_submitted,
-      mid_year_completed: performanceData?.mid_year_completed
-    }
-  });
+
 
   const handleStartEdit = (section, role) => {
     const key = `${section}_${role}`;
