@@ -6,7 +6,7 @@ import { employeeService } from "@/services/newsService";
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 
 export default function CreateExitInterviewModal({ onClose, onSuccess }) {
-  const [step, setStep] = useState(1); // 1: Select Employee, 2: Confirm, 3: Questions
+  const [step, setStep] = useState(1);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -58,6 +58,7 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
       let questionsArray = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : [data];
       setQuestions(questionsArray);
       
+      // Initialize responses with proper structure
       const initialResponses = {};
       questionsArray.forEach(q => {
         initialResponses[q.id] = {
@@ -68,6 +69,7 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
         };
       });
       setResponses(initialResponses);
+      console.log('✅ Responses initialized:', initialResponses);
       
     } catch (err) {
       console.error('Error loading questions:', err);
@@ -113,7 +115,6 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
       console.log('✅ Exit Interview Created:', exitInterview);
       setInterviewId(exitInterview.id);
       
-      // Load questions
       await loadQuestions();
       
       setStep(3);
@@ -127,10 +128,19 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
   };
 
   const handleResponseChange = (questionId, field, value) => {
-    setResponses(prev => ({
-      ...prev,
-      [questionId]: { ...prev[questionId], [field]: value }
-    }));
+    console.log(`📝 Updating Q${questionId}.${field} = "${value}"`);
+    
+    setResponses(prev => {
+      const updated = {
+        ...prev,
+        [questionId]: {
+          ...(prev[questionId] || { question: questionId, rating_value: null, text_value: '', choice_value: '' }),
+          [field]: value
+        }
+      };
+      console.log('📊 Updated responses:', updated);
+      return updated;
+    });
   };
 
   const handleSubmitQuestions = async () => {
@@ -183,7 +193,8 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
               key={rating}
               type="button"
               onClick={() => handleResponseChange(question.id, 'rating_value', rating)}
-              className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all ${
+              disabled={submitting}
+              className={`w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold transition-all disabled:opacity-50 ${
                 currentValue >= rating
                   ? 'bg-almet-sapphire text-white shadow-sm scale-105'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-500 hover:bg-gray-200'
@@ -200,39 +211,55 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
     );
   };
 
-  const TextQuestion = ({ question }) => (
-  <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-      {question.question_text_en}
-      {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-    </label>
-    <input
-      type="text"
-      value={responses[question.id]?.text_value || ''}
-      onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-      className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none"
-      placeholder="Your answer..."
-      disabled={submitting}
-    />
-  </div>
-);
+  const TextQuestion = ({ question }) => {
+    const value = responses[question.id]?.text_value || '';
+    
+    return (
+      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {question.question_text_en}
+          {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+        </label>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleResponseChange(question.id, 'text_value', e.target.value);
+          }}
+          disabled={submitting}
+          className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          placeholder="Your answer..."
+        />
+      </div>
+    );
+  };
 
-const TextAreaQuestion = ({ question }) => (
-  <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-      {question.question_text_en}
-      {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-    </label>
-    <textarea
-      value={responses[question.id]?.text_value || ''}
-      onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-      rows={3}
-      className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none resize-none"
-      placeholder="Your answer..."
-      disabled={submitting}
-    />
-  </div>
-);
+  const TextAreaQuestion = ({ question }) => {
+    const value = responses[question.id]?.text_value || '';
+    
+    return (
+      <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {question.question_text_en}
+          {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+        </label>
+        <textarea
+          value={value}
+          onChange={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleResponseChange(question.id, 'text_value', e.target.value);
+          }}
+          disabled={submitting}
+          rows={3}
+          className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none resize-none disabled:opacity-50 disabled:cursor-not-allowed"
+          placeholder="Your answer..."
+        />
+      </div>
+    );
+  };
 
   const ChoiceQuestion = ({ question }) => (
     <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
@@ -243,7 +270,8 @@ const TextAreaQuestion = ({ question }) => (
       <select
         value={responses[question.id]?.choice_value || ''}
         onChange={(e) => handleResponseChange(question.id, 'choice_value', e.target.value)}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
+        disabled={submitting}
+        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire disabled:opacity-50"
       >
         <option value="">Select...</option>
         {question.choices && question.choices.map((choice, idx) => (

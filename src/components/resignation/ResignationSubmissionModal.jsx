@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react'; // ✅ Add useEffect
+import React, { useState, useEffect } from 'react';
 import { X, Upload, FileText, Send, AlertCircle } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 
@@ -13,7 +13,6 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Set employee ID when component mounts
   useEffect(() => {
     if (currentEmployee?.id) {
       setFormData(prev => ({
@@ -26,12 +25,10 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setError('File size must be less than 5MB');
         return;
       }
-      // Check file type
       const allowedTypes = ['application/pdf', 'application/msword', 
                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
       if (!allowedTypes.includes(file.type)) {
@@ -51,11 +48,13 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
     if (!formData.last_working_day) return '';
     
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const lastDay = new Date(formData.last_working_day);
+    lastDay.setHours(0, 0, 0, 0);
     const diffTime = lastDay - today;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
-    return diffDays > 0 ? `${diffDays} days notice period` : 'Invalid date';
+    return diffDays >= 0 ? `${diffDays} days notice period` : 'Invalid date';
   };
 
   const handleSubmit = async () => {
@@ -68,9 +67,11 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const lastDay = new Date(formData.last_working_day);
+    lastDay.setHours(0, 0, 0, 0);
     
-    if (lastDay <= today) {
-      setError('Last working day must be in the future');
+    // ✅ FIX: Allow today as last working day
+    if (lastDay < today) {
+      setError('Last working day cannot be in the past');
       return;
     }
 
@@ -90,7 +91,6 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
       onSuccess && onSuccess();
       onClose();
       
-      // Show success message
       alert('Resignation submitted successfully! Your manager will be notified.');
       
     } catch (err) {
@@ -185,7 +185,7 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
               type="date"
               value={formData.last_working_day}
               onChange={(e) => setFormData({...formData, last_working_day: e.target.value})}
-              min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
             {formData.last_working_day && (

@@ -50,10 +50,22 @@ export default function ExitInterviewModal({ interview, onClose, onSuccess }) {
   };
 
   const handleResponseChange = (questionId, field, value) => {
-    setResponses(prev => ({
-      ...prev,
-      [questionId]: { ...prev[questionId], [field]: value }
-    }));
+    setResponses(prev => {
+      const currentResponse = prev[questionId] || {
+        question: questionId,
+        rating_value: null,
+        text_value: '',
+        choice_value: ''
+      };
+      
+      return {
+        ...prev,
+        [questionId]: { 
+          ...currentResponse,
+          [field]: value 
+        }
+      };
+    });
   };
 
   const handleSubmit = async () => {
