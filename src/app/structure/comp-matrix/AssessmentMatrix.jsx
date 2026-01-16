@@ -393,6 +393,13 @@ const PageHeader = () => (
           <div className="flex items-center gap-2">
             {activeView === 'dashboard' && !showSettings && (
               <>
+               <ActionButton
+                      onClick={() => setShowSettings(true)}
+                      icon={Settings}
+                      label="Matrix Settings"
+                      variant="outline"
+                      size="sm"
+                    />
                 {/* ✅ Admin-only buttons */}
                 {canAccessManagement() ? (
                   <>
@@ -403,13 +410,7 @@ const PageHeader = () => (
                       variant="outline"
                       size="sm"
                     />
-                    <ActionButton
-                      onClick={() => setShowSettings(true)}
-                      icon={Settings}
-                      label="Matrix Settings"
-                      variant="outline"
-                      size="sm"
-                    />
+                   
                   </>
                 ) : (
                   /* ✅ Show locked button for non-admins with tooltip */
@@ -711,7 +712,7 @@ const EmployeeDashboardView = () => {
     return (
       <div className="space-y-4">
         <PageHeader />
-        <AssessmentSettings onBack={() => setShowSettings(false)} />
+        <AssessmentSettings onBack={() => setShowSettings(false)} canAccessManagement={canAccessManagement} />
       </div>
     );
   }

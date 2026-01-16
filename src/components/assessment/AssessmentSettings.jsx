@@ -24,7 +24,7 @@ const StatusBadge = ({ isActive }) => (
 );
 
 // Assessment Table Component
-const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
+const AssessmentTable = ({ data, type, onEdit, onDelete,canAccessManagement }) => {
   const getColumns = () => {
     const baseColumns = [
       { 
@@ -112,6 +112,7 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
                   </td>
                 ))}
                 <td className="py-3 px-4 text-center">
+                  {canAccessManagement() && (
                   <div className="flex items-center justify-center gap-2">
                     <ActionButton
                       onClick={() => onEdit(item, type)}
@@ -128,6 +129,7 @@ const AssessmentTable = ({ data, type, onEdit, onDelete }) => {
                       size="xs"
                     />
                   </div>
+                  )}
                 </td>
               </tr>
             ))
@@ -204,7 +206,7 @@ const FormInput = ({ label, required, children }) => (
   </div>
 );
 
-const AssessmentSettings = ({ onBack }) => {
+const AssessmentSettings = ({ canAccessManagement }) => {
   const { showSuccess, showError } = useToast();
   
   // States
@@ -485,7 +487,8 @@ const AssessmentSettings = ({ onBack }) => {
               {activeSection === 'core' && <><Target size={18} />Core Competency Scales</>}
               {activeSection === 'grading' && <><Award size={18} />Letter Grade Mapping</>}
             </h3>
-            <ActionButton
+            {
+              canAccessManagement() && (<ActionButton
               onClick={() => {
                 if (activeSection === 'behavioral') setShowBehavioralModal(true);
                 else if (activeSection === 'core') setShowCoreModal(true);
@@ -495,13 +498,16 @@ const AssessmentSettings = ({ onBack }) => {
               label="Add New"
               variant="primary"
               size="md"
-            />
+            />  )
+            }
+            
           </div>
 
           {/* Content */}
           <div className="p-4">
             {activeSection === 'behavioral' && (
               <AssessmentTable 
+              canAccessManagement={canAccessManagement}
                 data={behavioralScales}
                 type="behavioral"
                 onEdit={handleEdit}
@@ -511,6 +517,7 @@ const AssessmentSettings = ({ onBack }) => {
 
             {activeSection === 'core' && (
               <AssessmentTable 
+              canAccessManagement={canAccessManagement}
                 data={coreScales}
                 type="core"
                 onEdit={handleEdit}
@@ -520,6 +527,7 @@ const AssessmentSettings = ({ onBack }) => {
 
             {activeSection === 'grading' && (
               <AssessmentTable 
+              canAccessManagement={canAccessManagement}
                 data={letterGrades}
                 type="letter"
                 onEdit={handleEdit}

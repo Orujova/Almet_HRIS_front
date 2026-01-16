@@ -1,14 +1,14 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import { Calendar, CheckCircle, FileText, Users, TrendingUp, Settings, Lock, Shield } from 'lucide-react';
+import { Calendar, CheckCircle, FileText,CalendarIcon , Users, TrendingUp, Settings, Lock, Shield } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 // Layout & Common
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
+import PlanningVacationTab from '@/components/vacation/PlanningVacationTab';
 
-// Services
 import { VacationService, VacationHelpers } from '@/services/vacationService';
 import { referenceDataService } from "@/services/vacantPositionsService";
 
@@ -25,12 +25,13 @@ import BalancesTabContent from '@/components/vacation/BalancesTabContent';
 // Components
 import VacationStats from '@/components/vacation/VacationStats';
 import VacationRequestForm from '@/components/vacation/VacationRequestForm';
-import ScheduleList from '@/components/vacation/ScheduleList';
+
 import ApprovalSection from '@/components/vacation/ApprovalSection';
 import MyRecordsTable from '@/components/vacation/MyRecordsTable';
 import AllRecordsTable from '@/components/vacation/AllRecordsTable';
 import EditScheduleModal from '@/components/vacation/EditScheduleModal';
 import jobDescriptionService from '@/services/jobDescriptionService';
+import MySchedulesTab from '@/components/vacation/MySchedulesTab';
 
 export default function VacationRequestsPage() {
   const { darkMode } = useTheme();
@@ -154,6 +155,8 @@ export default function VacationRequestsPage() {
       setAccessLoading(false);
     }
   };
+  
+
 
   // Initialize data
   const initializeData = async () => {
@@ -231,14 +234,18 @@ export default function VacationRequestsPage() {
     }
   };
 
-  const fetchScheduleTabs = async () => {
-    try {
-      const data = await VacationService.getScheduleTabs();
-      setScheduleTabs(data);
-    } catch (error) {
-      console.error('Schedule tabs fetch error:', error);
-    }
-  };
+  // VacationRequestsPage.jsx-də fetchScheduleTabs funksiyasını tapın və dəyişin:
+
+const fetchScheduleTabs = async () => {
+  console.log('🔍 fetchScheduleTabs called'); // ✅ ƏLAVƏ
+  try {
+    const data = await VacationService.getScheduleTabs();
+    console.log('📊 Schedule Tabs Data:', data); // ✅ ƏLAVƏ
+    setScheduleTabs(data);
+  } catch (error) {
+    console.error('Schedule tabs fetch error:', error);
+  }
+};
 
   const fetchPendingRequests = async () => {
     try {
@@ -491,44 +498,69 @@ export default function VacationRequestsPage() {
       setLoading(false);
     }
   };
-  // Schedule handlers - Only admin can register and delete after registration
-  const handleSaveEdit = async () => {
-    if (!editingSchedule) return;
+ // VacationRequestsPage.jsx
 
-    if (editingSchedule.edit_count >= vacationSettings.max_schedule_edits) {
-      showError(`Maximum edit limit (${vacationSettings.max_schedule_edits}) reached`);
-      return;
-    }
+const handleSaveEdit = async () => {
+  if (!editingSchedule) return;
 
-    setLoading(true);
-    try {
-      const editData = {
-        vacation_type_id: editingSchedule.vacation_type_id,
-        start_date: editingSchedule.start_date,
-        end_date: editingSchedule.end_date,
-        comment: editingSchedule.comment
-      };
-      
-      await VacationService.editSchedule(editingSchedule.id, editData);
-      showSuccess('Schedule updated successfully');
+  if (editingSchedule.edit_count >= vacationSettings.max_schedule_edits) {
+    showError(`Maximum edit limit (${vacationSettings.max_schedule_edits}) reached`);
+    return;
+  }
+
+  // ✅ Validate dates
+  if (!editingSchedule.start_date || !editingSchedule.end_date) {
+    showError('Start date and end date are required');
+    return;
+  }
+
+  if (editingSchedule.end_date < editingSchedule.start_date) {
+    showError('End date must be after start date');
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const editData = {
+      vacation_type_id: parseInt(editingSchedule.vacation_type_id),
+      start_date: editingSchedule.start_date, // Already in YYYY-MM-DD format from input[type="date"]
+      end_date: editingSchedule.end_date,
+      comment: editingSchedule.comment || ''
+    };
+    
+    console.log('📤 Sending edit data:', editData);
+    console.log('📤 Data types:', {
+      vacation_type_id: typeof editData.vacation_type_id,
+      start_date: typeof editData.start_date,
+      end_date: typeof editData.end_date,
+      comment: typeof editData.comment
+    });
+    
+    const response = await VacationService.editSchedule(editingSchedule.id, editData);
+    console.log('✅ Edit response:', response);
+    
+    showSuccess('Schedule updated successfully');
+    setEditModalOpen(false);
+    setEditingSchedule(null);
+    fetchScheduleTabs();
+    fetchMyAllRecords();
+  } catch (error) {
+    console.error('❌ Edit error:', error);
+    console.error('❌ Error response:', error.response?.data);
+    console.error('❌ Full error:', JSON.stringify(error.response?.data, null, 2));
+    
+    if (error.response?.data?.conflicts && error.response?.data?.conflicts.length > 0) {
+      setConflictData(error.response.data.conflicts);
+      setShowConflictModal(true);
       setEditModalOpen(false);
-      setEditingSchedule(null);
-      fetchScheduleTabs();
-      fetchMyAllRecords();
-    } catch (error) {
-      console.error('Edit error:', error);
-      
-      if (error.response?.data?.conflicts && error.response?.data?.conflicts.length > 0) {
-        setConflictData(error.response.data.conflicts);
-        setShowConflictModal(true);
-        setEditModalOpen(false);
-      } else {
-        showError(error.response?.data?.error || 'Failed to update');
-      }
-    } finally {
-      setLoading(false);
+    } else {
+      const errorMsg = error.response?.data?.error || error.response?.data?.detail || 'Failed to update';
+      showError(errorMsg);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEditSchedule = (schedule) => {
     setEditingSchedule({
@@ -713,18 +745,26 @@ export default function VacationRequestsPage() {
     handleEmployeeSearch();
   }, []);
 
-  useEffect(() => {
-    if (activeTab === 'approval' && (userAccess.is_manager || userAccess.is_admin)) {
-      fetchPendingRequests();
-      fetchApprovalHistory();
-    } else if (activeTab === 'all') {
-      fetchMyAllRecords();
-    } else if (activeTab === 'records' && (userAccess.can_view_all || userAccess.is_manager)) {
-      fetchAllVacationRecords();
-    } else if (activeSection === 'scheduling') {
-      fetchScheduleTabs();
-    }
-  }, [activeTab, activeSection, userAccess]);
+ // VacationRequestsPage.jsx-də bu useEffect-i tapın və düzəldin:
+
+useEffect(() => {
+  console.log('🎯 Active Tab:', activeTab); // ✅ ƏLAVƏ
+  console.log('👤 User Access:', userAccess); // ✅ ƏLAVƏ
+  
+  if (activeTab === 'approval' && (userAccess.is_manager || userAccess.is_admin)) {
+    fetchPendingRequests();
+    fetchApprovalHistory();
+  } else if (activeTab === 'all') {
+    fetchMyAllRecords();
+  } else if (activeTab === 'records' && (userAccess.can_view_all || userAccess.is_manager)) {
+    fetchAllVacationRecords();
+  } else if (activeTab === 'schedules') {
+    console.log('✅ Schedules tab - calling fetchScheduleTabs'); // ✅ ƏLAVƏ
+    fetchScheduleTabs();
+  } else if (activeSection === 'scheduling') {
+    fetchScheduleTabs();
+  }
+}, [activeTab, activeSection, userAccess]);
 
   useEffect(() => {
     const updateWorkingDays = async () => {
@@ -819,37 +859,42 @@ export default function VacationRequestsPage() {
     );
   }
 
-  // Get available tabs based on access level
   const getAvailableTabs = () => {
-    const tabs = [
-      { key: 'request', label: 'Request', icon: FileText }
-    ];
+  const tabs = [
+    { key: 'request', label: 'Request', icon: FileText },
+  ];
+  
+  tabs.push({ key: 'planning', label: 'Planning Vacation', icon: Calendar });
+  // Approval tab only for managers and admins
+  if (userAccess.is_manager || userAccess.is_admin) {
+    tabs.push({ key: 'approval', label: 'Approval', icon: CheckCircle });
+  }
 
-    // Approval tab only for managers and admins
-    if (userAccess.is_manager || userAccess.is_admin) {
-      tabs.push({ key: 'approval', label: 'Approval', icon: CheckCircle });
-    }
+  // ✅ NEW: My Schedules - hər kəs görür
+  tabs.push({ key: 'schedules', label: 'My Schedules', icon: Calendar });
 
-    // My Records - Everyone
-    tabs.push({ key: 'all', label: 'My Records', icon: Calendar });
+  // My Records - Everyone
+  tabs.push({ key: 'all', label: 'My Records', icon: FileText });
 
-    // All Records - Managers see team, Admins see all
-    if (userAccess.can_view_all || userAccess.is_manager) {
-      tabs.push({ 
-        key: 'records', 
-        label: userAccess.is_admin ? 'All Records' : 'Team Records', 
-        icon: Users 
-      });
-    }
+  // All Records - Managers see team, Admins see all
+  if (userAccess.can_view_all || userAccess.is_manager) {
+    tabs.push({ 
+      key: 'records', 
+      label: userAccess.is_admin ? 'All Records' : 'Team Records', 
+      icon: Users 
+    });
+  }
 
-    // Calendar - Everyone
-    tabs.push({ key: 'calendar', label: 'Calendar', icon: Calendar });
+  // Calendar - Everyone
+  tabs.push({ key: 'calendar', label: 'Calendar', icon: Calendar });
 
-    // Balances - Managers see team, Admins see all, Employees see own
-    tabs.push({ key: 'balances', label: 'Balances', icon: TrendingUp });
+  // Balances - Everyone
+  tabs.push({ key: 'balances', label: 'Balances', icon: TrendingUp });
 
-    return tabs;
-  };
+  // ✅ Planning Vacation - Everyone
+
+  return tabs;
+};
 
   return (
     <DashboardLayout>
@@ -932,73 +977,56 @@ export default function VacationRequestsPage() {
 
         {/* Content */}
         {activeTab === 'request' && balances && (
-          <div className="space-y-5">
-            <VacationStats 
-              balances={balances} 
-              allowNegativeBalance={vacationSettings.allow_negative_balance}
-            />
-            
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setActiveSection('immediate')}
-                className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-                  activeSection === 'immediate' 
-                    ? 'bg-almet-sapphire text-white shadow-md' 
-                    : 'bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white border border-almet-mystic dark:border-almet-comet hover:border-almet-sapphire dark:hover:border-almet-astral'
-                }`}
-              >
-                <CheckCircle className="w-4 h-4" />
-                Request (Approval Required)
-              </button>
-              <button 
-                onClick={() => setActiveSection('scheduling')}
-                className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 ${
-                  activeSection === 'scheduling' 
-                    ? 'bg-almet-sapphire text-white shadow-md' 
-                    : 'bg-white dark:bg-gray-800 text-almet-cloud-burst dark:text-white border border-almet-mystic dark:border-almet-comet hover:border-almet-sapphire dark:hover:border-almet-astral'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                Schedule (No Approval)
-              </button>
-            </div>
+  <div className="space-y-5">
+    <VacationStats 
+      balances={balances} 
+      allowNegativeBalance={vacationSettings.allow_negative_balance}
+    />
+    
+    {/* ❌ Bu section-u sil - artıq yoxdur
+    <div className="flex gap-3">
+      <button onClick={() => setActiveSection('immediate')}>...</button>
+      <button onClick={() => setActiveSection('scheduling')}>...</button>
+    </div>
+    */}
 
-            <VacationRequestForm
-              formData={formData}
-              setFormData={setFormData}
-              formErrors={formErrors}
-              requester={requester}
-              setRequester={setRequester}
-              employeeSearchResults={employeeSearchResults}
-              vacationTypes={vacationTypes}
-              hrRepresentatives={hrRepresentatives}
-              darkMode={darkMode}
-              handleStartDateChange={handleStartDateChange}
-              handleEndDateChange={handleEndDateChange}
-              selectedFiles={selectedFiles}
-              setSelectedFiles={setSelectedFiles}
-              fileErrors={fileErrors}
-              handleSubmit={handleSubmit}
-              loading={loading}
-              activeSection={activeSection}
-            />
 
-            {activeSection === 'scheduling' && (
-              <ScheduleList
-                schedulesTab={schedulesTab}
-                setSchedulesTab={setSchedulesTab}
-                scheduleTabs={scheduleTabs}
-                handleExportSchedules={handleExportSchedules}
-                handleEditSchedule={handleEditSchedule}
-                handleDeleteSchedule={handleDeleteSchedule}
-                handleRegisterSchedule={handleRegisterSchedule}
-                canEditSchedule={canEditSchedule}
-                maxScheduleEdits={vacationSettings.max_schedule_edits}
-                userAccess={userAccess}
-              />
-            )}
-          </div>
-        )}
+
+    {/* ✅ Yalnız request form */}
+    <VacationRequestForm
+      formData={formData}
+      setFormData={setFormData}
+      formErrors={formErrors}
+      requester={requester}
+      setRequester={setRequester}
+      employeeSearchResults={employeeSearchResults}
+      vacationTypes={vacationTypes}
+      hrRepresentatives={hrRepresentatives}
+      darkMode={darkMode}
+      handleStartDateChange={handleStartDateChange}
+      handleEndDateChange={handleEndDateChange}
+      selectedFiles={selectedFiles}
+      setSelectedFiles={setSelectedFiles}
+      fileErrors={fileErrors}
+      handleSubmit={handleSubmit}
+      loading={loading}
+    />
+  </div>
+)}
+
+{activeTab === 'schedules' && (
+  <MySchedulesTab
+    userAccess={userAccess}
+    scheduleTabs={scheduleTabs}
+    handleExportSchedules={handleExportSchedules}
+    handleEditSchedule={handleEditSchedule}
+    handleDeleteSchedule={handleDeleteSchedule}
+    handleRegisterSchedule={handleRegisterSchedule}
+    canEditSchedule={canEditSchedule}
+    maxScheduleEdits={vacationSettings.max_schedule_edits}
+    handleViewScheduleDetail={handleViewScheduleDetail}
+  />
+)}
 
         {activeTab === 'approval' && (userAccess.is_manager || userAccess.is_admin) && (
           <ApprovalSection
@@ -1023,7 +1051,17 @@ export default function VacationRequestsPage() {
             userAccess={userAccess}
           />
         )}
-
+{activeTab === 'planning' && (
+  <PlanningVacationTab
+    darkMode={darkMode}
+    userAccess={userAccess}
+    vacationTypes={vacationTypes}
+    employeeSearchResults={employeeSearchResults}
+    balances={balances}
+    showSuccess={showSuccess}
+    showError={showError}
+  />
+)}
         {activeTab === 'records' && (userAccess.can_view_all || userAccess.is_manager) && (
           <AllRecordsTable
             allVacationRecords={allVacationRecords}

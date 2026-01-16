@@ -1,0 +1,244 @@
+// components/vacation/PlanningCalendar.jsx
+import { useState } from 'react';
+
+export default function PlanningCalendar({
+  currentMonth,
+  selectedRanges,
+  onRangeSelect,
+
+  darkMode,
+  onMonthChange
+}) {
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const [dragEnd, setDragEnd] = useState(null);
+const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const handleMonthSelect = (monthIndex) => {
+    const newDate = new Date(currentMonth.getFullYear(), monthIndex, 1);
+    onMonthChange(newDate);
+  };
+
+  const handleYearChange = (increment) => {
+    const newDate = new Date(currentMonth.getFullYear() + increment, currentMonth.getMonth(), 1);
+    onMonthChange(newDate);
+  };
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+    
+    return { daysInMonth, startingDayOfWeek };
+  };
+
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const isDateSelected = (date) => {
+    const dateStr = formatDate(date);
+    return selectedRanges.some(range => {
+      return dateStr >= range.start && dateStr <= range.end;
+    });
+  };
+
+  const isDateInDragRange = (date) => {
+    if (!dragStart || !dragEnd) return false;
+    
+    const dateStr = formatDate(date);
+    const start = dragStart < dragEnd ? dragStart : dragEnd;
+    const end = dragStart < dragEnd ? dragEnd : dragStart;
+    
+    return dateStr >= formatDate(start) && dateStr <= formatDate(end);
+  };
+
+  const isToday = (date) => {
+    const today = new Date();
+    return date.toDateString() === today.toDateString();
+  };
+
+  const isPastDate = (date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  };
+
+  const handleMouseDown = (date) => {
+    if (isPastDate(date)) return;
+    setIsDragging(true);
+    setDragStart(date);
+    setDragEnd(date);
+  };
+
+  const handleMouseEnter = (date) => {
+    if (isDragging && !isPastDate(date)) {
+      setDragEnd(date);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging && dragStart && dragEnd) {
+      const start = dragStart < dragEnd ? dragStart : dragEnd;
+      const end = dragStart < dragEnd ? dragEnd : dragStart;
+      
+      onRangeSelect(formatDate(start), formatDate(end));
+    }
+    
+    setIsDragging(false);
+    setDragStart(null);
+    setDragEnd(null);
+  };
+
+  const renderCalendar = () => {
+    const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
+    const days = [];
+
+    // Empty cells before month starts
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(
+        <div 
+          key={`empty-${i}`} 
+          className="min-h-[80px] border border-almet-mystic/10 dark:border-almet-comet/10 bg-gray-50 dark:bg-gray-900/50"
+        />
+      );
+    }
+
+    // Calendar days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+      const isSelected = isDateSelected(date);
+      const inDragRange = isDateInDragRange(date);
+      const today = isToday(date);
+      const past = isPastDate(date);
+
+      days.push(
+        <div
+          key={day}
+          onMouseDown={() => handleMouseDown(date)}
+          onMouseEnter={() => handleMouseEnter(date)}
+          onMouseUp={handleMouseUp}
+          className={`
+            min-h-[80px] border border-almet-mystic/30 dark:border-almet-comet/30 p-2 
+            transition-all cursor-pointer select-none
+            ${past ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed opacity-50' : ''}
+            ${today && !past ? 'ring-2 ring-almet-sapphire dark:ring-almet-astral' : ''}
+            ${isSelected && !past ? 'bg-green-100 dark:bg-green-900/30 border-green-400 dark:border-green-600' : ''}
+            ${inDragRange && !past && !isSelected ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600' : ''}
+            ${!past && !isSelected && !inDragRange ? 'bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20' : ''}
+          `}
+        >
+          <div className="flex items-center justify-between mb-1">
+            <span className={`
+              text-sm font-semibold
+              ${today && !past ? 'text-almet-sapphire dark:text-almet-astral' : ''}
+              ${past ? 'text-gray-400 dark:text-gray-600' : 'text-almet-cloud-burst dark:text-white'}
+            `}>
+              {day}
+            </span>
+            {isSelected && (
+              <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></div>
+            )}
+          </div>
+          
+          {today && !past && (
+            <div className="text-[9px] text-almet-sapphire dark:text-almet-astral font-medium">
+              TODAY
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return days;
+  };
+
+  return (
+    <div onMouseLeave={handleMouseUp}>
+
+        {/* ✅ Month/Year Quick Selector */}
+      <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-4 bg-gray-50 dark:bg-gray-900/50">
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => handleYearChange(-1)}
+            className="px-3 py-1.5 text-xs bg-white dark:bg-gray-700 border border-almet-mystic dark:border-almet-comet rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-600"
+          >
+            ← {currentMonth.getFullYear() - 1}
+          </button>
+          <span className="text-sm font-bold text-almet-cloud-burst dark:text-white">
+            {currentMonth.getFullYear()}
+          </span>
+          <button
+            onClick={() => handleYearChange(1)}
+            className="px-3 py-1.5 text-xs bg-white dark:bg-gray-700 border border-almet-mystic dark:border-almet-comet rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-600"
+          >
+            {currentMonth.getFullYear() + 1} →
+          </button>
+        </div>
+
+        {/* ✅ Month Grid - ASANCA SEÇ */}
+        <div className="grid grid-cols-6 gap-2">
+          {monthNames.map((month, index) => (
+            <button
+              key={month}
+              onClick={() => handleMonthSelect(index)}
+              className={`
+                px-3 py-2 text-xs font-medium rounded-lg transition-all
+                ${currentMonth.getMonth() === index
+                  ? 'bg-almet-sapphire text-white shadow-md'
+                  : 'bg-white dark:bg-gray-700 text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-600'
+                }
+              `}
+            >
+              {month.substring(0, 3)}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Day headers */}
+      <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-900/50">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div
+            key={day}
+            className="py-3 text-center text-xs font-semibold text-almet-cloud-burst dark:text-white border-b border-almet-mystic/30 dark:border-almet-comet/30"
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7">
+        {renderCalendar()}
+      </div>
+
+      {/* Instructions */}
+      <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4 bg-gray-50 dark:bg-gray-900/50">
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 rounded"></div>
+              <span className="text-almet-waterloo dark:text-gray-400">Selected</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-600 rounded"></div>
+              <span className="text-almet-waterloo dark:text-gray-400">Dragging</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 ring-2 ring-almet-sapphire dark:ring-almet-astral rounded"></div>
+              <span className="text-almet-waterloo dark:text-gray-400">Today</span>
+            </div>
+          </div>
+          <span className="text-almet-waterloo dark:text-gray-400 italic">
+            Click and drag to select date ranges
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
