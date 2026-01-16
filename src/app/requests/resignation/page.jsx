@@ -249,6 +249,46 @@ export default function ResignationExitManagement() {
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2">Quick Actions</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {userRole === 'employee' || userRole === 'admin' && (
+              <button 
+                onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
+                className="flex items-center gap-2 p-2 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg hover:bg-rose-100 transition-colors"
+              >
+                <Plus size={14} className="text-rose-600" />
+                <span className="text-[10px] font-medium text-gray-900 dark:text-gray-100">Submit Resignation</span>
+              </button>
+            )}
+            {userRole === 'admin' && (
+              <>
+                <button 
+                  onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }}
+                  className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Plus size={14} className="text-blue-600" />
+                  <span className="text-[10px] font-medium text-gray-900">Exit Interview</span>
+                </button>
+                <button 
+                  onClick={() => window.location.href = 'request/question-management'}
+                  className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+                >
+                  <Settings size={14} className="text-purple-600" />
+                  <span className="text-[10px] font-medium text-gray-900">Questions</span>
+                </button>
+                <button 
+                  onClick={() => window.location.href = 'request/probation-tracking'}
+                  className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                >
+                  <Clock size={14} className="text-amber-600" />
+                  <span className="text-[10px] font-medium text-gray-900">Tracking</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
           <h3 className="text-xs font-semibold text-gray-900 dark:text-gray-100 mb-2">Recent Activity</h3>
           <div className="space-y-2">
             {data.resignations.slice(0, 3).map(item => (
@@ -336,49 +376,8 @@ export default function ResignationExitManagement() {
               <Building size={20} />
               <div>
                 <h1 className="text-base font-bold">Resignation & Exit Management</h1>
-                <p className="text-blue-100 text-[10px]">
-                  {userRole === 'admin' ? 'HR Admin' : userRole === 'manager' ? 'Manager' : 'Employee'} Dashboard
-                </p>
+               
               </div>
-            </div>
-            
-            {/* Quick Actions in Header */}
-            <div className="flex gap-2">
-              {userRole === 'employee' && (
-                <button 
-                  onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-almet-sapphire rounded-lg hover:bg-blue-50 transition-colors text-xs font-medium"
-                >
-                  <Plus size={14} />
-                  Submit Resignation
-                </button>
-              )}
-              
-              {userRole === 'admin' && (
-                <>
-                  <button 
-                    onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white text-almet-sapphire rounded-lg hover:bg-blue-50 transition-colors text-xs font-medium"
-                  >
-                    <Plus size={14} />
-                    Exit Interview
-                  </button>
-                  <button 
-                    onClick={() => window.location.href = '/request/question-management'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs font-medium"
-                  >
-                    <Settings size={14} />
-                    Questions
-                  </button>
-                  <button 
-                    onClick={() => window.location.href = '/request/probation-tracking'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-xs font-medium"
-                  >
-                    <Clock size={14} />
-                    Tracking
-                  </button>
-                </>
-              )}
             </div>
           </div>
         </div>
