@@ -270,14 +270,14 @@ export default function ResignationExitManagement() {
                   <span className="text-[10px] font-medium text-gray-900">Exit Interview</span>
                 </button>
                 <button 
-                  onClick={() => window.location.href = 'request/question-management'}
+                  onClick={() => window.location.href = 'question-management'}
                   className="flex items-center gap-2 p-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
                 >
                   <Settings size={14} className="text-purple-600" />
                   <span className="text-[10px] font-medium text-gray-900">Questions</span>
                 </button>
                 <button 
-                  onClick={() => window.location.href = 'request/probation-tracking'}
+                  onClick={() => window.location.href = 'probation-tracking'}
                   className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
                 >
                   <Clock size={14} className="text-amber-600" />
