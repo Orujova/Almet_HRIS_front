@@ -201,36 +201,38 @@ export default function CreateExitInterviewModal({ onClose, onSuccess }) {
   };
 
   const TextQuestion = ({ question }) => (
-    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {question.question_text_en}
-        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-      </label>
-      <input
-        type="text"
-        value={responses[question.id]?.text_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire"
-        placeholder="Your answer..."
-      />
-    </div>
-  );
+  <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+      {question.question_text_en}
+      {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+    </label>
+    <input
+      type="text"
+      value={responses[question.id]?.text_value || ''}
+      onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
+      className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none"
+      placeholder="Your answer..."
+      disabled={submitting}
+    />
+  </div>
+);
 
-  const TextAreaQuestion = ({ question }) => (
-    <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-        {question.question_text_en}
-        {question.is_required && <span className="text-rose-500 ml-1">*</span>}
-      </label>
-      <textarea
-        value={responses[question.id]?.text_value || ''}
-        onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
-        rows={3}
-        className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire resize-none"
-        placeholder="Your answer..."
-      />
-    </div>
-  );
+const TextAreaQuestion = ({ question }) => (
+  <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
+    <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+      {question.question_text_en}
+      {question.is_required && <span className="text-rose-500 ml-1">*</span>}
+    </label>
+    <textarea
+      value={responses[question.id]?.text_value || ''}
+      onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
+      rows={3}
+      className="w-full px-2 py-1.5 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:outline-none resize-none"
+      placeholder="Your answer..."
+      disabled={submitting}
+    />
+  </div>
+);
 
   const ChoiceQuestion = ({ question }) => (
     <div className="pb-3 border-b border-gray-100 dark:border-gray-700">
