@@ -77,7 +77,11 @@ export default function PlanningCalendar({
   };
 
   const formatDate = (date) => {
-    return date.toISOString().split('T')[0];
+    // ✅ FIX: Use local date without timezone conversion
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const isDateSelected = (date) => {
@@ -110,12 +114,19 @@ export default function PlanningCalendar({
 
   const isHoliday = (date) => {
     const dateStr = formatDate(date);
-    return holidays.some(h => h.date === dateStr);
+    return holidays.some(h => {
+      const holidayDate = h.date.split('T')[0];
+      return holidayDate === dateStr;
+    });
   };
 
   const getHolidaysForDate = (date) => {
     const dateStr = formatDate(date);
-    return holidays.filter(h => h.date === dateStr);
+    return holidays.filter(h => {
+      // ✅ FIX: Ensure exact date match without timezone issues
+      const holidayDate = h.date.split('T')[0]; // Remove time part if exists
+      return holidayDate === dateStr;
+    });
   };
 
   const handleMouseDown = (date) => {
@@ -136,7 +147,11 @@ export default function PlanningCalendar({
       const start = dragStart < dragEnd ? dragStart : dragEnd;
       const end = dragStart < dragEnd ? dragEnd : dragStart;
       
-      onRangeSelect(formatDate(start), formatDate(end));
+      // ✅ FIX: Format dates correctly without timezone offset
+      const startStr = start.toISOString().split('T')[0];
+      const endStr = end.toISOString().split('T')[0];
+      
+      onRangeSelect(startStr, endStr);
     }
     
     setIsDragging(false);

@@ -225,6 +225,7 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
             )}
           </div>
 
+          {/* ✅ Display ALL holidays for this date */}
           {dayHolidays.map((holiday, idx) => (
             <div
               key={`holiday-${idx}`}
@@ -235,6 +236,13 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
               {holiday.name}
             </div>
           ))}
+
+          {/* Show vacation count if multiple */}
+          {dayHolidays.length > 1 && (
+            <div className="text-[9px] text-red-600 dark:text-red-400 font-medium mb-1">
+              {dayHolidays.length} holidays
+            </div>
+          )}
 
           {dayVacations.slice(0, 3).map((vacation, idx) => (
             <div
