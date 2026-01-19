@@ -87,6 +87,7 @@ export default function PlanningCalendar({
   const isDateSelected = (date) => {
     const dateStr = formatDate(date);
     return selectedRanges.some(range => {
+      // ✅ Ensure exact comparison without timezone issues
       return dateStr >= range.start && dateStr <= range.end;
     });
   };
@@ -98,7 +99,10 @@ export default function PlanningCalendar({
     const start = dragStart < dragEnd ? dragStart : dragEnd;
     const end = dragStart < dragEnd ? dragEnd : dragStart;
     
-    return dateStr >= formatDate(start) && dateStr <= formatDate(end);
+    const startStr = formatDate(start);
+    const endStr = formatDate(end);
+    
+    return dateStr >= startStr && dateStr <= endStr;
   };
 
   const isToday = (date) => {
@@ -131,14 +135,20 @@ export default function PlanningCalendar({
 
   const handleMouseDown = (date) => {
     if (isPastDate(date)) return;
+    
+    // ✅ FIX: Create new date object to avoid timezone issues
+    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    
     setIsDragging(true);
-    setDragStart(date);
-    setDragEnd(date);
+    setDragStart(localDate);
+    setDragEnd(localDate);
   };
 
   const handleMouseEnter = (date) => {
     if (isDragging && !isPastDate(date)) {
-      setDragEnd(date);
+      // ✅ FIX: Create new date object
+      const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      setDragEnd(localDate);
     }
   };
 

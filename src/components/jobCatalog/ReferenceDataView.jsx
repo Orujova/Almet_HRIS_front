@@ -35,7 +35,7 @@ export default function ReferenceDataView({ context }) {
   });
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+ 
   
   const [showInactive, setShowInactive] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -54,7 +54,18 @@ export default function ReferenceDataView({ context }) {
     item: null,
     type: null
   });
-
+ const [sortConfig, setSortConfig] = useState(() => {
+    const tab = typeof window !== 'undefined' 
+      ? localStorage.getItem('jobCatalog_referenceTab') || 'business_functions'
+      : 'business_functions';
+    
+    // Yalnız position groups üçün id-yə görə sort
+    if (tab === 'position_groups') {
+      return { key: 'id', direction: 'asc' };
+    }
+    return { key: 'name', direction: 'asc' };
+  });
+  
   // Save preferences to localStorage
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -73,7 +84,13 @@ export default function ReferenceDataView({ context }) {
       localStorage.setItem('jobCatalog_showInactive', showInactive.toString());
     }
   }, [showInactive]);
-
+ React.useEffect(() => {
+    if (activeTab === 'position_groups') {
+      setSortConfig({ key: 'id', direction: 'asc' });
+    } else {
+      setSortConfig({ key: 'name', direction: 'asc' });
+    }
+  }, [activeTab]);
   // Calculate employee counts
   const getEmployeeCountsByType = useMemo(() => {
     if (!employees || !Array.isArray(employees)) return {};

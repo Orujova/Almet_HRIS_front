@@ -103,6 +103,26 @@ export default function PlanningVacationTab({
 
   // Handle range selection from calendar
   const handleRangeSelect = (start, end) => {
+    // ✅ CHECK: Prevent duplicate ranges
+    const isDuplicate = selectedRanges.some(range => 
+      range.start === start && range.end === end
+    );
+    
+    if (isDuplicate) {
+      showError('This date range is already selected');
+      return;
+    }
+    
+    // ✅ CHECK: Prevent overlapping ranges
+    const hasOverlap = selectedRanges.some(range => {
+      return (start <= range.end && end >= range.start);
+    });
+    
+    if (hasOverlap) {
+      showError('This date range overlaps with an existing selection');
+      return;
+    }
+    
     const newRange = {
       id: Date.now(),
       start: start,
@@ -110,6 +130,7 @@ export default function PlanningVacationTab({
       vacation_type_id: vacationType
     };
     setSelectedRanges([...selectedRanges, newRange]);
+    showSuccess(`✅ Added ${start} to ${end}`);
   };
 
   // Remove range
