@@ -711,44 +711,33 @@ const handleUpdateObjective = (index, field, value) => {
   
   const key = `${selectedEmployee.id}_${selectedYear}`;
   const data = performanceData[key];
-  const newObjectives = [...(data.objectives || [])];
   
-  newObjectives[index] = {
-    ...newObjectives[index],
-    [field]: value
-  };
-  
-  if (field === 'end_year_rating') {
-    const selectedScaleId = value ? parseInt(value) : null;
-    if (selectedScaleId) {
-      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-      if (selectedScale) {
-        const weight = parseFloat(newObjectives[index].weight) || 0;
-        
-        // ✅ FIXED: Correct formula
-        const calculatedScore = (weight / 100) * selectedScale.value;
-        
-        newObjectives[index] = {
-          ...newObjectives[index],
-          end_year_rating: selectedScaleId,
-          calculated_score: calculatedScore
-        };
-      }
-    } else {
-      newObjectives[index] = {
-        ...newObjectives[index],
-        end_year_rating: null,
-        calculated_score: 0
-      };
+  // ✅ FIX: Create new array with ONLY the changed objective
+  const newObjectives = data.objectives.map((obj, idx) => {
+    if (idx !== index) {
+      return obj; // ✅ Return same reference for unchanged objectives
     }
-  }
-  
-  if (field === 'calculated_score') {
-    newObjectives[index] = {
-      ...newObjectives[index],
-      calculated_score: value
-    };
-  }
+    
+    // ✅ Only create new object for the changed one
+    const updatedObj = { ...obj, [field]: value };
+    
+    // ✅ Handle end_year_rating calculation
+    if (field === 'end_year_rating') {
+      const selectedScaleId = value ? parseInt(value) : null;
+      
+      if (selectedScaleId) {
+        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+        if (selectedScale) {
+          const weight = parseFloat(updatedObj.weight) || 0;
+          updatedObj.calculated_score = (weight / 100) * selectedScale.value;
+        }
+      } else {
+        updatedObj.calculated_score = 0;
+      }
+    }
+    
+    return updatedObj;
+  });
   
   const updatedData = {
     ...data,
@@ -766,6 +755,7 @@ const handleUpdateObjective = (index, field, value) => {
     window.scrollTo(0, scrollY);
   });
   
+  // ✅ Auto-save
   if (selectedPerformanceId) {
     debouncedSaveObjectives(selectedPerformanceId, newObjectives);
   }

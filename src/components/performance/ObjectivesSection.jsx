@@ -188,14 +188,20 @@ const ObjectiveRow = memo(({
                     </label>
                     {canRateEndYear && !isCancelled ? (
                       <select
-                        value={objective.end_year_rating || ''}
-                        onInput={(e) => {
-                          const value = e.target.value ? parseInt(e.target.value) : null;
-                          console.log('🎯 Rating Change:', { index, objectiveId: objective.id, oldValue: objective.end_year_rating, newValue: value });
-                          onUpdate(index, 'end_year_rating', value);
-                        }}
-                        className={`${inputClass} w-full`}
-                      >
+  value={objective.end_year_rating || ''}
+  onInput={(e) => {
+    const value = e.target.value ? parseInt(e.target.value) : null;
+    console.log('🎯 Rating Selection:', {
+      objectiveId: objective.id,
+      objectiveTitle: objective.title?.substring(0, 30),
+      index,
+      oldRating: objective.end_year_rating,
+      newRating: value
+    });
+    onUpdate(index, 'end_year_rating', value);
+  }}
+  className={`${inputClass} w-full`}
+>
                         <option value="">-- Select Rating --</option>
                         {settings.evaluationScale?.map(scale => (
                           <option key={scale.id} value={scale.id}>
@@ -269,26 +275,33 @@ const ObjectiveRow = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // ✅ Deep comparison for objective to prevent cross-contamination
-  const objEqual = 
-    prevProps.objective.id === nextProps.objective.id &&
-    prevProps.objective.title === nextProps.objective.title &&
-    prevProps.objective.description === nextProps.objective.description &&
-    prevProps.objective.weight === nextProps.objective.weight &&
-    prevProps.objective.status === nextProps.objective.status &&
-    prevProps.objective.end_year_rating === nextProps.objective.end_year_rating &&
-    prevProps.objective.is_cancelled === nextProps.objective.is_cancelled &&
-    prevProps.objective.calculated_score === nextProps.objective.calculated_score;
+  // ✅ CRITICAL FIX: Only compare this specific objective's data
+  const prevObj = prevProps.objective;
+  const nextObj = nextProps.objective;
   
-  return (
-    objEqual &&
+  // If it's not the same objective by ID, they're different
+  if (prevObj.id !== nextObj.id) return false;
+  
+  // ✅ Deep comparison of ALL fields that matter
+  const objectiveEqual = 
+    prevObj.title === nextObj.title &&
+    prevObj.description === nextObj.description &&
+    prevObj.weight === nextObj.weight &&
+    prevObj.status === nextObj.status &&
+    prevObj.end_year_rating === nextObj.end_year_rating &&
+    prevObj.calculated_score === nextObj.calculated_score &&
+    prevObj.is_cancelled === nextObj.is_cancelled;
+  
+  const otherPropsEqual = 
     prevProps.index === nextProps.index &&
     prevProps.isExpanded === nextProps.isExpanded &&
     prevProps.canEditGoals === nextProps.canEditGoals &&
     prevProps.canCancelGoals === nextProps.canCancelGoals &&
     prevProps.canRateEndYear === nextProps.canRateEndYear &&
-    prevProps.darkMode === nextProps.darkMode
-  );
+    prevProps.darkMode === nextProps.darkMode;
+  
+  // ✅ Only re-render if THIS objective changed
+  return objectiveEqual && otherPropsEqual;
 });
 
 ObjectiveRow.displayName = 'ObjectiveRow';
@@ -570,7 +583,7 @@ export default function ObjectivesSection({
         <div>
           {objectives.map((objective, index) => (
             <ObjectiveRow
-              key={`obj-${objective.id || index}-${objective.end_year_rating || 'norating'}`}
+              key={objective.id || `temp-${index}`} 
               objective={objective}
               index={index}
               isExpanded={expandedRows[index] || false}
