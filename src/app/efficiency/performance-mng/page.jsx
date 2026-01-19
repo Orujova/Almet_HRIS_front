@@ -139,37 +139,44 @@ export default function PerformanceManagementPage() {
     }
   };
 
-  const loadSettings = async () => {
-    try {
-      const [weightsRes, limitsRes, deptObjRes, scalesRes, targetsRes, statusesRes] = 
-        await Promise.all([
-          performanceApi.weightConfigs.list(),
-          performanceApi.goalLimits.getActiveConfig(),
-          performanceApi.departmentObjectives.list({}),
-          performanceApi.evaluationScales.list(),
-          performanceApi.evaluationTargets.getActiveConfig(),
-          performanceApi.objectiveStatuses.list()
-        ]);
-      
-      setSettings({
-        weightConfigs: weightsRes.results || weightsRes,
-        goalLimits: {
-          min: limitsRes.min_goals,
-          max: limitsRes.max_goals
-        },
-        departmentObjectives: deptObjRes.results || deptObjRes,
-        evaluationScale: scalesRes.results || scalesRes,
-        evaluationTargets: {
-          objective_score_target: targetsRes.objective_score_target
-        },
-        statusTypes: statusesRes.results || statusesRes
-      });
-      
-    } catch (error) {
-      console.error('❌ Error loading settings:', error);
-      throw error;
-    }
-  };
+  // app/efficiency/page.jsx
+
+const loadSettings = async () => {
+  try {
+    const [weightsRes, limitsRes, deptObjRes, scalesRes, targetsRes, statusesRes] = 
+      await Promise.all([
+        performanceApi.weightConfigs.list(),
+        performanceApi.goalLimits.getActiveConfig(),
+        performanceApi.departmentObjectives.list({}),
+        performanceApi.evaluationScales.list(),
+        performanceApi.evaluationTargets.getActiveConfig(),
+        performanceApi.objectiveStatuses.list()
+      ]);
+    
+    // ✅ Sort evaluation scales by range_min for consistent lookup
+    const sortedScales = (scalesRes.results || scalesRes).sort(
+      (a, b) => a.range_min - b.range_min
+    );
+    
+    setSettings({
+      weightConfigs: weightsRes.results || weightsRes,
+      goalLimits: {
+        min: limitsRes.min_goals,
+        max: limitsRes.max_goals
+      },
+      departmentObjectives: deptObjRes.results || deptObjRes,
+      evaluationScale: sortedScales,  // ✅ Use sorted scales
+      evaluationTargets: {
+        objective_score_target: targetsRes.objective_score_target
+      },
+      statusTypes: statusesRes.results || statusesRes
+    });
+    
+  } catch (error) {
+    console.error('❌ Error loading settings:', error);
+    throw error;
+  }
+};
 const handleInitializeEmployee = async (employee) => {
   if (!activeYear) {
     showError('No active performance year');
@@ -527,17 +534,35 @@ const loadEmployees = async () => {
     return activeYear.current_period || 'CLOSED';
   };
 
-  const getLetterGradeFromScale = (percentage) => {
-    if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
-      return 'N/A';
-    }
-    
-    const matchingScale = settings.evaluationScale.find(scale => 
-      percentage >= scale.range_min && percentage <= scale.range_max
-    );
-    
-    return matchingScale ? matchingScale.name : 'N/A';
-  };
+  // app/efficiency/page.jsx
+
+const getLetterGradeFromScale = (percentage) => {
+  if (!settings.evaluationScale || settings.evaluationScale.length === 0) {
+    return 'N/A';
+  }
+  
+  // ✅ Ensure we're working with a number
+  const numPercentage = parseFloat(percentage);
+  if (isNaN(numPercentage)) return 'N/A';
+  
+  // ✅ Find matching scale (scales are already sorted by range_min)
+  const matchingScale = settings.evaluationScale.find(scale => 
+    numPercentage >= scale.range_min && numPercentage <= scale.range_max
+  );
+  
+  if (matchingScale) {
+    return matchingScale.name;
+  }
+  
+  // ✅ Fallback for edge cases
+  // If below all ranges, return lowest grade
+  if (numPercentage < settings.evaluationScale[0].range_min) {
+    return settings.evaluationScale[0].name;
+  }
+  
+  // If above all ranges, return highest grade
+  return settings.evaluationScale[settings.evaluationScale.length - 1].name;
+};
 
   const recalculateScores = (data) => {
     if (!data) return data;
@@ -641,70 +666,72 @@ const loadEmployees = async () => {
     }
   };
 
-  const handleUpdateObjective = (index, field, value) => {
-    const scrollY = window.scrollY;
-    
-    const key = `${selectedEmployee.id}_${selectedYear}`;
-    const data = performanceData[key];
-    const newObjectives = [...(data.objectives || [])];
-    
-    newObjectives[index] = {
-      ...newObjectives[index],
-      [field]: value
-    };
-    
-    if (field === 'end_year_rating') {
-      const selectedScaleId = value ? parseInt(value) : null;
-      if (selectedScaleId) {
-        const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
-        if (selectedScale) {
-          const weight = parseFloat(newObjectives[index].weight) || 0;
-          
-          // ✅ DÜZGÜN DÜSTUR
-          const calculatedScore = (weight / 100) * selectedScale.value;
-          
-          newObjectives[index] = {
-            ...newObjectives[index],
-            end_year_rating: selectedScaleId,
-            calculated_score: calculatedScore
-          };
-        }
-      } else {
+  // app/efficiency/page.jsx
+
+const handleUpdateObjective = (index, field, value) => {
+  const scrollY = window.scrollY;
+  
+  const key = `${selectedEmployee.id}_${selectedYear}`;
+  const data = performanceData[key];
+  const newObjectives = [...(data.objectives || [])];
+  
+  newObjectives[index] = {
+    ...newObjectives[index],
+    [field]: value
+  };
+  
+  if (field === 'end_year_rating') {
+    const selectedScaleId = value ? parseInt(value) : null;
+    if (selectedScaleId) {
+      const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
+      if (selectedScale) {
+        const weight = parseFloat(newObjectives[index].weight) || 0;
+        
+        // ✅ FIXED: Correct formula
+        const calculatedScore = (weight / 100) * selectedScale.value;
+        
         newObjectives[index] = {
           ...newObjectives[index],
-          end_year_rating: null,
-          calculated_score: 0
+          end_year_rating: selectedScaleId,
+          calculated_score: calculatedScore
         };
       }
-    }
-    
-    if (field === 'calculated_score') {
+    } else {
       newObjectives[index] = {
         ...newObjectives[index],
-        calculated_score: value
+        end_year_rating: null,
+        calculated_score: 0
       };
     }
-    
-    const updatedData = {
-      ...data,
-      objectives: newObjectives
+  }
+  
+  if (field === 'calculated_score') {
+    newObjectives[index] = {
+      ...newObjectives[index],
+      calculated_score: value
     };
-    
-    const recalculatedData = recalculateScores(updatedData);
-    
-    setPerformanceData(prev => ({
-      ...prev,
-      [key]: recalculatedData
-    }));
-    
-    requestAnimationFrame(() => {
-      window.scrollTo(0, scrollY);
-    });
-    
-    if (selectedPerformanceId) {
-      debouncedSaveObjectives(selectedPerformanceId, newObjectives);
-    }
+  }
+  
+  const updatedData = {
+    ...data,
+    objectives: newObjectives
   };
+  
+  const recalculatedData = recalculateScores(updatedData);
+  
+  setPerformanceData(prev => ({
+    ...prev,
+    [key]: recalculatedData
+  }));
+  
+  requestAnimationFrame(() => {
+    window.scrollTo(0, scrollY);
+  });
+  
+  if (selectedPerformanceId) {
+    debouncedSaveObjectives(selectedPerformanceId, newObjectives);
+  }
+};
 
   const handleAddObjective = () => {
     const key = `${selectedEmployee.id}_${selectedYear}`;
