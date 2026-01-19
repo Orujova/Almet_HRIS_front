@@ -321,6 +321,22 @@ cancelObjective: async (id, objectiveId, reason) => {
     );
     return response.data;
   },
+
+    addObjectiveComment: async (performanceId, objectiveId, comment) => {
+    const response = await api.post(
+      `/performance/performance/performances/${performanceId}/add_objective_comment/`,
+      { objective_id: objectiveId, comment }
+    );
+    return response.data;
+  },
+  
+  deleteObjectiveComment: async (performanceId, commentId) => {
+    const response = await api.delete(
+      `/performance/performance/performances/${performanceId}/delete_objective_comment/`,
+      { data: { comment_id: commentId } }
+    );
+    return response.data;
+  },
   // ✅ NEW: Get available years
   getAvailableYears: async () => {
     const response = await api.get(

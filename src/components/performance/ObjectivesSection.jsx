@@ -1,6 +1,5 @@
 import { useState, memo, useCallback } from 'react';
 import { Target, Plus, Trash2, Save, Send, AlertCircle, CheckCircle, XCircle, Clock, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
-
 // ✅ CRITICAL: Memoize ObjectiveRow to prevent unnecessary re-renders
 const ObjectiveRow = memo(({ 
   objective, 
@@ -14,13 +13,26 @@ const ObjectiveRow = memo(({
   onToggle,
   onUpdate,
   onDelete,
+  onAddComment,
+  onDeleteComment,
   onCancelObjective 
 }) => {
   const isCancelled = objective.is_cancelled || false;
   const isTitleMissing = !objective.title?.trim();
   const isStatusMissing = !objective.status;
   const isWeightMissing = !objective.weight || objective.weight <= 0;
-
+ const [newComment, setNewComment] = useState('');
+  const [showCommentBox, setShowCommentBox] = useState(false);
+  
+  // ... existing code ...
+  
+  const handleSubmitComment = () => {
+    if (!newComment.trim()) return;
+    
+    onAddComment(objective.id, newComment);
+    setNewComment('');
+    setShowCommentBox(false);
+  };
   const selectedRating = objective.end_year_rating 
     ? settings.evaluationScale?.find(s => s.id === objective.end_year_rating)
     : null;
@@ -244,7 +256,118 @@ const ObjectiveRow = memo(({
                     </select>
                   </div>
                 </div>
-
+     <div className="border-t border-gray-200 dark:border-almet-comet/30 pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className={`text-xs font-semibold ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} uppercase tracking-wide`}>
+                  Comments ({objective.comments?.length || 0})
+                </h5>
+                <button
+                  onClick={() => setShowCommentBox(!showCommentBox)}
+                  className={`text-xs font-medium px-3 py-1.5 rounded-lg transition-colors ${
+                    darkMode 
+                      ? 'bg-almet-sapphire/20 text-almet-sapphire hover:bg-almet-sapphire/30' 
+                      : 'bg-almet-sapphire/10 text-almet-sapphire hover:bg-almet-sapphire/20'
+                  }`}
+                >
+                  {showCommentBox ? 'Cancel' : '+ Add Comment'}
+                </button>
+              </div>
+              
+              {/* Add Comment Box */}
+              {showCommentBox && (
+                <div className={`mb-3 p-3 rounded-lg border ${
+                  darkMode 
+                    ? 'bg-almet-san-juan/30 border-almet-comet/30' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    rows={3}
+                    className={`${inputClass} w-full resize-none py-2 leading-relaxed mb-2`}
+                    placeholder="Write your comment..."
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSubmitComment}
+                      disabled={!newComment.trim()}
+                      className="h-8 px-4 bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg text-xs font-medium disabled:opacity-40 transition-all"
+                    >
+                      Post Comment
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowCommentBox(false);
+                        setNewComment('');
+                      }}
+                      className={`h-8 px-4 rounded-lg text-xs font-medium transition-colors ${
+                        darkMode 
+                          ? 'bg-almet-comet/30 text-white hover:bg-almet-comet/50' 
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              {/* Comments List */}
+              {objective.comments && objective.comments.length > 0 ? (
+                <div className="space-y-2">
+                  {objective.comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className={`p-3 rounded-lg ${
+                        darkMode 
+                          ? 'bg-almet-san-juan/20 border border-almet-comet/20' 
+                          : 'bg-white border border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <span className={`text-xs font-semibold ${darkMode ? 'text-white' : 'text-almet-cloud-burst'}`}>
+                            {comment.created_by_name}
+                          </span>
+                          <span className={`text-xs ml-2 ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'}`}>
+                            {new Date(comment.created_at).toLocaleString('az-AZ', {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        
+                        {/* Delete button - only for own comments */}
+                        <button
+                          onClick={() => {
+                            if (confirm('Delete this comment?')) {
+                              onDeleteComment(comment.id);
+                            }
+                          }}
+                          className="text-xs text-red-600 dark:text-red-400 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                      
+                      <p className={`text-sm ${darkMode ? 'text-almet-bali-hai' : 'text-almet-waterloo'} whitespace-pre-wrap`}>
+                        {comment.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <MessageSquare className={`w-8 h-8 mx-auto mb-2 ${darkMode ? 'text-almet-bali-hai/30' : 'text-almet-waterloo/30'}`} />
+                  <p className={`text-xs ${darkMode ? 'text-almet-bali-hai/70' : 'text-almet-waterloo/70'}`}>
+                    No comments yet
+                  </p>
+                </div>
+              )}
+            </div>
                 {(canEditGoals || canCancelGoals) && (
                   <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-almet-comet/30">
                     {canEditGoals && !isCancelled && (
@@ -313,6 +436,8 @@ export default function ObjectivesSection({
   activeYear,
   canEdit,
   loading,
+   onAddObjectiveComment,
+  onDeleteObjectiveComment,
   darkMode,
   totalWeight,
   totalScore,
@@ -586,6 +711,8 @@ export default function ObjectivesSection({
               key={objective.id || `temp-${index}`} 
               objective={objective}
               index={index}
+                 onAddComment={onAddObjectiveComment}
+            onDeleteComment={onDeleteObjectiveComment}
               isExpanded={expandedRows[index] || false}
               canEditGoals={canEditGoals}
               canCancelGoals={canCancelGoals}

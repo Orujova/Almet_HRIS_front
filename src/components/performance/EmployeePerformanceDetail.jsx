@@ -16,6 +16,8 @@ export default function EmployeePerformanceDetail({
   currentPeriod,
   activeYear,
   permissions,
+   onAddObjectiveComment,
+  onDeleteObjectiveComment,
   loading,
   darkMode,
   onBack,
@@ -327,6 +329,8 @@ export default function EmployeePerformanceDetail({
             canEdit={canEdit}
             loading={loading}
             darkMode={darkMode}
+               onAddObjectiveComment={onAddObjectiveComment}
+        onDeleteObjectiveComment={onDeleteObjectiveComment}
              onSaveEndYearObjectivesDraft={onSaveEndYearObjectivesDraft}
         onSubmitEndYearObjectives={onSubmitEndYearObjectives}
             totalWeight={totalWeight}

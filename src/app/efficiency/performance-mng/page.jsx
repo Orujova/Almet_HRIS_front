@@ -705,7 +705,46 @@ const handleSubmitEndYearObjectives = async (objectives) => {
     setLoading(false);
   }
 };
+// ==================== OBJECTIVE COMMENT HANDLERS ====================
 
+const handleAddObjectiveComment = async (objectiveId, comment) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    await performanceApi.performances.addObjectiveComment(
+      selectedPerformanceId,
+      objectiveId,
+      comment
+    );
+    showSuccess('Comment added successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error adding comment:', error);
+    showError(error.response?.data?.error || 'Error adding comment');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleDeleteObjectiveComment = async (commentId) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    await performanceApi.performances.deleteObjectiveComment(
+      selectedPerformanceId,
+      commentId
+    );
+    showSuccess('Comment deleted successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error deleting comment:', error);
+    showError(error.response?.data?.error || 'Error deleting comment');
+  } finally {
+    setLoading(false);
+  }
+};
 const handleUpdateObjective = (index, field, value) => {
   const scrollY = window.scrollY;
   
@@ -1251,7 +1290,8 @@ const handleUpdateObjective = (index, field, value) => {
               darkMode={darkMode}
               onBack={handleBackToDashboard}
               onExport={handleExportExcel}
-              
+               onAddObjectiveComment={handleAddObjectiveComment}
+  onDeleteObjectiveComment={handleDeleteObjectiveComment}
               onUpdateObjective={handleUpdateObjective}
               onAddObjective={handleAddObjective}
               onDeleteObjective={handleDeleteObjective}
