@@ -134,7 +134,7 @@ const ProfileCard = ({ account, userDetails, darkMode }) => {
             className="w-full bg-almet-mystic/30 dark:bg-almet-san-juan/30 hover:bg-almet-mystic/50 dark:hover:bg-almet-san-juan/50 text-almet-cloud-burst dark:text-white font-semibold py-2 rounded-lg text-[10px] transition-all flex items-center justify-center gap-2"
           >
             <Sparkles className="h-3 w-3" />
-            Zhoosh Up Profile
+            Zhoosh  Profile
           </button>
         )}
       </div>

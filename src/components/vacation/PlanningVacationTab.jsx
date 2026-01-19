@@ -1,7 +1,7 @@
-// components/vacation/PlanningVacationTab.jsx
+// components/vacation/PlanningVacationTab.jsx - ✅ COMPLETE VERSION
 import { useState, useEffect } from 'react';
 import { 
-  Calendar as CalendarIcon, 
+  Calendar, 
   ChevronLeft, 
   ChevronRight, 
   Users, 
@@ -39,21 +39,39 @@ export default function PlanningVacationTab({
   // Initialize vacation type
   useEffect(() => {
     if (vacationTypes && vacationTypes.length > 0 && !vacationType) {
-      // Set default to Paid Vacation
       const paidVacation = vacationTypes.find(t => t.name.toLowerCase().includes('paid'));
       setVacationType(paidVacation?.id || vacationTypes[0].id);
     }
   }, [vacationTypes]);
 
-  // Calculate total days
+  // ✅ Calculate total days with UK/AZ logic
   useEffect(() => {
     const calculateTotalDays = async () => {
       let total = 0;
+      
+      // ✅ Get business function code
+      let businessFunctionCode = null;
+      if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
+        const userEmail = VacationService.getCurrentUserEmail();
+        const currentEmployee = employeeSearchResults.find(emp => 
+          emp.email?.toLowerCase() === userEmail.toLowerCase()
+        );
+        if (currentEmployee && currentEmployee.business_function_name) {
+          businessFunctionCode = currentEmployee.business_function_name.toUpperCase().includes('UK') ? 'UK' : 'AZ';
+        }
+      } else if (requester === 'for_my_employee' && selectedEmployee) {
+        const employee = employeeSearchResults.find(emp => emp.id === selectedEmployee);
+        if (employee && employee.business_function_name) {
+          businessFunctionCode = employee.business_function_name.toUpperCase().includes('UK') ? 'UK' : 'AZ';
+        }
+      }
+      
       for (const range of selectedRanges) {
         try {
           const data = await VacationService.calculateWorkingDays({
             start_date: range.start,
-            end_date: range.end
+            end_date: range.end,
+            business_function_code: businessFunctionCode
           });
           total += data.working_days;
         } catch (error) {
@@ -68,7 +86,7 @@ export default function PlanningVacationTab({
     } else {
       setTotalDaysPlanned(0);
     }
-  }, [selectedRanges]);
+  }, [selectedRanges, requester, selectedEmployee, employeeSearchResults]);
 
   // Calendar navigation
   const previousMonth = () => {
@@ -167,6 +185,21 @@ export default function PlanningVacationTab({
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+
+  // ✅ Get business function code for calendar
+  const getBusinessFunctionCode = () => {
+    if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
+      const userEmail = VacationService.getCurrentUserEmail();
+      const currentEmployee = employeeSearchResults.find(emp => 
+        emp.email?.toLowerCase() === userEmail.toLowerCase()
+      );
+      return currentEmployee?.business_function_name?.toUpperCase().includes('UK') ? 'UK' : 'AZ';
+    } else if (requester === 'for_my_employee' && selectedEmployee) {
+      const employee = employeeSearchResults.find(emp => emp.id === selectedEmployee);
+      return employee?.business_function_name?.toUpperCase().includes('UK') ? 'UK' : 'AZ';
+    }
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -271,7 +304,7 @@ export default function PlanningVacationTab({
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
         <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
           <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4" />
+            <Calendar className="w-4 h-4" />
             {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
           </h2>
 
@@ -299,14 +332,14 @@ export default function PlanningVacationTab({
           </div>
         </div>
 
-        
-<PlanningCalendar
-  currentMonth={currentMonth}
-  selectedRanges={selectedRanges}
-  onRangeSelect={handleRangeSelect}
-  onMonthChange={setCurrentMonth}  // ✅ NEW
-  darkMode={darkMode}
-/>
+        <PlanningCalendar
+          currentMonth={currentMonth}
+          selectedRanges={selectedRanges}
+          onRangeSelect={handleRangeSelect}
+          onMonthChange={setCurrentMonth}
+          businessFunctionCode={getBusinessFunctionCode()}
+          darkMode={darkMode}
+        />
       </div>
 
       {/* Selected Ranges */}

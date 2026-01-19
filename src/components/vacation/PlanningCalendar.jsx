@@ -1,21 +1,59 @@
-// components/vacation/PlanningCalendar.jsx
-import { useState } from 'react';
+// components/vacation/PlanningCalendar.jsx - ✅ COMPLETE VERSION
+import { useState, useEffect } from 'react';
+import { Star } from 'lucide-react';
+import { VacationService } from '@/services/vacationService';
 
 export default function PlanningCalendar({
   currentMonth,
   selectedRanges,
   onRangeSelect,
-
   darkMode,
-  onMonthChange
+  onMonthChange,
+  businessFunctionCode = null // ✅ For AZ/UK calendar selection
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
   const [dragEnd, setDragEnd] = useState(null);
-const monthNames = [
+  const [holidays, setHolidays] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
+
+  // ✅ Fetch holidays when month changes
+  useEffect(() => {
+    fetchHolidays();
+  }, [currentMonth, businessFunctionCode]);
+
+  const fetchHolidays = async () => {
+    setLoading(true);
+    try {
+      const month = currentMonth.getMonth() + 1;
+      const year = currentMonth.getFullYear();
+      
+      const params = {
+        month,
+        year
+      };
+      
+      // ✅ Add country based on business function
+      if (businessFunctionCode && businessFunctionCode.toUpperCase() === 'UK') {
+        params.country = 'uk';
+      } else {
+        params.country = 'az';
+      }
+      
+      const data = await VacationService.getCalendarEvents(params);
+      setHolidays(data.holidays || []);
+    } catch (error) {
+      console.error('Error fetching holidays:', error);
+      setHolidays([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleMonthSelect = (monthIndex) => {
     const newDate = new Date(currentMonth.getFullYear(), monthIndex, 1);
@@ -26,6 +64,7 @@ const monthNames = [
     const newDate = new Date(currentMonth.getFullYear() + increment, currentMonth.getMonth(), 1);
     onMonthChange(newDate);
   };
+
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -67,6 +106,16 @@ const monthNames = [
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return date < today;
+  };
+
+  const isHoliday = (date) => {
+    const dateStr = formatDate(date);
+    return holidays.some(h => h.date === dateStr);
+  };
+
+  const getHolidaysForDate = (date) => {
+    const dateStr = formatDate(date);
+    return holidays.filter(h => h.date === dateStr);
   };
 
   const handleMouseDown = (date) => {
@@ -116,6 +165,8 @@ const monthNames = [
       const inDragRange = isDateInDragRange(date);
       const today = isToday(date);
       const past = isPastDate(date);
+      const holiday = isHoliday(date);
+      const dayHolidays = getHolidaysForDate(date);
 
       days.push(
         <div
@@ -127,10 +178,11 @@ const monthNames = [
             min-h-[80px] border border-almet-mystic/30 dark:border-almet-comet/30 p-2 
             transition-all cursor-pointer select-none
             ${past ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed opacity-50' : ''}
+            ${holiday && !past ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : ''}
             ${today && !past ? 'ring-2 ring-almet-sapphire dark:ring-almet-astral' : ''}
             ${isSelected && !past ? 'bg-green-100 dark:bg-green-900/30 border-green-400 dark:border-green-600' : ''}
             ${inDragRange && !past && !isSelected ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600' : ''}
-            ${!past && !isSelected && !inDragRange ? 'bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20' : ''}
+            ${!past && !isSelected && !inDragRange && !holiday ? 'bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20' : ''}
           `}
         >
           <div className="flex items-center justify-between mb-1">
@@ -138,6 +190,7 @@ const monthNames = [
               text-sm font-semibold
               ${today && !past ? 'text-almet-sapphire dark:text-almet-astral' : ''}
               ${past ? 'text-gray-400 dark:text-gray-600' : 'text-almet-cloud-burst dark:text-white'}
+              ${holiday && !past ? 'text-red-600 dark:text-red-400' : ''}
             `}>
               {day}
             </span>
@@ -145,6 +198,27 @@ const monthNames = [
               <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></div>
             )}
           </div>
+          
+          {/* ✅ Display holidays */}
+          {dayHolidays.length > 0 && !past && (
+            <div className="space-y-0.5 mb-1">
+              {dayHolidays.map((h, idx) => (
+                <div 
+                  key={idx}
+                  className="flex items-center gap-1 text-[9px] text-red-700 dark:text-red-400"
+                  title={h.name}
+                >
+                  <Star className="w-2.5 h-2.5 flex-shrink-0" />
+                  <span className="truncate">{h.name}</span>
+                </div>
+              ))}
+              {dayHolidays.length > 1 && (
+                <div className="text-[8px] text-red-600 dark:text-red-400 font-medium">
+                  {dayHolidays.length} holidays
+                </div>
+              )}
+            </div>
+          )}
           
           {today && !past && (
             <div className="text-[9px] text-almet-sapphire dark:text-almet-astral font-medium">
@@ -160,8 +234,7 @@ const monthNames = [
 
   return (
     <div onMouseLeave={handleMouseUp}>
-
-        {/* ✅ Month/Year Quick Selector */}
+      {/* Month/Year Quick Selector */}
       <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-4 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center justify-between mb-3">
           <button
@@ -181,7 +254,7 @@ const monthNames = [
           </button>
         </div>
 
-        {/* ✅ Month Grid - ASANCA SEÇ */}
+        {/* Month Grid */}
         <div className="grid grid-cols-6 gap-2">
           {monthNames.map((month, index) => (
             <button
@@ -200,6 +273,7 @@ const monthNames = [
           ))}
         </div>
       </div>
+
       {/* Day headers */}
       <div className="grid grid-cols-7 bg-gray-50 dark:bg-gray-900/50">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
@@ -214,13 +288,23 @@ const monthNames = [
 
       {/* Calendar grid */}
       <div className="grid grid-cols-7">
-        {renderCalendar()}
+        {loading ? (
+          <div className="col-span-7 flex items-center justify-center py-20">
+            <div className="w-8 h-8 border-4 border-almet-sapphire border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          renderCalendar()
+        )}
       </div>
 
       {/* Instructions */}
       <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded"></div>
+              <span className="text-almet-waterloo dark:text-gray-400">Holiday</span>
+            </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 rounded"></div>
               <span className="text-almet-waterloo dark:text-gray-400">Selected</span>

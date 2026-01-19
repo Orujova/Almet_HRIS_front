@@ -659,8 +659,9 @@ const loadEmployees = async () => {
         const selectedScale = settings.evaluationScale?.find(s => s.id === selectedScaleId);
         if (selectedScale) {
           const weight = parseFloat(newObjectives[index].weight) || 0;
-          const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-          const calculatedScore = (selectedScale.value * weight * targetScore) / (5 * 100);
+          
+          // ✅ DÜZGÜN DÜSTUR
+          const calculatedScore = (weight / 100) * selectedScale.value;
           
           newObjectives[index] = {
             ...newObjectives[index],
