@@ -305,7 +305,22 @@ cancelObjective: async (id, objectiveId, reason) => {
     );
     return response.data;
   },
-
+// ✅ NEW: End-Year Objectives Rating
+  saveEndYearObjectivesDraft: async (id, objectives) => {
+    const response = await api.post(
+      `/performance/performance/performances/${id}/save_end_year_objectives_draft/`,
+      { objectives }
+    );
+    return response.data;
+  },
+  
+  submitEndYearObjectives: async (id, objectives) => {
+    const response = await api.post(
+      `/performance/performance/performances/${id}/submit_end_year_objectives/`,
+      { objectives }
+    );
+    return response.data;
+  },
   // ✅ NEW: Get available years
   getAvailableYears: async () => {
     const response = await api.get(

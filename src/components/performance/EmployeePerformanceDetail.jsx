@@ -11,6 +11,8 @@ export default function EmployeePerformanceDetail({
   employee,
   performanceData,
   settings,
+  onSaveEndYearObjectivesDraft,
+  onSubmitEndYearObjectives,
   currentPeriod,
   activeYear,
   permissions,
@@ -325,6 +327,8 @@ export default function EmployeePerformanceDetail({
             canEdit={canEdit}
             loading={loading}
             darkMode={darkMode}
+             onSaveEndYearObjectivesDraft={onSaveEndYearObjectivesDraft}
+        onSubmitEndYearObjectives={onSubmitEndYearObjectives}
             totalWeight={totalWeight}
             totalScore={performanceData.total_objectives_score}
             percentage={performanceData.objectives_percentage}

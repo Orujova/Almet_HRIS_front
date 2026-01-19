@@ -58,7 +58,6 @@ const ObjectiveRow = memo(({
                     type="text"
                     value={objective.title || ''}
                     onInput={(e) => {
-                      // ✅ Use onInput instead of onChange
                       onUpdate(index, 'title', e.target.value);
                     }}
                     className={`${inputClass} w-full font-medium ${isTitleMissing ? 'border-red-500' : ''}`}
@@ -192,6 +191,7 @@ const ObjectiveRow = memo(({
                         value={objective.end_year_rating || ''}
                         onInput={(e) => {
                           const value = e.target.value ? parseInt(e.target.value) : null;
+                          console.log('🎯 Rating Change:', { index, objectiveId: objective.id, oldValue: objective.end_year_rating, newValue: value });
                           onUpdate(index, 'end_year_rating', value);
                         }}
                         className={`${inputClass} w-full`}
@@ -224,7 +224,10 @@ const ObjectiveRow = memo(({
                     </label>
                     <select
                       value={objective.status || ''}
-                      onChange={(e) => onUpdate(index, 'status', e.target.value ? parseInt(e.target.value) : null)}
+                      onInput={(e) => {
+                        const value = e.target.value ? parseInt(e.target.value) : null;
+                        onUpdate(index, 'status', value);
+                      }}
                       disabled={isCancelled}
                       className={`${inputClass} w-full ${isStatusMissing && canEditGoals ? 'border-red-500' : ''}`}
                     >
@@ -266,11 +269,24 @@ const ObjectiveRow = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // ✅ Custom comparison - only re-render if these change
+  // ✅ Deep comparison for objective to prevent cross-contamination
+  const objEqual = 
+    prevProps.objective.id === nextProps.objective.id &&
+    prevProps.objective.title === nextProps.objective.title &&
+    prevProps.objective.description === nextProps.objective.description &&
+    prevProps.objective.weight === nextProps.objective.weight &&
+    prevProps.objective.status === nextProps.objective.status &&
+    prevProps.objective.end_year_rating === nextProps.objective.end_year_rating &&
+    prevProps.objective.is_cancelled === nextProps.objective.is_cancelled &&
+    prevProps.objective.calculated_score === nextProps.objective.calculated_score;
+  
   return (
-    prevProps.objective === nextProps.objective &&
+    objEqual &&
+    prevProps.index === nextProps.index &&
     prevProps.isExpanded === nextProps.isExpanded &&
     prevProps.canEditGoals === nextProps.canEditGoals &&
+    prevProps.canCancelGoals === nextProps.canCancelGoals &&
+    prevProps.canRateEndYear === nextProps.canRateEndYear &&
     prevProps.darkMode === nextProps.darkMode
   );
 });
@@ -295,13 +311,15 @@ export default function ObjectivesSection({
   onDelete,
   onSaveDraft,
   onSubmit,
+  onSaveEndYearObjectivesDraft,
+  onSubmitEndYearObjectives,
   onCancelObjective
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   
   const activeObjectives = objectives.filter(obj => !obj.is_cancelled);
   const canAddMore = activeObjectives.length < settings.goalLimits?.max && totalWeight < 100;
-  
+    const allObjectivesRated = activeObjectives.every(obj => obj.end_year_rating);
   const isValidForSubmit = activeObjectives.length >= settings.goalLimits?.min && 
                           totalWeight === 100 &&
                           activeObjectives.every(obj => 
@@ -449,7 +467,6 @@ export default function ObjectivesSection({
   
   const periodStatus = getPeriodStatusMessage();
 
-  // ✅ useCallback to prevent function recreation
   const handleToggle = useCallback((index) => {
     setExpandedRows(prev => ({
       ...prev,
@@ -458,8 +475,9 @@ export default function ObjectivesSection({
   }, []);
 
   const handleUpdate = useCallback((index, field, value) => {
+    console.log('🔄 UPDATE CALL:', { index, field, value, objectiveId: objectives[index]?.id });
     onUpdate(index, field, value);
-  }, [onUpdate]);
+  }, [onUpdate, objectives]);
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60' : 'bg-white'} border ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'} rounded-xl overflow-hidden shadow-sm`}>
@@ -552,7 +570,7 @@ export default function ObjectivesSection({
         <div>
           {objectives.map((objective, index) => (
             <ObjectiveRow
-              key={objective.id || `obj-${index}`}
+              key={`obj-${objective.id || index}-${objective.end_year_rating || 'norating'}`}
               objective={objective}
               index={index}
               isExpanded={expandedRows[index] || false}
@@ -613,7 +631,34 @@ export default function ObjectivesSection({
                 Save Draft
               </button>
             )}
-            
+                 {canRateEndYear && (
+              <>
+                <button
+                  onClick={() => onSaveEndYearObjectivesDraft(objectives)}
+                  disabled={loading}
+                  className="h-10 px-4 rounded-xl text-sm font-medium flex items-center gap-2 transition-all bg-almet-waterloo/10 hover:bg-almet-waterloo/20 text-almet-cloud-burst dark:bg-almet-comet/50 dark:hover:bg-almet-comet dark:text-white disabled:opacity-40"
+                >
+                  {loading ? <AlertCircle className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Save Ratings Draft
+                </button>
+                
+                <button
+                  onClick={() => onSubmitEndYearObjectives(objectives)}
+                  disabled={!allObjectivesRated || loading}
+                  className="h-10 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium flex items-center gap-2 disabled:opacity-40 transition-all shadow-sm"
+                >
+                  <Send className="w-4 h-4" />
+                  Submit End-Year Ratings
+                </button>
+                
+                {!allObjectivesRated && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 rounded-xl text-xs font-medium">
+                    <AlertCircle className="w-4 h-4" />
+                    Please rate all objectives before submitting
+                  </div>
+                )}
+              </>
+            )}
             {canSubmitGoals && (
               <button
                 onClick={() => onSubmit(objectives)}

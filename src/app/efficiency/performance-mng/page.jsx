@@ -666,7 +666,45 @@ const getLetterGradeFromScale = (percentage) => {
     }
   };
 
-  // app/efficiency/page.jsx
+  // ==================== END-YEAR OBJECTIVES HANDLERS ====================
+
+const handleSaveEndYearObjectivesDraft = async (objectives) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    await performanceApi.performances.saveEndYearObjectivesDraft(
+      selectedPerformanceId,
+      objectives
+    );
+    showSuccess('End-year objective ratings draft saved');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error saving end-year objectives:', error);
+    showError(error.response?.data?.error || 'Error saving end-year objectives');
+  } finally {
+    setLoading(false);
+  }
+};
+
+const handleSubmitEndYearObjectives = async (objectives) => {
+  if (!selectedPerformanceId) return;
+  
+  setLoading(true);
+  try {
+    await performanceApi.performances.submitEndYearObjectives(
+      selectedPerformanceId,
+      objectives
+    );
+    showSuccess('End-year objective ratings submitted successfully');
+    await loadPerformanceData(selectedEmployee.id, selectedYear);
+  } catch (error) {
+    console.error('❌ Error submitting end-year objectives:', error);
+    showError(error.response?.data?.error || 'Error submitting end-year objectives');
+  } finally {
+    setLoading(false);
+  }
+};
 
 const handleUpdateObjective = (index, field, value) => {
   const scrollY = window.scrollY;
@@ -1234,7 +1272,8 @@ const handleUpdateObjective = (index, field, value) => {
               onUpdateCompetency={handleUpdateCompetency}
               onSaveCompetenciesDraft={handleSaveCompetenciesDraft}
               onSubmitCompetencies={handleSubmitCompetencies}
-              
+              onSaveEndYearObjectivesDraft={handleSaveEndYearObjectivesDraft}
+  onSubmitEndYearObjectives={handleSubmitEndYearObjectives}
               onSubmitMidYearEmployee={handleSubmitMidYearEmployee}
               onSubmitMidYearManager={handleSubmitMidYearManager}
               
