@@ -565,59 +565,73 @@ const getLetterGradeFromScale = (percentage) => {
 };
 
   const recalculateScores = (data) => {
-    if (!data) return data;
-    
-    const newData = { ...data };
-    
-    let totalObjectivesScore = 0;
-    (newData.objectives || []).forEach(obj => {
-      if (!obj.is_cancelled) {
-        totalObjectivesScore += parseFloat(obj.calculated_score) || 0;
-      }
-    });
-    
-    const targetScore = settings.evaluationTargets?.objective_score_target || 21;
-    const objectivesPercentage = targetScore > 0 
-      ? (totalObjectivesScore / targetScore) * 100 
-      : 0;
-    
-    newData.total_objectives_score = totalObjectivesScore;
-    newData.objectives_percentage = objectivesPercentage;
-    newData.objectives_letter_grade = getLetterGradeFromScale(objectivesPercentage);
-
-    let totalRequired = 0;
-    let totalActual = 0;
-    (newData.competency_ratings || []).forEach(comp => {
-      const required = parseFloat(comp.required_level) || 0;
-      const actual = parseFloat(comp.end_year_rating_value) || 0;
-      totalRequired += required;
-      totalActual += actual;
-    });
-    
-    const competenciesPercentage = totalRequired > 0 
-      ? (totalActual / totalRequired) * 100 
-      : 0;
-    
-    newData.total_competencies_required_score = totalRequired;
-    newData.total_competencies_actual_score = totalActual;
-    newData.competencies_percentage = competenciesPercentage;
-    newData.competencies_letter_grade = getLetterGradeFromScale(competenciesPercentage);
-
-    const objectivesWeight = parseFloat(newData.objectives_weight) || 70;
-    const competenciesWeight = parseFloat(newData.competencies_weight) || 30;
-    
-    const overallPercentage = 
-      (objectivesPercentage * objectivesWeight / 100) + 
-      (competenciesPercentage * competenciesWeight / 100);
-    
-    newData.overall_weighted_percentage = overallPercentage;
-    
-    if (!newData.final_rating) {
-      newData.final_rating = getLetterGradeFromScale(overallPercentage);
+  if (!data) return data;
+  
+  // ✅ CRITICAL: Don't mutate input data
+  const newData = JSON.parse(JSON.stringify(data)); // Deep clone
+  
+  // Calculate objectives
+  let totalObjectivesScore = 0;
+  (newData.objectives || []).forEach(obj => {
+    if (!obj.is_cancelled) {
+      totalObjectivesScore += parseFloat(obj.calculated_score) || 0;
     }
-    
-    return newData;
-  };
+  });
+  
+  const targetScore = settings.evaluationTargets?.objective_score_target || 21;
+  const objectivesPercentage = targetScore > 0 
+    ? (totalObjectivesScore / targetScore) * 100 
+    : 0;
+  
+  newData.total_objectives_score = totalObjectivesScore;
+  newData.objectives_percentage = objectivesPercentage;
+  newData.objectives_letter_grade = getLetterGradeFromScale(objectivesPercentage);
+
+  // Calculate competencies
+  let totalRequired = 0;
+  let totalActual = 0;
+  (newData.competency_ratings || []).forEach(comp => {
+    const required = parseFloat(comp.required_level) || 0;
+    const actual = parseFloat(comp.end_year_rating_value) || 0;
+    totalRequired += required;
+    totalActual += actual;
+  });
+  
+  const competenciesPercentage = totalRequired > 0 
+    ? (totalActual / totalRequired) * 100 
+    : 0;
+  
+  newData.total_competencies_required_score = totalRequired;
+  newData.total_competencies_actual_score = totalActual;
+  newData.competencies_percentage = competenciesPercentage;
+  newData.competencies_letter_grade = getLetterGradeFromScale(competenciesPercentage);
+
+  // Calculate overall
+  const objectivesWeight = parseFloat(newData.objectives_weight) || 70;
+  const competenciesWeight = parseFloat(newData.competencies_weight) || 30;
+  
+  const overallPercentage = 
+    (objectivesPercentage * objectivesWeight / 100) + 
+    (competenciesPercentage * competenciesWeight / 100);
+  
+  newData.overall_weighted_percentage = overallPercentage;
+  
+  if (!newData.final_rating) {
+    newData.final_rating = getLetterGradeFromScale(overallPercentage);
+  }
+  
+  console.log('📊 RECALCULATE COMPLETE:', {
+    objectivesScore: newData.total_objectives_score,
+    objectivesPercentage: newData.objectives_percentage,
+    objectives: newData.objectives.map(o => ({
+      id: o.id,
+      rating: o.end_year_rating,
+      score: o.calculated_score
+    }))
+  });
+  
+  return newData;
+};
 
   // ==================== OBJECTIVE HANDLERS ====================
   const saveObjectivesTimeoutRef = useRef(null);
@@ -751,14 +765,28 @@ const handleUpdateObjective = (index, field, value) => {
   const key = `${selectedEmployee.id}_${selectedYear}`;
   const data = performanceData[key];
   
-  // ✅ FIX: Create new array with ONLY the changed objective
+  console.log('📝 UPDATE START:', { 
+    index, 
+    field, 
+    value, 
+    currentValue: data.objectives[index][field],
+    objectiveId: data.objectives[index].id,
+    objectiveTitle: data.objectives[index].title?.substring(0, 30)
+  });
+  
+  // ✅ CRITICAL FIX: Create completely new array with new objects
   const newObjectives = data.objectives.map((obj, idx) => {
     if (idx !== index) {
-      return obj; // ✅ Return same reference for unchanged objectives
+      // ✅ For unchanged objectives, return NEW object with same values
+      // This prevents reference issues
+      return { ...obj };
     }
     
-    // ✅ Only create new object for the changed one
-    const updatedObj = { ...obj, [field]: value };
+    // ✅ For changed objective, create new object with update
+    const updatedObj = {
+      ...obj,
+      [field]: value
+    };
     
     // ✅ Handle end_year_rating calculation
     if (field === 'end_year_rating') {
@@ -769,13 +797,35 @@ const handleUpdateObjective = (index, field, value) => {
         if (selectedScale) {
           const weight = parseFloat(updatedObj.weight) || 0;
           updatedObj.calculated_score = (weight / 100) * selectedScale.value;
+          
+          console.log('💰 SCORE CALCULATED:', {
+            objectiveId: obj.id,
+            weight,
+            ratingValue: selectedScale.value,
+            calculatedScore: updatedObj.calculated_score
+          });
         }
       } else {
+        updatedObj.end_year_rating = null;
         updatedObj.calculated_score = 0;
       }
     }
     
+    console.log('✅ OBJECTIVE UPDATED:', {
+      objectiveId: obj.id,
+      field,
+      oldValue: obj[field],
+      newValue: updatedObj[field]
+    });
+    
     return updatedObj;
+  });
+  
+  // ✅ Verify the update happened
+  console.log('🔍 VERIFICATION:', {
+    oldRating: data.objectives[index].end_year_rating,
+    newRating: newObjectives[index].end_year_rating,
+    allRatings: newObjectives.map(o => ({ id: o.id, rating: o.end_year_rating }))
   });
   
   const updatedData = {
@@ -784,6 +834,12 @@ const handleUpdateObjective = (index, field, value) => {
   };
   
   const recalculatedData = recalculateScores(updatedData);
+  
+  console.log('📊 FINAL STATE:', {
+    objectiveId: recalculatedData.objectives[index].id,
+    rating: recalculatedData.objectives[index].end_year_rating,
+    score: recalculatedData.objectives[index].calculated_score
+  });
   
   setPerformanceData(prev => ({
     ...prev,

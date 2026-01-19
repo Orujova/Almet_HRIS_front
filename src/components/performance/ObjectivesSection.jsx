@@ -199,28 +199,31 @@ const ObjectiveRow = memo(({
                       End Year Rating
                     </label>
                     {canRateEndYear && !isCancelled ? (
-                      <select
+                    <select
   value={objective.end_year_rating || ''}
-  onInput={(e) => {
+  onChange={(e) => { // ✅ Use onChange instead of onInput
     const value = e.target.value ? parseInt(e.target.value) : null;
-    console.log('🎯 Rating Selection:', {
+    
+    console.log('🎯 ROW RATING CHANGE:', {
       objectiveId: objective.id,
       objectiveTitle: objective.title?.substring(0, 30),
       index,
       oldRating: objective.end_year_rating,
-      newRating: value
+      newRating: value,
+      eventValue: e.target.value
     });
+    
     onUpdate(index, 'end_year_rating', value);
   }}
   className={`${inputClass} w-full`}
 >
-                        <option value="">-- Select Rating --</option>
-                        {settings.evaluationScale?.map(scale => (
-                          <option key={scale.id} value={scale.id}>
-                            {scale.name} • {scale.value}
-                          </option>
-                        ))}
-                      </select>
+  <option value="">-- Select Rating --</option>
+  {settings.evaluationScale?.map(scale => (
+    <option key={scale.id} value={scale.id}>
+      {scale.name} • {scale.value}
+    </option>
+  ))}
+</select>
                     ) : (
                       <div className={`${inputClass} w-full flex items-center justify-center`}>
                         {selectedRating ? (
@@ -398,35 +401,14 @@ const ObjectiveRow = memo(({
     </div>
   );
 }, (prevProps, nextProps) => {
-  // ✅ CRITICAL FIX: Only compare this specific objective's data
-  const prevObj = prevProps.objective;
-  const nextObj = nextProps.objective;
-  
-  // If it's not the same objective by ID, they're different
-  if (prevObj.id !== nextObj.id) return false;
-  
-  // ✅ Deep comparison of ALL fields that matter
-  const objectiveEqual = 
-    prevObj.title === nextObj.title &&
-    prevObj.description === nextObj.description &&
-    prevObj.weight === nextObj.weight &&
-    prevObj.status === nextObj.status &&
-    prevObj.end_year_rating === nextObj.end_year_rating &&
-    prevObj.calculated_score === nextObj.calculated_score &&
-    prevObj.is_cancelled === nextObj.is_cancelled;
-  
-  const otherPropsEqual = 
-    prevProps.index === nextProps.index &&
-    prevProps.isExpanded === nextProps.isExpanded &&
-    prevProps.canEditGoals === nextProps.canEditGoals &&
-    prevProps.canCancelGoals === nextProps.canCancelGoals &&
-    prevProps.canRateEndYear === nextProps.canRateEndYear &&
-    prevProps.darkMode === nextProps.darkMode;
-  
-  // ✅ Only re-render if THIS objective changed
-  return objectiveEqual && otherPropsEqual;
+  // ✅ SIMPLE: Just check if the objective reference changed
+  return prevProps.objective === nextProps.objective &&
+         prevProps.isExpanded === nextProps.isExpanded &&
+         prevProps.canEditGoals === nextProps.canEditGoals &&
+         prevProps.canCancelGoals === nextProps.canCancelGoals &&
+         prevProps.canRateEndYear === nextProps.canRateEndYear &&
+         prevProps.darkMode === nextProps.darkMode;
 });
-
 ObjectiveRow.displayName = 'ObjectiveRow';
 
 export default function ObjectivesSection({
@@ -613,9 +595,16 @@ export default function ObjectivesSection({
   }, []);
 
   const handleUpdate = useCallback((index, field, value) => {
-    console.log('🔄 UPDATE CALL:', { index, field, value, objectiveId: objectives[index]?.id });
-    onUpdate(index, field, value);
-  }, [onUpdate, objectives]);
+  console.log('🔄 SECTION UPDATE:', { 
+    index, 
+    field, 
+    value,
+    objectiveId: objectives[index]?.id,
+    currentValue: objectives[index]?.[field]
+  });
+  
+  onUpdate(index, field, value);
+}, [onUpdate]); // ✅ Remove 'objectives' dependency
 
   return (
     <div className={`${darkMode ? 'bg-almet-cloud-burst/60' : 'bg-white'} border ${darkMode ? 'border-almet-comet/30' : 'border-almet-mystic'} rounded-xl overflow-hidden shadow-sm`}>
