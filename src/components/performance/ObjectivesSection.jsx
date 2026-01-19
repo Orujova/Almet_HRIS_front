@@ -189,20 +189,20 @@ const ObjectiveRow = memo(({
                     </label>
                     {canRateEndYear && !isCancelled ? (
                       <select
-  value={objective.end_year_rating || ''}
-  onInput={(e) => {
-    const value = e.target.value ? parseInt(e.target.value) : null;
-    onUpdate(index, 'end_year_rating', value);
-  }}
-  className={`${inputClass} w-full`}
->
-  <option value="">-- Select Rating --</option>
-  {settings.evaluationScale?.map(scale => (
-    <option key={scale.id} value={scale.id}>
-      {scale.name} • {scale.value}
-    </option>
-  ))}
-</select>
+                        value={objective.end_year_rating || ''}
+                        onInput={(e) => {
+                          const value = e.target.value ? parseInt(e.target.value) : null;
+                          onUpdate(index, 'end_year_rating', value);
+                        }}
+                        className={`${inputClass} w-full`}
+                      >
+                        <option value="">-- Select Rating --</option>
+                        {settings.evaluationScale?.map(scale => (
+                          <option key={scale.id} value={scale.id}>
+                            {scale.name} • {scale.value}
+                          </option>
+                        ))}
+                      </select>
                     ) : (
                       <div className={`${inputClass} w-full flex items-center justify-center`}>
                         {selectedRating ? (
