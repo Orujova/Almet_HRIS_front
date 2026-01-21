@@ -1025,6 +1025,8 @@ useEffect(() => {
     canEditSchedule={canEditSchedule}
     maxScheduleEdits={vacationSettings.max_schedule_edits}
     handleViewScheduleDetail={handleViewScheduleDetail}
+    showSuccess={showSuccess} // ✅ ADD
+    showError={showError}     // ✅ ADD
   />
 )}
 
