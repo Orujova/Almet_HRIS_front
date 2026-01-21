@@ -111,9 +111,14 @@ export default function PlanningCalendar({
   };
 
   const isPastDate = (date) => {
+    // ✅ FIX: Compare local dates without time
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return date < today;
+    
+    const checkDate = new Date(date);
+    checkDate.setHours(0, 0, 0, 0);
+    
+    return checkDate < today;
   };
 
   const isHoliday = (date) => {
@@ -157,9 +162,11 @@ export default function PlanningCalendar({
       const start = dragStart < dragEnd ? dragStart : dragEnd;
       const end = dragStart < dragEnd ? dragEnd : dragStart;
       
-      // ✅ FIX: Format dates correctly without timezone offset
-      const startStr = start.toISOString().split('T')[0];
-      const endStr = end.toISOString().split('T')[0];
+      // ✅ FIX: Use formatDate which now uses local date
+      const startStr = formatDate(start);
+      const endStr = formatDate(end);
+      
+      console.log('🔍 DEBUG - Selected:', { startStr, endStr, start, end });
       
       onRangeSelect(startStr, endStr);
     }
@@ -185,7 +192,8 @@ export default function PlanningCalendar({
 
     // Calendar days
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
+      // ✅ FIX: Create date with local timezone (no time component)
+      const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0);
       const isSelected = isDateSelected(date);
       const inDragRange = isDateInDragRange(date);
       const today = isToday(date);
