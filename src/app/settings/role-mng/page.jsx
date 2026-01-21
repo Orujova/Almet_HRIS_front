@@ -42,8 +42,6 @@ export default function RoleAccessManagementPage() {
   const [rolesTotal, setRolesTotal] = useState(0);
   
   const [permissionsPage, setPermissionsPage] = useState(1);
-  const PERMISSIONS_PER_PAGE = 5;
-  
   const [employeeRolesPage, setEmployeeRolesPage] = useState(1);
   const [roleAssignmentsPage, setRoleAssignmentsPage] = useState(1);
   
@@ -83,8 +81,23 @@ export default function RoleAccessManagementPage() {
   const [expandedEmployees, setExpandedEmployees] = useState({});
 
   useEffect(() => {
-    fetchData();
-  }, [activeTab, rolesPage, employeeRolesPage, roleAssignmentsPage, permissionsPage]);
+    if (activeTab === "roles") {
+      // For roles tab, use pagination
+      fetchData();
+    } else {
+      // For other tabs, fetch all data once
+      if (activeTab === "employee-roles" || activeTab === "role-assignments") {
+        if (employeeRoles.length === 0) {
+          fetchData();
+        } else {
+          // Just re-group existing data if we already have it
+          regroupData();
+        }
+      } else {
+        fetchData();
+      }
+    }
+  }, [activeTab, rolesPage]);
 
   useEffect(() => {
     fetchEmployees();
@@ -94,10 +107,21 @@ export default function RoleAccessManagementPage() {
   const fetchEmployees = async () => {
     try {
       const token = localStorage.getItem("accessToken");
-      const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/employees/`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setEmployees(response.data.results || []);
+      // Fetch ALL employees
+      let allEmployees = [];
+      let currentPage = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/employees/?page=${currentPage}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        allEmployees = [...allEmployees, ...(response.data.results || [])];
+        hasMore = response.data.next !== null;
+        currentPage++;
+      }
+      
+      setEmployees(allEmployees);
     } catch (error) {
       console.error("Error fetching employees:", error);
       toast.showError("Failed to fetch employees");
@@ -114,6 +138,46 @@ export default function RoleAccessManagementPage() {
     }
   };
 
+  const regroupData = () => {
+    if (activeTab === "employee-roles") {
+      // Group by role
+      const grouped = {};
+      employeeRoles.forEach(assignment => {
+        const roleId = assignment.role;
+        const roleName = assignment.role_detail?.name || 'Unknown';
+        if (!grouped[roleId]) {
+          grouped[roleId] = {
+            roleId,
+            roleName,
+            isActive: assignment.role_detail?.is_active,
+            employees: []
+          };
+        }
+        grouped[roleId].employees.push(assignment);
+      });
+      setEmployeesByRole(Object.values(grouped));
+    } else if (activeTab === "role-assignments") {
+      // Group by employee
+      const grouped = {};
+      employeeRoles.forEach(assignment => {
+        const empId = assignment.employee;
+        const empName = assignment.employee_name || 'Unknown';
+        const empJobTitle = assignment.employee_job_title || '';
+        if (!grouped[empId]) {
+          grouped[empId] = {
+            employeeId: empId,
+            employeeName: empName,
+            employeeJobTitle: empJobTitle,
+            employeeIdDisplay: assignment.employee_id_display,
+            roles: []
+          };
+        }
+        grouped[empId].roles.push(assignment);
+      });
+      setRolesByEmployee(Object.values(grouped));
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -125,12 +189,23 @@ export default function RoleAccessManagementPage() {
         const permsData = await roleAccessService.permissions.getByCategory();
         setPermissions(permsData.categories || {});
       } else if (activeTab === "employee-roles") {
-        const assignData = await roleAccessService.employeeRoles.getAll({ page: employeeRolesPage });
-        setEmployeeRoles(assignData.results || []);
+        // Fetch ALL employee role assignments
+        let allAssignments = [];
+        let currentPage = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const assignData = await roleAccessService.employeeRoles.getAll({ page: currentPage });
+          allAssignments = [...allAssignments, ...(assignData.results || [])];
+          hasMore = assignData.next !== null;
+          currentPage++;
+        }
+        
+        setEmployeeRoles(allAssignments);
         
         // Group by role
         const grouped = {};
-        (assignData.results || []).forEach(assignment => {
+        allAssignments.forEach(assignment => {
           const roleId = assignment.role;
           const roleName = assignment.role_detail?.name || 'Unknown';
           if (!grouped[roleId]) {
@@ -145,12 +220,23 @@ export default function RoleAccessManagementPage() {
         });
         setEmployeesByRole(Object.values(grouped));
       } else if (activeTab === "role-assignments") {
-        const assignData = await roleAccessService.employeeRoles.getAll({ page: roleAssignmentsPage });
-        setEmployeeRoles(assignData.results || []);
+        // Fetch ALL employee role assignments
+        let allAssignments = [];
+        let currentPage = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const assignData = await roleAccessService.employeeRoles.getAll({ page: currentPage });
+          allAssignments = [...allAssignments, ...(assignData.results || [])];
+          hasMore = assignData.next !== null;
+          currentPage++;
+        }
+        
+        setEmployeeRoles(allAssignments);
         
         // Group by employee
         const grouped = {};
-        (assignData.results || []).forEach(assignment => {
+        allAssignments.forEach(assignment => {
           const empId = assignment.employee;
           const empName = assignment.employee_name || 'Unknown';
           const empJobTitle = assignment.employee_job_title || '';
@@ -504,10 +590,10 @@ export default function RoleAccessManagementPage() {
   };
 
   const tabs = [
-    { id: "role-assignments", label: "By Employee", icon: UserPlus },
-    { id: "employee-roles", label: "By Role", icon: Users },
     { id: "roles", label: "Roles", icon: Shield },
     { id: "permissions", label: "Permissions", icon: Key },
+    { id: "employee-roles", label: "By Role", icon: Users },
+    { id: "role-assignments", label: "By Employee", icon: UserPlus },
   ];
 
   const filteredRoles = roles.filter((role) =>
@@ -537,15 +623,6 @@ export default function RoleAccessManagementPage() {
   }));
 
   const getTotalPages = (total, perPage = 10) => Math.ceil(total / perPage);
-
-  const paginatedPermissionCategories = () => {
-    const categories = Object.entries(permissions);
-    const start = (permissionsPage - 1) * PERMISSIONS_PER_PAGE;
-    const end = start + PERMISSIONS_PER_PAGE;
-    return categories.slice(start, end);
-  };
-
-  const totalPermissionPages = Math.ceil(Object.keys(permissions).length / PERMISSIONS_PER_PAGE);
 
   if (loading && roles.length === 0 && employeeRoles.length === 0) {
     return <LoadingSpinner message="Loading role management..." />;
@@ -865,7 +942,7 @@ export default function RoleAccessManagementPage() {
           {activeTab === "permissions" && (
             <>
               <div className="space-y-3">
-                {paginatedPermissionCategories().map(([category, perms]) => (
+                {Object.entries(permissions).map(([category, perms]) => (
                   <div
                     key={category}
                     className={`rounded-xl border shadow-sm ${
@@ -932,56 +1009,6 @@ export default function RoleAccessManagementPage() {
                   </div>
                 ))}
               </div>
-
-              {/* Pagination */}
-              {totalPermissionPages > 1 && (
-                <div className={`flex items-center justify-between mt-4 px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Page {permissionsPage} of {totalPermissionPages}
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPermissionsPage(p => Math.max(1, p - 1))}
-                      disabled={permissionsPage === 1}
-                      className={`p-2 rounded-lg border transition-colors ${
-                        darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                      }`}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(totalPermissionPages, 5) }, (_, i) => i + 1).map(page => (
-                        <button
-                          key={page}
-                          onClick={() => setPermissionsPage(page)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            page === permissionsPage
-                              ? 'bg-almet-sapphire text-white'
-                              : darkMode
-                              ? 'hover:bg-gray-700 text-gray-400'
-                              : 'hover:bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setPermissionsPage(p => Math.min(totalPermissionPages, p + 1))}
-                      disabled={permissionsPage === totalPermissionPages}
-                      className={`p-2 rounded-lg border transition-colors ${
-                        darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
-                      }`}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              )}
             </>
           )}
 
