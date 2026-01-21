@@ -169,7 +169,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Name or ID..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+              className="w-full pl-10 pr-4 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
             />
           </div>
         </div>
@@ -197,22 +197,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
           />
         </div>
 
-        {/* Year */}
-        <div className="lg:col-span-2">
-          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-            Year
-          </label>
-          <input
-            type="number"
-            value={filters.year}
-            onChange={(e) => {
-              setFilters((prev) => ({ ...prev, year: e.target.value }));
-              // Auto-apply on change
-              setTimeout(() => fetchBalances(), 100);
-            }}
-            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-          />
-        </div>
+       
 
         {/* Actions */}
         <div className="lg:col-span-4 flex items-end gap-2">
@@ -267,6 +252,22 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+             {/* Year */}
+        <div className="lg:col-span-2">
+          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+            Year
+          </label>
+          <input
+            type="number"
+            value={filters.year}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, year: e.target.value }));
+              // Auto-apply on change
+              setTimeout(() => fetchBalances(), 100);
+            }}
+            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+          />
+        </div>
             {/* Department */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
