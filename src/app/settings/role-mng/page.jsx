@@ -19,11 +19,11 @@ import {
   Trash2, 
   X, 
   ChevronDown,
-  Settings,
   UserPlus,
   CheckCircle2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCheck
 } from "lucide-react";
 
 export default function RoleAccessManagementPage() {
@@ -40,16 +40,16 @@ export default function RoleAccessManagementPage() {
   // Pagination states
   const [rolesPage, setRolesPage] = useState(1);
   const [rolesTotal, setRolesTotal] = useState(0);
-  const [rolesNext, setRolesNext] = useState(null);
-  const [rolesPrev, setRolesPrev] = useState(null);
   
   const [permissionsPage, setPermissionsPage] = useState(1);
   const PERMISSIONS_PER_PAGE = 5;
   
   const [employeeRolesPage, setEmployeeRolesPage] = useState(1);
-  const [employeeRolesTotal, setEmployeeRolesTotal] = useState(0);
-  const [employeeRolesNext, setEmployeeRolesNext] = useState(null);
-  const [employeeRolesPrev, setEmployeeRolesPrev] = useState(null);
+  const [roleAssignmentsPage, setRoleAssignmentsPage] = useState(1);
+  
+  // Store grouped data
+  const [employeesByRole, setEmployeesByRole] = useState([]);
+  const [rolesByEmployee, setRolesByEmployee] = useState([]);
   
   // Modal states
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -79,10 +79,12 @@ export default function RoleAccessManagementPage() {
   // Collapsible states
   const [expandedCategories, setExpandedCategories] = useState({});
   const [expandedBulkCategories, setExpandedBulkCategories] = useState({});
+  const [expandedRoles, setExpandedRoles] = useState({});
+  const [expandedEmployees, setExpandedEmployees] = useState({});
 
   useEffect(() => {
     fetchData();
-  }, [activeTab, rolesPage, employeeRolesPage]);
+  }, [activeTab, rolesPage, employeeRolesPage, roleAssignmentsPage, permissionsPage]);
 
   useEffect(() => {
     fetchEmployees();
@@ -119,22 +121,51 @@ export default function RoleAccessManagementPage() {
         const rolesData = await roleAccessService.roles.getAll({ page: rolesPage });
         setRoles(rolesData.results || []);
         setRolesTotal(rolesData.count || 0);
-        setRolesNext(rolesData.next);
-        setRolesPrev(rolesData.previous);
       } else if (activeTab === "permissions") {
         const permsData = await roleAccessService.permissions.getByCategory();
         setPermissions(permsData.categories || {});
-        const allCategories = {};
-        Object.keys(permsData.categories || {}).forEach(cat => {
-          allCategories[cat] = false;
-        });
-        setExpandedCategories(allCategories);
-      } else if (activeTab === "assignments") {
+      } else if (activeTab === "employee-roles") {
         const assignData = await roleAccessService.employeeRoles.getAll({ page: employeeRolesPage });
         setEmployeeRoles(assignData.results || []);
-        setEmployeeRolesTotal(assignData.count || 0);
-        setEmployeeRolesNext(assignData.next);
-        setEmployeeRolesPrev(assignData.previous);
+        
+        // Group by role
+        const grouped = {};
+        (assignData.results || []).forEach(assignment => {
+          const roleId = assignment.role;
+          const roleName = assignment.role_detail?.name || 'Unknown';
+          if (!grouped[roleId]) {
+            grouped[roleId] = {
+              roleId,
+              roleName,
+              isActive: assignment.role_detail?.is_active,
+              employees: []
+            };
+          }
+          grouped[roleId].employees.push(assignment);
+        });
+        setEmployeesByRole(Object.values(grouped));
+      } else if (activeTab === "role-assignments") {
+        const assignData = await roleAccessService.employeeRoles.getAll({ page: roleAssignmentsPage });
+        setEmployeeRoles(assignData.results || []);
+        
+        // Group by employee
+        const grouped = {};
+        (assignData.results || []).forEach(assignment => {
+          const empId = assignment.employee;
+          const empName = assignment.employee_name || 'Unknown';
+          const empJobTitle = assignment.employee_job_title || '';
+          if (!grouped[empId]) {
+            grouped[empId] = {
+              employeeId: empId,
+              employeeName: empName,
+              employeeJobTitle: empJobTitle,
+              employeeIdDisplay: assignment.employee_id_display,
+              roles: []
+            };
+          }
+          grouped[empId].roles.push(assignment);
+        });
+        setRolesByEmployee(Object.values(grouped));
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -198,21 +229,6 @@ export default function RoleAccessManagementPage() {
     setShowRoleModal(true);
   };
 
-  const handleOpenBulkPermissions = async () => {
-    setBulkSelectedRoles([]);
-    setBulkPermissionsAction("add");
-    setBulkPermissionsSelected([]);
-    setRolePermissionsMap({});
-    
-    const allCategories = {};
-    Object.keys(permissions).forEach(cat => {
-      allCategories[cat] = false;
-    });
-    setExpandedBulkCategories(allCategories);
-    
-    setShowBulkPermissionsModal(true);
-  };
-
   const handleBulkPermissionsForSelected = async (action) => {
     if (selectedRoleBoxes.length === 0) {
       toast.showWarning("Please select at least one role");
@@ -235,8 +251,6 @@ export default function RoleAccessManagementPage() {
       setRolePermissionsMap(permissionsMap);
       setBulkSelectedRoles(selectedRoleBoxes);
       setBulkPermissionsAction(action);
-      
-      // Always pre-select existing permissions for both add and remove actions
       setBulkPermissionsSelected(Array.from(allExistingPermissions));
       
       const allCategories = {};
@@ -372,10 +386,7 @@ export default function RoleAccessManagementPage() {
         return;
       }
 
-      const employeeIds = selectedEmployeeRows.map(id => {
-        const assignment = employeeRoles.find(er => er.id === id);
-        return assignment?.employee;
-      }).filter(Boolean);
+      const employeeIds = [...new Set(selectedEmployeeRows)];
 
       await roleAccessService.employeeRoles.bulkAssignRoles({
         employee_ids: employeeIds,
@@ -443,7 +454,20 @@ export default function RoleAccessManagementPage() {
     }));
   };
 
-  // Select all permissions in bulk modal
+  const toggleRole = (roleId) => {
+    setExpandedRoles(prev => ({
+      ...prev,
+      [roleId]: !prev[roleId]
+    }));
+  };
+
+  const toggleEmployee = (empId) => {
+    setExpandedEmployees(prev => ({
+      ...prev,
+      [empId]: !prev[empId]
+    }));
+  };
+
   const handleSelectAllPermissions = () => {
     const filteredCategories = getFilteredPermissionsByCategory();
     const allPermIds = [];
@@ -453,22 +477,10 @@ export default function RoleAccessManagementPage() {
     setBulkPermissionsSelected(allPermIds);
   };
 
-  // Deselect all permissions in bulk modal
   const handleDeselectAllPermissions = () => {
     setBulkPermissionsSelected([]);
   };
 
-  // Check if all permissions are selected
-  const areAllPermissionsSelected = () => {
-    const filteredCategories = getFilteredPermissionsByCategory();
-    const allPermIds = [];
-    Object.values(filteredCategories).forEach(perms => {
-      perms.forEach(p => allPermIds.push(p.id));
-    });
-    return allPermIds.length > 0 && allPermIds.every(id => bulkPermissionsSelected.includes(id));
-  };
-
-  // Select/Deselect all in a category
   const handleSelectAllInCategory = (category) => {
     const filteredCategories = getFilteredPermissionsByCategory();
     const categoryPerms = filteredCategories[category] || [];
@@ -477,10 +489,8 @@ export default function RoleAccessManagementPage() {
     const allSelected = categoryPermIds.every(id => bulkPermissionsSelected.includes(id));
     
     if (allSelected) {
-      // Deselect all in category
       setBulkPermissionsSelected(prev => prev.filter(id => !categoryPermIds.includes(id)));
     } else {
-      // Select all in category
       setBulkPermissionsSelected(prev => {
         const newSelected = [...prev];
         categoryPermIds.forEach(id => {
@@ -494,7 +504,8 @@ export default function RoleAccessManagementPage() {
   };
 
   const tabs = [
-    { id: "assignments", label: "Employee Assignments", icon: Users },
+    { id: "role-assignments", label: "By Employee", icon: UserPlus },
+    { id: "employee-roles", label: "By Role", icon: Users },
     { id: "roles", label: "Roles", icon: Shield },
     { id: "permissions", label: "Permissions", icon: Key },
   ];
@@ -503,9 +514,12 @@ export default function RoleAccessManagementPage() {
     role.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const filteredEmployeeRoles = employeeRoles.filter((er) =>
-    er.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    er.role_detail?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEmployeesByRole = employeesByRole.filter((group) =>
+    group.roleName.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredRolesByEmployee = rolesByEmployee.filter((group) =>
+    group.employeeName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const employeeOptions = employees.map(emp => ({
@@ -541,20 +555,27 @@ export default function RoleAccessManagementPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto p-3 max-w-full">
+      <div className="container mx-auto p-4 max-w-full">
         {/* Header */}
-        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm mb-3`}>
-          <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-            <h1 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Role & Access Management
-            </h1>
-            <p className={`mt-0.5 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Manage roles, permissions, and employee access
-            </p>
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm mb-4`}>
+          <div className={`px-5 py-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-almet-sapphire to-almet-astral">
+                <Shield className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Role & Access Management
+                </h1>
+                <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                  Manage roles, permissions, and employee access control
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 px-4">
+          <div className="flex gap-1 px-5 overflow-x-auto">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -564,11 +585,12 @@ export default function RoleAccessManagementPage() {
                     setActiveTab(tab.id);
                     setSelectedRoleBoxes([]);
                     setSelectedEmployeeRows([]);
+                    setSearchTerm("");
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${
+                  className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                     activeTab === tab.id
-                      ? 'border-almet-sapphire text-almet-sapphire'
-                      : `border-transparent ${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-800'}`
+                      ? 'border-almet-sapphire text-almet-sapphire bg-almet-sapphire/5'
+                      : `border-transparent ${darkMode ? 'text-gray-400 hover:text-gray-300 hover:bg-gray-700/50' : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'}`
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -580,44 +602,44 @@ export default function RoleAccessManagementPage() {
         </div>
 
         {/* Action Bar */}
-        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm mb-3 px-4 py-2.5`}>
-          <div className="flex items-center justify-between gap-3">
+        <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm mb-4 px-5 py-3`}>
+          <div className="flex items-center justify-between gap-4 flex-wrap">
             {/* Search */}
-            {(activeTab === "roles" || activeTab === "assignments") && (
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-2.5 top-2 w-3.5 h-3.5 text-gray-400" />
+            {(activeTab === "roles" || activeTab === "employee-roles" || activeTab === "role-assignments") && (
+              <div className="relative flex-1 max-w-md min-w-[240px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder={`Search ${activeTab}...`}
+                  placeholder={`Search ${activeTab === 'roles' ? 'roles' : activeTab === 'employee-roles' ? 'by role' : 'by employee'}...`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border ${
+                  className={`w-full pl-10 pr-4 py-2 text-sm rounded-lg border ${
                     darkMode
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500'
-                  } focus:outline-none focus:ring-1 focus:ring-almet-sapphire`}
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-almet-sapphire'
+                      : 'bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-500 focus:border-almet-sapphire'
+                  } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/20 transition-all`}
                 />
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-2 ml-auto">
+            <div className="flex gap-2 ml-auto flex-wrap">
               {activeTab === "roles" && (
                 <>
                   {selectedRoleBoxes.length > 0 && (
                     <>
                       <button
                         onClick={() => handleBulkPermissionsForSelected("add")}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all shadow-sm hover:shadow"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
                         Add Permissions ({selectedRoleBoxes.length})
                       </button>
                       <button
                         onClick={() => handleBulkPermissionsForSelected("remove")}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-sm hover:shadow"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                         Remove Permissions ({selectedRoleBoxes.length})
                       </button>
                     </>
@@ -629,38 +651,38 @@ export default function RoleAccessManagementPage() {
                       setRoleForm({ name: "", is_active: true });
                       setShowRoleModal(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral hover:shadow-lg text-white rounded-lg transition-all shadow-sm"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-4 h-4" />
                     Create Role
                   </button>
                 </>
               )}
-              {activeTab === "assignments" && (
+              {(activeTab === "employee-roles" || activeTab === "role-assignments") && (
                 <>
                   {selectedEmployeeRows.length > 0 && (
                     <>
                       <button
                         onClick={() => setShowBulkRoleAssignModal(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-green-600 hover:bg-green-700 text-white rounded-lg transition-all shadow-sm hover:shadow"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
                         Assign Roles ({selectedEmployeeRows.length})
                       </button>
                       <button
                         onClick={handleBulkRevokeRoles}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-red-600 hover:bg-red-700 text-white rounded-lg transition-all shadow-sm hover:shadow"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Revoke Roles ({selectedEmployeeRows.length})
+                        <Trash2 className="w-4 h-4" />
+                        Revoke ({selectedEmployeeRows.length})
                       </button>
                     </>
                   )}
                   <button
                     onClick={() => setShowAssignModal(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral hover:shadow-lg text-white rounded-lg transition-all shadow-sm"
                   >
-                    <UserPlus className="w-3.5 h-3.5" />
+                    <UserPlus className="w-4 h-4" />
                     Assign Role
                   </button>
                 </>
@@ -674,37 +696,38 @@ export default function RoleAccessManagementPage() {
           {/* Roles Tab */}
           {activeTab === "roles" && (
             <>
-              {/* Select All Checkbox */}
-              <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-sm mb-3 px-4 py-2 flex items-center gap-2`}>
-                <CustomCheckbox
-                  checked={selectedRoleBoxes.length === filteredRoles.length && filteredRoles.length > 0}
-                  onChange={() => {
-                    if (selectedRoleBoxes.length === filteredRoles.length) {
-                      setSelectedRoleBoxes([]);
-                    } else {
-                      setSelectedRoleBoxes(filteredRoles.map(r => r.id));
-                    }
-                  }}
-                />
-                <span className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Select All Roles {selectedRoleBoxes.length > 0 && `(${selectedRoleBoxes.length} selected)`}
-                </span>
-              </div>
+              {filteredRoles.length > 0 && (
+                <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm mb-4 px-5 py-3 flex items-center gap-3`}>
+                  <CustomCheckbox
+                    checked={selectedRoleBoxes.length === filteredRoles.length && filteredRoles.length > 0}
+                    onChange={() => {
+                      if (selectedRoleBoxes.length === filteredRoles.length) {
+                        setSelectedRoleBoxes([]);
+                      } else {
+                        setSelectedRoleBoxes(filteredRoles.map(r => r.id));
+                      }
+                    }}
+                  />
+                  <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Select All {selectedRoleBoxes.length > 0 && `(${selectedRoleBoxes.length} selected)`}
+                  </span>
+                </div>
+              )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filteredRoles.map((role) => (
                   <div
                     key={role.id}
-                    className={`rounded-lg border ${
+                    className={`rounded-xl border-2 transition-all ${
                       selectedRoleBoxes.includes(role.id)
-                        ? 'border-almet-sapphire bg-almet-sapphire/5'
+                        ? 'border-almet-sapphire bg-almet-sapphire/5 shadow-lg'
                         : darkMode
-                        ? 'bg-gray-800 border-gray-700'
-                        : 'bg-white border-gray-200'
-                    } p-3 shadow-sm hover:shadow transition-shadow`}
+                        ? 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                        : 'bg-white border-gray-200 hover:border-gray-300'
+                    } p-4 shadow-sm hover:shadow-md`}
                   >
-                    <div className="flex items-start justify-between mb-2.5">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
                         <CustomCheckbox
                           checked={selectedRoleBoxes.includes(role.id)}
                           onChange={() => {
@@ -715,20 +738,20 @@ export default function RoleAccessManagementPage() {
                             );
                           }}
                         />
-                        <div className="p-1.5 rounded-lg bg-almet-sapphire/10 text-almet-sapphire">
-                          <Shield className="w-3.5 h-3.5" />
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 text-almet-sapphire">
+                          <Shield className="w-5 h-5" />
                         </div>
                         <div>
-                          <h3 className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          <h3 className={`font-semibold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                             {role.name}
                           </h3>
-                          <div className="flex items-center gap-1.5 mt-0.5">
+                          <div className="flex items-center gap-2 mt-1">
                             {role.is_system_role && (
-                              <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
+                              <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">
                                 System
                               </span>
                             )}
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                               role.is_active
                                 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
@@ -739,16 +762,16 @@ export default function RoleAccessManagementPage() {
                         </div>
                       </div>
 
-                      <div className="flex gap-1.5">
+                      <div className="flex gap-2">
                         <button 
                           onClick={() => openEditModal(role)}
-                          className={`p-1.5 rounded transition-colors ${
+                          className={`p-2 rounded-lg transition-colors ${
                             darkMode 
                               ? 'hover:bg-gray-700 text-gray-400 hover:text-white' 
                               : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'
                           }`}
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         {!role.is_system_role && (
                           <button 
@@ -756,28 +779,28 @@ export default function RoleAccessManagementPage() {
                               setItemToDelete(role.id);
                               setShowDeleteConfirm(true);
                             }}
-                            className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 mb-2.5">
-                      <div className={`p-2 flex gap-6 items-center justify-center rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
                         <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           Permissions
                         </p>
-                        <p className={`text-xs font-bold mt-0.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <p className={`text-lg font-bold mt-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                           {role.permissions_count || 0}
                         </p>
                       </div>
-                      <div className={`p-2 flex gap-6 items-center justify-center rounded ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                      <div className={`p-3 rounded-lg ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
                         <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                           Employees
                         </p>
-                        <p className={`text-xs font-bold mt-0.5 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        <p className={`text-lg font-bold mt-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                           {role.employees_count || 0}
                         </p>
                       </div>
@@ -788,28 +811,28 @@ export default function RoleAccessManagementPage() {
               
               {/* Pagination */}
               {rolesTotal > 10 && (
-                <div className="flex items-center justify-between mt-3">
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {Math.min((rolesPage - 1) * 10 + 1, rolesTotal)}-{Math.min(rolesPage * 10, rolesTotal)} of {rolesTotal}
+                <div className={`flex items-center justify-between mt-4 px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Showing {Math.min((rolesPage - 1) * 10 + 1, rolesTotal)}-{Math.min(rolesPage * 10, rolesTotal)} of {rolesTotal}
                   </p>
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => setRolesPage(p => Math.max(1, p - 1))}
-                      disabled={!rolesPrev}
-                      className={`p-1.5 rounded border text-xs transition-colors ${
+                      disabled={rolesPage === 1}
+                      className={`p-2 rounded-lg border transition-colors ${
                         darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                      } disabled:cursor-not-allowed`}
+                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed' 
+                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(getTotalPages(rolesTotal), 5) }, (_, i) => i + 1).map(page => (
                         <button
                           key={page}
                           onClick={() => setRolesPage(page)}
-                          className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                             page === rolesPage
                               ? 'bg-almet-sapphire text-white'
                               : darkMode
@@ -823,14 +846,14 @@ export default function RoleAccessManagementPage() {
                     </div>
                     <button
                       onClick={() => setRolesPage(p => p + 1)}
-                      disabled={!rolesNext}
-                      className={`p-1.5 rounded border text-xs transition-colors ${
+                      disabled={rolesPage >= getTotalPages(rolesTotal)}
+                      className={`p-2 rounded-lg border transition-colors ${
                         darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                      } disabled:cursor-not-allowed`}
+                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed' 
+                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
                     >
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -841,61 +864,61 @@ export default function RoleAccessManagementPage() {
           {/* Permissions Tab */}
           {activeTab === "permissions" && (
             <>
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {paginatedPermissionCategories().map(([category, perms]) => (
                   <div
                     key={category}
-                    className={`rounded-lg border shadow-sm ${
+                    className={`rounded-xl border shadow-sm ${
                       darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
                     }`}
                   >
                     <button
                       onClick={() => toggleCategory(category)}
-                      className={`w-full px-4 py-2.5 flex items-center justify-between transition-colors ${
-                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-50'
+                      className={`w-full px-5 py-4 flex items-center justify-between transition-colors ${
+                        darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'
                       }`}
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-almet-sapphire/10 text-almet-sapphire">
-                          <Key className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 text-almet-sapphire">
+                          <Key className="w-5 h-5" />
                         </div>
                         <div className="text-left">
-                          <h3 className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          <h3 className={`font-semibold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                             {category}
                           </h3>
-                          <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                             {perms.length} permissions
                           </p>
                         </div>
                       </div>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${expandedCategories[category] ? 'rotate-180' : ''}`} />
+                      <ChevronDown className={`w-5 h-5 transition-transform ${expandedCategories[category] ? 'rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                     </button>
 
                     {expandedCategories[category] && (
-                      <div className={`px-4 pb-3 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                      <div className={`px-5 pb-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
                           {perms.map((perm) => (
                             <div
                               key={perm.id}
-                              className={`p-2.5 rounded border ${
+                              className={`p-3 rounded-lg border ${
                                 darkMode
-                                  ? 'bg-gray-700/50 border-gray-600'
+                                  ? 'bg-gray-700/30 border-gray-600'
                                   : 'bg-gray-50 border-gray-200'
                               }`}
                             >
                               <div className="flex items-start gap-2">
-                                <div className="p-1 rounded bg-almet-sapphire/10 text-almet-sapphire mt-0.5">
-                                  <CheckCircle2 className="w-3 h-3" />
+                                <div className="p-1.5 rounded-lg bg-almet-sapphire/10 text-almet-sapphire mt-0.5">
+                                  <CheckCircle2 className="w-4 h-4" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  <p className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                                     {perm.name}
                                   </p>
-                                  <p className={`text-[10px] mt-0.5 font-mono ${darkMode ? 'text-gray-400' : 'text-gray-500'} truncate`}>
+                                  <p className={`text-xs mt-1 font-mono ${darkMode ? 'text-gray-400' : 'text-gray-500'} truncate`}>
                                     {perm.codename}
                                   </p>
                                   {perm.description && (
-                                    <p className={`text-[10px] mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    <p className={`text-xs mt-1.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                                       {perm.description}
                                     </p>
                                   )}
@@ -912,28 +935,28 @@ export default function RoleAccessManagementPage() {
 
               {/* Pagination */}
               {totalPermissionPages > 1 && (
-                <div className="flex items-center justify-between mt-3">
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <div className={`flex items-center justify-between mt-4 px-4 py-3 rounded-lg ${darkMode ? 'bg-gray-800' : 'bg-white'}`}>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                     Page {permissionsPage} of {totalPermissionPages}
                   </p>
-                  <div className="flex gap-1">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => setPermissionsPage(p => Math.max(1, p - 1))}
                       disabled={permissionsPage === 1}
-                      className={`p-1.5 rounded border transition-colors ${
+                      className={`p-2 rounded-lg border transition-colors ${
                         darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                      } disabled:cursor-not-allowed`}
+                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed' 
+                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                     <div className="flex items-center gap-1">
                       {Array.from({ length: Math.min(totalPermissionPages, 5) }, (_, i) => i + 1).map(page => (
                         <button
                           key={page}
                           onClick={() => setPermissionsPage(page)}
-                          className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                             page === permissionsPage
                               ? 'bg-almet-sapphire text-white'
                               : darkMode
@@ -948,13 +971,13 @@ export default function RoleAccessManagementPage() {
                     <button
                       onClick={() => setPermissionsPage(p => Math.min(totalPermissionPages, p + 1))}
                       disabled={permissionsPage === totalPermissionPages}
-                      className={`p-1.5 rounded border transition-colors ${
+                      className={`p-2 rounded-lg border transition-colors ${
                         darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                      } disabled:cursor-not-allowed`}
+                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed' 
+                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                      }`}
                     >
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -962,157 +985,250 @@ export default function RoleAccessManagementPage() {
             </>
           )}
 
-          {/* Assignments Tab */}
-          {activeTab === "assignments" && (
+          {/* Employees by Role Tab */}
+          {activeTab === "employee-roles" && (
             <>
-              <div className={`rounded-lg border shadow-sm ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                <div className="overflow-x-auto">
-                  <table className="w-full rounded-lg overflow-hidden">
-                    <thead className={`border-b ${darkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'}`}>
-                      <tr>
-                        <th className="px-3 py-2 text-left">
-                          <CustomCheckbox
-                            checked={selectedEmployeeRows.length === filteredEmployeeRoles.length && filteredEmployeeRoles.length > 0}
-                            onChange={() => {
-                              if (selectedEmployeeRows.length === filteredEmployeeRoles.length) {
-                                setSelectedEmployeeRows([]);
-                              } else {
-                                setSelectedEmployeeRows(filteredEmployeeRoles.map(er => er.id));
-                              }
-                            }}
-                          />
-                        </th>
-                        <th className={`px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Employee
-                        </th>
-                        <th className={`px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Role
-                        </th>
-                        <th className={`px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Job Title
-                        </th>
-                        <th className={`px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Assigned
-                        </th>
-                        <th className={`px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Status
-                        </th>
-                        <th className={`px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y ${darkMode ? 'divide-gray-700' : 'divide-gray-200'}`}>
-                      {filteredEmployeeRoles.map((assignment) => (
-                        <tr key={assignment.id} className={`transition-colors ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'}`}>
-                          <td className="px-3 py-2.5">
-                            <CustomCheckbox
-                              checked={selectedEmployeeRows.includes(assignment.id)}
-                              onChange={() => {
-                                setSelectedEmployeeRows(prev =>
-                                  prev.includes(assignment.id)
-                                    ? prev.filter(id => id !== assignment.id)
-                                    : [...prev, assignment.id]
-                                );
-                              }}
-                            />
-                          </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
-                            <div>
-                              <p className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                {assignment.employee_name}
-                              </p>
-                              <p className={`text-[10px] ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                                ID: {assignment.employee_id_display}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-almet-sapphire/10 text-almet-sapphire">
-                              {assignment.role_detail?.name}
-                            </span>
-                          </td>
-                          <td className={`px-3 py-2.5 whitespace-nowrap text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {assignment.employee_job_title}
-                          </td>
-                          <td className={`px-3 py-2.5 whitespace-nowrap text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            {new Date(assignment.assigned_at).toLocaleDateString()}
-                          </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap">
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              assignment.is_active
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
-                            }`}>
-                              {assignment.is_active ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5 whitespace-nowrap text-right">
-                            <button 
-                              onClick={() => {
-                                setItemToRevoke({ employeeId: assignment.employee, roleId: assignment.role });
-                                setShowRevokeConfirm(true);
-                              }}
-                              className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
-                              title="Revoke role"
+              <div className="space-y-3">
+                {filteredEmployeesByRole.map((group) => (
+                  <div
+                    key={group.roleId}
+                    className={`rounded-xl border shadow-sm ${
+                      darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <button
+                      onClick={() => toggleRole(group.roleId)}
+                      className={`w-full px-5 py-4 flex items-center justify-between transition-colors ${
+                        darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-almet-sapphire/20 to-almet-astral/20 text-almet-sapphire">
+                          <Shield className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className={`font-semibold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {group.roleName}
+                          </h3>
+                          <p className={`text-sm mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                            {group.employees.length} employee{group.employees.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        {group.isActive !== undefined && (
+                          <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                            group.isActive
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                          }`}>
+                            {group.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className={`w-5 h-5 transition-transform ${expandedRoles[group.roleId] ? 'rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                    </button>
+
+                    {expandedRoles[group.roleId] && (
+                      <div className={`px-5 pb-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <div className="mt-4 space-y-2">
+                          {group.employees.map((assignment) => (
+                            <div
+                              key={assignment.id}
+                              className={`flex items-center justify-between p-3 rounded-lg border ${
+                                selectedEmployeeRows.includes(assignment.employee)
+                                  ? 'border-almet-sapphire bg-almet-sapphire/5'
+                                  : darkMode
+                                  ? 'bg-gray-700/30 border-gray-600 hover:border-gray-500'
+                                  : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                              } transition-all`}
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                              <div className="flex items-center gap-3 flex-1">
+                                <CustomCheckbox
+                                  checked={selectedEmployeeRows.includes(assignment.employee)}
+                                  onChange={() => {
+                                    setSelectedEmployeeRows(prev =>
+                                      prev.includes(assignment.employee)
+                                        ? prev.filter(id => id !== assignment.employee)
+                                        : [...prev, assignment.employee]
+                                    );
+                                  }}
+                                />
+                                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                  <UserCheck className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                    {assignment.employee_name}
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                      ID: {assignment.employee_id_display}
+                                    </p>
+                                    {assignment.employee_job_title && (
+                                      <>
+                                        <span className={`text-xs ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>•</span>
+                                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                          {assignment.employee_job_title}
+                                        </p>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Assigned
+                                  </p>
+                                  <p className={`text-xs font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                    {new Date(assignment.assigned_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  setItemToRevoke({ employeeId: assignment.employee, roleId: assignment.role });
+                                  setShowRevokeConfirm(true);
+                                }}
+                                className="ml-3 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                                title="Revoke role"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
 
-              {/* Pagination */}
-              {employeeRolesTotal > 10 && (
-                <div className="flex items-center justify-between mt-3">
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                    {Math.min((employeeRolesPage - 1) * 10 + 1, employeeRolesTotal)}-{Math.min(employeeRolesPage * 10, employeeRolesTotal)} of {employeeRolesTotal}
+              {filteredEmployeesByRole.length === 0 && (
+                <div className={`text-center py-12 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl`}>
+                  <Users className={`w-12 h-12 mx-auto mb-3 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    No role assignments found
                   </p>
-                  <div className="flex gap-1">
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Roles by Employee Tab */}
+          {activeTab === "role-assignments" && (
+            <>
+              <div className="space-y-3">
+                {filteredRolesByEmployee.map((group) => (
+                  <div
+                    key={group.employeeId}
+                    className={`rounded-xl border shadow-sm ${
+                      darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                    }`}
+                  >
                     <button
-                      onClick={() => setEmployeeRolesPage(p => Math.max(1, p - 1))}
-                      disabled={!employeeRolesPrev}
-                      className={`p-1.5 rounded border transition-colors ${
-                        darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                      } disabled:cursor-not-allowed`}
+                      onClick={() => toggleEmployee(group.employeeId)}
+                      className={`w-full px-5 py-4 flex items-center justify-between transition-colors ${
+                        darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-50'
+                      }`}
                     >
-                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-blue-600 dark:text-blue-400">
+                          <UserCheck className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <h3 className={`font-semibold text-base ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {group.employeeName}
+                          </h3>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              ID: {group.employeeIdDisplay}
+                            </p>
+                            {group.employeeJobTitle && (
+                              <>
+                                <span className={`text-sm ${darkMode ? 'text-gray-600' : 'text-gray-400'}`}>•</span>
+                                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                  {group.employeeJobTitle}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`ml-2 px-3 py-1 rounded-full text-xs font-medium ${
+                          darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {group.roles.length} role{group.roles.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <ChevronDown className={`w-5 h-5 transition-transform ${expandedEmployees[group.employeeId] ? 'rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                     </button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: Math.min(getTotalPages(employeeRolesTotal), 5) }, (_, i) => i + 1).map(page => (
-                        <button
-                          key={page}
-                          onClick={() => setEmployeeRolesPage(page)}
-                          className={`px-2.5 py-1.5 rounded text-xs font-medium transition-colors ${
-                            page === employeeRolesPage
-                              ? 'bg-almet-sapphire text-white'
-                              : darkMode
-                              ? 'hover:bg-gray-700 text-gray-400'
-                              : 'hover:bg-gray-100 text-gray-600'
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setEmployeeRolesPage(p => p + 1)}
-                      disabled={!employeeRolesNext}
-                      className={`p-1.5 rounded border transition-colors ${
-                        darkMode 
-                          ? 'border-gray-700 hover:bg-gray-700 disabled:opacity-50' 
-                          : 'border-gray-300 hover:bg-gray-50 disabled:opacity-50'
-                      } disabled:cursor-not-allowed`}
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
+
+                    {expandedEmployees[group.employeeId] && (
+                      <div className={`px-5 pb-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {group.roles.map((assignment) => (
+                            <div
+                              key={assignment.id}
+                              className={`flex items-center justify-between p-3 rounded-lg border ${
+                                selectedEmployeeRows.includes(assignment.id)
+                                  ? 'border-almet-sapphire bg-almet-sapphire/5'
+                                  : darkMode
+                                  ? 'bg-gray-700/30 border-gray-600 hover:border-gray-500'
+                                  : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                              } transition-all`}
+                            >
+                              <div className="flex items-center gap-3 flex-1">
+                                <CustomCheckbox
+                                  checked={selectedEmployeeRows.includes(assignment.id)}
+                                  onChange={() => {
+                                    setSelectedEmployeeRows(prev =>
+                                      prev.includes(assignment.id)
+                                        ? prev.filter(id => id !== assignment.id)
+                                        : [...prev, assignment.id]
+                                    );
+                                  }}
+                                />
+                                <div className="p-2 rounded-lg bg-almet-sapphire/10 text-almet-sapphire">
+                                  <Shield className="w-4 h-4" />
+                                </div>
+                                <div className="flex-1">
+                                  <p className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                    {assignment.role_detail?.name}
+                                  </p>
+                                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                    Assigned {new Date(assignment.assigned_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                  assignment.is_active
+                                    ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-400'
+                                }`}>
+                                  {assignment.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  setItemToRevoke({ employeeId: assignment.employee, roleId: assignment.role });
+                                  setShowRevokeConfirm(true);
+                                }}
+                                className="ml-3 p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 transition-colors"
+                                title="Revoke role"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ))}
+              </div>
+
+              {filteredRolesByEmployee.length === 0 && (
+                <div className={`text-center py-12 ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl`}>
+                  <UserPlus className={`w-12 h-12 mx-auto mb-3 ${darkMode ? 'text-gray-600' : 'text-gray-400'}`} />
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    No employee role assignments found
+                  </p>
                 </div>
               )}
             </>
@@ -1123,11 +1239,11 @@ export default function RoleAccessManagementPage() {
       {/* Create/Edit Role Modal */}
       {showRoleModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-md rounded-lg shadow-xl ${
+          <div className={`w-full max-w-md rounded-xl shadow-2xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`flex items-center justify-between p-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 {editingRole ? 'Edit Role' : 'Create New Role'}
               </h2>
               <button
@@ -1136,16 +1252,16 @@ export default function RoleAccessManagementPage() {
                   setEditingRole(null);
                   setRoleForm({ name: "", is_active: true });
                 }}
-                className={`p-1 rounded transition-colors ${
+                className={`p-1.5 rounded-lg transition-colors ${
                   darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
                 }`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-5 space-y-4">
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Role Name
                 </label>
                 <input
@@ -1153,34 +1269,34 @@ export default function RoleAccessManagementPage() {
                   value={roleForm.name}
                   onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
                   placeholder="Enter role name"
-                  className={`w-full px-3 py-1.5 text-xs rounded-lg border ${
+                  className={`w-full px-4 py-2.5 text-sm rounded-lg border ${
                     darkMode
-                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                  } focus:outline-none focus:ring-1 focus:ring-almet-sapphire`}
+                      ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-almet-sapphire'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500 focus:border-almet-sapphire'
+                  } focus:outline-none focus:ring-2 focus:ring-almet-sapphire/20`}
                 />
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
                   id="is_active"
                   checked={roleForm.is_active}
                   onChange={(e) => setRoleForm({ ...roleForm, is_active: e.target.checked })}
-                  className="w-3.5 h-3.5 text-almet-sapphire rounded focus:ring-almet-sapphire"
+                  className="w-4 h-4 text-almet-sapphire rounded focus:ring-almet-sapphire"
                 />
-                <label htmlFor="is_active" className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  Active
+                <label htmlFor="is_active" className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Active Role
                 </label>
               </div>
             </div>
-            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowRoleModal(false);
                   setEditingRole(null);
                   setRoleForm({ name: "", is_active: true });
                 }}
-                className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-colors ${
                   darkMode
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1190,9 +1306,9 @@ export default function RoleAccessManagementPage() {
               </button>
               <button
                 onClick={editingRole ? handleUpdateRole : handleCreateRole}
-                className="flex-1 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg font-medium transition-colors"
+                className="flex-1 px-4 py-2.5 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral hover:shadow-lg text-white rounded-lg font-medium transition-all"
               >
-                {editingRole ? 'Update' : 'Create'}
+                {editingRole ? 'Update Role' : 'Create Role'}
               </button>
             </div>
           </div>
@@ -1202,11 +1318,11 @@ export default function RoleAccessManagementPage() {
       {/* Assign Role Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-md rounded-lg shadow-xl ${
+          <div className={`w-full max-w-md rounded-xl shadow-2xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`flex items-center justify-between p-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Assign Role to Employees
               </h2>
               <button
@@ -1215,16 +1331,16 @@ export default function RoleAccessManagementPage() {
                   setSelectedEmployees([]);
                   setSelectedRole(null);
                 }}
-                className={`p-1 rounded transition-colors ${
+                className={`p-1.5 rounded-lg transition-colors ${
                   darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
                 }`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 space-y-3">
+            <div className="p-5 space-y-4">
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Select Employees
                 </label>
                 <MultiSelect
@@ -1241,7 +1357,7 @@ export default function RoleAccessManagementPage() {
                 />
               </div>
               <div>
-                <label className={`block text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                   Select Role
                 </label>
                 <MultiSelect
@@ -1254,14 +1370,14 @@ export default function RoleAccessManagementPage() {
                 />
               </div>
             </div>
-            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowAssignModal(false);
                   setSelectedEmployees([]);
                   setSelectedRole(null);
                 }}
-                className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-colors ${
                   darkMode
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1272,7 +1388,7 @@ export default function RoleAccessManagementPage() {
               <button
                 onClick={handleAssignRole}
                 disabled={selectedEmployees.length === 0 || !selectedRole}
-                className="flex-1 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral hover:shadow-lg text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Assign ({selectedEmployees.length})
               </button>
@@ -1284,11 +1400,11 @@ export default function RoleAccessManagementPage() {
       {/* Bulk Role Assign Modal */}
       {showBulkRoleAssignModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-md rounded-lg shadow-xl ${
+          <div className={`w-full max-w-md rounded-xl shadow-2xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className={`flex items-center justify-between p-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                 Assign Roles to Selected Employees
               </h2>
               <button
@@ -1296,18 +1412,18 @@ export default function RoleAccessManagementPage() {
                   setShowBulkRoleAssignModal(false);
                   setBulkRolesToAssign([]);
                 }}
-                className={`p-1 rounded transition-colors ${
+                className={`p-1.5 rounded-lg transition-colors ${
                   darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
                 }`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4">
-              <p className={`text-xs mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+            <div className="p-5">
+              <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                 Assigning to {selectedEmployeeRows.length} employee(s)
               </p>
-              <label className={`block text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Select Roles to Assign
               </label>
               <MultiSelect
@@ -1323,13 +1439,13 @@ export default function RoleAccessManagementPage() {
                 darkMode={darkMode}
               />
             </div>
-            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowBulkRoleAssignModal(false);
                   setBulkRolesToAssign([]);
                 }}
-                className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-colors ${
                   darkMode
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1340,7 +1456,7 @@ export default function RoleAccessManagementPage() {
               <button
                 onClick={handleBulkAssignRoles}
                 disabled={bulkRolesToAssign.length === 0}
-                className="flex-1 px-3 py-1.5 text-xs bg-almet-sapphire hover:bg-almet-astral text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 px-4 py-2.5 text-sm bg-gradient-to-r from-almet-sapphire to-almet-astral hover:shadow-lg text-white rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Assign ({bulkRolesToAssign.length})
               </button>
@@ -1352,15 +1468,15 @@ export default function RoleAccessManagementPage() {
       {/* Bulk Permissions Modal */}
       {showBulkPermissionsModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className={`w-full max-w-4xl max-h-[85vh] rounded-lg shadow-xl ${
+          <div className={`w-full max-w-5xl max-h-[90vh] rounded-xl shadow-2xl ${
             darkMode ? 'bg-gray-800' : 'bg-white'
           } flex flex-col`}>
-            <div className={`flex items-center justify-between p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`flex items-center justify-between p-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <div>
-                <h2 className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <h2 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   Bulk Permissions Management
                 </h2>
-                <p className={`text-xs mt-0.5 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                <p className={`text-sm mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                   {bulkSelectedRoles.length} role(s) • {bulkPermissionsSelected.length} permission(s) • {bulkPermissionsAction === 'add' ? 'Add' : 'Remove'}
                 </p>
               </div>
@@ -1371,18 +1487,18 @@ export default function RoleAccessManagementPage() {
                   setBulkPermissionsSelected([]);
                   setRolePermissionsMap({});
                 }}
-                className={`p-1 rounded transition-colors ${
+                className={`p-1.5 rounded-lg transition-colors ${
                   darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
                 }`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
             
-            <div className={`p-4 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
-              <div className="flex items-center gap-3">
+            <div className={`p-5 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+              <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <label className={`block text-xs font-medium mb-1.5 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Select Roles
                   </label>
                   <MultiSelect
@@ -1408,7 +1524,6 @@ export default function RoleAccessManagementPage() {
                         }
                       }
                       
-                      // Update selected permissions when roles change
                       if (newSelected.length > 0) {
                         const allExistingPerms = new Set();
                         newSelected.forEach(roleId => {
@@ -1423,11 +1538,10 @@ export default function RoleAccessManagementPage() {
                     darkMode={darkMode}
                   />
                 </div>
-                <div className="flex gap-1.5">
+                <div className="flex gap-2">
                   <button
                     onClick={() => {
                       setBulkPermissionsAction("add");
-                      // When switching to add mode, pre-select existing permissions
                       if (bulkSelectedRoles.length > 0) {
                         const allExistingPerms = new Set();
                         bulkSelectedRoles.forEach(roleId => {
@@ -1437,9 +1551,9 @@ export default function RoleAccessManagementPage() {
                         setBulkPermissionsSelected(Array.from(allExistingPerms));
                       }
                     }}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       bulkPermissionsAction === "add"
-                        ? 'bg-green-600 text-white'
+                        ? 'bg-green-600 text-white shadow-md'
                         : darkMode
                         ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -1450,7 +1564,6 @@ export default function RoleAccessManagementPage() {
                   <button
                     onClick={() => {
                       setBulkPermissionsAction("remove");
-                      // When switching to remove mode, keep existing permissions selected
                       if (bulkSelectedRoles.length > 0) {
                         const allExistingPerms = new Set();
                         bulkSelectedRoles.forEach(roleId => {
@@ -1460,9 +1573,9 @@ export default function RoleAccessManagementPage() {
                         setBulkPermissionsSelected(Array.from(allExistingPerms));
                       }
                     }}
-                    className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       bulkPermissionsAction === "remove"
-                        ? 'bg-red-600 text-white'
+                        ? 'bg-red-600 text-white shadow-md'
                         : darkMode
                         ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -1474,16 +1587,16 @@ export default function RoleAccessManagementPage() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                   Select Permissions to {bulkPermissionsAction === 'add' ? 'Add' : 'Remove'}
                 </h3>
                 {bulkSelectedRoles.length > 0 && Object.keys(filteredBulkCategories).length > 0 && (
                   <div className="flex gap-2">
                     <button
                       onClick={handleSelectAllPermissions}
-                      className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         bulkPermissionsAction === "add"
                           ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                           : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
@@ -1493,7 +1606,7 @@ export default function RoleAccessManagementPage() {
                     </button>
                     <button
                       onClick={handleDeselectAllPermissions}
-                      className={`px-2.5 py-1 rounded text-[10px] font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                         darkMode
                           ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -1506,11 +1619,11 @@ export default function RoleAccessManagementPage() {
               </div>
               
               {bulkSelectedRoles.length === 0 ? (
-                <div className={`text-center py-8 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                <div className={`text-center py-12 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                   Please select at least one role to continue
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {Object.entries(filteredBulkCategories).map(([category, perms]) => {
                     const selectedCount = perms.filter(p => bulkPermissionsSelected.includes(p.id)).length;
                     const allCategorySelected = perms.every(p => bulkPermissionsSelected.includes(p.id));
@@ -1518,16 +1631,16 @@ export default function RoleAccessManagementPage() {
                     return (
                       <div
                         key={category}
-                        className={`rounded border ${
+                        className={`rounded-lg border ${
                           darkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-200'
                         }`}
                       >
                         <div
-                          className={`w-full p-2.5 flex items-center justify-between transition-colors ${
-                            darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
+                          className={`w-full p-3 flex items-center justify-between transition-colors ${
+                            darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100'
                           }`}
                         >
-                          <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-3 flex-1">
                             <CustomCheckbox
                               checked={allCategorySelected && perms.length > 0}
                               indeterminate={selectedCount > 0 && selectedCount < perms.length}
@@ -1535,12 +1648,12 @@ export default function RoleAccessManagementPage() {
                             />
                             <button
                               onClick={() => toggleBulkCategory(category)}
-                              className="flex items-center gap-2 flex-1"
+                              className="flex items-center gap-3 flex-1"
                             >
-                              <h4 className={`font-medium text-xs ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                              <h4 className={`font-medium text-sm ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                                 {category}
                               </h4>
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                              <span className={`text-xs px-2 py-1 rounded ${
                                 bulkPermissionsAction === "add"
                                   ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                                   : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
@@ -1549,17 +1662,17 @@ export default function RoleAccessManagementPage() {
                               </span>
                             </button>
                           </div>
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expandedBulkCategories[category] ? 'rotate-180' : ''}`} />
+                          <ChevronDown className={`w-4 h-4 transition-transform ${expandedBulkCategories[category] ? 'rotate-180' : ''}`} />
                         </div>
                         
                         {expandedBulkCategories[category] && (
-                          <div className="p-2.5 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1.5 max-h-48 overflow-y-auto">
+                          <div className="p-3 pt-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-60 overflow-y-auto">
                             {perms.map((perm) => {
                               const isSelected = bulkPermissionsSelected.includes(perm.id);
                               return (
                                 <label
                                   key={perm.id}
-                                  className={`flex items-start gap-1.5 p-2 rounded cursor-pointer transition-all text-xs ${
+                                  className={`flex items-start gap-2 p-2.5 rounded-lg cursor-pointer transition-all text-sm ${
                                     isSelected
                                       ? bulkPermissionsAction === "add"
                                         ? 'bg-green-500/10 border border-green-500'
@@ -1591,7 +1704,7 @@ export default function RoleAccessManagementPage() {
                     );
                   })}
                   {Object.keys(filteredBulkCategories).length === 0 && bulkPermissionsAction === 'remove' && (
-                    <div className={`text-center py-8 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    <div className={`text-center py-12 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                       No permissions available to remove from the selected role(s)
                     </div>
                   )}
@@ -1599,7 +1712,7 @@ export default function RoleAccessManagementPage() {
               )}
             </div>
 
-            <div className={`flex gap-2 p-4 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+            <div className={`flex gap-3 p-5 border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <button
                 onClick={() => {
                   setShowBulkPermissionsModal(false);
@@ -1607,7 +1720,7 @@ export default function RoleAccessManagementPage() {
                   setBulkPermissionsSelected([]);
                   setRolePermissionsMap({});
                 }}
-                className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-colors ${
                   darkMode
                     ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1618,10 +1731,10 @@ export default function RoleAccessManagementPage() {
               <button
                 onClick={handleBulkPermissionsApply}
                 disabled={bulkSelectedRoles.length === 0 || bulkPermissionsSelected.length === 0}
-                className={`flex-1 px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`flex-1 px-4 py-2.5 text-sm rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                   bulkPermissionsAction === "add"
-                    ? 'bg-green-600 hover:bg-green-700 text-white'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
+                    ? 'bg-green-600 hover:bg-green-700 hover:shadow-lg text-white'
+                    : 'bg-red-600 hover:bg-red-700 hover:shadow-lg text-white'
                 }`}
               >
                 {bulkPermissionsAction === "add" ? 'Add' : 'Remove'} ({bulkPermissionsSelected.length})

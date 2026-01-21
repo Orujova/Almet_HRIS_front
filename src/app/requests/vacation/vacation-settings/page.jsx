@@ -1057,7 +1057,7 @@ export default function VacationSettingsPage() {
                   <div>
                     <p className="text-sm font-semibold text-green-900 dark:text-green-200">Current Default HR</p>
                     <p className="text-xs text-green-800 dark:text-green-300 mt-1">
-                      {defaultHR.name} ({defaultHR.employee_id}) - {defaultHR.department}
+                      {defaultHR.name}  {defaultHR.department}
                     </p>
                   </div>
                 </div>
@@ -1072,7 +1072,7 @@ export default function VacationSettingsPage() {
                 <SearchableDropdown
                   options={hrRepresentatives.map(hr => ({
                     value: hr.id,
-                    label: `${hr.name} (${hr.employee_id}) - ${hr.department}`
+                    label: `${hr.name} - ${hr.department}`
                   }))}
                   value={selectedHR}
                   onChange={setSelectedHR}

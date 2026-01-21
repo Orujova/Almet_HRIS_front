@@ -616,7 +616,7 @@ const handleSaveEdit = async () => {
   };
 
   const canEditSchedule = (schedule) => {
-    if (schedule.status !== 'SCHEDULED') return false;
+    // if (schedule.status !== 'SCHEDULED') return false;
     if (schedule.edit_count >= vacationSettings.max_schedule_edits) return false;
     return true;
   };
