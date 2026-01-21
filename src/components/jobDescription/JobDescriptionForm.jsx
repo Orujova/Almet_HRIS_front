@@ -136,7 +136,18 @@ const JobDescriptionForm = ({
 
     }
   };
-
+useEffect(() => {
+  if (editingJob) {
+    console.log('📝 [EDIT MODE] Current form data:', {
+      skills: formData.required_skills_data,
+      behavioral: formData.behavioral_competencies_data,
+      leadership: formData.leadership_competencies_data,
+      resources: formData.business_resources_ids,
+      access: formData.access_rights_ids,
+      benefits: formData.company_benefits_ids
+    });
+  }
+}, [formData, editingJob]);
   const handleEmployeeSelection = (employeeIds, employeeData) => {
     if (!Array.isArray(employeeIds) || employeeIds.length === 0) {
       console.warn('⚠️ Invalid employee/vacancy selection data');
