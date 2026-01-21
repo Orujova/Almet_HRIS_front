@@ -1,6 +1,7 @@
-// components/vacation/MySchedulesTab.jsx - ENHANCED VERSION
+// components/vacation/MySchedulesTab.jsx - ✅ COMPLETE FIXED VERSION
 import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
+import { VacationService } from '@/services/vacationService'; // ✅ IMPORT
 
 export default function MySchedulesTab({
   userAccess,
@@ -11,13 +12,16 @@ export default function MySchedulesTab({
   handleRegisterSchedule,
   canEditSchedule,
   maxScheduleEdits,
-  handleViewScheduleDetail
+  handleViewScheduleDetail,
+  showSuccess, // ✅ NEW PROP
+  showError    // ✅ NEW PROP
 }) {
   const [activeSubTab, setActiveSubTab] = useState('upcoming');
   const [approvingSchedule, setApprovingSchedule] = useState(null);
   const [approveComment, setApproveComment] = useState('');
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const getSubTabs = () => {
     const tabs = [
@@ -52,9 +56,7 @@ export default function MySchedulesTab({
     return userAccess.is_admin && schedule.status === 'SCHEDULED';
   };
 
-  // ✅ NEW: Can approve schedule
   const canApproveSchedule = (schedule) => {
-    // Manager can approve PENDING_MANAGER schedules
     return (userAccess.is_manager || userAccess.is_admin) && 
            schedule.status === 'PENDING_MANAGER';
   };
@@ -167,7 +169,6 @@ export default function MySchedulesTab({
                         <Eye className="w-3 h-3" />
                       </button>
 
-                      {/* ✅ Approve/Reject Buttons */}
                       {canApproveSchedule(schedule) && (
                         <>
                           <button 
@@ -278,30 +279,42 @@ export default function MySchedulesTab({
                   setApprovingSchedule(null);
                   setApproveComment('');
                 }}
-                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+                disabled={loading}
+                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={async () => {
+                  setLoading(true);
                   try {
                     await VacationService.approveSchedule(approvingSchedule.id, {
                       action: 'approve',
                       comment: approveComment
                     });
+                    showSuccess?.('Schedule approved successfully');
                     setShowApproveModal(false);
                     setApprovingSchedule(null);
                     setApproveComment('');
-                    // Refresh schedules
                     window.location.reload();
                   } catch (error) {
                     console.error('Approve error:', error);
-                    alert('Failed to approve schedule');
+                    showError?.('Failed to approve schedule');
+                  } finally {
+                    setLoading(false);
                   }
                 }}
-                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm"
+                disabled={loading}
+                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                Approve
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                    Approving...
+                  </>
+                ) : (
+                  'Approve'
+                )}
               </button>
             </div>
           </div>
@@ -345,30 +358,42 @@ export default function MySchedulesTab({
                   setApprovingSchedule(null);
                   setApproveComment('');
                 }}
-                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+                disabled={loading}
+                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={async () => {
+                  setLoading(true);
                   try {
                     await VacationService.approveSchedule(approvingSchedule.id, {
                       action: 'reject',
                       comment: approveComment
                     });
+                    showSuccess?.('Schedule rejected successfully');
                     setShowRejectModal(false);
                     setApprovingSchedule(null);
                     setApproveComment('');
-                    // Refresh schedules
                     window.location.reload();
                   } catch (error) {
                     console.error('Reject error:', error);
-                    alert('Failed to reject schedule');
+                    showError?.('Failed to reject schedule');
+                  } finally {
+                    setLoading(false);
                   }
                 }}
-                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm"
+                disabled={loading}
+                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm disabled:opacity-50 flex items-center gap-2"
               >
-                Reject
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                    Rejecting...
+                  </>
+                ) : (
+                  'Reject'
+                )}
               </button>
             </div>
           </div>
