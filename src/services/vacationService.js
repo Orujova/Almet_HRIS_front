@@ -257,7 +257,14 @@ getVacationTypesFiltered: async () => {
       throw error;
     }
   },
-
+  approveSchedule: async (scheduleId, data) => {
+    try {
+      const response = await vacationApi.post(`/vacation/schedules/${scheduleId}/approve/`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
   // Edit Schedule
   editSchedule: async (id, data) => {
     try {

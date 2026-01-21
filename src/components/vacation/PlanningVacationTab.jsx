@@ -1,4 +1,4 @@
-// components/vacation/PlanningVacationTab.jsx - ✅ COMPLETE VERSION
+// components/vacation/PlanningVacationTab.jsx - ✅ ENHANCED VERSION
 import { useState, useEffect } from 'react';
 import { 
   Calendar, 
@@ -16,6 +16,7 @@ import {
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import { VacationService } from '@/services/vacationService';
 import PlanningCalendar from './PlanningCalendar';
+import VacationStats from './VacationStats'; // ✅ Import Stats
 
 export default function PlanningVacationTab({
   darkMode,
@@ -26,7 +27,6 @@ export default function PlanningVacationTab({
   showSuccess,
   showError
 }) {
-  // States
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [requester, setRequester] = useState('for_me');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
@@ -36,20 +36,22 @@ export default function PlanningVacationTab({
   const [loading, setLoading] = useState(false);
   const [totalDaysPlanned, setTotalDaysPlanned] = useState(0);
 
-  // Initialize vacation type
+  // ✅ AUTO-SELECT PAID VACATION
   useEffect(() => {
     if (vacationTypes && vacationTypes.length > 0 && !vacationType) {
-      const paidVacation = vacationTypes.find(t => t.name.toLowerCase().includes('paid'));
+      const paidVacation = vacationTypes.find(t => 
+        t.name.toLowerCase().includes('paid') || 
+        t.name.toLowerCase().includes('annual')
+      );
       setVacationType(paidVacation?.id || vacationTypes[0].id);
     }
   }, [vacationTypes]);
 
-  // ✅ Calculate total days with UK/AZ logic
+  // ✅ Calculate total days
   useEffect(() => {
     const calculateTotalDays = async () => {
       let total = 0;
       
-      // ✅ Get business function code
       let businessFunctionCode = null;
       if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
         const userEmail = VacationService.getCurrentUserEmail();
@@ -88,7 +90,6 @@ export default function PlanningVacationTab({
     }
   }, [selectedRanges, requester, selectedEmployee, employeeSearchResults]);
 
-  // Calendar navigation
   const previousMonth = () => {
     setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
   };
@@ -101,9 +102,7 @@ export default function PlanningVacationTab({
     setCurrentMonth(new Date());
   };
 
-  // Handle range selection from calendar
   const handleRangeSelect = (start, end) => {
-    // ✅ CHECK: Prevent duplicate ranges
     const isDuplicate = selectedRanges.some(range => 
       range.start === start && range.end === end
     );
@@ -113,7 +112,6 @@ export default function PlanningVacationTab({
       return;
     }
     
-    // ✅ CHECK: Prevent overlapping ranges
     const hasOverlap = selectedRanges.some(range => {
       return (start <= range.end && end >= range.start);
     });
@@ -133,18 +131,15 @@ export default function PlanningVacationTab({
     showSuccess(`✅ Added ${start} to ${end}`);
   };
 
-  // Remove range
   const handleRemoveRange = (rangeId) => {
     setSelectedRanges(selectedRanges.filter(r => r.id !== rangeId));
   };
 
-  // Clear all
   const handleClearAll = () => {
     setSelectedRanges([]);
     setComment('');
   };
 
-  // Submit planning
   const handleSubmit = async () => {
     if (selectedRanges.length === 0) {
       showError('Please select at least one date range');
@@ -156,6 +151,12 @@ export default function PlanningVacationTab({
       return;
     }
 
+    // ✅ CHECK: should_be_planned limit
+    if (balances && totalDaysPlanned > balances.should_be_planned) {
+      showError(`Planning limit exceeded. You should plan ${balances.should_be_planned} days but trying to plan ${totalDaysPlanned} days.`);
+      return;
+    }
+
     // Check balance
     if (balances && totalDaysPlanned > balances.remaining_balance) {
       showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
@@ -164,7 +165,6 @@ export default function PlanningVacationTab({
 
     setLoading(true);
     try {
-      // Prepare schedules data
       const schedulesData = selectedRanges.map(range => ({
         vacation_type_id: range.vacation_type_id || vacationType,
         start_date: range.start,
@@ -176,7 +176,6 @@ export default function PlanningVacationTab({
         schedules: schedulesData
       };
 
-      // Add employee_id if for employee
       if (requester === 'for_my_employee' && selectedEmployee) {
         requestData.employee_id = selectedEmployee;
       }
@@ -185,10 +184,8 @@ export default function PlanningVacationTab({
       
       showSuccess(`${response.created_count} schedules created successfully!`);
       
-      // Clear form
       handleClearAll();
       
-      // Refresh balance if callback provided
       if (typeof window.refreshVacationData === 'function') {
         window.refreshVacationData();
       }
@@ -207,7 +204,6 @@ export default function PlanningVacationTab({
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // ✅ Get business function code for calendar
   const getBusinessFunctionCode = () => {
     if (requester === 'for_me' && employeeSearchResults && employeeSearchResults.length > 0) {
       const userEmail = VacationService.getCurrentUserEmail();
@@ -224,6 +220,14 @@ export default function PlanningVacationTab({
 
   return (
     <div className="space-y-6">
+      {/* ✅ STATS CARDS */}
+      {balances && (
+        <VacationStats 
+          balances={balances} 
+          allowNegativeBalance={false}
+        />
+      )}
+
       {/* Header Info */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-600 rounded-lg p-4">
         <div className="flex items-start gap-3">
@@ -233,7 +237,7 @@ export default function PlanningVacationTab({
               Full Year Planning
             </h3>
             <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-              Select multiple date ranges for the entire year. Click and drag on calendar to select dates. 
+              Select multiple date ranges for the entire year. You must plan <strong>{balances?.should_be_planned || 0} days</strong>. 
               All selected periods will be submitted together as schedules.
             </p>
           </div>
@@ -288,22 +292,8 @@ export default function PlanningVacationTab({
             </div>
           )}
 
-          {/* Vacation Type */}
-          <div>
-            <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-              Leave Type
-            </label>
-            <SearchableDropdown
-              options={vacationTypes.map(type => ({ 
-                value: type.id, 
-                label: type.name 
-              }))}
-              value={vacationType}
-              onChange={(value) => setVacationType(value)}
-              placeholder="Select leave type"
-              darkMode={darkMode}
-            />
-          </div>
+          {/* ✅ HIDDEN: Vacation Type (Auto Paid Vacation) */}
+          <input type="hidden" value={vacationType} />
 
           {/* Comment */}
           <div>
@@ -394,7 +384,7 @@ export default function PlanningVacationTab({
                         {range.start} → {range.end}
                       </p>
                       <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        {vacationTypes.find(t => t.id === (range.vacation_type_id || vacationType))?.name}
+                        {vacationTypes.find(t => t.id === (range.vacation_type_id || vacationType))?.name || 'Paid Vacation'}
                       </p>
                     </div>
                   </div>
@@ -406,6 +396,23 @@ export default function PlanningVacationTab({
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Planning Limit Warning */}
+      {balances && totalDaysPlanned > balances.should_be_planned && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+            <div>
+              <h3 className="text-sm font-semibold text-red-900 dark:text-red-200">
+                Planning Limit Exceeded
+              </h3>
+              <p className="text-xs text-red-800 dark:text-red-300 mt-1">
+                You're planning {totalDaysPlanned} days but should plan only {balances.should_be_planned} days.
+              </p>
             </div>
           </div>
         </div>

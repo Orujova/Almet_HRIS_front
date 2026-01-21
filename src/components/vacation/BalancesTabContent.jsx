@@ -1,3 +1,4 @@
+// components/vacation/BalancesTabContent.jsx - ENHANCED VERSION
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -16,7 +17,8 @@ import {
 import { useCallback } from "react";
 import { VacationService, VacationHelpers } from '@/services/vacationService';
 import SearchableDropdown from "@/components/common/SearchableDropdown";
-import {  referenceDataService } from "@/services/vacantPositionsService";
+import { referenceDataService } from "@/services/vacantPositionsService";
+
 const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showError }) => {
   const [balances, setBalances] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -31,15 +33,13 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
 
   const [filters, setFilters] = useState({
     year: new Date().getFullYear(),
-    department_id: "",  // ✅ Changed from department to department_id
-    business_function_id: "",  // ✅ YENİ
+    department_id: "",
+    business_function_id: "",
     min_remaining: "",
     max_remaining: "",
   });
 
-const fetchReferenceData = useCallback(async () => {
-  
-
+  const fetchReferenceData = useCallback(async () => {
     try {
       const result = await referenceDataService.getAllReferenceData();
       
@@ -49,25 +49,20 @@ const fetchReferenceData = useCallback(async () => {
       }
     } catch (error) {
       console.error('Failed to fetch reference data:', error);
-  
-    } finally {
-      console.log('Reference data fetch attempt finished.');
     }
   }, []);
- 
- 
 
   useEffect(() => {
     fetchBalances();
-        fetchReferenceData()
+    fetchReferenceData();
   }, []);
 
   const handleExport = async () => {
     try {
       const params = {
         year: filters.year,
-        department_id: filters.department_id,  // ✅ Changed
-        business_function_id: filters.business_function_id,  // ✅ YENİ
+        department_id: filters.department_id,
+        business_function_id: filters.business_function_id,
         min_remaining: filters.min_remaining,
         max_remaining: filters.max_remaining,
       };
@@ -83,8 +78,8 @@ const fetchReferenceData = useCallback(async () => {
   const handleClearFilters = () => {
     setFilters({
       year: new Date().getFullYear(),
-      department_id: "",  // ✅ Changed
-      business_function_id: "",  // ✅ YENİ
+      department_id: "",
+      business_function_id: "",
       min_remaining: "",
       max_remaining: "",
     });
@@ -106,18 +101,10 @@ const fetchReferenceData = useCallback(async () => {
     }
   };
 
-  useEffect(() => {
-    fetchBalances();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-
   const handleApplyFilters = () => {
     fetchBalances();
     setShowFilters(false);
   };
-
-
 
   const handleEditBalance = (balance) => {
     setEditingBalance(balance.id);
@@ -159,8 +146,6 @@ const fetchReferenceData = useCallback(async () => {
     return name.includes(term) || empId.includes(term);
   });
 
-
-
   const canUpdate =
     userPermissions.is_admin ||
     userPermissions.permissions?.includes("vacation.balance.update");
@@ -170,27 +155,74 @@ const fetchReferenceData = useCallback(async () => {
 
   return (
     <div className="space-y-5">
-      {/* Header Actions */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by name or employee ID..."
-            className="w-full pl-10 pr-4 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+      {/* ✅ TOP SECTION: Search + Company Filter + Year + Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+        {/* Search */}
+        <div className="lg:col-span-3">
+          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+            Search Employee
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-almet-waterloo dark:text-almet-bali-hai" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Name or ID..."
+              className="w-full pl-10 pr-4 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+        </div>
+
+        {/* ✅ Company Filter - VISIBLE ON SCREEN */}
+        <div className="lg:col-span-3">
+          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+            Company
+          </label>
+          <SearchableDropdown
+            options={businessFunctions.map(bf => ({ 
+              value: bf.id, 
+              label: bf.name 
+            }))}
+            value={filters.business_function_id}
+            onChange={(value) => {
+              setFilters((prev) => ({ ...prev, business_function_id: value || '' }));
+              // Auto-apply on change
+              setTimeout(() => fetchBalances(), 100);
+            }}
+            placeholder="All Companies"
+            allowUncheck={true}
+            searchPlaceholder="Search company..."
+            darkMode={darkMode}
           />
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Year */}
+        <div className="lg:col-span-2">
+          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+            Year
+          </label>
+          <input
+            type="number"
+            value={filters.year}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, year: e.target.value }));
+              // Auto-apply on change
+              setTimeout(() => fetchBalances(), 100);
+            }}
+            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+          />
+        </div>
+
+        {/* Actions */}
+        <div className="lg:col-span-4 flex items-end gap-2">
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
             className="flex items-center gap-2 px-4 py-2.5 text-sm bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all"
           >
             <Filter className="w-4 h-4" />
-            Filters
+            More Filters
           </button>
 
           {canExport && (
@@ -203,17 +235,27 @@ const fetchReferenceData = useCallback(async () => {
               Export
             </button>
           )}
+
+          {/* Clear All Filters */}
+          {(filters.business_function_id || filters.department_id || filters.min_remaining || filters.max_remaining) && (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+            >
+              <X className="w-4 h-4" />
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
-  
-
-      {/* Filters Panel */}
-           {showFilters && (
+      {/* ✅ ADDITIONAL FILTERS PANEL (Collapsible) */}
+      {showFilters && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
-              Filter Balances
+              Additional Filters
             </h3>
             <button
               type="button"
@@ -224,43 +266,8 @@ const fetchReferenceData = useCallback(async () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                Year
-              </label>
-              <input
-                type="number"
-                value={filters.year}
-                onChange={(e) =>
-                  setFilters((prev) => ({ ...prev, year: e.target.value }))
-                }
-                className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-              />
-            </div>
-
-            {/* ✅ YENİ: Company Filter */}
-            <div>
-              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                Company
-              </label>
-              <SearchableDropdown
-                options={businessFunctions.map(bf => ({ 
-                  value: bf.id, 
-                  label: bf.name 
-                }))}
-                value={filters.business_function_id}
-                onChange={(value) =>
-                  setFilters((prev) => ({ ...prev, business_function_id: value || '' }))
-                }
-                placeholder="All Companies"
-                allowUncheck={true}
-                searchPlaceholder="Search company..."
-                darkMode={darkMode}
-              />
-            </div>
-
-            {/* ✅ DÜZƏLİŞ: Department Searchable Dropdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            {/* Department */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
                 Department
@@ -281,6 +288,7 @@ const fetchReferenceData = useCallback(async () => {
               />
             </div>
 
+            {/* Min Remaining */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
                 Min Remaining Days
@@ -299,6 +307,7 @@ const fetchReferenceData = useCallback(async () => {
               />
             </div>
 
+            {/* Max Remaining */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
                 Max Remaining Days
@@ -331,7 +340,7 @@ const fetchReferenceData = useCallback(async () => {
               onClick={handleClearFilters}
               className="px-4 py-2 text-sm border border-almet-mystic dark:border-almet-comet text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
             >
-              Clear
+              Clear All
             </button>
           </div>
         </div>
@@ -350,7 +359,7 @@ const fetchReferenceData = useCallback(async () => {
                 <tr>
                   {[
                     "Employee",
-                    "Company",  // ✅ YENİ column
+                    "Company",
                     "Department",
                     "Total",
                     "Used",
@@ -387,7 +396,6 @@ const fetchReferenceData = useCallback(async () => {
                           </p>
                         </div>
                       </td>
-                      {/* ✅ YENİ: Company column */}
                       <td className="px-4 py-3 text-sm text-almet-waterloo dark:text-almet-bali-hai">
                         {balance.business_function_name || '-'}
                       </td>
@@ -483,7 +491,7 @@ const fetchReferenceData = useCallback(async () => {
                 {filteredBalances.length === 0 && (
                   <tr>
                     <td
-                      colSpan={canUpdate ? 10 : 9}  // ✅ Updated colspan
+                      colSpan={canUpdate ? 10 : 9}
                       className="px-4 py-12 text-center"
                     >
                       <Calendar className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
@@ -501,8 +509,6 @@ const fetchReferenceData = useCallback(async () => {
           </div>
         )}
       </div>
-
-     
     </div>
   );
 };

@@ -1,5 +1,5 @@
-// components/vacation/MySchedulesTab.jsx
-import { Download, Edit, Trash, Check, Eye, Calendar } from 'lucide-react';
+// components/vacation/MySchedulesTab.jsx - ENHANCED VERSION
+import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
 
 export default function MySchedulesTab({
@@ -14,6 +14,10 @@ export default function MySchedulesTab({
   handleViewScheduleDetail
 }) {
   const [activeSubTab, setActiveSubTab] = useState('upcoming');
+  const [approvingSchedule, setApprovingSchedule] = useState(null);
+  const [approveComment, setApproveComment] = useState('');
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
 
   const getSubTabs = () => {
     const tabs = [
@@ -48,6 +52,13 @@ export default function MySchedulesTab({
     return userAccess.is_admin && schedule.status === 'SCHEDULED';
   };
 
+  // ✅ NEW: Can approve schedule
+  const canApproveSchedule = (schedule) => {
+    // Manager can approve PENDING_MANAGER schedules
+    return (userAccess.is_manager || userAccess.is_admin) && 
+           schedule.status === 'PENDING_MANAGER';
+  };
+
   return (
     <div className="space-y-4">
       {/* Sub-tabs */}
@@ -66,7 +77,6 @@ export default function MySchedulesTab({
             </button>
           </div>
 
-          {/* Sub-tab buttons */}
           <div className="grid grid-cols-3 gap-2"> 
             {subTabs.map(tab => (
               <button
@@ -128,8 +138,10 @@ export default function MySchedulesTab({
                     {schedule.number_of_days}
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${ 
-                      schedule.status === 'SCHEDULED' 
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                      schedule.status === 'PENDING_MANAGER'
+                        ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                        : schedule.status === 'SCHEDULED' 
                         ? 'bg-blue-50 text-almet-sapphire dark:bg-blue-900/30 dark:text-almet-astral' 
                         : 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                     }`}>
@@ -150,14 +162,42 @@ export default function MySchedulesTab({
                       <button 
                         onClick={() => handleViewScheduleDetail(schedule.id)}
                         className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+                        title="View Details"
                       >
                         <Eye className="w-3 h-3" />
                       </button>
+
+                      {/* ✅ Approve/Reject Buttons */}
+                      {canApproveSchedule(schedule) && (
+                        <>
+                          <button 
+                            onClick={() => {
+                              setApprovingSchedule(schedule);
+                              setShowApproveModal(true);
+                            }}
+                            className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
+                            title="Approve"
+                          >
+                            <CheckCircle className="w-3 h-3" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setApprovingSchedule(schedule);
+                              setShowRejectModal(true);
+                            }}
+                            className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1 font-medium"
+                            title="Reject"
+                          >
+                            <XCircle className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
 
                       {canEditSchedule(schedule) && (
                         <button 
                           onClick={() => handleEditSchedule(schedule)} 
                           className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
+                          title="Edit"
                         >
                           <Edit className="w-3 h-3" />
                         </button>
@@ -167,6 +207,7 @@ export default function MySchedulesTab({
                         <button 
                           onClick={() => handleDeleteSchedule(schedule.id)} 
                           className="text-red-600 hover:text-red-800 dark:text-red-400 flex items-center gap-1 font-medium"
+                          title="Delete (Admin)"
                         >
                           <Trash className="w-3 h-3" />
                         </button>
@@ -176,6 +217,7 @@ export default function MySchedulesTab({
                         <button 
                           onClick={() => handleRegisterSchedule(schedule.id)} 
                           className="text-green-600 hover:text-green-800 dark:text-green-400 flex items-center gap-1 font-medium"
+                          title="Register (Admin)"
                         >
                           <Check className="w-3 h-3" />
                         </button>
@@ -198,6 +240,140 @@ export default function MySchedulesTab({
           </table>
         </div>
       </div>
+
+      {/* ✅ Approve Modal */}
+      {showApproveModal && approvingSchedule && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
+            <div className="px-5 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                Approve Schedule
+              </h3>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                Approve schedule for <strong>{approvingSchedule.employee_name}</strong>?
+              </p>
+              
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  Comment (Optional)
+                </label>
+                <textarea
+                  value={approveComment}
+                  onChange={(e) => setApproveComment(e.target.value)}
+                  rows={3}
+                  placeholder="Add approval comment..."
+                  className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-almet-mystic/30 dark:border-almet-comet/30 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowApproveModal(false);
+                  setApprovingSchedule(null);
+                  setApproveComment('');
+                }}
+                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await VacationService.approveSchedule(approvingSchedule.id, {
+                      action: 'approve',
+                      comment: approveComment
+                    });
+                    setShowApproveModal(false);
+                    setApprovingSchedule(null);
+                    setApproveComment('');
+                    // Refresh schedules
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Approve error:', error);
+                    alert('Failed to approve schedule');
+                  }
+                }}
+                className="px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all shadow-sm"
+              >
+                Approve
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ Reject Modal */}
+      {showRejectModal && approvingSchedule && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
+            <div className="px-5 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+              <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-red-600" />
+                Reject Schedule
+              </h3>
+            </div>
+            
+            <div className="p-5 space-y-4">
+              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                Reject schedule for <strong>{approvingSchedule.employee_name}</strong>?
+              </p>
+              
+              <div>
+                <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+                  Reason (Optional)
+                </label>
+                <textarea
+                  value={approveComment}
+                  onChange={(e) => setApproveComment(e.target.value)}
+                  rows={3}
+                  placeholder="Add rejection reason..."
+                  className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-almet-mystic/30 dark:border-almet-comet/30 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setApprovingSchedule(null);
+                  setApproveComment('');
+                }}
+                className="px-4 py-2 text-xs border border-almet-bali-hai/40 dark:border-almet-comet rounded-lg text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-gray-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await VacationService.approveSchedule(approvingSchedule.id, {
+                      action: 'reject',
+                      comment: approveComment
+                    });
+                    setShowRejectModal(false);
+                    setApprovingSchedule(null);
+                    setApproveComment('');
+                    // Refresh schedules
+                    window.location.reload();
+                  } catch (error) {
+                    console.error('Reject error:', error);
+                    alert('Failed to reject schedule');
+                  }
+                }}
+                className="px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-sm"
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

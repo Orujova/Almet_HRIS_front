@@ -508,8 +508,7 @@ export default function VacationRequestForm({
               </div>
             </div>
 
-            {/* File attachments - Only for immediate requests */}
-            {activeSection === 'immediate' && (
+           
               <>
                 <div>
                   <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
@@ -608,7 +607,7 @@ export default function VacationRequestForm({
                   />
                 </div>
               </>
-            )}
+          
           </div>
         </div>
 
