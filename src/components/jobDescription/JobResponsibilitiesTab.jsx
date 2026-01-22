@@ -52,7 +52,58 @@ const JobResponsibilitiesTab = ({
     'president',
     'chairman'
   ];
+// JobResponsibilitiesTab.jsx - Edit mode detection əlavə edin
 
+// Əvvəlcə bir state əlavə edin
+const [isEditMode, setIsEditMode] = useState(false);
+
+// formData dəyişəndə edit mode-u detect edin
+useEffect(() => {
+  // Əgər skills və ya competencies data varsa, edit mode-dur
+  const hasSkills = formData.required_skills_data?.length > 0;
+  const hasBehavioral = formData.behavioral_competencies_data?.length > 0;
+  const hasLeadership = formData.leadership_competencies_data?.length > 0;
+  
+  setIsEditMode(hasSkills || hasBehavioral || hasLeadership);
+  
+  console.log('🔍 Edit mode detection:', {
+    hasSkills,
+    hasBehavioral,
+    hasLeadership,
+    isEditMode: hasSkills || hasBehavioral || hasLeadership
+  });
+}, [formData.required_skills_data, formData.behavioral_competencies_data, formData.leadership_competencies_data]);
+
+// Hierarchical data yükləndikdən SONRA selected ID-ləri log edin
+useEffect(() => {
+  if (isEditMode && skillGroupsHierarchical.length > 0) {
+    console.log('✅ Skills hierarchical data loaded:', {
+      groupCount: skillGroupsHierarchical.length,
+      selectedIds: formData.required_skills_data,
+      firstGroup: skillGroupsHierarchical[0]
+    });
+  }
+}, [skillGroupsHierarchical, isEditMode]);
+
+useEffect(() => {
+  if (isEditMode && behavioralGroupsHierarchical.length > 0) {
+    console.log('✅ Behavioral hierarchical data loaded:', {
+      groupCount: behavioralGroupsHierarchical.length,
+      selectedIds: formData.behavioral_competencies_data,
+      firstGroup: behavioralGroupsHierarchical[0]
+    });
+  }
+}, [behavioralGroupsHierarchical, isEditMode]);
+
+useEffect(() => {
+  if (isEditMode && leadershipGroupsHierarchical.length > 0) {
+    console.log('✅ Leadership hierarchical data loaded:', {
+      groupCount: leadershipGroupsHierarchical.length,
+      selectedIds: formData.leadership_competencies_data,
+      firstGroup: leadershipGroupsHierarchical[0]
+    });
+  }
+}, [leadershipGroupsHierarchical, isEditMode]);
   // 🔥 Check if position is leadership based on position_group
   useEffect(() => {
     const checkLeadershipPosition = () => {
