@@ -69,7 +69,9 @@ const JobDescriptionPageContent = () => {
   const [availableCompetencies, setAvailableCompetencies] = useState([]);
   const [userAccess, setUserAccess] = useState(null);
 const [accessLoading, setAccessLoading] = useState(true);
-
+  // ðŸ"¥ State-ə əlavə edin
+const [businessFunctionJobs, setBusinessFunctionJobs] = useState([]);
+const [totalBusinessFunctionJobs, setTotalBusinessFunctionJobs] = useState(0);
 // Add useEffect to fetch access info
 useEffect(() => {
   fetchUserAccess();
@@ -203,11 +205,64 @@ const fetchUserAccess = async () => {
     })).sort((a, b) => a.name.localeCompare(b.name));
   }, [jobDescriptions]);
 
-  // 🔥 NEW: Filter jobs within selected business function
+
+
+const fetchBusinessFunctionJobs = async (businessFunctionName, page = 1) => {
+  try {
+    setActionLoading(true);
+    const response = await jobDescriptionService.getJobDescriptions({ 
+      business_function: businessFunctionName,
+      page: page,
+      page_size: itemsPerPage  // 10
+    });
+    
+    setBusinessFunctionJobs(response.results || []);
+    setTotalBusinessFunctionJobs(response.count || 0);
+  } catch (error) {
+    console.error('Error fetching business function jobs:', error);
+    showError('Error loading job descriptions');
+  } finally {
+    setActionLoading(false);
+  }
+};
+
+// ðŸ"¥ Update handleBusinessFunctionClick
+const handleBusinessFunctionClick = async (group) => {
+  try {
+    setActionLoading(true);
+    
+    // Check access first
+    const response = await jobDescriptionService.getJobDescriptions({ 
+      business_function: group.name,
+      page_size: 1
+    });
+    
+    if (response.results && response.results.length > 0) {
+      setSelectedBusinessFunction(group);
+      setViewMode('details');
+      setSearchTerm('');
+      setSelectedDepartment('');
+      setSelectedStatus('');
+      setCurrentPage(1);
+      
+      // ðŸ"¥ Fetch first page of jobs
+      await fetchBusinessFunctionJobs(group.name, 1);
+    } else {
+      showWarning(`You don't have access to job descriptions in ${group.name}`);
+    }
+  } catch (error) {
+    showError('Error checking access');
+  } finally {
+    setActionLoading(false);
+  }
+};
+
+// 🔥 YENİLƏYİN - Filter jobs within selected business function
   const filteredJobsInBusinessFunction = useMemo(() => {
     if (!selectedBusinessFunction) return [];
     
-    let filtered = selectedBusinessFunction.jobs;
+    // 🔥 Use businessFunctionJobs instead of selectedBusinessFunction.jobs
+    let filtered = businessFunctionJobs;
     
     if (searchTerm) {
       filtered = filtered.filter(job =>
@@ -225,16 +280,13 @@ const fetchUserAccess = async () => {
     }
     
     return filtered;
-  }, [selectedBusinessFunction, searchTerm, selectedDepartment, selectedStatus]);
+  }, [businessFunctionJobs, searchTerm, selectedDepartment, selectedStatus]); // 🔥 dependency dəyişdi
 
-  const paginatedJobs = useMemo(() => {
-    const jobs = filteredJobsInBusinessFunction;
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return jobs.slice(startIndex, endIndex);
-  }, [filteredJobsInBusinessFunction, currentPage, itemsPerPage]);
+// ðŸ"¥ paginatedJobs artıq lazım deyil, filteredJobsInBusinessFunction istifadə edin
+const totalPages = Math.ceil(totalBusinessFunctionJobs / itemsPerPage);
 
-  const totalPages = Math.ceil(filteredJobsInBusinessFunction.length / itemsPerPage);
+
+
 
   const filterMatchingEmployees = () => {
     if (!dropdownData.employees || dropdownData.employees.length === 0) {
@@ -419,49 +471,26 @@ const fetchUserAccess = async () => {
     }
   };
 
-  // ðŸ"¥ FIX: handleBusinessFunctionClick - fetch ALL jobs for business function
-const handleBusinessFunctionClick = async (group) => {
-  try {
-    setActionLoading(true);
-    
-    // Fetch ALL jobs for this business function (not just 1)
-    const response = await jobDescriptionService.getJobDescriptions({ 
-      business_function: group.name,
-      page_size: 1000  // ðŸ"¥ Changed from 1 to 1000
-    });
-    
-    if (response.results && response.results.length > 0) {
-      // ðŸ"¥ Update the group with fresh data from API
-      const updatedGroup = {
-        ...group,
-        jobs: response.results  // Use fresh API data instead of cached
-      };
-      
-      setSelectedBusinessFunction(updatedGroup);
-      setViewMode('details');
-      setSearchTerm('');
-      setSelectedDepartment('');
-      setSelectedStatus('');
-      setCurrentPage(1);
-    } else {
-      // No access
-      showWarning(`You don't have access to job descriptions in ${group.name}`);
-    }
-  } catch (error) {
-    showError('Error checking access');
-  } finally {
-    setActionLoading(false);
-  }
-};
 
-  // 🔥 NEW: Back to overview
+
+  // 🔥 Back to overview
   const handleBackToOverview = () => {
     setViewMode('overview');
     setSelectedBusinessFunction(null);
+    setBusinessFunctionJobs([]); // 🔥 əlavə edin
+    setTotalBusinessFunctionJobs(0); // 🔥 əlavə edin
     setSearchTerm('');
     setSelectedDepartment('');
     setSelectedStatus('');
     setCurrentPage(1);
+  };
+
+  // 🔥 ÆLAVÆ EDİN - Pagination handler
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    if (selectedBusinessFunction) {
+      fetchBusinessFunctionJobs(selectedBusinessFunction.name, page);
+    }
   };
 
   // 🔥 NEW: Handle create new job
@@ -1446,7 +1475,7 @@ const handleEdit = async (job) => {
 
                 {/* Job List */}
                 <JobDescriptionList
-                  filteredJobs={paginatedJobs} 
+                  filteredJobs={filteredJobsInBusinessFunction} // 🔥 paginatedJobs əvəzinə
                   searchTerm={searchTerm}
                   selectedDepartment={selectedDepartment}
                   dropdownData={dropdownData}
@@ -1467,9 +1496,9 @@ const handleEdit = async (job) => {
                   <Pagination
                     currentPage={currentPage}
                     totalPages={totalPages}
-                    totalItems={filteredJobsInBusinessFunction.length}
+                    totalItems={totalBusinessFunctionJobs} // 🔥 dəyişdi
                     itemsPerPage={itemsPerPage}
-                    onPageChange={(page) => setCurrentPage(page)}
+                    onPageChange={handlePageChange} // 🔥 dəyişdi - (page) => setCurrentPage(page) əvəzinə
                     darkMode={darkMode}
                   />
                 )}
