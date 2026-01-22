@@ -41,22 +41,55 @@ export default function PlanningStatisticsModal({
   const fetchStatistics = async () => {
     setLoading(true);
     try {
-      const response = await VacationService.getAllBalances({
+      // Get balances
+      const balanceResponse = await VacationService.getAllBalances({
         year: new Date().getFullYear()
       });
       
-      if (response?.balances) {
+      // Get schedule tabs for pending schedules
+      const scheduleResponse = await VacationService.getScheduleTabs();
+      
+      if (balanceResponse?.balances) {
+        // Group pending schedules by employee
+        const pendingByEmployee = {};
+        if (scheduleResponse?.upcoming) {
+          scheduleResponse.upcoming
+            .filter(s => s.status === 'PENDING_MANAGER')
+            .forEach(schedule => {
+              const empName = schedule.employee_name;
+              if (!pendingByEmployee[empName]) {
+                pendingByEmployee[empName] = 0;
+              }
+              pendingByEmployee[empName] += parseFloat(schedule.number_of_days || 0);
+            });
+        }
+        
         // Calculate statistics
-        const stats = response.balances.map(balance => {
-          const totalPlanned = parseFloat(balance.scheduled_days) + parseFloat(balance.used_days);
-          const shouldPlan = parseFloat(balance.should_be_planned);
+        const stats = balanceResponse.balances.map(balance => {
+          const scheduledDays = parseFloat(balance.scheduled_days);
+          const usedDays = parseFloat(balance.used_days);
+          const pendingDays = pendingByEmployee[balance.employee_name] || 0;
+          
+          // ✅ Total planned = used + scheduled + pending
+          const totalPlanned = usedDays + scheduledDays + pendingDays;
+          
+          // ✅ Available = remaining - pending
+          const availableForPlanning = parseFloat(balance.remaining_balance) - pendingDays;
+          
+          // ✅ Should plan = yearly - (used + scheduled + pending)
+          const shouldPlan = Math.max(0, parseFloat(balance.yearly_balance) - totalPlanned);
+          
           const planningRate = balance.yearly_balance > 0 
             ? ((totalPlanned / balance.yearly_balance) * 100).toFixed(1)
             : 0;
           
           return {
             ...balance,
+            used_days: usedDays,
+            scheduled_days: scheduledDays,
+            pending_days: pendingDays,
             total_planned: totalPlanned,
+            available_for_planning: availableForPlanning,
             should_plan: shouldPlan,
             planning_rate: parseFloat(planningRate),
             is_fully_planned: shouldPlan === 0,
@@ -240,8 +273,8 @@ export default function PlanningStatisticsModal({
             <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
               <thead className="bg-almet-mystic/50 dark:bg-gray-700/50 sticky top-0">
                 <tr>
-                  {['Employee', 'Department', 'Total Planned', 'Must Plan', 'Planning Rate', 'Status'].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                  {['Employee', 'Department', 'Used', 'Scheduled', 'Pending', 'Total Planned', 'Available', 'Must Plan', 'Rate', 'Status'].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                       {h}
                     </th>
                   ))}
@@ -250,7 +283,7 @@ export default function PlanningStatisticsModal({
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
                 {paginatedStats.map((stat) => (
                   <tr key={stat.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
-                    <td className="px-4 py-3">
+                    <td className="px-3 py-2">
                       <div>
                         <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">
                           {stat.employee_name}
@@ -260,31 +293,73 @@ export default function PlanningStatisticsModal({
                         </p>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                    <td className="px-3 py-2 text-sm text-almet-waterloo dark:text-almet-bali-hai">
                       {stat.department_name}
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
+                    
+                    {/* ✅ Used Days */}
+                    <td className="px-3 py-2">
+                      <span className="text-sm font-semibold text-orange-600 dark:text-orange-400">
+                        {stat.used_days}
+                      </span>
+                    </td>
+                    
+                    {/* ✅ Scheduled Days (Approved) */}
+                    <td className="px-3 py-2">
+                      <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        {stat.scheduled_days}
+                      </span>
+                    </td>
+                    
+                    {/* ✅ Pending Days (Awaiting Approval) */}
+                    <td className="px-3 py-2">
+                      <span className={`text-sm font-semibold ${
+                        stat.pending_days > 0 
+                          ? 'text-amber-600 dark:text-amber-400' 
+                          : 'text-gray-400 dark:text-gray-600'
+                      }`}>
+                        {stat.pending_days > 0 ? stat.pending_days : '-'}
+                      </span>
+                    </td>
+                    
+                    {/* ✅ Total Planned */}
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-bold text-almet-cloud-burst dark:text-white">
                           {stat.total_planned}
                         </span>
                         <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          / {stat.yearly_balance} days
+                          / {stat.yearly_balance}
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    
+                    {/* ✅ Available for Planning */}
+                    <td className="px-3 py-2">
+                      <span className={`text-sm font-semibold ${
+                        stat.available_for_planning > 0 
+                          ? 'text-green-600 dark:text-green-400' 
+                          : 'text-gray-400 dark:text-gray-600'
+                      }`}>
+                        {stat.available_for_planning > 0 ? stat.available_for_planning : '-'}
+                      </span>
+                    </td>
+                    
+                    {/* ✅ Must Plan */}
+                    <td className="px-3 py-2">
                       <span className={`text-sm font-bold ${
                         stat.should_plan > 0 
                           ? 'text-red-600 dark:text-red-400' 
                           : 'text-green-600 dark:text-green-400'
                       }`}>
-                        {stat.should_plan}
+                        {stat.should_plan > 0 ? stat.should_plan : '✓'}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    
+                    {/* ✅ Planning Rate */}
+                    <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden min-w-[60px]">
                           <div 
                             className={`h-full transition-all ${
                               stat.planning_rate >= 100 
@@ -298,13 +373,15 @@ export default function PlanningStatisticsModal({
                             style={{ width: `${Math.min(stat.planning_rate, 100)}%` }}
                           />
                         </div>
-                        <span className="text-xs font-medium text-almet-cloud-burst dark:text-white w-12 text-right">
+                        <span className="text-xs font-medium text-almet-cloud-burst dark:text-white w-10 text-right">
                           {stat.planning_rate}%
                         </span>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                    
+                    {/* ✅ Status */}
+                    <td className="px-3 py-2">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
                         stat.is_fully_planned
                           ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                           : stat.should_plan > 5
@@ -324,7 +401,7 @@ export default function PlanningStatisticsModal({
                         ) : (
                           <span className="flex items-center gap-1">
                             <TrendingDown className="w-3 h-3" />
-                            Needs Planning
+                            Needs Plan
                           </span>
                         )}
                       </span>
@@ -333,7 +410,7 @@ export default function PlanningStatisticsModal({
                 ))}
                 {paginatedStats.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-4 py-12 text-center">
+                    <td colSpan="10" className="px-3 py-12 text-center">
                       <Users className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
                       <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
                         {searchTerm ? 'No employees match your search' : 'No statistics available'}

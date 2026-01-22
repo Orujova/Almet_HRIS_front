@@ -96,7 +96,10 @@ export default function PlanningVacationTab({
       // ✅ Calculate total pending days
       pendingDays = relevantSchedules
         .filter(s => s.status === 'PENDING_MANAGER')
-        .reduce((sum, s) => sum + (s.number_of_days || 0), 0);
+        .reduce((sum, s) => {
+          const days = parseFloat(s.number_of_days || 0);
+          return sum + days;
+        }, 0);
       
       setPendingScheduledDays(pendingDays);
       
@@ -244,16 +247,16 @@ export default function PlanningVacationTab({
 
     // ✅ CHECK: Available balance = remaining - (scheduled + pending)
     if (balances) {
-      const totalAlreadyPlanned = balances.scheduled_days + pendingScheduledDays;
-      const availableForPlanning = balances.remaining_balance - totalAlreadyPlanned;
+      const totalAlreadyPlanned = parseFloat(balances.scheduled_days || 0) + parseFloat(pendingScheduledDays || 0);
+      const availableForPlanning = parseFloat(balances.remaining_balance || 0) - totalAlreadyPlanned;
       
       if (totalDaysPlanned > availableForPlanning) {
         showError(
           `❌ Insufficient balance. ` +
-          `Available: ${availableForPlanning} days ` +
+          `Available: ${availableForPlanning.toFixed(1)} days ` +
           `(Remaining: ${balances.remaining_balance} - ` +
           `Already scheduled: ${balances.scheduled_days} - ` +
-          `Pending approval: ${pendingScheduledDays})`
+          `Pending approval: ${pendingScheduledDays.toFixed(1)})`
         );
         return;
       }
@@ -318,9 +321,19 @@ export default function PlanningVacationTab({
   // ✅ Combine selected + existing for calendar display
   const allRangesForCalendar = [...selectedRanges, ...existingSchedules];
 
-  // ✅ Calculate truly available balance
-  const availableBalance = balances ? 
-    balances.remaining_balance - balances.scheduled_days - pendingScheduledDays : 0;
+  // ✅ Calculate truly available balance - SAFE VERSION
+  const getAvailableBalance = () => {
+    if (!balances) return 0;
+    
+    const remaining = parseFloat(balances.remaining_balance) || 0;
+    const scheduled = parseFloat(balances.scheduled_days) || 0;
+    const pending = parseFloat(pendingScheduledDays) || 0;
+    
+    const available = remaining - scheduled - pending;
+    return Math.max(0, available); // Never negative
+  };
+  
+  const availableBalance = getAvailableBalance();
 
   return (
     <div className="space-y-6">
@@ -341,10 +354,12 @@ export default function PlanningVacationTab({
               Full Year Planning
             </h3>
             <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-              You can plan up to <strong>{availableBalance} days</strong> 
-              (Remaining: {balances?.remaining_balance || 0} - 
-              Scheduled: {balances?.scheduled_days || 0} - 
-              Pending: {pendingScheduledDays}).
+              You can plan up to <strong>{availableBalance.toFixed(1)} days</strong>.
+              <span className="block mt-1">
+                (Remaining: <strong>{parseFloat(balances?.remaining_balance || 0).toFixed(1)}</strong> - 
+                Scheduled: <strong>{parseFloat(balances?.scheduled_days || 0).toFixed(1)}</strong> - 
+                Pending: <strong>{pendingScheduledDays.toFixed(1)}</strong>)
+              </span>
               {existingSchedules.length > 0 && (
                 <span className="block mt-1">
                   ✅ <strong>{existingSchedules.length} existing schedule{existingSchedules.length > 1 ? 's' : ''}</strong> shown in green.
@@ -520,8 +535,8 @@ export default function PlanningVacationTab({
                 Insufficient Balance
               </h3>
               <p className="text-xs text-red-800 dark:text-red-300 mt-1">
-                Planning {totalDaysPlanned} days but only {availableBalance} days available.
-                (Remaining: {balances.remaining_balance} - Scheduled: {balances.scheduled_days} - Pending: {pendingScheduledDays})
+                Planning {totalDaysPlanned} days but only {availableBalance.toFixed(1)} days available.
+                (Remaining: {balances.remaining_balance} - Scheduled: {balances.scheduled_days} - Pending: {pendingScheduledDays.toFixed(1)})
               </p>
             </div>
           </div>

@@ -136,12 +136,13 @@ const BalancesTabContent = ({
   });
 
   const canUpdate =
-    userPermissions.is_admin ||
-    userPermissions.permissions?.includes("vacation.balance.update");
+    userPermissions.is_admin
   const canExport =
-    userPermissions.is_admin ||
-    userPermissions.permissions?.includes("vacation.balance.export");
+    userPermissions.is_admin 
 
+
+
+    console.log(userPermissions)
   return (
     <div className="space-y-5">
       {/* ✅ TOP SECTION: Search + Company Filter + Year + Actions */}
