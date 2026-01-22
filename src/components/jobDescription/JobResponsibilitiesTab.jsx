@@ -1,4 +1,4 @@
-// components/jobDescription/JobResponsibilitiesTab.jsx - WITH Dynamic Leadership/Behavioral Competencies
+// components/jobDescription/JobResponsibilitiesTab.jsx - WITH Dynamic Leadership/Behavioral Competencies + FORCE RE-RENDER FIX
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Award, Users } from 'lucide-react';
 import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
@@ -35,6 +35,14 @@ const JobResponsibilitiesTab = ({
   const [isLoadingCompetencies, setIsLoadingCompetencies] = useState(false);
   const [isLoadingLeadership, setIsLoadingLeadership] = useState(false);
 
+  // 🔥 Edit mode detection
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // 🔥 Force re-render keys
+  const [skillsComponentKey, setSkillsComponentKey] = useState(0);
+  const [behavioralComponentKey, setBehavioralComponentKey] = useState(0);
+  const [leadershipComponentKey, setLeadershipComponentKey] = useState(0);
+
   // 🔥 Leadership position keywords
   const LEADERSHIP_POSITIONS = [
     'manager',
@@ -52,58 +60,23 @@ const JobResponsibilitiesTab = ({
     'president',
     'chairman'
   ];
-// JobResponsibilitiesTab.jsx - Edit mode detection əlavə edin
 
-// Əvvəlcə bir state əlavə edin
-const [isEditMode, setIsEditMode] = useState(false);
-
-// formData dəyişəndə edit mode-u detect edin
-useEffect(() => {
-  // Əgər skills və ya competencies data varsa, edit mode-dur
-  const hasSkills = formData.required_skills_data?.length > 0;
-  const hasBehavioral = formData.behavioral_competencies_data?.length > 0;
-  const hasLeadership = formData.leadership_competencies_data?.length > 0;
-  
-  setIsEditMode(hasSkills || hasBehavioral || hasLeadership);
-  
-  console.log('🔍 Edit mode detection:', {
-    hasSkills,
-    hasBehavioral,
-    hasLeadership,
-    isEditMode: hasSkills || hasBehavioral || hasLeadership
-  });
-}, [formData.required_skills_data, formData.behavioral_competencies_data, formData.leadership_competencies_data]);
-
-// Hierarchical data yükləndikdən SONRA selected ID-ləri log edin
-useEffect(() => {
-  if (isEditMode && skillGroupsHierarchical.length > 0) {
-    console.log('✅ Skills hierarchical data loaded:', {
-      groupCount: skillGroupsHierarchical.length,
-      selectedIds: formData.required_skills_data,
-      firstGroup: skillGroupsHierarchical[0]
+  // 🔥 Edit mode detection
+  useEffect(() => {
+    const hasSkills = formData.required_skills_data?.length > 0;
+    const hasBehavioral = formData.behavioral_competencies_data?.length > 0;
+    const hasLeadership = formData.leadership_competencies_data?.length > 0;
+    
+    setIsEditMode(hasSkills || hasBehavioral || hasLeadership);
+    
+    console.log('🔍 Edit mode detection:', {
+      hasSkills,
+      hasBehavioral,
+      hasLeadership,
+      isEditMode: hasSkills || hasBehavioral || hasLeadership
     });
-  }
-}, [skillGroupsHierarchical, isEditMode]);
+  }, [formData.required_skills_data, formData.behavioral_competencies_data, formData.leadership_competencies_data]);
 
-useEffect(() => {
-  if (isEditMode && behavioralGroupsHierarchical.length > 0) {
-    console.log('✅ Behavioral hierarchical data loaded:', {
-      groupCount: behavioralGroupsHierarchical.length,
-      selectedIds: formData.behavioral_competencies_data,
-      firstGroup: behavioralGroupsHierarchical[0]
-    });
-  }
-}, [behavioralGroupsHierarchical, isEditMode]);
-
-useEffect(() => {
-  if (isEditMode && leadershipGroupsHierarchical.length > 0) {
-    console.log('✅ Leadership hierarchical data loaded:', {
-      groupCount: leadershipGroupsHierarchical.length,
-      selectedIds: formData.leadership_competencies_data,
-      firstGroup: leadershipGroupsHierarchical[0]
-    });
-  }
-}, [leadershipGroupsHierarchical, isEditMode]);
   // 🔥 Check if position is leadership based on position_group
   useEffect(() => {
     const checkLeadershipPosition = () => {
@@ -116,7 +89,6 @@ useEffect(() => {
       const isLeadership = LEADERSHIP_POSITIONS.some(keyword => 
         positionLower.includes(keyword)
       );
-      
 
       setIsLeadershipPosition(isLeadership);
     };
@@ -244,20 +216,14 @@ useEffect(() => {
       try {
         const competencyApi = (await import('@/services/competencyApi')).default;
         
-    
-        
         const hierarchicalData = await Promise.all(
           dropdownData.leadershipMainGroups.map(async (mainGroup) => {
             try {
-              // Get child groups for this main group
               const childGroupsResponse = await competencyApi.leadershipMainGroups.getChildGroups(mainGroup.id);
               const childGroups = Array.isArray(childGroupsResponse) 
                 ? childGroupsResponse 
                 : (childGroupsResponse.child_groups || childGroupsResponse.results || []);
               
-
-              
-              // For each child group, get its items
               const childGroupsWithItems = await Promise.all(
                 childGroups.map(async (childGroup) => {
                   try {
@@ -308,7 +274,6 @@ useEffect(() => {
           })
         );
         
-     
         setLeadershipGroupsHierarchical(hierarchicalData);
         
       } catch (error) {
@@ -320,6 +285,61 @@ useEffect(() => {
 
     loadLeadershipHierarchical();
   }, [dropdownData.leadershipMainGroups, isLeadershipPosition]);
+
+  // 🔥 FORCE RE-RENDER: Skills component when data is ready in edit mode
+  useEffect(() => {
+    if (isEditMode && skillGroupsHierarchical.length > 0 && formData.required_skills_data?.length > 0) {
+      console.log('🔄 Forcing re-render of skills component');
+      setSkillsComponentKey(prev => prev + 1);
+    }
+  }, [skillGroupsHierarchical.length, isEditMode]);
+
+  // 🔥 FORCE RE-RENDER: Behavioral component when data is ready in edit mode
+  useEffect(() => {
+    if (isEditMode && behavioralGroupsHierarchical.length > 0 && formData.behavioral_competencies_data?.length > 0) {
+      console.log('🔄 Forcing re-render of behavioral component');
+      setBehavioralComponentKey(prev => prev + 1);
+    }
+  }, [behavioralGroupsHierarchical.length, isEditMode]);
+
+  // 🔥 FORCE RE-RENDER: Leadership component when data is ready in edit mode
+  useEffect(() => {
+    if (isEditMode && isLeadershipPosition && leadershipGroupsHierarchical.length > 0 && formData.leadership_competencies_data?.length > 0) {
+      console.log('🔄 Forcing re-render of leadership component');
+      setLeadershipComponentKey(prev => prev + 1);
+    }
+  }, [leadershipGroupsHierarchical.length, isEditMode, isLeadershipPosition]);
+
+  // 🔥 Log hierarchical data when loaded
+  useEffect(() => {
+    if (isEditMode && skillGroupsHierarchical.length > 0) {
+      console.log('✅ Skills hierarchical data loaded:', {
+        groupCount: skillGroupsHierarchical.length,
+        selectedIds: formData.required_skills_data,
+        firstGroup: skillGroupsHierarchical[0]
+      });
+    }
+  }, [skillGroupsHierarchical, isEditMode]);
+
+  useEffect(() => {
+    if (isEditMode && behavioralGroupsHierarchical.length > 0) {
+      console.log('✅ Behavioral hierarchical data loaded:', {
+        groupCount: behavioralGroupsHierarchical.length,
+        selectedIds: formData.behavioral_competencies_data,
+        firstGroup: behavioralGroupsHierarchical[0]
+      });
+    }
+  }, [behavioralGroupsHierarchical, isEditMode]);
+
+  useEffect(() => {
+    if (isEditMode && leadershipGroupsHierarchical.length > 0) {
+      console.log('✅ Leadership hierarchical data loaded:', {
+        groupCount: leadershipGroupsHierarchical.length,
+        selectedIds: formData.leadership_competencies_data,
+        firstGroup: leadershipGroupsHierarchical[0]
+      });
+    }
+  }, [leadershipGroupsHierarchical, isEditMode]);
 
   // Handle array field changes
   const handleArrayFieldChange = (fieldName, index, value) => {
@@ -355,18 +375,16 @@ useEffect(() => {
   // 🔥 Handle competency changes (behavioral OR leadership)
   const handleCompetenciesChange = (selectedIds) => {
     if (isLeadershipPosition) {
-      // Store as leadership_competencies_data
       onFormDataChange(prev => ({
         ...prev,
         leadership_competencies_data: selectedIds,
-        behavioral_competencies_data: [] // Clear behavioral
+        behavioral_competencies_data: []
       }));
     } else {
-      // Store as behavioral_competencies_data
       onFormDataChange(prev => ({
         ...prev,
         behavioral_competencies_data: selectedIds,
-        leadership_competencies_data: [] // Clear leadership
+        leadership_competencies_data: []
       }));
     }
   };
@@ -434,6 +452,7 @@ useEffect(() => {
           </div>
         ) : (
           <HierarchicalMultiSelect
+            key={`skills-${skillsComponentKey}`}
             title="Skills"
             icon={() => (
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -456,8 +475,6 @@ useEffect(() => {
 
       {/* 🔥 DYNAMIC: Leadership OR Behavioral Competencies */}
       <div>
-        
-
         <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
           {isLeadershipPosition ? 'Leadership Competencies' : 'Behavioral Competencies'} 
           <span className="text-red-500">*</span>
@@ -472,6 +489,7 @@ useEffect(() => {
             </div>
           ) : (
             <HierarchicalMultiSelect
+              key={`leadership-${leadershipComponentKey}`}
               title="Leadership Competencies"
               icon={() => <Award className="w-4 h-4" />}
               data={leadershipGroupsHierarchical}
@@ -491,25 +509,26 @@ useEffect(() => {
             </div>
           ) : (
             <HierarchicalMultiSelect
-  title="Competencies"
-  icon={() => (
-    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-    </svg>
-  )}
-  data={behavioralGroupsHierarchical}
-  selectedIds={formData.behavioral_competencies_data || []}
-  onChange={(selectedIds) => {
-    console.log('🔄 Behavioral onChange called:', {
-      newSelectedIds: selectedIds,
-      previousIds: formData.behavioral_competencies_data
-    });
-    handleCompetenciesChange(selectedIds);
-  }}
-  searchPlaceholder="Search competencies and groups..."
-  emptyMessage="No competency groups available"
-  darkMode={darkMode}
-/>
+              key={`behavioral-${behavioralComponentKey}`}
+              title="Competencies"
+              icon={() => (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                </svg>
+              )}
+              data={behavioralGroupsHierarchical}
+              selectedIds={formData.behavioral_competencies_data || []}
+              onChange={(selectedIds) => {
+                console.log('🔄 Behavioral onChange called:', {
+                  newSelectedIds: selectedIds,
+                  previousIds: formData.behavioral_competencies_data
+                });
+                handleCompetenciesChange(selectedIds);
+              }}
+              searchPlaceholder="Search competencies and groups..."
+              emptyMessage="No competency groups available"
+              darkMode={darkMode}
+            />
           )
         )}
         
