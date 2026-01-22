@@ -419,17 +419,25 @@ const fetchUserAccess = async () => {
     }
   };
 
-  // 🔥 NEW: Handle business function selection
-  const handleBusinessFunctionClick = async (group) => {
-  // Check if user has access to any jobs in this group
+  // ðŸ"¥ FIX: handleBusinessFunctionClick - fetch ALL jobs for business function
+const handleBusinessFunctionClick = async (group) => {
   try {
+    setActionLoading(true);
+    
+    // Fetch ALL jobs for this business function (not just 1)
     const response = await jobDescriptionService.getJobDescriptions({ 
       business_function: group.name,
-      page_size: 1 
+      page_size: 1000  // ðŸ"¥ Changed from 1 to 1000
     });
     
     if (response.results && response.results.length > 0) {
-      setSelectedBusinessFunction(group);
+      // ðŸ"¥ Update the group with fresh data from API
+      const updatedGroup = {
+        ...group,
+        jobs: response.results  // Use fresh API data instead of cached
+      };
+      
+      setSelectedBusinessFunction(updatedGroup);
       setViewMode('details');
       setSearchTerm('');
       setSelectedDepartment('');
@@ -441,6 +449,8 @@ const fetchUserAccess = async () => {
     }
   } catch (error) {
     showError('Error checking access');
+  } finally {
+    setActionLoading(false);
   }
 };
 
@@ -691,144 +701,339 @@ const fetchUserAccess = async () => {
     setViewMode('overview');
   };
 
-  const handleEdit = async (job) => {
-    try {
-      setActionLoading(true);
-      const fullJob = await jobDescriptionService.getJobDescription(job.id);
-      
-      const criticalDuties = [];
-      const positionMainKpis = [];
-      const jobDuties = [];
-      const requirements = [];
-      
-      if (fullJob.sections && Array.isArray(fullJob.sections)) {
-        fullJob.sections.forEach(section => {
-          const content = section.content || '';
-          const lines = content.split('\n')
-            .map(line => line.replace(/^\d+\.\s*/, '').trim())
-            .filter(line => line);
-          
-          switch(section.section_type) {
-            case 'CRITICAL_DUTIES':
-              criticalDuties.push(...lines);
-              break;
-            case 'MAIN_KPIS':
-              positionMainKpis.push(...lines);
-              break;
-            case 'JOB_DUTIES':
-              jobDuties.push(...lines);
-              break;
-            case 'REQUIREMENTS':
-              requirements.push(...lines);
-              break;
-          }
-        });
-      }
-      
-      const extractResourceIds = (resourceArray) => {
-        const allIds = [];
-        if (!Array.isArray(resourceArray)) return [];
+  // pages/structure/job-descriptions/page.jsx - COMPLETE handleEdit with Hierarchical ID Conversion
+
+const handleEdit = async (job) => {
+  try {
+    setActionLoading(true);
+    const fullJob = await jobDescriptionService.getJobDescription(job.id);
+    
+    // Extract sections
+    const criticalDuties = [];
+    const positionMainKpis = [];
+    const jobDuties = [];
+    const requirements = [];
+    
+    if (fullJob.sections && Array.isArray(fullJob.sections)) {
+      fullJob.sections.forEach(section => {
+        const content = section.content || '';
+        const lines = content.split('\n')
+          .map(line => line.replace(/^\d+\.\s*/, '').trim())
+          .filter(line => line);
         
-        resourceArray.forEach(item => {
-          if (item.specific_items_detail && Array.isArray(item.specific_items_detail) && item.specific_items_detail.length > 0) {
-            item.specific_items_detail.forEach(childItem => {
-              if (childItem.id) allIds.push(String(childItem.id));
-            });
-          } else if (item.specific_items && Array.isArray(item.specific_items) && item.specific_items.length > 0) {
-            item.specific_items.forEach(childItem => {
-              const childId = typeof childItem === 'object' ? childItem.id : childItem;
-              if (childId) allIds.push(String(childId));
-            });
-          } else {
-            const parentId = item.resource || item.access_matrix || item.benefit || 
-                            item.resource_id || item.access_matrix_id || item.benefit_id;
-            if (parentId) allIds.push(String(parentId));
-          }
-        });
-        
-        return allIds;
-      };
-      
-      const businessResourceIds = extractResourceIds(fullJob.business_resources);
-      const accessRightIds = extractResourceIds(fullJob.access_rights);
-      const companyBenefitIds = extractResourceIds(fullJob.company_benefits);
-      
-      const skillIds = [];
-      if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
-        fullJob.required_skills.forEach(skill => {
-          const id = skill.skill_id || skill.skill || skill.skill_detail?.id;
-          if (id) skillIds.push(String(id));
-        });
-      }
-      
-      const behavioralCompetencyIds = [];
-      if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
-        fullJob.behavioral_competencies.forEach(comp => {
-          const id = comp.competency_id || comp.competency || comp.competency_detail?.id;
-          if (id) behavioralCompetencyIds.push(String(id));
-        });
-      }
-      
-      const leadershipCompetencyIds = [];
-      if (fullJob.leadership_competencies && Array.isArray(fullJob.leadership_competencies)) {
-        fullJob.leadership_competencies.forEach(item => {
-          const id = item.leadership_item_id || item.leadership_item || item.leadership_item_detail?.id || item.id;
-          if (id) leadershipCompetencyIds.push(String(id));
-        });
-      }
-      
-      let gradingLevels = [];
-      if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels) && fullJob.grading_levels.length > 0) {
-        gradingLevels = fullJob.grading_levels;
-      } else if (fullJob.grading_level) {
-        gradingLevels = [fullJob.grading_level];
-      }
-      
-      const getFieldValue = (field) => {
-        if (!field) return '';
-        if (typeof field === 'string') return field;
-        if (typeof field === 'object') return field.name || field.display_name || '';
-        return String(field);
-      };
-      
-      const transformedData = {
-        job_title: fullJob.job_title || '',
-        job_purpose: fullJob.job_purpose || '',
-        business_function: getFieldValue(fullJob.business_function),
-        department: getFieldValue(fullJob.department),
-        unit: getFieldValue(fullJob.unit),
-        job_function: getFieldValue(fullJob.job_function),
-        position_group: getFieldValue(fullJob.position_group),
-        grading_level: fullJob.grading_level || (gradingLevels.length > 0 ? gradingLevels[0] : ''),
-        grading_levels: gradingLevels,
-        criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
-        positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
-        jobDuties: jobDuties.length > 0 ? jobDuties : [''],
-        requirements: requirements.length > 0 ? requirements : [''],
-        required_skills_data: skillIds,
-        behavioral_competencies_data: behavioralCompetencyIds,
-        leadership_competencies_data: leadershipCompetencyIds,
-        business_resources_ids: businessResourceIds,
-        access_rights_ids: accessRightIds,
-        company_benefits_ids: companyBenefitIds
-      };
-      
-      setFormData(transformedData);
-      setEditingJob(fullJob);
-      
-      if (transformedData.position_group) {
-        setSelectedPositionGroup(transformedData.position_group);
-      }
-      
-      setViewMode('create');
-      
-    } catch (error) {
-      console.error('Error loading job for edit:', error);
-      showError('Error loading job description. Please try again.');
-    } finally {
-      setActionLoading(false);
+        switch(section.section_type) {
+          case 'CRITICAL_DUTIES':
+            criticalDuties.push(...lines);
+            break;
+          case 'MAIN_KPIS':
+            positionMainKpis.push(...lines);
+            break;
+          case 'JOB_DUTIES':
+            jobDuties.push(...lines);
+            break;
+          case 'REQUIREMENTS':
+            requirements.push(...lines);
+            break;
+        }
+      });
     }
-  };
+    
+    // 🔥 HELPER: Convert Resources/Access/Benefits IDs to hierarchical format with prefix
+    const extractResourceIds = (resourceArray, prefix) => {
+      const allIds = [];
+      if (!Array.isArray(resourceArray)) return [];
+      
+      resourceArray.forEach(item => {
+        const parentId = item.resource || item.access_matrix || item.benefit || 
+                        item.resource_id || item.access_matrix_id || item.benefit_id;
+        
+        if (item.specific_items_detail && Array.isArray(item.specific_items_detail) && item.specific_items_detail.length > 0) {
+          // Has specific child items
+          item.specific_items_detail.forEach(childItem => {
+            if (childItem.id && parentId) {
+              allIds.push(`${prefix}_${parentId}_${childItem.id}`);
+            }
+          });
+        } else if (item.specific_items && Array.isArray(item.specific_items) && item.specific_items.length > 0) {
+          // Has specific items (legacy format)
+          item.specific_items.forEach(childItem => {
+            const childId = typeof childItem === 'object' ? childItem.id : childItem;
+            if (childId && parentId) {
+              allIds.push(`${prefix}_${parentId}_${childId}`);
+            }
+          });
+        } else {
+          // Parent only (no specific items)
+          if (parentId) {
+            allIds.push(`${prefix}_${parentId}`);
+          }
+        }
+      });
+      
+      return allIds;
+    };
+    
+    // Extract resource IDs with prefixes
+    const businessResourceIds = extractResourceIds(fullJob.business_resources, 'res');
+    const accessRightIds = extractResourceIds(fullJob.access_rights, 'acc');
+    const companyBenefitIds = extractResourceIds(fullJob.company_benefits, 'ben');
+    
+    console.log('📦 Extracted Resource IDs:', {
+      business: businessResourceIds,
+      access: accessRightIds,
+      benefits: companyBenefitIds
+    });
+    
+    // 🔥 CONVERT SKILL IDs to hierarchical format
+    const convertSkillIds = async (skillIds) => {
+      if (!skillIds || skillIds.length === 0) return [];
+      
+      const hierarchicalIds = [];
+      const competencyApi = (await import('@/services/competencyApi')).default;
+      
+      // Load all skill groups and their skills
+      const skillGroups = dropdownData.skillGroups || [];
+      
+      console.log('🔍 Converting skills:', { skillIds, availableGroups: skillGroups.length });
+      
+      for (const groupData of skillGroups) {
+        try {
+          const response = await competencyApi.skillGroups.getSkills(groupData.id);
+          const skills = Array.isArray(response) ? response : (response.skills || response.results || []);
+          
+          skills.forEach(skill => {
+            if (skillIds.includes(String(skill.id))) {
+              // Format: groupId_skillId
+              const hierarchicalId = `${groupData.id}_${skill.id}`;
+              hierarchicalIds.push(hierarchicalId);
+              console.log(`✅ Matched skill ${skill.id} (${skill.name}) → ${hierarchicalId}`);
+            }
+          });
+        } catch (error) {
+          console.error(`❌ Error loading skills for group ${groupData.id}:`, error);
+        }
+      }
+      
+      return hierarchicalIds;
+    };
+    
+    // 🔥 CONVERT BEHAVIORAL COMPETENCY IDs to hierarchical format
+    const convertBehavioralIds = async (compIds) => {
+      if (!compIds || compIds.length === 0) return [];
+      
+      const hierarchicalIds = [];
+      const competencyApi = (await import('@/services/competencyApi')).default;
+      
+      const behavioralGroups = dropdownData.behavioralGroups || [];
+      
+      console.log('🔍 Converting behavioral competencies:', { compIds, availableGroups: behavioralGroups.length });
+      
+      for (const groupData of behavioralGroups) {
+        try {
+          const response = await competencyApi.behavioralGroups.getCompetencies(groupData.id);
+          const competencies = Array.isArray(response) ? response : (response.competencies || response.results || []);
+          
+          competencies.forEach(comp => {
+            if (compIds.includes(String(comp.id))) {
+              // Format: groupId_compId
+              const hierarchicalId = `${groupData.id}_${comp.id}`;
+              hierarchicalIds.push(hierarchicalId);
+              console.log(`✅ Matched behavioral competency ${comp.id} (${comp.name}) → ${hierarchicalId}`);
+            }
+          });
+        } catch (error) {
+          console.error(`❌ Error loading competencies for group ${groupData.id}:`, error);
+        }
+      }
+      
+      return hierarchicalIds;
+    };
+    
+    // 🔥 CONVERT LEADERSHIP COMPETENCY IDs to hierarchical format (3-level)
+    const convertLeadershipIds = async (itemIds) => {
+      if (!itemIds || itemIds.length === 0) return [];
+      
+      const hierarchicalIds = [];
+      const competencyApi = (await import('@/services/competencyApi')).default;
+      
+      const leadershipMainGroups = dropdownData.leadershipMainGroups || [];
+      
+      console.log('🔍 Converting leadership competencies:', { itemIds, availableMainGroups: leadershipMainGroups.length });
+      
+      for (const mainGroup of leadershipMainGroups) {
+        try {
+          // Get child groups for this main group
+          const childGroupsResponse = await competencyApi.leadershipMainGroups.getChildGroups(mainGroup.id);
+          const childGroups = Array.isArray(childGroupsResponse) 
+            ? childGroupsResponse 
+            : (childGroupsResponse.child_groups || childGroupsResponse.results || []);
+          
+          console.log(`📂 Main group ${mainGroup.id} (${mainGroup.name}) has ${childGroups.length} child groups`);
+          
+          for (const childGroup of childGroups) {
+            try {
+              // Get items in child group
+              const itemsResponse = await competencyApi.leadershipChildGroups.getItems(childGroup.id);
+              const items = Array.isArray(itemsResponse) 
+                ? itemsResponse 
+                : (itemsResponse.items || itemsResponse.results || []);
+              
+              items.forEach(item => {
+                if (itemIds.includes(String(item.id))) {
+                  // Format: mainGroupId_childGroupId_itemId
+                  const hierarchicalId = `${mainGroup.id}_${childGroup.id}_${item.id}`;
+                  hierarchicalIds.push(hierarchicalId);
+                  console.log(`✅ Matched leadership item ${item.id} (${item.name}) → ${hierarchicalId}`);
+                }
+              });
+            } catch (error) {
+              console.error(`❌ Error loading items for child group ${childGroup.id}:`, error);
+            }
+          }
+        } catch (error) {
+          console.error(`❌ Error loading child groups for main group ${mainGroup.id}:`, error);
+        }
+      }
+      
+      return hierarchicalIds;
+    };
+    
+    // Extract simple IDs from API response
+    const skillIds = [];
+    if (fullJob.required_skills && Array.isArray(fullJob.required_skills)) {
+      fullJob.required_skills.forEach(skill => {
+        const id = skill.skill_id || skill.skill || skill.skill_detail?.id;
+        if (id) skillIds.push(String(id));
+      });
+    }
+    
+    const behavioralCompetencyIds = [];
+    if (fullJob.behavioral_competencies && Array.isArray(fullJob.behavioral_competencies)) {
+      fullJob.behavioral_competencies.forEach(comp => {
+        const id = comp.competency_id || comp.competency || comp.competency_detail?.id;
+        if (id) behavioralCompetencyIds.push(String(id));
+      });
+    }
+    
+    const leadershipCompetencyIds = [];
+    if (fullJob.leadership_competencies && Array.isArray(fullJob.leadership_competencies)) {
+      fullJob.leadership_competencies.forEach(item => {
+        const id = item.leadership_item_id || item.leadership_item || item.leadership_item_detail?.id || item.id;
+        if (id) leadershipCompetencyIds.push(String(id));
+      });
+    }
+    
+    console.log('📋 Extracted simple IDs:', {
+      skills: skillIds,
+      behavioral: behavioralCompetencyIds,
+      leadership: leadershipCompetencyIds
+    });
+    
+    // 🔥 CONVERT to hierarchical format
+    const [
+      hierarchicalSkillIds,
+      hierarchicalBehavioralIds,
+      hierarchicalLeadershipIds
+    ] = await Promise.all([
+      convertSkillIds(skillIds),
+      convertBehavioralIds(behavioralCompetencyIds),
+      convertLeadershipIds(leadershipCompetencyIds)
+    ]);
+    
+    console.log('🔄 Converted to hierarchical IDs:', {
+      skills: { 
+        original: skillIds, 
+        hierarchical: hierarchicalSkillIds,
+        count: hierarchicalSkillIds.length 
+      },
+      behavioral: { 
+        original: behavioralCompetencyIds, 
+        hierarchical: hierarchicalBehavioralIds,
+        count: hierarchicalBehavioralIds.length 
+      },
+      leadership: { 
+        original: leadershipCompetencyIds, 
+        hierarchical: hierarchicalLeadershipIds,
+        count: hierarchicalLeadershipIds.length 
+      }
+    });
+    
+    // Extract grading levels
+    let gradingLevels = [];
+    if (fullJob.grading_levels && Array.isArray(fullJob.grading_levels) && fullJob.grading_levels.length > 0) {
+      gradingLevels = fullJob.grading_levels;
+    } else if (fullJob.grading_level) {
+      gradingLevels = [fullJob.grading_level];
+    }
+    
+    // Helper to extract field value
+    const getFieldValue = (field) => {
+      if (!field) return '';
+      if (typeof field === 'string') return field;
+      if (typeof field === 'object') return field.name || field.display_name || '';
+      return String(field);
+    };
+    
+    // Build transformed data
+    const transformedData = {
+      job_title: fullJob.job_title || '',
+      job_purpose: fullJob.job_purpose || '',
+      business_function: getFieldValue(fullJob.business_function),
+      department: getFieldValue(fullJob.department),
+      unit: getFieldValue(fullJob.unit),
+      job_function: getFieldValue(fullJob.job_function),
+      position_group: getFieldValue(fullJob.position_group),
+      grading_level: fullJob.grading_level || (gradingLevels.length > 0 ? gradingLevels[0] : ''),
+      grading_levels: gradingLevels,
+      
+      // Sections
+      criticalDuties: criticalDuties.length > 0 ? criticalDuties : [''],
+      positionMainKpis: positionMainKpis.length > 0 ? positionMainKpis : [''],
+      jobDuties: jobDuties.length > 0 ? jobDuties : [''],
+      requirements: requirements.length > 0 ? requirements : [''],
+      
+      // 🔥 USE HIERARCHICAL IDs for skills and competencies
+      required_skills_data: hierarchicalSkillIds,
+      behavioral_competencies_data: hierarchicalBehavioralIds,
+      leadership_competencies_data: hierarchicalLeadershipIds,
+      
+      // Resources with prefixes
+      business_resources_ids: businessResourceIds,
+      access_rights_ids: accessRightIds,
+      company_benefits_ids: companyBenefitIds
+    };
+    
+    console.log('✅ Final transformed data for edit:', {
+      basic: {
+        job_title: transformedData.job_title,
+        business_function: transformedData.business_function,
+        department: transformedData.department,
+        position_group: transformedData.position_group
+      },
+      skills: transformedData.required_skills_data.length,
+      behavioral: transformedData.behavioral_competencies_data.length,
+      leadership: transformedData.leadership_competencies_data.length,
+      resources: transformedData.business_resources_ids.length,
+      access: transformedData.access_rights_ids.length,
+      benefits: transformedData.company_benefits_ids.length
+    });
+    
+    setFormData(transformedData);
+    setEditingJob(fullJob);
+    
+    if (transformedData.position_group) {
+      setSelectedPositionGroup(transformedData.position_group);
+    }
+    
+    setViewMode('create');
+    
+  } catch (error) {
+    console.error('❌ Error loading job for edit:', error);
+    showError('Error loading job description. Please try again.');
+  } finally {
+    setActionLoading(false);
+  }
+};
 
   const resetForm = () => {
     setFormData({
