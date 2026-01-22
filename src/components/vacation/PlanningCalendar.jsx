@@ -270,11 +270,29 @@ export default function PlanningCalendar({
           
           {/* ✅ Existing Schedule Indicator */}
           {isExistingSchedule && !past && (
-            <div className="text-[9px] text-green-700 dark:text-green-400 font-medium mb-1 flex items-center gap-0.5">
-              <CheckCircle className="w-2.5 h-2.5" />
-              SCHEDULED
+  <div className="space-y-0.5">
+    {/* Get the schedule for this date to show status */}
+    {(() => {
+      const schedule = selectedRanges.find(range => 
+        range.isExisting && dateStr >= range.start && dateStr <= range.end
+      );
+      
+      return (
+        <>
+          <div className="text-[9px] text-green-700 dark:text-green-400 font-medium flex items-center gap-0.5">
+            <CheckCircle className="w-2.5 h-2.5" />
+            SCHEDULED
+          </div>
+          {schedule && schedule.status === 'PENDING_MANAGER' && (
+            <div className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">
+              (Pending)
             </div>
           )}
+        </>
+      );
+    })()}
+  </div>
+)}
           
           {/* ✅ Display holidays */}
           {dayHolidays.length > 0 && !past && (

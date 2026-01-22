@@ -57,29 +57,35 @@ export default function PlanningVacationTab({
   }, [requester, selectedEmployee]);
 
   const fetchExistingSchedules = async () => {
-    try {
-      const data = await VacationService.getScheduleTabs();
-      
-      // Get upcoming schedules for display
-      const upcoming = data.upcoming || [];
-      
-      // Convert to ranges format for calendar
-      const scheduleRanges = upcoming.map(schedule => ({
-        id: `existing-${schedule.id}`,
-        start: schedule.start_date,
-        end: schedule.end_date,
-        vacation_type_id: schedule.vacation_type_id,
-        isExisting: true, // ✅ Mark as existing
-        status: schedule.status,
-        days: schedule.number_of_days
-      }));
-      
-      setExistingSchedules(scheduleRanges);
-      
-    } catch (error) {
-      console.error('Error fetching existing schedules:', error);
-    }
-  };
+  try {
+    const data = await VacationService.getScheduleTabs();
+    
+    // ✅ Get upcoming schedules - Include PENDING_MANAGER + SCHEDULED
+    const upcoming = data.upcoming || [];
+    
+    // ✅ Filter: Show PENDING_MANAGER and SCHEDULED (NOT registered)
+    const relevantSchedules = upcoming.filter(schedule => 
+      schedule.status === 'PENDING_MANAGER' || schedule.status === 'SCHEDULED'
+    );
+    
+    // Convert to ranges format for calendar
+    const scheduleRanges = relevantSchedules.map(schedule => ({
+      id: `existing-${schedule.id}`,
+      start: schedule.start_date,
+      end: schedule.end_date,
+      vacation_type_id: schedule.vacation_type_id,
+      isExisting: true, // ✅ Mark as existing
+      status: schedule.status,
+      status_display: schedule.status_display,
+      days: schedule.number_of_days
+    }));
+    
+    setExistingSchedules(scheduleRanges);
+    
+  } catch (error) {
+    console.error('Error fetching existing schedules:', error);
+  }
+};
 
   // ✅ Calculate total days
   useEffect(() => {
@@ -193,65 +199,64 @@ export default function PlanningVacationTab({
     setComment('');
   };
 
-  const handleSubmit = async () => {
-    if (selectedRanges.length === 0) {
-      showError('Please select at least one date range');
-      return;
+  // components/vacation/PlanningVacationTab.jsx - handleSubmit
+
+const handleSubmit = async () => {
+  if (selectedRanges.length === 0) {
+    showError('Please select at least one date range');
+    return;
+  }
+
+  if (!vacationType) {
+    showError('Please select vacation type');
+    return;
+  }
+
+  // ✅ REMOVED: should_be_planned check
+  // We now only check remaining_balance
+
+  // ✅ CHECK: Remaining balance only
+  if (balances && totalDaysPlanned > balances.remaining_balance) {
+    showError(`❌ Insufficient balance. You have ${balances.remaining_balance} days remaining but trying to plan ${totalDaysPlanned} days.`);
+    return;
+  }
+
+  setLoading(true);
+  try {
+    const schedulesData = selectedRanges.map(range => ({
+      vacation_type_id: range.vacation_type_id || vacationType,
+      start_date: range.start,
+      end_date: range.end,
+      comment: comment
+    }));
+
+    const requestData = {
+      schedules: schedulesData
+    };
+
+    if (requester === 'for_my_employee' && selectedEmployee) {
+      requestData.employee_id = selectedEmployee;
     }
 
-    if (!vacationType) {
-      showError('Please select vacation type');
-      return;
+    const response = await VacationService.bulkCreateSchedules(requestData);
+    
+    showSuccess(`✅ ${response.created_count} schedules created successfully!`);
+    
+    handleClearAll();
+    fetchExistingSchedules(); // ✅ Refresh existing schedules
+    
+    if (typeof window.refreshVacationData === 'function') {
+      window.refreshVacationData();
     }
 
-    // ✅ CHECK: should_be_planned limit
-    if (balances && totalDaysPlanned > balances.should_be_planned) {
-      showError(`Planning limit exceeded. You should plan ${balances.should_be_planned} days but trying to plan ${totalDaysPlanned} days.`);
-      return;
-    }
-
-    // Check balance
-    if (balances && totalDaysPlanned > balances.remaining_balance) {
-      showError(`Insufficient balance. You have ${balances.remaining_balance} days remaining.`);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const schedulesData = selectedRanges.map(range => ({
-        vacation_type_id: range.vacation_type_id || vacationType,
-        start_date: range.start,
-        end_date: range.end,
-        comment: comment
-      }));
-
-      const requestData = {
-        schedules: schedulesData
-      };
-
-      if (requester === 'for_my_employee' && selectedEmployee) {
-        requestData.employee_id = selectedEmployee;
-      }
-
-      const response = await VacationService.bulkCreateSchedules(requestData);
-      
-      showSuccess(`${response.created_count} schedules created successfully!`);
-      
-      handleClearAll();
-      fetchExistingSchedules(); // ✅ Refresh existing schedules
-      
-      if (typeof window.refreshVacationData === 'function') {
-        window.refreshVacationData();
-      }
-
-    } catch (error) {
-      console.error('Submit error:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to create schedules';
-      showError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error('Submit error:', error);
+    const errorMsg = error.response?.data?.error || 'Failed to create schedules';
+    showError(errorMsg);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -287,24 +292,24 @@ export default function PlanningVacationTab({
 
       {/* Header Info */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-600 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
-              Full Year Planning
-            </h3>
-            <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-              Select multiple date ranges for the entire year. You must plan <strong>{balances?.should_be_planned || 0} days</strong>. 
-              All selected periods will be submitted together as schedules.
-              {existingSchedules.length > 0 && (
-                <span className="block mt-1">
-                  ✅ <strong>{existingSchedules.length} existing schedule{existingSchedules.length > 1 ? 's' : ''}</strong> shown in green.
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-      </div>
+  <div className="flex items-start gap-3">
+    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+    <div>
+      <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+        Full Year Planning
+      </h3>
+      <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
+        Select multiple date ranges for the entire year. You can plan up to <strong>{balances?.remaining_balance || 0} days</strong> (your remaining balance). 
+        All selected periods will be submitted together as schedules.
+        {existingSchedules.length > 0 && (
+          <span className="block mt-1">
+            ✅ <strong>{existingSchedules.length} existing schedule{existingSchedules.length > 1 ? 's' : ''}</strong> (including pending) shown in green.
+          </span>
+        )}
+      </p>
+    </div>
+  </div>
+</div>
 
       {/* Form Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
@@ -464,33 +469,40 @@ export default function PlanningVacationTab({
 
       {/* ✅ Existing Schedules Info */}
       {existingSchedules.length > 0 && (
-        <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-600 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-            <div>
-              <h3 className="text-sm font-semibold text-green-900 dark:text-green-200">
-                Existing Schedules ({existingSchedules.length})
-              </h3>
-              <p className="text-xs text-green-800 dark:text-green-300 mt-1">
-                Your already planned periods are shown in <strong>green</strong> on the calendar. 
-                You cannot select overlapping dates.
-              </p>
-              <div className="mt-2 space-y-1">
-                {existingSchedules.slice(0, 3).map((schedule, idx) => (
-                  <p key={idx} className="text-xs text-green-700 dark:text-green-400">
-                    • {schedule.start} → {schedule.end} ({schedule.days} days) - {schedule.status}
-                  </p>
-                ))}
-                {existingSchedules.length > 3 && (
-                  <p className="text-xs text-green-700 dark:text-green-400 font-medium">
-                    +{existingSchedules.length - 3} more schedules
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
+  <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-600 rounded-lg p-4">
+    <div className="flex items-start gap-3">
+      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+      <div>
+        <h3 className="text-sm font-semibold text-green-900 dark:text-green-200">
+          Existing Schedules ({existingSchedules.length})
+        </h3>
+        <p className="text-xs text-green-800 dark:text-green-300 mt-1">
+          Your already planned periods (including pending approval) are shown in <strong>green</strong> on the calendar. 
+          You cannot select overlapping dates.
+        </p>
+        <div className="mt-2 space-y-1">
+          {existingSchedules.slice(0, 5).map((schedule, idx) => (
+            <p key={idx} className="text-xs text-green-700 dark:text-green-400 flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
+                schedule.status === 'PENDING_MANAGER' 
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+              }`}>
+                {schedule.status_display}
+              </span>
+              • {schedule.start} → {schedule.end} ({schedule.days} days)
+            </p>
+          ))}
+          {existingSchedules.length > 5 && (
+            <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+              +{existingSchedules.length - 5} more schedules
+            </p>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Planning Limit Warning */}
       {balances && totalDaysPlanned > balances.should_be_planned && (
