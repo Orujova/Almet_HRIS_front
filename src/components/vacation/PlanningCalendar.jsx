@@ -138,16 +138,41 @@ export default function PlanningCalendar({
     });
   };
 
-  const handleMouseDown = (date) => {
-    if (isPastDate(date)) return;
+  // components/vacation/PlanningCalendar.jsx
+
+const handleMouseDown = (date) => {
+  if (isPastDate(date)) return;
+  
+  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dateStr = formatDate(localDate);
+  
+  // ✅ CHECK: Is this date already selected?
+  const isAlreadySelected = selectedRanges.some(range => {
+    return dateStr >= range.start && dateStr <= range.end;
+  });
+  
+  if (isAlreadySelected) {
+    // ✅ UNSELECT: Remove range containing this date
+    const newRanges = selectedRanges.filter(range => {
+      return !(dateStr >= range.start && dateStr <= range.end);
+    });
     
-    // ✅ FIX: Create new date object to avoid timezone issues
-    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    // Call parent to update ranges
+    if (typeof onRangeRemove === 'function') {
+      onRangeRemove(dateStr);
+    } else {
+      // If no remove function, just log
+      console.log('🗑️ Would remove range containing:', dateStr);
+    }
     
-    setIsDragging(true);
-    setDragStart(localDate);
-    setDragEnd(localDate);
-  };
+    return; // Stop - don't start new drag
+  }
+  
+  // ✅ Start new selection
+  setIsDragging(true);
+  setDragStart(localDate);
+  setDragEnd(localDate);
+};
 
   const handleMouseEnter = (date) => {
     if (isDragging && !isPastDate(date)) {

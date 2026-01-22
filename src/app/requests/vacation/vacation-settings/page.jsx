@@ -41,7 +41,8 @@ export default function VacationSettingsPage() {
     is_uk_only: false,
     requires_time_selection: false
   });
-  
+  const [selectedAzDates, setSelectedAzDates] = useState([]);
+const [selectedUkDates, setSelectedUkDates] = useState([]);
   // ✅ Balances State
   const [balanceFile, setBalanceFile] = useState(null);
   const [balanceUploadLoading, setBalanceUploadLoading] = useState(false);
@@ -519,133 +520,241 @@ export default function VacationSettingsPage() {
         {activeTab === 'calendar' && (
           <div className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
-              {/* Azerbaijan Calendar */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-green-600" />
-                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Azerbaijan Holidays</h3>
-                  </div>
-                  <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded text-xs font-medium">
-                    {azHolidays.length} holidays
-                  </span>
-                </div>
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2">
+      <Calendar className="w-4 h-4 text-green-600" />
+      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">Azerbaijan Holidays</h3>
+    </div>
+    <span className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded text-xs font-medium">
+      {azHolidays.length} holidays
+    </span>
+  </div>
 
-                {/* ✅ Info about multiple holidays same date */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 mb-3">
-                  <p className="text-xs text-blue-800 dark:text-blue-300">
-                    💡 You can add multiple holidays for the same date
-                  </p>
-                </div>
+  <div className="space-y-3 mb-4">
+    {/* ✅ Multiple Date Picker */}
+    <div>
+      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+        Select Dates (Click to add/remove)
+      </label>
+      <input
+        type="date"
+        onChange={(e) => {
+          const date = e.target.value;
+          if (date) {
+            setSelectedAzDates(prev => {
+              if (prev.includes(date)) {
+                return prev.filter(d => d !== date);
+              } else {
+                return [...prev, date].sort();
+              }
+            });
+          }
+        }}
+        className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+      />
+    </div>
 
-                <div className="space-y-3 mb-4">
-                  <input
-                    type="date"
-                    value={newAzHoliday.date}
-                    onChange={(e) => setNewAzHoliday({...newAzHoliday, date: e.target.value})}
-                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                  <input
-                    type="text"
-                    value={newAzHoliday.name}
-                    onChange={(e) => setNewAzHoliday({...newAzHoliday, name: e.target.value})}
-                    placeholder="e.g., Novruz Bayramı"
-                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                  <button
-                    onClick={handleAddAzHoliday}
-                    className="w-full px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Azerbaijan Holiday
-                  </button>
-                </div>
+    {/* ✅ Selected Dates Display */}
+    {selectedAzDates.length > 0 && (
+      <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+        <p className="text-xs font-medium text-green-800 dark:text-green-300 mb-2">
+          Selected Dates ({selectedAzDates.length}):
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {selectedAzDates.map(date => (
+            <span 
+              key={date}
+              className="px-2 py-1 bg-green-600 text-white text-xs rounded flex items-center gap-1"
+            >
+              {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <button
+                onClick={() => setSelectedAzDates(prev => prev.filter(d => d !== date))}
+                className="hover:bg-green-700 rounded-full p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
 
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {azHolidays.map((holiday, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">{holiday.name}</p>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{new Date(holiday.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveAzHoliday(index, holiday.name)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  {azHolidays.length === 0 && (
-                    <div className="text-center py-8 text-sm text-almet-waterloo dark:text-almet-bali-hai">
-                      No Azerbaijan holidays added yet
-                    </div>
-                  )}
-                </div>
-              </div>
+    {/* Holiday Name */}
+    <input
+      type="text"
+      value={newAzHoliday.name}
+      onChange={(e) => setNewAzHoliday({...newAzHoliday, name: e.target.value})}
+      placeholder="e.g., Novruz Bayramı"
+      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+    />
+    
+    <button
+      onClick={() => {
+        if (!newAzHoliday.name || selectedAzDates.length === 0) {
+          showError('❌ Please select dates and enter name');
+          return;
+        }
+        
+        // ✅ Add all selected dates with same name
+        const newHolidays = selectedAzDates.map(date => ({
+          date,
+          name: newAzHoliday.name
+        }));
+        
+        setAzHolidays([...azHolidays, ...newHolidays].sort((a, b) => a.date.localeCompare(b.date)));
+        setNewAzHoliday({ date: '', name: '' });
+        setSelectedAzDates([]);
+        showSuccess(`✅ Added ${newHolidays.length} holidays`);
+      }}
+      disabled={selectedAzDates.length === 0 || !newAzHoliday.name}
+      className="w-full px-4 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+    >
+      <Plus className="w-4 h-4" />
+      Add {selectedAzDates.length > 0 ? `${selectedAzDates.length} ` : ''}Azerbaijan Holiday{selectedAzDates.length > 1 ? 's' : ''}
+    </button>
+  </div>
+
+  {/* Existing holidays list */}
+  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+    {azHolidays.map((holiday, index) => (
+      <div key={index} className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">{holiday.name}</p>
+          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+            {new Date(holiday.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <button
+          onClick={() => handleRemoveAzHoliday(index, holiday.name)}
+          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    ))}
+  </div>
+</div>
 
               {/* UK Calendar */}
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-red-600" />
-                    <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">UK Holidays</h3>
-                  </div>
-                  <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded text-xs font-medium">
-                    {ukHolidays.length} holidays
-                  </span>
-                </div>
+                 <div className="flex items-center gap-2">
+      <Calendar className="w-4 h-4 text-red-600" />
+      <h3 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">UK Holidays</h3>
+    </div>
+    <span className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-1 rounded text-xs font-medium">
+      {ukHolidays.length} holidays
+    </span>
+  </div>
 
-                {/* ✅ Info about multiple holidays same date */}
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 mb-3">
-                  <p className="text-xs text-blue-800 dark:text-blue-300">
-                    💡 You can add multiple holidays for the same date
-                  </p>
-                </div>
+  <div className="space-y-3 mb-4">
+    {/* ✅ Multiple Date Picker */}
+    <div>
+      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+        Select Dates (Click to add/remove)
+      </label>
+      <input
+        type="date"
+        onChange={(e) => {
+          const date = e.target.value;
+          if (date) {
+            setSelectedUkDates(prev => {
+              if (prev.includes(date)) {
+                return prev.filter(d => d !== date);
+              } else {
+                return [...prev, date].sort();
+              }
+            });
+          }
+        }}
+        className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+      />
+    </div>
 
-                <div className="space-y-3 mb-4">
-                  <input
-                    type="date"
-                    value={newUkHoliday.date}
-                    onChange={(e) => setNewUkHoliday({...newUkHoliday, date: e.target.value})}
-                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                  <input
-                    type="text"
-                    value={newUkHoliday.name}
-                    onChange={(e) => setNewUkHoliday({...newUkHoliday, name: e.target.value})}
-                    placeholder="e.g., Christmas Day"
-                    className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-                  />
-                  <button
-                    onClick={handleAddUkHoliday}
-                    className="w-full px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add UK Holiday
-                  </button>
-                </div>
+    {/* ✅ Selected Dates Display */}
+    {selectedUkDates.length > 0 && (
+      <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+        <p className="text-xs font-medium text-red-800 dark:text-red-300 mb-2">
+          Selected Dates ({selectedUkDates.length}):
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {selectedUkDates.map(date => (
+            <span 
+              key={date}
+              className="px-2 py-1 bg-red-600 text-white text-xs rounded flex items-center gap-1"
+            >
+              {new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              <button
+                onClick={() => setSelectedUkDates(prev => prev.filter(d => d !== date))}
+                className="hover:bg-red-700 rounded-full p-0.5"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      </div>
+    )}
 
-                <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                  {ukHolidays.map((holiday, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">{holiday.name}</p>
-                        <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">{new Date(holiday.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                      </div>
-                      <button
-                        onClick={() => handleRemoveUkHoliday(index, holiday.name)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                  {ukHolidays.length === 0 && (
-                    <div className="text-center py-8 text-sm text-almet-waterloo dark:text-almet-bali-hai">
-                      No UK holidays added yet
-                    </div>
-                  )}
+    {/* Holiday Name */}
+    <input
+      type="text"
+      value={newUkHoliday.name}
+      onChange={(e) => setNewUkHoliday({...newUkHoliday, name: e.target.value})}
+      placeholder="e.g., Christmas Day"
+      className="w-full px-3 py-2 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+    />
+    
+    <button
+      onClick={() => {
+        if (!newUkHoliday.name || selectedUkDates.length === 0) {
+          showError('❌ Please select dates and enter name');
+          return;
+        }
+        
+        // ✅ Add all selected dates with same name
+        const newHolidays = selectedUkDates.map(date => ({
+          date,
+          name: newUkHoliday.name
+        }));
+        
+        setUkHolidays([...ukHolidays, ...newHolidays].sort((a, b) => a.date.localeCompare(b.date)));
+        setNewUkHoliday({ date: '', name: '' });
+        setSelectedUkDates([]);
+        showSuccess(`✅ Added ${newHolidays.length} holidays`);
+      }}
+      disabled={selectedUkDates.length === 0 || !newUkHoliday.name}
+      className="w-full px-4 py-2 text-xs bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+    >
+      <Plus className="w-4 h-4" />
+      Add {selectedUkDates.length > 0 ? `${selectedUkDates.length} ` : ''}UK Holiday{selectedUkDates.length > 1 ? 's' : ''}
+    </button>
+  </div>
+
+  {/* Existing holidays list */}
+  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+    {ukHolidays.map((holiday, index) => (
+      <div key={index} className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-almet-cloud-burst dark:text-white truncate">{holiday.name}</p>
+          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+            {new Date(holiday.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <button
+          onClick={() => handleRemoveUkHoliday(index, holiday.name)}
+          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors flex-shrink-0 ml-2"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    ))}
+    {ukHolidays.length === 0 && (
+      <div className="text-center py-8 text-sm text-almet-waterloo dark:text-almet-bali-hai">
+        No UK holidays added yet
+      </div>
+    )}
                 </div>
               </div>
             </div>

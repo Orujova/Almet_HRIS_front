@@ -1,4 +1,6 @@
-import { Download, Eye, Edit, Check, Paperclip, FileText } from 'lucide-react';
+
+import { useState } from 'react';
+import { Download, Eye, Edit, Check, Paperclip, FileText, Filter, X } from 'lucide-react';
 
 export default function MyRecordsTable({
   myAllRecords,
@@ -11,34 +13,187 @@ export default function MyRecordsTable({
   userAccess
 }) {
   
+
+  // ✅ Filter State
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    type: '', // 'request' or 'schedule'
+    status: '',
+    vacation_type: '',
+    start_date: '',
+    end_date: ''
+  });
+
+  // ✅ Filter Logic
+  const getFilteredRecords = () => {
+    let filtered = myAllRecords;
+    
+    if (filters.type) {
+      filtered = filtered.filter(r => r.type === filters.type);
+    }
+    
+    if (filters.status) {
+      filtered = filtered.filter(r => 
+        r.status?.toLowerCase().includes(filters.status.toLowerCase())
+      );
+    }
+    
+    if (filters.vacation_type) {
+      filtered = filtered.filter(r => 
+        r.vacation_type?.toLowerCase().includes(filters.vacation_type.toLowerCase())
+      );
+    }
+    
+    if (filters.start_date) {
+      filtered = filtered.filter(r => r.start_date >= filters.start_date);
+    }
+    
+    if (filters.end_date) {
+      filtered = filtered.filter(r => r.end_date <= filters.end_date);
+    }
+    
+    return filtered;
+  };
+
+  const filteredRecords = getFilteredRecords();
+  
   const canEditSchedule = (record) => {
-    // Can edit if it's a schedule, status is SCHEDULED, and under edit limit
     return record.type === 'schedule' && record.can_edit;
   };
 
   const canRegisterSchedule = (record) => {
-    // Only admin can register schedules
     return userAccess.is_admin && record.type === 'schedule' && record.status === 'Scheduled';
   };
 
-  return (
+  // ✅ Clear Filters
+  const clearFilters = () => {
+    setFilters({
+      type: '',
+      status: '',
+      vacation_type: '',
+      start_date: '',
+      end_date: ''
+    });
+  };
+
+
+   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-      <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">My All Records</h2>
-        <button 
-          onClick={handleExportMyVacations} 
-          className="px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-1.5 shadow-sm"
-        >
-          <Download className="w-3 h-3" />
-          My Vacations
-        </button>
+      <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">My All Records</h2>
+          
+          <div className="flex items-center gap-2">
+            {/* ✅ Filter Toggle Button */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-2.5 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
+            >
+              <Filter className="w-3 h-3" />
+              Filter
+            </button>
+
+            <button 
+              onClick={handleExportMyVacations} 
+              className="px-3 py-1.5 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all flex items-center gap-1.5 shadow-sm"
+            >
+              <Download className="w-3 h-3" />
+              My Vacations
+            </button>
+          </div>
+        </div>
+
+        {/* ✅ Filters Panel */}
+        {showFilters && (
+          <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+            <div className="grid grid-cols-5 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                  Type
+                </label>
+                <select
+                  value={filters.type}
+                  onChange={(e) => setFilters(prev => ({...prev, type: e.target.value}))}
+                  className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="">All</option>
+                  <option value="request">Request</option>
+                  <option value="schedule">Schedule</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                  Status
+                </label>
+                <input
+                  type="text"
+                  value={filters.status}
+                  onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+                  placeholder="Search status..."
+                  className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                  Leave Type
+                </label>
+                <input
+                  type="text"
+                  value={filters.vacation_type}
+                  onChange={(e) => setFilters(prev => ({...prev, vacation_type: e.target.value}))}
+                  placeholder="Search type..."
+                  className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.start_date}
+                  onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                  className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                  To Date
+                </label>
+                <input
+                  type="date"
+                  value={filters.end_date}
+                  onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                  className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-almet-waterloo dark:text-gray-400">
+                Showing {filteredRecords.length} of {myAllRecords.length} records
+              </span>
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-almet-mystic dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
           <thead className="bg-almet-mystic/50 dark:bg-gray-700/50">
             <tr>
-              {['Type', 'Leave', 'Start', 'End', 'Days', 'Status', 'Attachments', 'Actions'].map(h => (
+              {['Type', 'Leave Type', 'Start', 'End', 'Days', 'Status', 'Attachments', 'Actions'].map(h => (
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                   {h}
                 </th>
@@ -46,7 +201,7 @@ export default function MyRecordsTable({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-            {myAllRecords.map(record => (
+            {filteredRecords.map(record => (
               <tr key={`${record.type}-${record.id}`} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
                 <td className="px-4 py-3 text-xs">
                   <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
@@ -79,6 +234,7 @@ export default function MyRecordsTable({
                       className="flex items-center gap-1 text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral font-medium"
                     >
                       <Paperclip className="w-3 h-3" />
+                      {record.attachments_count}
                     </button>
                   ) : (
                     <span className="text-almet-waterloo/50 dark:text-almet-bali-hai/50">-</span>
@@ -86,7 +242,6 @@ export default function MyRecordsTable({
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {record.type === 'request' ? (
-                    // Requests - Only View
                     <button 
                       onClick={() => handleViewDetails(record.id)}
                       className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
@@ -95,7 +250,6 @@ export default function MyRecordsTable({
                       View
                     </button>
                   ) : (
-                    // Schedules
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleViewScheduleDetail(record.id)} 
@@ -130,12 +284,21 @@ export default function MyRecordsTable({
                 </td>
               </tr>
             ))}
-            {myAllRecords.length === 0 && (
+            {filteredRecords.length === 0 && (
               <tr>
                 <td colSpan="8" className="px-4 py-12 text-center">
                   <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
-                  <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">No records found</p>
-                  <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Your vacation history will appear here</p>
+                  <p className="text-sm text-almet-waterloo dark:text-almet-bali-hai">
+                    {myAllRecords.length === 0 ? 'No records found' : 'No records match current filters'}
+                  </p>
+                  {myAllRecords.length > 0 && filteredRecords.length === 0 && (
+                    <button
+                      onClick={clearFilters}
+                      className="mt-2 text-xs text-almet-sapphire hover:text-almet-cloud-burst underline"
+                    >
+                      Clear filters to see all records
+                    </button>
+                  )}
                 </td>
               </tr>
             )}

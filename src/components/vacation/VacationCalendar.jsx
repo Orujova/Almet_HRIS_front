@@ -29,6 +29,27 @@ const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
   
   const [showDayDetail, setShowDayDetail] = useState(false);
   const [selectedDay, setSelectedDay] = useState(null);
+  const getHolidaysForDate = (date) => {
+  // ✅ FIX: Create proper local date string
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const dateStr = `${year}-${month}-${day}`;
+  
+  console.log('🔍 Checking date:', dateStr); // Debug
+  
+  return holidays.filter(h => {
+    // ✅ Compare ONLY date part (ignore time)
+    const holidayDate = h.date.split('T')[0];
+    const match = holidayDate === dateStr;
+    
+    if (match) {
+      console.log('✅ Match found:', h.name, holidayDate);
+    }
+    
+    return match;
+  });
+};
 
   const handleDayClick = (date, dayHolidays, dayVacations) => {
     setSelectedDay({

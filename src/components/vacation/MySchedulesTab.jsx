@@ -2,7 +2,7 @@
 import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle } from 'lucide-react';
 import { useState } from 'react';
 import { VacationService } from '@/services/vacationService'; // ✅ IMPORT
-
+import { Filter, X } from 'lucide-react';
 export default function MySchedulesTab({
   userAccess,
   scheduleTabs,
@@ -22,7 +22,15 @@ export default function MySchedulesTab({
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [loading, setLoading] = useState(false);
+const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: '',
+    vacation_type: '',
+    start_date: '',
+    end_date: ''
+  });
 
+ 
   const getSubTabs = () => {
     const tabs = [
       { key: 'upcoming', label: 'My Upcoming', count: scheduleTabs.upcoming?.length || 0 }
@@ -47,7 +55,31 @@ export default function MySchedulesTab({
 
   const subTabs = getSubTabs();
   const currentSchedules = scheduleTabs[activeSubTab] || [];
+ const getFilteredSchedules = () => {
+    let filtered = currentSchedules;
+    
+    if (filters.status) {
+      filtered = filtered.filter(s => s.status === filters.status);
+    }
+    
+    if (filters.vacation_type) {
+      filtered = filtered.filter(s => 
+        s.vacation_type_name?.toLowerCase().includes(filters.vacation_type.toLowerCase())
+      );
+    }
+    
+    if (filters.start_date) {
+      filtered = filtered.filter(s => s.start_date >= filters.start_date);
+    }
+    
+    if (filters.end_date) {
+      filtered = filtered.filter(s => s.end_date <= filters.end_date);
+    }
+    
+    return filtered;
+  };
 
+  const filteredSchedules = getFilteredSchedules();
   const canDeleteSchedule = (schedule) => {
     return userAccess.is_admin;
   };
@@ -64,20 +96,100 @@ export default function MySchedulesTab({
   return (
     <div className="space-y-4">
       {/* Sub-tabs */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
         <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-3">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white"> 
+            <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
               My Schedules
             </h2>
-            <button 
-              onClick={handleExportSchedules} 
-              className="px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm" 
-            >
-              <Download className="w-3 h-3" />
-              Export
-            </button>
+            <div className="flex items-center gap-2">
+              {/* ✅ Filter Toggle */}
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="px-2.5 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
+              >
+                <Filter className="w-3 h-3" />
+                Filter
+              </button>
+              
+              <button 
+                onClick={handleExportSchedules} 
+                className="px-2.5 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm"
+              >
+                <Download className="w-3 h-3" />
+                Export
+              </button>
+            </div>
           </div>
+
+          {/* ✅ Filters Panel */}
+          {showFilters && (
+            <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
+              <div className="grid grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">All</option>
+                    <option value="PENDING_MANAGER">Pending Manager</option>
+                    <option value="SCHEDULED">Scheduled</option>
+                    <option value="REGISTERED">Registered</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                    Leave Type
+                  </label>
+                  <input
+                    type="text"
+                    value={filters.vacation_type}
+                    onChange={(e) => setFilters(prev => ({...prev, vacation_type: e.target.value}))}
+                    placeholder="Search..."
+                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.start_date}
+                    onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.end_date}
+                    onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                    className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-2 flex justify-end">
+                <button
+                  onClick={() => setFilters({ status: '', vacation_type: '', start_date: '', end_date: '' })}
+                  className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-almet-mystic dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-2"> 
             {subTabs.map(tab => (
@@ -122,7 +234,7 @@ export default function MySchedulesTab({
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-              {currentSchedules.map(schedule => (
+                {filteredSchedules.map(schedule => (
                 <tr key={schedule.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
                   <td className="px-3 py-2 text-xs font-medium text-almet-cloud-burst dark:text-white">
                     {schedule.employee_name}
@@ -227,7 +339,7 @@ export default function MySchedulesTab({
                   </td>
                 </tr>
               ))}
-              {currentSchedules.length === 0 && (
+              {filteredSchedules.length === 0 && (
                 <tr>
                   <td colSpan="8" className="px-3 py-8 text-center"> 
                     <Calendar className="w-8 h-8 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-2" /> 

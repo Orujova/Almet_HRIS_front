@@ -1,6 +1,5 @@
 import { Edit, X, CheckCircle } from 'lucide-react';
-import SearchableDropdown from "@/components/common/SearchableDropdown";
-
+import { useEffect } from 'react';
 export default function EditScheduleModal({
   show,
   onClose,
@@ -12,6 +11,24 @@ export default function EditScheduleModal({
   handleSaveEdit,
   loading
 }) {
+  
+  // ✅ Auto-select Paid Vacation on mount
+  useEffect(() => {
+    if (show && editingSchedule && vacationTypes.length > 0) {
+      // Find Paid Vacation
+      const paidVacation = vacationTypes.find(t => 
+        t.name.toLowerCase().includes('paid') || 
+        t.name.toLowerCase().includes('annual')
+      );
+      
+      if (paidVacation && !editingSchedule.vacation_type_id) {
+        setEditingSchedule(prev => ({
+          ...prev,
+          vacation_type_id: paidVacation.id
+        }));
+      }
+    }
+  }, [show, editingSchedule, vacationTypes]);
   
   if (!show || !editingSchedule) return null;
 
@@ -32,17 +49,14 @@ export default function EditScheduleModal({
         </div>
 
         <div className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-              Leave Type
-            </label>
-            <SearchableDropdown
-              options={vacationTypes.map(type => ({ value: type.id, label: type.name }))}
-              value={editingSchedule.vacation_type_id}
-              onChange={(value) => setEditingSchedule(prev => ({...prev, vacation_type_id: value}))}
-              placeholder="Select type"
-              darkMode={darkMode}
-            />
+          {/* ✅ HIDDEN: Auto Paid Vacation */}
+          <input type="hidden" value={editingSchedule.vacation_type_id} />
+          
+          {/* ✅ Display current type (read-only) */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <p className="text-xs text-blue-800 dark:text-blue-300">
+              <strong>Leave Type:</strong> {vacationTypes.find(t => t.id === editingSchedule.vacation_type_id)?.name || 'Paid Vacation'}
+            </p>
           </div>
 
           <div>

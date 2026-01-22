@@ -46,7 +46,14 @@ export default function PlanningVacationTab({
       setVacationType(paidVacation?.id || vacationTypes[0].id);
     }
   }, [vacationTypes]);
-
+const handleRangeRemove = (dateStr) => {
+  const updatedRanges = selectedRanges.filter(range => {
+    return !(dateStr >= range.start && dateStr <= range.end);
+  });
+  
+  setSelectedRanges(updatedRanges);
+  showSuccess('✅ Range removed');
+};
   // ✅ Calculate total days
   useEffect(() => {
     const calculateTotalDays = async () => {
@@ -153,9 +160,9 @@ export default function PlanningVacationTab({
 
     // ✅ CHECK: should_be_planned limit
     if (balances && totalDaysPlanned > balances.should_be_planned) {
-      showError(`Planning limit exceeded. You should plan ${balances.should_be_planned} days but trying to plan ${totalDaysPlanned} days.`);
-      return;
-    }
+  showError(`❌ Planning limit exceeded. You should plan ${balances.should_be_planned} days but trying to plan ${totalDaysPlanned} days.`);
+  return;
+}
 
     // Check balance
     if (balances && totalDaysPlanned > balances.remaining_balance) {
@@ -343,14 +350,16 @@ export default function PlanningVacationTab({
           </div>
         </div>
 
-        <PlanningCalendar
-          currentMonth={currentMonth}
-          selectedRanges={selectedRanges}
-          onRangeSelect={handleRangeSelect}
-          onMonthChange={setCurrentMonth}
-          businessFunctionCode={getBusinessFunctionCode()}
-          darkMode={darkMode}
-        />
+
+<PlanningCalendar
+  currentMonth={currentMonth}
+  selectedRanges={selectedRanges}
+  onRangeSelect={handleRangeSelect}
+  onRangeRemove={handleRangeRemove} // ✅ NEW
+  onMonthChange={setCurrentMonth}
+  businessFunctionCode={getBusinessFunctionCode()}
+  darkMode={darkMode}
+/>
       </div>
 
       {/* Selected Ranges */}
