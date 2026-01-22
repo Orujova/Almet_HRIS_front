@@ -1,8 +1,10 @@
-// components/vacation/MySchedulesTab.jsx - ✅ COMPLETE FIXED VERSION
-import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle } from 'lucide-react';
+// components/vacation/MySchedulesTab.jsx - WITH PAGINATION & EMPLOYEE FILTER
+
+import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle, Filter, X, Search } from 'lucide-react';
 import { useState } from 'react';
-import { VacationService } from '@/services/vacationService'; // ✅ IMPORT
-import { Filter, X } from 'lucide-react';
+import { VacationService } from '@/services/vacationService';
+import Pagination from '@/components/common/Pagination';
+
 export default function MySchedulesTab({
   userAccess,
   scheduleTabs,
@@ -13,8 +15,9 @@ export default function MySchedulesTab({
   canEditSchedule,
   maxScheduleEdits,
   handleViewScheduleDetail,
-  showSuccess, // ✅ NEW PROP
-  showError    // ✅ NEW PROP
+  showSuccess,
+  showError,
+  darkMode
 }) {
   const [activeSubTab, setActiveSubTab] = useState('upcoming');
   const [approvingSchedule, setApprovingSchedule] = useState(null);
@@ -22,15 +25,21 @@ export default function MySchedulesTab({
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [loading, setLoading] = useState(false);
-const [showFilters, setShowFilters] = useState(false);
+  
+  // Filters
+  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     status: '',
     vacation_type: '',
     start_date: '',
-    end_date: ''
+    end_date: '',
+    employee_name: '' // ✅ NEW
   });
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
- 
   const getSubTabs = () => {
     const tabs = [
       { key: 'upcoming', label: 'My Upcoming', count: scheduleTabs.upcoming?.length || 0 }
@@ -55,7 +64,8 @@ const [showFilters, setShowFilters] = useState(false);
 
   const subTabs = getSubTabs();
   const currentSchedules = scheduleTabs[activeSubTab] || [];
- const getFilteredSchedules = () => {
+
+  const getFilteredSchedules = () => {
     let filtered = currentSchedules;
     
     if (filters.status) {
@@ -76,10 +86,30 @@ const [showFilters, setShowFilters] = useState(false);
       filtered = filtered.filter(s => s.end_date <= filters.end_date);
     }
     
+    // ✅ Employee name filter
+    if (filters.employee_name) {
+      filtered = filtered.filter(s => 
+        s.employee_name?.toLowerCase().includes(filters.employee_name.toLowerCase())
+      );
+    }
+    
     return filtered;
   };
 
   const filteredSchedules = getFilteredSchedules();
+  
+  // ✅ Pagination calculations
+  const totalPages = Math.ceil(filteredSchedules.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedSchedules = filteredSchedules.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
+
   const canDeleteSchedule = (schedule) => {
     return userAccess.is_admin;
   };
@@ -95,15 +125,13 @@ const [showFilters, setShowFilters] = useState(false);
 
   return (
     <div className="space-y-4">
-      {/* Sub-tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
         <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 p-3">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">
               My Schedules
             </h2>
             <div className="flex items-center gap-2">
-              {/* ✅ Filter Toggle */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="px-2.5 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
@@ -122,17 +150,34 @@ const [showFilters, setShowFilters] = useState(false);
             </div>
           </div>
 
-          {/* ✅ Filters Panel */}
+          {/* Filters Panel */}
           {showFilters && (
             <div className="mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-5 gap-3">
+                {/* ✅ Employee Name Filter */}
+                <div>
+                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                    Employee
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-almet-waterloo dark:text-gray-400" />
+                    <input
+                      type="text"
+                      value={filters.employee_name}
+                      onChange={(e) => handleFilterChange({...filters, employee_name: e.target.value})}
+                      placeholder="Search employee..."
+                      className="w-full pl-7 pr-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
                     Status
                   </label>
                   <select
                     value={filters.status}
-                    onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+                    onChange={(e) => handleFilterChange({...filters, status: e.target.value})}
                     className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   >
                     <option value="">All</option>
@@ -149,7 +194,7 @@ const [showFilters, setShowFilters] = useState(false);
                   <input
                     type="text"
                     value={filters.vacation_type}
-                    onChange={(e) => setFilters(prev => ({...prev, vacation_type: e.target.value}))}
+                    onChange={(e) => handleFilterChange({...filters, vacation_type: e.target.value})}
                     placeholder="Search..."
                     className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   />
@@ -162,7 +207,7 @@ const [showFilters, setShowFilters] = useState(false);
                   <input
                     type="date"
                     value={filters.start_date}
-                    onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                    onChange={(e) => handleFilterChange({...filters, start_date: e.target.value})}
                     className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   />
                 </div>
@@ -174,7 +219,7 @@ const [showFilters, setShowFilters] = useState(false);
                   <input
                     type="date"
                     value={filters.end_date}
-                    onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                    onChange={(e) => handleFilterChange({...filters, end_date: e.target.value})}
                     className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                   />
                 </div>
@@ -182,7 +227,7 @@ const [showFilters, setShowFilters] = useState(false);
 
               <div className="mt-2 flex justify-end">
                 <button
-                  onClick={() => setFilters({ status: '', vacation_type: '', start_date: '', end_date: '' })}
+                  onClick={() => handleFilterChange({ status: '', vacation_type: '', start_date: '', end_date: '', employee_name: '' })}
                   className="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-almet-mystic dark:border-almet-comet rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-all"
                 >
                   Clear Filters
@@ -195,7 +240,10 @@ const [showFilters, setShowFilters] = useState(false);
             {subTabs.map(tab => (
               <button
                 key={tab.key}
-                onClick={() => setActiveSubTab(tab.key)}
+                onClick={() => {
+                  setActiveSubTab(tab.key);
+                  setCurrentPage(1); // Reset pagination
+                }}
                 className={`
                   relative px-4 py-2 rounded-lg font-medium text-xs transition-all 
                   ${activeSubTab === tab.key
@@ -234,7 +282,7 @@ const [showFilters, setShowFilters] = useState(false);
               </tr>
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-                {filteredSchedules.map(schedule => (
+              {paginatedSchedules.map(schedule => (
                 <tr key={schedule.id} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
                   <td className="px-3 py-2 text-xs font-medium text-almet-cloud-burst dark:text-white">
                     {schedule.employee_name}
@@ -339,12 +387,14 @@ const [showFilters, setShowFilters] = useState(false);
                   </td>
                 </tr>
               ))}
-              {filteredSchedules.length === 0 && (
+              {paginatedSchedules.length === 0 && (
                 <tr>
                   <td colSpan="8" className="px-3 py-8 text-center"> 
                     <Calendar className="w-8 h-8 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-2" /> 
                     <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                      No schedules found
+                      {filteredSchedules.length === 0 && currentSchedules.length > 0 
+                        ? 'No schedules match current filters' 
+                        : 'No schedules found'}
                     </p>
                   </td>
                 </tr>
@@ -352,9 +402,23 @@ const [showFilters, setShowFilters] = useState(false);
             </tbody>
           </table>
         </div>
+
+        {/* ✅ Pagination */}
+        {filteredSchedules.length > itemsPerPage && (
+          <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredSchedules.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              darkMode={darkMode}
+            />
+          </div>
+        )}
       </div>
 
-      {/* ✅ Approve Modal */}
+      {/* Approve Modal */}
       {showApproveModal && approvingSchedule && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">
@@ -433,7 +497,7 @@ const [showFilters, setShowFilters] = useState(false);
         </div>
       )}
 
-      {/* ✅ Reject Modal */}
+      {/* Reject Modal */}
       {showRejectModal && approvingSchedule && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full border border-almet-mystic/50 dark:border-almet-comet">

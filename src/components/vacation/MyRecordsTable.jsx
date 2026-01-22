@@ -1,6 +1,8 @@
+// components/vacation/MyRecordsTable.jsx - WITH PAGINATION & EMPLOYEE FILTER
 
 import { useState } from 'react';
-import { Download, Eye, Edit, Check, Paperclip, FileText, Filter, X } from 'lucide-react';
+import { Download, Eye, Edit, Check, Paperclip, FileText, Filter, X, Search } from 'lucide-react';
+import Pagination from '@/components/common/Pagination';
 
 export default function MyRecordsTable({
   myAllRecords,
@@ -10,21 +12,25 @@ export default function MyRecordsTable({
   handleViewScheduleDetail,
   handleEditSchedule,
   handleRegisterSchedule,
-  userAccess
+  userAccess,
+  darkMode
 }) {
-  
-
-  // ✅ Filter State
+  // Filter State
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    type: '', // 'request' or 'schedule'
+    type: '',
     status: '',
     vacation_type: '',
     start_date: '',
-    end_date: ''
+    end_date: '',
+    employee_name: '' // ✅ NEW
   });
+  
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-  // ✅ Filter Logic
+  // Filter Logic
   const getFilteredRecords = () => {
     let filtered = myAllRecords;
     
@@ -52,10 +58,29 @@ export default function MyRecordsTable({
       filtered = filtered.filter(r => r.end_date <= filters.end_date);
     }
     
+    // ✅ Employee name filter (for managers/admins)
+    if (filters.employee_name) {
+      filtered = filtered.filter(r => 
+        r.employee_name?.toLowerCase().includes(filters.employee_name.toLowerCase())
+      );
+    }
+    
     return filtered;
   };
 
   const filteredRecords = getFilteredRecords();
+  
+  // ✅ Pagination calculations
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRecords = filteredRecords.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
   
   const canEditSchedule = (record) => {
     return record.type === 'schedule' && record.can_edit;
@@ -65,26 +90,25 @@ export default function MyRecordsTable({
     return userAccess.is_admin && record.type === 'schedule' && record.status === 'Scheduled';
   };
 
-  // ✅ Clear Filters
   const clearFilters = () => {
     setFilters({
       type: '',
       status: '',
       vacation_type: '',
       start_date: '',
-      end_date: ''
+      end_date: '',
+      employee_name: ''
     });
+    setCurrentPage(1);
   };
 
-
-   return (
+  return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
       <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">My All Records</h2>
           
           <div className="flex items-center gap-2">
-            {/* ✅ Filter Toggle Button */}
             <button
               onClick={() => setShowFilters(!showFilters)}
               className="px-2.5 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
@@ -103,17 +127,36 @@ export default function MyRecordsTable({
           </div>
         </div>
 
-        {/* ✅ Filters Panel */}
+        {/* Filters Panel */}
         {showFilters && (
           <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-almet-mystic/30 dark:border-almet-comet/30">
-            <div className="grid grid-cols-5 gap-3">
+            <div className="grid grid-cols-6 gap-3">
+              {/* ✅ Employee Name Filter (for managers/admins viewing team records) */}
+              {(userAccess.is_manager || userAccess.is_admin) && (
+                <div>
+                  <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
+                    Employee
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-almet-waterloo dark:text-gray-400" />
+                    <input
+                      type="text"
+                      value={filters.employee_name}
+                      onChange={(e) => handleFilterChange({...filters, employee_name: e.target.value})}
+                      placeholder="Search..."
+                      className="w-full pl-7 pr-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-almet-waterloo dark:text-gray-400 mb-1">
                   Type
                 </label>
                 <select
                   value={filters.type}
-                  onChange={(e) => setFilters(prev => ({...prev, type: e.target.value}))}
+                  onChange={(e) => handleFilterChange({...filters, type: e.target.value})}
                   className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                 >
                   <option value="">All</option>
@@ -129,7 +172,7 @@ export default function MyRecordsTable({
                 <input
                   type="text"
                   value={filters.status}
-                  onChange={(e) => setFilters(prev => ({...prev, status: e.target.value}))}
+                  onChange={(e) => handleFilterChange({...filters, status: e.target.value})}
                   placeholder="Search status..."
                   className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                 />
@@ -142,7 +185,7 @@ export default function MyRecordsTable({
                 <input
                   type="text"
                   value={filters.vacation_type}
-                  onChange={(e) => setFilters(prev => ({...prev, vacation_type: e.target.value}))}
+                  onChange={(e) => handleFilterChange({...filters, vacation_type: e.target.value})}
                   placeholder="Search type..."
                   className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                 />
@@ -155,7 +198,7 @@ export default function MyRecordsTable({
                 <input
                   type="date"
                   value={filters.start_date}
-                  onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                  onChange={(e) => handleFilterChange({...filters, start_date: e.target.value})}
                   className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -167,7 +210,7 @@ export default function MyRecordsTable({
                 <input
                   type="date"
                   value={filters.end_date}
-                  onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                  onChange={(e) => handleFilterChange({...filters, end_date: e.target.value})}
                   className="w-full px-2 py-1.5 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -175,7 +218,7 @@ export default function MyRecordsTable({
 
             <div className="mt-2 flex items-center justify-between">
               <span className="text-xs text-almet-waterloo dark:text-gray-400">
-                Showing {filteredRecords.length} of {myAllRecords.length} records
+                Showing {paginatedRecords.length} of {filteredRecords.length} records
               </span>
               <button
                 onClick={clearFilters}
@@ -201,7 +244,7 @@ export default function MyRecordsTable({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-            {filteredRecords.map(record => (
+            {paginatedRecords.map(record => (
               <tr key={`${record.type}-${record.id}`} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
                 <td className="px-4 py-3 text-xs">
                   <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
@@ -284,7 +327,7 @@ export default function MyRecordsTable({
                 </td>
               </tr>
             ))}
-            {filteredRecords.length === 0 && (
+            {paginatedRecords.length === 0 && (
               <tr>
                 <td colSpan="8" className="px-4 py-12 text-center">
                   <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
@@ -305,6 +348,20 @@ export default function MyRecordsTable({
           </tbody>
         </table>
       </div>
+
+      {/* ✅ Pagination */}
+      {filteredRecords.length > itemsPerPage && (
+        <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredRecords.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            darkMode={darkMode}
+          />
+        </div>
+      )}
     </div>
   );
 }

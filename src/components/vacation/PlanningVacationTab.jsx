@@ -1,4 +1,4 @@
-// components/vacation/PlanningVacationTab.jsx
+// components/vacation/PlanningVacationTab.jsx - FIXED
 
 import { useState, useEffect } from 'react';
 import { 
@@ -37,8 +37,9 @@ export default function PlanningVacationTab({
   const [loading, setLoading] = useState(false);
   const [totalDaysPlanned, setTotalDaysPlanned] = useState(0);
   
-  // ✅ NEW: Existing scheduled periods
+  // ✅ Existing scheduled periods
   const [existingSchedules, setExistingSchedules] = useState([]);
+  const [pendingScheduledDays, setPendingScheduledDays] = useState(0);
 
   // ✅ AUTO-SELECT PAID VACATION
   useEffect(() => {
@@ -57,35 +58,66 @@ export default function PlanningVacationTab({
   }, [requester, selectedEmployee]);
 
   const fetchExistingSchedules = async () => {
-  try {
-    const data = await VacationService.getScheduleTabs();
-    
-    // ✅ Get upcoming schedules - Include PENDING_MANAGER + SCHEDULED
-    const upcoming = data.upcoming || [];
-    
-    // ✅ Filter: Show PENDING_MANAGER and SCHEDULED (NOT registered)
-    const relevantSchedules = upcoming.filter(schedule => 
-      schedule.status === 'PENDING_MANAGER' || schedule.status === 'SCHEDULED'
-    );
-    
-    // Convert to ranges format for calendar
-    const scheduleRanges = relevantSchedules.map(schedule => ({
-      id: `existing-${schedule.id}`,
-      start: schedule.start_date,
-      end: schedule.end_date,
-      vacation_type_id: schedule.vacation_type_id,
-      isExisting: true, // ✅ Mark as existing
-      status: schedule.status,
-      status_display: schedule.status_display,
-      days: schedule.number_of_days
-    }));
-    
-    setExistingSchedules(scheduleRanges);
-    
-  } catch (error) {
-    console.error('Error fetching existing schedules:', error);
-  }
-};
+    try {
+      const data = await VacationService.getScheduleTabs();
+      
+      // ✅ Get upcoming schedules - Include PENDING_MANAGER + SCHEDULED
+      const upcoming = data.upcoming || [];
+      
+      // ✅ Filter based on requester
+      let relevantSchedules = [];
+      let pendingDays = 0;
+      
+      if (requester === 'for_me') {
+        // Current user's schedules only
+        const userEmail = VacationService.getCurrentUserEmail();
+        const currentEmployee = employeeSearchResults.find(emp => 
+          emp.email?.toLowerCase() === userEmail.toLowerCase()
+        );
+        
+        if (currentEmployee) {
+          relevantSchedules = upcoming.filter(schedule => 
+            schedule.employee_name === currentEmployee.name &&
+            (schedule.status === 'PENDING_MANAGER' || schedule.status === 'SCHEDULED')
+          );
+        }
+      } else if (requester === 'for_my_employee' && selectedEmployee) {
+        // Selected employee's schedules only
+        const employee = employeeSearchResults.find(emp => emp.id === selectedEmployee);
+        
+        if (employee) {
+          relevantSchedules = upcoming.filter(schedule => 
+            schedule.employee_name === employee.name &&
+            (schedule.status === 'PENDING_MANAGER' || schedule.status === 'SCHEDULED')
+          );
+        }
+      }
+      
+      // ✅ Calculate total pending days
+      pendingDays = relevantSchedules
+        .filter(s => s.status === 'PENDING_MANAGER')
+        .reduce((sum, s) => sum + (s.number_of_days || 0), 0);
+      
+      setPendingScheduledDays(pendingDays);
+      
+      // Convert to ranges format for calendar
+      const scheduleRanges = relevantSchedules.map(schedule => ({
+        id: `existing-${schedule.id}`,
+        start: schedule.start_date,
+        end: schedule.end_date,
+        vacation_type_id: schedule.vacation_type_id,
+        isExisting: true,
+        status: schedule.status,
+        status_display: schedule.status_display,
+        days: schedule.number_of_days
+      }));
+      
+      setExistingSchedules(scheduleRanges);
+      
+    } catch (error) {
+      console.error('Error fetching existing schedules:', error);
+    }
+  };
 
   // ✅ Calculate total days
   useEffect(() => {
@@ -199,64 +231,70 @@ export default function PlanningVacationTab({
     setComment('');
   };
 
-  // components/vacation/PlanningVacationTab.jsx - handleSubmit
-
-const handleSubmit = async () => {
-  if (selectedRanges.length === 0) {
-    showError('Please select at least one date range');
-    return;
-  }
-
-  if (!vacationType) {
-    showError('Please select vacation type');
-    return;
-  }
-
-  // ✅ REMOVED: should_be_planned check
-  // We now only check remaining_balance
-
-  // ✅ CHECK: Remaining balance only
-  if (balances && totalDaysPlanned > balances.remaining_balance) {
-    showError(`❌ Insufficient balance. You have ${balances.remaining_balance} days remaining but trying to plan ${totalDaysPlanned} days.`);
-    return;
-  }
-
-  setLoading(true);
-  try {
-    const schedulesData = selectedRanges.map(range => ({
-      vacation_type_id: range.vacation_type_id || vacationType,
-      start_date: range.start,
-      end_date: range.end,
-      comment: comment
-    }));
-
-    const requestData = {
-      schedules: schedulesData
-    };
-
-    if (requester === 'for_my_employee' && selectedEmployee) {
-      requestData.employee_id = selectedEmployee;
+  const handleSubmit = async () => {
+    if (selectedRanges.length === 0) {
+      showError('Please select at least one date range');
+      return;
     }
 
-    const response = await VacationService.bulkCreateSchedules(requestData);
-    
-    showSuccess(`✅ ${response.created_count} schedules created successfully!`);
-    
-    handleClearAll();
-    fetchExistingSchedules(); // ✅ Refresh existing schedules
-    
-    if (typeof window.refreshVacationData === 'function') {
-      window.refreshVacationData();
+    if (!vacationType) {
+      showError('Please select vacation type');
+      return;
     }
 
-  } catch (error) {
-    console.error('Submit error:', error);
-    const errorMsg = error.response?.data?.error || 'Failed to create schedules';
-    showError(errorMsg);
-  } finally {
-    setLoading(false);
-  }
-};
+    // ✅ CHECK: Available balance = remaining - (scheduled + pending)
+    if (balances) {
+      const totalAlreadyPlanned = balances.scheduled_days + pendingScheduledDays;
+      const availableForPlanning = balances.remaining_balance - totalAlreadyPlanned;
+      
+      if (totalDaysPlanned > availableForPlanning) {
+        showError(
+          `❌ Insufficient balance. ` +
+          `Available: ${availableForPlanning} days ` +
+          `(Remaining: ${balances.remaining_balance} - ` +
+          `Already scheduled: ${balances.scheduled_days} - ` +
+          `Pending approval: ${pendingScheduledDays})`
+        );
+        return;
+      }
+    }
+
+    setLoading(true);
+    try {
+      const schedulesData = selectedRanges.map(range => ({
+        vacation_type_id: range.vacation_type_id || vacationType,
+        start_date: range.start,
+        end_date: range.end,
+        comment: comment
+      }));
+
+      const requestData = {
+        schedules: schedulesData
+      };
+
+      if (requester === 'for_my_employee' && selectedEmployee) {
+        requestData.employee_id = selectedEmployee;
+      }
+
+      const response = await VacationService.bulkCreateSchedules(requestData);
+      
+      showSuccess(`✅ ${response.created_count} schedules created successfully!`);
+      
+      handleClearAll();
+      fetchExistingSchedules();
+      
+      if (typeof window.refreshVacationData === 'function') {
+        window.refreshVacationData();
+      }
+
+    } catch (error) {
+      console.error('Submit error:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to create schedules';
+      showError(errorMsg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -280,6 +318,10 @@ const handleSubmit = async () => {
   // ✅ Combine selected + existing for calendar display
   const allRangesForCalendar = [...selectedRanges, ...existingSchedules];
 
+  // ✅ Calculate truly available balance
+  const availableBalance = balances ? 
+    balances.remaining_balance - balances.scheduled_days - pendingScheduledDays : 0;
+
   return (
     <div className="space-y-6">
       {/* ✅ STATS CARDS */}
@@ -292,24 +334,26 @@ const handleSubmit = async () => {
 
       {/* Header Info */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-600 rounded-lg p-4">
-  <div className="flex items-start gap-3">
-    <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-    <div>
-      <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
-        Full Year Planning
-      </h3>
-      <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
-        Select multiple date ranges for the entire year. You can plan up to <strong>{balances?.remaining_balance || 0} days</strong> (your remaining balance). 
-        All selected periods will be submitted together as schedules.
-        {existingSchedules.length > 0 && (
-          <span className="block mt-1">
-            ✅ <strong>{existingSchedules.length} existing schedule{existingSchedules.length > 1 ? 's' : ''}</strong> (including pending) shown in green.
-          </span>
-        )}
-      </p>
-    </div>
-  </div>
-</div>
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <div>
+            <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+              Full Year Planning
+            </h3>
+            <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
+              You can plan up to <strong>{availableBalance} days</strong> 
+              (Remaining: {balances?.remaining_balance || 0} - 
+              Scheduled: {balances?.scheduled_days || 0} - 
+              Pending: {pendingScheduledDays}).
+              {existingSchedules.length > 0 && (
+                <span className="block mt-1">
+                  ✅ <strong>{existingSchedules.length} existing schedule{existingSchedules.length > 1 ? 's' : ''}</strong> shown in green.
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Form Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
@@ -407,7 +451,6 @@ const handleSubmit = async () => {
           </div>
         </div>
 
-        {/* ✅ Pass combined ranges to calendar */}
         <PlanningCalendar
           currentMonth={currentMonth}
           selectedRanges={allRangesForCalendar}
@@ -467,10 +510,8 @@ const handleSubmit = async () => {
         </div>
       )}
 
-   
-
       {/* Balance Warning */}
-      {balances && totalDaysPlanned > balances.remaining_balance && (
+      {balances && totalDaysPlanned > availableBalance && (
         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
@@ -479,7 +520,8 @@ const handleSubmit = async () => {
                 Insufficient Balance
               </h3>
               <p className="text-xs text-red-800 dark:text-red-300 mt-1">
-                You're planning {totalDaysPlanned} days but only have {balances.remaining_balance} days remaining.
+                Planning {totalDaysPlanned} days but only {availableBalance} days available.
+                (Remaining: {balances.remaining_balance} - Scheduled: {balances.scheduled_days} - Pending: {pendingScheduledDays})
               </p>
             </div>
           </div>

@@ -1,5 +1,9 @@
-import { Download, Filter, Eye, Edit, Check, Paperclip, FileText } from 'lucide-react';
+// components/vacation/AllRecordsTable.jsx - WITH PAGINATION
+
+import { Download, Filter, Eye, Edit, Check, Paperclip, FileText, Search } from 'lucide-react';
 import SearchableDropdown from "@/components/common/SearchableDropdown";
+import Pagination from '@/components/common/Pagination';
+import { useState } from 'react';
 
 export default function AllRecordsTable({
   allVacationRecords,
@@ -19,14 +23,27 @@ export default function AllRecordsTable({
   handleRegisterSchedule,
   userAccess
 }) {
+  // ✅ Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // ✅ Pagination calculations
+  const totalPages = Math.ceil(allVacationRecords.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedRecords = allVacationRecords.slice(startIndex, endIndex);
+  
+  // Reset to page 1 when filters change
+  const handleFilterChange = (newFilters) => {
+    setFilters(newFilters);
+    setCurrentPage(1);
+  };
   
   const canEditSchedule = (record) => {
-    // Can edit if it's a schedule, status is SCHEDULED, and under edit limit
     return record.type === 'schedule' && record.can_edit;
   };
 
   const canRegisterSchedule = (record) => {
-    // Only admin can register schedules
     return userAccess.is_admin && record.type === 'schedule' && record.status === 'Scheduled';
   };
 
@@ -75,13 +92,16 @@ export default function AllRecordsTable({
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
                 Employee Name
               </label>
-              <input 
-                type="text" 
-                value={filters.employee_name}
-                onChange={(e) => setFilters(prev => ({...prev, employee_name: e.target.value}))}
-                placeholder="Search name"
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-almet-waterloo dark:text-gray-400" />
+                <input 
+                  type="text" 
+                  value={filters.employee_name}
+                  onChange={(e) => handleFilterChange({...filters, employee_name: e.target.value})}
+                  placeholder="Search name"
+                  className="w-full pl-9 pr-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+                />
+              </div>
             </div>
 
             <div>
@@ -94,7 +114,7 @@ export default function AllRecordsTable({
                   label: bf.name 
                 }))}
                 value={filters.business_function_id}
-                onChange={(value) => setFilters(prev => ({...prev, business_function_id: value || ''}))}
+                onChange={(value) => handleFilterChange({...filters, business_function_id: value || ''})}
                 placeholder="All Companies"
                 allowUncheck={true}
                 darkMode={darkMode}
@@ -111,7 +131,7 @@ export default function AllRecordsTable({
                   label: dept.name 
                 }))}
                 value={filters.department_id}
-                onChange={(value) => setFilters(prev => ({...prev, department_id: value || ''}))}
+                onChange={(value) => handleFilterChange({...filters, department_id: value || ''})}
                 placeholder="All Departments"
                 allowUncheck={true}
                 darkMode={darkMode}
@@ -125,7 +145,7 @@ export default function AllRecordsTable({
               <input 
                 type="date" 
                 value={filters.start_date}
-                onChange={(e) => setFilters(prev => ({...prev, start_date: e.target.value}))}
+                onChange={(e) => handleFilterChange({...filters, start_date: e.target.value})}
                 className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
@@ -137,7 +157,7 @@ export default function AllRecordsTable({
               <input 
                 type="date" 
                 value={filters.end_date}
-                onChange={(e) => setFilters(prev => ({...prev, end_date: e.target.value}))}
+                onChange={(e) => handleFilterChange({...filters, end_date: e.target.value})}
                 className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
             </div>
@@ -149,7 +169,7 @@ export default function AllRecordsTable({
               <input 
                 type="number" 
                 value={filters.year}
-                onChange={(e) => setFilters(prev => ({...prev, year: e.target.value}))}
+                onChange={(e) => handleFilterChange({...filters, year: e.target.value})}
                 placeholder="2025"
                 className="w-full px-3 py-2 text-xs border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
               />
@@ -158,14 +178,17 @@ export default function AllRecordsTable({
 
           <div className="flex gap-2 mt-3">
             <button 
-              onClick={fetchAllVacationRecords}
+              onClick={() => {
+                fetchAllVacationRecords();
+                setCurrentPage(1);
+              }}
               className="px-4 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all"
             >
               Apply Filters
             </button>
             <button 
               onClick={() => {
-                setFilters({ 
+                handleFilterChange({ 
                   status: '', 
                   vacation_type_id: '', 
                   department_id: '', 
@@ -197,7 +220,7 @@ export default function AllRecordsTable({
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-            {allVacationRecords.map(record => (
+            {paginatedRecords.map(record => (
               <tr key={`${record.type}-${record.id}`} className="hover:bg-almet-mystic/20 dark:hover:bg-gray-700/30 transition-colors">
                 <td className="px-4 py-3 text-xs font-medium text-almet-sapphire">{record.request_id}</td>
                 <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{record.employee_name}</td>
@@ -229,7 +252,6 @@ export default function AllRecordsTable({
                 </td>
                 <td className="px-4 py-3 text-xs">
                   {record.type === 'request' ? (
-                    // Requests - Only View
                     <button 
                       onClick={() => handleViewDetails(record.id)}
                       className="text-almet-sapphire hover:text-almet-cloud-burst dark:text-almet-astral flex items-center gap-1 font-medium"
@@ -238,7 +260,6 @@ export default function AllRecordsTable({
                       View
                     </button>
                   ) : (
-                    // Schedules
                     <div className="flex gap-2">
                       <button 
                         onClick={() => handleViewScheduleDetail(record.id)} 
@@ -273,7 +294,7 @@ export default function AllRecordsTable({
                 </td>
               </tr>
             ))}
-            {allVacationRecords.length === 0 && (
+            {paginatedRecords.length === 0 && (
               <tr>
                 <td colSpan="8" className="px-4 py-12 text-center">
                   <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
@@ -285,6 +306,20 @@ export default function AllRecordsTable({
           </tbody>
         </table>
       </div>
+
+      {/* ✅ Pagination */}
+      {allVacationRecords.length > itemsPerPage && (
+        <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={allVacationRecords.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            darkMode={darkMode}
+          />
+        </div>
+      )}
     </div>
   );
 }
