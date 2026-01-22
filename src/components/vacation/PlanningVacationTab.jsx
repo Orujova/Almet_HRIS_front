@@ -504,22 +504,7 @@ const handleSubmit = async () => {
   </div>
 )}
 
-      {/* Planning Limit Warning */}
-      {balances && totalDaysPlanned > balances.should_be_planned && (
-        <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
-            <div>
-              <h3 className="text-sm font-semibold text-red-900 dark:text-red-200">
-                Planning Limit Exceeded
-              </h3>
-              <p className="text-xs text-red-800 dark:text-red-300 mt-1">
-                You're planning {totalDaysPlanned} days but should plan only {balances.should_be_planned} days.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+   
 
       {/* Balance Warning */}
       {balances && totalDaysPlanned > balances.remaining_balance && (
