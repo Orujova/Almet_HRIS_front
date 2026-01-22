@@ -1,9 +1,10 @@
 // components/vacation/MySchedulesTab.jsx - WITH PAGINATION & EMPLOYEE FILTER
 
-import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle, Filter, X, Search } from 'lucide-react';
+import { Download, Edit, Trash, Check, Eye, Calendar, CheckCircle, XCircle, Filter, X, Search, BarChart3 } from 'lucide-react';
 import { useState } from 'react';
 import { VacationService } from '@/services/vacationService';
 import Pagination from '@/components/common/Pagination';
+import PlanningStatisticsModal from './PlanningStatisticsModal';
 
 export default function MySchedulesTab({
   userAccess,
@@ -24,6 +25,7 @@ export default function MySchedulesTab({
   const [approveComment, setApproveComment] = useState('');
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Filters
@@ -132,6 +134,18 @@ export default function MySchedulesTab({
               My Schedules
             </h2>
             <div className="flex items-center gap-2">
+              {/* ✅ Planning Statistics Button */}
+              {(userAccess.is_manager || userAccess.is_admin) && (
+                <button
+                  onClick={() => setShowStatsModal(true)}
+                  className="px-2.5 py-1.5 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all flex items-center gap-1.5 shadow-sm"
+                >
+                  <BarChart3 className="w-3 h-3" />
+                  Planning Stats
+                </button>
+              )}
+
+              {/* Filter Toggle */}
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="px-2.5 py-1.5 text-xs bg-almet-mystic dark:bg-gray-700 text-almet-cloud-burst dark:text-white rounded-lg hover:bg-almet-mystic/60 dark:hover:bg-gray-600 transition-all flex items-center gap-1.5"
@@ -575,6 +589,16 @@ export default function MySchedulesTab({
           </div>
         </div>
       )}
+      
+      {/* ✅ Planning Statistics Modal */}
+      <PlanningStatisticsModal
+        show={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        darkMode={darkMode}
+        userAccess={userAccess}
+        showSuccess={showSuccess}
+        showError={showError}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-// components/vacation/BalancesTabContent.jsx - ENHANCED VERSION
+// components/vacation/BalancesTabContent.jsx - COMPLETE WITH PLANNING STATS
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -9,17 +9,22 @@ import {
   Edit,
   X,
   Filter,
-  TrendingUp,
-  TrendingDown,
   Save,
   Search,
+  BarChart3
 } from "lucide-react";
-import { useCallback } from "react";
 import { VacationService, VacationHelpers } from '@/services/vacationService';
 import SearchableDropdown from "@/components/common/SearchableDropdown";
-import { referenceDataService } from "@/services/vacantPositionsService";
+import PlanningStatisticsModal from './PlanningStatisticsModal';
 
-const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showError }) => {
+const BalancesTabContent = ({ 
+  userPermissions = {}, 
+  darkMode, 
+  showSuccess, 
+  showError,
+  businessFunctions = [],
+  departments = []
+}) => {
   const [balances, setBalances] = useState([]);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -27,9 +32,7 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
   const [searchTerm, setSearchTerm] = useState("");
   const [editingBalance, setEditingBalance] = useState(null);
   const [editValues, setEditValues] = useState({});
-
-  const [businessFunctions, setBusinessFunctions] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [showStatsModal, setShowStatsModal] = useState(false);
 
   const [filters, setFilters] = useState({
     year: new Date().getFullYear(),
@@ -39,22 +42,8 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
     max_remaining: "",
   });
 
-  const fetchReferenceData = useCallback(async () => {
-    try {
-      const result = await referenceDataService.getAllReferenceData();
-      
-      if (result.success) {
-        setBusinessFunctions(result.data.businessFunctions || []);
-        setDepartments(result.data.departments || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch reference data:', error);
-    }
-  }, []);
-
   useEffect(() => {
     fetchBalances();
-    fetchReferenceData();
   }, []);
 
   const handleExport = async () => {
@@ -187,7 +176,6 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
             value={filters.business_function_id}
             onChange={(value) => {
               setFilters((prev) => ({ ...prev, business_function_id: value || '' }));
-              // Auto-apply on change
               setTimeout(() => fetchBalances(), 100);
             }}
             placeholder="All Companies"
@@ -197,10 +185,35 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
           />
         </div>
 
-       
+        {/* Year */}
+        <div className="lg:col-span-2">
+          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
+            Year
+          </label>
+          <input
+            type="number"
+            value={filters.year}
+            onChange={(e) => {
+              setFilters((prev) => ({ ...prev, year: e.target.value }));
+              setTimeout(() => fetchBalances(), 100);
+            }}
+            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
+          />
+        </div>
 
         {/* Actions */}
         <div className="lg:col-span-4 flex items-end gap-2">
+          {/* ✅ Planning Statistics Button */}
+          {(userPermissions.is_admin || userPermissions.is_manager) && (
+            <button
+              onClick={() => setShowStatsModal(true)}
+              className="px-4 py-2.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all flex items-center gap-2 shadow-sm"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Planning Stats
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowFilters((prev) => !prev)}
@@ -252,22 +265,6 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-             {/* Year */}
-        <div className="lg:col-span-2">
-          <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
-            Year
-          </label>
-          <input
-            type="number"
-            value={filters.year}
-            onChange={(e) => {
-              setFilters((prev) => ({ ...prev, year: e.target.value }));
-              // Auto-apply on change
-              setTimeout(() => fetchBalances(), 100);
-            }}
-            className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg dark:bg-gray-700 dark:text-white"
-          />
-        </div>
             {/* Department */}
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
@@ -510,6 +507,16 @@ const BalancesTabContent = ({ userPermissions = {}, darkMode, showSuccess, showE
           </div>
         )}
       </div>
+
+      {/* ✅ Planning Statistics Modal */}
+      <PlanningStatisticsModal
+        show={showStatsModal}
+        onClose={() => setShowStatsModal(false)}
+        darkMode={darkMode}
+        userAccess={userPermissions}
+        showSuccess={showSuccess}
+        showError={showError}
+      />
     </div>
   );
 };
