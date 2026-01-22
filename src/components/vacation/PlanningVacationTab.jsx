@@ -467,43 +467,6 @@ const handleSubmit = async () => {
         </div>
       )}
 
-      {/* ✅ Existing Schedules Info */}
-      {existingSchedules.length > 0 && (
-  <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-600 rounded-lg p-4">
-    <div className="flex items-start gap-3">
-      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-      <div>
-        <h3 className="text-sm font-semibold text-green-900 dark:text-green-200">
-          Existing Schedules ({existingSchedules.length})
-        </h3>
-        <p className="text-xs text-green-800 dark:text-green-300 mt-1">
-          Your already planned periods (including pending approval) are shown in <strong>green</strong> on the calendar. 
-          You cannot select overlapping dates.
-        </p>
-        <div className="mt-2 space-y-1">
-          {existingSchedules.slice(0, 5).map((schedule, idx) => (
-            <p key={idx} className="text-xs text-green-700 dark:text-green-400 flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
-                schedule.status === 'PENDING_MANAGER' 
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-              }`}>
-                {schedule.status_display}
-              </span>
-              • {schedule.start} → {schedule.end} ({schedule.days} days)
-            </p>
-          ))}
-          {existingSchedules.length > 5 && (
-            <p className="text-xs text-green-700 dark:text-green-400 font-medium">
-              +{existingSchedules.length - 5} more schedules
-            </p>
-          )}
-        </div>
-      </div>
-    </div>
-  </div>
-)}
-
    
 
       {/* Balance Warning */}
