@@ -226,64 +226,115 @@ const fetchBusinessFunctionJobs = async (businessFunctionName, page = 1) => {
   }
 };
 
-// ðŸ"¥ Update handleBusinessFunctionClick
+// handleBusinessFunctionClick funksiyasını YENİLƏ
 const handleBusinessFunctionClick = async (group) => {
   try {
     setActionLoading(true);
     
-    // Check access first
-    const response = await jobDescriptionService.getJobDescriptions({ 
-      business_function: group.name,
-      page_size: 1
-    });
+    console.log('🎯 Clicking business function:', group.name);
+    console.log('📦 Group data:', group);
     
-    if (response.results && response.results.length > 0) {
+    // 🔥 Option 1: Use cached data from group
+    if (group.jobs && group.jobs.length > 0) {
       setSelectedBusinessFunction(group);
+      setBusinessFunctionJobs(group.jobs);  // ✅ Use cached data
+      setTotalBusinessFunctionJobs(group.jobs.length);
       setViewMode('details');
       setSearchTerm('');
       setSelectedDepartment('');
       setSelectedStatus('');
       setCurrentPage(1);
       
-      // ðŸ"¥ Fetch first page of jobs
-      await fetchBusinessFunctionJobs(group.name, 1);
+      console.log('✅ Using cached jobs:', group.jobs.length);
     } else {
-      showWarning(`You don't have access to job descriptions in ${group.name}`);
+      // 🔥 Option 2: Try to fetch from API
+      const response = await jobDescriptionService.getJobDescriptions({ 
+        business_function: group.name,
+        page_size: 1000  // Get all jobs
+      });
+      
+      console.log('📡 Fetched from API:', response.results?.length);
+      
+      if (response.results && response.results.length > 0) {
+        const updatedGroup = {
+          ...group,
+          jobs: response.results
+        };
+        
+        setSelectedBusinessFunction(updatedGroup);
+        setBusinessFunctionJobs(response.results);
+        setTotalBusinessFunctionJobs(response.results.length);
+        setViewMode('details');
+        setSearchTerm('');
+        setSelectedDepartment('');
+        setSelectedStatus('');
+        setCurrentPage(1);
+      } else {
+        showWarning(`You don't have access to job descriptions in ${group.name}`);
+      }
     }
   } catch (error) {
-    showError('Error checking access');
+    console.error('❌ Error loading business function:', error);
+    showError('Error loading job descriptions');
   } finally {
     setActionLoading(false);
   }
 };
+// filteredJobsInBusinessFunction - Client-side pagination
+const filteredJobsInBusinessFunction = useMemo(() => {
+  if (!selectedBusinessFunction) return [];
+  
+  console.log('🔍 Filtering jobs:', {
+    totalJobs: businessFunctionJobs.length,
+    searchTerm,
+    selectedDepartment,
+    selectedStatus
+  });
+  
+  let filtered = businessFunctionJobs;
+  
+  if (searchTerm) {
+    filtered = filtered.filter(job =>
+      job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.department_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+  
+  if (selectedDepartment) {
+    filtered = filtered.filter(job => job.department_name === selectedDepartment);
+  }
+  
+  if (selectedStatus) {
+    filtered = filtered.filter(job => job.overall_status === selectedStatus);
+  }
+  
+  console.log('✅ Filtered results:', filtered.length);
+  
+  return filtered;
+}, [businessFunctionJobs, searchTerm, selectedDepartment, selectedStatus]);
 
-// 🔥 YENİLƏYİN - Filter jobs within selected business function
-  const filteredJobsInBusinessFunction = useMemo(() => {
-    if (!selectedBusinessFunction) return [];
-    
-    // 🔥 Use businessFunctionJobs instead of selectedBusinessFunction.jobs
-    let filtered = businessFunctionJobs;
-    
-    if (searchTerm) {
-      filtered = filtered.filter(job =>
-        job.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.department_name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    
-    if (selectedDepartment) {
-      filtered = filtered.filter(job => job.department_name === selectedDepartment);
-    }
-    
-    if (selectedStatus) {
-      filtered = filtered.filter(job => job.overall_status === selectedStatus);
-    }
-    
-    return filtered;
-  }, [businessFunctionJobs, searchTerm, selectedDepartment, selectedStatus]); // 🔥 dependency dəyişdi
+// 🔥 Client-side pagination
+const paginatedJobs = useMemo(() => {
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginated = filteredJobsInBusinessFunction.slice(startIndex, endIndex);
+  
+  console.log('📄 Pagination:', {
+    currentPage,
+    itemsPerPage,
+    startIndex,
+    endIndex,
+    totalFiltered: filteredJobsInBusinessFunction.length,
+    pageResults: paginated.length
+  });
+  
+  return paginated;
+}, [filteredJobsInBusinessFunction, currentPage, itemsPerPage]);
 
-// ðŸ"¥ paginatedJobs artıq lazım deyil, filteredJobsInBusinessFunction istifadə edin
-const totalPages = Math.ceil(totalBusinessFunctionJobs / itemsPerPage);
+// 🔥 Update totalPages
+const totalPages = Math.ceil(filteredJobsInBusinessFunction.length / itemsPerPage);
+
+
 
 
 
@@ -485,13 +536,12 @@ const totalPages = Math.ceil(totalBusinessFunctionJobs / itemsPerPage);
     setCurrentPage(1);
   };
 
-  // 🔥 ÆLAVÆ EDİN - Pagination handler
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-    if (selectedBusinessFunction) {
-      fetchBusinessFunctionJobs(selectedBusinessFunction.name, page);
-    }
-  };
+  // Simple page change without API call
+const handlePageChange = (page) => {
+  console.log('📄 Changing page to:', page);
+  setCurrentPage(page);
+  // No API call needed - we have all data in businessFunctionJobs
+};
 
   // 🔥 NEW: Handle create new job
   const handleCreateNewJob = () => {
@@ -1473,35 +1523,34 @@ const handleEdit = async (job) => {
                   )}
                 </div>
 
-                {/* Job List */}
                 <JobDescriptionList
-                  filteredJobs={filteredJobsInBusinessFunction} // 🔥 paginatedJobs əvəzinə
-                  searchTerm={searchTerm}
-                  selectedDepartment={selectedDepartment}
-                  dropdownData={dropdownData}
-                  onSearchChange={setSearchTerm}
-                  onDepartmentChange={setSelectedDepartment}
-                  onJobSelect={handleViewJob}
-                  userAccess={userAccess}
-                  onJobEdit={handleEdit}
-                  onJobDelete={handleDelete}
-                  onViewAssignments={handleViewAssignments}
-                  onDirectSubmission={handleDirectSubmissionForApproval}
-                  onDownloadPDF={handleDownloadSinglePDF}
-                  actionLoading={actionLoading}
-                  darkMode={darkMode}
-                />
-                
-                {totalPages > 1 && (
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    totalItems={totalBusinessFunctionJobs} // 🔥 dəyişdi
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={handlePageChange} // 🔥 dəyişdi - (page) => setCurrentPage(page) əvəzinə
-                    darkMode={darkMode}
-                  />
-                )}
+  filteredJobs={paginatedJobs}  // 🔥 Use paginatedJobs
+  searchTerm={searchTerm}
+  selectedDepartment={selectedDepartment}
+  dropdownData={dropdownData}
+  onSearchChange={setSearchTerm}
+  onDepartmentChange={setSelectedDepartment}
+  onJobSelect={handleViewJob}
+  userAccess={userAccess}
+  onJobEdit={handleEdit}
+  onJobDelete={handleDelete}
+  onViewAssignments={handleViewAssignments}
+  onDirectSubmission={handleDirectSubmissionForApproval}
+  onDownloadPDF={handleDownloadSinglePDF}
+  actionLoading={actionLoading}
+  darkMode={darkMode}
+/>
+
+{totalPages > 1 && (
+  <Pagination
+    currentPage={currentPage}
+    totalPages={totalPages}
+    totalItems={filteredJobsInBusinessFunction.length}  // 🔥 Filtered count
+    itemsPerPage={itemsPerPage}
+    onPageChange={handlePageChange}
+    darkMode={darkMode}
+  />
+)}
               </div>
             )}
 
