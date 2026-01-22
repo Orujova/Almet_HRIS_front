@@ -1,4 +1,5 @@
-// components/vacation/PlanningVacationTab.jsx - ✅ ENHANCED VERSION
+// components/vacation/PlanningVacationTab.jsx
+
 import { useState, useEffect } from 'react';
 import { 
   Calendar, 
@@ -16,7 +17,7 @@ import {
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 import { VacationService } from '@/services/vacationService';
 import PlanningCalendar from './PlanningCalendar';
-import VacationStats from './VacationStats'; // ✅ Import Stats
+import VacationStats from './VacationStats';
 
 export default function PlanningVacationTab({
   darkMode,
@@ -35,6 +36,9 @@ export default function PlanningVacationTab({
   const [selectedRanges, setSelectedRanges] = useState([]);
   const [loading, setLoading] = useState(false);
   const [totalDaysPlanned, setTotalDaysPlanned] = useState(0);
+  
+  // ✅ NEW: Existing scheduled periods
+  const [existingSchedules, setExistingSchedules] = useState([]);
 
   // ✅ AUTO-SELECT PAID VACATION
   useEffect(() => {
@@ -46,14 +50,37 @@ export default function PlanningVacationTab({
       setVacationType(paidVacation?.id || vacationTypes[0].id);
     }
   }, [vacationTypes]);
-const handleRangeRemove = (dateStr) => {
-  const updatedRanges = selectedRanges.filter(range => {
-    return !(dateStr >= range.start && dateStr <= range.end);
-  });
-  
-  setSelectedRanges(updatedRanges);
-  showSuccess('✅ Range removed');
-};
+
+  // ✅ FETCH EXISTING SCHEDULES
+  useEffect(() => {
+    fetchExistingSchedules();
+  }, [requester, selectedEmployee]);
+
+  const fetchExistingSchedules = async () => {
+    try {
+      const data = await VacationService.getScheduleTabs();
+      
+      // Get upcoming schedules for display
+      const upcoming = data.upcoming || [];
+      
+      // Convert to ranges format for calendar
+      const scheduleRanges = upcoming.map(schedule => ({
+        id: `existing-${schedule.id}`,
+        start: schedule.start_date,
+        end: schedule.end_date,
+        vacation_type_id: schedule.vacation_type_id,
+        isExisting: true, // ✅ Mark as existing
+        status: schedule.status,
+        days: schedule.number_of_days
+      }));
+      
+      setExistingSchedules(scheduleRanges);
+      
+    } catch (error) {
+      console.error('Error fetching existing schedules:', error);
+    }
+  };
+
   // ✅ Calculate total days
   useEffect(() => {
     const calculateTotalDays = async () => {
@@ -128,6 +155,16 @@ const handleRangeRemove = (dateStr) => {
       return;
     }
     
+    // ✅ Check overlap with existing schedules
+    const hasExistingOverlap = existingSchedules.some(schedule => {
+      return (start <= schedule.end && end >= schedule.start);
+    });
+    
+    if (hasExistingOverlap) {
+      showError('⚠️ This date range overlaps with an existing schedule');
+      return;
+    }
+    
     const newRange = {
       id: Date.now(),
       start: start,
@@ -136,6 +173,15 @@ const handleRangeRemove = (dateStr) => {
     };
     setSelectedRanges([...selectedRanges, newRange]);
     showSuccess(`✅ Added ${start} to ${end}`);
+  };
+
+  const handleRangeRemove = (dateStr) => {
+    const updatedRanges = selectedRanges.filter(range => {
+      return !(dateStr >= range.start && dateStr <= range.end);
+    });
+    
+    setSelectedRanges(updatedRanges);
+    showSuccess('✅ Range removed');
   };
 
   const handleRemoveRange = (rangeId) => {
@@ -160,9 +206,9 @@ const handleRangeRemove = (dateStr) => {
 
     // ✅ CHECK: should_be_planned limit
     if (balances && totalDaysPlanned > balances.should_be_planned) {
-  showError(`❌ Planning limit exceeded. You should plan ${balances.should_be_planned} days but trying to plan ${totalDaysPlanned} days.`);
-  return;
-}
+      showError(`Planning limit exceeded. You should plan ${balances.should_be_planned} days but trying to plan ${totalDaysPlanned} days.`);
+      return;
+    }
 
     // Check balance
     if (balances && totalDaysPlanned > balances.remaining_balance) {
@@ -192,6 +238,7 @@ const handleRangeRemove = (dateStr) => {
       showSuccess(`${response.created_count} schedules created successfully!`);
       
       handleClearAll();
+      fetchExistingSchedules(); // ✅ Refresh existing schedules
       
       if (typeof window.refreshVacationData === 'function') {
         window.refreshVacationData();
@@ -225,6 +272,9 @@ const handleRangeRemove = (dateStr) => {
     return null;
   };
 
+  // ✅ Combine selected + existing for calendar display
+  const allRangesForCalendar = [...selectedRanges, ...existingSchedules];
+
   return (
     <div className="space-y-6">
       {/* ✅ STATS CARDS */}
@@ -246,6 +296,11 @@ const handleRangeRemove = (dateStr) => {
             <p className="text-xs text-blue-800 dark:text-blue-300 mt-1">
               Select multiple date ranges for the entire year. You must plan <strong>{balances?.should_be_planned || 0} days</strong>. 
               All selected periods will be submitted together as schedules.
+              {existingSchedules.length > 0 && (
+                <span className="block mt-1">
+                  ✅ <strong>{existingSchedules.length} existing schedule{existingSchedules.length > 1 ? 's' : ''}</strong> shown in green.
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -299,9 +354,6 @@ const handleRangeRemove = (dateStr) => {
             </div>
           )}
 
-          {/* ✅ HIDDEN: Vacation Type (Auto Paid Vacation) */}
-          <input type="hidden" value={vacationType} />
-
           {/* Comment */}
           <div>
             <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-1.5">
@@ -350,16 +402,16 @@ const handleRangeRemove = (dateStr) => {
           </div>
         </div>
 
-
-<PlanningCalendar
-  currentMonth={currentMonth}
-  selectedRanges={selectedRanges}
-  onRangeSelect={handleRangeSelect}
-  onRangeRemove={handleRangeRemove} // ✅ NEW
-  onMonthChange={setCurrentMonth}
-  businessFunctionCode={getBusinessFunctionCode()}
-  darkMode={darkMode}
-/>
+        {/* ✅ Pass combined ranges to calendar */}
+        <PlanningCalendar
+          currentMonth={currentMonth}
+          selectedRanges={allRangesForCalendar}
+          onRangeSelect={handleRangeSelect}
+          onRangeRemove={handleRangeRemove}
+          onMonthChange={setCurrentMonth}
+          businessFunctionCode={getBusinessFunctionCode()}
+          darkMode={darkMode}
+        />
       </div>
 
       {/* Selected Ranges */}
@@ -393,7 +445,7 @@ const handleRangeRemove = (dateStr) => {
                         {range.start} → {range.end}
                       </p>
                       <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        {vacationTypes.find(t => t.id === (range.vacation_type_id || vacationType))?.name || 'Paid Vacation'}
+                        Paid Vacation
                       </p>
                     </div>
                   </div>
@@ -410,7 +462,37 @@ const handleRangeRemove = (dateStr) => {
         </div>
       )}
 
-      {/* ✅ Planning Limit Warning */}
+      {/* ✅ Existing Schedules Info */}
+      {existingSchedules.length > 0 && (
+        <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-500 dark:border-green-600 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-semibold text-green-900 dark:text-green-200">
+                Existing Schedules ({existingSchedules.length})
+              </h3>
+              <p className="text-xs text-green-800 dark:text-green-300 mt-1">
+                Your already planned periods are shown in <strong>green</strong> on the calendar. 
+                You cannot select overlapping dates.
+              </p>
+              <div className="mt-2 space-y-1">
+                {existingSchedules.slice(0, 3).map((schedule, idx) => (
+                  <p key={idx} className="text-xs text-green-700 dark:text-green-400">
+                    • {schedule.start} → {schedule.end} ({schedule.days} days) - {schedule.status}
+                  </p>
+                ))}
+                {existingSchedules.length > 3 && (
+                  <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+                    +{existingSchedules.length - 3} more schedules
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Planning Limit Warning */}
       {balances && totalDaysPlanned > balances.should_be_planned && (
         <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 rounded-lg p-4">
           <div className="flex items-start gap-3">

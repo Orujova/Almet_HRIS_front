@@ -1,15 +1,17 @@
 // components/vacation/PlanningCalendar.jsx - ✅ COMPLETE VERSION
+
 import { useState, useEffect } from 'react';
-import { Star } from 'lucide-react';
+import { Star, CheckCircle } from 'lucide-react';
 import { VacationService } from '@/services/vacationService';
 
 export default function PlanningCalendar({
   currentMonth,
   selectedRanges,
   onRangeSelect,
+  onRangeRemove,
   darkMode,
   onMonthChange,
-  businessFunctionCode = null // ✅ For AZ/UK calendar selection
+  businessFunctionCode = null
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
@@ -87,8 +89,8 @@ export default function PlanningCalendar({
   const isDateSelected = (date) => {
     const dateStr = formatDate(date);
     return selectedRanges.some(range => {
-      // ✅ Ensure exact comparison without timezone issues
-      return dateStr >= range.start && dateStr <= range.end;
+      // ✅ Only check NEW selections (not existing schedules)
+      return !range.isExisting && dateStr >= range.start && dateStr <= range.end;
     });
   };
 
@@ -133,46 +135,44 @@ export default function PlanningCalendar({
     const dateStr = formatDate(date);
     return holidays.filter(h => {
       // ✅ FIX: Ensure exact date match without timezone issues
-      const holidayDate = h.date.split('T')[0]; // Remove time part if exists
+      const holidayDate = h.date.split('T')[0];
       return holidayDate === dateStr;
     });
   };
 
-  // components/vacation/PlanningCalendar.jsx
-
-const handleMouseDown = (date) => {
-  if (isPastDate(date)) return;
-  
-  const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const dateStr = formatDate(localDate);
-  
-  // ✅ CHECK: Is this date already selected?
-  const isAlreadySelected = selectedRanges.some(range => {
-    return dateStr >= range.start && dateStr <= range.end;
-  });
-  
-  if (isAlreadySelected) {
-    // ✅ UNSELECT: Remove range containing this date
-    const newRanges = selectedRanges.filter(range => {
-      return !(dateStr >= range.start && dateStr <= range.end);
-    });
+  const handleMouseDown = (date) => {
+    if (isPastDate(date)) return;
     
-    // Call parent to update ranges
-    if (typeof onRangeRemove === 'function') {
-      onRangeRemove(dateStr);
-    } else {
-      // If no remove function, just log
-      console.log('🗑️ Would remove range containing:', dateStr);
+    const localDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dateStr = formatDate(localDate);
+    
+    // ✅ CHECK: Is this an existing schedule?
+    const isExisting = selectedRanges.some(range => 
+      range.isExisting && dateStr >= range.start && dateStr <= range.end
+    );
+    
+    if (isExisting) {
+      return; // ✅ Cannot select existing schedule dates
     }
     
-    return; // Stop - don't start new drag
-  }
-  
-  // ✅ Start new selection
-  setIsDragging(true);
-  setDragStart(localDate);
-  setDragEnd(localDate);
-};
+    // ✅ CHECK: Is this date already in NEW selections?
+    const isAlreadySelected = selectedRanges.some(range => {
+      return !range.isExisting && dateStr >= range.start && dateStr <= range.end;
+    });
+    
+    if (isAlreadySelected) {
+      // ✅ UNSELECT: Remove range containing this date (only NEW selections)
+      if (typeof onRangeRemove === 'function') {
+        onRangeRemove(dateStr);
+      }
+      return;
+    }
+    
+    // ✅ Start new selection
+    setIsDragging(true);
+    setDragStart(localDate);
+    setDragEnd(localDate);
+  };
 
   const handleMouseEnter = (date) => {
     if (isDragging && !isPastDate(date)) {
@@ -217,30 +217,37 @@ const handleMouseDown = (date) => {
 
     // Calendar days
     for (let day = 1; day <= daysInMonth; day++) {
-      // ✅ FIX: Create date with local timezone (no time component)
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day, 12, 0, 0);
+      const dateStr = formatDate(date);
+      
       const isSelected = isDateSelected(date);
       const inDragRange = isDateInDragRange(date);
       const today = isToday(date);
       const past = isPastDate(date);
       const holiday = isHoliday(date);
       const dayHolidays = getHolidaysForDate(date);
+      
+      // ✅ NEW: Check if date is in existing schedule
+      const isExistingSchedule = selectedRanges.some(range => 
+        range.isExisting && dateStr >= range.start && dateStr <= range.end
+      );
 
       days.push(
         <div
           key={day}
-          onMouseDown={() => handleMouseDown(date)}
-          onMouseEnter={() => handleMouseEnter(date)}
+          onMouseDown={() => !isExistingSchedule && handleMouseDown(date)}
+          onMouseEnter={() => !isExistingSchedule && handleMouseEnter(date)}
           onMouseUp={handleMouseUp}
           className={`
             min-h-[80px] border border-almet-mystic/30 dark:border-almet-comet/30 p-2 
-            transition-all cursor-pointer select-none
+            transition-all select-none
             ${past ? 'bg-gray-100 dark:bg-gray-900/50 cursor-not-allowed opacity-50' : ''}
-            ${holiday && !past ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : ''}
-            ${today && !past ? 'ring-2 ring-almet-sapphire dark:ring-almet-astral' : ''}
-            ${isSelected && !past ? 'bg-green-100 dark:bg-green-900/30 border-green-400 dark:border-green-600' : ''}
-            ${inDragRange && !past && !isSelected ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600' : ''}
-            ${!past && !isSelected && !inDragRange && !holiday ? 'bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20' : ''}
+            ${isExistingSchedule ? 'bg-green-100 dark:bg-green-900/30 border-green-400 dark:border-green-600 cursor-not-allowed' : ''}
+            ${holiday && !past && !isExistingSchedule ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700' : ''}
+            ${today && !past && !isExistingSchedule ? 'ring-2 ring-almet-sapphire dark:ring-almet-astral' : ''}
+            ${isSelected && !past && !isExistingSchedule ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-400 dark:border-blue-600' : ''}
+            ${inDragRange && !past && !isSelected && !isExistingSchedule ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-500' : ''}
+            ${!past && !isSelected && !inDragRange && !holiday && !isExistingSchedule ? 'bg-white dark:bg-gray-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer' : ''}
           `}
         >
           <div className="flex items-center justify-between mb-1">
@@ -249,13 +256,25 @@ const handleMouseDown = (date) => {
               ${today && !past ? 'text-almet-sapphire dark:text-almet-astral' : ''}
               ${past ? 'text-gray-400 dark:text-gray-600' : 'text-almet-cloud-burst dark:text-white'}
               ${holiday && !past ? 'text-red-600 dark:text-red-400' : ''}
+              ${isExistingSchedule ? 'text-green-700 dark:text-green-400' : ''}
             `}>
               {day}
             </span>
-            {isSelected && (
+            {isSelected && !isExistingSchedule && (
+              <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+            )}
+            {isExistingSchedule && (
               <div className="w-2 h-2 bg-green-600 dark:bg-green-400 rounded-full"></div>
             )}
           </div>
+          
+          {/* ✅ Existing Schedule Indicator */}
+          {isExistingSchedule && !past && (
+            <div className="text-[9px] text-green-700 dark:text-green-400 font-medium mb-1 flex items-center gap-0.5">
+              <CheckCircle className="w-2.5 h-2.5" />
+              SCHEDULED
+            </div>
+          )}
           
           {/* ✅ Display holidays */}
           {dayHolidays.length > 0 && !past && (
@@ -355,20 +374,26 @@ const handleMouseDown = (date) => {
         )}
       </div>
 
-      {/* Instructions */}
+      {/* Instructions & Legend */}
       <div className="border-t border-almet-mystic/30 dark:border-almet-comet/30 p-4 bg-gray-50 dark:bg-gray-900/50">
         <div className="flex items-center justify-between text-xs">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded"></div>
               <span className="text-almet-waterloo dark:text-gray-400">Holiday</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 rounded"></div>
-              <span className="text-almet-waterloo dark:text-gray-400">Selected</span>
+              <div className="w-4 h-4 bg-green-100 dark:bg-green-900/30 border border-green-400 dark:border-green-600 rounded flex items-center justify-center">
+                <CheckCircle className="w-3 h-3 text-green-600 dark:text-green-400" />
+              </div>
+              <span className="text-almet-waterloo dark:text-gray-400">Existing Schedule</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-600 rounded"></div>
+              <span className="text-almet-waterloo dark:text-gray-400">New Selection</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-300 dark:border-blue-500 rounded"></div>
               <span className="text-almet-waterloo dark:text-gray-400">Dragging</span>
             </div>
             <div className="flex items-center gap-2">
