@@ -1,3 +1,4 @@
+// src/components/assets/AssetDetailsModal.jsx - UPDATED
 "use client";
 import { useState } from "react";
 import { 
@@ -8,13 +9,15 @@ import {
   User,
   BarChart3,
   LogOut,
-  RotateCcw
+  RotateCcw,
+  Calendar,
+  Building,
+  DollarSign,
+  FileText
 } from "lucide-react";
-
 import CheckInAssetModal from "@/components/assets/CheckInAssetModal";
 import ChangeStatusModal from "@/components/assets/ChangeStatusModal";
 
-// Asset Details Modal Component
 export const AssetDetailsModal = ({ asset, onClose, darkMode, onEdit, onCheckIn, onChangeStatus }) => {
   const [loading, setLoading] = useState(false);
   const [showCheckInModal, setShowCheckInModal] = useState(false);
@@ -28,8 +31,8 @@ export const AssetDetailsModal = ({ asset, onClose, darkMode, onEdit, onCheckIn,
   const bgAccent = darkMode ? "bg-gray-700/50" : "bg-almet-mystic/30";
   const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200";
   const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-const btnSuccess = "bg-emerald-400 hover:bg-emerald-500 text-white transition-all duration-200";
-const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all duration-200";
+  const btnSuccess = "bg-emerald-500 hover:bg-emerald-600 text-white transition-all duration-200";
+  const btnWarning = "bg-amber-500 hover:bg-amber-600 text-white transition-all duration-200";
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -48,8 +51,7 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
     }).format(amount);
   };
 
-  
- const getStatusColor = (status) => {
+  const getStatusColor = (status) => {
     const statusColors = {
       'IN_STOCK': 'bg-sky-50 text-sky-600 border-sky-100 dark:bg-sky-950/50 dark:text-sky-400 dark:border-sky-900/30',
       'IN_USE': 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-900/30',
@@ -58,8 +60,9 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
       'IN_REPAIR': 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/50 dark:text-rose-400 dark:border-rose-900/30',
       'ARCHIVED': 'bg-gray-50 text-gray-600 border-gray-100 dark:bg-gray-950/50 dark:text-gray-400 dark:border-gray-900/30'
     };
-    return statusColors[status] || 'bg-slate-50 text-slate-600 border-slate-100 dark:bg-slate-950/50 dark:text-slate-400 dark:border-slate-900/30';
+    return statusColors[status] || 'bg-slate-50 text-slate-600 border-slate-100';
   };
+
   const handleCheckIn = () => {
     setShowCheckInModal(true);
   };
@@ -106,7 +109,10 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textMuted} mb-1`}>Category</label>
-                      <p className={`${textPrimary} text-sm font-medium`}>{asset.category?.name}</p>
+                      <div className="flex items-center">
+                        <Building size={14} className={`${textMuted} mr-2`} />
+                        <p className={`${textPrimary} text-sm font-medium`}>{asset.category?.name || asset.category_name}</p>
+                      </div>
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textMuted} mb-1`}>Status</label>
@@ -116,11 +122,17 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textMuted} mb-1`}>Purchase Price</label>
-                      <p className={`${textPrimary} text-sm font-medium`}>{formatCurrency(asset.purchase_price)}</p>
+                      <div className="flex items-center">
+                        <DollarSign size={14} className={`${textMuted} mr-1`} />
+                        <p className={`${textPrimary} text-sm font-medium`}>{formatCurrency(asset.purchase_price)}</p>
+                      </div>
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textMuted} mb-1`}>Purchase Date</label>
-                      <p className={`${textPrimary} text-sm font-medium`}>{formatDate(asset.purchase_date)}</p>
+                      <div className="flex items-center">
+                        <Calendar size={14} className={`${textMuted} mr-1`} />
+                        <p className={`${textPrimary} text-sm font-medium`}>{formatDate(asset.purchase_date)}</p>
+                      </div>
                     </div>
                     <div>
                       <label className={`block text-xs font-medium ${textMuted} mb-1`}>Useful Life</label>
@@ -143,11 +155,15 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className={`block text-xs font-medium ${textMuted} mb-1`}>Employee</label>
-                        <p className={`${textPrimary} text-sm font-medium`}>{asset.assigned_to.full_name}</p>
+                        <p className={`${textPrimary} text-sm font-medium`}>
+                          {asset.assigned_to.full_name || asset.assigned_to_name}
+                        </p>
                       </div>
                       <div>
                         <label className={`block text-xs font-medium ${textMuted} mb-1`}>Employee ID</label>
-                        <p className={`${textPrimary} text-sm font-medium`}>{asset.assigned_to.employee_id}</p>
+                        <p className={`${textPrimary} text-sm font-medium`}>
+                          {asset.assigned_to.employee_id || asset.assigned_to_employee_id}
+                        </p>
                       </div>
                       <div>
                         <label className={`block text-xs font-medium ${textMuted} mb-1`}>Job Title</label>
@@ -155,14 +171,38 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
                       </div>
                       <div>
                         <label className={`block text-xs font-medium ${textMuted} mb-1`}>Assignment Date</label>
-                        <p className={`${textPrimary} text-sm font-medium`}>{formatDate(asset.current_assignment?.assignment.check_out_date)}</p>
+                        <p className={`${textPrimary} text-sm font-medium`}>
+                          {formatDate(asset.current_assignment?.assignment?.check_out_date)}
+                        </p>
                       </div>
-                      {asset.current_assignment?.assignment.check_out_notes && (
+                      {asset.current_assignment?.assignment?.check_out_notes && (
                         <div className="md:col-span-2">
                           <label className={`block text-xs font-medium ${textMuted} mb-1`}>Assignment Notes</label>
-                          <p className={`${textSecondary} text-sm`}>{asset.current_assignment.assignment.check_out_notes}</p>
+                          <p className={`${textSecondary} text-sm`}>
+                            {asset.current_assignment.assignment.check_out_notes}
+                          </p>
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Batch Information */}
+                {asset.batch && (
+                  <div className={`${bgAccent} rounded-lg p-6 border ${borderColor}`}>
+                    <h3 className={`${textPrimary} font-semibold mb-4 text-lg flex items-center`}>
+                      <FileText size={18} className="mr-2 text-almet-sapphire" />
+                      Batch Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-xs font-medium ${textMuted} mb-1`}>Batch Number</label>
+                        <p className={`${textPrimary} text-sm font-medium`}>{asset.batch.batch_number}</p>
+                      </div>
+                      <div>
+                        <label className={`block text-xs font-medium ${textMuted} mb-1`}>Supplier</label>
+                        <p className={`${textPrimary} text-sm font-medium`}>{asset.batch.supplier || 'N/A'}</p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -222,14 +262,15 @@ const btnWarning = "bg-amber-400 hover:bg-amber-500 text-white transition-all du
                     {asset.current_assignment && (
                       <div className="flex justify-between items-center">
                         <span className={`${textMuted} text-sm`}>Days Assigned</span>
-                        <span className={`${textPrimary} font-semibold`}>{asset.current_assignment.assignment.duration_days} days</span>
+                        <span className={`${textPrimary} font-semibold`}>
+                          {asset.current_assignment.assignment.duration_days} days
+                        </span>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

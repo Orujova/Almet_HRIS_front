@@ -1,4 +1,4 @@
-// src/components/assets/AssetManagementModals.jsx - All modal components for asset management
+// src/components/assets/AssetManagementModals.jsx - COMPLETE
 "use client";
 import { useState } from "react";
 import { 
@@ -10,8 +10,6 @@ import {
 import { assetService } from "@/services/assetService";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
 
-
-
 // Add Asset Modal Component
 export const AddAssetModal = ({ onClose, onSuccess, categories, darkMode }) => {
   const [formData, setFormData] = useState({
@@ -21,7 +19,6 @@ export const AddAssetModal = ({ onClose, onSuccess, categories, darkMode }) => {
     purchase_price: "",
     purchase_date: "",
     useful_life_years: 5,
-
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -32,8 +29,6 @@ export const AddAssetModal = ({ onClose, onSuccess, categories, darkMode }) => {
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200";
   const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-
- 
 
   const categoryOptions = categories.map(category => ({
     value: category.id,
@@ -174,8 +169,6 @@ export const AddAssetModal = ({ onClose, onSuccess, categories, darkMode }) => {
                 className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
               />
             </div>
-
-          
           </div>
 
           <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
@@ -219,7 +212,6 @@ export const EditAssetModal = ({ asset, onClose, onSuccess, categories, darkMode
     purchase_price: asset.purchase_price || "",
     purchase_date: asset.purchase_date || "",
     useful_life_years: asset.useful_life_years || 5,
-  
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -230,7 +222,6 @@ export const EditAssetModal = ({ asset, onClose, onSuccess, categories, darkMode
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
   const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200";
   const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-
 
   const categoryOptions = categories.map(category => ({
     value: category.id,
@@ -371,9 +362,6 @@ export const EditAssetModal = ({ asset, onClose, onSuccess, categories, darkMode
                 className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
               />
             </div>
-
-        
-          
           </div>
 
           <div className="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">

@@ -261,24 +261,29 @@ export const AssignAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
     setError('');
 
     try {
-      // Create proper assignment payload - FIXED
+      // 🎯 FIXED: Düzgün payload strukturu
       const assignmentData = {
-        employee: parseInt(formData.employee), // Ensure it's an integer
+        asset: asset.id, // asset ID-ni əlavə et
+        employee: parseInt(formData.employee), // integer olaraq göndər
         check_out_date: formData.check_out_date,
         check_out_notes: formData.check_out_notes,
-        condition_on_checkout: formData.condition_on_checkout,
-        asset: asset.id // Include asset ID in the payload
+        condition_on_checkout: formData.condition_on_checkout
       };
       
-      console.log('Assignment payload:', assignmentData); // Debug log
+      console.log('✅ Assignment payload:', assignmentData);
       
-      const result = await assetService.assignAsset(asset.id, assignmentData);
+      // assignToEmployee metodunu çağır
+      const result = await assetService.assignToEmployee(assignmentData);
+      
+      console.log('✅ Assignment successful:', result);
       onSuccess(result);
     } catch (err) {
-      console.error('Assignment error:', err);
-      const errorMessage = err.response?.data?.detail || 
-                          err.response?.data?.message || 
-                          err.response?.data?.error ||
+      console.error('❌ Assignment error:', err);
+      console.error('Error response:', err.response?.data);
+      
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.detail || 
+                          err.response?.data?.message ||
                           'Failed to assign asset';
       setError(errorMessage);
     } finally {

@@ -1,12 +1,13 @@
-
+// src/components/assets/ChangeStatusModal.jsx & CheckInAssetModal.jsx - COMPLETE
 "use client";
 import { useState } from "react";
 import { 
   XCircle, 
   Loader, 
-  RotateCcw
+  RotateCcw,
+  LogOut
 } from "lucide-react";
-import { assetService} from "@/services/assetService";
+import { assetService } from "@/services/assetService";
 import SearchableDropdown from "../common/SearchableDropdown";
 
 // Change Status Modal
@@ -59,7 +60,7 @@ const ChangeStatusModal = ({ asset, onClose, onSuccess, darkMode }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
       <div className={`${bgCard} rounded-xl w-full max-w-lg shadow-2xl border ${borderColor}`}>
         <form onSubmit={handleSubmit} className="p-6">
           <div className="flex justify-between items-center mb-6">

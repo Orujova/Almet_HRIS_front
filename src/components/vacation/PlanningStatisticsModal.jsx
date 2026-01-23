@@ -179,7 +179,7 @@ export default function PlanningStatisticsModal({
 
         {/* Summary Cards */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-b border-almet-mystic/30 dark:border-almet-comet/30">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-almet-mystic/30 dark:border-almet-comet/30">
               <div className="flex items-center gap-2 mb-1">
                 <Users className="w-4 h-4 text-almet-sapphire" />
@@ -252,7 +252,7 @@ export default function PlanningStatisticsModal({
             <table className="min-w-full divide-y divide-almet-mystic/30 dark:divide-almet-comet">
               <thead className="bg-almet-mystic/50 dark:bg-gray-700/50 sticky top-0">
                 <tr>
-                  {['Employee', 'Department', 'Used', 'Scheduled', 'Pending', 'Total Planned', 'Must Plan', 'Rate', 'Status'].map(h => (
+                  {['Employee', 'Department', 'Used', 'Scheduled', 'Pending', 'Total Planned', 'Must Plan',  'Status'].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
                       {h}
                     </th>
@@ -308,7 +308,7 @@ export default function PlanningStatisticsModal({
                           {stat.total_planned.toFixed(1)}
                         </span>
                         <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          / {parseFloat(stat.yearly_balance).toFixed(1)}
+                          / {parseFloat(stat.total_balance).toFixed(1)}
                         </span>
                       </div>
                     </td>
@@ -323,36 +323,9 @@ export default function PlanningStatisticsModal({
                       </span>
                     </td>
                     
-                    {/* ✅ Planning Rate */}
+               
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden min-w-[80px]">
-                          <div 
-                            className={`h-full transition-all ${
-                              stat.planning_rate >= 100 
-                                ? 'bg-green-500' 
-                                : stat.planning_rate >= 70 
-                                ? 'bg-blue-500' 
-                                : stat.planning_rate >= 50 
-                                ? 'bg-amber-500' 
-                                : 'bg-red-500'
-                            }`}
-                            style={{ width: `${Math.min(stat.planning_rate, 100)}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-medium text-almet-cloud-burst dark:text-white w-12 text-right">
-                          {stat.planning_rate}%
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                        stat.is_fully_planned
-                          ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                          : stat.should_plan > 5
-                          ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                          : 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                      }`}>
+                      <span >
                         {stat.is_fully_planned ? (
                           <span className="flex items-center gap-1">
                             <div>

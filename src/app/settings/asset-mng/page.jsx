@@ -1,9 +1,9 @@
-// src/app/asset-management/page.jsx - Complete Enhanced Asset Management Page with All APIs
+// src/app/asset-management/page.jsx - UPDATED Complete Asset Management
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-import { assetService, categoryService, employeeService, employeeAssetService } from "@/services/assetService";
+import { assetService, categoryService, employeeService, batchService } from "@/services/assetService";
 import {
   Plus,
   Search,
@@ -27,6 +27,10 @@ import {
   Target,
   ChevronLeft,
   ChevronRight,
+  Users,
+  UserMinus,
+  TrendingUp,
+  Activity
 } from "lucide-react";
 import {
   AddAssetModal,
@@ -36,8 +40,7 @@ import {
   AssetDetailsModal,
 } from "@/components/assets/AssetDetailsModal";
 import ChangeStatusModal from "@/components/assets/ChangeStatusModal";
-import 
-  CheckInAssetModal from "@/components/assets/CheckInAssetModal";
+import CheckInAssetModal from "@/components/assets/CheckInAssetModal";
 import {
   AssetStatsModal,
   AssignAssetModal,
@@ -48,7 +51,7 @@ import EmployeeAssetActionModal from "@/components/assets/EmployeeAssetActionMod
 import ActionDropdown from "@/components/assets/ActionDropdown";
 import CustomCheckbox from "@/components/common/CustomCheckbox";
 import SearchableDropdown from "@/components/common/SearchableDropdown";
-
+import Link from "next/link";
 
 const NotificationToast = ({ message, type = 'success', onClose }) => {
   const { darkMode } = useTheme();
@@ -139,6 +142,14 @@ const AssetManagementPage = () => {
     totalValue: 0
   });
 
+  // Quick stats for dashboard
+  const [quickStats, setQuickStats] = useState({
+    totalBatches: 0,
+    activeBatches: 0,
+    totalAssignments: 0,
+    activeOffboardings: 0
+  });
+
   // Theme classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const bgPage = darkMode ? "bg-gray-900" : "bg-gray-50";
@@ -224,6 +235,23 @@ const AssetManagementPage = () => {
     }
   };
 
+  const fetchQuickStats = async () => {
+    try {
+      const [batchStats] = await Promise.all([
+        batchService.getBatchStatistics()
+      ]);
+
+      setQuickStats({
+        totalBatches: batchStats.total_batches || 0,
+        activeBatches: batchStats.active_batches || 0,
+        totalAssignments: 0,
+        activeOffboardings: 0
+      });
+    } catch (err) {
+      console.error("Failed to fetch quick stats:", err);
+    }
+  };
+
   const calculateStats = (assetList) => {
     const stats = {
       total: assetList.length,
@@ -265,6 +293,7 @@ const AssetManagementPage = () => {
     }
     fetchCategories();
     fetchEmployees();
+    fetchQuickStats();
   }, [currentPage, searchTerm, sortBy, activeTab]);
 
   // Filter assets
@@ -378,7 +407,6 @@ const AssetManagementPage = () => {
     }
   };
 
-  // Employee asset actions
   const handleProvideClarification = async (assetId) => {
     try {
       const asset = await assetService.getAsset(assetId);
@@ -463,8 +491,8 @@ const AssetManagementPage = () => {
 
   return (
     <DashboardLayout>
-      <div className={`min-h-screen`}>
-        <div className=" mx-auto px-4 py-6">
+      <div className="min-h-screen">
+        <div className="mx-auto px-4 py-6">
           {/* Notification */}
           {notification && (
             <NotificationToast
@@ -480,7 +508,7 @@ const AssetManagementPage = () => {
               <div>
                 <h1 className={`text-xl font-bold ${textPrimary} mb-1`}>Asset Management</h1>
                 <p className={`${textMuted} text-xs`}>
-                  Manage and track your organization's assets with enhanced employee interaction features
+                  Manage and track your organization's assets with comprehensive tools
                 </p>
               </div>
               <div className="flex gap-2 mt-4 lg:mt-0">
@@ -508,6 +536,46 @@ const AssetManagementPage = () => {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Quick Access Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Link href="/asset-management/batches" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+              <div className="flex items-center justify-between mb-2">
+                <Package className="text-almet-sapphire group-hover:scale-110 transition-transform" size={20} />
+                <TrendingUp className="text-emerald-500" size={16} />
+              </div>
+              <p className={`${textMuted} text-xs mb-1`}>Asset Batches</p>
+              <p className={`${textPrimary} text-2xl font-bold`}>{quickStats.totalBatches}</p>
+              <p className={`${textMuted} text-xs mt-1`}>Active: {quickStats.activeBatches}</p>
+            </Link>
+
+            <Link href="/asset-management/my-assets" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+              <div className="flex items-center justify-between mb-2">
+                <Users className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
+              </div>
+              <p className={`${textMuted} text-xs mb-1`}>My Assets</p>
+              <p className={`${textPrimary} text-2xl font-bold`}>{assetStats.inUse + assetStats.assigned}</p>
+              <p className={`${textMuted} text-xs mt-1`}>Assigned to me</p>
+            </Link>
+
+            <Link href="/asset-management/assignments" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+              <div className="flex items-center justify-between mb-2">
+                <Activity className="text-purple-500 group-hover:scale-110 transition-transform" size={20} />
+              </div>
+              <p className={`${textMuted} text-xs mb-1`}>Assignments</p>
+              <p className={`${textPrimary} text-2xl font-bold`}>{quickStats.totalAssignments}</p>
+              <p className={`${textMuted} text-xs mt-1`}>Track history</p>
+            </Link>
+
+            <Link href="/asset-management/offboarding" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+              <div className="flex items-center justify-between mb-2">
+                <UserMinus className="text-amber-500 group-hover:scale-110 transition-transform" size={20} />
+              </div>
+              <p className={`${textMuted} text-xs mb-1`}>Offboarding</p>
+              <p className={`${textPrimary} text-2xl font-bold`}>{quickStats.activeOffboardings}</p>
+              <p className={`${textMuted} text-xs mt-1`}>Active processes</p>
+            </Link>
           </div>
 
           {/* Tab Navigation */}
@@ -687,24 +755,24 @@ const AssetManagementPage = () => {
                     )}
                   </div>
                 ) : viewMode === "table" ? (
-                  /* Improved Table View */
-                  <div className=" rounded-xl">
+                  /* Table View */
+                  <div className="rounded-xl">
                     <table className="w-full">
-                      <thead className={`${bgAccent}rounded-lg border-b ${borderColor} sticky top-0 z-10`}>
+                      <thead className={`${bgAccent} rounded-lg border-b ${borderColor} sticky top-0 z-10`}>
                         <tr className="rounded-lg">
                           <th className="px-6 py-3 text-left w-12">
-  <CustomCheckbox
-    checked={selectedAssets.length === filteredAssets.length && filteredAssets.length > 0}
-    indeterminate={selectedAssets.length > 0 && selectedAssets.length < filteredAssets.length}
-    onChange={() => {
-      if (selectedAssets.length === filteredAssets.length) {
-        setSelectedAssets([]);
-      } else {
-        setSelectedAssets(filteredAssets.map(asset => asset.id));
-      }
-    }}
-  />
-</th>
+                            <CustomCheckbox
+                              checked={selectedAssets.length === filteredAssets.length && filteredAssets.length > 0}
+                              indeterminate={selectedAssets.length > 0 && selectedAssets.length < filteredAssets.length}
+                              onChange={() => {
+                                if (selectedAssets.length === filteredAssets.length) {
+                                  setSelectedAssets([]);
+                                } else {
+                                  setSelectedAssets(filteredAssets.map(asset => asset.id));
+                                }
+                              }}
+                            />
+                          </th>
                           <th className={`px-6 py-4 text-left text-xs font-semibold ${textMuted} uppercase tracking-wider`}>
                             Asset
                           </th>
@@ -728,7 +796,7 @@ const AssetManagementPage = () => {
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y  divide-gray-100 dark:divide-gray-700">
+                      <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {filteredAssets.map((asset, index) => (
                           <tr 
                             key={asset.id} 
@@ -736,41 +804,41 @@ const AssetManagementPage = () => {
                               index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-800/50'
                             }`}
                           >
-                           <td className="px-6 py-4">
-  <CustomCheckbox
-    checked={selectedAssets.includes(asset.id)}
-    onChange={() => {
-      setSelectedAssets(prev => 
-        prev.includes(asset.id)
-          ? prev.filter(id => id !== asset.id)
-          : [...prev, asset.id]
-      );
-    }}
-  />
-</td>
+                            <td className="px-6 py-4">
+                              <CustomCheckbox
+                                checked={selectedAssets.includes(asset.id)}
+                                onChange={() => {
+                                  setSelectedAssets(prev => 
+                                    prev.includes(asset.id)
+                                      ? prev.filter(id => id !== asset.id)
+                                      : [...prev, asset.id]
+                                  );
+                                }}
+                              />
+                            </td>
                             
                             <td className="px-6 py-2">
                               <div className="space-y-1">
-                                <p className={`${textPrimary} font-medium  text-sm leading-tight`}>
+                                <p className={`${textPrimary} font-medium text-sm leading-tight`}>
                                   {asset.asset_name}
                                 </p>
-                                <p className={`${textMuted} text-[0.6rem] font-light `}>
-                                 {asset.serial_number}
+                                <p className={`${textMuted} text-[0.6rem] font-light`}>
+                                  {asset.serial_number}
                                 </p>
                               </div>
                             </td>
-                        <td className="px-6 py-4">
-  <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs 
-                   bg-gray-50 text-gray-600 border border-gray-200
-                   dark:bg-gray-800/40 dark:text-gray-300 dark:border-gray-700">
-    <Building size={12} className="mr-1 text-gray-500 dark:text-gray-400" />
-    {asset.category_name}
-  </span>
-</td>
-
                             
                             <td className="px-6 py-4">
-                              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs  border ${getStatusColor(asset.status)}`}>
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs 
+                                bg-gray-50 text-gray-600 border border-gray-200
+                                dark:bg-gray-800/40 dark:text-gray-300 dark:border-gray-700">
+                                <Building size={12} className="mr-1 text-gray-500 dark:text-gray-400" />
+                                {asset.category_name}
+                              </span>
+                            </td>
+                            
+                            <td className="px-6 py-4">
+                              <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${getStatusColor(asset.status)}`}>
                                 {getStatusIcon(asset.status)}
                                 <span className="ml-1.5">{asset.status_display}</span>
                               </span>
@@ -832,34 +900,29 @@ const AssetManagementPage = () => {
                               <h3 className={`${textPrimary} font-semibold text-sm mb-2 line-clamp-2`}>
                                 {asset.asset_name}
                               </h3>
-                             
-
-                                   <div className="mb-2 flex items-center justify-between">
-                                     <p className={`${textMuted} text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block`}>
-                                {asset.serial_number}
-                              </p>
-                            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs  border ${getStatusColor(asset.status)}`}>
-                                {getStatusIcon(asset.status)}
-                                <span className="ml-1.5">{asset.status_display}</span>
-                              </span>
-                          </div>
+                              
+                              <div className="mb-2 flex items-center justify-between">
+                                <p className={`${textMuted} text-xs font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block`}>
+                                  {asset.serial_number}
+                                </p>
+                                <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs border ${getStatusColor(asset.status)}`}>
+                                  {getStatusIcon(asset.status)}
+                                  <span className="ml-1.5">{asset.status_display}</span>
+                                </span>
+                              </div>
                             </div>
-                        
-
 
                             <CustomCheckbox
-  checked={selectedAssets.includes(asset.id)}
-  onChange={() => {
-    setSelectedAssets(prev => 
-      prev.includes(asset.id)
-        ? prev.filter(id => id !== asset.id)
-        : [...prev, asset.id]
-    );
-  }}
-/>
+                              checked={selectedAssets.includes(asset.id)}
+                              onChange={() => {
+                                setSelectedAssets(prev => 
+                                  prev.includes(asset.id)
+                                    ? prev.filter(id => id !== asset.id)
+                                    : [...prev, asset.id]
+                                );
+                              }}
+                            />
                           </div>
-
-                     
 
                           {/* Asset Details */}
                           <div className="space-y-3 mb-6">
@@ -875,15 +938,12 @@ const AssetManagementPage = () => {
                               <span className={`${textMuted}`}>Date:</span>
                               <span className={`${textSecondary}`}>{formatDate(asset.purchase_date)}</span>
                             </div>
-                      
-                              <div className="flex items-center justify-between text-xs">
-                                <span className={`${textMuted}`}>Assigned:</span>
-              <span className={`${textSecondary} font-medium truncate ml-2`}>
-  {asset.assigned_to_name ? asset.assigned_to_name : "Unassigned"}
-</span>
-
-                              </div>
-                      
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={`${textMuted}`}>Assigned:</span>
+                              <span className={`${textSecondary} font-medium truncate ml-2`}>
+                                {asset.assigned_to_name ? asset.assigned_to_name : "Unassigned"}
+                              </span>
+                            </div>
                           </div>
 
                           {/* Action Buttons */}

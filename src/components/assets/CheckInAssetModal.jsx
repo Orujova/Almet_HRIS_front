@@ -1,15 +1,16 @@
-
-"use client";
-import { useState } from "react";
+import React, { useState } from 'react';
 import { 
   XCircle, 
   Loader, 
-  LogOut,
-} from "lucide-react";
-import { assetService,  } from "@/services/assetService";
-import SearchableDropdown from "../common/SearchableDropdown";
+  LogIn
+} from 'lucide-react';
+import { assetService } from '@/services/assetService';
+import SearchableDropdown from '../common/SearchableDropdown';
 
 // Check In Asset Modal
+
+
+
 const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
   const [formData, setFormData] = useState({
     check_in_date: new Date().toISOString().split('T')[0],
@@ -31,7 +32,8 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
     { value: 'EXCELLENT', label: 'Excellent' },
     { value: 'GOOD', label: 'Good' },
     { value: 'FAIR', label: 'Fair' },
-    { value: 'POOR', label: 'Poor' }
+    { value: 'POOR', label: 'Poor' },
+    { value: 'DAMAGED', label: 'Damaged' }
   ];
 
   const handleSubmit = async (e) => {
@@ -58,7 +60,7 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
   };
 
   return (
-   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
       <div className={`${bgCard} rounded-xl w-full max-w-lg shadow-2xl border ${borderColor}`}>
         <form onSubmit={handleSubmit} className="p-6">
           <div className="flex justify-between items-center mb-6">
@@ -78,7 +80,7 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
             <p className={`${textPrimary} text-sm`}>{asset.asset_name}</p>
             <p className={`${textMuted} text-xs`}>Serial: {asset.serial_number}</p>
             {asset.assigned_to && (
-              <p className={`${textMuted} text-xs`}>Currently assigned to: {asset.assigned_to.full_name}</p>
+              <p className={`${textMuted} text-xs`}>Currently assigned to: {asset.assigned_to.full_name || asset.assigned_to_name}</p>
             )}
           </div>
 
@@ -99,7 +101,7 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
                 value={formData.check_in_date}
                 onChange={handleChange}
                 required
-                className={`w-full px-3 py-2.5 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent${bgCard} ${textPrimary} text-sm`}
+                className={`w-full px-3 py-2.5 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm`}
               />
             </div>
 
@@ -163,4 +165,5 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
     </div>
   );
 };
+
 export default CheckInAssetModal;

@@ -109,16 +109,16 @@ export default function RoleAccessManagementPage() {
       const token = localStorage.getItem("accessToken");
       // Fetch ALL employees
       let allEmployees = [];
-      let currentPage = 1;
+
       let hasMore = true;
       
       while (hasMore) {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/employees/?page=${currentPage}`, {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         allEmployees = [...allEmployees, ...(response.data.results || [])];
         hasMore = response.data.next !== null;
-        currentPage++;
+
       }
       
       setEmployees(allEmployees);
