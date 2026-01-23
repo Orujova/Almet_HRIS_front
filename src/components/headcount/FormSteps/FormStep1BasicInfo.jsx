@@ -235,7 +235,7 @@ const FormStep1BasicInfo = ({
             value={formData.phone || ""}
             onChange={handleInputChange}
             type="tel"
-            placeholder="+994 XX XXX XX XX"
+            placeholder="+XX XX XXX XX XX"
             icon={<Phone size={14} className={textMuted} />}
             validationError={validationErrors.phone}
             helpText="Contact number"
