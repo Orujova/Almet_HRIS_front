@@ -627,6 +627,9 @@ const CreateTransferModal = ({ asset, fromEmployee, employees, offboardingId, on
     label: `${emp.name || emp.full_name} (${emp.employee_id})`
   }));
 
+  console.log('Employee Options:', employeeOptions);
+  console.log(employees)
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
