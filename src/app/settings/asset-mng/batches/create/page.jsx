@@ -135,7 +135,7 @@ const CreateBatchPage = () => {
 
       // Redirect after 2 seconds
       setTimeout(() => {
-        router.push('/asset-management/batches');
+        router.push('/settings/asset-mng/batches');
       }, 2000);
 
     } catch (err) {

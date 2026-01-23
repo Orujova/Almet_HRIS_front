@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
-import { offboardingService, transferService } from "@/services/assetService";
+import { offboardingService, transferService ,employeeService} from "@/services/assetService";
 import {
   ArrowLeft,
   UserMinus,
