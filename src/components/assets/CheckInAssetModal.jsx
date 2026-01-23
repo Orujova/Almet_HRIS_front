@@ -1,15 +1,9 @@
-import React, { useState } from 'react';
-import { 
-  XCircle, 
-  Loader, 
-  LogIn
-} from 'lucide-react';
+// src/components/assets/CheckInAssetModal.jsx - CLEAN VERSION (Small Fonts)
+"use client";
+import { useState } from 'react';
+import { XCircle, Loader, LogOut } from 'lucide-react';
 import { assetService } from '@/services/assetService';
 import SearchableDropdown from '../common/SearchableDropdown';
-
-// Check In Asset Modal
-
-
 
 const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
   const [formData, setFormData] = useState({
@@ -20,13 +14,12 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Theme
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const bgAccent = darkMode ? "bg-gray-700/50" : "bg-almet-mystic/30";
-  const btnPrimary = "bg-emerald-500 hover:bg-emerald-600 text-white transition-all duration-200";
-  const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700";
+  const bgAccent = darkMode ? "bg-gray-700/30" : "bg-gray-50";
 
   const conditionOptions = [
     { value: 'EXCELLENT', label: 'Excellent' },
@@ -51,111 +44,107 @@ const CheckInAssetModal = ({ asset, onClose, onSuccess, darkMode }) => {
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-      <div className={`${bgCard} rounded-xl w-full max-w-lg shadow-2xl border ${borderColor}`}>
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className={`${textPrimary} text-xl font-bold`}>Check In Asset</h2>
+      <div className={`${bgCard} rounded-xl w-full max-w-md shadow-2xl border ${borderColor}`}>
+        <form onSubmit={handleSubmit} className="p-5">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={`${textPrimary} text-lg font-semibold`}>Check In Asset</h2>
             <button
               type="button"
               onClick={onClose}
-              className={`${textMuted} hover:${textPrimary} transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg`}
+              className={`${textMuted} hover:${textPrimary} p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg`}
             >
-              <XCircle size={20} />
+              <XCircle size={18} />
             </button>
           </div>
 
           {/* Asset Info */}
-          <div className={`${bgAccent} rounded-lg p-4 mb-6 border ${borderColor}`}>
-            <h3 className={`${textPrimary} font-semibold mb-2`}>Asset Details</h3>
-            <p className={`${textPrimary} text-sm`}>{asset.asset_name}</p>
+          <div className={`${bgAccent} rounded-lg p-3 mb-4 border ${borderColor}`}>
+            <p className={`${textPrimary} text-sm font-medium mb-0.5`}>{asset.asset_name}</p>
             <p className={`${textMuted} text-xs`}>Serial: {asset.serial_number}</p>
             {asset.assigned_to && (
-              <p className={`${textMuted} text-xs`}>Currently assigned to: {asset.assigned_to.full_name || asset.assigned_to_name}</p>
+              <p className={`${textMuted} text-xs`}>
+                Assigned to: {asset.assigned_to.full_name || asset.assigned_to_name}
+              </p>
             )}
           </div>
 
+          {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">
               {error}
             </div>
           )}
 
-          <div className="space-y-4">
+          {/* Form */}
+          <div className="space-y-3">
             <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+              <label className={`block text-xs font-medium ${textPrimary} mb-1.5`}>
                 Check In Date *
               </label>
               <input
                 type="date"
                 name="check_in_date"
                 value={formData.check_in_date}
-                onChange={handleChange}
+                onChange={(e) => setFormData(prev => ({ ...prev, check_in_date: e.target.value }))}
                 required
-                className={`w-full px-3 py-2.5 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm`}
+                className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire ${bgCard} ${textPrimary} text-xs`}
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Condition on Check In *
+              <label className={`block text-xs font-medium ${textPrimary} mb-1.5`}>
+                Condition *
               </label>
               <SearchableDropdown
                 options={conditionOptions}
                 value={formData.condition_on_checkin}
                 onChange={(value) => setFormData(prev => ({ ...prev, condition_on_checkin: value }))}
                 placeholder="Select condition"
-                searchPlaceholder="Search conditions..."
                 darkMode={darkMode}
               />
             </div>
 
             <div>
-              <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
-                Check In Notes
+              <label className={`block text-xs font-medium ${textPrimary} mb-1.5`}>
+                Notes (Optional)
               </label>
               <textarea
                 name="check_in_notes"
                 value={formData.check_in_notes}
-                onChange={handleChange}
-                className={`w-full px-3 py-2.5 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm`}
-                rows="3"
-                placeholder="Add any notes about the asset condition or check-in process..."
+                onChange={(e) => setFormData(prev => ({ ...prev, check_in_notes: e.target.value }))}
+                className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire ${bgCard} ${textPrimary} text-xs`}
+                rows="2"
+                placeholder="Add notes about condition..."
               />
             </div>
           </div>
 
-          <div className="flex justify-end space-x-3 mt-6">
+          {/* Actions */}
+          <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={onClose}
-              className={`${btnSecondary} px-6 py-2.5 rounded-lg text-sm hover:shadow-md transition-all duration-200`}
+              className="px-4 py-2 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className={`${btnPrimary} px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 flex items-center hover:shadow-md transition-all duration-200`}
+              className="px-4 py-2 rounded-lg text-xs bg-emerald-500 hover:bg-emerald-600 text-white disabled:opacity-50 flex items-center gap-1.5"
             >
               {loading ? (
                 <>
-                  <Loader size={16} className="mr-2 animate-spin" />
+                  <Loader size={12} className="animate-spin" />
                   Checking In...
                 </>
               ) : (
                 <>
-                  <LogOut size={16} className="mr-2" />
-                  Check In Asset
+                  <LogOut size={12} />
+                  Check In
                 </>
               )}
             </button>

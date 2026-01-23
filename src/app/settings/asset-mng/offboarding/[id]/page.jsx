@@ -179,7 +179,7 @@ const OffboardingDetailPage = () => {
         <div className="text-center py-12">
           <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
           <p className={`${textPrimary} text-lg font-medium mb-2`}>Offboarding not found</p>
-          <Link href="/asset-management/offboarding" className={`${btnPrimary} px-4 py-2 rounded-lg inline-block`}>
+          <Link href="/settings/asset-mng/offboarding" className={`${btnPrimary} px-4 py-2 rounded-lg inline-block`}>
             Back to Offboardings
           </Link>
         </div>
@@ -205,7 +205,7 @@ const OffboardingDetailPage = () => {
           {/* Header */}
           <div className="mb-6">
             <Link
-              href="/asset-management/offboarding"
+              href="/settings/asset-mng/offboarding"
               className={`${textMuted} hover:${textPrimary} flex items-center text-sm mb-4`}
             >
               <ArrowLeft size={16} className="mr-2" />

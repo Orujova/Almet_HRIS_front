@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeAssetManagement.jsx - Enhanced with Almet design system
+// src/components/headcount/EmployeeAssetManagement.jsx - FIXED with correct API endpoints
 "use client";
 import { useState, useEffect } from "react";
 import { 
@@ -14,11 +14,10 @@ import {
   CheckSquare,
   Ban,
   Info,
-  User,
   Hash,
   Tag
 } from "lucide-react";
-import { employeeAssetService } from "@/services/assetService";
+import { assetService, employeeService } from "@/services/assetService";
 
 const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
   const [assets, setAssets] = useState([]);
@@ -55,9 +54,11 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
   // Extract assets from employee data
   useEffect(() => {
     if (employeeData) {
-      setAssets(employeeData.assigned_assets || []);
+      setAssets(employeeData.assets || []);
     }
   }, [employeeData]);
+
+  console.log("Employee Assets:", employeeData);
 
   // Enhanced status colors with Almet palette
   const getStatusColor = (status) => {
@@ -88,11 +89,12 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
     }
   };
 
-  // Handle asset actions
+  // 🎯 FIXED: Accept asset using correct endpoint
   const handleAcceptAsset = async (asset) => {
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      await employeeAssetService.acceptAsset(employeeId, {
+      // ✅ Correct endpoint: /assets/assets/accept-assignment/
+      await assetService.acceptAsset({
         asset_id: asset.id,
         comments: actionData.comments || 'Asset accepted by employee'
       });
@@ -100,18 +102,29 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
       await refreshEmployeeData();
       setShowActionModal(false);
       resetActionData();
+      
+      // Show success message
+      alert('Asset accepted successfully!');
     } catch (error) {
       console.error('Failed to accept asset:', error);
-      alert('Failed to accept asset. Please try again.');
+      const errorMsg = error.response?.data?.error || 'Failed to accept asset. Please try again.';
+      alert(errorMsg);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
     }
   };
 
+  // 🎯 FIXED: Request clarification using correct endpoint
   const handleRequestClarification = async (asset) => {
+    if (!actionData.clarification_reason.trim()) {
+      alert('Please provide a clarification reason');
+      return;
+    }
+
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      await employeeAssetService.requestClarification(employeeId, {
+      // ✅ Correct endpoint: /assets/assets/request-clarification/
+      await assetService.requestClarification({
         asset_id: asset.id,
         clarification_reason: actionData.clarification_reason
       });
@@ -119,18 +132,62 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
       await refreshEmployeeData();
       setShowActionModal(false);
       resetActionData();
+      
+      alert('Clarification request sent successfully!');
     } catch (error) {
       console.error('Failed to request clarification:', error);
-      alert('Failed to request clarification. Please try again.');
+      const errorMsg = error.response?.data?.error || 'Failed to request clarification. Please try again.';
+      alert(errorMsg);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
     }
   };
 
-  const handleCancelAssignment = async (asset) => {
+  // 🎯 FIXED: Provide clarification (Admin/Manager action)
+  const handleProvideClarification = async (asset) => {
+    if (!actionData.clarification_response.trim()) {
+      alert('Please provide a clarification response');
+      return;
+    }
+
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      await employeeAssetService.cancelAssignment(employeeId, {
+      // ✅ Correct endpoint: /assets/assets/provide-clarification/
+      await assetService.provideClarification({
+        asset_id: asset.id,
+        clarification_response: actionData.clarification_response
+      });
+      
+      await refreshEmployeeData();
+      setShowActionModal(false);
+      resetActionData();
+      
+      alert('Clarification provided successfully!');
+    } catch (error) {
+      console.error('Failed to provide clarification:', error);
+      const errorMsg = error.response?.data?.error || 'Failed to provide clarification. Please try again.';
+      alert(errorMsg);
+    } finally {
+      setActionLoading(prev => ({ ...prev, [asset.id]: false }));
+    }
+  };
+
+  // 🎯 NOTE: Cancel assignment endpoint does NOT exist in backend
+  // This needs to be implemented in backend first
+  const handleCancelAssignment = async (asset) => {
+    alert('Cancel assignment functionality needs to be implemented in backend API');
+    return;
+    
+    // TODO: Implement in backend first, then uncomment:
+    /*
+    if (!actionData.cancellation_reason.trim()) {
+      alert('Please provide a cancellation reason');
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [asset.id]: true }));
+    try {
+      await assetService.cancelAssignment({
         asset_id: asset.id,
         cancellation_reason: actionData.cancellation_reason
       });
@@ -138,17 +195,22 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
       await refreshEmployeeData();
       setShowActionModal(false);
       resetActionData();
+      
+      alert('Assignment cancelled successfully!');
     } catch (error) {
       console.error('Failed to cancel assignment:', error);
-      alert('Failed to cancel assignment. Please try again.');
+      const errorMsg = error.response?.data?.error || 'Failed to cancel assignment. Please try again.';
+      alert(errorMsg);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
     }
+    */
   };
 
+  // Refresh employee data after actions
   const refreshEmployeeData = async () => {
     try {
-      const updatedEmployee = await employeeAssetService.getEmployee(employeeId);
+      const updatedEmployee = await employeeService.getEmployee(employeeId);
       setAssets(updatedEmployee.assigned_assets || []);
     } catch (error) {
       console.error('Failed to refresh employee data:', error);
@@ -315,7 +377,23 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   </button>
                 )}
 
-                {(asset.status === 'ASSIGNED' || asset.status === 'NEED_CLARIFICATION') && (
+                {asset.status === 'NEED_CLARIFICATION' && asset.can_provide_clarification && (
+                  <button
+                    onClick={() => openActionModal(asset, 'provide_clarification')}
+                    disabled={actionLoading[asset.id]}
+                    className={`${btnPrimary} px-3 py-1.5 rounded-md text-[10px] font-semibold flex items-center disabled:opacity-50 hover:shadow-sm`}
+                  >
+                    {actionLoading[asset.id] ? (
+                      <Loader size={10} className="mr-1 animate-spin" />
+                    ) : (
+                      <MessageSquare size={10} className="mr-1" />
+                    )}
+                    Provide Response
+                  </button>
+                )}
+
+                {/* Commented out until backend implements this endpoint */}
+                {/* {(asset.status === 'ASSIGNED' || asset.status === 'NEED_CLARIFICATION') && (
                   <button
                     onClick={() => openActionModal(asset, 'cancel')}
                     disabled={actionLoading[asset.id]}
@@ -328,7 +406,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                     )}
                     Cancel
                   </button>
-                )}
+                )} */}
               </div>
             </div>
           ))}
@@ -346,11 +424,13 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   <h3 className={`${textPrimary} text-sm font-bold mb-1`}>
                     {actionType === 'accept' && 'Accept Asset'}
                     {actionType === 'clarification' && 'Request Clarification'}
+                    {actionType === 'provide_clarification' && 'Provide Clarification'}
                     {actionType === 'cancel' && 'Cancel Assignment'}
                   </h3>
                   <p className={`${textMuted} text-[10px]`}>
                     {actionType === 'accept' && 'Confirm asset acceptance'}
                     {actionType === 'clarification' && 'Request additional information'}
+                    {actionType === 'provide_clarification' && 'Provide clarification response'}
                     {actionType === 'cancel' && 'Cancel this asset assignment'}
                   </p>
                 </div>
@@ -407,6 +487,22 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   </div>
                 )}
 
+                {actionType === 'provide_clarification' && (
+                  <div>
+                    <label className={`block text-[10px] font-semibold ${textPrimary} mb-1`}>
+                      Clarification Response <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={actionData.clarification_response}
+                      onChange={(e) => setActionData(prev => ({ ...prev, clarification_response: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-md focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-[10px] transition-all duration-200 resize-none`}
+                      rows="3"
+                      placeholder="Provide your clarification response..."
+                      required
+                    />
+                  </div>
+                )}
+
                 {actionType === 'cancel' && (
                   <div>
                     <label className={`block text-[10px] font-semibold ${textPrimary} mb-1`}>
@@ -436,28 +532,32 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   onClick={() => {
                     if (actionType === 'accept') handleAcceptAsset(selectedAsset);
                     else if (actionType === 'clarification') handleRequestClarification(selectedAsset);
+                    else if (actionType === 'provide_clarification') handleProvideClarification(selectedAsset);
                     else if (actionType === 'cancel') handleCancelAssignment(selectedAsset);
                   }}
                   disabled={
                     actionLoading[selectedAsset.id] ||
                     (actionType === 'clarification' && !actionData.clarification_reason.trim()) ||
+                    (actionType === 'provide_clarification' && !actionData.clarification_response.trim()) ||
                     (actionType === 'cancel' && !actionData.cancellation_reason.trim())
                   }
                   className={`${
                     actionType === 'accept' ? btnSuccess :
                     actionType === 'clarification' ? btnWarning :
+                    actionType === 'provide_clarification' ? btnPrimary :
                     btnDanger
                   } px-3 py-2 rounded-md text-[10px] font-semibold disabled:opacity-50 hover:shadow-sm transition-all duration-200`}
                 >
                   {actionLoading[selectedAsset.id] ? (
-                    <>
+                    <span className="flex items-center">
                       <Loader size={10} className="mr-1 animate-spin" />
                       Processing...
-                    </>
+                    </span>
                   ) : (
                     <>
                       {actionType === 'accept' && 'Accept Asset'}
                       {actionType === 'clarification' && 'Send Request'}
+                      {actionType === 'provide_clarification' && 'Send Response'}
                       {actionType === 'cancel' && 'Cancel Assignment'}
                     </>
                   )}

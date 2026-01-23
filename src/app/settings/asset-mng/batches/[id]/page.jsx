@@ -141,7 +141,7 @@ const BatchDetailPage = () => {
         <div className="text-center py-12">
           <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
           <p className={`${textPrimary} text-lg font-medium mb-2`}>Batch not found</p>
-          <Link href="/asset-management/batches" className={`${btnPrimary} px-4 py-2 rounded-lg inline-block`}>
+          <Link href="/settings/asset-mng/batches" className={`${btnPrimary} px-4 py-2 rounded-lg inline-block`}>
             Back to Batches
           </Link>
         </div>
@@ -167,7 +167,7 @@ const BatchDetailPage = () => {
           {/* Header */}
           <div className="mb-6">
             <Link
-              href="/asset-management/batches"
+              href="/settings/asset-mng/batches"
               className={`${textMuted} hover:${textPrimary} flex items-center text-sm mb-4`}
             >
               <ArrowLeft size={16} className="mr-2" />
@@ -470,7 +470,7 @@ const BatchDetailPage = () => {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <Link
-                            href={`/asset-management?asset=${asset.id}`}
+                            href={`/settings/asset-mng?asset=${asset.id}`}
                             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg inline-block"
                           >
                             <Eye size={14} className="text-almet-sapphire" />
@@ -505,7 +505,7 @@ const BatchDetailPage = () => {
                       </div>
                     </div>
                     <Link
-                      href={`/asset-management?asset=${asset.id}`}
+                      href={`/settings/asset-mng?asset=${asset.id}`}
                       className={`${btnSecondary} w-full px-3 py-2 rounded-lg text-xs flex items-center justify-center`}
                     >
                       <Eye size={12} className="mr-1" />

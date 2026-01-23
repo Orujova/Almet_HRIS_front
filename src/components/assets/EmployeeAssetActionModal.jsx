@@ -1,12 +1,8 @@
+// src/components/assets/EmployeeAssetActionModal.jsx - CLEAN VERSION (Small Fonts)
 "use client";
 import { useState } from "react";
-import {  employeeAssetService } from "@/services/assetService";
-import {
-  Loader,
-  XCircle,
-  Ban,
-  Reply, 
-} from "lucide-react";
+import { employeeAssetService } from "@/services/assetService";
+import { Loader, XCircle, Ban, Reply } from "lucide-react";
 
 const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkMode, actionType }) => {
   const [actionData, setActionData] = useState({
@@ -16,14 +12,12 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Theme
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const textPrimary = darkMode ? "text-white" : "text-gray-900";
   const textMuted = darkMode ? "text-gray-400" : "text-gray-500";
   const borderColor = darkMode ? "border-gray-700" : "border-gray-200";
-  const bgAccent = darkMode ? "bg-gray-700/50" : "bg-almet-mystic/30";
-  const btnPrimary = "bg-almet-sapphire hover:bg-almet-astral text-white transition-all duration-200";
-  const btnSecondary = darkMode ? "bg-gray-700 hover:bg-gray-600 text-gray-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700";
-  const btnDanger = "bg-red-500 hover:bg-red-600 text-white transition-all duration-200";
+  const bgAccent = darkMode ? "bg-gray-700/30" : "bg-gray-50";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,7 +36,6 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
           cancellation_reason: actionData.cancellation_reason
         });
       }
-      
       onSuccess();
     } catch (err) {
       setError(err.response?.data?.message || `Failed to ${actionType.replace('_', ' ')}`);
@@ -51,56 +44,52 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
     }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setActionData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`${bgCard} rounded-xl w-full max-w-lg shadow-2xl border ${borderColor}`}>
-        <form onSubmit={handleSubmit} className="p-6">
-          <div className="flex justify-between items-start mb-6">
-            <h3 className={`${textPrimary} text-xl font-semibold`}>
+      <div className={`${bgCard} rounded-xl w-full max-w-md shadow-2xl border ${borderColor}`}>
+        <form onSubmit={handleSubmit} className="p-5">
+          {/* Header */}
+          <div className="flex justify-between items-start mb-4">
+            <h3 className={`${textPrimary} text-lg font-semibold`}>
               {actionType === 'provide_clarification' ? 'Provide Clarification' : 'Cancel Assignment'}
             </h3>
             <button
               type="button"
               onClick={onClose}
-              className={`${textMuted} hover:${textPrimary} transition-colors p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded`}
+              className={`${textMuted} hover:${textPrimary} p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg`}
             >
-              <XCircle size={20} />
+              <XCircle size={18} />
             </button>
           </div>
 
-          <div className={`${bgAccent} rounded-lg p-4 mb-6 border ${borderColor}`}>
-            <p className={`${textPrimary} font-semibold text-lg`}>{asset.asset_name}</p>
-            <p className={`${textMuted} text-sm`}>Serial: {asset.serial_number}</p>
-            <p className={`${textMuted} text-sm`}>Category: {asset.category_name}</p>
+          {/* Asset Info */}
+          <div className={`${bgAccent} rounded-lg p-3 mb-4 border ${borderColor}`}>
+            <p className={`${textPrimary} font-medium text-sm mb-0.5`}>{asset.asset_name}</p>
+            <p className={`${textMuted} text-xs`}>Serial: {asset.serial_number}</p>
+            <p className={`${textMuted} text-xs`}>Category: {asset.category_name}</p>
           </div>
 
+          {/* Error */}
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            <div className="mb-3 p-2.5 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">
               {error}
             </div>
           )}
 
-          <div className="space-y-4">
+          {/* Form */}
+          <div className="space-y-3">
             {actionType === 'provide_clarification' && (
               <div>
-                <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+                <label className={`block text-xs font-medium ${textPrimary} mb-1.5`}>
                   Clarification Response *
                 </label>
                 <textarea
                   name="clarification_response"
                   value={actionData.clarification_response}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
-                  rows="4"
-                  placeholder="Please provide the requested clarification..."
+                  onChange={(e) => setActionData(prev => ({ ...prev, clarification_response: e.target.value }))}
+                  className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire ${bgCard} ${textPrimary} text-xs`}
+                  rows="3"
+                  placeholder="Provide clarification..."
                   required
                 />
               </div>
@@ -108,27 +97,28 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
 
             {actionType === 'cancel_assignment' && (
               <div>
-                <label className={`block text-sm font-medium ${textPrimary} mb-2`}>
+                <label className={`block text-xs font-medium ${textPrimary} mb-1.5`}>
                   Cancellation Reason *
                 </label>
                 <textarea
                   name="cancellation_reason"
                   value={actionData.cancellation_reason}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-3 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-sm transition-all duration-200`}
-                  rows="3"
-                  placeholder="Please explain why you want to cancel this assignment..."
+                  onChange={(e) => setActionData(prev => ({ ...prev, cancellation_reason: e.target.value }))}
+                  className={`w-full px-3 py-2 border ${borderColor} rounded-lg focus:ring-1 outline-0 focus:ring-almet-sapphire ${bgCard} ${textPrimary} text-xs`}
+                  rows="2"
+                  placeholder="Explain why..."
                   required
                 />
               </div>
             )}
           </div>
 
-          <div className="flex justify-end space-x-3 mt-8">
+          {/* Actions */}
+          <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
               onClick={onClose}
-              className={`${btnSecondary} px-6 py-2.5 rounded-lg text-sm hover:shadow-md transition-all duration-200`}
+              className="px-4 py-2 rounded-lg text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200"
             >
               Cancel
             </button>
@@ -139,31 +129,28 @@ const EmployeeAssetActionModal = ({ asset, employeeId, onClose, onSuccess, darkM
                 (actionType === 'provide_clarification' && !actionData.clarification_response.trim()) ||
                 (actionType === 'cancel_assignment' && !actionData.cancellation_reason.trim())
               }
-              className={`${
-                actionType === 'provide_clarification' ? btnPrimary : btnDanger
-              } px-6 py-2.5 rounded-lg text-sm disabled:opacity-50 hover:shadow-md flex justify-center items-center transition-all duration-200`}
+              className={`px-4 py-2 rounded-lg text-xs ${
+                actionType === 'provide_clarification' 
+                  ? 'bg-almet-sapphire hover:bg-almet-astral' 
+                  : 'bg-red-500 hover:bg-red-600'
+              } text-white disabled:opacity-50 flex items-center gap-1.5`}
             >
               {loading ? (
                 <>
-                  <Loader size={14} className="mr-2 animate-spin" />
-                  <span>Processing...</span>
+                  <Loader size={12} className="animate-spin" />
+                  Processing...
                 </>
               ) : (
                 <>
                   {actionType === 'provide_clarification' ? (
                     <>
-                    <span>
-
-                      <Reply size={14} className="mr-2" />
-                    </span>
-                    <span>Provide Clarification</span>
-                      
+                      <Reply size={12} />
+                      Submit
                     </>
                   ) : (
                     <>
-                    <span><Ban size={12} className="mr-2" /></span>
-                      
-                     <span>Cancel Assignment</span> 
+                      <Ban size={12} />
+                      Cancel
                     </>
                   )}
                 </>

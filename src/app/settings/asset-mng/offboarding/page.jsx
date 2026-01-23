@@ -400,7 +400,7 @@ const OffboardingPage = () => {
                           </td>
                           <td className="px-6 py-4 text-center">
                             <Link
-                              href={`/asset-management/offboarding/${offboarding.id}`}
+                              href={`/settings/asset-mng/offboarding/${offboarding.id}`}
                               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg inline-block"
                             >
                               <Eye size={14} className="text-almet-sapphire" />

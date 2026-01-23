@@ -181,7 +181,7 @@ const BatchManagementPage = () => {
                 </p>
               </div>
               <Link
-                href="/asset-management/batches/create"
+                href="/settings/asset-mng/batches/create"
                 className={`${btnPrimary} px-4 py-2.5 rounded-lg flex items-center text-sm hover:shadow-lg transition-all`}
               >
                 <Plus size={16} className="mr-2" />
@@ -387,7 +387,7 @@ const BatchManagementPage = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-center space-x-2">
                             <Link
-                              href={`/asset-management/batches/${batch.id}`}
+                              href={`/settings/asset-mng/batches/${batch.id}`}
                               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                             >
                               <Eye size={14} className="text-almet-sapphire" />
@@ -404,7 +404,7 @@ const BatchManagementPage = () => {
                 {filteredBatches.map((batch) => (
                   <Link
                     key={batch.id}
-                    href={`/asset-management/batches/${batch.id}`}
+                    href={`/settings/asset-mng/batches/${batch.id}`}
                     className={`${bgAccent} rounded-xl p-6 border ${borderColor} hover:shadow-lg transition-all`}
                   >
                     <div className="flex items-start justify-between mb-4">

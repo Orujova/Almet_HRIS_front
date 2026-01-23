@@ -149,7 +149,17 @@ const AssetManagementPage = () => {
     totalAssignments: 0,
     activeOffboardings: 0
   });
+   const [batches, setBatches] = useState([]);
 
+  // Fetch batches
+  const fetchBatches = async () => {
+    try {
+      const response = await batchService.getBatches({ page_size: 100 });
+      setBatches(response.results || []);
+    } catch (err) {
+      console.error("Failed to fetch batches:", err);
+    }
+  };
   // Theme classes
   const bgCard = darkMode ? "bg-gray-800" : "bg-white";
   const bgPage = darkMode ? "bg-gray-900" : "bg-gray-50";
@@ -293,8 +303,10 @@ const AssetManagementPage = () => {
     }
     fetchCategories();
     fetchEmployees();
+    fetchBatches(); // 🎯 Batches fetch et
     fetchQuickStats();
   }, [currentPage, searchTerm, sortBy, activeTab]);
+
 
   // Filter assets
   const filteredAssets = assets.filter(asset => {
@@ -540,7 +552,7 @@ const AssetManagementPage = () => {
 
           {/* Quick Access Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <Link href="/asset-management/batches" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+            <Link href="/settings/asset-mng/batches" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
               <div className="flex items-center justify-between mb-2">
                 <Package className="text-almet-sapphire group-hover:scale-110 transition-transform" size={20} />
                 <TrendingUp className="text-emerald-500" size={16} />
@@ -550,7 +562,7 @@ const AssetManagementPage = () => {
               <p className={`${textMuted} text-xs mt-1`}>Active: {quickStats.activeBatches}</p>
             </Link>
 
-            <Link href="/asset-management/my-assets" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+            <Link href="/settings/asset-mng/my-assets" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
               <div className="flex items-center justify-between mb-2">
                 <Users className="text-blue-500 group-hover:scale-110 transition-transform" size={20} />
               </div>
@@ -559,7 +571,7 @@ const AssetManagementPage = () => {
               <p className={`${textMuted} text-xs mt-1`}>Assigned to me</p>
             </Link>
 
-            <Link href="/asset-management/assignments" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+            <Link href="/settings/asset-mng/assignments" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
               <div className="flex items-center justify-between mb-2">
                 <Activity className="text-purple-500 group-hover:scale-110 transition-transform" size={20} />
               </div>
@@ -568,7 +580,7 @@ const AssetManagementPage = () => {
               <p className={`${textMuted} text-xs mt-1`}>Track history</p>
             </Link>
 
-            <Link href="/asset-management/offboarding" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
+            <Link href="/settings/asset-mng/offboarding" className={`${bgCard} rounded-xl p-4 border ${borderColor} hover:shadow-lg transition-all duration-200 group`}>
               <div className="flex items-center justify-between mb-2">
                 <UserMinus className="text-amber-500 group-hover:scale-110 transition-transform" size={20} />
               </div>
@@ -863,13 +875,13 @@ const AssetManagementPage = () => {
                             
                             <td className="px-6 py-4">
                               <p className={`${textPrimary} font-semibold text-xs`}>
-                                {formatCurrency(asset.purchase_price)}
+                                {formatCurrency(asset.batch.unit_price)}
                               </p>
                             </td>
                             
                             <td className="px-6 py-4">
                               <p className={`${textMuted} text-xs`}>
-                                {formatDate(asset.purchase_date)}
+                                {formatDate(asset.batch.purchase_date)}
                               </p>
                             </td>
                             
@@ -1061,18 +1073,19 @@ const AssetManagementPage = () => {
             />
           )}
 
-          {showAddModal && (
-            <AddAssetModal
-              onClose={() => setShowAddModal(false)}
-              onSuccess={() => {
-                setShowAddModal(false);
-                fetchAssets();
-                showNotification("Asset added successfully");
-              }}
-              categories={categories}
-              darkMode={darkMode}
-            />
-          )}
+           {showAddModal && (
+    <AddAssetModal
+      onClose={() => setShowAddModal(false)}
+      onSuccess={() => {
+        setShowAddModal(false);
+        fetchAssets();
+        showNotification("Asset added successfully");
+      }}
+      categories={categories}
+      batches={batches} // 🎯 Batches əlavə et
+      darkMode={darkMode}
+    />
+  )}
 
           {showEditModal && selectedAsset && (
             <EditAssetModal

@@ -121,39 +121,59 @@ export const batchService = {
 };
 
 // ==================== ASSET SERVICE ====================
+// ==================== ASSET SERVICE ====================
 export const assetService = {
   getAssets: async (params = {}) => {
     const response = await api.get('/assets/assets/', { params });
     return response.data;
   },
+  
   getAsset: async (id) => {
     const response = await api.get(`/assets/assets/${id}/`);
     return response.data;
   },
+  
+  // 🎯 FIXED: Asset yaratma - batch_id tələb olunur
   createAsset: async (assetData) => {
-    const response = await api.post('/assets/assets/', assetData);
+    // Backend tələb edir: batch_id və serial_number
+    const payload = {
+      batch_id: assetData.batch_id || assetData.batch, // batch_id əlavə et
+      serial_number: assetData.serial_number
+    };
+    
+    console.log('🎯 Creating asset with payload:', payload);
+    const response = await api.post('/assets/assets/', payload);
     return response.data;
   },
+  
   updateAsset: async (id, assetData) => {
     const response = await api.put(`/assets/assets/${id}/`, assetData);
     return response.data;
   },
+  
   deleteAsset: async (id) => {
     const response = await api.delete(`/assets/assets/${id}/`);
     return response.data;
   },
   
-  // 🎯 FIXED: assignToEmployee metodu
+  // 🎯 FIXED: Assign asset - backend endpoint-inə uyğun
   assignToEmployee: async (assignmentData) => {
-    // Backend assign-to-employee endpoint-ini istifadə edir
-    const response = await api.post('/assets/assets/assign-to-employee/', {
-      asset_ids: [assignmentData.asset], // array kimi göndər
-      employee_id: assignmentData.employee, // employee_id açarı
+    const payload = {
+      asset_ids: [assignmentData.asset], // Array formatında
+      employee_id: assignmentData.employee, // employee_id açarı istifadə et
       check_out_date: assignmentData.check_out_date,
       check_out_notes: assignmentData.check_out_notes || '',
       condition_on_checkout: assignmentData.condition_on_checkout
-    });
+    };
+    
+    console.log('🎯 Assignment payload:', payload);
+    const response = await api.post('/assets/assets/assign-to-employee/', payload);
     return response.data;
+  },
+  
+  // Alias method - köhnə kodla uyğunluq üçün
+  assignAsset: async (assetId, assignmentData) => {
+    return await assetService.assignToEmployee(assignmentData);
   },
   
   // 🎯 Employee actions
@@ -161,43 +181,49 @@ export const assetService = {
     const response = await api.post('/assets/assets/accept-assignment/', data);
     return response.data;
   },
+  
   requestClarification: async (data) => {
     const response = await api.post('/assets/assets/request-clarification/', data);
     return response.data;
   },
+  
   provideClarification: async (data) => {
     const response = await api.post('/assets/assets/provide-clarification/', data);
     return response.data;
   },
   
-  // 🎯 Assignment history - FIXED
+  // 🎯 Assignment history - GET endpoint
   getAssignments: async (params = {}) => {
     const response = await api.get('/assets/assets/assignments/', { params });
     return response.data;
   },
+  
   getAssignmentHistory: async (id) => {
     const response = await api.get(`/assets/assets/${id}/assignment_history/`);
     return response.data;
   },
   
-  // 🎯 Activities - FIXED
+  // 🎯 Activities
   getAssetActivities: async (id) => {
     const response = await api.get(`/assets/assets/${id}/activities/`);
     return response.data;
   },
   
   getMyAssets: async () => {
-    const response = await api.get('/assets/assets/my-assets/');
+    const response = await api.get('/assets/assets/my_assets/');
     return response.data;
   },
+  
   getStatistics: async () => {
     const response = await api.get('/assets/assets/statistics/');
     return response.data;
   },
+  
   getAccessInfo: async () => {
-    const response = await api.get('/assets/assets/access-info/');
+    const response = await api.get('/assets/assets/access_info/');
     return response.data;
   },
+  
   bulkUpload: async (file) => {
     const formData = new FormData();
     formData.append('file', file);
@@ -209,6 +235,7 @@ export const assetService = {
     });
     return response.data;
   },
+  
   exportAssets: async (exportData) => {
     const response = await api.post('/assets/assets/export/', exportData, {
       responseType: 'blob'
@@ -216,7 +243,7 @@ export const assetService = {
     return response.data;
   },
   
-  // 🎯 Export assignments - ADDED
+  // 🎯 FIXED: Export assignments
   exportAssignments: async (params = {}) => {
     const response = await api.post('/assets/assets/assignments/export/', params, {
       responseType: 'blob'
