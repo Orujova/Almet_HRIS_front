@@ -8,7 +8,7 @@ import ConfirmationModal from "@/components/common/ConfirmationModal";
 import { useToast } from "@/components/common/Toast";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import roleAccessService from "@/services/roleAccessService";
-import axios from "axios";
+import { employeeService } from "@/services/newsService";
 import { 
   Shield, 
   Users, 
@@ -104,27 +104,13 @@ export default function RoleAccessManagementPage() {
     fetchAllPermissions();
   }, []);
 
+
   const fetchEmployees = async () => {
     try {
-      const token = localStorage.getItem("accessToken");
-      // Fetch ALL employees
-      let allEmployees = [];
-
-      let hasMore = true;
-      
-      while (hasMore) {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/employees`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        allEmployees = [...allEmployees, ...(response.data.results || [])];
-        hasMore = response.data.next !== null;
-
-      }
-      
-      setEmployees(allEmployees);
-    } catch (error) {
-      console.error("Error fetching employees:", error);
-      toast.showError("Failed to fetch employees");
+      const response = await employeeService.getEmployees();
+      setEmployees(response.results || []);
+    } catch (err) {
+      console.error("Failed to fetch employees:", err);
     }
   };
 
@@ -614,6 +600,9 @@ export default function RoleAccessManagementPage() {
     name: `${emp.name} (${emp.employee_id})`,
     id: emp.id
   }));
+
+  console.log('Employee Options:', employeeOptions);
+  console.log(employees)
 
   const roleOptions = roles.map(role => ({
     value: role.id,
