@@ -210,22 +210,8 @@ export default function PlanningStatisticsModal({
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-almet-mystic/30 dark:border-almet-comet/30">
-              <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="w-4 h-4 text-almet-sapphire" />
-                <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Avg Planning Rate</span>
-              </div>
-              <p className="text-xl font-bold text-almet-sapphire">{averagePlanningRate}%</p>
-            </div>
+       
 
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-almet-mystic/30 dark:border-almet-comet/30">
-              <div className="flex items-center gap-2 mb-1">
-                <Calendar className="w-4 h-4 text-red-600" />
-                <span className="text-xs text-almet-waterloo dark:text-almet-bali-hai">Total Must Plan</span>
-              </div>
-              <p className="text-xl font-bold text-red-600">{totalShouldPlan.toFixed(1)}</p>
-              <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">days</p>
-            </div>
           </div>
         </div>
 
@@ -369,17 +355,26 @@ export default function PlanningStatisticsModal({
                       }`}>
                         {stat.is_fully_planned ? (
                           <span className="flex items-center gap-1">
+                            <div>
+
                             <CheckCircle className="w-3 h-3" />
+                            </div>
                             Complete
                           </span>
                         ) : stat.should_plan > 5 ? (
                           <span className="flex items-center gap-1">
+                            <div>
+
                             <AlertCircle className="w-3 h-3" />
+                            </div>
                             Urgent
                           </span>
                         ) : (
                           <span className="flex items-center gap-1">
+                            <div>
+
                             <TrendingDown className="w-3 h-3" />
+                            </div>
                             Needs Planning
                           </span>
                         )}

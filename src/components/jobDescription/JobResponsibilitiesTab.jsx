@@ -5,15 +5,11 @@ import HierarchicalMultiSelect from '../common/HierarchicalMultiSelect';
 
 const JobResponsibilitiesTab = ({
   formData,
-  selectedSkillGroup,
-  selectedBehavioralGroup,
-  availableSkills,
-  availableCompetencies,
+
   dropdownData,
   validationErrors,
   onFormDataChange,
-  onSkillGroupChange,
-  onBehavioralGroupChange,
+
   darkMode
 }) => {
   const bgCard = darkMode ? "bg-almet-cloud-burst" : "bg-white";
@@ -465,6 +461,7 @@ const JobResponsibilitiesTab = ({
             searchPlaceholder="Search skills and groups..."
             emptyMessage="No skill groups available"
             darkMode={darkMode}
+            idPrefix="skill"
           />
         )}
         
@@ -489,16 +486,17 @@ const JobResponsibilitiesTab = ({
             </div>
           ) : (
             <HierarchicalMultiSelect
-              key={`leadership-${leadershipComponentKey}`}
-              title="Leadership Competencies"
-              icon={() => <Award className="w-4 h-4" />}
-              data={leadershipGroupsHierarchical}
-              selectedIds={formData.leadership_competencies_data || []}
-              onChange={handleCompetenciesChange}
-              searchPlaceholder="Search leadership competencies..."
-              emptyMessage="No leadership competencies available"
-              darkMode={darkMode}
-            />
+  key={`leadership-${leadershipComponentKey}`}
+  title="Leadership Competencies"
+  icon={() => <Award className="w-4 h-4" />}
+  data={leadershipGroupsHierarchical}
+  selectedIds={formData.leadership_competencies_data || []}
+  onChange={handleCompetenciesChange}
+  searchPlaceholder="Search leadership competencies..."
+  emptyMessage="No leadership competencies available"
+  darkMode={darkMode}
+  idPrefix="item"  // 🔥 ƏLAVƏ EDİN
+/>
           )
         ) : (
           // BEHAVIORAL COMPETENCIES (2-LEVEL)
@@ -508,27 +506,29 @@ const JobResponsibilitiesTab = ({
               <span className={`text-sm ${textSecondary}`}>Loading behavioral competencies...</span>
             </div>
           ) : (
-            <HierarchicalMultiSelect
-              key={`behavioral-${behavioralComponentKey}`}
-              title="Competencies"
-              icon={() => (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                </svg>
-              )}
-              data={behavioralGroupsHierarchical}
-              selectedIds={formData.behavioral_competencies_data || []}
-              onChange={(selectedIds) => {
-                console.log('🔄 Behavioral onChange called:', {
-                  newSelectedIds: selectedIds,
-                  previousIds: formData.behavioral_competencies_data
-                });
-                handleCompetenciesChange(selectedIds);
-              }}
-              searchPlaceholder="Search competencies and groups..."
-              emptyMessage="No competency groups available"
-              darkMode={darkMode}
-            />
+            
+<HierarchicalMultiSelect
+  key={`behavioral-${behavioralComponentKey}`}
+  title="Competencies"
+  icon={() => (
+    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+    </svg>
+  )}
+  data={behavioralGroupsHierarchical}
+  selectedIds={formData.behavioral_competencies_data || []}
+  onChange={(selectedIds) => {
+    console.log('🔄 Behavioral onChange called:', {
+      newSelectedIds: selectedIds,
+      previousIds: formData.behavioral_competencies_data
+    });
+    handleCompetenciesChange(selectedIds);
+  }}
+  searchPlaceholder="Search competencies and groups..."
+  emptyMessage="No competency groups available"
+  darkMode={darkMode}
+  idPrefix="item"  // 🔥 ƏLAVƏ EDİN (behavioral üçün də item prefix istifadə edirsiz)
+/>
           )
         )}
         
