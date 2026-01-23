@@ -18,7 +18,7 @@ import SearchableDropdown from "@/components/common/SearchableDropdown";
 import PlanningStatisticsModal from './PlanningStatisticsModal';
 
 const BalancesTabContent = ({ 
-  userPermissions = {}, 
+  userAccess,
   darkMode, 
   showSuccess, 
   showError,
@@ -140,9 +140,6 @@ const BalancesTabContent = ({
   const canExport =
     userPermissions.is_admin 
 
-
-
-    console.log(userPermissions)
   return (
     <div className="space-y-5">
       {/* ✅ TOP SECTION: Search + Company Filter + Year + Actions */}

@@ -982,13 +982,6 @@ useEffect(() => {
       balances={balances} 
       allowNegativeBalance={vacationSettings.allow_negative_balance}
     />
-    
-    {/* ❌ Bu section-u sil - artıq yoxdur
-    <div className="flex gap-3">
-      <button onClick={() => setActiveSection('immediate')}>...</button>
-      <button onClick={() => setActiveSection('scheduling')}>...</button>
-    </div>
-    */}
 
 
 

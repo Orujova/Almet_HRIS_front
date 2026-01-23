@@ -5,9 +5,7 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight, 
-  Users, 
-  CheckCircle,
-  X,
+
   Trash2,
   Save,
   AlertCircle,

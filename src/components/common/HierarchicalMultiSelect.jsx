@@ -1,5 +1,5 @@
-// HierarchicalMultiSelect.jsx - FIXED: Unique path-based IDs
-import React, { useState } from 'react';
+// HierarchicalMultiSelect.jsx - FIXED with selectedIds sync
+import React, { useState, useEffect } from 'react'; // 🔥 useEffect əlavə edin
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -28,6 +28,52 @@ const HierarchicalMultiSelect = ({
   const [expandedChildren, setExpandedChildren] = useState(new Set());
   const dropdownRef = React.useRef(null);
 
+  // 🔥 NEW: Internal selected IDs state
+  const [internalSelectedIds, setInternalSelectedIds] = useState([]);
+
+  // 🔥 CRITICAL FIX: Sync internal state with prop
+  useEffect(() => {
+    console.log('🔄 [HierarchicalMultiSelect] selectedIds prop changed:', {
+      newIds: selectedIds,
+      previousInternal: internalSelectedIds,
+      idPrefix
+    });
+    setInternalSelectedIds(selectedIds);
+  }, [selectedIds, idPrefix]);
+
+  // 🔥 Auto-expand parents with selected items in edit mode
+  useEffect(() => {
+    if (selectedIds.length > 0 && data.length > 0) {
+      const newExpandedParents = new Set();
+      const newExpandedChildren = new Set();
+      
+      selectedIds.forEach(selectedId => {
+        const idStr = String(selectedId);
+        const parts = idStr.split('_');
+        
+        if (parts.length >= 2) {
+          // Extract parent ID (after prefix)
+          const parentId = parts[1];
+          newExpandedParents.add(parentId);
+          
+          // If 3-level structure, also expand child
+          if (parts.length >= 3) {
+            const childId = parts[2];
+            newExpandedChildren.add(`${parentId}-${childId}`);
+          }
+        }
+      });
+      
+      console.log('🔓 [HierarchicalMultiSelect] Auto-expanding:', {
+        parents: Array.from(newExpandedParents),
+        children: Array.from(newExpandedChildren)
+      });
+      
+      setExpandedParents(newExpandedParents);
+      setExpandedChildren(newExpandedChildren);
+    }
+  }, [selectedIds, data]);
+
   // Theme classes
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-gray-400" : "text-almet-waterloo";
@@ -38,7 +84,7 @@ const HierarchicalMultiSelect = ({
   const bgHover = darkMode ? "bg-gray-600" : "bg-almet-mystic";
 
   // Close dropdown when clicking outside
-  React.useEffect(() => {
+  useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -78,9 +124,9 @@ const HierarchicalMultiSelect = ({
     return parts[parts.length - 1]; // Last part is the actual ID
   };
 
-  // 🔥 Check if unique ID is selected
+  // 🔥 Check if unique ID is selected - USE INTERNAL STATE
   const isUniqueIdSelected = (uniqueId) => {
-    return selectedIds.some(id => String(id) === String(uniqueId));
+    return internalSelectedIds.some(id => String(id) === String(uniqueId));
   };
 
   // Filter data based on search
@@ -120,11 +166,11 @@ const HierarchicalMultiSelect = ({
   }, [searchTerm, data, hasThreeLevels]);
 
   // Auto-expand parents with matching items
-  React.useEffect(() => {
+  useEffect(() => {
     if (!searchTerm.trim()) return;
     const term = searchTerm.toLowerCase();
-    const newExpandedParents = new Set();
-    const newExpandedChildren = new Set();
+    const newExpandedParents = new Set(expandedParents);
+    const newExpandedChildren = new Set(expandedChildren);
     
     if (hasThreeLevels) {
       filteredData.forEach(mainGroup => {
@@ -189,12 +235,10 @@ const HierarchicalMultiSelect = ({
       filteredData.forEach(mainGroup => {
         (mainGroup.items || []).forEach(childGroup => {
           if (childGroup.items && childGroup.items.length > 0) {
-            // Has grandchildren - add them
             childGroup.items.forEach(item => {
               ids.push(makeUniqueId(mainGroup.id, childGroup.id, item.id));
             });
           } else {
-            // No grandchildren - childGroup itself is selectable
             ids.push(makeUniqueId(mainGroup.id, childGroup.id));
           }
         });
@@ -202,12 +246,10 @@ const HierarchicalMultiSelect = ({
     } else {
       filteredData.forEach(parent => {
         if (parent.items && parent.items.length > 0) {
-          // Has children - add them
           parent.items.forEach(child => {
             ids.push(makeUniqueId(parent.id, child.id));
           });
         } else {
-          // No children - parent itself is selectable
           ids.push(makeUniqueId(parent.id));
         }
       });
@@ -296,9 +338,9 @@ const HierarchicalMultiSelect = ({
     const allSelected = itemIds.every(id => isUniqueIdSelected(id));
 
     if (allSelected) {
-      onChange(selectedIds.filter(id => !itemIds.includes(String(id))));
+      onChange(internalSelectedIds.filter(id => !itemIds.includes(String(id))));
     } else {
-      const newSelection = [...selectedIds];
+      const newSelection = [...internalSelectedIds];
       itemIds.forEach(itemId => {
         if (!isUniqueIdSelected(itemId)) {
           newSelection.push(itemId);
@@ -316,9 +358,9 @@ const HierarchicalMultiSelect = ({
     const allSelected = itemIds.every(id => isUniqueIdSelected(id));
 
     if (allSelected) {
-      onChange(selectedIds.filter(id => !itemIds.includes(String(id))));
+      onChange(internalSelectedIds.filter(id => !itemIds.includes(String(id))));
     } else {
-      const newSelection = [...selectedIds];
+      const newSelection = [...internalSelectedIds];
       itemIds.forEach(itemId => {
         if (!isUniqueIdSelected(itemId)) {
           newSelection.push(itemId);
@@ -333,9 +375,9 @@ const HierarchicalMultiSelect = ({
     const isSelected = isUniqueIdSelected(uniqueId);
 
     if (isSelected) {
-      onChange(selectedIds.filter(id => String(id) !== String(uniqueId)));
+      onChange(internalSelectedIds.filter(id => String(id) !== String(uniqueId)));
     } else {
-      onChange([...selectedIds, uniqueId]);
+      onChange([...internalSelectedIds, uniqueId]);
     }
   };
 
@@ -344,9 +386,9 @@ const HierarchicalMultiSelect = ({
     const allIds = getAllSelectableIds();
     
     if (areAllItemsSelected()) {
-      onChange(selectedIds.filter(id => !allIds.includes(String(id))));
+      onChange(internalSelectedIds.filter(id => !allIds.includes(String(id))));
     } else {
-      const newSelection = [...selectedIds];
+      const newSelection = [...internalSelectedIds];
       allIds.forEach(itemId => {
         if (!isUniqueIdSelected(itemId)) {
           newSelection.push(itemId);
@@ -358,10 +400,10 @@ const HierarchicalMultiSelect = ({
 
   const handleClearAll = () => {
     const allIds = getAllSelectableIds();
-    onChange(selectedIds.filter(id => !allIds.includes(String(id))));
+    onChange(internalSelectedIds.filter(id => !allIds.includes(String(id))));
   };
 
-  const selectedCount = selectedIds.filter(id => getAllSelectableIds().includes(String(id))).length;
+  const selectedCount = internalSelectedIds.filter(id => getAllSelectableIds().includes(String(id))).length;
   const allItemsSelected = areAllItemsSelected();
 
   const getButtonText = () => {

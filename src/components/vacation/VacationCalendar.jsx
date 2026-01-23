@@ -6,7 +6,7 @@ import { VacationService } from '@/services/vacationService';
 import SearchableDropdown from '@/components/common/SearchableDropdown';
 import { DayDetailModal } from './DayDetailModal';
 
-const VacationCalendar = ({ darkMode, showSuccess, showError, userAccess }) => {
+const VacationCalendar = ({ darkMode, showError, userAccess }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [holidays, setHolidays] = useState([]);
   const [vacations, setVacations] = useState([]);
