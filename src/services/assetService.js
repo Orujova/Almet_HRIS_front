@@ -326,7 +326,6 @@ export const transferService = {
     return response.data;
   },
   
-  // 🆕 NEW: Employee approve transfer
   employeeApproveTransfer: async (transferId, data) => {
     const payload = {
       approved: data.approved,

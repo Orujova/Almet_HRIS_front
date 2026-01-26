@@ -67,12 +67,12 @@ export default function PlanningStatisticsModal({
           const totalPlanned = parseFloat(balance.used_days) + 
                               parseFloat(balance.scheduled_days) + 
                               pendingDays;
+
+          // ✅ Should plan = total_balance - total planned
+          const shouldPlan = Math.max(0, parseFloat(balance.total_balance) - totalPlanned);
           
-          // ✅ Should plan = yearly - total planned
-          const shouldPlan = Math.max(0, parseFloat(balance.yearly_balance) - totalPlanned);
-          
-          const planningRate = balance.yearly_balance > 0 
-            ? ((totalPlanned / balance.yearly_balance) * 100).toFixed(1)
+          const planningRate = balance.total_balance > 0 
+            ? ((totalPlanned / balance.total_balance) * 100).toFixed(1)
             : 0;
           
           return {
@@ -142,10 +142,7 @@ export default function PlanningStatisticsModal({
   const totalEmployees = statistics.length;
   const fullyPlanned = statistics.filter(s => s.is_fully_planned).length;
   const underPlanned = statistics.filter(s => s.is_under_planned).length;
-  const averagePlanningRate = statistics.length > 0
-    ? (statistics.reduce((sum, s) => sum + s.planning_rate, 0) / statistics.length).toFixed(1)
-    : 0;
-  const totalShouldPlan = statistics.reduce((sum, s) => sum + s.should_plan, 0);
+
 
   if (!show) return null;
 

@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeAssetManagement.jsx - UPDATED with new endpoints
+// src/components/headcount/EmployeeAssetManagement.jsx - COMPLETE REWRITE
 "use client";
 import { useState, useEffect } from "react";
 import { 
@@ -16,24 +16,25 @@ import {
   Info,
   Hash,
   Tag,
-  User
+  ArrowRightLeft,
+  User,
+  FileText
 } from "lucide-react";
-import { employeeService, employeeAssetService } from "@/services/assetService";
+import { assetService, transferService } from "@/services/assetService";
 
-const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManageAssets = false }) => {
+const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
   const [assets, setAssets] = useState([]);
-  const [assetsSummary, setAssetsSummary] = useState(null);
-  const [pendingActions, setPendingActions] = useState([]);
+  const [pendingTransfers, setPendingTransfers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
   const [showActionModal, setShowActionModal] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(null);
+  const [selectedTransfer, setSelectedTransfer] = useState(null);
   const [actionType, setActionType] = useState('');
   const [actionData, setActionData] = useState({
     comments: '',
     clarification_reason: '',
-    clarification_response: '',
-    cancellation_reason: ''
+    transfer_approval_comments: ''
   });
 
   // Enhanced Almet theme classes
@@ -54,30 +55,19 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
   const shadowClass = darkMode ? "shadow-md shadow-black/10" : "shadow-sm shadow-gray-200/50";
   const bgAccent = darkMode ? "bg-almet-comet/30" : "bg-almet-mystic/50";
 
-  // 🆕 Load employee assets on mount
+  // ✅ Load data from employeeData prop
   useEffect(() => {
-    if (employeeId) {
-      loadEmployeeAssets();
-    }
-  }, [employeeId]);
-
-  // 🆕 Load assets from API
-  const loadEmployeeAssets = async () => {
-    setLoading(true);
-    try {
-      const response = await employeeService.getEmployeeAssets(employeeId);
+    if (employeeData) {
+      // Assets assigned to employee
+      setAssets(employeeData.assigned_assets || []);
       
-      console.log('📦 Employee assets loaded:', response);
+      // Pending transfer approvals from employee API
+      setPendingTransfers(employeeData.pending_transfer_approvals || []);
       
-      setAssets(response.assets || []);
-      setAssetsSummary(response.summary || null);
-      setPendingActions(response.pending_actions || []);
-    } catch (error) {
-      console.error('Failed to load employee assets:', error);
-    } finally {
-      setLoading(false);
+      console.log('📦 Assets loaded:', employeeData.assigned_assets?.length || 0);
+      console.log('🔄 Pending transfers loaded:', employeeData.pending_transfer_approvals?.length || 0);
     }
-  };
+  }, [employeeData]);
 
   // Enhanced status colors with Almet palette
   const getStatusColor = (status) => {
@@ -108,21 +98,18 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
     }
   };
 
-  // 🎯 UPDATED: Accept asset using employee endpoint
+  // ✅ Accept asset
   const handleAcceptAsset = async (asset) => {
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      // ✅ Updated endpoint: /employees/{id}/accept-asset/
-      await employeeService.acceptAsset(employeeId, {
+      await assetService.acceptAsset({
         asset_id: asset.id,
         comments: actionData.comments || 'Asset accepted by employee'
       });
       
-      await loadEmployeeAssets();
-      setShowActionModal(false);
-      resetActionData();
+      // Refresh page to reload employee data
+      window.location.reload();
       
-      alert('✅ Asset accepted successfully!');
     } catch (error) {
       console.error('Failed to accept asset:', error);
       const errorMsg = error.response?.data?.error || 'Failed to accept asset. Please try again.';
@@ -132,7 +119,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
     }
   };
 
-  // 🎯 UPDATED: Request clarification using employee endpoint
+  // ✅ Request clarification
   const handleRequestClarification = async (asset) => {
     if (!actionData.clarification_reason.trim()) {
       alert('⚠️ Please provide a clarification reason');
@@ -141,17 +128,14 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
 
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      // ✅ Updated endpoint: /employees/{id}/request-asset-clarification/
-      await employeeService.requestAssetClarification(employeeId, {
+      await assetService.requestClarification({
         asset_id: asset.id,
         clarification_reason: actionData.clarification_reason
       });
       
-      await loadEmployeeAssets();
-      setShowActionModal(false);
-      resetActionData();
+      // Refresh page
+      window.location.reload();
       
-      alert('✅ Clarification request sent successfully!');
     } catch (error) {
       console.error('Failed to request clarification:', error);
       const errorMsg = error.response?.data?.error || 'Failed to request clarification. Please try again.';
@@ -161,75 +145,38 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
     }
   };
 
-  // 🎯 UPDATED: Provide clarification (Admin/Manager action)
-  const handleProvideClarification = async (asset) => {
-    if (!actionData.clarification_response.trim()) {
-      alert('⚠️ Please provide a clarification response');
-      return;
-    }
-
-    setActionLoading(prev => ({ ...prev, [asset.id]: true }));
-    try {
-      // ✅ Updated endpoint: /employees/{id}/provide-clarification/
-      await employeeAssetService.provideClarification(employeeId, {
-        asset_id: asset.id,
-        clarification_response: actionData.clarification_response
-      });
-      
-      await loadEmployeeAssets();
-      setShowActionModal(false);
-      resetActionData();
-      
-      alert('✅ Clarification provided successfully!');
-    } catch (error) {
-      console.error('Failed to provide clarification:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to provide clarification. Please try again.';
-      alert(`❌ ${errorMsg}`);
-    } finally {
-      setActionLoading(prev => ({ ...prev, [asset.id]: false }));
-    }
-  };
-
-  // 🎯 UPDATED: Cancel assignment (Admin/Manager action)
-  const handleCancelAssignment = async (asset) => {
-    if (!actionData.cancellation_reason.trim()) {
-      alert('⚠️ Please provide a cancellation reason');
-      return;
-    }
-
-    setActionLoading(prev => ({ ...prev, [asset.id]: true }));
-    try {
-      // ✅ Updated endpoint: /employees/{id}/cancel-assignment/
-      await employeeAssetService.cancelAssignment(employeeId, {
-        asset_id: asset.id,
-        cancellation_reason: actionData.cancellation_reason
-      });
-      
-      await loadEmployeeAssets();
-      setShowActionModal(false);
-      resetActionData();
-      
-      alert('✅ Assignment cancelled successfully!');
-    } catch (error) {
-      console.error('Failed to cancel assignment:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to cancel assignment. Please try again.';
-      alert(`❌ ${errorMsg}`);
-    } finally {
-      setActionLoading(prev => ({ ...prev, [asset.id]: false }));
-    }
-  };
-
+  // ✅ Approve/Reject transfer
+  const handleTransferAction = async (transfer, approved) => {
+  setActionLoading(prev => ({ ...prev, [transfer.id]: true }));
+  try {
+    // ✅ transferService istifadə et, assetService yox
+    await transferService.employeeApproveTransfer(transfer.id, {
+      approved: approved,
+      comments: actionData.transfer_approval_comments || (approved ? 'Transfer approved' : 'Transfer rejected')
+    });
+    
+    // Refresh page
+    window.location.reload();
+    
+  } catch (error) {
+    console.error('Failed to process transfer:', error);
+    const errorMsg = error.response?.data?.error || 'Failed to process transfer. Please try again.';
+    alert(`❌ ${errorMsg}`);
+  } finally {
+    setActionLoading(prev => ({ ...prev, [transfer.id]: false }));
+  }
+};
   const resetActionData = () => {
     setActionData({
       comments: '',
       clarification_reason: '',
-      clarification_response: '',
-      cancellation_reason: ''
+      transfer_approval_comments: ''
     });
   };
 
-  const openActionModal = (asset, type) => {
+  const openActionModal = (asset, type, transfer = null) => {
     setSelectedAsset(asset);
+    setSelectedTransfer(transfer);
     setActionType(type);
     setShowActionModal(true);
     resetActionData();
@@ -244,46 +191,127 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
     });
   };
 
-  if (loading) {
-    return (
-      <div className={`${bgAccent} rounded-lg p-8 text-center border ${borderColor}`}>
-        <Loader className="w-8 h-8 mx-auto mb-3 text-almet-sapphire animate-spin" />
-        <p className={`${textMuted} text-xs`}>Loading assets...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      {/* 🆕 Assets Summary */}
-      {assetsSummary && assetsSummary.total_assigned > 0 && (
-        <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="text-center">
-              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>Total</p>
-              <p className={`${textPrimary} text-lg font-bold`}>{assetsSummary.total_assigned}</p>
-            </div>
-            <div className="text-center">
-              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>In Use</p>
-              <p className="text-emerald-500 text-lg font-bold">{assetsSummary.in_use}</p>
-            </div>
-            <div className="text-center">
-              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>Pending</p>
-              <p className="text-orange-500 text-lg font-bold">{assetsSummary.pending_approval}</p>
-            </div>
-            <div className="text-center">
-              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>Clarification</p>
-              <p className="text-violet-500 text-lg font-bold">{assetsSummary.need_clarification}</p>
-            </div>
-            <div className="text-center">
-              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>In Repair</p>
-              <p className="text-rose-500 text-lg font-bold">{assetsSummary.in_repair || 0}</p>
-            </div>
+      
+      {/* ✅ Pending Transfer Approvals */}
+      {pendingTransfers.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ArrowRightLeft size={16} className="text-almet-sapphire" />
+            <h3 className={`${textPrimary} font-bold text-sm`}>
+              Pending Transfer Approvals ({pendingTransfers.length})
+            </h3>
           </div>
+          
+          {pendingTransfers.map((transfer) => (
+            <div key={transfer.id} className={`${bgCard} rounded-lg border-2 border-amber-500/50 p-4 ${shadowClass} hover:shadow-md transition-all duration-200`}>
+              
+              {/* Transfer Header */}
+              <div className="flex items-start gap-3 mb-3">
+                <div className="p-2 bg-amber-500/10 rounded-lg">
+                  <ArrowRightLeft size={16} className="text-amber-500" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h4 className={`${textPrimary} font-semibold text-sm mb-1`}>
+                        {transfer.asset.asset_name}
+                      </h4>
+                      <p className={`${textMuted} text-xs flex items-center gap-1`}>
+                        <Hash size={10} />
+                        {transfer.asset.serial_number}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium border bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/30">
+                      <Clock size={10} className="mr-1" />
+                      Pending Approval
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Transfer Info */}
+              <div className={`${bgAccent} rounded-md p-3 mb-3 border ${borderColor}`}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>From</p>
+                    <div className="flex items-center gap-2">
+                      <User size={12} className={`${textMuted}`} />
+                      <span className={`${textSecondary} text-xs font-medium`}>
+                        {transfer.from_employee.name}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Requested By</p>
+                    <div className="flex items-center gap-2">
+                      <User size={12} className={`${textMuted}`} />
+                      <span className={`${textSecondary} text-xs font-medium`}>
+                        {transfer.requested_by.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                {transfer.transfer_notes && (
+                  <div className="mt-2 pt-2 border-t border-current/10">
+                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Notes</p>
+                    <p className={`${textSecondary} text-xs`}>{transfer.transfer_notes}</p>
+                  </div>
+                )}
+                
+                <div className="mt-2 pt-2 border-t border-current/10">
+                  <p className={`${textMuted} text-[9px]`}>
+                    Requested: {formatDate(transfer.requested_at)} • {transfer.days_pending} days ago
+                  </p>
+                </div>
+              </div>
+
+              {/* Transfer Actions */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => openActionModal(transfer.asset, 'approve_transfer', transfer)}
+                  disabled={actionLoading[transfer.id]}
+                  className={`${btnSuccess} flex-1 px-3 py-2 rounded-md text-xs font-semibold flex items-center justify-center disabled:opacity-50 hover:shadow-sm`}
+                >
+                  {actionLoading[transfer.id] ? (
+                    <Loader size={12} className="animate-spin" />
+                  ) : (
+                    <>
+                      <CheckCircle size={12} className="mr-1" />
+                      Accept Transfer
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => openActionModal(transfer.asset, 'reject_transfer', transfer)}
+                  disabled={actionLoading[transfer.id]}
+                  className={`${btnDanger} flex-1 px-3 py-2 rounded-md text-xs font-semibold flex items-center justify-center disabled:opacity-50 hover:shadow-sm`}
+                >
+                  {actionLoading[transfer.id] ? (
+                    <Loader size={12} className="animate-spin" />
+                  ) : (
+                    <>
+                      <XCircle size={12} className="mr-1" />
+                      Reject Transfer
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Assets List */}
+      {/* ✅ Assigned Assets */}
+      <div className="flex items-center gap-2">
+        <Package size={16} className="text-almet-sapphire" />
+        <h3 className={`${textPrimary} font-bold text-sm`}>
+          Assigned Assets ({assets.length})
+        </h3>
+      </div>
+
       {assets.length === 0 ? (
         <div className={`${bgAccent} rounded-lg p-6 text-center border ${borderColor}`}>
           <div className="w-16 h-16 mx-auto mb-3 bg-almet-sapphire/10 rounded-xl flex items-center justify-center">
@@ -307,21 +335,15 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
                     <h4 className={`${textPrimary} font-semibold text-sm mb-1 line-clamp-1`}>
                       {asset.asset_name}
                     </h4>
-                    <div className="flex items-center gap-3 text-xs flex-wrap">
+                    <div className="flex items-center gap-3 text-xs">
                       <span className={`${textMuted} flex items-center gap-1`}>
                         <Hash size={10} />
-                        {asset.asset_number}
+                        {asset.serial_number}
                       </span>
                       <span className={`${textMuted} flex items-center gap-1`}>
                         <Tag size={10} />
-                        {asset.serial_number}
+                        {asset.category}
                       </span>
-                      {asset.category && (
-                        <span className={`${textMuted} flex items-center gap-1`}>
-                          <Building size={10} />
-                          {asset.category}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -333,88 +355,60 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
               </div>
 
               {/* Asset Details Grid */}
-              {asset.assignment && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                  <div className={`${bgAccent} rounded-md p-2`}>
-                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Assigned Date</p>
-                    <div className="flex items-center">
-                      <Calendar size={10} className={`${textMuted} mr-1`} />
-                      <span className={`${textSecondary} text-[10px] font-medium`}>
-                        {formatDate(asset.assignment.check_out_date)}
-                      </span>
-                    </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                <div className={`${bgAccent} rounded-md p-2`}>
+                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Purchase Date</p>
+                  <div className="flex items-center">
+                    <Calendar size={10} className={`${textMuted} mr-1`} />
+                    <span className={`${textSecondary} text-[10px] font-medium`}>{formatDate(asset.purchase_date)}</span>
                   </div>
-                  
-                  <div className={`${bgAccent} rounded-md p-2`}>
-                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Days Assigned</p>
-                    <div className="flex items-center">
-                      <Clock size={10} className={`${textMuted} mr-1`} />
-                      <span className={`${textSecondary} text-[10px] font-medium`}>
-                        {asset.assignment.days_assigned} days
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className={`${bgAccent} rounded-md p-2`}>
-                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Condition</p>
-                    <span className={`${textSecondary} text-[10px] font-medium`}>
-                      {asset.assignment.condition || 'N/A'}
-                    </span>
-                  </div>
-                  
-                  {asset.assignment.assigned_by && (
-                    <div className={`${bgAccent} rounded-md p-2`}>
-                      <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Assigned By</p>
-                      <div className="flex items-center">
-                        <User size={10} className={`${textMuted} mr-1`} />
-                        <span className={`${textSecondary} text-[10px] font-medium truncate`}>
-                          {asset.assignment.assigned_by}
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
-              )}
+                
+                <div className={`${bgAccent} rounded-md p-2`}>
+                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Assignment Date</p>
+                  <div className="flex items-center">
+                    <Calendar size={10} className={`${textMuted} mr-1`} />
+                    <span className={`${textSecondary} text-[10px] font-medium`}>{formatDate(asset.assignment_date)}</span>
+                  </div>
+                </div>
+                
+                <div className={`${bgAccent} rounded-md p-2`}>
+                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Days Assigned</p>
+                  <div className="flex items-center">
+                    <Clock size={10} className={`${textMuted} mr-1`} />
+                    <span className={`${textSecondary} text-[10px] font-medium`}>{asset.days_assigned} days</span>
+                  </div>
+                </div>
+                
+                <div className={`${bgAccent} rounded-md p-2`}>
+                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Category</p>
+                  <div className="flex items-center">
+                    <Building size={10} className={`${textMuted} mr-1`} />
+                    <span className={`${textSecondary} text-[10px] font-medium truncate`}>{asset.category}</span>
+                  </div>
+                </div>
+              </div>
 
-              {/* 🆕 Enhanced Clarification Info */}
-              {asset.clarification && (
+              {/* Clarification Info */}
+              {asset.clarification_info && asset.clarification_info.has_clarification && (
                 <div className={`${bgAccent} rounded-md p-3 mb-3 border ${borderColor}`}>
                   <div className="flex items-start gap-2">
                     <Info size={12} className="text-violet-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className={`${textPrimary} font-semibold text-xs mb-2`}>
-                        {asset.clarification.status === 'pending' ? '⏳ Clarification Pending' : '✅ Clarification Resolved'}
+                      <p className={`${textPrimary} font-semibold text-xs mb-1`}>
+                        {asset.clarification_info.status === 'pending' ? 'Clarification Pending' : 'Clarification Resolved'}
                       </p>
-                      
-                      {/* Request */}
-                      {asset.clarification.requested && (
-                        <div className="mb-2">
-                          <p className={`${textSecondary} text-[10px] mb-1`}>
-                            <span className="font-medium">Reason:</span> {asset.clarification.requested.reason}
-                          </p>
-                          <p className={`${textMuted} text-[9px]`}>
-                            Requested: {formatDate(asset.clarification.requested.requested_at)}
-                            {asset.clarification.requested.requested_by && (
-                              <> by {asset.clarification.requested.requested_by}</>
-                            )}
-                          </p>
-                        </div>
+                      <p className={`${textSecondary} text-[10px] mb-1`}>
+                        <span className="font-medium">Reason:</span> {asset.clarification_info.requested_reason}
+                      </p>
+                      {asset.clarification_info.has_response && asset.clarification_info.response && (
+                        <p className={`${textSecondary} text-[10px] mb-1`}>
+                          <span className="font-medium">Response:</span> {asset.clarification_info.response}
+                        </p>
                       )}
-                      
-                      {/* Response */}
-                      {asset.clarification.response && (
-                        <div className="pt-2 border-t border-violet-200/20">
-                          <p className={`${textSecondary} text-[10px] mb-1`}>
-                            <span className="font-medium">Response:</span> {asset.clarification.response.text}
-                          </p>
-                          <p className={`${textMuted} text-[9px]`}>
-                            Provided: {formatDate(asset.clarification.response.provided_at)}
-                            {asset.clarification.response.provided_by && (
-                              <> by {asset.clarification.response.provided_by}</>
-                            )}
-                          </p>
-                        </div>
-                      )}
+                      <p className={`${textMuted} text-[9px]`}>
+                        Requested: {formatDate(asset.clarification_info.requested_at)}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -422,7 +416,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
-                {asset.can_accept && (
+                {asset.status === 'ASSIGNED' && asset.can_accept && (
                   <button
                     onClick={() => openActionModal(asset, 'accept')}
                     disabled={actionLoading[asset.id]}
@@ -451,44 +445,14 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
                     Clarification
                   </button>
                 )}
-
-                {canManageAssets && asset.clarification && asset.clarification.is_pending && (
-                  <button
-                    onClick={() => openActionModal(asset, 'provide_clarification')}
-                    disabled={actionLoading[asset.id]}
-                    className={`${btnPrimary} px-3 py-1.5 rounded-md text-[10px] font-semibold flex items-center disabled:opacity-50 hover:shadow-sm`}
-                  >
-                    {actionLoading[asset.id] ? (
-                      <Loader size={10} className="mr-1 animate-spin" />
-                    ) : (
-                      <MessageSquare size={10} className="mr-1" />
-                    )}
-                    Provide Response
-                  </button>
-                )}
-
-                {canManageAssets && asset.can_cancel && (
-                  <button
-                    onClick={() => openActionModal(asset, 'cancel')}
-                    disabled={actionLoading[asset.id]}
-                    className={`${btnDanger} px-3 py-1.5 rounded-md text-[10px] font-semibold flex items-center disabled:opacity-50 hover:shadow-sm`}
-                  >
-                    {actionLoading[asset.id] ? (
-                      <Loader size={10} className="mr-1 animate-spin" />
-                    ) : (
-                      <Ban size={10} className="mr-1" />
-                    )}
-                    Cancel
-                  </button>
-                )}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Enhanced Action Modal */}
-      {showActionModal && selectedAsset && (
+      {/* ✅ Action Modal */}
+      {showActionModal && (selectedAsset || selectedTransfer) && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3">
           <div className={`${bgCard} rounded-lg w-full max-w-md shadow-2xl border ${borderColor}`}>
             <div className="p-4">
@@ -496,16 +460,16 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className={`${textPrimary} text-sm font-bold mb-1`}>
-                    {actionType === 'accept' && '✅ Accept Asset'}
-                    {actionType === 'clarification' && '❓ Request Clarification'}
-                    {actionType === 'provide_clarification' && '💬 Provide Clarification'}
-                    {actionType === 'cancel' && '🚫 Cancel Assignment'}
+                    {actionType === 'accept' && 'Accept Asset'}
+                    {actionType === 'clarification' && 'Request Clarification'}
+                    {actionType === 'approve_transfer' && 'Approve Transfer'}
+                    {actionType === 'reject_transfer' && 'Reject Transfer'}
                   </h3>
                   <p className={`${textMuted} text-[10px]`}>
                     {actionType === 'accept' && 'Confirm asset acceptance'}
                     {actionType === 'clarification' && 'Request additional information'}
-                    {actionType === 'provide_clarification' && 'Provide clarification response'}
-                    {actionType === 'cancel' && 'Cancel this asset assignment'}
+                    {actionType === 'approve_transfer' && 'Accept this asset transfer'}
+                    {actionType === 'reject_transfer' && 'Reject this asset transfer'}
                   </p>
                 </div>
                 <button
@@ -520,11 +484,17 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
               <div className={`${bgAccent} rounded-md p-3 mb-4 border ${borderColor}`}>
                 <div className="flex items-center gap-2 mb-2">
                   <Package size={14} className="text-almet-sapphire" />
-                  <p className={`${textPrimary} font-semibold text-xs`}>{selectedAsset.asset_name}</p>
+                  <p className={`${textPrimary} font-semibold text-xs`}>
+                    {selectedAsset?.asset_name || selectedTransfer?.asset?.asset_name}
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[10px]">
-                  <span className={`${textMuted}`}>Asset #: {selectedAsset.asset_number}</span>
-                  <span className={`${textMuted}`}>Serial: {selectedAsset.serial_number}</span>
+                  <span className={`${textMuted}`}>
+                    Serial: {selectedAsset?.serial_number || selectedTransfer?.asset?.serial_number}
+                  </span>
+                  <span className={`${textMuted}`}>
+                    Category: {selectedAsset?.category || selectedTransfer?.asset?.category || 'N/A'}
+                  </span>
                 </div>
               </div>
 
@@ -545,6 +515,21 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
                   </div>
                 )}
 
+                {(actionType === 'approve_transfer' || actionType === 'reject_transfer') && (
+                  <div>
+                    <label className={`block text-[10px] font-semibold ${textPrimary} mb-1`}>
+                      Comments (Optional)
+                    </label>
+                    <textarea
+                      value={actionData.transfer_approval_comments}
+                      onChange={(e) => setActionData(prev => ({ ...prev, transfer_approval_comments: e.target.value }))}
+                      className={`w-full px-3 py-2 border ${borderColor} rounded-md focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-[10px] transition-all duration-200 resize-none`}
+                      rows="3"
+                      placeholder={actionType === 'approve_transfer' ? 'Add any comments about accepting this transfer...' : 'Please provide a reason for rejection...'}
+                    />
+                  </div>
+                )}
+
                 {actionType === 'clarification' && (
                   <div>
                     <label className={`block text-[10px] font-semibold ${textPrimary} mb-1`}>
@@ -556,38 +541,6 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
                       className={`w-full px-3 py-2 border ${borderColor} rounded-md focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-[10px] transition-all duration-200 resize-none`}
                       rows="3"
                       placeholder="Please explain what needs clarification..."
-                      required
-                    />
-                  </div>
-                )}
-
-                {actionType === 'provide_clarification' && (
-                  <div>
-                    <label className={`block text-[10px] font-semibold ${textPrimary} mb-1`}>
-                      Clarification Response <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={actionData.clarification_response}
-                      onChange={(e) => setActionData(prev => ({ ...prev, clarification_response: e.target.value }))}
-                      className={`w-full px-3 py-2 border ${borderColor} rounded-md focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-[10px] transition-all duration-200 resize-none`}
-                      rows="3"
-                      placeholder="Provide your clarification response..."
-                      required
-                    />
-                  </div>
-                )}
-
-                {actionType === 'cancel' && (
-                  <div>
-                    <label className={`block text-[10px] font-semibold ${textPrimary} mb-1`}>
-                      Cancellation Reason <span className="text-red-500">*</span>
-                    </label>
-                    <textarea
-                      value={actionData.cancellation_reason}
-                      onChange={(e) => setActionData(prev => ({ ...prev, cancellation_reason: e.target.value }))}
-                      className={`w-full px-3 py-2 border ${borderColor} rounded-md focus:ring-1 outline-0 focus:ring-almet-sapphire focus:border-transparent ${bgCard} ${textPrimary} text-[10px] transition-all duration-200 resize-none`}
-                      rows="3"
-                      placeholder="Please explain why you want to cancel..."
                       required
                     />
                   </div>
@@ -606,23 +559,21 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
                   onClick={() => {
                     if (actionType === 'accept') handleAcceptAsset(selectedAsset);
                     else if (actionType === 'clarification') handleRequestClarification(selectedAsset);
-                    else if (actionType === 'provide_clarification') handleProvideClarification(selectedAsset);
-                    else if (actionType === 'cancel') handleCancelAssignment(selectedAsset);
+                    else if (actionType === 'approve_transfer') handleTransferAction(selectedTransfer, true);
+                    else if (actionType === 'reject_transfer') handleTransferAction(selectedTransfer, false);
                   }}
                   disabled={
-                    actionLoading[selectedAsset.id] ||
-                    (actionType === 'clarification' && !actionData.clarification_reason.trim()) ||
-                    (actionType === 'provide_clarification' && !actionData.clarification_response.trim()) ||
-                    (actionType === 'cancel' && !actionData.cancellation_reason.trim())
+                    (selectedAsset && actionLoading[selectedAsset.id]) ||
+                    (selectedTransfer && actionLoading[selectedTransfer.id]) ||
+                    (actionType === 'clarification' && !actionData.clarification_reason.trim())
                   }
                   className={`${
-                    actionType === 'accept' ? btnSuccess :
+                    actionType === 'accept' || actionType === 'approve_transfer' ? btnSuccess :
                     actionType === 'clarification' ? btnWarning :
-                    actionType === 'provide_clarification' ? btnPrimary :
                     btnDanger
                   } px-3 py-2 rounded-md text-[10px] font-semibold disabled:opacity-50 hover:shadow-sm transition-all duration-200`}
                 >
-                  {actionLoading[selectedAsset.id] ? (
+                  {((selectedAsset && actionLoading[selectedAsset.id]) || (selectedTransfer && actionLoading[selectedTransfer.id])) ? (
                     <span className="flex items-center">
                       <Loader size={10} className="mr-1 animate-spin" />
                       Processing...
@@ -631,18 +582,17 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManage
                     <>
                       {actionType === 'accept' && 'Accept Asset'}
                       {actionType === 'clarification' && 'Send Request'}
-                      {actionType === 'provide_clarification' && 'Send Response'}
-                      {actionType === 'cancel' && 'Cancel Assignment'}
+                      {actionType === 'approve_transfer' && 'Approve Transfer'}
+                      {actionType === 'reject_transfer' && 'Reject Transfer'}
                     </>
                   )}
                 </button>
               </div>
             </div>
           </div>
-        </div>
+          </div>
       )}
     </div>
   );
 };
-
 export default EmployeeAssetManagement;
