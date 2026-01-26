@@ -1,4 +1,4 @@
-// src/services/assetService.js - UPDATED with proper endpoints
+// src/services/assetService.js - COMPLETE WITH ALL ENDPOINTS
 import axios from 'axios';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
@@ -121,7 +121,6 @@ export const batchService = {
 };
 
 // ==================== ASSET SERVICE ====================
-// ==================== ASSET SERVICE ====================
 export const assetService = {
   getAssets: async (params = {}) => {
     const response = await api.get('/assets/assets/', { params });
@@ -133,11 +132,10 @@ export const assetService = {
     return response.data;
   },
   
-  // 🎯 FIXED: Asset yaratma - batch_id tələb olunur
+  // 🎯 Asset yaratma - batch_id tələb olunur
   createAsset: async (assetData) => {
-    // Backend tələb edir: batch_id və serial_number
     const payload = {
-      batch_id: assetData.batch_id || assetData.batch, // batch_id əlavə et
+      batch_id: assetData.batch_id || assetData.batch,
       serial_number: assetData.serial_number
     };
     
@@ -156,14 +154,16 @@ export const assetService = {
     return response.data;
   },
   
-  // 🎯 FIXED: Assign asset - backend endpoint-inə uyğun
+  // 🎯 Assign asset - backend endpoint-inə uyğun
   assignToEmployee: async (assignmentData) => {
     const payload = {
-      asset_ids: [assignmentData.asset], // Array formatında
-      employee_id: assignmentData.employee, // employee_id açarı istifadə et
+      asset_ids: Array.isArray(assignmentData.asset_ids) 
+        ? assignmentData.asset_ids 
+        : [assignmentData.asset],
+      employee_id: assignmentData.employee_id || assignmentData.employee,
       check_out_date: assignmentData.check_out_date,
       check_out_notes: assignmentData.check_out_notes || '',
-      condition_on_checkout: assignmentData.condition_on_checkout
+      condition_on_checkout: assignmentData.condition_on_checkout || 'GOOD'
     };
     
     console.log('🎯 Assignment payload:', payload);
@@ -173,7 +173,10 @@ export const assetService = {
   
   // Alias method - köhnə kodla uyğunluq üçün
   assignAsset: async (assetId, assignmentData) => {
-    return await assetService.assignToEmployee(assignmentData);
+    return await assetService.assignToEmployee({
+      ...assignmentData,
+      asset: assetId
+    });
   },
   
   // 🎯 Employee actions
@@ -192,14 +195,14 @@ export const assetService = {
     return response.data;
   },
   
-  // 🎯 Assignment history - GET endpoint
+  // 🎯 Assignment history
   getAssignments: async (params = {}) => {
     const response = await api.get('/assets/assets/assignments/', { params });
     return response.data;
   },
   
   getAssignmentHistory: async (id) => {
-    const response = await api.get(`/assets/assets/${id}/assignment_history/`);
+    const response = await api.get(`/assets/assets/${id}/assignment-history/`);
     return response.data;
   },
   
@@ -210,7 +213,7 @@ export const assetService = {
   },
   
   getMyAssets: async () => {
-    const response = await api.get('/assets/assets/my_assets/');
+    const response = await api.get('/assets/assets/my-assets/');
     return response.data;
   },
   
@@ -220,7 +223,7 @@ export const assetService = {
   },
   
   getAccessInfo: async () => {
-    const response = await api.get('/assets/assets/access_info/');
+    const response = await api.get('/assets/assets/access-info/');
     return response.data;
   },
   
@@ -243,7 +246,7 @@ export const assetService = {
     return response.data;
   },
   
-  // 🎯 FIXED: Export assignments
+  // 🎯 Export assignments
   exportAssignments: async (params = {}) => {
     const response = await api.post('/assets/assets/assignments/export/', params, {
       responseType: 'blob'
@@ -252,90 +255,176 @@ export const assetService = {
   }
 };
 
-// ==================== OFFBOARDING SERVICE ====================
+// ==================== OFFBOARDING SERVICE - UPDATED ====================
 export const offboardingService = {
   getOffboardings: async (params = {}) => {
     const response = await api.get('/assets/offboarding/', { params });
     return response.data;
   },
+  
   getOffboarding: async (id) => {
     const response = await api.get(`/assets/offboarding/${id}/`);
     return response.data;
   },
+  
+  // 🆕 UPDATED: Offboarding with type
   initiateOffboarding: async (data) => {
-    const response = await api.post('/assets/offboarding/initiate/', data);
+    const payload = {
+      employee_id: data.employee_id,
+      last_working_day: data.last_working_day,
+      offboarding_type: data.offboarding_type || 'RETURN', // TRANSFER or RETURN
+      notes: data.notes || ''
+    };
+    
+    const response = await api.post('/assets/offboarding/initiate/', payload);
     return response.data;
   },
+  
   getOffboardingAssets: async (offboardingId) => {
     const response = await api.get(`/assets/offboarding/${offboardingId}/assets/`);
     return response.data;
   },
-  completeOffboarding: async (offboardingId) => {
-    const response = await api.post(`/assets/offboarding/${offboardingId}/complete/`);
+  
+  // 🆕 NEW: Complete handover (IT only)
+  completeHandover: async (offboardingId) => {
+    const response = await api.post(`/assets/offboarding/${offboardingId}/complete-handover/`);
     return response.data;
   },
+  
+  // Alias for backward compatibility
+  completeOffboarding: async (offboardingId) => {
+    return await offboardingService.completeHandover(offboardingId);
+  },
+  
   cancelOffboarding: async (offboardingId, reason) => {
     const response = await api.post(`/assets/offboarding/${offboardingId}/cancel/`, { reason });
     return response.data;
   }
 };
 
-// ==================== TRANSFER SERVICE ====================
+// ==================== TRANSFER SERVICE - UPDATED ====================
 export const transferService = {
   getTransfers: async (params = {}) => {
     const response = await api.get('/assets/transfers/', { params });
     return response.data;
   },
+  
   getTransfer: async (id) => {
     const response = await api.get(`/assets/transfers/${id}/`);
     return response.data;
   },
+  
+  // 🆕 UPDATED: Create transfer (Admin/IT only)
   createTransfer: async (data) => {
-    const response = await api.post('/assets/transfers/create/', data);
+    const payload = {
+      asset_id: data.asset_id,
+      to_employee_id: data.to_employee_id,
+      transfer_notes: data.transfer_notes || ''
+    };
+    
+    const response = await api.post('/assets/transfers/create/', payload);
     return response.data;
   },
-  approveTransfer: async (transferId, data) => {
-    const response = await api.post(`/assets/transfers/${transferId}/approve/`, data);
+  
+  // 🆕 NEW: Employee approve transfer
+  employeeApproveTransfer: async (transferId, data) => {
+    const payload = {
+      approved: data.approved,
+      comments: data.comments || ''
+    };
+    
+    const response = await api.post(`/assets/transfers/${transferId}/employee-approve/`, payload);
     return response.data;
   },
+  
+  // 🆕 NEW: Get my pending transfers
+  getMyPendingTransfers: async () => {
+    const response = await api.get('/assets/transfers/my-pending/');
+    return response.data;
+  },
+  
   getOffboardingTransfers: async (offboardingId) => {
     const response = await api.get('/assets/transfers/', {
       params: { offboarding_id: offboardingId }
     });
     return response.data;
+  },
+  
+  // Deprecated - use employeeApproveTransfer instead
+  approveTransfer: async (transferId, data) => {
+    console.warn('⚠️ approveTransfer is deprecated, use employeeApproveTransfer instead');
+    return await transferService.employeeApproveTransfer(transferId, data);
   }
 };
 
-// ==================== EMPLOYEE SERVICE ====================
+// ==================== EMPLOYEE SERVICE - UPDATED ====================
 export const employeeService = {
   getEmployees: async (params = {}) => {
     const response = await api.get('/employees/', { params });
     return response.data;
   },
+  
   getEmployee: async (id) => {
     const response = await api.get(`/employees/${id}/`);
     return response.data;
   },
+  
   searchEmployees: async (searchTerm) => {
     const response = await api.get('/employees/', { 
       params: { search: searchTerm, page_size: 50 } 
     });
     return response.data;
   },
+  
+  // 🎯 UPDATED: Enhanced employee assets endpoint
   getEmployeeAssets: async (employeeId) => {
     const response = await api.get(`/employees/${employeeId}/assets/`);
+    return response.data;
+  },
+  
+  // 🆕 NEW: Employee accept asset
+  acceptAsset: async (employeeId, data) => {
+    const payload = {
+      asset_id: data.asset_id,
+      comments: data.comments || ''
+    };
+    
+    const response = await api.post(`/employees/${employeeId}/accept-asset/`, payload);
+    return response.data;
+  },
+  
+  // 🆕 NEW: Employee request clarification
+  requestAssetClarification: async (employeeId, data) => {
+    const payload = {
+      asset_id: data.asset_id,
+      clarification_reason: data.clarification_reason
+    };
+    
+    const response = await api.post(`/employees/${employeeId}/request-asset-clarification/`, payload);
     return response.data;
   }
 };
 
-// ==================== EMPLOYEE ASSET SERVICE - ADDED ====================
+// ==================== EMPLOYEE ASSET SERVICE - UPDATED ====================
 export const employeeAssetService = {
+  // 🎯 Admin/Manager actions
   provideClarification: async (employeeId, data) => {
-    const response = await api.post(`/employees/${employeeId}/provide-clarification/`, data);
+    const payload = {
+      asset_id: data.asset_id,
+      clarification_response: data.clarification_response
+    };
+    
+    const response = await api.post(`/employees/${employeeId}/provide-clarification/`, payload);
     return response.data;
   },
+  
   cancelAssignment: async (employeeId, data) => {
-    const response = await api.post(`/employees/${employeeId}/cancel-assignment/`, data);
+    const payload = {
+      asset_id: data.asset_id,
+      cancellation_reason: data.cancellation_reason || ''
+    };
+    
+    const response = await api.post(`/employees/${employeeId}/cancel-assignment/`, payload);
     return response.data;
   }
 };
@@ -376,6 +465,14 @@ export const getBatchStatusColor = (status) => {
   return colors[status] || '#6B7280';
 };
 
+export const getOffboardingTypeDisplay = (type) => {
+  const displays = {
+    'TRANSFER': 'Transfer to Another Employee',
+    'RETURN': 'Return to IT'
+  };
+  return displays[type] || type;
+};
+
 export const formatQuantitySummary = (quantitySummary) => {
   if (!quantitySummary) return null;
   
@@ -389,6 +486,45 @@ export const formatQuantitySummary = (quantitySummary) => {
   };
 };
 
+// 🆕 NEW: Format clarification info
+export const formatClarificationInfo = (clarificationInfo) => {
+  if (!clarificationInfo || !clarificationInfo.has_clarification) {
+    return null;
+  }
+  
+  return {
+    hasClarification: clarificationInfo.has_clarification,
+    isPending: clarificationInfo.is_pending,
+    status: clarificationInfo.status,
+    request: {
+      reason: clarificationInfo.requested_reason,
+      requestedAt: clarificationInfo.requested_at,
+      requestedBy: clarificationInfo.requested_by
+    },
+    response: clarificationInfo.response ? {
+      text: clarificationInfo.response,
+      providedAt: clarificationInfo.provided_at,
+      providedBy: clarificationInfo.provided_by
+    } : null
+  };
+};
+
+// 🆕 NEW: Check if user can perform action
+export const canPerformAction = (action, accessInfo) => {
+  if (!accessInfo) return false;
+  
+  const actionPermissions = {
+    'create_batch': accessInfo.can_create_batches,
+    'manage_asset': accessInfo.can_manage_all_assets,
+    'approve_transfer': accessInfo.can_approve_transfers,
+    'create_transfer': accessInfo.can_create_transfers,
+    'complete_handover': accessInfo.can_complete_handover,
+    'view_all': accessInfo.can_view_all_assets
+  };
+  
+  return actionPermissions[action] || false;
+};
+
 export default {
   categoryService,
   batchService,
@@ -396,9 +532,12 @@ export default {
   offboardingService,
   transferService,
   employeeService,
-  employeeAssetService, // ADDED
+  employeeAssetService,
   getAssetStatusColor,
   getAssetStatusDisplay,
   getBatchStatusColor,
+  getOffboardingTypeDisplay,
   formatQuantitySummary,
+  formatClarificationInfo,
+  canPerformAction,
 };

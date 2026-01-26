@@ -41,9 +41,7 @@ export default function RoleAccessManagementPage() {
   const [rolesPage, setRolesPage] = useState(1);
   const [rolesTotal, setRolesTotal] = useState(0);
   
-  const [permissionsPage, setPermissionsPage] = useState(1);
-  const [employeeRolesPage, setEmployeeRolesPage] = useState(1);
-  const [roleAssignmentsPage, setRoleAssignmentsPage] = useState(1);
+
   
   // Store grouped data
   const [employeesByRole, setEmployeesByRole] = useState([]);

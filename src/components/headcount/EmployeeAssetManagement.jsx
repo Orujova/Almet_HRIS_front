@@ -1,4 +1,4 @@
-// src/components/headcount/EmployeeAssetManagement.jsx - FIXED with correct API endpoints
+// src/components/headcount/EmployeeAssetManagement.jsx - UPDATED with new endpoints
 "use client";
 import { useState, useEffect } from "react";
 import { 
@@ -15,12 +15,15 @@ import {
   Ban,
   Info,
   Hash,
-  Tag
+  Tag,
+  User
 } from "lucide-react";
-import { assetService, employeeService } from "@/services/assetService";
+import { employeeService, employeeAssetService } from "@/services/assetService";
 
-const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
+const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode, canManageAssets = false }) => {
   const [assets, setAssets] = useState([]);
+  const [assetsSummary, setAssetsSummary] = useState(null);
+  const [pendingActions, setPendingActions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
   const [showActionModal, setShowActionModal] = useState(false);
@@ -51,14 +54,30 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
   const shadowClass = darkMode ? "shadow-md shadow-black/10" : "shadow-sm shadow-gray-200/50";
   const bgAccent = darkMode ? "bg-almet-comet/30" : "bg-almet-mystic/50";
 
-  // Extract assets from employee data
+  // 🆕 Load employee assets on mount
   useEffect(() => {
-    if (employeeData) {
-      setAssets(employeeData.assets || []);
+    if (employeeId) {
+      loadEmployeeAssets();
     }
-  }, [employeeData]);
+  }, [employeeId]);
 
-  console.log("Employee Assets:", employeeData);
+  // 🆕 Load assets from API
+  const loadEmployeeAssets = async () => {
+    setLoading(true);
+    try {
+      const response = await employeeService.getEmployeeAssets(employeeId);
+      
+      console.log('📦 Employee assets loaded:', response);
+      
+      setAssets(response.assets || []);
+      setAssetsSummary(response.summary || null);
+      setPendingActions(response.pending_actions || []);
+    } catch (error) {
+      console.error('Failed to load employee assets:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Enhanced status colors with Almet palette
   const getStatusColor = (status) => {
@@ -89,131 +108,114 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
     }
   };
 
-  // 🎯 FIXED: Accept asset using correct endpoint
+  // 🎯 UPDATED: Accept asset using employee endpoint
   const handleAcceptAsset = async (asset) => {
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      // ✅ Correct endpoint: /assets/assets/accept-assignment/
-      await assetService.acceptAsset({
+      // ✅ Updated endpoint: /employees/{id}/accept-asset/
+      await employeeService.acceptAsset(employeeId, {
         asset_id: asset.id,
         comments: actionData.comments || 'Asset accepted by employee'
       });
       
-      await refreshEmployeeData();
+      await loadEmployeeAssets();
       setShowActionModal(false);
       resetActionData();
       
-      // Show success message
-      alert('Asset accepted successfully!');
+      alert('✅ Asset accepted successfully!');
     } catch (error) {
       console.error('Failed to accept asset:', error);
       const errorMsg = error.response?.data?.error || 'Failed to accept asset. Please try again.';
-      alert(errorMsg);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
     }
   };
 
-  // 🎯 FIXED: Request clarification using correct endpoint
+  // 🎯 UPDATED: Request clarification using employee endpoint
   const handleRequestClarification = async (asset) => {
     if (!actionData.clarification_reason.trim()) {
-      alert('Please provide a clarification reason');
+      alert('⚠️ Please provide a clarification reason');
       return;
     }
 
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      // ✅ Correct endpoint: /assets/assets/request-clarification/
-      await assetService.requestClarification({
+      // ✅ Updated endpoint: /employees/{id}/request-asset-clarification/
+      await employeeService.requestAssetClarification(employeeId, {
         asset_id: asset.id,
         clarification_reason: actionData.clarification_reason
       });
       
-      await refreshEmployeeData();
+      await loadEmployeeAssets();
       setShowActionModal(false);
       resetActionData();
       
-      alert('Clarification request sent successfully!');
+      alert('✅ Clarification request sent successfully!');
     } catch (error) {
       console.error('Failed to request clarification:', error);
       const errorMsg = error.response?.data?.error || 'Failed to request clarification. Please try again.';
-      alert(errorMsg);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
     }
   };
 
-  // 🎯 FIXED: Provide clarification (Admin/Manager action)
+  // 🎯 UPDATED: Provide clarification (Admin/Manager action)
   const handleProvideClarification = async (asset) => {
     if (!actionData.clarification_response.trim()) {
-      alert('Please provide a clarification response');
+      alert('⚠️ Please provide a clarification response');
       return;
     }
 
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      // ✅ Correct endpoint: /assets/assets/provide-clarification/
-      await assetService.provideClarification({
+      // ✅ Updated endpoint: /employees/{id}/provide-clarification/
+      await employeeAssetService.provideClarification(employeeId, {
         asset_id: asset.id,
         clarification_response: actionData.clarification_response
       });
       
-      await refreshEmployeeData();
+      await loadEmployeeAssets();
       setShowActionModal(false);
       resetActionData();
       
-      alert('Clarification provided successfully!');
+      alert('✅ Clarification provided successfully!');
     } catch (error) {
       console.error('Failed to provide clarification:', error);
       const errorMsg = error.response?.data?.error || 'Failed to provide clarification. Please try again.';
-      alert(errorMsg);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
     }
   };
 
-  // 🎯 NOTE: Cancel assignment endpoint does NOT exist in backend
-  // This needs to be implemented in backend first
+  // 🎯 UPDATED: Cancel assignment (Admin/Manager action)
   const handleCancelAssignment = async (asset) => {
-    alert('Cancel assignment functionality needs to be implemented in backend API');
-    return;
-    
-    // TODO: Implement in backend first, then uncomment:
-    /*
     if (!actionData.cancellation_reason.trim()) {
-      alert('Please provide a cancellation reason');
+      alert('⚠️ Please provide a cancellation reason');
       return;
     }
 
     setActionLoading(prev => ({ ...prev, [asset.id]: true }));
     try {
-      await assetService.cancelAssignment({
+      // ✅ Updated endpoint: /employees/{id}/cancel-assignment/
+      await employeeAssetService.cancelAssignment(employeeId, {
         asset_id: asset.id,
         cancellation_reason: actionData.cancellation_reason
       });
       
-      await refreshEmployeeData();
+      await loadEmployeeAssets();
       setShowActionModal(false);
       resetActionData();
       
-      alert('Assignment cancelled successfully!');
+      alert('✅ Assignment cancelled successfully!');
     } catch (error) {
       console.error('Failed to cancel assignment:', error);
       const errorMsg = error.response?.data?.error || 'Failed to cancel assignment. Please try again.';
-      alert(errorMsg);
+      alert(`❌ ${errorMsg}`);
     } finally {
       setActionLoading(prev => ({ ...prev, [asset.id]: false }));
-    }
-    */
-  };
-
-  // Refresh employee data after actions
-  const refreshEmployeeData = async () => {
-    try {
-      const updatedEmployee = await employeeService.getEmployee(employeeId);
-      setAssets(updatedEmployee.assigned_assets || []);
-    } catch (error) {
-      console.error('Failed to refresh employee data:', error);
     }
   };
 
@@ -242,8 +244,45 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
     });
   };
 
+  if (loading) {
+    return (
+      <div className={`${bgAccent} rounded-lg p-8 text-center border ${borderColor}`}>
+        <Loader className="w-8 h-8 mx-auto mb-3 text-almet-sapphire animate-spin" />
+        <p className={`${textMuted} text-xs`}>Loading assets...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
+      {/* 🆕 Assets Summary */}
+      {assetsSummary && assetsSummary.total_assigned > 0 && (
+        <div className={`${bgAccent} rounded-lg p-4 border ${borderColor}`}>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="text-center">
+              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>Total</p>
+              <p className={`${textPrimary} text-lg font-bold`}>{assetsSummary.total_assigned}</p>
+            </div>
+            <div className="text-center">
+              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>In Use</p>
+              <p className="text-emerald-500 text-lg font-bold">{assetsSummary.in_use}</p>
+            </div>
+            <div className="text-center">
+              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>Pending</p>
+              <p className="text-orange-500 text-lg font-bold">{assetsSummary.pending_approval}</p>
+            </div>
+            <div className="text-center">
+              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>Clarification</p>
+              <p className="text-violet-500 text-lg font-bold">{assetsSummary.need_clarification}</p>
+            </div>
+            <div className="text-center">
+              <p className={`${textMuted} text-[9px] uppercase font-semibold mb-1`}>In Repair</p>
+              <p className="text-rose-500 text-lg font-bold">{assetsSummary.in_repair || 0}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Assets List */}
       {assets.length === 0 ? (
         <div className={`${bgAccent} rounded-lg p-6 text-center border ${borderColor}`}>
@@ -268,15 +307,21 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                     <h4 className={`${textPrimary} font-semibold text-sm mb-1 line-clamp-1`}>
                       {asset.asset_name}
                     </h4>
-                    <div className="flex items-center gap-3 text-xs">
+                    <div className="flex items-center gap-3 text-xs flex-wrap">
                       <span className={`${textMuted} flex items-center gap-1`}>
                         <Hash size={10} />
-                        {asset.serial_number}
+                        {asset.asset_number}
                       </span>
                       <span className={`${textMuted} flex items-center gap-1`}>
                         <Tag size={10} />
-                        {asset.category}
+                        {asset.serial_number}
                       </span>
+                      {asset.category && (
+                        <span className={`${textMuted} flex items-center gap-1`}>
+                          <Building size={10} />
+                          {asset.category}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -288,58 +333,88 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
               </div>
 
               {/* Asset Details Grid */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <div className={`${bgAccent} rounded-md p-2`}>
-                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Purchase Date</p>
-                  <div className="flex items-center">
-                    <Calendar size={10} className={`${textMuted} mr-1`} />
-                    <span className={`${textSecondary} text-[10px] font-medium`}>{formatDate(asset.purchase_date)}</span>
+              {asset.assignment && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                  <div className={`${bgAccent} rounded-md p-2`}>
+                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Assigned Date</p>
+                    <div className="flex items-center">
+                      <Calendar size={10} className={`${textMuted} mr-1`} />
+                      <span className={`${textSecondary} text-[10px] font-medium`}>
+                        {formatDate(asset.assignment.check_out_date)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className={`${bgAccent} rounded-md p-2`}>
-                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Assignment Date</p>
-                  <div className="flex items-center">
-                    <Calendar size={10} className={`${textMuted} mr-1`} />
-                    <span className={`${textSecondary} text-[10px] font-medium`}>{formatDate(asset.assignment_date)}</span>
+                  
+                  <div className={`${bgAccent} rounded-md p-2`}>
+                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Days Assigned</p>
+                    <div className="flex items-center">
+                      <Clock size={10} className={`${textMuted} mr-1`} />
+                      <span className={`${textSecondary} text-[10px] font-medium`}>
+                        {asset.assignment.days_assigned} days
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                <div className={`${bgAccent} rounded-md p-2`}>
-                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Days Assigned</p>
-                  <div className="flex items-center">
-                    <Clock size={10} className={`${textMuted} mr-1`} />
-                    <span className={`${textSecondary} text-[10px] font-medium`}>{asset.days_assigned} days</span>
+                  
+                  <div className={`${bgAccent} rounded-md p-2`}>
+                    <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Condition</p>
+                    <span className={`${textSecondary} text-[10px] font-medium`}>
+                      {asset.assignment.condition || 'N/A'}
+                    </span>
                   </div>
+                  
+                  {asset.assignment.assigned_by && (
+                    <div className={`${bgAccent} rounded-md p-2`}>
+                      <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Assigned By</p>
+                      <div className="flex items-center">
+                        <User size={10} className={`${textMuted} mr-1`} />
+                        <span className={`${textSecondary} text-[10px] font-medium truncate`}>
+                          {asset.assignment.assigned_by}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                
-                <div className={`${bgAccent} rounded-md p-2`}>
-                  <p className={`${textMuted} text-[9px] uppercase tracking-wide font-semibold mb-1`}>Category</p>
-                  <div className="flex items-center">
-                    <Building size={10} className={`${textMuted} mr-1`} />
-                    <span className={`${textSecondary} text-[10px] font-medium truncate`}>{asset.category}</span>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* Clarification Info */}
-              {asset.clarification_info && (
+              {/* 🆕 Enhanced Clarification Info */}
+              {asset.clarification && (
                 <div className={`${bgAccent} rounded-md p-3 mb-3 border ${borderColor}`}>
                   <div className="flex items-start gap-2">
                     <Info size={12} className="text-violet-500 mt-0.5 flex-shrink-0" />
                     <div className="flex-1">
-                      <p className={`${textPrimary} font-semibold text-xs mb-1`}>Clarification Required</p>
-                      <p className={`${textSecondary} text-[10px] mb-1`}>
-                        <span className="font-medium">Reason:</span> {asset.clarification_info.reason}
+                      <p className={`${textPrimary} font-semibold text-xs mb-2`}>
+                        {asset.clarification.status === 'pending' ? '⏳ Clarification Pending' : '✅ Clarification Resolved'}
                       </p>
-                      {asset.clarification_info.response && (
-                        <p className={`${textSecondary} text-[10px] mb-1`}>
-                          <span className="font-medium">Response:</span> {asset.clarification_info.response}
-                        </p>
+                      
+                      {/* Request */}
+                      {asset.clarification.requested && (
+                        <div className="mb-2">
+                          <p className={`${textSecondary} text-[10px] mb-1`}>
+                            <span className="font-medium">Reason:</span> {asset.clarification.requested.reason}
+                          </p>
+                          <p className={`${textMuted} text-[9px]`}>
+                            Requested: {formatDate(asset.clarification.requested.requested_at)}
+                            {asset.clarification.requested.requested_by && (
+                              <> by {asset.clarification.requested.requested_by}</>
+                            )}
+                          </p>
+                        </div>
                       )}
-                      <p className={`${textMuted} text-[9px]`}>
-                        Requested: {formatDate(asset.clarification_info.requested_at)}
-                      </p>
+                      
+                      {/* Response */}
+                      {asset.clarification.response && (
+                        <div className="pt-2 border-t border-violet-200/20">
+                          <p className={`${textSecondary} text-[10px] mb-1`}>
+                            <span className="font-medium">Response:</span> {asset.clarification.response.text}
+                          </p>
+                          <p className={`${textMuted} text-[9px]`}>
+                            Provided: {formatDate(asset.clarification.response.provided_at)}
+                            {asset.clarification.response.provided_by && (
+                              <> by {asset.clarification.response.provided_by}</>
+                            )}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -347,7 +422,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
 
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-2">
-                {asset.status === 'ASSIGNED' && asset.can_accept && (
+                {asset.can_accept && (
                   <button
                     onClick={() => openActionModal(asset, 'accept')}
                     disabled={actionLoading[asset.id]}
@@ -362,7 +437,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   </button>
                 )}
 
-                {asset.status === 'ASSIGNED' && asset.can_request_clarification && (
+                {asset.can_request_clarification && (
                   <button
                     onClick={() => openActionModal(asset, 'clarification')}
                     disabled={actionLoading[asset.id]}
@@ -377,7 +452,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   </button>
                 )}
 
-                {asset.status === 'NEED_CLARIFICATION' && asset.can_provide_clarification && (
+                {canManageAssets && asset.clarification && asset.clarification.is_pending && (
                   <button
                     onClick={() => openActionModal(asset, 'provide_clarification')}
                     disabled={actionLoading[asset.id]}
@@ -392,8 +467,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   </button>
                 )}
 
-                {/* Commented out until backend implements this endpoint */}
-                {/* {(asset.status === 'ASSIGNED' || asset.status === 'NEED_CLARIFICATION') && (
+                {canManageAssets && asset.can_cancel && (
                   <button
                     onClick={() => openActionModal(asset, 'cancel')}
                     disabled={actionLoading[asset.id]}
@@ -406,7 +480,7 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                     )}
                     Cancel
                   </button>
-                )} */}
+                )}
               </div>
             </div>
           ))}
@@ -422,10 +496,10 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className={`${textPrimary} text-sm font-bold mb-1`}>
-                    {actionType === 'accept' && 'Accept Asset'}
-                    {actionType === 'clarification' && 'Request Clarification'}
-                    {actionType === 'provide_clarification' && 'Provide Clarification'}
-                    {actionType === 'cancel' && 'Cancel Assignment'}
+                    {actionType === 'accept' && '✅ Accept Asset'}
+                    {actionType === 'clarification' && '❓ Request Clarification'}
+                    {actionType === 'provide_clarification' && '💬 Provide Clarification'}
+                    {actionType === 'cancel' && '🚫 Cancel Assignment'}
                   </h3>
                   <p className={`${textMuted} text-[10px]`}>
                     {actionType === 'accept' && 'Confirm asset acceptance'}
@@ -449,8 +523,8 @@ const EmployeeAssetManagement = ({ employeeId, employeeData, darkMode }) => {
                   <p className={`${textPrimary} font-semibold text-xs`}>{selectedAsset.asset_name}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <span className={`${textMuted}`}>Asset #: {selectedAsset.asset_number}</span>
                   <span className={`${textMuted}`}>Serial: {selectedAsset.serial_number}</span>
-                  <span className={`${textMuted}`}>Category: {selectedAsset.category}</span>
                 </div>
               </div>
 
