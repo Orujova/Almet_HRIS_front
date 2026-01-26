@@ -195,9 +195,6 @@ const TimeOffPage = () => {
       }
     }
 
-    if (!formData.reason || formData.reason.trim().length < 10) {
-      errors.reason = 'Reason must be at least 10 characters';
-    }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
