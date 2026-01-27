@@ -183,7 +183,7 @@ const AssignmentsPage = () => {
       date_to: dateTo || undefined
     };
 
-    console.log('📤 Export params:', params);
+
 
     // POST request kimi göndər
     const blob = await assetService.exportAssignments(params);
@@ -198,7 +198,7 @@ const AssignmentsPage = () => {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
     
-    console.log('✅ Export successful');
+
   } catch (err) {
     console.error('❌ Export error:', err);
     console.error('Error response:', err.response?.data);

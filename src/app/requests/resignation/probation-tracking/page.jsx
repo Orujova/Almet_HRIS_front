@@ -1,47 +1,105 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Clock, UserCheck, Calendar, AlertTriangle, TrendingUp, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Clock, UserCheck, Calendar, AlertTriangle, TrendingUp, ArrowLeft } from 'lucide-react';
 import { employeeService } from '@/services/newsService';
-import resignationExitService from '@/services/resignationExitService';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { apiService } from '@/services/api';
 
 export default function ProbationTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [probationEmployees, setProbationEmployees] = useState([]);
-  const [filter, setFilter] = useState('all'); // 'all', 'critical', 'warning'
+  const [filter, setFilter] = useState('all');
+  const [probationStatusId, setProbationStatusId] = useState(null);
+  const [contractConfigs, setContractConfigs] = useState({});
 
   useEffect(() => {
-    loadData();
+    loadInitialData();
   }, []);
 
-  const loadData = async () => {
+  const loadInitialData = async () => {
     try {
       setLoading(true);
       
+      // 1️⃣ Get contract configurations first
+      const contractResponse = await apiService.getContractConfigs();
+      const contracts = contractResponse.data.results || contractResponse.data || [];
+      
+      console.log('📋 Contract Configs:', contracts);
+      
+      const configMap = {};
+      contracts.forEach(config => {
+        configMap[config.contract_type] = {
+          probation_days: config.probation_days || 0,
+          total_days_until_active: config.total_days_until_active || 0,
+          display_name: config.display_name || config.contract_type
+        };
+      });
+      
+      setContractConfigs(configMap);
+
+      
+      // 2️⃣ Get probation status ID
+      const statusesResponse = await apiService.getEmployeeStatuses();
+      const statuses = statusesResponse.data.results || statusesResponse.data || [];
+      
+
+      
+      const probationStatus = statuses.find(s => 
+        s.status_type === 'PROBATION' || 
+        s.name?.toUpperCase().includes('PROBATION')
+      );
+      
+      if (!probationStatus) {
+        console.error('❌ Probation status not found in:', statuses.map(s => s.name));
+        // Try to get all employees and filter manually
+        const response = await employeeService.getEmployees({ 
+          page_size: 1000
+        });
+        const employees = response.results || [];
+        
+        const enrichedEmployees = employees
+          .filter(emp => emp.status_name?.toUpperCase().includes('PROBATION'))
+          .map(emp => ({
+            ...emp,
+            ...calculateProbationInfo(emp, configMap)
+          }));
+        
+        enrichedEmployees.sort((a, b) => a.daysRemaining - b.daysRemaining);
+        setProbationEmployees(enrichedEmployees);
+        return;
+      }
+
+      setProbationStatusId(probationStatus.id);
+      
+      // 3️⃣ Get employees with probation status
       const response = await employeeService.getEmployees({ 
         page_size: 1000,
-        status__status_type: 'PROBATION'
+        status: probationStatus.id
       });
       
       const employees = response.results || [];
+      console.log('👥 Probation Employees:', employees);
+      
+      // 4️⃣ Calculate probation info for each employee
       const enrichedEmployees = employees.map(emp => ({
         ...emp,
-        ...calculateProbationInfo(emp)
+        ...calculateProbationInfo(emp, configMap)
       }));
       
+      // 5️⃣ Sort by days remaining (urgent first)
       enrichedEmployees.sort((a, b) => a.daysRemaining - b.daysRemaining);
       setProbationEmployees(enrichedEmployees);
       
     } catch (error) {
-      console.error('Error loading probation data:', error);
+      console.error('❌ Error loading probation data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const calculateProbationInfo = (employee) => {
-    if (!employee.start_date) {
+  const calculateProbationInfo = (employee, configMap) => {
+    if (!employee.start_date || !employee.contract_duration) {
       return {
         probationEndDate: null,
         daysRemaining: null,
@@ -52,12 +110,10 @@ export default function ProbationTrackingPage() {
       };
     }
 
-    const probationDaysMap = {
-      'PERMANENT': 90, '1_YEAR': 90, '6_MONTHS': 60,
-      '3_MONTHS': 30, '2_YEARS': 90,
-    };
+    // ✅ Get probation days from contract config
+    const contractConfig = configMap[employee.contract_duration];
+    const totalProbationDays = contractConfig?.probation_days || 90; // Default 90 if not found
     
-    const totalProbationDays = probationDaysMap[employee.contract_duration] || 90;
     const startDate = new Date(employee.start_date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -80,7 +136,8 @@ export default function ProbationTrackingPage() {
       daysCompleted,
       totalProbationDays,
       progressPercent,
-      urgencyLevel
+      urgencyLevel,
+      contractType: employee.contract_duration
     };
   };
 
@@ -104,6 +161,22 @@ export default function ProbationTrackingPage() {
       'unknown': 'bg-gray-400'
     };
     return colors[urgencyLevel] || colors.normal;
+  };
+
+  const getContractDisplayName = (contractType) => {
+    // ✅ Use display_name from contract config if available
+    if (contractConfigs[contractType]?.display_name) {
+      return contractConfigs[contractType].display_name;
+    }
+    
+    // Fallback to formatted names
+    const names = {
+      'PERMANENT': 'Permanent Contract',
+      '1_YEAR': '1 Year Contract',
+      '6_MONTHS': '6 Months Contract',
+      '3_MONTHS': '3 Months Contract'
+    };
+    return names[contractType] || contractType;
   };
 
   if (loading) return <LoadingSpinner message="Loading Probation Tracking..." />;
@@ -208,7 +281,7 @@ export default function ProbationTrackingPage() {
         <div className="space-y-2">
           {filteredEmployees.length === 0 ? (
             <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-xs">
-              No employees found
+              {total === 0 ? 'No employees in probation period' : 'No employees found for this filter'}
             </div>
           ) : (
             filteredEmployees.map(employee => (
@@ -223,13 +296,17 @@ export default function ProbationTrackingPage() {
                     </div>
                     <div>
                       <h3 className="text-xs font-bold text-gray-900 dark:text-gray-100">
-                        {employee.full_name}
+                        {employee.name}
                       </h3>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400">
                         {employee.employee_id} • {employee.job_title}
                       </p>
                       <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                        {employee.department?.name} • {employee.business_function?.name}
+                        {employee.department_name} • {employee.business_function_name}
+                      </p>
+                      <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+                        Contract: {getContractDisplayName(employee.contract_duration)} 
+                        ({employee.totalProbationDays} days probation)
                       </p>
                     </div>
                   </div>
@@ -266,7 +343,7 @@ export default function ProbationTrackingPage() {
                   <div>
                     <p className="text-[9px] text-gray-500 mb-0.5">Manager</p>
                     <p className="text-[10px] font-medium text-gray-900 dark:text-gray-100 truncate">
-                      {employee.line_manager?.full_name || '-'}
+                      {employee.line_manager_name || '-'}
                     </p>
                   </div>
                 </div>
@@ -292,7 +369,7 @@ export default function ProbationTrackingPage() {
                   <div className="flex items-center gap-1.5 p-2 bg-rose-50 dark:bg-rose-900/20 rounded border border-rose-200 dark:border-rose-700">
                     <AlertTriangle size={12} className="text-rose-600" />
                     <p className="text-[10px] text-rose-700 dark:text-rose-300 font-medium">
-                      Urgent: Review must be completed soon!
+                      Urgent: Probation review must be completed within {employee.daysRemaining} days!
                     </p>
                   </div>
                 )}

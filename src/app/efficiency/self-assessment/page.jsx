@@ -60,8 +60,7 @@ const SelfAssessment = () => {
         jobDescriptionService.getMyAccessInfo()
       ]);
       
-      console.log('Stats Data:', statsData);
-      console.log('Access Data:', accessData);
+
       
       setStats(statsData);
       setActivePeriod(activePeriodData);
@@ -130,7 +129,7 @@ const SelfAssessment = () => {
     try {
       setSaving(true);
       const newAssessment = await selfAssessmentService.startAssessment();
-      console.log('Started assessment:', newAssessment);
+     
       setCurrentAssessment(newAssessment);
       
       await fetchSkillGroups();

@@ -548,7 +548,7 @@ export default function PersonalArea() {
       const userData = await handoverService.getUser();
    
       setUserDetails(userData);
-      console.log('User details loaded:', userData); // Debug üçün
+    
     } catch (error) {
       console.error('Failed to load user details:', error);
     } 

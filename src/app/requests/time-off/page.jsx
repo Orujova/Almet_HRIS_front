@@ -97,8 +97,7 @@ const TimeOffPage = () => {
 
       setBalance(balanceRes.data);
       setAccessInfo(accessInfoRes.data);
-     
-      console.log('✅ Access Info:', accessInfoRes.data);
+  
     } catch (err) {
       console.error('❌ Load error:', err);
       setError(err.response?.data?.error || 'Failed to load data');

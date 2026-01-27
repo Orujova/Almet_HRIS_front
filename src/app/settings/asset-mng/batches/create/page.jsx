@@ -122,11 +122,11 @@ const CreateBatchPage = () => {
         notes: formData.notes.trim() || ''
       };
 
-      console.log('📦 Creating batch:', batchData);
+   
 
       const result = await batchService.createBatch(batchData);
       
-      console.log('✅ Batch created:', result);
+   
 
       setNotification({
         type: 'success',

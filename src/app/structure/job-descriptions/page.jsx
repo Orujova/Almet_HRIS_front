@@ -231,8 +231,7 @@ const handleBusinessFunctionClick = async (group) => {
   try {
     setActionLoading(true);
     
-    console.log('🎯 Clicking business function:', group.name);
-    console.log('📦 Group data:', group);
+
     
     // 🔥 Option 1: Use cached data from group
     if (group.jobs && group.jobs.length > 0) {

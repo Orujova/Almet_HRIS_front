@@ -620,15 +620,7 @@ const getLetterGradeFromScale = (percentage) => {
     newData.final_rating = getLetterGradeFromScale(overallPercentage);
   }
   
-  console.log('📊 RECALCULATE COMPLETE:', {
-    objectivesScore: newData.total_objectives_score,
-    objectivesPercentage: newData.objectives_percentage,
-    objectives: newData.objectives.map(o => ({
-      id: o.id,
-      rating: o.end_year_rating,
-      score: o.calculated_score
-    }))
-  });
+
   
   return newData;
 };
@@ -765,14 +757,7 @@ const handleUpdateObjective = (index, field, value) => {
   const key = `${selectedEmployee.id}_${selectedYear}`;
   const data = performanceData[key];
   
-  console.log('📝 UPDATE START:', { 
-    index, 
-    field, 
-    value, 
-    currentValue: data.objectives[index][field],
-    objectiveId: data.objectives[index].id,
-    objectiveTitle: data.objectives[index].title?.substring(0, 30)
-  });
+
   
   // ✅ CRITICAL FIX: Create completely new array with new objects
   const newObjectives = data.objectives.map((obj, idx) => {
@@ -798,12 +783,7 @@ const handleUpdateObjective = (index, field, value) => {
           const weight = parseFloat(updatedObj.weight) || 0;
           updatedObj.calculated_score = (weight / 100) * selectedScale.value;
           
-          console.log('💰 SCORE CALCULATED:', {
-            objectiveId: obj.id,
-            weight,
-            ratingValue: selectedScale.value,
-            calculatedScore: updatedObj.calculated_score
-          });
+         
         }
       } else {
         updatedObj.end_year_rating = null;
@@ -811,22 +791,12 @@ const handleUpdateObjective = (index, field, value) => {
       }
     }
     
-    console.log('✅ OBJECTIVE UPDATED:', {
-      objectiveId: obj.id,
-      field,
-      oldValue: obj[field],
-      newValue: updatedObj[field]
-    });
+  
     
     return updatedObj;
   });
   
-  // ✅ Verify the update happened
-  console.log('🔍 VERIFICATION:', {
-    oldRating: data.objectives[index].end_year_rating,
-    newRating: newObjectives[index].end_year_rating,
-    allRatings: newObjectives.map(o => ({ id: o.id, rating: o.end_year_rating }))
-  });
+
   
   const updatedData = {
     ...data,
@@ -835,11 +805,7 @@ const handleUpdateObjective = (index, field, value) => {
   
   const recalculatedData = recalculateScores(updatedData);
   
-  console.log('📊 FINAL STATE:', {
-    objectiveId: recalculatedData.objectives[index].id,
-    rating: recalculatedData.objectives[index].end_year_rating,
-    score: recalculatedData.objectives[index].calculated_score
-  });
+
   
   setPerformanceData(prev => ({
     ...prev,

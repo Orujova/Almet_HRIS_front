@@ -237,10 +237,10 @@ export default function VacationRequestsPage() {
   // VacationRequestsPage.jsx-də fetchScheduleTabs funksiyasını tapın və dəyişin:
 
 const fetchScheduleTabs = async () => {
-  console.log('🔍 fetchScheduleTabs called'); // ✅ ƏLAVƏ
+ 
   try {
     const data = await VacationService.getScheduleTabs();
-    console.log('📊 Schedule Tabs Data:', data); // ✅ ƏLAVƏ
+
     setScheduleTabs(data);
   } catch (error) {
     console.error('Schedule tabs fetch error:', error);
@@ -528,16 +528,10 @@ const handleSaveEdit = async () => {
       comment: editingSchedule.comment || ''
     };
     
-    console.log('📤 Sending edit data:', editData);
-    console.log('📤 Data types:', {
-      vacation_type_id: typeof editData.vacation_type_id,
-      start_date: typeof editData.start_date,
-      end_date: typeof editData.end_date,
-      comment: typeof editData.comment
-    });
+ 
     
     const response = await VacationService.editSchedule(editingSchedule.id, editData);
-    console.log('✅ Edit response:', response);
+  
     
     showSuccess('Schedule updated successfully');
     setEditModalOpen(false);
@@ -748,8 +742,7 @@ const handleSaveEdit = async () => {
  // VacationRequestsPage.jsx-də bu useEffect-i tapın və düzəldin:
 
 useEffect(() => {
-  console.log('🎯 Active Tab:', activeTab); // ✅ ƏLAVƏ
-  console.log('👤 User Access:', userAccess); // ✅ ƏLAVƏ
+
   
   if (activeTab === 'approval' && (userAccess.is_manager || userAccess.is_admin)) {
     fetchPendingRequests();
@@ -759,7 +752,7 @@ useEffect(() => {
   } else if (activeTab === 'records' && (userAccess.can_view_all || userAccess.is_manager)) {
     fetchAllVacationRecords();
   } else if (activeTab === 'schedules') {
-    console.log('✅ Schedules tab - calling fetchScheduleTabs'); // ✅ ƏLAVƏ
+
     fetchScheduleTabs();
   } else if (activeSection === 'scheduling') {
     fetchScheduleTabs();
